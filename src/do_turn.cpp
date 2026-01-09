@@ -21,6 +21,7 @@
 #include "mapbuffer.h"
 #include "memorial_logger.h"
 #include "messages.h"
+#include "llm_intent.h"
 #include "mission.h"
 #include "monattack.h"
 #include "mtype.h"
@@ -434,6 +435,7 @@ bool do_turn()
 
     timed_event_manager &timed_events = get_timed_events();
     timed_events.process();
+    llm_intent::process_responses();
     mission::process_all();
     avatar &u = get_avatar();
     map &m = get_map();
