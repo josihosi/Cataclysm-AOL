@@ -2872,6 +2872,43 @@ void options_manager::add_options_debug()
 
     add_empty_line();
 
+    add( "LLM_INTENT_ENABLE", "debug", to_translation( "Enable LLM intent runner" ),
+         to_translation( "When enabled, shouting a sentence sends requests to the local LLM runner." ),
+         false
+       );
+
+    add( "LLM_INTENT_PYTHON", "debug", to_translation( "LLM runner Python path" ),
+         to_translation( "Path to python.exe for the OpenVINO venv." ),
+         "C:\\Users\\josef\\openvino_models\\openvino_env\\Scripts\\python.exe", 4096
+       );
+
+    add( "LLM_INTENT_RUNNER", "debug", to_translation( "LLM runner script path" ),
+         to_translation( "Path to the LLM runner script." ),
+         "tools\\llm_runner\\runner.py", 4096
+       );
+
+    add( "LLM_INTENT_MODEL_DIR", "debug", to_translation( "LLM model directory" ),
+         to_translation( "Path to the OpenVINO model directory." ),
+         "C:\\Users\\josef\\openvino_models\\Mistral-7B-Instruct-v0.2-int4-cw-ov", 4096
+       );
+
+    add( "LLM_INTENT_DEVICE", "debug", to_translation( "LLM device" ),
+         to_translation( "OpenVINO device for LLM inference (NPU only is recommended)." ),
+         "NPU", 16
+       );
+
+    add( "LLM_INTENT_TIMEOUT_MS", "debug", to_translation( "LLM runner timeout (ms)" ),
+         to_translation( "Maximum time to wait for an LLM response." ),
+         100, 600000, 60000
+       );
+
+    add( "LLM_INTENT_FORCE_NPU", "debug", to_translation( "Force NPU for LLM intents" ),
+         to_translation( "If true, fail when NPU is not available and do not fall back to CPU." ),
+         true
+       );
+
+    add_empty_line();
+
     add_option_group( "debug", Group( "occlusion_opts", to_translation( "Occlusion options" ),
                                       to_translation( "Options regarding occlusion." ) ),
     [&]( const std::string & page_id ) {

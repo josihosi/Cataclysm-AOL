@@ -60,7 +60,6 @@ Map intents to existing behavior (no new AI primitives):
 - `LLM_INTENT_MODEL_DIR` (path, default to the Mistral directory)
 - `LLM_INTENT_DEVICE` (default `NPU`, NPU-only for LLM intents)
 - `LLM_INTENT_TIMEOUT_MS` (per request)
-- `LLM_INTENT_MAX_TOKENS` (generation cap)
 - `LLM_INTENT_FORCE_NPU` (bool, fail if NPU not available; no CPU fallback)
 
 ## Files To Edit
@@ -92,7 +91,7 @@ Map intents to existing behavior (no new AI primitives):
 - Total: ~600 to 950 LOC
 
 ## Payload Plan (Snapshot Data)
-Send compact JSON. Avoid large payloads; summarize items.
+Send compact JSON. Avoid large payloads; summarize items and cap list sizes.
 
 - `request_id`: unique id per request
 - `turn`: current game turn
@@ -100,8 +99,10 @@ Send compact JSON. Avoid large payloads; summarize items.
 - `npc_id`, `npc_name`, `npc_pos`
 - `npc_state` ("mood" surrogate):
   - morale level (e.g. `Character::get_morale_level()`)
-  - hunger, thirst, pain, stamina, HP%
-  - key effects (brief list)
+  - hunger, thirst, pain, stamina, sleepiness, HP%
+  - key effects (brief list, capped)
+- `npc_emotions` (derived summary):
+  - fear, anger, stress, confidence (coarse buckets)
 - `npc_personality` (from `npc::personality`):
   - aggression, bravery, collector, altruism
 - `npc_opinion` (from `npc_opinion`):
@@ -115,9 +116,12 @@ Send compact JSON. Avoid large payloads; summarize items.
 - `ruleset`:
   - follower rules: engagement, aim, flags/overrides
   - mission + attitude
-- `inventory_summary` (optional):
-  - wielded weapon, ammo count
-  - top 3-5 usable items (meds/tools)
+- `inventory_summary` (required, capped):
+  - wielded weapon, ammo count, reload status
+  - carried weight/volume percent
+  - top 3-5 usable items (meds/tools) with count
+  - top 3-5 combat items (grenades, molotovs, etc.)
+  - top 3-5 healing items
 
 ## Data Sources (Code)
 - Mood: `Character::get_morale_level()` and hunger/thirst/pain/stamina in `src/character.h`.

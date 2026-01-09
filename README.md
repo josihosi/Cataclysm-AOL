@@ -37,6 +37,17 @@ Note: For NPU use on OpenVINO 2025.4, transformers==4.51.3 is the tested version
 Put your OpenVINO model folder anywhere you like and point the runner at it.
 The tested model is `OpenVINO/Mistral-7B-Instruct-v0.2-int4-cw-ov`.
 
+### Runner usage
+The runner is a long-lived local process that reads JSON from stdin and writes JSON to stdout.
+It is configured for NPU-only operation (no CPU fallback).
+
+```sh
+C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\runner.py ^
+  --model-dir C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.2-int4-cw-ov ^
+  --device NPU ^
+  --force-npu
+```
+
 
 ## Compile
 
