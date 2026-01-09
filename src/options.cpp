@@ -2899,7 +2899,6 @@ void options_manager::add_options_debug()
        );
 
     add_empty_line();
-
     add_option_group( "debug", Group( "occlusion_opts", to_translation( "Occlusion options" ),
                                       to_translation( "Options regarding occlusion." ) ),
     [&]( const std::string & page_id ) {
