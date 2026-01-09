@@ -1,24 +1,39 @@
-# LLM Intent Layer (Follower NPCs) Plan
+# Local OpenVINO Python Runner LLM Intent Layer (Follower NPCs) Plan
 
 ## Goal
-Add an MCP-based "LLM Intent Layer" for follower NPCs in Cataclysm: AOL. The player can yell a sentence (talk system: `C + b`, default hotkey) and each hearing follower sends a non-blocking request to an MCP server over HTTP. The NPC keeps normal AI while the request runs. Responses map to a small, validated intent whitelist that temporarily overrides NPC behavior for a TTL, then resumes normal AI. Errors/timeouts/invalid JSON are ignored.
+Add a local (no-network) "LLM Intent Layer" for follower NPCs in Cataclysm: AOL. The player can yell a sentence (talk system: `C + b`, default hotkey) and each hearing follower sends a non-blocking request to a local OpenVINO Python GenAI runner on this machine's NPU. The NPC keeps normal AI while the request runs. Responses map to a small, validated intent whitelist that temporarily overrides NPC behavior for a TTL, then resumes normal AI. Errors/timeouts/invalid JSON are ignored.
 
 ## Trigger
 - Existing talk system -> "Yell a sentence" in `src/npctalk.cpp` (`NPC_CHAT_SENTENCE`).
-- On yell submit, for each follower who can hear, enqueue an MCP request (HTTP) with a snapshot payload.
+- On yell submit, for each follower who can hear, enqueue a local LLM request with a snapshot payload.
 
-## MCP Tool
-- MCP tool name: `npc.intent_from_speech`
-- Transport: HTTP
-- API key: `CATA_API_KEY` environment variable
+## Local Model Runner (NPU, Python)
+- Model directory (default): `C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.2-int4-cw-ov`.
+- Python venv directory (default): `C:\Users\josef\openvino_models\openvino_env`.
+- Use OpenVINO GenAI Python API with `device="NPU"` and CPU fallback disabled (equivalent to `ENABLE_CPU_FALLBACK="NO"` in `test_downloaded_models.py`).
+- Keep the pipeline warm and reused across requests (single worker thread or single process).
+- Runner is a local process (stdin/stdout JSON or local HTTP); no API keys, no external services.
 
-## Response Schema (Strict JSON)
-Example:
+### Runner Interface
+- The game calls a local Python runner with a JSON request and receives JSON response.
+- Default transport is stdin/stdout line-delimited JSON (one request per line, one response per line), with `request_id` echoed back.
+- The C++ side stays responsible for request queuing, timeouts, strict JSON validation, and intent whitelisting.
+
+### Local Install
+- Do not move models; keep them under `C:\Users\josef\openvino_models`.
+- The Python runner uses the venv at `C:\Users\josef\openvino_models\openvino_env`.
+
+## Prompt + Response Schema (Strict JSON)
+Prompt should force JSON-only output and include constraints:
 ```
-{ "intent": "guard_area", "args": { ... }, "ttl_turns": 120, "npc_say": "..." }
+You are a game NPC intent engine. Return ONLY strict JSON.
+Schema: { "intent": "...", "args": { ... }, "ttl_turns": 120, "npc_say": "..." }
+Allowed intents: guard_area, move_to, follow_player, clear_overrides, idle.
+If unsure, respond with {"intent":"idle","args":{},"ttl_turns":60,"npc_say":""}.
 ```
 Behavior:
 - Validate JSON strictly.
+- Strip model artifacts like `<think>...</think>` if present (same logic as `test_downloaded_models.py`).
 - Validate intent + args against a whitelist.
 - Convert to existing NPC actions/activities.
 - Apply override for `ttl_turns` or until finished/interrupted.
@@ -34,25 +49,36 @@ Map intents to existing behavior (no new AI primitives):
 
 ## Async Requirement
 - Request must be non-blocking.
-- Use worker thread for HTTP.
+- Use a worker thread + queue on the game side.
 - Worker only touches snapshot data (no live game state).
 - Main loop polls response queue and applies overrides safely.
 
+## Options/Config
+- `LLM_INTENT_ENABLE` (bool)
+- `LLM_INTENT_PYTHON` (path to `python.exe`, default `C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe`)
+- `LLM_INTENT_RUNNER` (path to runner script, default `tools\llm_runner\runner.py`)
+- `LLM_INTENT_MODEL_DIR` (path, default to the Mistral directory)
+- `LLM_INTENT_DEVICE` (default `NPU`, NPU-only for LLM intents)
+- `LLM_INTENT_TIMEOUT_MS` (per request)
+- `LLM_INTENT_MAX_TOKENS` (generation cap)
+- `LLM_INTENT_FORCE_NPU` (bool, fail if NPU not available; no CPU fallback)
+
 ## Files To Edit
 1. `src/npctalk.cpp`
-   - Hook `NPC_CHAT_SENTENCE` to enqueue MCP requests for hearing followers.
+   - Hook `NPC_CHAT_SENTENCE` to enqueue local LLM requests for hearing followers.
 2. `src/llm_intent.h`, `src/llm_intent.cpp`
    - Intent manager: queues, worker thread, timeouts, strict JSON validation, whitelist mapping.
-3. `src/mcp_client.h`, `src/mcp_client.cpp`
-   - HTTP client for MCP tool call `npc.intent_from_speech`.
-   - Read API key from `CATA_API_KEY`.
+3. `src/llm_intent_runner.h/.cpp` (new)
+   - External runner adapter (process management + JSON IO).
 4. `src/npc.h`, `src/npc.cpp`
    - Store per-NPC override state: intent id, args, ttl, request_id, npc_say.
    - Apply/clear override; tick TTL in `npc::process_turn()`.
 5. `src/npcmove.cpp`
    - If override active, use mapped actions and bypass normal AI until done/expired.
-6. `src/options.cpp` (optional but recommended)
-   - Toggle LLM intent layer and configure endpoint/timeouts.
+6. `src/options.cpp`
+   - Toggle LLM intent layer and configure local model settings.
+7. `tools/llm_runner/` (new)
+   - Python runner script and helper docs.
 
 ## Estimated LoC
 - `src/npctalk.cpp`: +30 to +50
@@ -60,9 +86,10 @@ Map intents to existing behavior (no new AI primitives):
 - `src/npc.cpp`: +80 to +140
 - `src/npcmove.cpp`: +40 to +80
 - `src/llm_intent.h/.cpp`: +250 to +350
-- `src/mcp_client.h/.cpp`: +200 to +300
+- `src/llm_intent_runner.h/.cpp`: +180 to +260
+- `tools/llm_runner/`: +120 to +220
 - `src/options.cpp`: +20 to +40
-- Total: ~650 to 1,000 LOC
+- Total: ~600 to 950 LOC
 
 ## Payload Plan (Snapshot Data)
 Send compact JSON. Avoid large payloads; summarize items.
@@ -104,3 +131,4 @@ Send compact JSON. Avoid large payloads; summarize items.
 ## Failover Behavior
 - Timeout, error, invalid JSON, or non-whitelisted intent => ignore and continue normal AI.
 - Overrides end on TTL expiry, interruption, or completion, then normal AI resumes.
+- If `LLM_INTENT_FORCE_NPU` is set and NPU is unavailable, disable the layer and log once.

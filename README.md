@@ -1,10 +1,9 @@
 # Cataclysm: Arsenic and Old Lace
 
-Hello! This is just a little fork for now, dont mind me.
+Hello! This is just a little fork, where I try to use LLMs to improve immersion and responsiveness of the world.
+This is something I would actually like to see, so I'm trying to make it.
 Check out the original repo, its awesome https://github.com/CleverRaven/Cataclysm-DDA
-
-Heres the description from Cataclysm-DDA:
-Cataclysm: Dark Days Ahead is a turn-based survival game set in a post-apocalyptic world. While some have described it as a "zombie game", there is far more to Cataclysm than that. Struggle to survive in a harsh, persistent, procedurally generated world. Scavenge the remnants of a dead civilization for food, equipment, or, if you are lucky, a vehicle with a full tank of gas to get you the hell out of Dodge. Fight to defeat or escape from a wide variety of powerful monstrosities, from zombies to giant insects to killer robots and things far stranger and deadlier, and against the others like yourself, who want what you have...
+Big thanks to the team, for making this awesome game!
 
 <p align="center">
     <img src="./data/screenshots/ultica-showcase-sep-2021.png" alt="Tileset: Ultica">
@@ -12,47 +11,32 @@ Cataclysm: Dark Days Ahead is a turn-based survival game set in a post-apocalypt
 
 ## Downloads
 
-**Releases** - [Stable](https://cataclysmdda.org/releases/) | [Experimental](https://cataclysmdda.org/experimental/)
+### LLM runner (Python + OpenVINO GenAI)
 
-**Source** - The source can be downloaded as a [.zip archive](https://github.com/CleverRaven/Cataclysm-DDA/archive/master.zip), or cloned from our [GitHub repo](https://github.com/CleverRaven/Cataclysm-DDA/).
+This fork uses a local Python runner (no network) to generate NPC intents.
+Tested on Windows with Intel Core Ultra 7 155H + NPU, using:
+- Model dir: `C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.2-int4-cw-ov`
+- Venv: `C:\Users\josef\openvino_models\openvino_env`
 
-[![General build matrix](https://github.com/CleverRaven/Cataclysm-DDA/actions/workflows/matrix.yml/badge.svg)](https://github.com/CleverRaven/Cataclysm-DDA/actions/workflows/matrix.yml)
-[![Coverage Status](https://coveralls.io/repos/github/CleverRaven/Cataclysm-DDA/badge.svg?branch=master)](https://coveralls.io/github/CleverRaven/Cataclysm-DDA?branch=master)
-[![Open Source Helpers](https://www.codetriage.com/cleverraven/cataclysm-dda/badges/users.svg)](https://www.codetriage.com/cleverraven/cataclysm-dda)
-[![Commit Activity](https://img.shields.io/github/commit-activity/m/CleverRaven/Cataclysm-DDA)](https://github.com/CleverRaven/Cataclysm-DDA/graphs/contributors)
-[![Lines of Code](https://tokei.rs/b1/github/CleverRaven/Cataclysm-DDA?category=code)](https://github.com/XAMPPRocky/tokei)
-[![TODOs](https://badgen.net/https/api.tickgit.com/badgen/github.com/CleverRaven/Cataclysm-DDA)](https://www.tickgit.com/browse?repo=github.com/CleverRaven/Cataclysm-DDA)
+If you do not have an NPU, you can still try this with CPU or GPU, but it will be slower.
+You can also point the runner at your own model directory.
 
-### Packaging status
-
-#### Arch Linux
-
-Ncurses and tiles versions are available in the [community repos](https://www.archlinux.org/packages/?q=cataclysm-dda).
+### Python packages
+Create a venv and install the packages below (pinning matches the tested setup):
 
 ```sh
-sudo pacman -S cataclysm-dda
-sudo pacman -S cataclysm-dda-tiles
+python -m venv C:\Users\josef\openvino_models\openvino_env
+C:\Users\josef\openvino_models\openvino_env\Scripts\activate
+pip install nncf==2.18.0 onnx==1.18.0 optimum-intel==1.25.2 transformers==4.51.3
+pip install openvino==2025.4 openvino-tokenizers==2025.4 openvino-genai==2025.4
 ```
 
-#### Fedora
+Note: For NPU use on OpenVINO 2025.4, transformers==4.51.3 is the tested version.
 
-Ncurses and tiles versions are available in the [official repos](https://src.fedoraproject.org/rpms/cataclysm-dda).
+### Models
+Put your OpenVINO model folder anywhere you like and point the runner at it.
+The tested model is `OpenVINO/Mistral-7B-Instruct-v0.2-int4-cw-ov`.
 
-```sh
-sudo dnf install cataclysm-dda
-```
-
-#### Debian / Ubuntu
-
-Ncurses and tiles versions are available in the [official repos](https://tracker.debian.org/pkg/cataclysm-dda).
-
-```sh
-sudo apt install cataclysm-dda-curses cataclysm-dda-sdl
-```
-
-#### Flatpak
-
-Download from [Flathub](https://flathub.org/apps/org.cataclysmdda.CataclysmDDA).
 
 ## Compile
 
@@ -76,22 +60,6 @@ Special thanks to the contributors, including but not limited to, people below:
 </a>
 
 Made with [contrib.rocks](https://contrib.rocks).
-
-## Community
-
-Forums:
-https://discourse.cataclysmdda.org
-
-GitHub repo:
-https://github.com/CleverRaven/Cataclysm-DDA
-
-IRC:
-`#CataclysmDDA` on [Libera Chat](https://libera.chat), https://web.libera.chat/#CataclysmDDA
-
-Official Discord:
-https://discord.gg/jFEc7Yp
-
-## Frequently Asked Questions
 
 #### Is there a tutorial?
 
