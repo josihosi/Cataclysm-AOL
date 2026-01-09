@@ -2125,6 +2125,16 @@ void npc::execute_action( npc_action action )
             ai_cache.current_attack->use( *this, ai_cache.current_attack_evaluation.target() );
             ai_cache.current_attack.reset();
             ai_cache.current_attack_evaluation = npc_attack_rating{};
+            {
+                llm_intent_state &state = llm_intent_state_for( *this );
+                if( state.target_attacks_remaining > 0 && !state.target_hint.empty() ) {
+                    state.target_attacks_remaining -= 1;
+                    if( state.target_attacks_remaining <= 0 ) {
+                        state.target_hint.clear();
+                        state.target_turns_remaining = 0;
+                    }
+                }
+            }
             break;
         case npc_pause:
             move_pause();

@@ -9,6 +9,7 @@ Ship tested Windows and Linux releases for:
 
 ## Status
 - `Done`: orchestrator replay flow is stable and `rerere` is enabled (`rerere.enabled=true`, `rerere.autoupdate=true`).
+- `Done`: `port/cdda-0.I` queue replay fix for `8b996271ca` preserved the existing AOL executor wiring and restored forced-target attack-budget consumption in `src/npcmove.cpp`.
 - `In progress`: debug remaining per-target port issues, then finish release validation and packaging parity across all `port/*` branches.
 
 ## Execution Roadmap
