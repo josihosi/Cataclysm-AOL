@@ -2865,6 +2865,13 @@ void options_manager::add_options_debug()
 
     add_empty_line();
 
+    add( "DEBUG_LLM_INTENT", "debug", to_translation( "Log LLM intent test shouts" ),
+         to_translation( "When enabled, shouting a sentence logs which NPCs heard it for LLM intent testing." ),
+         false
+       );
+
+    add_empty_line();
+
     add_option_group( "debug", Group( "occlusion_opts", to_translation( "Occlusion options" ),
                                       to_translation( "Options regarding occlusion." ) ),
     [&]( const std::string & page_id ) {
