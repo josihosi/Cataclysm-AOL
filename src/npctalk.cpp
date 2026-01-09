@@ -1525,7 +1525,8 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
             u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
         }
         if( is_sentence_say &&
-            ( get_option<bool>( "LLM_INTENT_ENABLE" ) || get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) ) {
+            ( get_option<bool>( "LLM_INTENT_ENABLE" ) || get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ||
+              get_option<bool>( "DEBUG_LLM_INTENT" ) ) ) {
             static constexpr int llm_intent_min_hear_radius = 12;
             const int say_volume = std::max( 2, volume / 2 );
             const int llm_hear_volume = std::max( say_volume, llm_intent_min_hear_radius );
@@ -1536,7 +1537,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                 const std::string utterance = !yell_msg.empty() ? yell_msg : message;
                 llm_intent::enqueue_requests( hearers, utterance );
             }
-            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) || get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
                 if( hearers.empty() ) {
                     add_msg( "LLM intent test: player said sentence %s (no NPCs heard it)", message );
                 } else {
