@@ -1171,6 +1171,7 @@ void game::chat()
     std::string yell_msg;
     std::string emote_msg;
     bool is_order = true;
+    bool is_sentence_yell = false;
     nmenu.query();
 
     if( nmenu.ret < 0 ) {
@@ -1201,6 +1202,7 @@ void game::chat()
             .query();
             yell_msg = popup.text();
             is_order = false;
+            is_sentence_yell = true;
             break;
         }
         case NPC_CHAT_EMOTE: {
@@ -1481,6 +1483,20 @@ void game::chat()
     if( !message.empty() ) {
         add_msg( _( "You yell %s" ), message );
         u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
+        if( is_sentence_yell && get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+            std::vector<npc *> hearers = get_npcs_if( [&]( const npc & guy ) {
+                return guy.can_hear( u.pos_bub(), volume );
+            } );
+            if( hearers.empty() ) {
+                add_msg( "LLM intent test: player yelled sentence %s (no NPCs heard it)", message );
+            } else {
+                std::string hearer_list = enumerate_as_string( hearers.begin(), hearers.end(),
+                []( const npc *guy ) {
+                    return guy->get_name();
+                } );
+                add_msg( "LLM intent test: player yelled sentence %s (heard by %s)", message, hearer_list );
+            }
+        }
     }
     if( !emote_msg.empty() ) {
         add_msg( emote_msg );
