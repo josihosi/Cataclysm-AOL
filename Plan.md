@@ -29,17 +29,32 @@ Add a local (no-network) "LLM Intent Layer" for follower NPCs in Cataclysm: AOL.
 - Do not move models; keep them under `C:\Users\josef\openvino_models`.
 - The Python runner uses the venv at `C:\Users\josef\openvino_models\openvino_env`.
 
-## Prompt + Response Schema (Strict JSON)
+## Prompt + Response Schema (JSON Envelope + CSV Payload)
+Transport is JSONL (one request per line, one response per line). The LLM output
+is a compact CSV payload inside the JSON envelope to keep tokens low.
+
 Prompt should force JSON-only output and include constraints:
 ```
 You are a game NPC response engine. Return ONLY strict JSON.
-Choose one action from the following possible actions:
-[action1, action2, ..]
-
-Output schema: 
-
-"NPC answer", action
+Return JSON with a single key "csv".
+The "csv" value is one CSV line with fields:
+1) speech text (always quoted)
+2) action1
+3) action2 (optional)
+4) action3 (optional)
+Actions are single tokens (no whitespace or commas).
 ```
+
+Example output:
+```
+{"csv":"\"Sure, I'll guard here.\",guard_area"}
+```
+CSV validation (C++ side):
+- JSON must have only `csv` and optionally `request_id` (if echoed back).
+- The CSV line must have 2-4 fields.
+- Field 1 must be double-quoted; inner quotes must be escaped as `""`.
+- Fields 2-4 must be action tokens: `[a-z0-9_]+` (no whitespace, no commas).
+- If CSV parse fails, ignore response and keep normal AI.
 Actions (will be implemented later):
 - Convert to existing NPC actions/activities.
 - Apply override for `ttl_turns` or until finished/interrupted.
@@ -85,7 +100,7 @@ Here an example.
 0 ... obstructive area (movement speed > 100)
 6 ... obstructed area
 [a - z] ... creature
-[ǎ - ž] ... obstructed creature
+[A - Z] ... obstructed creature
 | ... You
 
 </Legend>
@@ -110,6 +125,22 @@ b ... Creature name, threat stat
 ```
 
 Send compact JSON. Avoid large payloads; summarize items and cap list sizes.
+Suggested short keys (request JSON):
+- `id`: request_id
+- `t`: turn
+- `u`: player_utterance
+- `nid`: npc_id
+- `nn`: npc_name
+- `np`: npc_pos
+- `st`: npc_state
+- `em`: npc_emotions
+- `per`: npc_personality
+- `op`: npc_opinion
+- `th`: threats
+- `fr`: friendlies
+- `rs`: ruleset
+- `inv`: inventory_summary
+- `map`: ascii_map_snapshot
 
 - `request_id`: unique id per request
 - `turn`: current game turn
