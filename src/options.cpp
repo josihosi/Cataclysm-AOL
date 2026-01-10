@@ -2889,7 +2889,7 @@ void options_manager::add_options_debug()
 
     add( "LLM_INTENT_MODEL_DIR", "debug", to_translation( "LLM model directory" ),
          to_translation( "Path to the OpenVINO model directory." ),
-         "C:\\Users\\josef\\openvino_models\\Mistral-7B-Instruct-v0.2-int4-cw-ov", 4096
+         "C:\\Users\\josef\\openvino_models\\Phi-3.5-mini-instruct-int4-cw-ov", 4096
        );
 
     add( "LLM_INTENT_DEVICE", "debug", to_translation( "LLM device" ),
@@ -2897,9 +2897,14 @@ void options_manager::add_options_debug()
          "NPU", 16
        );
 
+    add( "LLM_INTENT_MAX_PROMPT_LEN", "debug", to_translation( "LLM max prompt length" ),
+         to_translation( "Maximum prompt length for the LLM pipeline." ),
+         256, 20000, 4096
+       );
+
     add( "LLM_INTENT_TIMEOUT_MS", "debug", to_translation( "LLM runner timeout (ms)" ),
-         to_translation( "Maximum time to wait for an LLM response." ),
-         100, 600000, 60000
+         to_translation( "Maximum time to wait for an LLM response.  Set to 0 for no timeout." ),
+         0, 600000, 0
        );
 
     add( "LLM_INTENT_FORCE_NPU", "debug", to_translation( "Force NPU for LLM intents" ),
