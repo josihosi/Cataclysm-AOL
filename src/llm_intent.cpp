@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
@@ -15,10 +16,12 @@
 #include <vector>
 
 #include "calendar.h"
+#include "character_id.h"
 #include "debug.h"
 #include "effect.h"
 #include "filesystem.h"
 #include "field.h"
+#include "game.h"
 #include "json.h"
 #include "line.h"
 #include "map.h"
@@ -55,6 +58,7 @@ void overwrite_llm_intent_log( const std::string &payload )
 
 struct llm_intent_request {
     std::string request_id;
+    character_id npc_id;
     std::string npc_name;
     std::string prompt;
     std::string snapshot;
@@ -63,6 +67,7 @@ struct llm_intent_request {
 
 struct llm_intent_response {
     std::string request_id;
+    character_id npc_id;
     std::string npc_name;
     bool ok = false;
     std::string text;
@@ -119,6 +124,148 @@ std::string creature_kind( const Creature &critter )
 std::string sanitize_text( std::string_view text )
 {
     return remove_color_tags( text );
+}
+
+std::string trim_copy( const std::string &text )
+{
+    size_t start = 0;
+    while( start < text.size() &&
+           std::isspace( static_cast<unsigned char>( text[start] ) ) ) {
+        ++start;
+    }
+    size_t end = text.size();
+    while( end > start &&
+           std::isspace( static_cast<unsigned char>( text[end - 1] ) ) ) {
+        --end;
+    }
+    return text.substr( start, end - start );
+}
+
+bool is_action_token( const std::string &token )
+{
+    if( token.empty() ) {
+        return false;
+    }
+    for( unsigned char c : token ) {
+        if( !( ( c >= 'a' && c <= 'z' ) || ( c >= '0' && c <= '9' ) || c == '_' ) ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool parse_csv_payload( const std::string &csv, std::string &speech,
+                        std::vector<std::string> &actions, std::string &error )
+{
+    actions.clear();
+    speech.clear();
+    size_t i = 0;
+    while( i < csv.size() && std::isspace( static_cast<unsigned char>( csv[i] ) ) ) {
+        ++i;
+    }
+    if( i >= csv.size() || csv[i] != '"' ) {
+        error = "CSV speech field must be quoted.";
+        return false;
+    }
+    ++i;
+    while( i < csv.size() ) {
+        char c = csv[i];
+        if( c == '"' ) {
+            if( i + 1 < csv.size() && csv[i + 1] == '"' ) {
+                speech.push_back( '"' );
+                i += 2;
+                continue;
+            }
+            ++i;
+            break;
+        }
+        speech.push_back( c );
+        ++i;
+    }
+    if( i > csv.size() ) {
+        error = "CSV speech field missing closing quote.";
+        return false;
+    }
+    while( i < csv.size() && std::isspace( static_cast<unsigned char>( csv[i] ) ) ) {
+        ++i;
+    }
+    if( i >= csv.size() || csv[i] != ',' ) {
+        error = "CSV must include at least one action field.";
+        return false;
+    }
+    ++i;
+    while( i < csv.size() ) {
+        size_t start = i;
+        while( i < csv.size() && csv[i] != ',' ) {
+            ++i;
+        }
+        std::string token = trim_copy( csv.substr( start, i - start ) );
+        if( !is_action_token( token ) ) {
+            error = "CSV action token is invalid.";
+            return false;
+        }
+        actions.push_back( token );
+        if( actions.size() > 3 ) {
+            error = "CSV has too many action fields.";
+            return false;
+        }
+        if( i >= csv.size() ) {
+            break;
+        }
+        ++i;
+    }
+    if( actions.empty() ) {
+        error = "CSV must include at least one action field.";
+        return false;
+    }
+    return true;
+}
+
+std::optional<std::string> extract_csv_from_json( const std::string &text,
+        std::string &error )
+{
+    try {
+        std::istringstream in( text );
+        TextJsonIn jsin( in );
+        TextJsonObject obj = jsin.get_object();
+        obj.allow_omitted_members();
+        if( !obj.has_member( "csv" ) ) {
+            error = "Missing csv field.";
+            return std::nullopt;
+        }
+        return obj.get_string( "csv" );
+    } catch( const std::exception & ) {
+        error = "LLM output is not valid JSON.";
+        return std::nullopt;
+    }
+}
+
+llm_intent_action action_from_token( const std::string &token )
+{
+    if( token == "guard_area" ) {
+        return llm_intent_action::guard_area;
+    }
+    if( token == "follow_player" ) {
+        return llm_intent_action::follow_player;
+    }
+    if( token == "clear_overrides" ) {
+        return llm_intent_action::clear_overrides;
+    }
+    if( token == "idle" ) {
+        return llm_intent_action::idle;
+    }
+    return llm_intent_action::none;
+}
+
+const std::vector<std::string> &allowed_actions()
+{
+    static const std::vector<std::string> actions = {
+        "guard_area",
+        "follow_player",
+        "clear_overrides",
+        "idle"
+    };
+    return actions;
 }
 
 struct creature_snapshot {
@@ -386,15 +533,27 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
 std::string build_prompt( const std::string &npc_name, const std::string &player_utterance,
                           const std::string &snapshot )
 {
+    std::string action_list;
+    for( const std::string &action : allowed_actions() ) {
+        if( !action_list.empty() ) {
+            action_list += ", ";
+        }
+        action_list += action;
+    }
     return string_format(
                "You are a game NPC response engine. Return ONLY strict JSON.\n"
-               "Schema: { \"npc_say\": \"...\", \"ai_decision\": \"...\" }\n"
-               "Rules: keep output short; npc_say is a single sentence (<= 20 words), ai_decision is a brief tag (<= 32 chars).\n"
-               "If unsure, respond with {\"npc_say\":\"\",\"ai_decision\":\"idle\"}.\n"
+               "Return JSON with a single key \"csv\".\n"
+               "The \"csv\" value is one CSV line with fields:\n"
+               "1) speech text (always quoted)\n"
+               "2) action1\n"
+               "3) action2 (optional)\n"
+               "4) action3 (optional)\n"
+               "Actions are single tokens (no whitespace or commas).\n"
+               "Allowed actions: %s\n"
                "Context JSON:\n%s\n"
                "Player said: \"%s\"\n"
                "NPC: \"%s\"\n",
-               snapshot, player_utterance, npc_name );
+               action_list, snapshot, player_utterance, npc_name );
 }
 
 std::string request_to_json( const llm_intent_request &request )
@@ -445,6 +604,7 @@ std::optional<llm_intent_response> response_from_json( const std::string &line,
     }
     llm_intent_response response;
     response.request_id = request.request_id;
+    response.npc_id = request.npc_id;
     response.npc_name = request.npc_name;
     try {
         std::istringstream in( line );
@@ -817,6 +977,7 @@ class llm_intent_manager
             static constexpr int default_max_tokens = 20000;
             llm_intent_request req;
             req.request_id = next_request_id();
+            req.npc_id = listener.getID();
             req.npc_name = listener.get_name();
             req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
             req.prompt = build_prompt( req.npc_name, player_utterance, req.snapshot );
@@ -856,6 +1017,7 @@ class llm_intent_manager
             if( !warmup_enqueued.exchange( true ) ) {
                 llm_intent_request warm;
                 warm.request_id = "prewarm";
+                warm.npc_id = character_id();
                 warm.npc_name = "prewarm";
                 warm.snapshot = "{}";
                 warm.prompt = build_prompt( "", "", warm.snapshot );
@@ -887,15 +1049,51 @@ class llm_intent_manager
                     local.pop();
                     continue;
                 }
+                std::string parse_error;
+                std::string speech;
+                std::vector<std::string> actions;
+                llm_intent_action action = llm_intent_action::none;
+                if( resp.ok ) {
+                    const std::optional<std::string> csv_json = extract_csv_from_json( resp.text,
+                            parse_error );
+                    if( csv_json &&
+                        parse_csv_payload( *csv_json, speech, actions, parse_error ) ) {
+                        for( const std::string &token : actions ) {
+                            action = action_from_token( token );
+                            if( action != llm_intent_action::none ) {
+                                break;
+                            }
+                        }
+                        if( action == llm_intent_action::none ) {
+                            parse_error = "No allowed action token found.";
+                        }
+                    }
+                }
+
+                npc *target = nullptr;
+                if( resp.ok && parse_error.empty() ) {
+                    target = g->find_npc( resp.npc_id );
+                    if( target == nullptr ) {
+                        parse_error = "NPC not found for LLM intent response.";
+                    }
+                }
+
+                if( resp.ok && parse_error.empty() && target != nullptr ) {
+                    static constexpr int default_ttl_turns = 20;
+                    target->set_llm_intent_override( action, default_ttl_turns,
+                                                     resp.request_id, speech );
+                }
+
                 if( debug_log ) {
-                    if( resp.ok ) {
+                    if( resp.ok && parse_error.empty() ) {
                         add_msg( "LLM intent response for %s: %s", resp.npc_name, resp.text );
                         overwrite_llm_intent_log( string_format( "response %s (%s)\n%s\n",
                                                  resp.npc_name, resp.request_id, resp.text ) );
                     } else {
-                        add_msg( "LLM intent failed for %s: %s", resp.npc_name, resp.error );
+                        const std::string err = resp.ok ? parse_error : resp.error;
+                        add_msg( "LLM intent failed for %s: %s", resp.npc_name, err );
                         overwrite_llm_intent_log( string_format( "failed %s (%s)\n%s\n",
-                                                 resp.npc_name, resp.request_id, resp.error ) );
+                                                 resp.npc_name, resp.request_id, err ) );
                     }
                 }
                 local.pop();
@@ -955,6 +1153,7 @@ class llm_intent_manager
                 response = handle_request_windows( req );
 #else
                 response.request_id = req.request_id;
+                response.npc_id = req.npc_id;
                 response.npc_name = req.npc_name;
                 response.ok = false;
                 response.error = "LLM runner is only supported on Windows in this build.";
@@ -970,6 +1169,7 @@ class llm_intent_manager
         llm_intent_response handle_request_windows( const llm_intent_request &req ) {
             llm_intent_response response;
             response.request_id = req.request_id;
+            response.npc_id = req.npc_id;
             response.npc_name = req.npc_name;
             const runner_config config = current_runner_config();
             std::string error;

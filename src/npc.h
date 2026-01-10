@@ -207,6 +207,26 @@ enum npc_need {
     num_needs
 };
 
+enum class llm_intent_action : int {
+    none = 0,
+    guard_area,
+    follow_player,
+    clear_overrides,
+    idle
+};
+
+struct llm_intent_override_state {
+    llm_intent_action action = llm_intent_action::none;
+    int ttl_turns = 0;
+    bool one_shot_applied = false;
+    std::string request_id;
+    std::string npc_say;
+
+    bool active() const {
+        return action != llm_intent_action::none && ttl_turns > 0;
+    }
+};
+
 // TODO: Turn the personality struct into a vector/map?
 enum npc_personality_type : int {
     NPE_AGGRESSION,
@@ -1097,6 +1117,13 @@ class npc : public Character
         void move(); // Picks an action & a target and calls execute_action
         void execute_action( npc_action action ); // Performs action
         void process_turn() override;
+        bool has_llm_intent_override() const;
+        const llm_intent_override_state &get_llm_intent_override() const;
+        void set_llm_intent_override( llm_intent_action action, int ttl_turns,
+                                      const std::string &request_id,
+                                      const std::string &npc_say );
+        void clear_llm_intent_override();
+        void tick_llm_intent_override();
 
         using Character::invoke_item;
         bool invoke_item( item *, const tripoint_bub_ms &pt, int pre_obtain_moves ) override;
@@ -1385,6 +1412,7 @@ class npc : public Character
         inventory companion_mission_inv; //Inventory that is added and dropped on mission
         npc_mission mission = NPC_MISSION_NULL;
         npc_mission previous_mission = NPC_MISSION_NULL;
+        llm_intent_override_state llm_intent_override; // NOLINT(cata-serialize)
         npc_personality personality;
         npc_opinion op_of_u;
         npc_combat_memory_cache mem_combat;
