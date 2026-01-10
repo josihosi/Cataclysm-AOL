@@ -33,6 +33,7 @@
 #include "help.h"
 #include "loading_ui.h"
 #include "localized_comparator.h"
+#include "llm_intent.h"
 #include "mapbuffer.h"
 #include "mapsharing.h"
 #include "messages.h"
@@ -1063,6 +1064,7 @@ bool main_menu::load_game( std::string const &worldname, save_t const &savegame 
     }
 
     if( g->load( savegame ) ) {
+        llm_intent::prewarm();
         cleanup.cancel();
         return true;
     }
