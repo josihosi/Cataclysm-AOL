@@ -3371,6 +3371,7 @@ bool npc::dispose_item( item_location &&obj, const std::string & )
 void npc::process_turn()
 {
     Character::process_turn();
+    tick_llm_intent_override();
 
     // NPCs shouldn't be using stamina, but if they have, set it back to max
     // If the stamina is higher than the max (Languorous), set it back to max
@@ -3399,6 +3400,45 @@ void npc::process_turn()
 
     // TODO: Add decreasing trust/value/etc. here when player doesn't provide food
     // TODO: Make NPCs leave the player if there's a path out of map and player is sleeping/unseen/etc.
+}
+
+bool npc::has_llm_intent_override() const
+{
+    return llm_intent_override.active();
+}
+
+const llm_intent_override_state &npc::get_llm_intent_override() const
+{
+    return llm_intent_override;
+}
+
+void npc::set_llm_intent_override( llm_intent_action action, int ttl_turns,
+                                   const std::string &request_id,
+                                   const std::string &npc_say )
+{
+    llm_intent_override.action = action;
+    llm_intent_override.ttl_turns = ttl_turns;
+    llm_intent_override.one_shot_applied = false;
+    llm_intent_override.request_id = request_id;
+    llm_intent_override.npc_say = npc_say;
+}
+
+void npc::clear_llm_intent_override()
+{
+    llm_intent_override = llm_intent_override_state();
+}
+
+void npc::tick_llm_intent_override()
+{
+    if( !llm_intent_override.active() ) {
+        return;
+    }
+    if( llm_intent_override.ttl_turns > 0 ) {
+        --llm_intent_override.ttl_turns;
+    }
+    if( llm_intent_override.ttl_turns <= 0 ) {
+        clear_llm_intent_override();
+    }
 }
 
 bool npc::invoke_item( item *used, const tripoint_bub_ms &pt, int )
