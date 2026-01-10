@@ -1,23 +1,38 @@
 #include "llm_intent.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <queue>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
+#include "calendar.h"
 #include "debug.h"
+#include "effect.h"
+#include "filesystem.h"
+#include "field.h"
 #include "json.h"
+#include "line.h"
+#include "map.h"
 #include "messages.h"
+#include "monster.h"
+#include "npc_opinion.h"
 #include "npc.h"
 #include "options.h"
+#include "output.h"
+#include "overmapbuffer.h"
 #include "path_info.h"
 #include "string_formatter.h"
+#include "units.h"
+#include "visitable.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -25,10 +40,24 @@
 
 namespace
 {
+std::mutex llm_intent_log_mutex;
+constexpr const char *llm_intent_log_path = "config/llm_intent_last.log";
+
+void overwrite_llm_intent_log( const std::string &payload )
+{
+    std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
+    std::ofstream out( llm_intent_log_path, std::ios::binary | std::ios::trunc );
+    if( !out ) {
+        return;
+    }
+    out << payload;
+}
+
 struct llm_intent_request {
     std::string request_id;
     std::string npc_name;
     std::string prompt;
+    std::string snapshot;
     int max_tokens = 0;
 };
 
@@ -46,6 +75,7 @@ struct runner_config {
     std::string model_dir;
     std::string device;
     int max_tokens = 0;
+    int max_prompt_len = 0;
     bool force_npu = false;
 
     bool operator==( const runner_config &other ) const {
@@ -54,6 +84,7 @@ struct runner_config {
                model_dir == other.model_dir &&
                device == other.device &&
                max_tokens == other.max_tokens &&
+               max_prompt_len == other.max_prompt_len &&
                force_npu == other.force_npu;
     }
 
@@ -62,16 +93,308 @@ struct runner_config {
     }
 };
 
-std::string build_prompt( const std::string &npc_name, const std::string &player_utterance )
+void write_tripoint( JsonOut &jsout, const tripoint_bub_ms &pos )
+{
+    jsout.start_object();
+    jsout.member( "x", pos.x() );
+    jsout.member( "y", pos.y() );
+    jsout.member( "z", pos.z() );
+    jsout.end_object();
+}
+
+std::string creature_kind( const Creature &critter )
+{
+    if( critter.is_avatar() ) {
+        return "player";
+    }
+    if( critter.is_npc() ) {
+        return "npc";
+    }
+    if( critter.is_monster() ) {
+        return "monster";
+    }
+    return "creature";
+}
+
+std::string sanitize_text( std::string_view text )
+{
+    return remove_color_tags( text );
+}
+
+struct creature_snapshot {
+    const Creature *critter = nullptr;
+    int distance = 0;
+};
+
+std::vector<creature_snapshot> filter_visible( const npc &listener,
+        Creature::Attitude attitude, int range )
+{
+    std::vector<creature_snapshot> out;
+    const std::vector<Creature *> visible = listener.get_visible_creatures( range );
+    for( Creature *critter : visible ) {
+        if( critter == nullptr || critter == &listener ) {
+            continue;
+        }
+        if( listener.attitude_to( *critter ) != attitude ) {
+            continue;
+        }
+        out.push_back( { critter, rl_dist( listener.pos_bub(), critter->pos_bub() ) } );
+    }
+    std::sort( out.begin(), out.end(), []( const creature_snapshot &lhs,
+    const creature_snapshot &rhs ) {
+        return lhs.distance < rhs.distance;
+    } );
+    return out;
+}
+
+float threat_score_for( npc &listener, const Creature &critter, int distance )
+{
+    if( const monster *mon = critter.as_monster() ) {
+        return listener.evaluate_monster( *mon, distance );
+    }
+    if( const Character *character = critter.as_character() ) {
+        const bool my_gun = listener.get_wielded_item() && listener.get_wielded_item()->is_gun();
+        const bool enemy = listener.attitude_to( *character ) == Creature::Attitude::HOSTILE;
+        return listener.evaluate_character( *character, my_gun, enemy );
+    }
+    return 0.0f;
+}
+
+void write_creature_list( JsonOut &jsout, npc &listener,
+                          const std::vector<creature_snapshot> &list, size_t max_count )
+{
+    jsout.start_array();
+    size_t count = 0;
+    for( const creature_snapshot &entry : list ) {
+        if( entry.critter == nullptr ) {
+            continue;
+        }
+        jsout.start_object();
+        jsout.member( "name", sanitize_text( entry.critter->disp_name() ) );
+        jsout.member( "kind", creature_kind( *entry.critter ) );
+        jsout.member( "distance", entry.distance );
+        jsout.member( "hp_percent", entry.critter->hp_percentage() );
+        jsout.member( "threat_score",
+                      threat_score_for( listener, *entry.critter, entry.distance ) );
+        jsout.end_object();
+        if( ++count >= max_count ) {
+            break;
+        }
+    }
+    jsout.end_array();
+}
+
+std::string build_snapshot_json( npc &listener, const std::string &player_utterance,
+                                 const std::string &request_id )
+{
+    static constexpr int map_radius = 1;
+    static constexpr int visible_range = 12;
+    static constexpr size_t max_creatures = 5;
+    static constexpr size_t max_effects = 6;
+    static constexpr size_t max_items = 5;
+
+    std::ostringstream out;
+    JsonOut jsout( out );
+    const tripoint_bub_ms pos = listener.pos_bub();
+
+    jsout.start_object();
+    jsout.member( "request_id", request_id );
+    jsout.member( "turn", to_turns<int>( calendar::turn - calendar::turn_zero ) );
+    jsout.member( "player_utterance", sanitize_text( player_utterance ) );
+    jsout.member( "npc_id", listener.get_unique_id() );
+    jsout.member( "npc_name", sanitize_text( listener.get_name() ) );
+    jsout.member( "npc_pos" );
+    write_tripoint( jsout, pos );
+
+    jsout.member( "npc_state" );
+    jsout.start_object();
+    jsout.member( "morale", listener.get_morale_level() );
+    jsout.member( "hunger", listener.get_hunger() );
+    jsout.member( "thirst", listener.get_thirst() );
+    jsout.member( "pain", listener.get_pain() );
+    jsout.member( "stamina", listener.get_stamina() );
+    jsout.member( "stamina_max", listener.get_stamina_max() );
+    jsout.member( "sleepiness", listener.get_sleepiness() );
+    jsout.member( "hp_percent", listener.hp_percentage() );
+    jsout.member( "effects" );
+    jsout.start_array();
+    size_t effect_count = 0;
+    for( const std::reference_wrapper<const effect> &eff_ref : listener.get_effects() ) {
+        const effect &eff = eff_ref.get();
+        jsout.start_object();
+        jsout.member( "id", eff.get_id().str() );
+        jsout.member( "intensity", eff.get_intensity() );
+        jsout.end_object();
+        if( ++effect_count >= max_effects ) {
+            break;
+        }
+    }
+    jsout.end_array();
+    jsout.end_object();
+
+    jsout.member( "npc_emotions" );
+    jsout.start_object();
+    jsout.member( "danger_assessment", listener.danger_assessment() );
+    jsout.member( "panic", listener.mem_combat.panic );
+    jsout.member( "confidence", listener.mem_combat.my_health );
+    jsout.member( "emergency", listener.emergency() );
+    jsout.end_object();
+
+    jsout.member( "npc_personality" );
+    jsout.start_object();
+    jsout.member( "aggression", listener.personality.aggression );
+    jsout.member( "bravery", listener.personality.bravery );
+    jsout.member( "collector", listener.personality.collector );
+    jsout.member( "altruism", listener.personality.altruism );
+    jsout.end_object();
+
+    jsout.member( "npc_opinion" );
+    jsout.start_object();
+    jsout.member( "trust", listener.op_of_u.trust );
+    jsout.member( "fear", listener.op_of_u.fear );
+    jsout.member( "value", listener.op_of_u.value );
+    jsout.member( "anger", listener.op_of_u.anger );
+    jsout.end_object();
+
+    jsout.member( "threats" );
+    write_creature_list( jsout, listener,
+                         filter_visible( listener, Creature::Attitude::HOSTILE,
+                         visible_range ), max_creatures );
+
+    jsout.member( "friendlies" );
+    write_creature_list( jsout, listener,
+                         filter_visible( listener, Creature::Attitude::FRIENDLY,
+                         visible_range ), max_creatures );
+
+    jsout.member( "overmap_grid" );
+    jsout.start_object();
+    jsout.member( "radius", map_radius );
+    jsout.member( "grid" );
+    jsout.start_array();
+    const tripoint_abs_omt omt_center = listener.pos_abs_omt();
+    for( int dy = -map_radius; dy <= map_radius; ++dy ) {
+        jsout.start_array();
+        for( int dx = -map_radius; dx <= map_radius; ++dx ) {
+            const tripoint_abs_omt omt_cell( omt_center.x() + dx, omt_center.y() + dy, omt_center.z() );
+            const oter_id &oter = overmap_buffer.ter( omt_cell );
+            const bool has_horde = overmap_buffer.has_horde( omt_cell );
+            std::ostringstream cell_out;
+            cell_out << oter->get_type_id().str() << "|" << ( has_horde ? "H" : "" );
+            jsout.write( cell_out.str() );
+        }
+        jsout.end_array();
+    }
+    jsout.end_array();
+    jsout.end_object();
+
+    jsout.member( "ruleset" );
+    jsout.start_object();
+    jsout.member( "attitude", npc_attitude_id( listener.get_attitude() ) );
+    jsout.member( "mission", sanitize_text( listener.describe_mission() ) );
+    jsout.member( "rules" );
+    jsout.start_array();
+    for( const auto &entry : ally_rule_strs ) {
+        if( listener.rules.has_flag( entry.second.rule ) ) {
+            jsout.write( entry.first );
+        }
+    }
+    jsout.end_array();
+    jsout.end_object();
+
+    jsout.member( "inventory_summary" );
+    jsout.start_object();
+    item_location wielded = listener.get_wielded_item();
+    jsout.member( "wielded" );
+    jsout.start_object();
+    if( wielded ) {
+        const item &weapon = *wielded;
+        jsout.member( "name", sanitize_text( weapon.tname() ) );
+        jsout.member( "is_gun", weapon.is_gun() );
+        jsout.member( "ammo_remaining", weapon.ammo_remaining() );
+        jsout.member( "remaining_ammo_capacity", weapon.remaining_ammo_capacity() );
+        jsout.member( "reload_needed", weapon.ammo_required() > 0 &&
+                      weapon.ammo_remaining() < weapon.ammo_required() );
+    }
+    jsout.end_object();
+
+    const units::mass weight = listener.weight_carried();
+    const units::mass weight_cap = listener.weight_capacity();
+    const units::volume volume = listener.volume_carried();
+    const units::volume volume_cap = listener.volume_capacity();
+    const int weight_pct = weight_cap > 0_gram
+                           ? static_cast<int>( 100.0 * units::to_gram<double>( weight ) /
+                                               units::to_gram<double>( weight_cap ) )
+                           : 0;
+    const int volume_pct = volume_cap > 0_ml
+                           ? static_cast<int>( 100.0 * units::to_milliliter<double>( volume ) /
+                                               units::to_milliliter<double>( volume_cap ) )
+                           : 0;
+    jsout.member( "weight_percent", weight_pct );
+    jsout.member( "volume_percent", volume_pct );
+
+    std::vector<std::string> usable_items;
+    std::vector<std::string> combat_items;
+    std::vector<std::string> healing_items;
+    listener.visit_items( [&]( item * it, item * ) {
+        if( it == nullptr ) {
+            return VisitResponse::NEXT;
+        }
+        if( usable_items.size() < max_items &&
+            ( it->is_tool() || it->is_medication() || it->is_medical_tool() ) ) {
+            usable_items.push_back( sanitize_text( it->tname() ) );
+        }
+        if( combat_items.size() < max_items && ( it->is_gun() || it->is_melee() ) ) {
+            combat_items.push_back( sanitize_text( it->tname() ) );
+        }
+        if( healing_items.size() < max_items && ( it->is_medication() || it->is_medical_tool() ) ) {
+            healing_items.push_back( sanitize_text( it->tname() ) );
+        }
+        if( usable_items.size() >= max_items &&
+            combat_items.size() >= max_items &&
+            healing_items.size() >= max_items ) {
+            return VisitResponse::ABORT;
+        }
+        return VisitResponse::NEXT;
+    } );
+
+    jsout.member( "usable_items" );
+    jsout.start_array();
+    for( const std::string &name : usable_items ) {
+        jsout.write( name );
+    }
+    jsout.end_array();
+
+    jsout.member( "combat_items" );
+    jsout.start_array();
+    for( const std::string &name : combat_items ) {
+        jsout.write( name );
+    }
+    jsout.end_array();
+
+    jsout.member( "healing_items" );
+    jsout.start_array();
+    for( const std::string &name : healing_items ) {
+        jsout.write( name );
+    }
+    jsout.end_array();
+    jsout.end_object();
+
+    jsout.end_object();
+    return out.str();
+}
+
+std::string build_prompt( const std::string &npc_name, const std::string &player_utterance,
+                          const std::string &snapshot )
 {
     return string_format(
-               "You are a game NPC intent engine. Return ONLY strict JSON.\n"
-               "Schema: { \"intent\": \"...\", \"args\": { ... }, \"ttl_turns\": 120, \"npc_say\": \"...\" }\n"
-               "Allowed intents: guard_area, move_to, follow_player, clear_overrides, idle.\n"
-               "If unsure, respond with {\"intent\":\"idle\",\"args\":{},\"ttl_turns\":60,\"npc_say\":\"\"}.\n"
+               "You are a game NPC response engine. Return ONLY strict JSON.\n"
+               "Schema: { \"npc_say\": \"...\", \"ai_decision\": \"...\" }\n"
+               "Rules: keep output short; npc_say is a single sentence (<= 20 words), ai_decision is a brief tag (<= 32 chars).\n"
+               "If unsure, respond with {\"npc_say\":\"\",\"ai_decision\":\"idle\"}.\n"
+               "Context JSON:\n%s\n"
                "Player said: \"%s\"\n"
                "NPC: \"%s\"\n",
-               player_utterance, npc_name );
+               snapshot, player_utterance, npc_name );
 }
 
 std::string request_to_json( const llm_intent_request &request )
@@ -81,9 +404,28 @@ std::string request_to_json( const llm_intent_request &request )
     jsout.start_object();
     jsout.member( "request_id", request.request_id );
     jsout.member( "prompt", request.prompt );
+    jsout.member( "snapshot", request.snapshot );
     jsout.member( "max_tokens", request.max_tokens );
     jsout.end_object();
     return out.str();
+}
+
+std::string read_log_tail( const std::filesystem::path &path, std::streamoff max_bytes )
+{
+    std::ifstream in( path, std::ios::binary );
+    if( !in ) {
+        return {};
+    }
+    in.seekg( 0, std::ios::end );
+    std::streamoff size = in.tellg();
+    if( size <= 0 ) {
+        return {};
+    }
+    std::streamoff start = size > max_bytes ? size - max_bytes : 0;
+    in.seekg( start, std::ios::beg );
+    std::string data( static_cast<size_t>( size - start ), '\0' );
+    in.read( data.data(), data.size() );
+    return data;
 }
 
 bool should_attempt_parse( const std::string &line )
@@ -108,6 +450,7 @@ std::optional<llm_intent_response> response_from_json( const std::string &line,
         std::istringstream in( line );
         TextJsonIn jsin( in );
         TextJsonObject obj = jsin.get_object();
+        obj.allow_omitted_members();
         const std::string resp_id = obj.get_string( "request_id", "" );
         if( resp_id.empty() || resp_id != request.request_id ) {
             return std::nullopt;
@@ -135,13 +478,18 @@ std::filesystem::path resolve_path( const std::string &path )
 
 runner_config current_runner_config()
 {
-    static constexpr int default_max_tokens = 512;
+    static constexpr int default_max_tokens = 20000;
+    static constexpr int default_max_prompt_len = 4096;
     runner_config cfg;
     cfg.python_path = get_option<std::string>( "LLM_INTENT_PYTHON" );
     cfg.runner_path = get_option<std::string>( "LLM_INTENT_RUNNER" );
     cfg.model_dir = get_option<std::string>( "LLM_INTENT_MODEL_DIR" );
     cfg.device = get_option<std::string>( "LLM_INTENT_DEVICE" );
     cfg.max_tokens = default_max_tokens;
+    cfg.max_prompt_len = get_option<int>( "LLM_INTENT_MAX_PROMPT_LEN" );
+    if( cfg.max_prompt_len <= 0 ) {
+        cfg.max_prompt_len = default_max_prompt_len;
+    }
     cfg.force_npu = get_option<bool>( "LLM_INTENT_FORCE_NPU" );
     return cfg;
 }
@@ -189,7 +537,18 @@ class llm_intent_runner_process
             if( !write_all( payload, error ) ) {
                 return false;
             }
-            return read_response_for_request( request, response_line, timeout, error );
+            std::chrono::milliseconds effective_timeout = timeout;
+            if( !warm && timeout.count() > 0 ) {
+                static constexpr auto startup_grace = std::chrono::milliseconds( 120000 );
+                if( effective_timeout < startup_grace ) {
+                    effective_timeout = startup_grace;
+                }
+            }
+            const bool ok = read_response_for_request( request, response_line, effective_timeout, error );
+            if( ok ) {
+                warm = true;
+            }
+            return ok;
         }
 
         void terminate() {
@@ -204,12 +563,14 @@ class llm_intent_runner_process
 
     private:
         bool running = false;
+        bool warm = false;
         runner_config active_config;
         HANDLE child_process = nullptr;
         HANDLE child_thread = nullptr;
         HANDLE stdin_write = nullptr;
         HANDLE stdout_read = nullptr;
         std::string stdout_buffer;
+        std::filesystem::path runner_log_path;
 
         bool start( const runner_config &config, std::string &error ) {
             if( config.python_path.empty() || config.runner_path.empty() || config.model_dir.empty() ) {
@@ -220,6 +581,10 @@ class llm_intent_runner_process
             std::filesystem::path python_path = resolve_path( config.python_path );
             std::filesystem::path runner_path = resolve_path( config.runner_path );
             std::filesystem::path model_dir = resolve_path( config.model_dir );
+            std::filesystem::path cache_dir = model_dir / ".ov_cache";
+            std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
+                                             "llm_intent_runner.log";
+            assure_dir_exist( PATH_INFO::config_dir() );
 
             std::vector<std::string> args;
             args.push_back( python_path.string() );
@@ -230,6 +595,12 @@ class llm_intent_runner_process
             args.push_back( config.device.empty() ? "NPU" : config.device );
             args.push_back( "--max-tokens" );
             args.push_back( std::to_string( config.max_tokens ) );
+            args.push_back( "--max-prompt-len" );
+            args.push_back( std::to_string( config.max_prompt_len ) );
+            args.push_back( "--cache-dir" );
+            args.push_back( cache_dir.string() );
+            args.push_back( "--log-file" );
+            args.push_back( log_path.string() );
             if( config.force_npu ) {
                 args.push_back( "--force-npu" );
             }
@@ -313,6 +684,8 @@ class llm_intent_runner_process
             child_process = pi.hProcess;
             child_thread = pi.hThread;
             running = true;
+            warm = false;
+            runner_log_path = log_path;
             active_config = config;
             return true;
         }
@@ -349,6 +722,8 @@ class llm_intent_runner_process
                 child_process = nullptr;
             }
             running = false;
+            warm = false;
+            runner_log_path.clear();
             stdout_buffer.clear();
         }
 
@@ -390,6 +765,14 @@ class llm_intent_runner_process
                 DWORD available = 0;
                 if( !PeekNamedPipe( stdout_read, nullptr, 0, nullptr, &available, nullptr ) ) {
                     error = "Runner stdout pipe failed.";
+                    if( !runner_log_path.empty() && std::filesystem::exists( runner_log_path ) ) {
+                        const std::string tail = read_log_tail( runner_log_path, 4096 );
+                        if( !tail.empty() ) {
+                            error += "\nRunner log tail:\n" + tail;
+                        } else {
+                            error += "\nSee config/llm_intent_runner.log for details.";
+                        }
+                    }
                     return false;
                 }
 
@@ -427,22 +810,63 @@ class llm_intent_manager
             stop();
         }
 
-        void enqueue_request( const npc &listener, const std::string &player_utterance ) {
+        void enqueue_request( npc &listener, const std::string &player_utterance ) {
             if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                 return;
             }
-            static constexpr int default_max_tokens = 512;
+            static constexpr int default_max_tokens = 20000;
             llm_intent_request req;
             req.request_id = next_request_id();
             req.npc_name = listener.get_name();
-            req.prompt = build_prompt( req.npc_name, player_utterance );
+            req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
+            req.prompt = build_prompt( req.npc_name, player_utterance, req.snapshot );
             req.max_tokens = default_max_tokens;
+            if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                overwrite_llm_intent_log( string_format( "snapshot %s (%s)\n%s\n",
+                                         req.npc_name, req.request_id, req.snapshot ) );
+            }
             {
                 std::lock_guard<std::mutex> lock( mutex );
                 request_queue.push( std::move( req ) );
             }
             ensure_worker();
             cv.notify_one();
+        }
+
+        void prewarm() {
+            if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                return;
+            }
+            ensure_worker();
+#if defined(_WIN32)
+            const runner_config config = current_runner_config();
+            std::string error;
+            if( config.force_npu && config.device != "NPU" ) {
+                if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                    add_msg( "LLM intent prewarm skipped: LLM_INTENT_FORCE_NPU requires device NPU." );
+                }
+                return;
+            }
+            if( !runner.ensure_running( config, error ) ) {
+                if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                    add_msg( "LLM intent prewarm failed: %s", error );
+                }
+                return;
+            }
+            if( !warmup_enqueued.exchange( true ) ) {
+                llm_intent_request warm;
+                warm.request_id = "prewarm";
+                warm.npc_name = "prewarm";
+                warm.snapshot = "{}";
+                warm.prompt = build_prompt( "", "", warm.snapshot );
+                warm.max_tokens = 8;
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    request_queue.push( std::move( warm ) );
+                }
+                cv.notify_one();
+            }
+#endif
         }
 
         void process_responses() {
@@ -459,11 +883,19 @@ class llm_intent_manager
             const bool debug_log = get_option<bool>( "DEBUG_LLM_INTENT" );
             while( !local.empty() ) {
                 const llm_intent_response &resp = local.front();
+                if( resp.request_id == "prewarm" ) {
+                    local.pop();
+                    continue;
+                }
                 if( debug_log ) {
                     if( resp.ok ) {
                         add_msg( "LLM intent response for %s: %s", resp.npc_name, resp.text );
+                        overwrite_llm_intent_log( string_format( "response %s (%s)\n%s\n",
+                                                 resp.npc_name, resp.request_id, resp.text ) );
                     } else {
                         add_msg( "LLM intent failed for %s: %s", resp.npc_name, resp.error );
+                        overwrite_llm_intent_log( string_format( "failed %s (%s)\n%s\n",
+                                                 resp.npc_name, resp.request_id, resp.error ) );
                     }
                 }
                 local.pop();
@@ -478,6 +910,7 @@ class llm_intent_manager
         std::thread worker;
         std::atomic<bool> stopping = false;
         std::atomic<int> counter = 0;
+        std::atomic<bool> warmup_enqueued = false;
 #if defined(_WIN32)
         llm_intent_runner_process runner;
 #endif
@@ -578,9 +1011,19 @@ llm_intent_manager &get_manager()
 
 namespace llm_intent
 {
-void enqueue_request( const npc &listener, const std::string &player_utterance )
+void enqueue_request( npc &listener, const std::string &player_utterance )
 {
     get_manager().enqueue_request( listener, player_utterance );
+}
+
+void enqueue_request( const npc &listener, const std::string &player_utterance )
+{
+    get_manager().enqueue_request( const_cast<npc &>( listener ), player_utterance );
+}
+
+void prewarm()
+{
+    get_manager().prewarm();
 }
 
 void process_responses()

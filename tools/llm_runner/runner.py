@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import sys
-from typing import Any, Dict
+import time
+import traceback
+from typing import Any, Dict, Optional, TextIO, Tuple
 
 
 def strip_think_tags(text: str) -> str:
@@ -26,9 +29,25 @@ def parse_args() -> argparse.Namespace:
         help="Default max tokens per request.",
     )
     parser.add_argument(
+        "--max-prompt-len",
+        type=int,
+        default=20000,
+        help="Maximum prompt length for the pipeline.",
+    )
+    parser.add_argument(
         "--force-npu",
         action="store_true",
         help="Fail if NPU is not available.",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        default="",
+        help="Directory for OpenVINO cache (optional).",
+    )
+    parser.add_argument(
+        "--log-file",
+        default="",
+        help="Path to a log file for runner diagnostics.",
     )
     parser.add_argument(
         "--dry-run",
@@ -47,15 +66,95 @@ def ensure_npu_only() -> None:
         raise RuntimeError(f"NPU not available. Devices: {devices}")
 
 
-def load_pipeline(model_dir: str, device: str):
+def setup_logger(log_path: str) -> Optional[TextIO]:
+    if not log_path:
+        return None
+    try:
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        return open(log_path, "a", encoding="utf-8")
+    except Exception:
+        return None
+
+
+def log_line(log_fp: Optional[TextIO], message: str) -> None:
+    if log_fp is None:
+        return
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    log_fp.write(f"[{timestamp}] {message}\n")
+    log_fp.flush()
+
+
+def load_pipeline(model_dir: str, device: str, cache_dir: str, max_prompt_len: int):
     import openvino_genai as ov_genai
 
-    return ov_genai.LLMPipeline(
-        model_dir,
-        device,
-        {},
-        ENABLE_CPU_FALLBACK="NO",
-    )
+    if cache_dir:
+        os.makedirs(cache_dir, exist_ok=True)
+    try:
+        return ov_genai.LLMPipeline(
+            model_dir,
+            device,
+            MAX_PROMPT_LEN=max_prompt_len,
+            ENABLE_CPU_FALLBACK="NO",
+            CACHE_DIR=cache_dir or None,
+        )
+    except TypeError:
+        config = {"MAX_PROMPT_LEN": max_prompt_len}
+        if cache_dir:
+            config["CACHE_DIR"] = cache_dir
+        return ov_genai.LLMPipeline(
+            model_dir,
+            device,
+            config,
+            ENABLE_CPU_FALLBACK="NO",
+        )
+
+
+def build_tokenizer(model_dir: str):
+    try:
+        import openvino_genai as ov_genai
+
+        tokenizer_cls = getattr(ov_genai, "Tokenizer", None)
+        if tokenizer_cls is None:
+            return None
+        return tokenizer_cls(model_dir)
+    except Exception:
+        return None
+
+
+def count_tokens(tokenizer, text: str) -> Tuple[int, str]:
+    if tokenizer is None:
+        return max(0, len(text.strip().split())), "whitespace"
+    try:
+        token_ids = tokenizer.encode(text)
+        if isinstance(token_ids, dict) and "input_ids" in token_ids:
+            token_ids = token_ids["input_ids"]
+        try:
+            count = int(token_ids.size)
+        except Exception:
+            try:
+                count = len(token_ids)
+            except Exception:
+                count = max(0, len(text.strip().split()))
+                return count, "whitespace"
+        return count, "openvino_genai.Tokenizer"
+    except Exception:
+        return max(0, len(text.strip().split())), "whitespace"
+
+
+def get_npu_metrics() -> Dict[str, Any]:
+    try:
+        import openvino as ov
+
+        core = ov.Core()
+        metrics = {}
+        for key in ["DEVICE_UTILIZATION", "DEVICE_TOTAL_MEM_SIZE", "DEVICE_FREE_MEM_SIZE"]:
+            try:
+                metrics[key.lower()] = core.get_property("NPU", key)
+            except Exception:
+                continue
+        return metrics
+    except Exception:
+        return {}
 
 
 def read_request(line: str) -> Dict[str, Any]:
@@ -67,7 +166,15 @@ def write_response(payload: Dict[str, Any]) -> None:
     sys.stdout.flush()
 
 
-def handle_request(pipe, request: Dict[str, Any], default_max_tokens: int) -> Dict[str, Any]:
+def handle_request(
+    pipe,
+    tokenizer,
+    request: Dict[str, Any],
+    default_max_tokens: int,
+    build_time_ms: float,
+    total_load_time_ms: float,
+    log_fp: Optional[TextIO],
+) -> Dict[str, Any]:
     request_id = request.get("request_id", "unknown")
     if request.get("command") == "shutdown":
         return {"request_id": request_id, "ok": True, "shutdown": True}
@@ -80,34 +187,70 @@ def handle_request(pipe, request: Dict[str, Any], default_max_tokens: int) -> Di
     if not isinstance(max_tokens, int) or max_tokens <= 0:
         max_tokens = default_max_tokens
 
+    prompt_tokens, token_count_method = count_tokens(tokenizer, prompt)
+    start_time = time.perf_counter()
     try:
         result = pipe.generate(
             prompt,
             max_length=max_tokens,
             do_sample=False,
         )
+        elapsed_ms = (time.perf_counter() - start_time) * 1000.0
         text = "" if result is None else strip_think_tags(str(result))
-        return {"request_id": request_id, "ok": True, "text": text}
+        generated_tokens, _ = count_tokens(tokenizer, text)
+        total_tokens = prompt_tokens + generated_tokens
+        tokens_per_sec = 0.0
+        if elapsed_ms > 0.0:
+            tokens_per_sec = (generated_tokens / elapsed_ms) * 1000.0
+        metrics = {
+            "build_time_ms": build_time_ms,
+            "total_load_time_ms": total_load_time_ms,
+            "gen_time_ms": elapsed_ms,
+            "tokens_per_sec": tokens_per_sec,
+            "prompt_tokens": prompt_tokens,
+            "generated_tokens": generated_tokens,
+            "total_tokens": total_tokens,
+            "token_count_method": token_count_method,
+            "npu": get_npu_metrics(),
+        }
+        return {"request_id": request_id, "ok": True, "text": text, "metrics": metrics}
     except Exception as exc:
+        log_line(log_fp, f"request exception: {exc}")
+        log_line(log_fp, traceback.format_exc())
         return {"request_id": request_id, "ok": False, "error": str(exc)}
 
 
 def main() -> int:
     args = parse_args()
+    log_fp = setup_logger(args.log_file)
     if args.dry_run:
+        log_line(log_fp, "dry-run ok")
         print("dry-run ok")
         return 0
 
+    start_time = time.perf_counter()
     if args.force_npu:
         try:
+            log_line(log_fp, "checking NPU availability")
             ensure_npu_only()
         except Exception as exc:
+            log_line(log_fp, f"NPU check failed: {exc}")
             print(f"NPU check failed: {exc}", file=sys.stderr)
             return 1
 
     try:
-        pipe = load_pipeline(args.model_dir, args.device)
+        log_line(log_fp, "loading pipeline")
+        build_start = time.perf_counter()
+        cache_dir = args.cache_dir or os.path.join(args.model_dir, ".ov_cache")
+        pipe = load_pipeline(args.model_dir, args.device, cache_dir, args.max_prompt_len)
+        build_time_ms = (time.perf_counter() - build_start) * 1000.0
+        total_load_time_ms = (time.perf_counter() - start_time) * 1000.0
+        log_line(log_fp, f"pipeline loaded (build {build_time_ms:.1f} ms, total {total_load_time_ms:.1f} ms)")
+        tokenizer = build_tokenizer(args.model_dir)
+        log_line(log_fp, "tokenizer ready" if tokenizer else "tokenizer unavailable")
     except Exception as exc:
+        log_line(log_fp, f"Failed to load pipeline: {exc}")
+        log_line(log_fp, traceback.format_exc())
         print(f"Failed to load pipeline: {exc}", file=sys.stderr)
         return 1
 
@@ -118,10 +261,26 @@ def main() -> int:
         try:
             request = read_request(line)
         except Exception as exc:
+            log_line(log_fp, f"invalid request: {exc}")
             write_response({"request_id": "unknown", "ok": False, "error": str(exc)})
             continue
 
-        response = handle_request(pipe, request, args.max_tokens)
+        response = handle_request(
+            pipe,
+            tokenizer,
+            request,
+            args.max_tokens,
+            build_time_ms,
+            total_load_time_ms,
+            log_fp,
+        )
+        if not response.get("ok"):
+            log_line(log_fp, f"request failed: {response.get('error', '')}")
+        else:
+            text = response.get("text", "")
+            if isinstance(text, str) and text:
+                snippet = text if len(text) <= 4000 else text[:4000] + "...[truncated]"
+                log_line(log_fp, f"response raw: {snippet}")
         write_response(response)
         if response.get("shutdown"):
             return 0

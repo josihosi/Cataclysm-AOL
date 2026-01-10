@@ -8,11 +8,17 @@ Add a local (no-network) "LLM Intent Layer" for follower NPCs in Cataclysm: AOL.
 - On yell submit, for each follower who can hear, enqueue a local LLM request with a snapshot payload.
 
 ## Local Model Runner (NPU, Python)
-- Model directory (default): `C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.2-int4-cw-ov`.
+- Model directory (default): `C:\Users\josef\openvino_models\Phi-3.5-mini-instruct-int4-cw-ov`.
 - Python venv directory (default): `C:\Users\josef\openvino_models\openvino_env`.
 - Use OpenVINO GenAI Python API with `device="NPU"` and CPU fallback disabled (equivalent to `ENABLE_CPU_FALLBACK="NO"` in `test_downloaded_models.py`).
 - Keep the pipeline warm and reused across requests (single worker thread or single process).
 - Runner is a local process (stdin/stdout JSON or local HTTP); no API keys, no external services.
+
+### Diagnostics (Minimal)
+- Collect NPU-only usage (no CPU/GPU metrics).
+- Log build time (pipeline compile) and total load time (model + pipeline ready).
+- Emit tokens/sec for generation.
+- Log token counts: prompt tokens, generated tokens, total tokens.
 
 ### Runner Interface
 - The game calls a local Python runner with a JSON request and receives JSON response.
@@ -26,10 +32,10 @@ Add a local (no-network) "LLM Intent Layer" for follower NPCs in Cataclysm: AOL.
 ## Prompt + Response Schema (Strict JSON)
 Prompt should force JSON-only output and include constraints:
 ```
-You are a game NPC intent engine. Return ONLY strict JSON.
-Schema: { "intent": "...", "args": { ... }, "ttl_turns": 120, "npc_say": "..." }
-Allowed intents: guard_area, move_to, follow_player, clear_overrides, idle.
-If unsure, respond with {"intent":"idle","args":{},"ttl_turns":60,"npc_say":""}.
+You are a game NPC response engine. Return ONLY strict JSON.
+Schema: { "npc_say": "...", "ai_decision": "..." }
+Rules: keep output short; npc_say is a single sentence (<= 20 words), ai_decision is a brief tag (<= 32 chars).
+If unsure, respond with {"npc_say":"","ai_decision":"idle"}.
 ```
 Behavior:
 - Validate JSON strictly.
