@@ -33,40 +33,29 @@ Add a local (no-network) "LLM Intent Layer" for follower NPCs in Cataclysm: AOL.
 Prompt should force JSON-only output and include constraints:
 ```
 You are a game NPC response engine. Return ONLY strict JSON.
-Schema: { "npc_say": "...", "ai_decision": "..." }
-Rules: keep output short; npc_say is a single sentence (<= 20 words), ai_decision is a brief tag (<= 32 chars).
-If unsure, respond with {"npc_say":"","ai_decision":"idle"}.
+Choose one action from the following possible actions:
+[action1, action2, ..]
+
+Output schema: 
+
+"NPC answer", action
 ```
-Behavior:
-- Validate JSON strictly.
-- Strip model artifacts like `<think>...</think>` if present (same logic as `test_downloaded_models.py`).
-- Validate intent + args against a whitelist.
+Actions (will be implemented later):
 - Convert to existing NPC actions/activities.
 - Apply override for `ttl_turns` or until finished/interrupted.
 - On timeout, error, or invalid JSON: drop response and keep normal AI.
 
-## Intent Whitelist (Initial)
+## Intent Whitelist (Later)
 Map intents to existing behavior (no new AI primitives):
 - `guard_area`: assign guard mission at current location.
+- `look`: look around for items (might be called differently)
 - `move_to`: use `goto_to_this_pos` to walk to a location.
 - `follow_player`: set follow attitude/mission.
 - `clear_overrides`: clear follower rule overrides.
-- `idle`: clear override and allow normal AI.
-
-## Async Requirement
-- Request must be non-blocking.
-- Use a worker thread + queue on the game side.
-- Worker only touches snapshot data (no live game state).
-- Main loop polls response queue and applies overrides safely.
-
-## Options/Config
-- `LLM_INTENT_ENABLE` (bool)
-- `LLM_INTENT_PYTHON` (path to `python.exe`, default `C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe`)
-- `LLM_INTENT_RUNNER` (path to runner script, default `tools\llm_runner\runner.py`)
-- `LLM_INTENT_MODEL_DIR` (path, default to the Mistral directory)
-- `LLM_INTENT_DEVICE` (default `NPU`, NPU-only for LLM intents)
-- `LLM_INTENT_TIMEOUT_MS` (per request)
-- `LLM_INTENT_FORCE_NPU` (bool, fail if NPU not available; no CPU fallback)
+- `idle`: change follower rules.
+- `wield`: wield an item (might also be called differently)
+- `attack with weapon` ??
+- `shoot with weapon` ??
 
 ## Files To Edit
 1. `src/npctalk.cpp`
@@ -85,18 +74,41 @@ Map intents to existing behavior (no new AI primitives):
 7. `tools/llm_runner/` (new)
    - Python runner script and helper docs.
 
-## Estimated LoC
-- `src/npctalk.cpp`: +30 to +50
-- `src/npc.h`: +30 to +50
-- `src/npc.cpp`: +80 to +140
-- `src/npcmove.cpp`: +40 to +80
-- `src/llm_intent.h/.cpp`: +250 to +350
-- `src/llm_intent_runner.h/.cpp`: +180 to +260
-- `tools/llm_runner/`: +120 to +220
-- `src/options.cpp`: +20 to +40
-- Total: ~600 to 950 LOC
-
 ## Payload Plan (Snapshot Data)
+We are sending a custom ASCII snapshot and a Legend.
+Here an example.
+
+```
+<Legend> (something like):
+
+- ... open area
+0 ... obstructive area (movement speed > 100)
+6 ... obstructed area
+[a - z] ... creature
+[ǎ - ž] ... obstructed creature
+| ... You
+
+</Legend>
+
+<Map> (7x7):
+
+-------
+0000000
+--a----
+oob|---
+6666---
+66666--
+666666-
+
+| ... npc_personality, npc_state, npc_emotions
+| ... ruleset, inventory_summary
+a ... User "Name", "Utterance", npc_opinion
+b ... Creature name, threat stat
+
+</Map>
+
+```
+
 Send compact JSON. Avoid large payloads; summarize items and cap list sizes.
 
 - `request_id`: unique id per request
@@ -105,7 +117,7 @@ Send compact JSON. Avoid large payloads; summarize items and cap list sizes.
 - `npc_id`, `npc_name`, `npc_pos`
 - `npc_state` ("mood" surrogate):
   - morale level (e.g. `Character::get_morale_level()`)
-  - hunger, thirst, pain, stamina, sleepiness, HP%
+  - hunger, thirst, pain, stamina, sleepiness, HP%, encumberance
   - key effects (brief list, capped)
 - `npc_emotions` (derived summary):
   - fear, anger, stress, confidence (coarse buckets)
@@ -117,17 +129,16 @@ Send compact JSON. Avoid large payloads; summarize items and cap list sizes.
   - name, type, distance, threat rating (or HP%)
 - `friendlies`: top N visible allies
   - name, type, distance
-- `local_map`:
-  - small radius grid (5x5 or 7x7) of terrain/furniture/field flags
 - `ruleset`:
   - follower rules: engagement, aim, flags/overrides
   - mission + attitude
 - `inventory_summary` (required, capped):
-  - wielded weapon, ammo count, reload status
-  - carried weight/volume percent
+  - wielded weapon, ammo count
   - top 3-5 usable items (meds/tools) with count
-  - top 3-5 combat items (grenades, molotovs, etc.)
-  - top 3-5 healing items
+  - top 3-5 combat items (guns, melee, grenades, molotovs, etc.)
+  - bool: bandage possible?
+  - bool: painkiller available
+  - bool: desinfect possible
 
 ## Data Sources (Code)
 - Mood: `Character::get_morale_level()` and hunger/thirst/pain/stamina in `src/character.h`.
@@ -138,7 +149,5 @@ Send compact JSON. Avoid large payloads; summarize items and cap list sizes.
 - Inventory summary: `Character` inventory in `src/character.h` and `item_location`.
 - Ruleset: `npc_follower_rules` in `src/npc.h`; mission/attitude in `src/npc.h`.
 
-## Failover Behavior
-- Timeout, error, invalid JSON, or non-whitelisted intent => ignore and continue normal AI.
-- Overrides end on TTL expiry, interruption, or completion, then normal AI resumes.
-- If `LLM_INTENT_FORCE_NPU` is set and NPU is unavailable, disable the layer and log once.
+## Token limits
+Max tokens should be set dynamically. to the next power of 2, according to payload size, if possible, idk :)
