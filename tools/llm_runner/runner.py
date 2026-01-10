@@ -188,11 +188,12 @@ def handle_request(
         max_tokens = default_max_tokens
 
     prompt_tokens, token_count_method = count_tokens(tokenizer, prompt)
+    max_length = prompt_tokens + max_tokens
     start_time = time.perf_counter()
     try:
         result = pipe.generate(
             prompt,
-            max_length=max_tokens,
+            max_length=max_length,
             do_sample=False,
         )
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
@@ -210,6 +211,8 @@ def handle_request(
             "prompt_tokens": prompt_tokens,
             "generated_tokens": generated_tokens,
             "total_tokens": total_tokens,
+            "max_length": max_length,
+            "max_new_tokens": max_tokens,
             "token_count_method": token_count_method,
             "npu": get_npu_metrics(),
         }

@@ -1385,32 +1385,6 @@ void npc::move()
         execute_action( npc_player_activity );
         return;
     }
-    if( has_llm_intent_override() ) {
-        llm_intent_override_state &override_state = llm_intent_override;
-        if( !override_state.one_shot_applied && !override_state.npc_say.empty() ) {
-            say( override_state.npc_say );
-            override_state.one_shot_applied = true;
-        }
-        switch( override_state.action ) {
-            case llm_intent_action::guard_area:
-                talk_function::assign_guard( *this );
-                clear_llm_intent_override();
-                return;
-            case llm_intent_action::follow_player:
-                talk_function::stop_guard( *this );
-                clear_llm_intent_override();
-                return;
-            case llm_intent_action::clear_overrides:
-                rules.clear_overrides();
-                clear_llm_intent_override();
-                break;
-            case llm_intent_action::idle:
-                execute_action( npc_pause );
-                return;
-            case llm_intent_action::none:
-                break;
-        }
-    }
     act_on_danger_assessment();
     npc_action action = npc_undecided;
 

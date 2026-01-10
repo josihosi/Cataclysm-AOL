@@ -4,7 +4,6 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
@@ -16,7 +15,7 @@
 #include <vector>
 
 #include "calendar.h"
-#include "character_id.h"
+#include "creature_tracker.h"
 #include "debug.h"
 #include "effect.h"
 #include "filesystem.h"
@@ -31,7 +30,6 @@
 #include "npc.h"
 #include "options.h"
 #include "output.h"
-#include "overmapbuffer.h"
 #include "path_info.h"
 #include "string_formatter.h"
 #include "units.h"
@@ -44,12 +42,12 @@
 namespace
 {
 std::mutex llm_intent_log_mutex;
-constexpr const char *llm_intent_log_path = "config/llm_intent_last.log";
+constexpr const char *llm_intent_log_path = "config/llm_intent.log";
 
-void overwrite_llm_intent_log( const std::string &payload )
+void append_llm_intent_log( const std::string &payload )
 {
     std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
-    std::ofstream out( llm_intent_log_path, std::ios::binary | std::ios::trunc );
+    std::ofstream out( llm_intent_log_path, std::ios::binary | std::ios::app );
     if( !out ) {
         return;
     }
@@ -58,7 +56,6 @@ void overwrite_llm_intent_log( const std::string &payload )
 
 struct llm_intent_request {
     std::string request_id;
-    character_id npc_id;
     std::string npc_name;
     std::string prompt;
     std::string snapshot;
@@ -67,11 +64,11 @@ struct llm_intent_request {
 
 struct llm_intent_response {
     std::string request_id;
-    character_id npc_id;
     std::string npc_name;
     bool ok = false;
     std::string text;
     std::string error;
+    std::string raw;
 };
 
 struct runner_config {
@@ -126,148 +123,6 @@ std::string sanitize_text( std::string_view text )
     return remove_color_tags( text );
 }
 
-std::string trim_copy( const std::string &text )
-{
-    size_t start = 0;
-    while( start < text.size() &&
-           std::isspace( static_cast<unsigned char>( text[start] ) ) ) {
-        ++start;
-    }
-    size_t end = text.size();
-    while( end > start &&
-           std::isspace( static_cast<unsigned char>( text[end - 1] ) ) ) {
-        --end;
-    }
-    return text.substr( start, end - start );
-}
-
-bool is_action_token( const std::string &token )
-{
-    if( token.empty() ) {
-        return false;
-    }
-    for( unsigned char c : token ) {
-        if( !( ( c >= 'a' && c <= 'z' ) || ( c >= '0' && c <= '9' ) || c == '_' ) ) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool parse_csv_payload( const std::string &csv, std::string &speech,
-                        std::vector<std::string> &actions, std::string &error )
-{
-    actions.clear();
-    speech.clear();
-    size_t i = 0;
-    while( i < csv.size() && std::isspace( static_cast<unsigned char>( csv[i] ) ) ) {
-        ++i;
-    }
-    if( i >= csv.size() || csv[i] != '"' ) {
-        error = "CSV speech field must be quoted.";
-        return false;
-    }
-    ++i;
-    while( i < csv.size() ) {
-        char c = csv[i];
-        if( c == '"' ) {
-            if( i + 1 < csv.size() && csv[i + 1] == '"' ) {
-                speech.push_back( '"' );
-                i += 2;
-                continue;
-            }
-            ++i;
-            break;
-        }
-        speech.push_back( c );
-        ++i;
-    }
-    if( i > csv.size() ) {
-        error = "CSV speech field missing closing quote.";
-        return false;
-    }
-    while( i < csv.size() && std::isspace( static_cast<unsigned char>( csv[i] ) ) ) {
-        ++i;
-    }
-    if( i >= csv.size() || csv[i] != ',' ) {
-        error = "CSV must include at least one action field.";
-        return false;
-    }
-    ++i;
-    while( i < csv.size() ) {
-        size_t start = i;
-        while( i < csv.size() && csv[i] != ',' ) {
-            ++i;
-        }
-        std::string token = trim_copy( csv.substr( start, i - start ) );
-        if( !is_action_token( token ) ) {
-            error = "CSV action token is invalid.";
-            return false;
-        }
-        actions.push_back( token );
-        if( actions.size() > 3 ) {
-            error = "CSV has too many action fields.";
-            return false;
-        }
-        if( i >= csv.size() ) {
-            break;
-        }
-        ++i;
-    }
-    if( actions.empty() ) {
-        error = "CSV must include at least one action field.";
-        return false;
-    }
-    return true;
-}
-
-std::optional<std::string> extract_csv_from_json( const std::string &text,
-        std::string &error )
-{
-    try {
-        std::istringstream in( text );
-        TextJsonIn jsin( in );
-        TextJsonObject obj = jsin.get_object();
-        obj.allow_omitted_members();
-        if( !obj.has_member( "csv" ) ) {
-            error = "Missing csv field.";
-            return std::nullopt;
-        }
-        return obj.get_string( "csv" );
-    } catch( const std::exception & ) {
-        error = "LLM output is not valid JSON.";
-        return std::nullopt;
-    }
-}
-
-llm_intent_action action_from_token( const std::string &token )
-{
-    if( token == "guard_area" ) {
-        return llm_intent_action::guard_area;
-    }
-    if( token == "follow_player" ) {
-        return llm_intent_action::follow_player;
-    }
-    if( token == "clear_overrides" ) {
-        return llm_intent_action::clear_overrides;
-    }
-    if( token == "idle" ) {
-        return llm_intent_action::idle;
-    }
-    return llm_intent_action::none;
-}
-
-const std::vector<std::string> &allowed_actions()
-{
-    static const std::vector<std::string> actions = {
-        "guard_area",
-        "follow_player",
-        "clear_overrides",
-        "idle"
-    };
-    return actions;
-}
-
 struct creature_snapshot {
     const Creature *critter = nullptr;
     int distance = 0;
@@ -317,12 +172,11 @@ void write_creature_list( JsonOut &jsout, npc &listener,
             continue;
         }
         jsout.start_object();
-        jsout.member( "name", sanitize_text( entry.critter->disp_name() ) );
-        jsout.member( "kind", creature_kind( *entry.critter ) );
-        jsout.member( "distance", entry.distance );
-        jsout.member( "hp_percent", entry.critter->hp_percentage() );
-        jsout.member( "threat_score",
-                      threat_score_for( listener, *entry.critter, entry.distance ) );
+        jsout.member( "n", sanitize_text( entry.critter->disp_name() ) );
+        jsout.member( "k", creature_kind( *entry.critter ) );
+        jsout.member( "d", entry.distance );
+        jsout.member( "hp", entry.critter->hp_percentage() );
+        jsout.member( "ts", threat_score_for( listener, *entry.critter, entry.distance ) );
         jsout.end_object();
         if( ++count >= max_count ) {
             break;
@@ -331,10 +185,55 @@ void write_creature_list( JsonOut &jsout, npc &listener,
     jsout.end_array();
 }
 
+std::string build_snapshot_legend()
+{
+    return string_format(
+               "- ... open area\n"
+               "0 ... obstructive area (movement speed > 100)\n"
+               "6 ... obstructed area\n"
+               "[a - z] ... creature\n"
+               "[A - Z] ... obstructed creature\n"
+               "| ... You\n" );
+}
+
+std::string build_ascii_map_snapshot( npc &listener )
+{
+    map &here = get_map();
+    const tripoint_bub_ms center = listener.pos_bub();
+    const tripoint_bub_ms player_pos = get_player_character().pos_bub();
+    static constexpr int radius = 3;
+    std::string out;
+    out.reserve( ( radius * 2 + 1 ) * ( radius * 2 + 2 ) );
+    for( int dy = -radius; dy <= radius; ++dy ) {
+        for( int dx = -radius; dx <= radius; ++dx ) {
+            const tripoint_bub_ms p( center.x() + dx, center.y() + dy, center.z() );
+            char glyph = '-';
+            if( p == player_pos ) {
+                glyph = '|';
+            } else if( !here.inbounds( p ) ) {
+                glyph = '6';
+            } else {
+                const int cost = here.move_cost( p );
+                if( Creature *critter = get_creature_tracker().creature_at( p ) ) {
+                    if( critter != &listener ) {
+                        glyph = cost > 100 || cost <= 0 ? 'A' : 'a';
+                    }
+                } else if( cost <= 0 ) {
+                    glyph = '6';
+                } else if( cost > 100 ) {
+                    glyph = '0';
+                }
+            }
+            out.push_back( glyph );
+        }
+        out.push_back( '\n' );
+    }
+    return out;
+}
+
 std::string build_snapshot_json( npc &listener, const std::string &player_utterance,
                                  const std::string &request_id )
 {
-    static constexpr int map_radius = 1;
     static constexpr int visible_range = 12;
     static constexpr size_t max_creatures = 5;
     static constexpr size_t max_effects = 6;
@@ -345,15 +244,15 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     const tripoint_bub_ms pos = listener.pos_bub();
 
     jsout.start_object();
-    jsout.member( "request_id", request_id );
-    jsout.member( "turn", to_turns<int>( calendar::turn - calendar::turn_zero ) );
-    jsout.member( "player_utterance", sanitize_text( player_utterance ) );
-    jsout.member( "npc_id", listener.get_unique_id() );
-    jsout.member( "npc_name", sanitize_text( listener.get_name() ) );
-    jsout.member( "npc_pos" );
+    jsout.member( "id", request_id );
+    jsout.member( "t", to_turns<int>( calendar::turn - calendar::turn_zero ) );
+    jsout.member( "u", sanitize_text( player_utterance ) );
+    jsout.member( "nid", listener.get_unique_id() );
+    jsout.member( "nn", sanitize_text( listener.get_name() ) );
+    jsout.member( "np" );
     write_tripoint( jsout, pos );
 
-    jsout.member( "npc_state" );
+    jsout.member( "st" );
     jsout.start_object();
     jsout.member( "morale", listener.get_morale_level() );
     jsout.member( "hunger", listener.get_hunger() );
@@ -379,7 +278,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     jsout.end_array();
     jsout.end_object();
 
-    jsout.member( "npc_emotions" );
+    jsout.member( "em" );
     jsout.start_object();
     jsout.member( "danger_assessment", listener.danger_assessment() );
     jsout.member( "panic", listener.mem_combat.panic );
@@ -387,7 +286,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     jsout.member( "emergency", listener.emergency() );
     jsout.end_object();
 
-    jsout.member( "npc_personality" );
+    jsout.member( "per" );
     jsout.start_object();
     jsout.member( "aggression", listener.personality.aggression );
     jsout.member( "bravery", listener.personality.bravery );
@@ -395,7 +294,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     jsout.member( "altruism", listener.personality.altruism );
     jsout.end_object();
 
-    jsout.member( "npc_opinion" );
+    jsout.member( "op" );
     jsout.start_object();
     jsout.member( "trust", listener.op_of_u.trust );
     jsout.member( "fear", listener.op_of_u.fear );
@@ -403,38 +302,17 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     jsout.member( "anger", listener.op_of_u.anger );
     jsout.end_object();
 
-    jsout.member( "threats" );
+    jsout.member( "th" );
     write_creature_list( jsout, listener,
                          filter_visible( listener, Creature::Attitude::HOSTILE,
-                         visible_range ), max_creatures );
+                                         visible_range ), max_creatures );
 
-    jsout.member( "friendlies" );
+    jsout.member( "fr" );
     write_creature_list( jsout, listener,
                          filter_visible( listener, Creature::Attitude::FRIENDLY,
-                         visible_range ), max_creatures );
+                                         visible_range ), max_creatures );
 
-    jsout.member( "overmap_grid" );
-    jsout.start_object();
-    jsout.member( "radius", map_radius );
-    jsout.member( "grid" );
-    jsout.start_array();
-    const tripoint_abs_omt omt_center = listener.pos_abs_omt();
-    for( int dy = -map_radius; dy <= map_radius; ++dy ) {
-        jsout.start_array();
-        for( int dx = -map_radius; dx <= map_radius; ++dx ) {
-            const tripoint_abs_omt omt_cell( omt_center.x() + dx, omt_center.y() + dy, omt_center.z() );
-            const oter_id &oter = overmap_buffer.ter( omt_cell );
-            const bool has_horde = overmap_buffer.has_horde( omt_cell );
-            std::ostringstream cell_out;
-            cell_out << oter->get_type_id().str() << "|" << ( has_horde ? "H" : "" );
-            jsout.write( cell_out.str() );
-        }
-        jsout.end_array();
-    }
-    jsout.end_array();
-    jsout.end_object();
-
-    jsout.member( "ruleset" );
+    jsout.member( "rs" );
     jsout.start_object();
     jsout.member( "attitude", npc_attitude_id( listener.get_attitude() ) );
     jsout.member( "mission", sanitize_text( listener.describe_mission() ) );
@@ -448,7 +326,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     jsout.end_array();
     jsout.end_object();
 
-    jsout.member( "inventory_summary" );
+    jsout.member( "inv" );
     jsout.start_object();
     item_location wielded = listener.get_wielded_item();
     jsout.member( "wielded" );
@@ -526,6 +404,9 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     jsout.end_array();
     jsout.end_object();
 
+    jsout.member( "legend", build_snapshot_legend() );
+    jsout.member( "map", build_ascii_map_snapshot( listener ) );
+
     jsout.end_object();
     return out.str();
 }
@@ -533,13 +414,6 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
 std::string build_prompt( const std::string &npc_name, const std::string &player_utterance,
                           const std::string &snapshot )
 {
-    std::string action_list;
-    for( const std::string &action : allowed_actions() ) {
-        if( !action_list.empty() ) {
-            action_list += ", ";
-        }
-        action_list += action;
-    }
     return string_format(
                "You are a game NPC response engine. Return ONLY strict JSON.\n"
                "Return JSON with a single key \"csv\".\n"
@@ -549,11 +423,10 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "3) action2 (optional)\n"
                "4) action3 (optional)\n"
                "Actions are single tokens (no whitespace or commas).\n"
-               "Allowed actions: %s\n"
                "Context JSON:\n%s\n"
                "Player said: \"%s\"\n"
                "NPC: \"%s\"\n",
-               action_list, snapshot, player_utterance, npc_name );
+               snapshot, player_utterance, npc_name );
 }
 
 std::string request_to_json( const llm_intent_request &request )
@@ -604,8 +477,8 @@ std::optional<llm_intent_response> response_from_json( const std::string &line,
     }
     llm_intent_response response;
     response.request_id = request.request_id;
-    response.npc_id = request.npc_id;
     response.npc_name = request.npc_name;
+    response.raw = line;
     try {
         std::istringstream in( line );
         TextJsonIn jsin( in );
@@ -977,14 +850,13 @@ class llm_intent_manager
             static constexpr int default_max_tokens = 20000;
             llm_intent_request req;
             req.request_id = next_request_id();
-            req.npc_id = listener.getID();
             req.npc_name = listener.get_name();
             req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
             req.prompt = build_prompt( req.npc_name, player_utterance, req.snapshot );
             req.max_tokens = default_max_tokens;
             if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-                overwrite_llm_intent_log( string_format( "snapshot %s (%s)\n%s\n",
-                                         req.npc_name, req.request_id, req.snapshot ) );
+                append_llm_intent_log( string_format( "snapshot %s (%s)\n%s\n\n",
+                                      req.npc_name, req.request_id, req.snapshot ) );
             }
             {
                 std::lock_guard<std::mutex> lock( mutex );
@@ -1017,7 +889,6 @@ class llm_intent_manager
             if( !warmup_enqueued.exchange( true ) ) {
                 llm_intent_request warm;
                 warm.request_id = "prewarm";
-                warm.npc_id = character_id();
                 warm.npc_name = "prewarm";
                 warm.snapshot = "{}";
                 warm.prompt = build_prompt( "", "", warm.snapshot );
@@ -1049,51 +920,16 @@ class llm_intent_manager
                     local.pop();
                     continue;
                 }
-                std::string parse_error;
-                std::string speech;
-                std::vector<std::string> actions;
-                llm_intent_action action = llm_intent_action::none;
-                if( resp.ok ) {
-                    const std::optional<std::string> csv_json = extract_csv_from_json( resp.text,
-                            parse_error );
-                    if( csv_json &&
-                        parse_csv_payload( *csv_json, speech, actions, parse_error ) ) {
-                        for( const std::string &token : actions ) {
-                            action = action_from_token( token );
-                            if( action != llm_intent_action::none ) {
-                                break;
-                            }
-                        }
-                        if( action == llm_intent_action::none ) {
-                            parse_error = "No allowed action token found.";
-                        }
-                    }
-                }
-
-                npc *target = nullptr;
-                if( resp.ok && parse_error.empty() ) {
-                    target = g->find_npc( resp.npc_id );
-                    if( target == nullptr ) {
-                        parse_error = "NPC not found for LLM intent response.";
-                    }
-                }
-
-                if( resp.ok && parse_error.empty() && target != nullptr ) {
-                    static constexpr int default_ttl_turns = 20;
-                    target->set_llm_intent_override( action, default_ttl_turns,
-                                                     resp.request_id, speech );
-                }
-
                 if( debug_log ) {
-                    if( resp.ok && parse_error.empty() ) {
+                    if( resp.ok ) {
                         add_msg( "LLM intent response for %s: %s", resp.npc_name, resp.text );
-                        overwrite_llm_intent_log( string_format( "response %s (%s)\n%s\n",
-                                                 resp.npc_name, resp.request_id, resp.text ) );
+                        const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
+                        append_llm_intent_log( string_format( "response %s (%s)\n%s\n\n",
+                                      resp.npc_name, resp.request_id, payload ) );
                     } else {
-                        const std::string err = resp.ok ? parse_error : resp.error;
-                        add_msg( "LLM intent failed for %s: %s", resp.npc_name, err );
-                        overwrite_llm_intent_log( string_format( "failed %s (%s)\n%s\n",
-                                                 resp.npc_name, resp.request_id, err ) );
+                        add_msg( "LLM intent failed for %s: %s", resp.npc_name, resp.error );
+                        append_llm_intent_log( string_format( "failed %s (%s)\n%s\n\n",
+                                      resp.npc_name, resp.request_id, resp.error ) );
                     }
                 }
                 local.pop();
@@ -1153,7 +989,6 @@ class llm_intent_manager
                 response = handle_request_windows( req );
 #else
                 response.request_id = req.request_id;
-                response.npc_id = req.npc_id;
                 response.npc_name = req.npc_name;
                 response.ok = false;
                 response.error = "LLM runner is only supported on Windows in this build.";
@@ -1169,7 +1004,6 @@ class llm_intent_manager
         llm_intent_response handle_request_windows( const llm_intent_request &req ) {
             llm_intent_response response;
             response.request_id = req.request_id;
-            response.npc_id = req.npc_id;
             response.npc_name = req.npc_name;
             const runner_config config = current_runner_config();
             std::string error;
