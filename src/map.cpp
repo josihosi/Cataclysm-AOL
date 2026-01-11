@@ -563,15 +563,12 @@ void map::clear_vehicle_point_from_cache( vehicle *veh, const tripoint_bub_ms &p
 
 void map::clear_vehicle_level_caches( )
 {
-    DebugLog( D_INFO, DC_ALL ) << "map::clear_vehicle_level_caches: begin";
     for( int gridz = -OVERMAP_DEPTH; gridz <= OVERMAP_HEIGHT; gridz++ ) {
         level_cache *ch = get_cache_lazy( gridz );
         if( ch ) {
-            DebugLog( D_INFO, DC_ALL ) << "map::clear_vehicle_level_caches: z=" << gridz;
             ch->clear_vehicle_cache();
         }
     }
-    DebugLog( D_INFO, DC_ALL ) << "map::clear_vehicle_level_caches: end";
 }
 
 void map::remove_vehicle_from_cache( vehicle *veh, int zmin, int zmax )
@@ -8171,7 +8168,6 @@ void map::load( const tripoint_abs_sm &w, const bool update_vehicle,
                 const bool pump_events )
 {
     map &main_map = get_map();
-    DebugLog( D_INFO, DC_ALL ) << "map::load: begin " << w.to_string();
     // It used to be unsafe to load a map that overlaps with the primary map;
     // Show an info line in tests to help track new errors
     if( test_mode && this != &main_map && main_map.inbounds( project_to<coords::ms>( w ) ) ) {
@@ -8179,25 +8175,15 @@ void map::load( const tripoint_abs_sm &w, const bool update_vehicle,
                 << "loading non-main map at " << w.to_string()
                 << " which overlaps with main map (abs_sub = " << main_map.abs_sub.to_string() << ")";
     }
-    DebugLog( D_INFO, DC_ALL ) << "map::load: clear traplocs begin";
     for( auto &traps : traplocs ) {
         traps.clear();
     }
-    DebugLog( D_INFO, DC_ALL ) << "map::load: clear traplocs end";
-    DebugLog( D_INFO, DC_ALL ) << "map::load: clear field_furn_locs";
     field_furn_locs.clear();
-    DebugLog( D_INFO, DC_ALL ) << "map::load: clear field_ter_locs";
     field_ter_locs.clear();
-    DebugLog( D_INFO, DC_ALL ) << "map::load: clear submaps_with_active_items";
     submaps_with_active_items.clear();
-    DebugLog( D_INFO, DC_ALL ) << "map::load: clear submaps_with_active_items_dirty";
     submaps_with_active_items_dirty.clear();
-    DebugLog( D_INFO, DC_ALL ) << "map::load: set_abs_sub";
     set_abs_sub( w );
-    DebugLog( D_INFO, DC_ALL ) << "map::load: clear_vehicle_level_caches";
     clear_vehicle_level_caches();
-    DebugLog( D_INFO, DC_ALL ) << "map::load: clear_vehicle_level_caches done";
-    DebugLog( D_INFO, DC_ALL ) << "map::load: pre-loadn";
     for( int gridx = 0; gridx < my_MAPSIZE; gridx++ ) {
         for( int gridy = 0; gridy < my_MAPSIZE; gridy++ ) {
             loadn( { gridx, gridy }, update_vehicle );
@@ -8206,14 +8192,11 @@ void map::load( const tripoint_abs_sm &w, const bool update_vehicle,
             }
         }
     }
-    DebugLog( D_INFO, DC_ALL ) << "map::load: post-loadn";
     rebuild_vehicle_level_caches();
-    DebugLog( D_INFO, DC_ALL ) << "map::load: post-rebuild_vehicle_level_caches";
 
     if( !explosion_handler::explosion_processing_active() ) {
         // actualize after loading all submaps to prevent errors
         // with entities at the edges
-        DebugLog( D_INFO, DC_ALL ) << "map::load: actualize begin";
         for( int gridx = 0; gridx < my_MAPSIZE; gridx++ ) {
             for( int gridy = 0; gridy < my_MAPSIZE; gridy++ ) {
                 const int zmin = zlevels ? -OVERMAP_DEPTH : abs_sub.z();
@@ -8226,9 +8209,7 @@ void map::load( const tripoint_abs_sm &w, const bool update_vehicle,
                 }
             }
         }
-        DebugLog( D_INFO, DC_ALL ) << "map::load: actualize end";
     }
-    DebugLog( D_INFO, DC_ALL ) << "map::load: end";
 }
 
 void map::shift_traps( const point_rel_sm &shift )
@@ -8513,16 +8494,13 @@ bool generate_uniform_omt( const tripoint_abs_sm &p, const oter_id &terrain_type
 
 void map::loadn( const point_bub_sm &grid, bool update_vehicles )
 {
-    DebugLog( D_INFO, DC_ALL ) << "map::loadn: begin grid=" << grid;
     dbg( D_INFO ) << "map::loadn(game[" << g.get() << "], worldx[" << abs_sub.x()
                   << "], worldy[" << abs_sub.y() << "], grid " << grid << ")";
 
     const tripoint_abs_sm grid_abs_sub = abs_sub + rebase_rel( grid );
-    DebugLog( D_INFO, DC_ALL ) << "map::loadn: grid_abs_sub=" << grid_abs_sub.to_string();
     const tripoint_abs_omt grid_abs_omt = project_to<coords::omt>( grid_abs_sub );
     // Get the base submap "grid" is an offset from.
     const tripoint_abs_sm grid_sm_base = project_to<coords::sm>( grid_abs_omt );
-    DebugLog( D_INFO, DC_ALL ) << "map::loadn: grid_sm_base=" << grid_sm_base.to_string();
     bool map_incomplete = false;
 
     map &bubble_map = reality_bubble();
@@ -8537,10 +8515,7 @@ void map::loadn( const point_bub_sm &grid, bool update_vehicles )
             for( int gridz = -OVERMAP_DEPTH; gridz <= OVERMAP_HEIGHT; gridz++ ) {
                 const tripoint grid_pos( gridx, gridy, gridz );
                 const tripoint_abs_sm check_pos = grid_sm_base.xy() + grid_pos;
-                DebugLog( D_INFO, DC_ALL ) << "map::loadn: submap_exists " << check_pos.to_string();
                 const bool submap_exists = MAPBUFFER.submap_exists( check_pos );
-                DebugLog( D_INFO, DC_ALL ) << "map::loadn: submap_exists result="
-                                           << ( submap_exists ? "true" : "false" );
                 if( !submap_exists ) {
                     map_incomplete = true;
                     break;
@@ -8550,31 +8525,19 @@ void map::loadn( const point_bub_sm &grid, bool update_vehicles )
     }
 
     if( map_incomplete ) {
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: map_incomplete true";
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: create smallmap begin";
         smallmap tmp_map;
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: create smallmap end";
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: swap_map begin";
         swap_map swap( *tmp_map.cast_to_map() );
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: swap_map end";
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: main_cleanup_override begin";
         tmp_map.main_cleanup_override( false );
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: main_cleanup_override end";
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: generate begin";
         tmp_map.generate( grid_abs_omt, calendar::turn, true );
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: generate end";
         _main_requires_cleanup |= main_inbounds && tmp_map.is_main_cleanup_queued();
 
         for( int gridz = -OVERMAP_DEPTH; gridz <= OVERMAP_HEIGHT; gridz++ ) {
             const tripoint_abs_sm pos = {grid_sm_base.xy(), gridz };
-            DebugLog( D_INFO, DC_ALL ) << "map::loadn: generated submap_exists " << pos.to_string();
             if( !MAPBUFFER.submap_exists( pos ) ) {
-                DebugLog( D_INFO, DC_ALL ) << "map::loadn: generated submap missing " << pos.to_string();
                 dbg( D_ERROR ) << "failed to generate a submap at " << pos;
                 debugmsg( "failed to generate a submap at %s", pos.to_string() );
                 return;
             }
-            DebugLog( D_INFO, DC_ALL ) << "map::loadn: generated submap present " << pos.to_string();
         }
     }
 
@@ -8584,7 +8547,6 @@ void map::loadn( const point_bub_sm &grid, bool update_vehicles )
     submap *tmpsub;
 
     for( int z = start_z; z <= stop_z; z++ ) {
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: z loop z=" << z;
         const tripoint_abs_sm pos = { grid_abs_sub.xy(), z };
         // New submap changes the content of the map and all caches must be recalculated
         set_transparency_cache_dirty( z );
@@ -8592,11 +8554,8 @@ void map::loadn( const point_bub_sm &grid, bool update_vehicles )
         set_outside_cache_dirty( z );
         set_floor_cache_dirty( z );
         set_pathfinding_cache_dirty( z );
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: lookup_submap " << pos.to_string();
         tmpsub = MAPBUFFER.lookup_submap( pos );
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: setsubmap " << pos.to_string();
         setsubmap( get_nonant( tripoint_rel_sm{ grid.x(), grid.y(), z} ), tmpsub );
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: submap set " << pos.to_string();
         if( !tmpsub->active_items.empty() ) {
             submaps_with_active_items_dirty.emplace( pos );
         }
@@ -8626,7 +8585,6 @@ void map::loadn( const point_bub_sm &grid, bool update_vehicles )
 
         // Update vehicle data
     if( update_vehicles ) {
-        DebugLog( D_INFO, DC_ALL ) << "map::loadn: update_vehicles z=" << z;
         level_cache &map_cache = get_cache( z );
         for( const auto &veh : tmpsub->vehicles ) {
             // Only add if not tracking already.
@@ -8638,7 +8596,6 @@ void map::loadn( const point_bub_sm &grid, bool update_vehicles )
             }
         }
     }
-    DebugLog( D_INFO, DC_ALL ) << "map::loadn: end grid=" << grid;
 
         if( zlevels ) {
             add_tree_tops( { grid.x(), grid.y(), z } );

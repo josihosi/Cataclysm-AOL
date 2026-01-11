@@ -240,29 +240,24 @@ void game::unserialize( std::string fin )
 
 void game::unserialize_impl( const JsonObject &data )
 {
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: begin";
     int tmpturn = 0;
     int tmpcalstart = 0;
     int tmprun = 0;
     tripoint_om_sm lev;
     point_abs_om com;
 
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: read turn/debug/calendar";
     data.read( "turn", tmpturn );
     data.read( "debug_mode", debug_mode );
     data.read( "calendar_start", tmpcalstart );
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: read initial_season";
     calendar::initial_season = static_cast<season_type>( data.get_int( "initial_season",
                                static_cast<int>( SPRING ) ) );
 
     std::string loaded_dimension_prefix;
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: read dimension_prefix";
     if( data.read( "dimension_prefix", loaded_dimension_prefix ) ) {
         dimension_prefix = loaded_dimension_prefix;
         load_dimension_data();
     }
 
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: read flags/coords";
     data.read( "auto_travel_mode", auto_travel_mode );
     data.read( "run_mode", tmprun );
     data.read( "mostseen", mostseen );
@@ -276,19 +271,14 @@ void game::unserialize_impl( const JsonObject &data )
     data.read( "view_offset_y", u.view_offset.y() );
     data.read( "view_offset_z", u.view_offset.z() );
 
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: set calendar";
     calendar::turn = time_point( tmpturn );
     calendar::start_of_cataclysm = time_point( tmpcalstart );
 
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: read game_start";
     if( !data.read( "game_start", calendar::start_of_game ) ) {
         calendar::start_of_game = calendar::start_of_cataclysm;
     }
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: read game_start done";
 
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: load_map begin";
     load_map( project_combine( com, lev ), /*pump_events=*/true );
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: load_map end";
 
     safe_mode = static_cast<safe_mode_type>( tmprun );
     if( get_option<bool>( "SAFEMODE" ) && safe_mode == SAFE_MODE_OFF ) {
@@ -303,9 +293,7 @@ void game::unserialize_impl( const JsonObject &data )
     } else {
         scent.reset();
     }
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: active_monsters begin";
     data.read( "active_monsters", *critter_tracker );
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: active_monsters end";
 
     data.has_null( "stair_monsters" ); // TEMPORARY until 0.G
     data.has_null( "monstairz" ); // TEMPORARY until 0.G
@@ -314,13 +302,9 @@ void game::unserialize_impl( const JsonObject &data )
     data.read( "turnssincelastmon", turnssincelastmon );
     data.read( "bVMonsterLookFire", bVMonsterLookFire );
 
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: kill_tracker begin";
     data.read( "kill_tracker", *kill_tracker_ptr );
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: kill_tracker end";
 
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: player begin";
     data.read( "player", u );
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: player end";
     data.read( "inactive_global_effect_on_condition_vector",
                inactive_global_effect_on_condition_vector );
     //load queued_eocs
@@ -332,17 +316,12 @@ void game::unserialize_impl( const JsonObject &data )
         queued_global_effect_on_conditions.push( temp );
     }
     global_variables_instance.unserialize( data );
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: unique_npcs begin";
     data.read( "unique_npcs", unique_npcs );
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: unique_npcs end";
     inp_mngr.pump_events();
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: stats_tracker begin";
     data.read( "stats_tracker", *stats_tracker_ptr );
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: stats_tracker end";
     data.read( "achievements_tracker", *achievements_tracker_ptr );
     inp_mngr.pump_events();
     Messages::deserialize( data );
-    DebugLog( D_INFO, DC_ALL ) << "unserialize_impl: end";
 
 }
 

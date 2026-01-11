@@ -1378,6 +1378,23 @@ void npc::execute_llm_intent_action( llm_intent_action action )
             talk_function::stop_guard( *this );
             execute_action( npc_follow_player );
             break;
+        case llm_intent_action::use_gun: {
+            rules.set_flag( ally_rule::use_guns );
+            rules.clear_flag( ally_rule::use_silent );
+            if( item *best_gun = evaluate_best_gun() ) {
+                wield( *best_gun );
+            }
+            break;
+        }
+        case llm_intent_action::use_melee: {
+            rules.clear_flag( ally_rule::use_guns );
+            if( item *best_melee = evaluate_best_melee() ) {
+                wield( *best_melee );
+            } else if( get_wielded_item() && get_wielded_item()->is_gun() ) {
+                unwield();
+            }
+            break;
+        }
         case llm_intent_action::none:
             break;
     }
@@ -4231,6 +4248,48 @@ item *npc::evaluate_best_weapon() const
                 // we just recur to the next farther down
                 return VisitResponse::NEXT;
             }
+        }
+        return VisitResponse::NEXT;
+    } );
+
+    return best;
+}
+
+item *npc::evaluate_best_gun() const
+{
+    item_location weapon = get_wielded_item();
+    item *best = weapon && weapon->is_gun() ? &*weapon : nullptr;
+    double best_value = best ? evaluate_weapon( *best ) : 0.0;
+
+    visit_items( [this, &best_value, &best]( item * node, item * ) {
+        if( node->is_gun() && can_wield( *node ).success() ) {
+            const double weapon_value = evaluate_weapon( *node );
+            if( weapon_value > best_value ) {
+                best = const_cast<item *>( node );
+                best_value = weapon_value;
+            }
+            return VisitResponse::SKIP;
+        }
+        return VisitResponse::NEXT;
+    } );
+
+    return best;
+}
+
+item *npc::evaluate_best_melee() const
+{
+    item_location weapon = get_wielded_item();
+    item *best = weapon && weapon->is_melee() && !weapon->is_gun() ? &*weapon : nullptr;
+    double best_value = best ? evaluate_weapon( *best ) : 0.0;
+
+    visit_items( [this, &best_value, &best]( item * node, item * ) {
+        if( node->is_melee() && !node->is_gun() && can_wield( *node ).success() ) {
+            const double weapon_value = evaluate_weapon( *node );
+            if( weapon_value > best_value ) {
+                best = const_cast<item *>( node );
+                best_value = weapon_value;
+            }
+            return VisitResponse::SKIP;
         }
         return VisitResponse::NEXT;
     } );

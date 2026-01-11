@@ -59,18 +59,12 @@ void level_cache::set_veh_cached_parts( const tripoint_bub_ms &pt, vehicle &veh,
 
 void level_cache::clear_vehicle_cache()
 {
-    DebugLog( D_INFO, DC_ALL ) << "level_cache::clear_vehicle_cache: begin";
     if( veh_cache_cleared ) {
-        DebugLog( D_INFO, DC_ALL ) << "level_cache::clear_vehicle_cache: already cleared";
         return;
     }
-    DebugLog( D_INFO, DC_ALL ) << "level_cache::clear_vehicle_cache: reset bitset";
     veh_exists_at.reset();
-    DebugLog( D_INFO, DC_ALL ) << "level_cache::clear_vehicle_cache: clear map (size="
-                               << veh_cached_parts.size() << ")";
     veh_cached_parts.clear();
     veh_cache_cleared = true;
-    DebugLog( D_INFO, DC_ALL ) << "level_cache::clear_vehicle_cache: end";
 }
 
 void level_cache::clear_veh_from_veh_cached_parts( const tripoint_bub_ms &pt, vehicle *veh )

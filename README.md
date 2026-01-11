@@ -1,7 +1,7 @@
 # Cataclysm: Arsenic and Old Lace
 
 Hello! 
-UNDER CONSTRUCTION
+UNDER CONSTRUCTION (talking to NPC crashes game r/n)
 This is just a little fork of CDDA (https://github.com/CleverRaven/Cataclysm-DDA), where I try to use LLMs to implement organic responsiveness into Cataclysm.
 This is something I would like to see in games in general, so I'm trying to create it:
 
@@ -9,6 +9,8 @@ Yelling (C + b) next to a follower NPC activates a local LLM toolcall, which thi
 The following actions can be initiated by the toolcall right now:
 - follow_player
 - guard_area
+- use_gun
+- use_melee
 
 ## Installation
 
