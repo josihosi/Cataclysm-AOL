@@ -4,17 +4,20 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <sstream>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "calendar.h"
+#include "character_id.h"
 #include "creature_tracker.h"
 #include "debug.h"
 #include "effect.h"
@@ -56,6 +59,7 @@ void append_llm_intent_log( const std::string &payload )
 
 struct llm_intent_request {
     std::string request_id;
+    character_id npc_id;
     std::string npc_name;
     std::string prompt;
     std::string snapshot;
@@ -64,6 +68,7 @@ struct llm_intent_request {
 
 struct llm_intent_response {
     std::string request_id;
+    character_id npc_id;
     std::string npc_name;
     bool ok = false;
     std::string text;
@@ -95,32 +100,217 @@ struct runner_config {
     }
 };
 
-void write_tripoint( JsonOut &jsout, const tripoint_bub_ms &pos )
-{
-    jsout.start_object();
-    jsout.member( "x", pos.x() );
-    jsout.member( "y", pos.y() );
-    jsout.member( "z", pos.z() );
-    jsout.end_object();
-}
-
-std::string creature_kind( const Creature &critter )
-{
-    if( critter.is_avatar() ) {
-        return "player";
-    }
-    if( critter.is_npc() ) {
-        return "npc";
-    }
-    if( critter.is_monster() ) {
-        return "monster";
-    }
-    return "creature";
-}
-
 std::string sanitize_text( std::string_view text )
 {
     return remove_color_tags( text );
+}
+
+std::string strip_leading_article( const std::string &text )
+{
+    if( text.rfind( "the ", 0 ) == 0 ) {
+        return text.substr( 4 );
+    }
+    return text;
+}
+
+std::string trim_copy( const std::string &text )
+{
+    size_t start = 0;
+    while( start < text.size() &&
+           std::isspace( static_cast<unsigned char>( text[start] ) ) ) {
+        ++start;
+    }
+    size_t end = text.size();
+    while( end > start &&
+           std::isspace( static_cast<unsigned char>( text[end - 1] ) ) ) {
+        --end;
+    }
+    return text.substr( start, end - start );
+}
+
+bool is_action_token( const std::string &token )
+{
+    if( token.empty() ) {
+        return false;
+    }
+    for( unsigned char c : token ) {
+        if( !( ( c >= 'a' && c <= 'z' ) || ( c >= '0' && c <= '9' ) || c == '_' ) ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+const std::vector<std::string> &allowed_actions()
+{
+    static const std::vector<std::string> actions = {
+        "guard_area",
+        "follow_player",
+        "clear_overrides",
+        "idle"
+    };
+    return actions;
+}
+
+bool is_allowed_action( const std::string &token )
+{
+    for( const std::string &action : allowed_actions() ) {
+        if( token == action ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool parse_csv_payload( const std::string &csv, std::string &speech,
+                        std::vector<std::string> &actions, std::string &error )
+{
+    actions.clear();
+    speech.clear();
+    std::vector<std::string> fields;
+    std::string current;
+    for( char c : csv ) {
+        if( c == '|' ) {
+            fields.push_back( trim_copy( current ) );
+            current.clear();
+        } else {
+            current.push_back( c );
+        }
+    }
+    fields.push_back( trim_copy( current ) );
+    if( fields.size() < 2 ) {
+        error = "CSV must include at least one action field separated by '|'.";
+        return false;
+    }
+    if( fields.size() > 4 ) {
+        error = "CSV has too many action fields.";
+        return false;
+    }
+    speech = trim_copy( fields[0] );
+    if( speech.empty() ) {
+        error = "CSV speech field missing.";
+        return false;
+    }
+    const size_t extra_sep = speech.find( '|' );
+    if( extra_sep != std::string::npos ) {
+        speech = trim_copy( speech.substr( 0, extra_sep ) );
+        if( speech.empty() ) {
+            error = "CSV speech field missing.";
+            return false;
+        }
+    }
+    for( size_t idx = 1; idx < fields.size(); ++idx ) {
+        std::string token = trim_copy( fields[idx] );
+        if( token.empty() ) {
+            error = "CSV action token is invalid.";
+            return false;
+        }
+        if( token.size() >= 2 && token.front() == '"' && token.back() == '"' ) {
+            token = trim_copy( token.substr( 1, token.size() - 2 ) );
+        }
+        if( !is_action_token( token ) ) {
+            error = "CSV action token is invalid.";
+            return false;
+        }
+        actions.push_back( token );
+    }
+    if( actions.empty() ) {
+        error = "CSV must include at least one action field.";
+        return false;
+    }
+    return true;
+}
+
+std::string normalize_csv_separators( const std::string &csv )
+{
+    if( csv.find( '|' ) != std::string::npos ) {
+        return csv;
+    }
+    std::string out;
+    out.reserve( csv.size() );
+    bool last_sep = false;
+    for( char c : csv ) {
+        if( c == '+' ) {
+            if( !last_sep ) {
+                out.push_back( '|' );
+                last_sep = true;
+            }
+            continue;
+        }
+        last_sep = false;
+        out.push_back( c );
+    }
+    return out;
+}
+
+bool extract_lenient_csv( const std::string &csv, std::string &speech,
+                          std::vector<std::string> &actions )
+{
+    speech.clear();
+    actions.clear();
+    const size_t sep = csv.find( '|' );
+    if( sep != std::string::npos ) {
+        speech = trim_copy( csv.substr( 0, sep ) );
+    } else {
+        const size_t first_quote = csv.find( '"' );
+        if( first_quote == std::string::npos ) {
+            return false;
+        }
+        size_t pos = first_quote + 1;
+        while( pos < csv.size() ) {
+            char c = csv[pos];
+            if( c == '"' ) {
+                if( pos + 1 < csv.size() && csv[pos + 1] == '"' ) {
+                    speech.push_back( '"' );
+                    pos += 2;
+                    continue;
+                }
+                ++pos;
+                break;
+            }
+            speech.push_back( c );
+            ++pos;
+        }
+    }
+    if( speech.empty() ) {
+        return false;
+    }
+    auto is_boundary = []( char c ) {
+        return !std::isalnum( static_cast<unsigned char>( c ) ) && c != '_';
+    };
+    for( const std::string &action : allowed_actions() ) {
+        size_t start = csv.find( action );
+        while( start != std::string::npos ) {
+            const bool left_ok = start == 0 || is_boundary( csv[start - 1] );
+            const size_t end = start + action.size();
+            const bool right_ok = end >= csv.size() || is_boundary( csv[end] );
+            if( left_ok && right_ok ) {
+                actions.push_back( action );
+                return true;
+            }
+            start = csv.find( action, end );
+        }
+    }
+    actions.push_back( "idle" );
+    return true;
+}
+
+std::string extract_csv_from_text( const std::string &text )
+{
+    std::istringstream lines( text );
+    std::string cleaned;
+    std::string line;
+    while( std::getline( lines, line ) ) {
+        const std::string trimmed = trim_copy( line );
+        if( trimmed.rfind( "```", 0 ) == 0 ) {
+            continue;
+        }
+        if( !cleaned.empty() ) {
+            cleaned.push_back( '\n' );
+        }
+        cleaned += line;
+    }
+    return trim_copy( cleaned );
 }
 
 struct creature_snapshot {
@@ -162,29 +352,6 @@ float threat_score_for( npc &listener, const Creature &critter, int distance )
     return 0.0f;
 }
 
-void write_creature_list( JsonOut &jsout, npc &listener,
-                          const std::vector<creature_snapshot> &list, size_t max_count )
-{
-    jsout.start_array();
-    size_t count = 0;
-    for( const creature_snapshot &entry : list ) {
-        if( entry.critter == nullptr ) {
-            continue;
-        }
-        jsout.start_object();
-        jsout.member( "n", sanitize_text( entry.critter->disp_name() ) );
-        jsout.member( "k", creature_kind( *entry.critter ) );
-        jsout.member( "d", entry.distance );
-        jsout.member( "hp", entry.critter->hp_percentage() );
-        jsout.member( "ts", threat_score_for( listener, *entry.critter, entry.distance ) );
-        jsout.end_object();
-        if( ++count >= max_count ) {
-            break;
-        }
-    }
-    jsout.end_array();
-}
-
 std::string build_snapshot_legend()
 {
     return string_format(
@@ -193,41 +360,94 @@ std::string build_snapshot_legend()
                "6 ... obstructed area\n"
                "[a - z] ... creature\n"
                "[A - Z] ... obstructed creature\n"
-               "| ... You\n" );
+               "| ... You (NPC)\n" );
 }
 
-std::string build_ascii_map_snapshot( npc &listener )
+std::string build_map_legend( const std::vector<std::pair<char, std::string>> &entries )
+{
+    std::string out;
+    for( const auto &entry : entries ) {
+        if( !out.empty() ) {
+            out.push_back( '\n' );
+        }
+        out += string_format( "%c ... %s", entry.first, entry.second );
+    }
+    return out;
+}
+
+struct map_snapshot {
+    std::string map;
+    std::string legend;
+};
+
+map_snapshot build_ascii_map_snapshot( npc &listener )
 {
     map &here = get_map();
-    const tripoint_bub_ms center = listener.pos_bub();
     const tripoint_bub_ms player_pos = get_player_character().pos_bub();
-    static constexpr int radius = 3;
-    std::string out;
-    out.reserve( ( radius * 2 + 1 ) * ( radius * 2 + 2 ) );
+    const tripoint_bub_ms center = listener.pos_bub();
+    static constexpr int radius = 20;
+    std::string out_map;
+    out_map.reserve( ( radius * 2 + 1 ) * ( radius * 2 + 2 ) );
+    std::vector<std::pair<char, std::string>> legend_entries;
+    std::unordered_map<const Creature *, char> letter_map;
+    const bool player_in_map = std::abs( player_pos.x() - center.x() ) <= radius &&
+                               std::abs( player_pos.y() - center.y() ) <= radius &&
+                               player_pos.z() == center.z();
+    const bool player_letter_active = player_in_map && player_pos != center;
+    char next_letter = player_letter_active ? 'b' : 'a';
     for( int dy = -radius; dy <= radius; ++dy ) {
         for( int dx = -radius; dx <= radius; ++dx ) {
             const tripoint_bub_ms p( center.x() + dx, center.y() + dy, center.z() );
             char glyph = '-';
-            if( p == player_pos ) {
+            if( p == center ) {
                 glyph = '|';
             } else if( !here.inbounds( p ) ) {
                 glyph = '6';
             } else {
                 const int cost = here.move_cost( p );
+                const int scaled_cost = cost * 50;
                 if( Creature *critter = get_creature_tracker().creature_at( p ) ) {
-                    if( critter != &listener ) {
-                        glyph = cost > 100 || cost <= 0 ? 'A' : 'a';
+                    if( critter->is_avatar() && player_letter_active ) {
+                        auto found = letter_map.find( critter );
+                        if( found == letter_map.end() ) {
+                            const char base_letter = 'a';
+                            const char letter = cost > 100 || cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
+                            letter_map.emplace( critter, letter );
+                            legend_entries.emplace_back( letter, "player" );
+                            glyph = letter;
+                        } else {
+                            glyph = found->second;
+                        }
+                    } else if( critter != &listener ) {
+                        auto found = letter_map.find( critter );
+                        if( found == letter_map.end() ) {
+                            if( next_letter <= 'z' ) {
+                                const char base_letter = next_letter;
+                                const char letter = cost > 100 || cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
+                                letter_map.emplace( critter, letter );
+                                legend_entries.emplace_back( letter, strip_leading_article( sanitize_text( critter->disp_name() ) ) );
+                                glyph = letter;
+                                ++next_letter;
+                            } else {
+                                glyph = cost > 100 || cost <= 0 ? 'A' : 'a';
+                            }
+                        } else {
+                            glyph = found->second;
+                        }
                     }
                 } else if( cost <= 0 ) {
                     glyph = '6';
-                } else if( cost > 100 ) {
+                } else if( scaled_cost > 100 ) {
                     glyph = '0';
                 }
             }
-            out.push_back( glyph );
+            out_map.push_back( glyph );
         }
-        out.push_back( '\n' );
+        out_map.push_back( '\n' );
     }
+    map_snapshot out;
+    out.map = std::move( out_map );
+    out.legend = build_map_legend( legend_entries );
     return out;
 }
 
@@ -237,111 +457,121 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     static constexpr int visible_range = 12;
     static constexpr size_t max_creatures = 5;
     static constexpr size_t max_effects = 6;
-    static constexpr size_t max_items = 5;
+    static constexpr size_t max_items = 3;
 
     std::ostringstream out;
-    JsonOut jsout( out );
-    const tripoint_bub_ms pos = listener.pos_bub();
+    out << "SITUATION\n";
+    out << "id: " << request_id << "\n";
+    out << "player_name: " << sanitize_text( get_player_character().get_name() ) << "\n";
+    out << "player_utterance: " << sanitize_text( player_utterance ) << "\n\n";
+    out << "your_name: " << sanitize_text( listener.get_name() ) << "\n";
 
-    jsout.start_object();
-    jsout.member( "id", request_id );
-    jsout.member( "t", to_turns<int>( calendar::turn - calendar::turn_zero ) );
-    jsout.member( "u", sanitize_text( player_utterance ) );
-    jsout.member( "nid", listener.get_unique_id() );
-    jsout.member( "nn", sanitize_text( listener.get_name() ) );
-    jsout.member( "np" );
-    write_tripoint( jsout, pos );
-
-    jsout.member( "st" );
-    jsout.start_object();
-    jsout.member( "morale", listener.get_morale_level() );
-    jsout.member( "hunger", listener.get_hunger() );
-    jsout.member( "thirst", listener.get_thirst() );
-    jsout.member( "pain", listener.get_pain() );
-    jsout.member( "stamina", listener.get_stamina() );
-    jsout.member( "stamina_max", listener.get_stamina_max() );
-    jsout.member( "sleepiness", listener.get_sleepiness() );
-    jsout.member( "hp_percent", listener.hp_percentage() );
-    jsout.member( "effects" );
-    jsout.start_array();
+    out << "your_state: ";
+    out << "morale=" << listener.get_morale_level();
+    out << " hunger=" << listener.get_hunger();
+    out << " thirst=" << listener.get_thirst();
+    out << " pain=" << listener.get_pain();
+    out << " stamina=" << listener.get_stamina() << "/" << listener.get_stamina_max();
+    out << " sleepiness=" << listener.get_sleepiness();
+    out << " hp_percent=" << listener.hp_percentage();
+    out << " effects=[";
     size_t effect_count = 0;
     for( const std::reference_wrapper<const effect> &eff_ref : listener.get_effects() ) {
         const effect &eff = eff_ref.get();
-        jsout.start_object();
-        jsout.member( "id", eff.get_id().str() );
-        jsout.member( "intensity", eff.get_intensity() );
-        jsout.end_object();
+        if( effect_count > 0 ) {
+            out << " ";
+        }
+        out << eff.get_id().str() << ":" << eff.get_intensity();
         if( ++effect_count >= max_effects ) {
             break;
         }
     }
-    jsout.end_array();
-    jsout.end_object();
+    out << "]\n";
 
-    jsout.member( "em" );
-    jsout.start_object();
-    jsout.member( "danger_assessment", listener.danger_assessment() );
-    jsout.member( "panic", listener.mem_combat.panic );
-    jsout.member( "confidence", listener.mem_combat.my_health );
-    jsout.member( "emergency", listener.emergency() );
-    jsout.end_object();
+    out << "your_emotions: ";
+    out << "danger_assessment=" << listener.danger_assessment();
+    out << " panic=" << listener.mem_combat.panic;
+    out << " confidence=" << listener.mem_combat.my_health;
+    out << " emergency=" << ( listener.emergency() ? "true" : "false" ) << "\n";
 
-    jsout.member( "per" );
-    jsout.start_object();
-    jsout.member( "aggression", listener.personality.aggression );
-    jsout.member( "bravery", listener.personality.bravery );
-    jsout.member( "collector", listener.personality.collector );
-    jsout.member( "altruism", listener.personality.altruism );
-    jsout.end_object();
+    out << "your_personality: ";
+    out << "aggression=" << static_cast<int>( listener.personality.aggression );
+    out << " bravery=" << static_cast<int>( listener.personality.bravery );
+    out << " collector=" << static_cast<int>( listener.personality.collector );
+    out << " altruism=" << static_cast<int>( listener.personality.altruism ) << "\n";
 
-    jsout.member( "op" );
-    jsout.start_object();
-    jsout.member( "trust", listener.op_of_u.trust );
-    jsout.member( "fear", listener.op_of_u.fear );
-    jsout.member( "value", listener.op_of_u.value );
-    jsout.member( "anger", listener.op_of_u.anger );
-    jsout.end_object();
+    out << "your_opinion_of_player: ";
+    out << "trust=" << listener.op_of_u.trust;
+    out << " fear=" << listener.op_of_u.fear;
+    out << " value=" << listener.op_of_u.value;
+    out << " anger=" << listener.op_of_u.anger << "\n\n";
 
-    jsout.member( "th" );
-    write_creature_list( jsout, listener,
-                         filter_visible( listener, Creature::Attitude::HOSTILE,
-                                         visible_range ), max_creatures );
+    const std::vector<creature_snapshot> hostile = filter_visible( listener, Creature::Attitude::HOSTILE,
+            visible_range );
+    if( hostile.empty() ) {
+        out << "threats: (none)\n";
+    } else {
+        out << "threats: ";
+        size_t count = 0;
+        for( const creature_snapshot &entry : hostile ) {
+            if( entry.critter == nullptr ) {
+                continue;
+            }
+            if( count > 0 ) {
+                out << ", ";
+            }
+            const std::string name = strip_leading_article( sanitize_text( entry.critter->disp_name() ) );
+            out << name << "@" << entry.distance << " ts=";
+            out << threat_score_for( listener, *entry.critter, entry.distance );
+            if( ++count >= max_creatures ) {
+                break;
+            }
+        }
+        out << "\n";
+    }
 
-    jsout.member( "fr" );
-    write_creature_list( jsout, listener,
-                         filter_visible( listener, Creature::Attitude::FRIENDLY,
-                                         visible_range ), max_creatures );
+    const std::vector<creature_snapshot> friendly = filter_visible( listener, Creature::Attitude::FRIENDLY,
+            visible_range );
+    if( friendly.empty() ) {
+        out << "friendlies: (none)\n";
+    } else {
+        out << "friendlies: ";
+        size_t count = 0;
+        for( const creature_snapshot &entry : friendly ) {
+            if( entry.critter == nullptr ) {
+                continue;
+            }
+            if( count > 0 ) {
+                out << ", ";
+            }
+            std::string name = sanitize_text( entry.critter->disp_name() );
+            if( entry.critter->is_avatar() ) {
+                name = "player";
+            }
+            name = strip_leading_article( name );
+            out << name << "@" << entry.distance;
+            if( ++count >= max_creatures ) {
+                break;
+            }
+        }
+        out << "\n";
+    }
 
-    jsout.member( "rs" );
-    jsout.start_object();
-    jsout.member( "attitude", npc_attitude_id( listener.get_attitude() ) );
-    jsout.member( "mission", sanitize_text( listener.describe_mission() ) );
-    jsout.member( "rules" );
-    jsout.start_array();
+    out << "\n";
+    out << "ruleset: attitude=" << npc_attitude_id( listener.get_attitude() ) << " rules=[";
+    bool first_rule = true;
     for( const auto &entry : ally_rule_strs ) {
         if( listener.rules.has_flag( entry.second.rule ) ) {
-            jsout.write( entry.first );
+            if( !first_rule ) {
+                out << " ";
+            }
+            first_rule = false;
+            out << entry.first;
         }
     }
-    jsout.end_array();
-    jsout.end_object();
+    out << "]\n\n";
 
-    jsout.member( "inv" );
-    jsout.start_object();
     item_location wielded = listener.get_wielded_item();
-    jsout.member( "wielded" );
-    jsout.start_object();
-    if( wielded ) {
-        const item &weapon = *wielded;
-        jsout.member( "name", sanitize_text( weapon.tname() ) );
-        jsout.member( "is_gun", weapon.is_gun() );
-        jsout.member( "ammo_remaining", weapon.ammo_remaining() );
-        jsout.member( "remaining_ammo_capacity", weapon.remaining_ammo_capacity() );
-        jsout.member( "reload_needed", weapon.ammo_required() > 0 &&
-                      weapon.ammo_remaining() < weapon.ammo_required() );
-    }
-    jsout.end_object();
-
     const units::mass weight = listener.weight_carried();
     const units::mass weight_cap = listener.weight_capacity();
     const units::volume volume = listener.volume_carried();
@@ -354,12 +584,23 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
                            ? static_cast<int>( 100.0 * units::to_milliliter<double>( volume ) /
                                                units::to_milliliter<double>( volume_cap ) )
                            : 0;
-    jsout.member( "weight_percent", weight_pct );
-    jsout.member( "volume_percent", volume_pct );
+
+    out << "inventory: ";
+    if( wielded ) {
+        const item &weapon = *wielded;
+        out << "wielded=\"" << sanitize_text( weapon.tname() ) << "\"";
+        out << " gun=" << ( weapon.is_gun() ? "true" : "false" );
+        out << " ammo=" << weapon.ammo_remaining() << "/" << weapon.remaining_ammo_capacity();
+        out << " reload_needed=" << ( weapon.ammo_required() > 0 &&
+                                       weapon.ammo_remaining() < weapon.ammo_required() ? "true" : "false" );
+    } else {
+        out << "wielded=none";
+    }
+    out << " weight_percent=" << weight_pct << " volume_percent=" << volume_pct << "\n";
 
     std::vector<std::string> usable_items;
     std::vector<std::string> combat_items;
-    std::vector<std::string> healing_items;
+    bool bandage_possible = false;
     listener.visit_items( [&]( item * it, item * ) {
         if( it == nullptr ) {
             return VisitResponse::NEXT;
@@ -371,62 +612,77 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         if( combat_items.size() < max_items && ( it->is_gun() || it->is_melee() ) ) {
             combat_items.push_back( sanitize_text( it->tname() ) );
         }
-        if( healing_items.size() < max_items && ( it->is_medication() || it->is_medical_tool() ) ) {
-            healing_items.push_back( sanitize_text( it->tname() ) );
+        if( it->is_medication() || it->is_medical_tool() ) {
+            bandage_possible = true;
         }
         if( usable_items.size() >= max_items &&
-            combat_items.size() >= max_items &&
-            healing_items.size() >= max_items ) {
+            combat_items.size() >= max_items ) {
             return VisitResponse::ABORT;
         }
         return VisitResponse::NEXT;
     } );
 
-    jsout.member( "usable_items" );
-    jsout.start_array();
-    for( const std::string &name : usable_items ) {
-        jsout.write( name );
+    out << "inventory_usable: [";
+    for( size_t i = 0; i < usable_items.size(); ++i ) {
+        if( i > 0 ) {
+            out << ", ";
+        }
+        out << usable_items[i];
     }
-    jsout.end_array();
+    out << "]\n";
 
-    jsout.member( "combat_items" );
-    jsout.start_array();
-    for( const std::string &name : combat_items ) {
-        jsout.write( name );
+    out << "inventory_combat: [";
+    for( size_t i = 0; i < combat_items.size(); ++i ) {
+        if( i > 0 ) {
+            out << ", ";
+        }
+        out << combat_items[i];
     }
-    jsout.end_array();
+    out << "]\n";
+    out << "bandage_possible: " << ( bandage_possible ? "true" : "false" ) << "\n\n";
 
-    jsout.member( "healing_items" );
-    jsout.start_array();
-    for( const std::string &name : healing_items ) {
-        jsout.write( name );
+    const map_snapshot map_data = build_ascii_map_snapshot( listener );
+    out << "legend:\n" << build_snapshot_legend();
+    out << "map_legend:\n";
+    if( map_data.legend.empty() ) {
+        out << "(none)\n";
+    } else {
+        out << map_data.legend << "\n";
     }
-    jsout.end_array();
-    jsout.end_object();
-
-    jsout.member( "legend", build_snapshot_legend() );
-    jsout.member( "map", build_ascii_map_snapshot( listener ) );
-
-    jsout.end_object();
+    out << "map:\n" << map_data.map;
     return out.str();
 }
 
 std::string build_prompt( const std::string &npc_name, const std::string &player_utterance,
                           const std::string &snapshot )
 {
+    std::string action_list;
+    for( const std::string &action : allowed_actions() ) {
+        if( !action_list.empty() ) {
+            action_list += ", ";
+        }
+        action_list += action;
+    }
     return string_format(
-               "You are a game NPC response engine. Return ONLY strict JSON.\n"
-               "Return JSON with a single key \"csv\".\n"
-               "The \"csv\" value is one CSV line with fields:\n"
-               "1) speech text (always quoted)\n"
+               "Situation:\n%s\n"
+               "Player said: \"%s\"\n"
+               "NPC: \"%s\"\n"
+               "You are a game NPC response engine, supposed to respond to player utterance. "
+               "Return ONLY a single CSV line.\n"
+               "The CSV line has fields separated by '|':\n"
+               "1) speech text (no quotes, no '|')\n"
                "2) action1\n"
                "3) action2 (optional)\n"
                "4) action3 (optional)\n"
                "Actions are single tokens (no whitespace or commas).\n"
-               "Context JSON:\n%s\n"
-               "Player said: \"%s\"\n"
-               "NPC: \"%s\"\n",
-               snapshot, player_utterance, npc_name );
+               "Allowed actions: %s\n"
+               "Do NOT repeat the player's words. Respond as the NPC.\n"
+               "Output must be a single line with no markdown or extra text.\n"
+               "Do NOT add notes, explanations, or parenthetical text.\n"
+               "If unsure, output: OK|idle\n"
+               "Example output:\n"
+               "Sure, I'll guard here.|guard_area\n",
+               snapshot, player_utterance, npc_name, action_list );
 }
 
 std::string request_to_json( const llm_intent_request &request )
@@ -477,6 +733,7 @@ std::optional<llm_intent_response> response_from_json( const std::string &line,
     }
     llm_intent_response response;
     response.request_id = request.request_id;
+    response.npc_id = request.npc_id;
     response.npc_name = request.npc_name;
     response.raw = line;
     try {
@@ -850,6 +1107,7 @@ class llm_intent_manager
             static constexpr int default_max_tokens = 20000;
             llm_intent_request req;
             req.request_id = next_request_id();
+            req.npc_id = listener.getID();
             req.npc_name = listener.get_name();
             req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
             req.prompt = build_prompt( req.npc_name, player_utterance, req.snapshot );
@@ -889,6 +1147,7 @@ class llm_intent_manager
             if( !warmup_enqueued.exchange( true ) ) {
                 llm_intent_request warm;
                 warm.request_id = "prewarm";
+                warm.npc_id = character_id();
                 warm.npc_name = "prewarm";
                 warm.snapshot = "{}";
                 warm.prompt = build_prompt( "", "", warm.snapshot );
@@ -920,16 +1179,63 @@ class llm_intent_manager
                     local.pop();
                     continue;
                 }
+                std::string parse_error;
+                std::string action_error;
+                std::string speech;
+                std::vector<std::string> actions;
+                if( resp.ok ) {
+                    const std::string csv_text = extract_csv_from_text( resp.text );
+                    bool parsed = false;
+                    std::string normalized = normalize_csv_separators( csv_text );
+                    parsed = parse_csv_payload( csv_text, speech, actions, parse_error );
+                    if( !parsed && normalized != csv_text ) {
+                        parsed = parse_csv_payload( normalized, speech, actions, parse_error );
+                    }
+                    if( !parsed ) {
+                        parse_error.clear();
+                        parsed = extract_lenient_csv( csv_text, speech, actions );
+                        if( parsed ) {
+                            action_error = "Used lenient CSV parsing.";
+                        }
+                    }
+                    if( parsed ) {
+                        for( const std::string &token : actions ) {
+                            if( !is_allowed_action( token ) ) {
+                                action_error = "CSV action token not in allowed list.";
+                                break;
+                            }
+                        }
+                        if( action_error == "CSV action token not in allowed list." ) {
+                            actions.clear();
+                            actions.push_back( "idle" );
+                        }
+                    } else {
+                        parse_error = "CSV parse failed.";
+                    }
+                }
+
+                if( resp.ok && parse_error.empty() && !speech.empty() ) {
+                    if( npc *target = g->find_npc( resp.npc_id ) ) {
+                        target->say( speech );
+                        add_msg_if_player_sees( *target, m_neutral, _( "%1$s says: \"%2$s\"" ),
+                                                target->get_name(), speech );
+                    }
+                }
                 if( debug_log ) {
-                    if( resp.ok ) {
+                    if( resp.ok && parse_error.empty() ) {
                         add_msg( "LLM intent response for %s: %s", resp.npc_name, resp.text );
+                        if( !action_error.empty() ) {
+                            add_msg( "LLM intent warning for %s: %s", resp.npc_name, action_error );
+                        }
                         const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
                         append_llm_intent_log( string_format( "response %s (%s)\n%s\n\n",
                                       resp.npc_name, resp.request_id, payload ) );
                     } else {
-                        add_msg( "LLM intent failed for %s: %s", resp.npc_name, resp.error );
-                        append_llm_intent_log( string_format( "failed %s (%s)\n%s\n\n",
-                                      resp.npc_name, resp.request_id, resp.error ) );
+                        const std::string err = resp.ok ? parse_error : resp.error;
+                        add_msg( "LLM intent failed for %s: %s", resp.npc_name, err );
+                        const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
+                        append_llm_intent_log( string_format( "failed %s (%s)\n%s\nraw:\n%s\n\n",
+                                      resp.npc_name, resp.request_id, err, payload ) );
                     }
                 }
                 local.pop();
@@ -989,6 +1295,7 @@ class llm_intent_manager
                 response = handle_request_windows( req );
 #else
                 response.request_id = req.request_id;
+                response.npc_id = req.npc_id;
                 response.npc_name = req.npc_name;
                 response.ok = false;
                 response.error = "LLM runner is only supported on Windows in this build.";
@@ -1004,6 +1311,7 @@ class llm_intent_manager
         llm_intent_response handle_request_windows( const llm_intent_request &req ) {
             llm_intent_response response;
             response.request_id = req.request_id;
+            response.npc_id = req.npc_id;
             response.npc_name = req.npc_name;
             const runner_config config = current_runner_config();
             std::string error;
