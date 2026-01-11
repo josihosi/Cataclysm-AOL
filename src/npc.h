@@ -202,6 +202,8 @@ enum class llm_intent_action : int {
     none = 0,
     guard_area,
     follow_player,
+    use_gun,
+    use_melee,
     clear_overrides,
     idle
 };
@@ -1166,6 +1168,8 @@ class npc : public Character
         npc_action long_term_goal_action();
         // Returns true if did something and we should end turn
         bool scan_new_items();
+        item *evaluate_best_gun() const;
+        item *evaluate_best_melee() const;
         // Returns true if did wield it
         bool wield_better_weapon();
 
