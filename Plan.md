@@ -14,6 +14,7 @@ Ship tested Windows and Linux releases for:
 - `Done`: `port/cdda-0.I` queue replay fix for `fd9cd69de9` dropped the obsolete `llm_intent_override` layer because the branch already carries the newer AOL queue/executor implementation in `src/npc.cpp` and `src/npcmove.cpp`.
 - `Done`: `port/cdda-0.I` queue replay fix for `b39b2b82a9` kept the branch's existing AOL queue/executor pipeline, preserving `src/npc.cpp` queue promotion plus the `src/npcmove.cpp` forced attack, item-target, and targeted `look_around` hooks because this replay commit was obsolete on the newer 0.I state.
 - `Done`: `port/cdda-0.I` queue replay fix for `0691a1e92a` resolved the `src/llm_intent.cpp` cherry-pick conflict by keeping the branch's newer AOL parser/snapshot pipeline, since this target already carries the required `src/npc.cpp` queue promotion and `src/npcmove.cpp` executor wiring from later AOL ports.
+- `Done`: `port/cdda-0.I` queue replay fix for `c1f0d74965` dropped the stale `Plan.md.2` scratch artifact and kept the branch's existing AOL behavior wiring, since this target already has the required `src/npc.cpp` queue promotion plus the `src/npcmove.cpp` executor, forced-attack, item-target, and targeted `look_around` pickup hooks.
 - `In progress`: debug remaining per-target port issues, then finish release validation and packaging parity across all `port/*` branches.
 
 ## Execution Roadmap
