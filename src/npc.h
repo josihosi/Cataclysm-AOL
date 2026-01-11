@@ -758,7 +758,9 @@ class npc_template;
 enum class llm_intent_action : int {
     none = 0,
     follow_player,
-    guard_area
+    guard_area,
+    use_gun,
+    use_melee
 };
 
 class npc : public Character
@@ -1145,6 +1147,8 @@ class npc : public Character
         double evaluate_weapon( item &maybe_weapon, bool can_use_gun, bool use_silent ) const;
         // Returns best weapon. Can return null (fists)
         item *evaluate_best_weapon() const;
+        item *evaluate_best_gun() const;
+        item *evaluate_best_melee() const;
         // Returns true if did wield it
         bool wield_better_weapon();
 
