@@ -776,6 +776,14 @@ std::string convert_talk_topic( talk_topic_enum old_value );
 
 class npc_template;
 
+enum class llm_intent_action : int {
+    none = 0,
+    follow_player,
+    guard_area,
+    use_gun,
+    use_melee
+};
+
 class npc : public Character
 {
     public:
@@ -1164,6 +1172,8 @@ class npc : public Character
         double evaluate_weapon( item &maybe_weapon, bool can_use_gun, bool use_silent ) const;
         // Returns best weapon. Can return null (fists)
         item *evaluate_best_weapon() const;
+        item *evaluate_best_gun() const;
+        item *evaluate_best_melee() const;
         // Returns true if did wield it
         bool wield_better_weapon();
 

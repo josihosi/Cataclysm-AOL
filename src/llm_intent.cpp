@@ -146,6 +146,8 @@ const std::vector<std::string> &allowed_actions()
     static const std::vector<std::string> actions = {
         "guard_area",
         "follow_player",
+        "use_gun",
+        "use_melee",
         "idle"
     };
     return actions;
@@ -168,6 +170,12 @@ llm_intent_action intent_action_from_token( const std::string &token )
     }
     if( token == "follow_player" ) {
         return llm_intent_action::follow_player;
+    }
+    if( token == "use_gun" ) {
+        return llm_intent_action::use_gun;
+    }
+    if( token == "use_melee" ) {
+        return llm_intent_action::use_melee;
     }
     if( token == "idle" ) {
         return llm_intent_action::none;
@@ -212,8 +220,8 @@ bool parse_csv_payload( const std::string &csv, std::string &speech,
             return false;
         }
     }
-    for( size_t idx = 1; idx < fields.size(); ++idx ) {
-        std::string token = trim_copy( fields[idx] );
+    auto push_action_token = [&]( std::string token ) -> bool {
+        token = trim_copy( token );
         if( token.empty() ) {
             error = "CSV action token is invalid.";
             return false;
@@ -226,6 +234,37 @@ bool parse_csv_payload( const std::string &csv, std::string &speech,
             return false;
         }
         actions.push_back( token );
+        if( actions.size() > 3 ) {
+            error = "CSV has too many action tokens.";
+            return false;
+        }
+        return true;
+    };
+
+    for( size_t idx = 1; idx < fields.size(); ++idx ) {
+        std::string field = trim_copy( fields[idx] );
+        if( field.empty() ) {
+            error = "CSV action token is invalid.";
+            return false;
+        }
+        std::string current_token;
+        for( char c : field ) {
+            if( std::isspace( static_cast<unsigned char>( c ) ) ) {
+                if( !current_token.empty() ) {
+                    if( !push_action_token( current_token ) ) {
+                        return false;
+                    }
+                    current_token.clear();
+                }
+                continue;
+            }
+            current_token.push_back( c );
+        }
+        if( !current_token.empty() ) {
+            if( !push_action_token( current_token ) ) {
+                return false;
+            }
+        }
     }
     if( actions.empty() ) {
         error = "CSV must include at least one action field.";
