@@ -1662,6 +1662,12 @@ void avatar::talk_to( std::unique_ptr<talker> talk_with, bool radio_contact,
         return;
     }
     dialogue d( get_talker_for( *this ), std::move( talk_with ), {} );
+    if( const npc *npc_actor = d.actor( true )->get_npc() ) {
+        DebugLog( D_INFO, DC_ALL ) << "avatar::talk_to: begin npc=" << npc_actor->get_name()
+                                  << " id=" << npc_actor->getID().get_value();
+    } else {
+        DebugLog( D_INFO, DC_ALL ) << "avatar::talk_to: begin npc=null";
+    }
     d.by_radio = radio_contact;
     dialogue_by_radio = radio_contact;
     d.actor( true )->check_missions();
@@ -1686,6 +1692,7 @@ void avatar::talk_to( std::unique_ptr<talker> talk_with, bool radio_contact,
     // Main dialogue loop
     do {
         d.actor( true )->update_missions( d.missions_assigned );
+        DebugLog( D_INFO, DC_ALL ) << "avatar::talk_to: opt topic=" << d.topic_stack.back().id;
         const talk_topic next = d.opt( d_win, d.topic_stack.back() );
         if( next.id == "TALK_NONE" ) {
             int cat = topic_category( d.topic_stack.back() );
