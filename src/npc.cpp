@@ -7,6 +7,7 @@
 #include <functional>
 #include <initializer_list>
 #include <iterator>
+#include <map>
 #include <memory>
 #include <ostream>
 
@@ -261,6 +262,21 @@ npc::npc()
     for( direction threat_dir : npc_threat_dir ) {
         ai_cache.threat_map[ threat_dir ] = 0.0f;
     }
+}
+
+std::map<character_id, npc::llm_intent_state> &npc::llm_intent_state_map()
+{
+    static std::map<character_id, llm_intent_state> state_map;
+    return state_map;
+}
+
+npc::llm_intent_state &npc::llm_intent_state_for( const npc &guy )
+{
+    static llm_intent_state invalid_state;
+    if( !guy.getID().is_valid() ) {
+        return invalid_state;
+    }
+    return llm_intent_state_map()[guy.getID()];
 }
 
 standard_npc::standard_npc( const std::string &name, const tripoint_bub_ms &pos,
@@ -593,7 +609,12 @@ void npc::load_npc_template( const string_id<npc_template> &ident )
     death_eocs = tguy.death_eocs;
 }
 
-npc::~npc() = default;
+npc::~npc()
+{
+    if( getID().is_valid() ) {
+        llm_intent_state_map().erase( getID() );
+    }
+}
 
 void npc::randomize( const npc_class_id &type, const npc_template_id &tem_id )
 {
@@ -2534,6 +2555,38 @@ bool npc::is_player_ally() const
     return is_ally( get_player_character() );
 }
 
+void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
+                                 const std::string &request_id )
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    state.queue.clear();
+    for( llm_intent_action action : actions ) {
+        if( action != llm_intent_action::none ) {
+            state.queue.push_back( action );
+        }
+    }
+    state.active = llm_intent_action::none;
+    state.active_turn = calendar::before_time_starts;
+    state.last_applied_turn = calendar::before_time_starts;
+    state.request_id = request_id;
+}
+
+void npc::clear_llm_intent_actions()
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    state.queue.clear();
+    state.active = llm_intent_action::none;
+    state.active_turn = calendar::before_time_starts;
+    state.last_applied_turn = calendar::before_time_starts;
+    state.request_id.clear();
+}
+
+bool npc::has_llm_intent_actions() const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    return state.active != llm_intent_action::none || !state.queue.empty();
+}
+
 bool npc::is_friendly( const Character &p ) const
 {
     return is_ally( p ) || ( p.is_avatar() && ( is_walking_with() || is_player_ally() ) );
@@ -3372,7 +3425,16 @@ void npc::process_turn()
 {
     Character::process_turn();
 
-    // NPCs shouldn't be using stamina, but if they have, set it back to max
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+        llm_intent_state &state = llm_intent_state_for( *this );
+        if( state.active == llm_intent_action::none &&
+            state.last_applied_turn != calendar::turn && !state.queue.empty() ) {
+            state.active = state.queue.front();
+            state.active_turn = calendar::turn;
+        }
+    }
+
+    // NPCs shouldn't be using stamina, but if they have, set it back to max    
     // If the stamina is higher than the max (Languorous), set it back to max
     if( calendar::once_every( 1_minutes ) && get_stamina() != get_stamina_max() ) {
         set_stamina( get_stamina_max() );

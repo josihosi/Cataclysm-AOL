@@ -20,8 +20,7 @@ Goal: convert LLM actions to existing NPC behaviors without destabilizing saves.
 ### Intent Whitelist (initial)
 - guard_area: assign guard mission at current location.
 - follow_player: set follow attitude/mission.
-- clear_overrides: clear follower rule overrides.
-- idle: pause/stand still.
+- idle: no-op (speech only).
 
 ### Crash Avoidance Notes
 We previously crashed when intent overrides touched NPC AI state during load.

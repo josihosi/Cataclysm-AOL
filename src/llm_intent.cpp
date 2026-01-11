@@ -146,7 +146,6 @@ const std::vector<std::string> &allowed_actions()
     static const std::vector<std::string> actions = {
         "guard_area",
         "follow_player",
-        "clear_overrides",
         "idle"
     };
     return actions;
@@ -160,6 +159,20 @@ bool is_allowed_action( const std::string &token )
         }
     }
     return false;
+}
+
+llm_intent_action intent_action_from_token( const std::string &token )
+{
+    if( token == "guard_area" ) {
+        return llm_intent_action::guard_area;
+    }
+    if( token == "follow_player" ) {
+        return llm_intent_action::follow_player;
+    }
+    if( token == "idle" ) {
+        return llm_intent_action::none;
+    }
+    return llm_intent_action::none;
 }
 
 bool parse_csv_payload( const std::string &csv, std::string &speech,
@@ -668,7 +681,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "Player said: \"%s\"\n"
                "NPC: \"%s\"\n"
                "You are a game NPC response engine, supposed to respond to player utterance. "
-               "Return ONLY a single CSV line.\n"
+               "Return ONLY a single CSV line and nothing else.\n"
                "The CSV line has fields separated by '|':\n"
                "1) speech text (no quotes, no '|')\n"
                "2) action1\n"
@@ -678,7 +691,8 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "Allowed actions: %s\n"
                "Do NOT repeat the player's words. Respond as the NPC.\n"
                "Output must be a single line with no markdown or extra text.\n"
-               "Do NOT add notes, explanations, or parenthetical text.\n"
+               "Do NOT add notes, explanations, examples, or parenthetical text.\n"
+               "Any extra text will be treated as invalid.\n"
                "If unsure, output: OK|idle\n"
                "Example output:\n"
                "Sure, I'll guard here.|guard_area\n",
@@ -1219,6 +1233,23 @@ class llm_intent_manager
                         target->say( speech );
                         add_msg_if_player_sees( *target, m_neutral, _( "%1$s says: \"%2$s\"" ),
                                                 target->get_name(), speech );
+                    }
+                }
+                if( resp.ok && parse_error.empty() && !actions.empty() ) {
+                    std::vector<llm_intent_action> intent_actions;
+                    intent_actions.reserve( actions.size() );
+                    for( const std::string &token : actions ) {
+                        const llm_intent_action action = intent_action_from_token( token );
+                        if( action != llm_intent_action::none ) {
+                            intent_actions.push_back( action );
+                        }
+                    }
+                    if( !intent_actions.empty() ) {
+                        if( npc *target = g->find_npc( resp.npc_id ) ) {
+                            if( target->is_player_ally() ) {
+                                target->set_llm_intent_actions( intent_actions, resp.request_id );
+                            }
+                        }
                     }
                 }
                 if( debug_log ) {
