@@ -6,7 +6,7 @@ Heres whats happening: shouting in-game (C + b) while having an NPC follower tri
 A NPC centric snapshot is sent to the game, and the LLM answers and is supposed to initiate targeted actions, according to the context.
 The LLM call is async, because the game cant stop for 12 seconds.
 The Snapshot, LLM call etc are finished. Now its time to hook this into the in-game AI.
-The LLM is supposed to determine normal NPC AI calls for the next 1-3 turns.
+The LLM is supposed to determine normal NPC AI calls for the next 1-5 turns.
 
 ## Current Status (Done)
 - Local runner wired up (stdin/stdout JSON), warm pipeline, metrics logged.
@@ -27,13 +27,12 @@ Goal: convert LLM actions to existing NPC behaviors without destabilizing saves.
 We previously crashed when intent overrides touched NPC AI state during load.
 Guardrails:
 - Do not mutate AI state during save/load or before g is fully initialized.
-- Apply intent changes only during normal turn processing, with null checks.    
-- Keep overrides transient and non-serialized unless explicitly needed later.   
-- Only allied followers should obey LLM actions.
+- Apply intent changes only during normal turn processing, with null checks.
+- Keep overrides transient and non-serialized unless explicitly needed later.
 
 ### Implementation Steps (short)
 1) Add intent override state to NPC (non-serialized for now).
-2) Apply actions inside npc::move() with strict guards and TTL (1 action per turn, up to 3).
+2) Apply actions inside npc::move() with strict guards and TTL.
 3) Validate and drop invalid responses; never hard-fail in AI loop.
 4) Keep debug logs for: response payload, parsed action, applied behavior.
 
