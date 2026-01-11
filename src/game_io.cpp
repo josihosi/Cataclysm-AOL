@@ -238,7 +238,10 @@ void game::load_map( const tripoint_abs_sm &pos_sm,
 {
     map &here = get_map();
 
+    DebugLog( D_INFO, DC_ALL ) << "game::load_map: begin x=" << pos_sm.x()
+                               << " y=" << pos_sm.y() << " z=" << pos_sm.z();
     here.load( pos_sm, true, pump_events );
+    DebugLog( D_INFO, DC_ALL ) << "game::load_map: end";
 }
 
 void game::move_save_to_graveyard()
@@ -325,27 +328,32 @@ bool game::load( const save_t &name )
                                      ( name.base_path() + SAVE_EXTENSION );
 
     bool abort = false;
+    DebugLog( D_INFO, DC_ALL ) << "game::load: begin " << name.decoded_name();
 
     using named_entry = std::pair<std::string, std::function<void()>>;
     const std::vector<named_entry> entries = {{
             {
                 _( "Master save" ), [&]()
                 {
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Master save begin";
                     // Now load up the master game data; factions (and more?)
                     load_master();
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Master save end";
                 }
             },
             {
                 _( "Dimension data" ), [&]()
                 {
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Dimension data begin";
                     // Load up dimension specific data (ie; weather, overmapstate)
                     load_dimension_data();
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Dimension data end";
                 }
             },
             {
                 _( "Character save" ), [&]()
                 {
-
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Character save begin";
                     u = avatar();
                     u.set_save_id( name.decoded_name() );
 
@@ -363,23 +371,29 @@ bool game::load( const save_t &name )
                             unserialize( is, save_file_path );
                         } );
                     }
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Character save end";
                 }
             },
             {
                 _( "Map memory" ), [&]()
                 {
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Map memory begin";
                     u.load_map_memory();
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Map memory end";
                 }
             },
             {
                 _( "Diary" ), [&]()
                 {
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Diary begin";
                     u.get_avatar_diary()->load();
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Diary end";
                 }
             },
             {
                 _( "Memorial" ), [&]()
                 {
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Memorial begin";
                     const cata_path log_filename =
                     worldpath / ( name.base_path() + SAVE_EXTENSION_LOG );
                     read_from_file_optional(
@@ -387,11 +401,13 @@ bool game::load( const save_t &name )
                     [this]( std::istream & is ) {
                         memorial().load( is );
                     } );
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Memorial end";
                 }
             },
             {
                 _( "Finalizing" ), [&]()
                 {
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Finalizing begin";
 
 #if defined(__ANDROID__)
                     const cata_path shortcuts_filename =
@@ -475,14 +491,17 @@ bool game::load( const save_t &name )
                     effect_on_conditions::load_existing_character( u );
                     // recalculate light level for correctly resuming crafting and disassembly
                     here.build_map_cache( here.get_abs_sub().z() );
+                    DebugLog( D_INFO, DC_ALL ) << "game::load: Finalizing end";
                 }
             },
         }
     };
 
     for( const named_entry &e : entries ) {
+        DebugLog( D_INFO, DC_ALL ) << "game::load: entry " << e.first << " start";
         loading_ui::show( _( "Loading the save…" ), e.first );
         e.second();
+        DebugLog( D_INFO, DC_ALL ) << "game::load: entry " << e.first << " end";
         if( abort ) {
             loading_ui::done();
             return false;
@@ -490,6 +509,7 @@ bool game::load( const save_t &name )
     }
 
     loading_ui::done();
+    DebugLog( D_INFO, DC_ALL ) << "game::load: end";
     return true;
 }
 

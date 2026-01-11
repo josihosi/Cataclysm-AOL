@@ -7,7 +7,8 @@ This is something I would like to see in games in general, so I'm trying to crea
 
 Yelling (C + b) next to a follower NPC activates a local LLM toolcall, which thinks of an answer and some actions.
 The following actions can be initiated by the toolcall right now:
-- Nothing
+- follow_player
+- guard_area
 
 ## Installation
 

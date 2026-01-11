@@ -805,8 +805,11 @@ static void GENERATOR_aftershock_ruin( map &md, const tripoint_abs_omt &p )
 void map::generate( const tripoint_abs_omt &p, const time_point &when, bool save_results,
                     bool run_post_process )
 {
+    DebugLog( D_INFO, DC_ALL ) << "map::generate: enter p=" << p;
+    DebugLog( D_INFO, DC_ALL ) << "map::generate: mapsize=" << my_MAPSIZE << " zlevels=" << zlevels;
     dbg( D_INFO ) << "map::generate( g[" << g.get() << "], p[" << p << "], "
                   "when[" << to_string( when ) << "] )";
+    DebugLog( D_INFO, DC_ALL ) << "map::generate: dbg done";
     // Insure we reset mapgen_in_progress no matter how this method terminates.
     // TODO: replace with a generic scope_guard class.
     std::unique_ptr<int, std::function<void( int * )>> scope_guard( nullptr, [this]( int * ) {
@@ -816,7 +819,9 @@ void map::generate( const tripoint_abs_omt &p, const time_point &when, bool save
 
     const tripoint_abs_sm p_sm_base = project_to<coords::sm>( p );
     std::vector<bool> generated;
+    DebugLog( D_INFO, DC_ALL ) << "map::generate: before generated.resize";
     generated.resize( my_MAPSIZE * my_MAPSIZE * OVERMAP_LAYERS );
+    DebugLog( D_INFO, DC_ALL ) << "map::generate: generated resized";
 
     // Prepare the canvas...
     for( int gridx = 0; gridx < my_MAPSIZE; gridx++ ) {

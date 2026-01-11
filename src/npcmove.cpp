@@ -1367,6 +1367,22 @@ void npc::regen_ai_cache()
     }
 }
 
+void npc::execute_llm_intent_action( llm_intent_action action )
+{
+    switch( action ) {
+        case llm_intent_action::guard_area:
+            talk_function::assign_guard( *this );
+            execute_action( npc_pause );
+            break;
+        case llm_intent_action::follow_player:
+            talk_function::stop_guard( *this );
+            execute_action( npc_follow_player );
+            break;
+        case llm_intent_action::none:
+            break;
+    }
+}
+
 void npc::move()
 {
     const map &here = get_map();
@@ -1397,6 +1413,29 @@ void npc::move()
     }
     add_msg_debug( debugmode::DF_NPC, "NPC %s: target = %s, danger = %.1f, range = %d",
                    get_name(), target_name, ai_cache.danger, *confident_range_cache );
+
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) &&
+        state.active != llm_intent_action::none &&
+        state.last_applied_turn != calendar::turn ) {
+        if( !is_player_ally() ) {
+            clear_llm_intent_actions();
+        } else {
+            const bool llm_safe = ai_cache.danger <= 0 && target == nullptr &&
+                                  !sees_dangerous_field( pos_bub() ) &&
+                                  !has_effect( effect_npc_fire_bad );
+            if( llm_safe ) {
+                execute_llm_intent_action( state.active );
+                if( !state.queue.empty() ) {
+                    state.queue.pop_front();
+                }
+                state.active = llm_intent_action::none;
+                state.active_turn = calendar::before_time_starts;
+                state.last_applied_turn = calendar::turn;
+                return;
+            }
+        }
+    }
 
     Character &player_character = get_player_character();
     //faction opinion determines if it should consider you hostile
