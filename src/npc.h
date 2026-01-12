@@ -804,7 +804,6 @@ enum talk_topic_enum {
 std::string convert_talk_topic( talk_topic_enum old_value );
 
 class npc_template;
-
 class npc : public Character
 {
     public:
@@ -1169,6 +1168,7 @@ class npc : public Character
         // Returns true if did something and we should end turn
         bool scan_new_items();
         item *evaluate_best_gun() const;
+        item *evaluate_best_silent_gun() const;
         item *evaluate_best_melee() const;
         // Returns true if did wield it
         bool wield_better_weapon();
