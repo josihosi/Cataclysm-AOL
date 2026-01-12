@@ -762,7 +762,8 @@ enum class llm_intent_action : int {
     follow_player,
     guard_area,
     use_gun,
-    use_melee
+    use_melee,
+    use_bow
 };
 
 class npc : public Character
@@ -1148,6 +1149,7 @@ class npc : public Character
         // Returns best weapon. Can return null (fists)
         item *evaluate_best_weapon() const;
         item *evaluate_best_gun() const;
+        item *evaluate_best_silent_gun() const;
         item *evaluate_best_melee() const;
         // Returns true if did wield it
         bool wield_better_weapon();
