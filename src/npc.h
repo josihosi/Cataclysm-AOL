@@ -924,7 +924,8 @@ class npc : public Character
         // Is an ally of the player
         bool is_player_ally() const;
         void set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
-                                     const std::string &request_id );
+                                     const std::string &request_id,
+                                     const std::string &target_hint );
         void clear_llm_intent_actions();
         bool has_llm_intent_actions() const;
         // Isn't moving
@@ -1350,11 +1351,15 @@ class npc : public Character
             std::deque<llm_intent_action> queue;
             llm_intent_action active = llm_intent_action::none;
             time_point active_turn = calendar::before_time_starts;
-            time_point last_applied_turn = calendar::before_time_starts;
+            time_point last_applied_turn = calendar::before_time_starts;        
             std::string request_id;
+            std::string target_hint;
+            int target_attacks_remaining = 0;
+            int target_turns_remaining = 0;
         };
         static std::map<character_id, llm_intent_state> &llm_intent_state_map();
         static llm_intent_state &llm_intent_state_for( const npc &guy );
+        void apply_llm_intent_target();
 
         std::map<npc_need, npc_need_goal_cache> goal_cache;
     public:

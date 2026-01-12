@@ -188,10 +188,12 @@ llm_intent_action intent_action_from_token( const std::string &token )
 }
 
 bool parse_csv_payload( const std::string &csv, std::string &speech,
-                        std::vector<std::string> &actions, std::string &error )
+                        std::vector<std::string> &actions,
+                        std::string &attack_target, std::string &error )
 {
     actions.clear();
     speech.clear();
+    attack_target.clear();
     std::vector<std::string> fields;
     std::string current;
     for( char c : csv ) {
@@ -233,11 +235,45 @@ bool parse_csv_payload( const std::string &csv, std::string &speech,
         if( token.size() >= 2 && token.front() == '"' && token.back() == '"' ) {
             token = trim_copy( token.substr( 1, token.size() - 2 ) );
         }
-        if( !is_action_token( token ) ) {
+        std::string token_lower = token;
+        std::transform( token_lower.begin(), token_lower.end(), token_lower.begin(), []( unsigned char c ) {
+            return static_cast<char>( std::tolower( c ) );
+        } );
+        if( token_lower.rfind( "attack=", 0 ) == 0 ) {
+            const std::string target_raw = token_lower.substr( 7 );
+            if( target_raw.empty() ) {
+                error = "CSV attack target missing.";
+                return false;
+            }
+            size_t end = 0;
+            while( end < target_raw.size() ) {
+                const unsigned char c = static_cast<unsigned char>( target_raw[end] );
+                if( !( ( c >= 'a' && c <= 'z' ) || ( c >= '0' && c <= '9' ) || c == '_' ) ) {
+                    break;
+                }
+                ++end;
+            }
+            if( end == 0 ) {
+                error = "CSV attack target is invalid.";
+                return false;
+            }
+            if( !attack_target.empty() ) {
+                error = "CSV attack target repeated.";
+                return false;
+            }
+            attack_target = target_raw.substr( 0, end );
+            return true;
+        }
+        if( !is_action_token( token_lower ) ) {
             error = "CSV action token is invalid.";
             return false;
         }
-        actions.push_back( token );
+        if( !is_allowed_action( token_lower ) ) {
+            if( !attack_target.empty() ) {
+                return true;
+            }
+        }
+        actions.push_back( token_lower );
         if( actions.size() > 3 ) {
             error = "CSV has too many action tokens.";
             return false;
@@ -270,11 +306,40 @@ bool parse_csv_payload( const std::string &csv, std::string &speech,
             }
         }
     }
+    if( actions.empty() && !attack_target.empty() ) {
+        actions.push_back( "idle" );
+    }
     if( actions.empty() ) {
         error = "CSV must include at least one action field.";
         return false;
     }
     return true;
+}
+
+std::string extract_attack_target_hint( const std::string &text )
+{
+    std::string lowered = text;
+    std::transform( lowered.begin(), lowered.end(), lowered.begin(), []( unsigned char c ) {
+        return static_cast<char>( std::tolower( c ) );
+    } );
+    const std::string needle = "attack=";
+    const size_t pos = lowered.find( needle );
+    if( pos == std::string::npos ) {
+        return {};
+    }
+    size_t start = pos + needle.size();
+    size_t end = start;
+    while( end < lowered.size() ) {
+        const unsigned char c = static_cast<unsigned char>( lowered[end] );
+        if( !( ( c >= 'a' && c <= 'z' ) || ( c >= '0' && c <= '9' ) || c == '_' ) ) {
+            break;
+        }
+        ++end;
+    }
+    if( end == start ) {
+        return {};
+    }
+    return lowered.substr( start, end - start );
 }
 
 std::string normalize_csv_separators( const std::string &csv )
@@ -304,6 +369,10 @@ bool extract_lenient_csv( const std::string &csv, std::string &speech,
 {
     speech.clear();
     actions.clear();
+    std::string lowered = csv;
+    std::transform( lowered.begin(), lowered.end(), lowered.begin(), []( unsigned char c ) {
+        return static_cast<char>( std::tolower( c ) );
+    } );
     const size_t sep = csv.find( '|' );
     if( sep != std::string::npos ) {
         speech = trim_copy( csv.substr( 0, sep ) );
@@ -335,16 +404,16 @@ bool extract_lenient_csv( const std::string &csv, std::string &speech,
         return !std::isalnum( static_cast<unsigned char>( c ) ) && c != '_';
     };
     for( const std::string &action : allowed_actions() ) {
-        size_t start = csv.find( action );
+        size_t start = lowered.find( action );
         while( start != std::string::npos ) {
-            const bool left_ok = start == 0 || is_boundary( csv[start - 1] );
+            const bool left_ok = start == 0 || is_boundary( lowered[start - 1] );
             const size_t end = start + action.size();
-            const bool right_ok = end >= csv.size() || is_boundary( csv[end] );
+            const bool right_ok = end >= lowered.size() || is_boundary( lowered[end] );
             if( left_ok && right_ok ) {
                 actions.push_back( action );
                 return true;
             }
-            start = csv.find( action, end );
+            start = lowered.find( action, end );
         }
     }
     actions.push_back( "idle" );
@@ -558,8 +627,8 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
 
     out << "your_opinion_of_player: ";
     out << "trust=" << listener.op_of_u.trust;
-    out << " fear=" << listener.op_of_u.fear;
-    out << " value=" << listener.op_of_u.value;
+    out << " intimidation=" << listener.op_of_u.fear;
+    out << " respect=" << listener.op_of_u.value;
     out << " anger=" << listener.op_of_u.anger << "\n\n";
 
     const std::vector<creature_snapshot> hostile = filter_visible( listener, Creature::Attitude::HOSTILE,
@@ -645,17 +714,14 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     if( wielded ) {
         const item &weapon = *wielded;
         out << "wielded=\"" << sanitize_text( weapon.tname() ) << "\"";
-        out << " gun=" << ( weapon.is_gun() ? "true" : "false" );
-        out << " ammo=" << weapon.ammo_remaining() << "/" << weapon.remaining_ammo_capacity();
-        out << " reload_needed=" << ( weapon.ammo_required() > 0 &&
-                                       weapon.ammo_remaining() < weapon.ammo_required() ? "true" : "false" );
     } else {
         out << "wielded=none";
     }
     out << " weight_percent=" << weight_pct << " volume_percent=" << volume_pct << "\n";
 
     std::vector<std::string> usable_items;
-    std::vector<std::string> combat_items;
+    std::vector<std::string> combat_guns;
+    std::vector<std::string> combat_melee;
     bool bandage_possible = false;
     listener.visit_items( [&]( item * it, item * ) {
         if( it == nullptr ) {
@@ -665,14 +731,21 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
             ( it->is_tool() || it->is_medication() || it->is_medical_tool() ) ) {
             usable_items.push_back( sanitize_text( it->tname() ) );
         }
-        if( combat_items.size() < max_items && ( it->is_gun() || it->is_melee() ) ) {
-            combat_items.push_back( sanitize_text( it->tname() ) );
+        if( it->is_gun() ) {
+            if( combat_guns.size() < max_items ) {
+                combat_guns.push_back( sanitize_text( it->tname() ) );
+            }
+        } else if( it->is_melee() ) {
+            if( combat_melee.size() < max_items ) {
+                combat_melee.push_back( sanitize_text( it->tname() ) );
+            }
         }
         if( it->is_medication() || it->is_medical_tool() ) {
             bandage_possible = true;
         }
         if( usable_items.size() >= max_items &&
-            combat_items.size() >= max_items ) {
+            combat_guns.size() >= max_items &&
+            combat_melee.size() >= max_items ) {
             return VisitResponse::ABORT;
         }
         return VisitResponse::NEXT;
@@ -686,6 +759,21 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         out << usable_items[i];
     }
     out << "]\n";
+
+    std::vector<std::string> combat_items;
+    combat_items.reserve( max_items );
+    for( const std::string &gun : combat_guns ) {
+        if( combat_items.size() >= max_items ) {
+            break;
+        }
+        combat_items.push_back( gun );
+    }
+    for( const std::string &melee : combat_melee ) {
+        if( combat_items.size() >= max_items ) {
+            break;
+        }
+        combat_items.push_back( melee );
+    }
 
     out << "inventory_combat: [";
     for( size_t i = 0; i < combat_items.size(); ++i ) {
@@ -712,6 +800,8 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
 std::string build_prompt( const std::string &npc_name, const std::string &player_utterance,
                           const std::string &snapshot )
 {
+    ( void )npc_name;
+    ( void )player_utterance;
     std::string action_list;
     for( const std::string &action : allowed_actions() ) {
         if( !action_list.empty() ) {
@@ -719,27 +809,52 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
         }
         action_list += action;
     }
+    std::string action_list_with_target = action_list;
+    if( !action_list_with_target.empty() ) {
+        action_list_with_target += ", ";
+    }
+    action_list_with_target += "attack=<target>";
     return string_format(
                "Situation:\n%s\n"
-               "Player said: \"%s\"\n"
-               "NPC: \"%s\"\n"
-               "You are a game NPC response engine, supposed to respond to player utterance. "
-               "Return ONLY a single CSV line and nothing else.\n"
-               "The CSV line has fields separated by '|':\n"
-               "1) speech text (no quotes, no '|')\n"
-               "2) action1\n"
-               "3) action2 (optional)\n"
-               "4) action3 (optional)\n"
-               "Actions are single tokens (no whitespace or commas).\n"
-               "Allowed actions: %s\n"
-               "Do NOT repeat the player's words. Respond as the NPC.\n"
-               "Output must be a single line with no markdown or extra text.\n"
-               "Do NOT add notes, explanations, examples, or parenthetical text.\n"
-               "Any extra text will be treated as invalid.\n"
-               "If unsure, output: OK|idle\n"
-               "Example output:\n"
-               "Sure, I'll guard here.|guard_area\n",
-               snapshot, player_utterance, npc_name, action_list );
+               "<System>"
+               "You are a game NPC response engine, supposed to respond to player_utterance. "
+               "Return ONLY a single CSV line and nothing else."
+               "This CSV line has one to four fields separated by '|':\n"
+               "<Field 1>"
+               "The first field is an answer to player_utterance."
+               "You have decided to team up with the player for now, and must answer as the NPC."
+               "Stick to your role, with your emotions and opinions."
+               "Use a dark tone, with swear words, fit for a zombie apocalypse."
+               "Never repeat the players words."
+               "</Field 1>\n"
+               "<Fields 2-4>"
+               "Write 1-3 of the following allowed actions:"
+               "%s\n"
+               "<Allowed actions>"
+               "guard_area to stay put, keep watch, wait, stand.\n"
+               "follow_player to walk behind, follow, run.\n"
+               "use_gun to use gun, rifle, thrower.\n"
+               "use_melee to bash, cut, kick, in close combat.\n"
+               "use_bow to use bow, crossbow, stealth.\n"
+               "attack=<target> to target a creature from your map.\n"
+               "idle if none of the above.\n"
+               "</Allowed actions>"
+               "</Fields 2-4>\n"
+               "Print nothing else other than Fields 1-4, separated by |"
+               "If you break that format, you have failed."
+               "Output must be a single line with no markdown or extra text."
+               "Absolutely no notes, explanations, examples, or parenthetical text."
+               "<Example Output>"
+               "Blow me.|idle"
+               "</Example Output>\n"
+               "<Example Output>"
+               "Lets put those fucks in the ground.|use_melee|attack=Zombie"
+               "</Example Output>\n"
+               "<Example Output>\n"
+               "Providing cover!|guard_area|use_gun"
+               "</Example Output>\n"
+               "</System>\n",
+               snapshot, action_list_with_target );
 }
 
 std::string request_to_json( const llm_intent_request &request )
@@ -1172,6 +1287,8 @@ class llm_intent_manager
             if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
                 append_llm_intent_log( string_format( "snapshot %s (%s)\n%s\n\n",
                                       req.npc_name, req.request_id, req.snapshot ) );
+                append_llm_intent_log( string_format( "prompt %s (%s)\n%s\n\n",
+                                      req.npc_name, req.request_id, req.prompt ) );
             }
             {
                 std::lock_guard<std::mutex> lock( mutex );
@@ -1240,13 +1357,14 @@ class llm_intent_manager
                 std::string action_error;
                 std::string speech;
                 std::vector<std::string> actions;
+                std::string attack_target;
                 if( resp.ok ) {
                     const std::string csv_text = extract_csv_from_text( resp.text );
                     bool parsed = false;
                     std::string normalized = normalize_csv_separators( csv_text );
-                    parsed = parse_csv_payload( csv_text, speech, actions, parse_error );
+                    parsed = parse_csv_payload( csv_text, speech, actions, attack_target, parse_error );
                     if( !parsed && normalized != csv_text ) {
-                        parsed = parse_csv_payload( normalized, speech, actions, parse_error );
+                        parsed = parse_csv_payload( normalized, speech, actions, attack_target, parse_error );
                     }
                     if( !parsed ) {
                         parse_error.clear();
@@ -1254,6 +1372,9 @@ class llm_intent_manager
                         if( parsed ) {
                             action_error = "Used lenient CSV parsing.";
                         }
+                    }
+                    if( attack_target.empty() ) {
+                        attack_target = extract_attack_target_hint( csv_text );
                     }
                     if( parsed ) {
                         for( const std::string &token : actions ) {
@@ -1274,8 +1395,6 @@ class llm_intent_manager
                 if( resp.ok && parse_error.empty() && !speech.empty() ) {
                     if( npc *target = g->find_npc( resp.npc_id ) ) {
                         target->say( speech );
-                        add_msg_if_player_sees( *target, m_neutral, _( "%1$s says: \"%2$s\"" ),
-                                                target->get_name(), speech );
                     }
                 }
                 if( resp.ok && parse_error.empty() && !actions.empty() ) {
@@ -1290,7 +1409,7 @@ class llm_intent_manager
                     if( !intent_actions.empty() ) {
                         if( npc *target = g->find_npc( resp.npc_id ) ) {
                             if( target->is_player_ally() ) {
-                                target->set_llm_intent_actions( intent_actions, resp.request_id );
+                                target->set_llm_intent_actions( intent_actions, resp.request_id, attack_target );
                             }
                         }
                     }
