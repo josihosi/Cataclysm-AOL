@@ -316,7 +316,7 @@ void main_menu::print_menu( const catacurses::window &w_open, int iSel, const po
                   vdaytip ) );
 
     int iLine = 0;
-    const int iOffsetX = ( window_width - FULL_SCREEN_WIDTH ) / 2;
+    const int iOffsetX = std::max( 0, ( window_width - FULL_SCREEN_WIDTH ) / 2 - 9 );
 
     if( get_option<bool>( "SEASONAL_TITLE" ) ) {
         switch( current_holiday ) {

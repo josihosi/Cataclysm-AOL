@@ -10,86 +10,73 @@ import time
 from typing import Dict, Optional
 
 
-ALLOWED_ACTIONS = ["guard_area", "follow_player", "use_gun", "use_melee", "use_bow", "idle"]
+ALLOWED_ACTIONS = ["guard_area", "follow_player", "use_gun", "use_melee", "use_bow", "attack=<creature>" ,"idle"]
 
-DEFAULT_SYSTEM_PROMPT = (
-    "<System>"
-    "You are a game NPC response engine, supposed to respond to player_utterance. "
-    "Return ONLY a single CSV line and nothing else."
-    "This CSV line has one to four fields separated by '|':\n"
-    "<Field 1>"
-    "Answer the player_utterance."
-    "Respond as the NPC."
-    "Stick to your role, with your emotions and opinions."
-    "Use a rugged tone fit, use swear words, fit for a zombie apocalypse."
-    "Never repeat player_utterance, come up with an answer."
-    "</Field 1>\n"
-    "<Fields 2-4>"
-    "Write 1-3 of the following allowed actions:"
-    f"{', '.join(ALLOWED_ACTIONS)}\n"
-    "guard_area to stay put, keep watch, wait, stand."
-    "follow_player to walk behind, follow, run."
-    "use_gun to use gun, rifle, thrower."
-    "use_melee to bash, cut, attack, close combat."
-    "use_bow to use bow, crossbow, stealth."
-    "idle if none of the above."
-    "</Fields 2-4>\n"
-    "Print nothing else other than Fields 1-4, separated by |"
-    "If you break that format, you have failed."
-    "Output must be a single line with no markdown or extra text."
-    "Absolutely no notes, explanations, examples, or parenthetical text."
-    "<Example Output 1>"
-    "Blow me.|idle"
-    "</Example Output 1>\n"
-    "<Example Output 2>"
-    "Lets put those fucks in the ground.|use_melee"
-    "</Example Output 2>\n"
-    "<Example Output 3>\n"
-    "Providing cover!|guard_area|use_gun"
-    "</Example Output 3>\n"
-    "</System>\n"
+DEFAULT_SYSTEM_PROMPT = ("""
+<System>You are a game NPC response engine, supposed to respond to player_utterance. Return ONLY a single CSV line and nothing else.This CSV line has one to four fields separated by '|':
+<Field 1>The first field is an answer to the player utterance.Respond as the NPC.Stick to your role, assume your emotions and opinions.Use a nitti gritty tone fit for a zombie apocalypse.</Field 1>
+<Fields 2-4>Write 1-3 of the following allowed actions:guard_area, follow_player, use_gun, use_melee, use_bow, idle
+Optional target hint token: attack=<target> (single token, no spaces).
+guard_area to stay put, keep watch, wait, stand.
+follow_player to walk behind, follow, run.
+use_gun to use gun, rifle, thrower.
+use_melee to bash, cut, kick, in close combat.
+use_bow to use bow, crossbow, stealth.
+attack=<creature> to target and attack a creature from your map.
+idle if none of the above.</Fields 2-4>
+Print nothing else other than Fields 1-4, separated by |If you break that format, you have failed.Output must be a single line with no markdown or extra text.Absolutely no notes, explanations, examples, or parenthetical text.<Example Output>What?|idle</Example Output>
+<Example Output>Lets put them in the ground.|use_melee</Example Output>
+<Example Output>
+Providing cover!|guard_area|use_gun</Example Output>
+</System>
+"""
 )
 
-DEFAULT_SNAPSHOT = (
-    "SITUATION\n"
-    "id: req_0\n"
-    "player_name: TonZa\n"
-    "player_utterance: Shoot the devourer!\n"
-    "your_name: Leoma Heck\n"
-    "your_state: morale=6 hunger=0 thirst=0 pain=6 stamina=10000/10000 "
-    "sleepiness=88 hp_percent=99 effects=[social_satisfied:1]\n"
-    "your_emotions: danger_assessment=4.25 panic=0 confidence=0.99 emergency=false\n"
-    "your_personality: aggression=-1 bravery=10 collector=2 altruism=-2\n"
-    "your_opinion_of_player: trust=4 fear=6 value=1 anger=4\n"
-    "threats: dissoluted devourer@1 ts=17\n"
-    "friendlies: player@1\n"
-    "ruleset: attitude=NPCATT_FOLLOW rules=[allow_pulp use_silent use_guns "
-    "avoid_friendly_fire allow_complain follow_close ignore_noise]\n"
-    "inventory: wielded=\"lug wrench\" gun=false ammo=0/0 reload_needed=false "
-    "weight_percent=48 volume_percent=76\n"
-    "inventory_usable: [lug wrench, ++\xc2\xa0fedora, cellphone]\n"
-    "inventory_combat: [lug wrench, ++\xc2\xa0brass knuckles (pair), screwdriver (in use)]\n"
-    "bandage_possible: true\n"
-    "\n"
-    "legend:\n"
-    "- ... open area\n"
-    "0 ... obstructive area (movement speed > 100)\n"
-    "6 ... obstructed area\n"
-    "[a - z] ... creature\n"
-    "[A - Z] ... obstructed creature\n"
-    "| ... You (NPC)\n"
-    "map_legend:\n"
-    "a ... player\n"
-    "b ... dissoluted devourer\n"
-    "map:\n"
-    "-66060-\n"
-    "-66060-\n"
-    "-66066-\n"
-    "---|---\n"
-    "--a-b--\n"
-    "-------\n"
-    "-------\n"
-)
+DEFAULT_SNAPSHOT = ("""
+Situation:
+SITUATION
+id: req_0
+player_name: TonZa
+player_utterance: shoot the axe guy, leoma!
+
+your_name: Leoma Heck
+your_state: morale=0 hunger=0 thirst=0 pain=31 stamina=10000/10000 sleepiness=109 hp_percent=95 effects=[bleed:7 socialized_recently:1 bandaged:1 bandaged:1 social_satisfied:1 asked_to_socialize:1]
+your_emotions: danger_assessment=0 panic=0 confidence=1 emergency=false
+your_personality: aggression=-1 bravery=10 collector=2 altruism=-2
+your_opinion_of_player: trust=5 fear=6 value=1 anger=4
+
+threats: axe murderer@1 ts=4.55357
+friendlies: player@2
+
+ruleset: attitude=NPCATT_FOLLOW rules=[allow_pulp use_silent avoid_friendly_fire allow_complain follow_close ignore_noise]
+
+inventory: wielded="lug wrench" ammo=0/0 reload_needed=false weight_percent=48 volume_percent=76
+inventory_usable: [lug wrench, ++ fedora, cellphone]
+inventory_combat: [lug wrench, ++ brass knuckles (pair), screwdriver (in use)]
+bandage_possible: true
+
+legend:
+- ... open area
+0 ... obstructive area (movement speed > 100)
+6 ... obstructed area
+[a - z] ... creature
+[A - Z] ... obstructed creature
+| ... You (NPC)
+map_legend:
+a ... player
+b ... axe murderer
+map:
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+--------------------|--------------------
+------------------a--b-------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+""")
 
 
 def read_text(path: str) -> str:

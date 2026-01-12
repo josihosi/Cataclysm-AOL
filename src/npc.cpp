@@ -2533,7 +2533,8 @@ bool npc::is_player_ally() const
 }
 
 void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
-                                 const std::string &request_id )
+                                 const std::string &request_id,
+                                 const std::string &target_hint )
 {
     llm_intent_state &state = llm_intent_state_for( *this );
     state.queue.clear();
@@ -2546,6 +2547,14 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
     state.active_turn = calendar::before_time_starts;
     state.last_applied_turn = calendar::before_time_starts;
     state.request_id = request_id;
+    state.target_hint = target_hint;
+    if( !state.target_hint.empty() ) {
+        state.target_attacks_remaining = 1;
+        state.target_turns_remaining = 10;
+    } else {
+        state.target_attacks_remaining = 0;
+        state.target_turns_remaining = 0;
+    }
 }
 
 void npc::clear_llm_intent_actions()
@@ -2556,6 +2565,9 @@ void npc::clear_llm_intent_actions()
     state.active_turn = calendar::before_time_starts;
     state.last_applied_turn = calendar::before_time_starts;
     state.request_id.clear();
+    state.target_hint.clear();
+    state.target_attacks_remaining = 0;
+    state.target_turns_remaining = 0;
 }
 
 bool npc::has_llm_intent_actions() const
