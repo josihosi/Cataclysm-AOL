@@ -1381,6 +1381,8 @@ void npc::execute_llm_intent_action( llm_intent_action action )
         case llm_intent_action::use_gun: {
             rules.set_flag( ally_rule::use_guns );
             rules.clear_flag( ally_rule::use_silent );
+            rules.set_specific_override_state( ally_rule::use_guns, true );
+            rules.set_specific_override_state( ally_rule::use_silent, false );
             if( item *best_gun = evaluate_best_gun() ) {
                 wield( *best_gun );
             }
@@ -1388,10 +1390,25 @@ void npc::execute_llm_intent_action( llm_intent_action action )
         }
         case llm_intent_action::use_melee: {
             rules.clear_flag( ally_rule::use_guns );
+            rules.set_specific_override_state( ally_rule::use_guns, false );
             if( item *best_melee = evaluate_best_melee() ) {
                 wield( *best_melee );
-            } else if( get_wielded_item() && get_wielded_item()->is_gun() ) {
+            } else if( get_wielded_item() && get_wielded_item()->is_gun() ) {   
                 unwield();
+            }
+            break;
+        }
+        case llm_intent_action::use_bow: {
+            rules.set_flag( ally_rule::use_guns );
+            rules.set_flag( ally_rule::use_silent );
+            rules.set_specific_override_state( ally_rule::use_guns, true );
+            rules.set_specific_override_state( ally_rule::use_silent, true );   
+            item *best_gun = evaluate_best_silent_gun();
+            if( best_gun == nullptr ) {
+                best_gun = evaluate_best_gun();
+            }
+            if( best_gun != nullptr ) {
+                wield( *best_gun );
             }
             break;
         }
@@ -4263,6 +4280,45 @@ item *npc::evaluate_best_gun() const
 
     visit_items( [this, &best_value, &best]( item * node, item * ) {
         if( node->is_gun() && can_wield( *node ).success() ) {
+            const double weapon_value = evaluate_weapon( *node );
+            if( weapon_value > best_value ) {
+                best = const_cast<item *>( node );
+                best_value = weapon_value;
+            }
+            return VisitResponse::SKIP;
+        }
+        return VisitResponse::NEXT;
+    } );
+
+    return best;
+}
+
+item *npc::evaluate_best_silent_gun() const
+{
+    auto has_silent_mode = [this]( const item &candidate ) -> bool {
+        if( !candidate.is_gun() ) {
+            return false;
+        }
+        for( const std::pair<const gun_mode_id, gun_mode> &mode : candidate.gun_all_modes() ) {
+            if( mode.second.melee() || mode.second.flags.count( "NPC_AVOID" ) ) {
+                continue;
+            }
+            if( !can_use( *mode.second.target ) ) {
+                continue;
+            }
+            if( mode.second->is_silent() ) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    item_location weapon = get_wielded_item();
+    item *best = weapon && weapon->is_gun() && has_silent_mode( *weapon ) ? &*weapon : nullptr;
+    double best_value = best ? evaluate_weapon( *best ) : 0.0;
+
+    visit_items( [this, &best_value, &best, &has_silent_mode]( item * node, item * ) {
+        if( node->is_gun() && can_wield( *node ).success() && has_silent_mode( *node ) ) {
             const double weapon_value = evaluate_weapon( *node );
             if( weapon_value > best_value ) {
                 best = const_cast<item *>( node );

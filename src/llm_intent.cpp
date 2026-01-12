@@ -148,6 +148,7 @@ const std::vector<std::string> &allowed_actions()
         "follow_player",
         "use_gun",
         "use_melee",
+        "use_bow",
         "idle"
     };
     return actions;
@@ -176,6 +177,9 @@ llm_intent_action intent_action_from_token( const std::string &token )
     }
     if( token == "use_melee" ) {
         return llm_intent_action::use_melee;
+    }
+    if( token == "use_bow" ) {
+        return llm_intent_action::use_bow;
     }
     if( token == "idle" ) {
         return llm_intent_action::none;
