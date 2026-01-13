@@ -1371,7 +1371,7 @@ void npc::regen_ai_cache()
 void npc::execute_llm_intent_action( llm_intent_action action )
 {
     switch( action ) {
-        case llm_intent_action::guard_area:
+        case llm_intent_action::wait_here:
             talk_function::assign_guard( *this );
             execute_action( npc_pause );
             break;
@@ -1379,7 +1379,7 @@ void npc::execute_llm_intent_action( llm_intent_action action )
             talk_function::stop_guard( *this );
             execute_action( npc_follow_player );
             break;
-        case llm_intent_action::use_gun: {
+        case llm_intent_action::equip_gun: {
             rules.set_flag( ally_rule::use_guns );
             rules.clear_flag( ally_rule::use_silent );
             rules.set_specific_override_state( ally_rule::use_guns, true );
@@ -1389,12 +1389,12 @@ void npc::execute_llm_intent_action( llm_intent_action action )
             }
             break;
         }
-        case llm_intent_action::use_melee: {
+        case llm_intent_action::equip_melee: {
             rules.clear_flag( ally_rule::use_guns );
             rules.set_specific_override_state( ally_rule::use_guns, false );
             if( item *best_melee = evaluate_best_melee() ) {
                 wield( *best_melee );
-            } else if( get_wielded_item() && get_wielded_item()->is_gun() ) {   
+            } else if( get_wielded_item() && get_wielded_item()->is_gun() ) {
                 unwield();
             }
             break;
@@ -1452,8 +1452,27 @@ void npc::apply_llm_intent_target()
         }
         return text;
     };
+    auto normalize_key = [&]( const std::string &text ) -> std::string {
+        std::string out = normalize_name( text );
+        bool last_underscore = false;
+        for( char &c : out ) {
+            if( std::isspace( static_cast<unsigned char>( c ) ) ) {
+                c = '_';
+            }
+            if( c == '_' ) {
+                if( last_underscore ) {
+                    c = '\0';
+                }
+                last_underscore = true;
+            } else {
+                last_underscore = false;
+            }
+        }
+        out.erase( std::remove( out.begin(), out.end(), '\0' ), out.end() );
+        return out;
+    };
 
-    std::string target_hint = normalize_name( state.target_hint );
+    std::string target_hint = normalize_key( state.target_hint );
     if( target_hint.empty() ) {
         state.target_hint.clear();
         state.target_attacks_remaining = 0;
@@ -1479,15 +1498,39 @@ void npc::apply_llm_intent_target()
         if( !sees( here, critter ) ) {
             continue;
         }
-        const std::string name = normalize_name( critter.disp_name() );
-        if( name.empty() ) {
+        std::vector<std::string> names;
+        names.reserve( 4 );
+        const std::string disp_name = normalize_name( critter.disp_name() );
+        if( !disp_name.empty() ) {
+            names.push_back( disp_name );
+            const std::string disp_key = normalize_key( disp_name );
+            if( disp_key != disp_name ) {
+                names.push_back( disp_key );
+            }
+        }
+        if( critter.is_avatar() ) {
+            const std::string player_name = normalize_name( critter.get_name() );
+            if( !player_name.empty() ) {
+                names.push_back( player_name );
+                const std::string player_key = normalize_key( player_name );
+                if( player_key != player_name ) {
+                    names.push_back( player_key );
+                }
+            }
+            names.push_back( "player" );
+            names.push_back( "you" );
+        }
+        if( names.empty() ) {
             continue;
         }
         int match = 0;
-        if( name == target_hint ) {
-            match = 2;
-        } else if( name.find( target_hint ) != std::string::npos ) {
-            match = 1;
+        for( const std::string &name : names ) {
+            if( name == target_hint ) {
+                match = 2;
+                break;
+            } else if( name.find( target_hint ) != std::string::npos ) {
+                match = std::max( match, 1 );
+            }
         }
         if( match == 0 && target_hint.size() == 1 ) {
             const std::string &sym = critter.symbol();
@@ -1507,6 +1550,13 @@ void npc::apply_llm_intent_target()
 
     if( best != nullptr ) {
         ai_cache.target = g->shared_from( *best );
+        const auto already_hostile = std::any_of( ai_cache.hostile_guys.begin(),
+        ai_cache.hostile_guys.end(), [&]( const weak_ptr_fast<Creature> &entry ) {
+            return entry.lock().get() == best;
+        } );
+        if( !already_hostile ) {
+            ai_cache.hostile_guys.emplace_back( ai_cache.target );
+        }
         const item_location weapon = get_wielded_item();
         const bool npc_ranged = weapon && weapon->is_gun();
         if( best->is_monster() ) {
@@ -1567,6 +1617,42 @@ void npc::move()
                    get_name(), target_name, ai_cache.danger, *confident_range_cache );
 
     llm_intent_state &state = llm_intent_state_for( *this );
+    auto attempt_llm_forced_attack = [&]() -> bool {
+        if( state.target_attacks_remaining <= 0 || state.target_hint.empty() ) {
+            return false;
+        }
+        if( Creature *target = current_target() ) {
+            npc_action forced = method_of_attack();
+            if( forced == npc_do_attack ) {
+                if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                    add_msg( "LLM intent forced immediate attack" );
+                }
+                execute_action( forced );
+                return true;
+            }
+            const item_location weapon = get_wielded_item();
+            if( weapon && weapon->is_gun() ) {
+                const int dist = rl_dist( pos_bub(), target->pos_bub() );
+                const int conf = confident_shoot_range( *weapon, recoil_total() );
+                if( dist <= conf ) {
+                    execute_action( npc_aim );
+                    if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                        add_msg( "LLM intent aiming at %s", target->disp_name() );
+                    }
+                    return true;
+                }
+            }
+            update_path( target->pos_bub() );
+            move_to_next();
+            if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                add_msg( "LLM intent advancing toward %s", target->disp_name() );
+            }
+            return true;
+        } else if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+            add_msg( "LLM intent had no target to attack" );
+        }
+        return false;
+    };
     if( get_option<bool>( "LLM_INTENT_ENABLE" ) &&
         state.active != llm_intent_action::none &&
         state.last_applied_turn != calendar::turn ) {
@@ -1576,52 +1662,23 @@ void npc::move()
             const bool llm_safe = ai_cache.danger <= 0 && target == nullptr &&  
                                   !sees_dangerous_field( pos_bub() ) &&
                                   !has_effect( effect_npc_fire_bad );
-            const bool allow_in_danger = state.active == llm_intent_action::use_gun ||
-                                         state.active == llm_intent_action::use_melee ||
+            const bool allow_in_danger = state.active == llm_intent_action::equip_gun ||
+                                         state.active == llm_intent_action::equip_melee ||
                                          state.active == llm_intent_action::use_bow;
             if( llm_safe || allow_in_danger ) {
                 execute_llm_intent_action( state.active );
                 if( !state.queue.empty() ) {
-                    state.queue.pop_front();
-                }
-                state.active = llm_intent_action::none;
-                state.active_turn = calendar::before_time_starts;
-                state.last_applied_turn = calendar::turn;
-                if( state.target_attacks_remaining > 0 && !state.target_hint.empty() ) {
-                    if( Creature *target = current_target() ) {
-                        npc_action forced = method_of_attack();
-                        if( forced == npc_do_attack ) {
-                            if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-                                add_msg( "LLM intent forced immediate attack" );
-                            }
-                            execute_action( forced );
-                            return;
-                        }
-                        const item_location weapon = get_wielded_item();
-                        if( weapon && weapon->is_gun() ) {
-                            const int dist = rl_dist( pos_bub(), target->pos_bub() );
-                            const int conf = confident_shoot_range( *weapon, recoil_total() );
-                            if( dist <= conf ) {
-                                execute_action( npc_aim );
-                                if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-                                    add_msg( "LLM intent aiming at %s", target->disp_name() );
-                                }
-                                return;
-                            }
-                        }
-                        update_path( target->pos_bub() );
-                        move_to_next();
-                        if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-                            add_msg( "LLM intent advancing toward %s", target->disp_name() );
-                        }
-                        return;
-                    } else if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-                        add_msg( "LLM intent had no target to attack" );
-                    }
-                }
-                return;
+                state.queue.pop_front();
+            }
+            state.active = llm_intent_action::none;
+            state.active_turn = calendar::before_time_starts;
+            state.last_applied_turn = calendar::turn;
+            return;
             }
         }
+    }
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) && attempt_llm_forced_attack() ) {
+        return;
     }
 
     Character &player_character = get_player_character();

@@ -1507,9 +1507,7 @@ void game::chat()
             } );
             if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                 const std::string utterance = !yell_msg.empty() ? yell_msg : message;
-                for( npc *guy : hearers ) {
-                    llm_intent::enqueue_request( *guy, utterance );
-                }
+                llm_intent::enqueue_requests( hearers, utterance );
             }
             if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
                 if( hearers.empty() ) {

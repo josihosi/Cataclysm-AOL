@@ -2549,8 +2549,8 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
     state.request_id = request_id;
     state.target_hint = target_hint;
     if( !state.target_hint.empty() ) {
-        state.target_attacks_remaining = 1;
-        state.target_turns_remaining = 10;
+        state.target_attacks_remaining = 2;
+        state.target_turns_remaining = 25;
     } else {
         state.target_attacks_remaining = 0;
         state.target_turns_remaining = 0;
@@ -2648,6 +2648,17 @@ bool npc::is_travelling() const
 
 Creature::Attitude npc::attitude_to( const Creature &other ) const
 {
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+        const llm_intent_state &state = llm_intent_state_for( *this );
+        if( state.target_attacks_remaining > 0 && state.target_turns_remaining > 0 &&
+            !state.target_hint.empty() ) {
+            const Creature *forced = current_target();
+            if( forced != nullptr && forced == &other ) {
+                return Creature::Attitude::HOSTILE;
+            }
+        }
+    }
+
     const auto same_as = []( const Creature * lhs, const Creature * rhs ) {
         return &lhs == &rhs;
     };

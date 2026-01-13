@@ -8,9 +8,22 @@ This is something I would like to see in games in general, so I'm trying to crea
 Yelling (C + b) next to a follower NPC activates a local LLM toolcall, which thinks of an answer and some actions.
 The following actions can be initiated by the toolcall right now:
 - follow_player
-- guard_area
-- use_gun
-- use_melee
+- wait_here
+- equip_gun
+- equip_melee
+- attack=<target>
+
+## Files added in this fork (since initial clone)
+- Agent.md
+- Plan.md
+- Plan.md.2
+- build_and_run.cmd
+- just_build.cmd
+- src/llm_intent.cpp
+- src/llm_intent.h
+- tools/llm_runner/prompt_playground.py
+- tools/llm_runner/runner.py
+- Generated logs (not tracked): config/llm_intent.log
 
 ## Installation
 
