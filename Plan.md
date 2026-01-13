@@ -21,6 +21,7 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 - idle: no-op (speech only).
 - use_gun: allow guns + wield best gun.
 - use_melee: disallow guns + wield best melee (or unwield gun).
+- attack=<target> to attack a certain target
 
 ### Implementation Steps (short)
 1) Add more intent actions (combat/movement) to the whitelist and mapping.
