@@ -1426,9 +1426,9 @@ void npc::apply_llm_intent_target()
         return;
     }
     if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-        add_msg_debug( debugmode::DF_NPC, "LLM intent target hint: %s (attacks %d, turns %d)",
-                       state.target_hint, state.target_attacks_remaining,
-                       state.target_turns_remaining );
+        add_msg( "LLM intent target hint: %s (attacks %d, turns %d)",
+                 state.target_hint, state.target_attacks_remaining,
+                 state.target_turns_remaining );
     }
 
     auto normalize_name = []( std::string text ) -> std::string {
@@ -1518,11 +1518,11 @@ void npc::apply_llm_intent_target()
             ai_cache.danger = NPC_DANGER_VERY_LOW;
         }
         if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-            add_msg_debug( debugmode::DF_NPC, "LLM intent target resolved to %s at dist %d",
-                           best->disp_name(), best_dist );
+            add_msg( "LLM intent target resolved to %s at dist %d",
+                     best->disp_name(), best_dist );
         }
     } else if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-        add_msg_debug( debugmode::DF_NPC, "LLM intent target '%s' not found", state.target_hint );
+        add_msg( "LLM intent target '%s' not found", state.target_hint );
     }
 
     state.target_turns_remaining -= 1;
@@ -1588,13 +1588,35 @@ void npc::move()
                 state.active_turn = calendar::before_time_starts;
                 state.last_applied_turn = calendar::turn;
                 if( state.target_attacks_remaining > 0 && !state.target_hint.empty() ) {
-                    npc_action forced = method_of_attack();
-                    if( forced == npc_do_attack ) {
-                        if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-                            add_msg_debug( debugmode::DF_NPC, "LLM intent forced immediate attack" );
+                    if( Creature *target = current_target() ) {
+                        npc_action forced = method_of_attack();
+                        if( forced == npc_do_attack ) {
+                            if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                                add_msg( "LLM intent forced immediate attack" );
+                            }
+                            execute_action( forced );
+                            return;
                         }
-                        execute_action( forced );
+                        const item_location weapon = get_wielded_item();
+                        if( weapon && weapon->is_gun() ) {
+                            const int dist = rl_dist( pos_bub(), target->pos_bub() );
+                            const int conf = confident_shoot_range( *weapon, recoil_total() );
+                            if( dist <= conf ) {
+                                execute_action( npc_aim );
+                                if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                                    add_msg( "LLM intent aiming at %s", target->disp_name() );
+                                }
+                                return;
+                            }
+                        }
+                        update_path( target->pos_bub() );
+                        move_to_next();
+                        if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                            add_msg( "LLM intent advancing toward %s", target->disp_name() );
+                        }
                         return;
+                    } else if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                        add_msg( "LLM intent had no target to attack" );
                     }
                 }
                 return;
