@@ -200,12 +200,11 @@ enum npc_need {
 
 enum class llm_intent_action : int {
     none = 0,
-    guard_area,
     follow_player,
-    use_gun,
-    use_melee,
-    clear_overrides,
-    idle
+    wait_here,
+    equip_gun,
+    equip_melee,
+    use_bow
 };
 
 struct llm_intent_override_state {
