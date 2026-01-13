@@ -19,6 +19,7 @@
 
 #include "character_id.h"
 #include "creature_tracker.h"
+#include "itype.h"
 #include "debug.h"
 #include "effect.h"
 #include "filesystem.h"
@@ -144,10 +145,10 @@ bool is_action_token( const std::string &token )
 const std::vector<std::string> &allowed_actions()
 {
     static const std::vector<std::string> actions = {
-        "guard_area",
+        "wait_here",
         "follow_player",
-        "use_gun",
-        "use_melee",
+        "equip_gun",
+        "equip_melee",
         "use_bow",
         "idle"
     };
@@ -166,17 +167,17 @@ bool is_allowed_action( const std::string &token )
 
 llm_intent_action intent_action_from_token( const std::string &token )
 {
-    if( token == "guard_area" ) {
-        return llm_intent_action::guard_area;
+    if( token == "wait_here" ) {
+        return llm_intent_action::wait_here;
     }
     if( token == "follow_player" ) {
         return llm_intent_action::follow_player;
     }
-    if( token == "use_gun" ) {
-        return llm_intent_action::use_gun;
+    if( token == "equip_gun" ) {
+        return llm_intent_action::equip_gun;
     }
-    if( token == "use_melee" ) {
-        return llm_intent_action::use_melee;
+    if( token == "equip_melee" ) {
+        return llm_intent_action::equip_melee;
     }
     if( token == "use_bow" ) {
         return llm_intent_action::use_bow;
@@ -683,32 +684,8 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     }
 
     out << "\n";
-    out << "ruleset: attitude=" << npc_attitude_id( listener.get_attitude() ) << " rules=[";
-    bool first_rule = true;
-    for( const auto &entry : ally_rule_strs ) {
-        if( listener.rules.has_flag( entry.second.rule ) ) {
-            if( !first_rule ) {
-                out << " ";
-            }
-            first_rule = false;
-            out << entry.first;
-        }
-    }
-    out << "]\n\n";
 
     item_location wielded = listener.get_wielded_item();
-    const units::mass weight = listener.weight_carried();
-    const units::mass weight_cap = listener.weight_capacity();
-    const units::volume volume = listener.volume_carried();
-    const units::volume volume_cap = listener.volume_capacity();
-    const int weight_pct = weight_cap > 0_gram
-                           ? static_cast<int>( 100.0 * units::to_gram<double>( weight ) /
-                                               units::to_gram<double>( weight_cap ) )
-                           : 0;
-    const int volume_pct = volume_cap > 0_ml
-                           ? static_cast<int>( 100.0 * units::to_milliliter<double>( volume ) /
-                                               units::to_milliliter<double>( volume_cap ) )
-                           : 0;
 
     out << "inventory: ";
     if( wielded ) {
@@ -717,12 +694,33 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     } else {
         out << "wielded=none";
     }
-    out << " weight_percent=" << weight_pct << " volume_percent=" << volume_pct << "\n";
+    out << "\n";
 
     std::vector<std::string> usable_items;
     std::vector<std::string> combat_guns;
     std::vector<std::string> combat_melee;
     bool bandage_possible = false;
+    const auto format_gun_label = []( const item &gun ) -> std::string {
+        std::string name = sanitize_text( gun.tname() );
+        int capacity = 0;
+        itype_id ammo_id = gun.ammo_current();
+        if( ammo_id.is_null() ) {
+            ammo_id = gun.ammo_default();
+        }
+        if( !ammo_id.is_null() ) {
+            const itype *ammo_type = item::find_type( ammo_id );
+            if( ammo_type && ammo_type->ammo ) {
+                capacity = gun.ammo_capacity( ammo_type->ammo->type );
+            }
+        }
+        const int ammo = gun.ammo_remaining();
+        if( capacity > 0 ) {
+            name += " (" + std::to_string( ammo ) + "/" + std::to_string( capacity ) + ")";
+        } else if( ammo > 0 ) {
+            name += " (" + std::to_string( ammo ) + ")";
+        }
+        return name;
+    };
     listener.visit_items( [&]( item * it, item * ) {
         if( it == nullptr ) {
             return VisitResponse::NEXT;
@@ -733,7 +731,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         }
         if( it->is_gun() ) {
             if( combat_guns.size() < max_items ) {
-                combat_guns.push_back( sanitize_text( it->tname() ) );
+                combat_guns.push_back( format_gun_label( *it ) );
             }
         } else if( it->is_melee() ) {
             if( combat_melee.size() < max_items ) {
@@ -831,10 +829,10 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "Write 1-3 of the following allowed actions:"
                "%s\n"
                "<Allowed actions>"
-               "guard_area to stay put, keep watch, wait, stand.\n"
+               "wait_here to stay put, keep watch, wait, stand.\n"
                "follow_player to walk behind, follow, run.\n"
-               "use_gun to use gun, rifle, thrower.\n"
-               "use_melee to bash, cut, kick, in close combat.\n"
+               "equip_gun to equip gun, rifle, thrower.\n"
+               "equip_melee to equip melee, get ready to bash, cut, kick.\n"
                "use_bow to use bow, crossbow, stealth.\n"
                "attack=<target> to target a creature from your map.\n"
                "idle if none of the above.\n"
@@ -844,15 +842,15 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "If you break that format, you have failed."
                "Output must be a single line with no markdown or extra text."
                "Absolutely no notes, explanations, examples, or parenthetical text."
-               "<Example Output>"
+               "<Example Output 1>"
                "Blow me.|idle"
-               "</Example Output>\n"
-               "<Example Output>"
-               "Lets put those fucks in the ground.|use_melee|attack=Zombie"
-               "</Example Output>\n"
-               "<Example Output>\n"
-               "Providing cover!|guard_area|use_gun"
-               "</Example Output>\n"
+               "</Example Output 1>\n"
+               "<Example Output 2>"
+               "Lets put those fucks in the ground.|equip_melee|attack=Zombie"
+               "</Example Output 2>\n"
+               "<Example Output 3>\n"
+               "Providing cover!|wait_here|equip_gun"
+               "</Example Output 3>\n"
                "</System>\n",
                snapshot, action_list_with_target );
 }
@@ -1554,6 +1552,17 @@ void enqueue_request( npc &listener, const std::string &player_utterance )
 void enqueue_request( const npc &listener, const std::string &player_utterance )
 {
     get_manager().enqueue_request( const_cast<npc &>( listener ), player_utterance );
+}
+
+void enqueue_requests( const std::vector<npc *> &listeners,
+                       const std::string &player_utterance )
+{
+    for( npc *listener : listeners ) {
+        if( listener == nullptr ) {
+            continue;
+        }
+        get_manager().enqueue_request( *listener, player_utterance );
+    }
 }
 
 void prewarm()
