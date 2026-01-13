@@ -779,9 +779,9 @@ class npc_template;
 enum class llm_intent_action : int {
     none = 0,
     follow_player,
-    guard_area,
-    use_gun,
-    use_melee,
+    wait_here,
+    equip_gun,
+    equip_melee,
     use_bow
 };
 
