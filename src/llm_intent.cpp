@@ -5,6 +5,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cctype>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
@@ -149,7 +150,7 @@ const std::vector<std::string> &allowed_actions()
         "follow_player",
         "equip_gun",
         "equip_melee",
-        "use_bow",
+        "equip_bow",
         "idle"
     };
     return actions;
@@ -179,8 +180,8 @@ llm_intent_action intent_action_from_token( const std::string &token )
     if( token == "equip_melee" ) {
         return llm_intent_action::equip_melee;
     }
-    if( token == "use_bow" ) {
-        return llm_intent_action::use_bow;
+    if( token == "equip_bow" ) {
+        return llm_intent_action::equip_bow;
     }
     if( token == "idle" ) {
         return llm_intent_action::none;
@@ -625,6 +626,21 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     static constexpr size_t max_creatures = 5;
     static constexpr size_t max_effects = 6;
     static constexpr size_t max_items = 3;
+    auto scale_unipolar = []( double value, double max_value ) -> int {
+        if( max_value <= 0.0 ) {
+            return 0;
+        }
+        const double clamped = std::clamp( value, 0.0, max_value );
+        return static_cast<int>( std::round( ( clamped / max_value ) * 10.0 ) );
+    };
+    auto scale_bipolar = []( double value, double min_value, double max_value ) -> int {
+        if( max_value <= min_value ) {
+            return 0;
+        }
+        const double clamped = std::clamp( value, min_value, max_value );
+        const double ratio = ( clamped - min_value ) / ( max_value - min_value );
+        return static_cast<int>( std::round( ratio * 10.0 ) );
+    };
 
     std::ostringstream out;
     out << "SITUATION\n";
@@ -633,14 +649,28 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     out << "player_utterance: " << sanitize_text( player_utterance ) << "\n\n";
     out << "your_name: " << sanitize_text( listener.get_name() ) << "\n";
 
-    out << "your_state: ";
-    out << "morale=" << listener.get_morale_level();
-    out << " hunger=" << listener.get_hunger();
-    out << " thirst=" << listener.get_thirst();
-    out << " pain=" << listener.get_pain();
-    out << " stamina=" << listener.get_stamina() << "/" << listener.get_stamina_max();
-    out << " sleepiness=" << listener.get_sleepiness();
-    out << " hp_percent=" << listener.hp_percentage();
+    const int morale_scaled = scale_bipolar( listener.get_morale_level(), -100.0, 100.0 );
+    const int hunger_scaled = scale_unipolar( listener.get_hunger(), 300.0 );
+    const int thirst_scaled = scale_unipolar( listener.get_thirst(), 300.0 );
+    const int pain_scaled = scale_unipolar( listener.get_pain(), 100.0 );
+    const int max_sleepiness = static_cast<int>( sleepiness_levels::MASSIVE_SLEEPINESS );
+    const int sleepiness_scaled = scale_unipolar( listener.get_sleepiness(), max_sleepiness );
+    const int hp_scaled = scale_unipolar( listener.hp_percentage(), 100.0 );
+    double stamina_percent = 0.0;
+    if( listener.get_stamina_max() > 0 ) {
+        stamina_percent = static_cast<double>( listener.get_stamina() ) * 100.0 /
+                          static_cast<double>( listener.get_stamina_max() );
+    }
+    const int stamina_scaled = scale_unipolar( stamina_percent, 100.0 );
+
+    out << "your_state[0-10]: ";
+    out << "morale=" << morale_scaled;
+    out << " hunger=" << hunger_scaled;
+    out << " thirst=" << thirst_scaled;
+    out << " pain=" << pain_scaled;
+    out << " stamina=" << stamina_scaled;
+    out << " sleepiness=" << sleepiness_scaled;
+    out << " hp_percent=" << hp_scaled;
     out << " effects=[";
     size_t effect_count = 0;
     for( const std::reference_wrapper<const effect> &eff_ref : listener.get_effects() ) {
@@ -655,23 +685,26 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     }
     out << "]\n";
 
-    out << "your_emotions: ";
-    out << "danger_assessment=" << listener.danger_assessment();
-    out << " panic=" << listener.mem_combat.panic;
-    out << " confidence=" << listener.mem_combat.my_health;
-    out << " emergency=" << ( listener.emergency() ? "true" : "false" ) << "\n";
+    const int danger_scaled = scale_unipolar( listener.danger_assessment(),
+                              static_cast<double>( NPC_CHARACTER_DANGER_MAX ) );
+    const int panic_scaled = scale_unipolar( listener.mem_combat.panic, 20.0 );
+    const int confidence_scaled = scale_unipolar( listener.mem_combat.my_health, 1.0 );
+    out << "your_emotions[0-10]: ";
+    out << "danger_assessment=" << danger_scaled;
+    out << " panic=" << panic_scaled;
+    out << " confidence=" << confidence_scaled << "\n";
 
-    out << "your_personality: ";
-    out << "aggression=" << static_cast<int>( listener.personality.aggression );
-    out << " bravery=" << static_cast<int>( listener.personality.bravery );
-    out << " collector=" << static_cast<int>( listener.personality.collector );
-    out << " altruism=" << static_cast<int>( listener.personality.altruism ) << "\n";
+    out << "your_personality[0-10]: ";
+    out << "aggression=" << scale_bipolar( listener.personality.aggression, -10.0, 10.0 );
+    out << " bravery=" << scale_bipolar( listener.personality.bravery, -10.0, 10.0 );
+    out << " collector=" << scale_bipolar( listener.personality.collector, -10.0, 10.0 );
+    out << " altruism=" << scale_bipolar( listener.personality.altruism, -10.0, 10.0 ) << "\n";
 
-    out << "your_opinion_of_player: ";
-    out << "trust=" << listener.op_of_u.trust;
-    out << " intimidation=" << listener.op_of_u.fear;
-    out << " respect=" << listener.op_of_u.value;
-    out << " anger=" << listener.op_of_u.anger << "\n\n";
+    out << "your_opinion_of_player[0-10]: ";
+    out << "trust=" << scale_bipolar( listener.op_of_u.trust, -10.0, 10.0 );
+    out << " intimidation=" << scale_bipolar( listener.op_of_u.fear, -10.0, 10.0 );
+    out << " respect=" << scale_bipolar( listener.op_of_u.value, -10.0, 10.0 );
+    out << " anger=" << scale_bipolar( listener.op_of_u.anger, -10.0, 10.0 ) << "\n\n";
 
     const std::vector<creature_snapshot> hostile = filter_visible( listener, Creature::Attitude::HOSTILE,
             visible_range );
@@ -857,8 +890,8 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "Situation:\n%s\n"
                "<System>"
                "You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die."
-               "Return ONLY a single CSV line and nothing else, to be parsed by the game."
-               "This CSV line has one to four fields separated by '|':\n"
+               "Return a single line only, with correct syntax, to be parsed by the game."
+               "This line has two to four fields separated by ‘|’ :\n"
                "<Field 1>"
                "The first field is an answer to player_utterance."
                "You have decided to team up with the player for now, and must answer as the NPC."
@@ -871,18 +904,16 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "<Allowed actions>"
                "wait_here to stay put, keep watch, wait, stand.\n"
                "follow_player to walk behind, follow, run.\n"
-               "equip_gun to equip gun, rifle, thrower.\n"
-               "equip_melee to equip melee, get ready to bash, cut, kick.\n"
-               "use_bow to use bow, crossbow, stealth.\n"
-               "attack=<target> to attack a creature from your map.\n"
+               "equip_gun to equip gun, rifle, thrower, get ready to shoot.\n"
+               "equip_melee to equip melee, get ready to bash, cut, kick, stab.\n"
+               "equip_bow to use bow, crossbow, stealth.\n"
+               "attack=<target> to attack a target from your map.\n"
                "idle if none of the above.\n"
-               "</Allowed actions>"
-               "These actions describe your immediate physical state or behavior, not intent or plans."
+               "</Allowed actions>\n"
                "</Fields 2-4>\n"
-               "Print nothing else other than Fields 1-4, separated by |"
-               "If you break that format, you have failed."
-               "Output must be a single line with no markdown or extra text."
-               "Absolutely no notes, explanations, examples, or parenthetical text.\n"
+               "Print only Fields 1-4, separated by | ."
+               "If you break this format, you have failed."
+               "Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.\n"
                "<Example Output 1>"
                "Blow me.|idle"
                "</Example Output 1>\n"
@@ -1411,8 +1442,8 @@ class llm_intent_manager
                     csv_text = sanitize_llm_csv( csv_text );
                     speak_text = strip_speaker_prefix( extract_speech_field( csv_text ) );
                     if( !speak_text.empty() ) {
-                        if( npc *target = g->find_npc( resp.npc_id ) ) {
-                            target->say( speak_text );
+                        if( g->find_npc( resp.npc_id ) ) {
+                            add_msg( _( "%s says: \"%s\"" ), resp.npc_name, speak_text );
                             if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
                                 append_llm_intent_log( string_format( "say %s (%s)\n%s\n\n",
                                                       resp.npc_name, resp.request_id, speak_text ) );
