@@ -2591,6 +2591,13 @@ void npc::clear_llm_intent_actions()
     state.target_hint.clear();
     state.target_attacks_remaining = 0;
     state.target_turns_remaining = 0;
+    state.legend_targets.clear();
+}
+
+void npc::set_llm_intent_legend_map( std::map<char, weak_ptr_fast<Creature>> legend )
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    state.legend_targets = std::move( legend );
 }
 
 bool npc::has_llm_intent_actions() const
