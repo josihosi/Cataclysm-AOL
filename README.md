@@ -27,7 +27,7 @@ The following actions can be initiated by the toolcall right now:
 
 There is no installer right now, so you will have to build this yourself.
 Additionally, the LLMs will require you to set up a venv, download a model, and point the existing code at the right directiories.
-Furthermore, depdening on your hardware, small changes to the python runner may be needed, as this one is focussing on NPU use.
+Furthermore, depending on your hardware, small changes to the python runner may be needed, as this one is focussing on NPU use.
 I paid for it so i might as well use it >:|
 
 ### LLM runner (Python + OpenVINO GenAI)
@@ -191,8 +191,13 @@ If you want to contribute, and are comfortable to sharing a bit of private infor
 When playing the fork, enable LLM logging in the debug menu and send me /config/llm_intent.log, after you've tried it out.
 I can use the snapshots to train/distill an LLM, to make it snappy and more accurate.
 Needs at least 5k snapshots, apparently.
-
 So, send it to innovation@dabubu.at, or don't :)
+
+Alternatively, if you want to request additional LLM functions, just give me a request in this repo.
+
+Also, this entire fork was vibe-coded using Codex CLI. Thanks to the folks at OpenAI.
+
+If I forgot somebody, please just tell me.
 
 #### Is there a tutorial?
 
@@ -208,6 +213,7 @@ Press the `?` key, followed by the `1` key to see the full list of key commands.
 
 ## To-do (if the ADHD gods allow it)
 
+- More LLM actions
 - LLM training
 - NPC backstory snapshot inclusion
 - NPC conversation overhaul?
