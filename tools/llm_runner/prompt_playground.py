@@ -10,50 +10,87 @@ import time
 from typing import Dict, Optional
 
 
-ALLOWED_ACTIONS = ["wait_here", "follow_player", "equip_gun", "equip_melee", "use_bow", "attack=<target>" ,"idle"]
+ALLOWED_ACTIONS = ["wait_here", "follow_player", "equip_gun", "equip_melee", "equip_bow", "attack=<target>" ,"idle"]
+MODEL_DIRS = [
+    r"C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.3-int4-cw-ov",
+#    r"C:\Users\josef\openvino_models\DeepSeek-R1-Distill-Qwen-1.5B-int4-cw-ov",
+    r"C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.2-int4-cw-ov",
+    r"C:\Users\josef\openvino_models\Phi-3.5-mini-instruct-int4-cw-ov",
+#    r"C:\Users\josef\openvino_models\qwen3-8b-int4-cw-ov",
+]
 
-DEFAULT_SYSTEM_PROMPT = ("""
-<System>You are a game NPC response engine, supposed to respond to player_utterance. Return ONLY a single CSV line and nothing else.This CSV line has one to four fields separated by '|':
-<Field 1>The first field is an answer to the player utterance.Respond as the NPC.Stick to your role, assume your emotions and opinions.Use a nitti gritty tone fit for a zombie apocalypse.</Field 1>
-<Fields 2-4>Write 1-3 of the following allowed actions:wait_here, follow_player, equip_gun, equip_melee, use_bow, idle
-Optional target hint token: attack=<target> (single token, no spaces).
-wait_here to stay put, keep watch, wait, stand.
-follow_player to walk behind, follow, run.
-equip_gun to equip gun, rifle, thrower.
-equip_melee to equip melee, bash, cut, kick.
-use_bow to use bow, crossbow, stealth.
-attack=<target> to target and attack a creature from your map.
-idle if none of the above.</Fields 2-4>
-Print nothing else other than Fields 1-4, separated by |If you break that format, you have failed.Output must be a single line with no markdown or extra text.Absolutely no notes, explanations, examples, or parenthetical text.<Example Output>What?|idle</Example Output>
-<Example Output>Lets put them in the ground.|equip_melee</Example Output>
-<Example Output>
-Providing cover!|wait_here|equip_gun</Example Output>
-</System>
-"""
-)
+DEFAULT_SYSTEM_PROMPT = (
+               "Situation:\n%s\n"
+               "<System>"
+               "You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die."
+               "Return a single line only, with correct syntax, to be parsed by the game."
+               "This line has two to four fields separated by ‘|’ :\n"
+               "<Field 1>"
+               "The first field is an answer to player_utterance."
+               "You have decided to team up with the player for now, and must answer as the NPC."
+               "Stick to your role, with your emotions and opinions."
+               "Use a dry tone, with swear words, fit for a zombie apocalypse."
+               "</Field 1>\n"
+               "<Fields 2-4>"
+               "Write 1-3 of the following allowed actions:"
+               "%s\n"
+               "<Allowed actions>"
+               "wait_here to stay put, keep watch, wait, stand.\n"
+               "follow_player to walk behind, follow, run.\n"
+               "equip_gun to equip gun, rifle, thrower, get ready to shoot.\n"
+               "equip_melee to equip melee, get ready to bash, cut, kick, stab.\n"
+               "equip_bow to use bow, crossbow, stealth.\n"
+               "attack=<target> to attack a target from your map.\n"
+               "idle if none of the above.\n"
+               "</Allowed actions>\n"
+               "</Fields 2-4>\n"
+               "Print only Fields 1-4, separated by | ."
+               "If you break this format, you have failed."
+               "Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.\n"
+               "<Example Output 1>"
+               "Blow me.|idle"
+               "</Example Output 1>\n"
+               "<Example Output 2>"
+               "Lets put those fucks in the ground.|equip_melee|attack=zombie"
+               "</Example Output 2>\n"
+               "<Example Output 3>"
+               "Providing cover!|wait_here|equip_gun"
+               "</Example Output 3>\n"
+               "<Example Output 4>"
+               "Lets get some dinner!|equip_gun|attack=chicken"
+               "</Example Output 4>\n"
+               "<Example Output 5>"
+               "Don't worry, I'm ready to kick some teeth in.|equip_melee"
+               "</Example Output 5>\n"
+               "<Example Output 6>"
+               "Locked and loaded.|equip_gun"
+               "</Example Output 6>\n"
+               "</System>\n"
+,)
+
+TEMPERATURE = 0.6
+TOP_P = 0.9
+REPETITION_PENALTY = 1.1
 
 DEFAULT_SNAPSHOT = ("""
-Situation:
 SITUATION
-id: req_0
-player_name: TonZa
-player_utterance: shoot the axe guy, leoma!
+id: req_1
+player_name: Norine 'Red' Marroquin
+player_utterance: Get your bow out and shoot the axe murderer! I'll attack the Zombie!
 
-your_name: Leoma Heck
-your_state: morale=0 hunger=0 thirst=0 pain=31 stamina=10000/10000 sleepiness=109 hp_percent=95 effects=[bleed:7 socialized_recently:1 bandaged:1 bandaged:1 social_satisfied:1 asked_to_socialize:1]
-your_emotions: danger_assessment=0 panic=0 confidence=1 emergency=false
-your_personality: aggression=-1 bravery=10 collector=2 altruism=-2
-your_opinion_of_player: trust=5 fear=6 value=1 anger=4
+your_name: Jewell Cheek
+your_state: morale=5 hunger=0 thirst=0 pain=10 stamina=10000/10000 sleepiness=0 hp_percent=98 effects=[]
+your_emotions: danger_assessment=10 panic=2 confidence=1
+your_personality: aggression=3 bravery=7 collector=2 altruism=1
+your_opinion_of_player: trust=3 intimidation=-3 respect=0 anger=0
 
-threats: axe murderer@1 ts=4.55357
+threats: True
 friendlies: player@2
 
-ruleset: attitude=NPCATT_FOLLOW rules=[allow_pulp use_silent avoid_friendly_fire allow_complain follow_close ignore_noise]
-
-inventory: wielded="lug wrench" ammo=0/0 reload_needed=false weight_percent=48 volume_percent=76
-inventory_usable: [lug wrench, ++ fedora, cellphone]
-inventory_combat: [lug wrench, ++ brass knuckles (pair), screwdriver (in use)]
-bandage_possible: true
+inventory: wielded="F-S fighting knife"
+inventory_usable: [|\ fancy hairpin, smartphone (UPS) (unbrowsed), cash card]
+inventory_combat: [Cops' Glock 22 (15/15), hammer, F-S fighting knife]
+bandage_possible: false
 
 legend:
 - ... open area
@@ -65,17 +102,50 @@ legend:
 map_legend:
 a ... player
 b ... axe murderer
+c ... zombie
 map:
 -----------------------------------------
 -----------------------------------------
 -----------------------------------------
---------------------|--------------------
-------------------a--b-------------------
+------------------------------------0----
+-----------------------------------------
+-------------------------------0---------
+----------------------------------------0
+-----------------------------------------
+----------------------------------------0
+----------------------------60-----------
 -----------------------------------------
 -----------------------------------------
 -----------------------------------------
+-------------------------------0-0-------
+---------------------------------0-------
+---------------------------------------0-
+------------------------------0----------
+---------c-------------------------------
+------------------------b----6-------06--
+-------------------------------0-0------6
+--------------------|-----------------0--
+------------------a----------------60----
+-------------------------0----0----------
+--------------------------------0--------
+-----------------------------0--0----0---
+-----------------------------------0-----
+---------------------------------0-------
+-----------------------------------------
+--------------------------------0--0-----
+-----------------------------------------
+-------------------------------0---------
+-----------------------------0--------0--
+---------------------------0-------------
+----------------------------------------0
+---------------------------------6-----0-
+-----------------------------------------
+---------------------------0-----------0-
+--------------------------------0--------
 -----------------------------------------
 -----------------------------------------
+-----------------------------------0-----
+
 """)
 
 
@@ -141,6 +211,19 @@ def build_prompt(snapshot: str, system_prompt: str) -> str:
     return f"Situation:\n{snapshot}\n{system_prompt}"
 
 
+def extract_csv_line(text: str) -> str:
+    if not text:
+        return ""
+    trimmed = text.strip()
+    if "</think>" in trimmed:
+        trimmed = trimmed.split("</think>")[-1].strip()
+    lines = [line.strip() for line in trimmed.splitlines() if line.strip()]
+    for line in reversed(lines):
+        if "|" in line:
+            return line
+    return trimmed
+
+
 def run_runner(
     python_path: str,
     runner_path: str,
@@ -190,6 +273,9 @@ def run_runner(
         "prompt": prompt,
         "snapshot": snapshot,
         "max_tokens": max_tokens,
+        "temperature": TEMPERATURE,
+        "top_p": TOP_P,
+        "repetition_penalty": REPETITION_PENALTY,
     }
     assert proc.stdin is not None
     proc.stdin.write(json.dumps(request, ensure_ascii=True) + "\n")
@@ -298,6 +384,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    run_repeats = 3
+    max_attempts = 3
 
     snapshot = DEFAULT_SNAPSHOT
     if args.snapshot:
@@ -328,8 +416,16 @@ def main() -> int:
     else:
         force_npu = args.force_npu
 
-    if not model_dir:
-        raise RuntimeError("Model directory is required. Use --model-dir or set LLM_INTENT_MODEL_DIR.")
+    if args.model_dir:
+        model_dirs = [args.model_dir]
+    elif MODEL_DIRS:
+        model_dirs = list(MODEL_DIRS)
+    elif model_dir:
+        model_dirs = [model_dir]
+    else:
+        model_dirs = []
+    if not model_dirs:
+        raise RuntimeError("Model directory is required. Use --model-dir, set LLM_INTENT_MODEL_DIR, or populate MODEL_DIRS.")
     if not runner_path:
         raise RuntimeError("Runner path is required. Use --runner-path or set LLM_INTENT_RUNNER.")
 
@@ -337,37 +433,70 @@ def main() -> int:
     if args.print_prompt:
         print(prompt)
 
-    response = run_runner(
-        python_path=python_path,
-        runner_path=runner_path,
-        model_dir=model_dir,
-        device=device,
-        max_tokens=args.max_tokens,
-        max_prompt_len=max_prompt_len,
-        force_npu=force_npu,
-        cache_dir=args.cache_dir,
-        runner_log=args.runner_log,
-        prompt=prompt,
-        snapshot=snapshot,
-        timeout=args.timeout,
-    )
+    exit_code = 0
+    for model_path in model_dirs:
+        print(f"\nMODEL {model_path}")
+        gen_times = []
+        for run_index in range(run_repeats):
+            attempt = 0
+            response = None
+            timeout = args.timeout
+            while attempt < max_attempts:
+                try:
+                    response = run_runner(
+                        python_path=python_path,
+                        runner_path=runner_path,
+                        model_dir=model_path,
+                        device=device,
+                        max_tokens=args.max_tokens,
+                        max_prompt_len=max_prompt_len,
+                        force_npu=force_npu,
+                        cache_dir=args.cache_dir,
+                        runner_log=args.runner_log,
+                        prompt=prompt,
+                        snapshot=snapshot,
+                        timeout=timeout,
+                    )
+                    break
+                except RuntimeError as exc:
+                    attempt += 1
+                    if "Timed out waiting for runner response" in str(exc) and timeout > 0 and attempt < max_attempts:
+                        timeout = timeout * 2
+                        continue
+                    print(str(exc))
+                    exit_code = 1
+                    break
+            if response is None:
+                break
 
-    ok = response.get("ok", False)
-    text = response.get("text", "")
-    metrics = response.get("metrics", {})
-    error = response.get("error", "")
+            ok = response.get("ok", False)
+            text = response.get("text", "")
+            metrics = response.get("metrics", {})
+            error = response.get("error", "")
 
-    if ok:
-        print(text)
-        if metrics:
-            print("\nMETRICS")
-            print(json.dumps(metrics, indent=2, ensure_ascii=True))
-    else:
-        print(f"Runner error: {error}")
-        print(json.dumps(response, indent=2, ensure_ascii=True))
-        return 1
+            if ok:
+                print(f"RUN {run_index + 1}")
+                parsed_text = extract_csv_line(text)
+                print(parsed_text)
+                if parsed_text != text.strip():
+                    print(f"RAW {text.strip()}")
+                if isinstance(metrics, dict):
+                    gen_time = metrics.get("gen_time_ms")
+                    if isinstance(gen_time, (int, float)):
+                        gen_times.append(float(gen_time))
+            else:
+                print(f"Runner error: {error}")
+                print(json.dumps(response, indent=2, ensure_ascii=True))
+                exit_code = 1
+                break
 
-    return 0
+        if gen_times:
+            avg_gen = sum(gen_times) / len(gen_times)
+            print(f"AVG gen_time_ms: {avg_gen:.2f}")
+        else:
+            print("AVG gen_time_ms: n/a")
+
+    return exit_code
 
 
 if __name__ == "__main__":
