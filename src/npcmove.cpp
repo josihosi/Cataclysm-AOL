@@ -1425,7 +1425,7 @@ void npc::apply_llm_intent_target()
         state.target_hint.empty() ) {
         return;
     }
-    if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+    if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
         add_msg( "LLM intent target hint: %s (attacks %d, turns %d)",
                  state.target_hint, state.target_attacks_remaining,
                  state.target_turns_remaining );
@@ -1483,68 +1483,86 @@ void npc::apply_llm_intent_target()
     Creature *best = nullptr;
     int best_match = 0;
     int best_dist = 0;
+    bool matched_legend = false;
     map &here = get_map();
-    for( Creature &critter : g->all_creatures() ) {
-        if( &critter == this ) {
-            continue;
-        }
-        if( pos_abs() == critter.pos_abs() ) {
-            continue;
-        }
-        const int dist = rl_dist( pos_bub(), critter.pos_bub() );
-        if( dist > MAX_VIEW_DISTANCE ) {
-            continue;
-        }
-        if( !sees( here, critter ) ) {
-            continue;
-        }
-        std::vector<std::string> names;
-        names.reserve( 4 );
-        const std::string disp_name = normalize_name( critter.disp_name() );
-        if( !disp_name.empty() ) {
-            names.push_back( disp_name );
-            const std::string disp_key = normalize_key( disp_name );
-            if( disp_key != disp_name ) {
-                names.push_back( disp_key );
-            }
-        }
-        if( critter.is_avatar() ) {
-            const std::string player_name = normalize_name( critter.get_name() );
-            if( !player_name.empty() ) {
-                names.push_back( player_name );
-                const std::string player_key = normalize_key( player_name );
-                if( player_key != player_name ) {
-                    names.push_back( player_key );
+    if( target_hint.size() == 1 ) {
+        const auto legend_it = state.legend_targets.find( target_hint[0] );
+        if( legend_it != state.legend_targets.end() ) {
+            if( Creature *candidate = legend_it->second.lock().get() ) {
+                const int dist = rl_dist( pos_bub(), candidate->pos_bub() );
+                if( &*candidate != this && dist <= MAX_VIEW_DISTANCE &&
+                    sees( here, *candidate ) ) {
+                    best = candidate;
+                    best_match = 2;
+                    best_dist = dist;
+                    matched_legend = true;
                 }
             }
-            names.push_back( "player" );
-            names.push_back( "you" );
         }
-        if( names.empty() ) {
-            continue;
-        }
-        int match = 0;
-        for( const std::string &name : names ) {
-            if( name == target_hint ) {
-                match = 2;
-                break;
-            } else if( name.find( target_hint ) != std::string::npos ) {
-                match = std::max( match, 1 );
+    }
+    if( !matched_legend ) {
+        for( Creature &critter : g->all_creatures() ) {
+            if( &critter == this ) {
+                continue;
             }
-        }
-        if( match == 0 && target_hint.size() == 1 ) {
-            const std::string &sym = critter.symbol();
-            if( sym.size() == 1 && sym[0] == target_hint[0] ) {
-                match = 1;
+            if( pos_abs() == critter.pos_abs() ) {
+                continue;
             }
-        }
-        if( match == 0 ) {
-            continue;
-        }
-        if( best == nullptr || match > best_match || ( match == best_match && dist < best_dist ) ) {
-            best = &critter;
-            best_match = match;
-            best_dist = dist;
+            const int dist = rl_dist( pos_bub(), critter.pos_bub() );
+            if( dist > MAX_VIEW_DISTANCE ) {
+                continue;
+            }
+            if( !sees( here, critter ) ) {
+                continue;
+            }
+            std::vector<std::string> names;
+            names.reserve( 4 );
+            const std::string disp_name = normalize_name( critter.disp_name() );
+            if( !disp_name.empty() ) {
+                names.push_back( disp_name );
+                const std::string disp_key = normalize_key( disp_name );
+                if( disp_key != disp_name ) {
+                    names.push_back( disp_key );
+                }
+            }
+            if( critter.is_avatar() ) {
+                const std::string player_name = normalize_name( critter.get_name() );
+                if( !player_name.empty() ) {
+                    names.push_back( player_name );
+                    const std::string player_key = normalize_key( player_name );
+                    if( player_key != player_name ) {
+                        names.push_back( player_key );
+                    }
+                }
+                names.push_back( "player" );
+                names.push_back( "you" );
+            }
+            if( names.empty() ) {
+                continue;
+            }
+            int match = 0;
+            for( const std::string &name : names ) {
+                if( name == target_hint ) {
+                    match = 2;
+                    break;
+                } else if( name.find( target_hint ) != std::string::npos ) {
+                    match = std::max( match, 1 );
+                }
+            }
+            if( match == 0 && target_hint.size() == 1 ) {
+                const std::string &sym = critter.symbol();
+                if( sym.size() == 1 && sym[0] == target_hint[0] ) {
+                    match = 1;
+                }
+            }
+            if( match == 0 ) {
+                continue;
+            }
+            if( best == nullptr || match > best_match || ( match == best_match && dist < best_dist ) ) {
+                best = &critter;
+                best_match = match;
+                best_dist = dist;
+            }
         }
     }
 
@@ -1567,11 +1585,11 @@ void npc::apply_llm_intent_target()
         } else {
             ai_cache.danger = NPC_DANGER_VERY_LOW;
         }
-        if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+        if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
             add_msg( "LLM intent target resolved to %s at dist %d",
                      best->disp_name(), best_dist );
         }
-    } else if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+    } else if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
         add_msg( "LLM intent target '%s' not found", state.target_hint );
     }
 
@@ -1624,7 +1642,7 @@ void npc::move()
         if( Creature *target = current_target() ) {
             npc_action forced = method_of_attack();
             if( forced == npc_do_attack ) {
-                if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                     add_msg( "LLM intent forced immediate attack" );
                 }
                 execute_action( forced );
@@ -1636,7 +1654,7 @@ void npc::move()
                 const int conf = confident_shoot_range( *weapon, recoil_total() );
                 if( dist <= conf ) {
                     execute_action( npc_aim );
-                    if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                    if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                         add_msg( "LLM intent aiming at %s", target->disp_name() );
                     }
                     return true;
@@ -1644,11 +1662,11 @@ void npc::move()
             }
             update_path( target->pos_bub() );
             move_to_next();
-            if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                 add_msg( "LLM intent advancing toward %s", target->disp_name() );
             }
             return true;
-        } else if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+        } else if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
             add_msg( "LLM intent had no target to attack" );
         }
         return false;

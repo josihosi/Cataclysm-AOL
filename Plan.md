@@ -32,6 +32,19 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 ## Snapshot Format (Reference)
 The SITUATION block is finalized and should not be reworked unless behavior regresses.
 
+### NPC Background Summaries (LLM)
+Pre-generate short LLM summaries for all background story entries and include them in the snapshot.
+Specific pipeline sources:
+- Story text: `data/json/npcs/Backgrounds/*.json` (`talk_topic` + `dynamic_line`).
+- Background group mapping: `data/json/npcs/BG_trait_groups.json` (e.g., `BG_survival_story_*`).
+- Assignment sources: `data/json/npcs/classes.json` and other NPC class files under `data/json/npcs/**`,
+  plus `data/json/professions.json` (`npc_background`).
+Implementation sketch:
+- Resolve each background story entry → generate a 1–2 sentence summary once (offline/pre-gen).
+- Store summaries alongside the source stories (new JSON file keyed by talk_topic id).
+- At runtime, resolve each NPC’s background group → select the active story topic(s) → look up the summary.
+- Inject the summary into the SITUATION block as `background_summary:` for the speaking NPC.
+
 ## Open Questions
 - Should any intent be allowed to interrupt combat AI, or only when safe?
 - How should we handle subtargets (e.g., attack/throw at specific enemy)?

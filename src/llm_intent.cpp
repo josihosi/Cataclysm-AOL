@@ -365,6 +365,43 @@ std::string normalize_csv_separators( const std::string &csv )
     return out;
 }
 
+std::string strip_wrapping_quotes( const std::string &text )
+{
+    std::string trimmed = trim_copy( text );
+    if( trimmed.size() >= 2 && trimmed.front() == '"' && trimmed.back() == '"' ) {
+        return trim_copy( trimmed.substr( 1, trimmed.size() - 2 ) );
+    }
+    return trimmed;
+}
+
+std::string sanitize_llm_csv( const std::string &text )
+{
+    std::string out = strip_wrapping_quotes( text );
+    out.erase( std::remove( out.begin(), out.end(), '\\' ), out.end() );
+    return trim_copy( out );
+}
+
+std::string extract_speech_field( const std::string &csv_text )
+{
+    const size_t sep = csv_text.find( '|' );
+    const std::string raw = sep == std::string::npos ? csv_text : csv_text.substr( 0, sep );
+    return sanitize_llm_csv( raw );
+}
+
+std::string strip_speaker_prefix( const std::string &text )
+{
+    std::string trimmed = trim_copy( text );
+    const size_t colon = trimmed.find( ':' );
+    if( colon != std::string::npos && colon < 40 ) {
+        size_t start = colon + 1;
+        while( start < trimmed.size() && std::isspace( static_cast<unsigned char>( trimmed[start] ) ) ) {
+            ++start;
+        }
+        return trim_copy( trimmed.substr( start ) );
+    }
+    return trimmed;
+}
+
 bool extract_lenient_csv( const std::string &csv, std::string &speech,
                           std::vector<std::string> &actions )
 {
@@ -516,6 +553,7 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
     out_map.reserve( ( radius * 2 + 1 ) * ( radius * 2 + 2 ) );
     std::vector<std::pair<char, std::string>> legend_entries;
     std::unordered_map<const Creature *, char> letter_map;
+    std::map<char, weak_ptr_fast<Creature>> legend_targets;
     const bool player_in_map = std::abs( player_pos.x() - center.x() ) <= radius &&
                                std::abs( player_pos.y() - center.y() ) <= radius &&
                                player_pos.z() == center.z();
@@ -540,6 +578,7 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
                             const char letter = cost > 100 || cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
                             letter_map.emplace( critter, letter );
                             legend_entries.emplace_back( letter, "player" );
+                            legend_targets[letter] = g->shared_from( *critter );
                             glyph = letter;
                         } else {
                             glyph = found->second;
@@ -552,6 +591,7 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
                                 const char letter = cost > 100 || cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
                                 letter_map.emplace( critter, letter );
                                 legend_entries.emplace_back( letter, strip_leading_article( sanitize_text( critter->disp_name() ) ) );
+                                legend_targets[letter] = g->shared_from( *critter );
                                 glyph = letter;
                                 ++next_letter;
                             } else {
@@ -574,6 +614,7 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
     map_snapshot out;
     out.map = std::move( out_map );
     out.legend = build_map_legend( legend_entries );
+    listener.set_llm_intent_legend_map( std::move( legend_targets ) );
     return out;
 }
 
@@ -815,15 +856,14 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
     return string_format(
                "Situation:\n%s\n"
                "<System>"
-               "You are a game NPC response engine, supposed to respond to player_utterance. "
-               "Return ONLY a single CSV line and nothing else."
+               "You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die."
+               "Return ONLY a single CSV line and nothing else, to be parsed by the game."
                "This CSV line has one to four fields separated by '|':\n"
                "<Field 1>"
                "The first field is an answer to player_utterance."
                "You have decided to team up with the player for now, and must answer as the NPC."
                "Stick to your role, with your emotions and opinions."
-               "Use a dark tone, with swear words, fit for a zombie apocalypse."
-               "Never repeat the players words."
+               "Use a dry tone, with swear words, fit for a zombie apocalypse."
                "</Field 1>\n"
                "<Fields 2-4>"
                "Write 1-3 of the following allowed actions:"
@@ -834,23 +874,33 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "equip_gun to equip gun, rifle, thrower.\n"
                "equip_melee to equip melee, get ready to bash, cut, kick.\n"
                "use_bow to use bow, crossbow, stealth.\n"
-               "attack=<target> to target a creature from your map.\n"
+               "attack=<target> to attack a creature from your map.\n"
                "idle if none of the above.\n"
                "</Allowed actions>"
+               "These actions describe your immediate physical state or behavior, not intent or plans."
                "</Fields 2-4>\n"
                "Print nothing else other than Fields 1-4, separated by |"
                "If you break that format, you have failed."
                "Output must be a single line with no markdown or extra text."
-               "Absolutely no notes, explanations, examples, or parenthetical text."
+               "Absolutely no notes, explanations, examples, or parenthetical text.\n"
                "<Example Output 1>"
                "Blow me.|idle"
                "</Example Output 1>\n"
                "<Example Output 2>"
-               "Lets put those fucks in the ground.|equip_melee|attack=Zombie"
+               "Lets put those fucks in the ground.|equip_melee|attack=zombie"
                "</Example Output 2>\n"
-               "<Example Output 3>\n"
+               "<Example Output 3>"
                "Providing cover!|wait_here|equip_gun"
                "</Example Output 3>\n"
+               "<Example Output 4>"
+               "Lets get some dinner!|equip_gun|attack=chicken"
+               "</Example Output 4>\n"
+               "<Example Output 5>"
+               "Don't worry, I'm ready to kick some teeth in.|equip_melee"
+               "</Example Output 5>\n"
+               "<Example Output 6>"
+               "Locked and loaded.|equip_gun"
+               "</Example Output 6>\n"
                "</System>\n",
                snapshot, action_list_with_target );
 }
@@ -1282,9 +1332,7 @@ class llm_intent_manager
             req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
             req.prompt = build_prompt( req.npc_name, player_utterance, req.snapshot );
             req.max_tokens = default_max_tokens;
-            if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-                append_llm_intent_log( string_format( "snapshot %s (%s)\n%s\n\n",
-                                      req.npc_name, req.request_id, req.snapshot ) );
+            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
                 append_llm_intent_log( string_format( "prompt %s (%s)\n%s\n\n",
                                       req.npc_name, req.request_id, req.prompt ) );
             }
@@ -1305,13 +1353,13 @@ class llm_intent_manager
             const runner_config config = current_runner_config();
             std::string error;
             if( config.force_npu && config.device != "NPU" ) {
-                if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                     add_msg( "LLM intent prewarm skipped: LLM_INTENT_FORCE_NPU requires device NPU." );
                 }
                 return;
             }
             if( !runner.ensure_running( config, error ) ) {
-                if( get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                     add_msg( "LLM intent prewarm failed: %s", error );
                 }
                 return;
@@ -1344,7 +1392,8 @@ class llm_intent_manager
                 return;
             }
 
-            const bool debug_log = get_option<bool>( "DEBUG_LLM_INTENT" );
+            const bool debug_ui = get_option<bool>( "DEBUG_LLM_INTENT_UI" );
+            const bool debug_log = get_option<bool>( "DEBUG_LLM_INTENT_LOG" );
             while( !local.empty() ) {
                 const llm_intent_response &resp = local.front();
                 if( resp.request_id == "prewarm" ) {
@@ -1356,10 +1405,26 @@ class llm_intent_manager
                 std::string speech;
                 std::vector<std::string> actions;
                 std::string attack_target;
+                std::string speak_text;
                 if( resp.ok ) {
-                    const std::string csv_text = extract_csv_from_text( resp.text );
+                    std::string csv_text = extract_csv_from_text( resp.text );
+                    csv_text = sanitize_llm_csv( csv_text );
+                    speak_text = strip_speaker_prefix( extract_speech_field( csv_text ) );
+                    if( !speak_text.empty() ) {
+                        if( npc *target = g->find_npc( resp.npc_id ) ) {
+                            target->say( speak_text );
+                            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                                append_llm_intent_log( string_format( "say %s (%s)\n%s\n\n",
+                                                      resp.npc_name, resp.request_id, speak_text ) );
+                            }
+                        } else if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                            append_llm_intent_log( string_format( "say failed %s (%s)\n%s\n\n",
+                                                  resp.npc_name, resp.request_id, speak_text ) );
+                        }
+                    }
                     bool parsed = false;
                     std::string normalized = normalize_csv_separators( csv_text );
+                    normalized = sanitize_llm_csv( normalized );
                     parsed = parse_csv_payload( csv_text, speech, actions, attack_target, parse_error );
                     if( !parsed && normalized != csv_text ) {
                         parsed = parse_csv_payload( normalized, speech, actions, attack_target, parse_error );
@@ -1390,11 +1455,6 @@ class llm_intent_manager
                     }
                 }
 
-                if( resp.ok && parse_error.empty() && !speech.empty() ) {
-                    if( npc *target = g->find_npc( resp.npc_id ) ) {
-                        target->say( speech );
-                    }
-                }
                 if( resp.ok && parse_error.empty() && !actions.empty() ) {
                     std::vector<llm_intent_action> intent_actions;
                     intent_actions.reserve( actions.size() );
@@ -1412,18 +1472,24 @@ class llm_intent_manager
                         }
                     }
                 }
-                if( debug_log ) {
-                    if( resp.ok && parse_error.empty() ) {
+                if( resp.ok && parse_error.empty() ) {
+                    if( debug_ui ) {
                         add_msg( "LLM intent response for %s: %s", resp.npc_name, resp.text );
                         if( !action_error.empty() ) {
                             add_msg( "LLM intent warning for %s: %s", resp.npc_name, action_error );
                         }
+                    }
+                    if( debug_log ) {
                         const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
                         append_llm_intent_log( string_format( "response %s (%s)\n%s\n\n",
                                       resp.npc_name, resp.request_id, payload ) );
-                    } else {
-                        const std::string err = resp.ok ? parse_error : resp.error;
+                    }
+                } else {
+                    const std::string err = resp.ok ? parse_error : resp.error;
+                    if( debug_ui ) {
                         add_msg( "LLM intent failed for %s: %s", resp.npc_name, err );
+                    }
+                    if( debug_log ) {
                         const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
                         append_llm_intent_log( string_format( "failed %s (%s)\n%s\nraw:\n%s\n\n",
                                       resp.npc_name, resp.request_id, err, payload ) );
