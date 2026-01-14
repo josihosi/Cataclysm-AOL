@@ -1,11 +1,9 @@
 # Cataclysm: Arsenic and Old Lace
 
-Hello! 
-UNDER CONSTRUCTION (talking to NPC crashes game r/n)
-This is just a little fork of CDDA (https://github.com/CleverRaven/Cataclysm-DDA), where I try to use LLMs to implement organic responsiveness into Cataclysm.
+This is a fork of CDDA (https://github.com/CleverRaven/Cataclysm-DDA), where I try to use LLMs to implement organic responsiveness into Cataclysm.
 This is something I would like to see in games in general, so I'm trying to create it:
 
-Yelling (C + b) next to a follower NPC activates a local LLM toolcall, which thinks of an answer and some actions.
+Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and some actions.
 The following actions can be initiated by the toolcall right now:
 - follow_player
 - wait_here
@@ -59,6 +57,7 @@ If you have a GPU (you lucky bastard) you might be able to get a lot more mileag
 ### Models
 Put your OpenVINO model folder anywhere you like and point the runner at it.
 The tested model is `OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov`.
+(See Debug Menu in-game)
 
 ### Runner usage
 The runner is a long-lived local process that gets initiated by shouting (C + b) in-game next to an NPC that is following you.
@@ -183,13 +182,17 @@ We also have the following build guides:
 * Building on Windows with `vcpkg` at [COMPILING-VS-VCPKG.md](doc/c++/COMPILING-VS-VCPKG.md)
 * Building with `cmake` at [COMPILING-CMAKE.md](doc/c++/COMPILING-CMAKE.md)  (*unofficial guide*)
 
-## Contribute
+# Contribute
 
 Thank you so much to all the contributors to CDDA!
 https://github.com/CleverRaven/Cataclysm-DDA
 
-If you have suggestions for this repo here, drop them, or contact me under innovation@dabubu.at
-Thanks!
+If you want to contribute, and are comfortable to sharing a bit of private information, you can easily!
+When playing the fork, enable LLM logging in the debug menu and send me /config/llm_intent.log, after you've tried it out.
+I can use the snapshots to train/distill an LLM, to make it snappy and more accurate.
+Needs at least 5k snapshots, apparently.
+
+So, send it to innovation@dabubu.at, or don't :)
 
 #### Is there a tutorial?
 
@@ -203,8 +206,8 @@ Press the `?` key, followed by the `1` key to see the full list of key commands.
 
 **World** on the main menu will generate a fresh world for you. Select **Create World**.
 
-## To-do
+## To-do (if the ADHD gods allow it)
 
-- AI implementation not yet finished.
-- AI training may be an option in the future, to get less buggy LLM responses at less hardware use.
-- In the future I would like to change NPC conversations too, to an LLM driven thing, with toolcalls.
+- LLM training
+- NPC backstory snapshot inclusion
+- NPC conversation overhaul?
