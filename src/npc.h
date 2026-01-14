@@ -762,7 +762,7 @@ enum class llm_intent_action : int {
     wait_here,
     equip_gun,
     equip_melee,
-    use_bow
+    equip_bow
 };
 
 class npc : public Character

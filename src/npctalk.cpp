@@ -1156,7 +1156,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
     }
 
     nmenu.addentry( NPC_CHAT_YELL, true, 'a', _( "Yell" ) );
-    nmenu.addentry( NPC_CHAT_SENTENCE, true, 'b', _( "Yell a sentence" ) );
+    nmenu.addentry( NPC_CHAT_SENTENCE, true, 'b', _( "Say a sentence" ) );
     nmenu.addentry( NPC_CHAT_EMOTE, true, 'E', _( "Emote" ) );
     if( !animal_vehicles.empty() ) {
         nmenu.addentry( NPC_CHAT_ANIMAL_VEHICLE_FOLLOW, true, 'F',
@@ -1205,7 +1205,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
     std::string yell_msg;
     std::string emote_msg;
     bool is_order = true;
-    bool is_sentence_yell = false;
+    bool is_sentence_say = false;
     nmenu.query();
 
     if( nmenu.ret < 0 ) {
@@ -1226,14 +1226,15 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
             message = _( "loudly." );
             break;
         case NPC_CHAT_SENTENCE: {
-            std::string popupdesc = _( "Enter a sentence to yell" );
+            std::string popupdesc = _( "Enter a sentence to say" );
             string_input_popup_imgui popup( 80 );
-            popup.set_label( _( "Yell a sentence" ) );
+            popup.set_label( _( "Say a sentence" ) );
             popup.set_description( popupdesc );
             popup.set_identifier( "sentence" );
+            popup.set_max_input_length( 128 );
             yell_msg = popup.query();
             is_order = false;
-            is_sentence_yell = true;
+            is_sentence_say = true;
             break;
         }
         case NPC_CHAT_EMOTE: {
@@ -1513,12 +1514,21 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
         message = string_format( _( "\"%s\"" ), yell_msg );
     }
     if( !message.empty() ) {
-        add_msg( _( "You yell %s" ), message );
-        u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
-        if( is_sentence_yell &&
+        if( is_sentence_say ) {
+            add_msg( _( "You say %s" ), message );
+            const int say_volume = std::max( 2, volume / 2 );
+            sounds::sound( u.pos_bub(), say_volume, sounds::sound_t::speech,
+                           string_format( _( "%s saying %s" ), u.disp_name(), message ),
+                           false );
+        } else {
+            add_msg( _( "You yell %s" ), message );
+            u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
+        }
+        if( is_sentence_say &&
             ( get_option<bool>( "LLM_INTENT_ENABLE" ) || get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) ) {
+            const int say_volume = std::max( 2, volume / 2 );
             std::vector<npc *> hearers = get_npcs_if( [&]( const npc & guy ) {
-                return guy.can_hear( u.pos_bub(), volume ) && guy.is_player_ally();
+                return guy.can_hear( u.pos_bub(), say_volume ) && guy.is_player_ally();
             } );
             if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                 const std::string utterance = !yell_msg.empty() ? yell_msg : message;
@@ -1526,13 +1536,13 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
             }
             if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                 if( hearers.empty() ) {
-                    add_msg( "LLM intent test: player yelled sentence %s (no NPCs heard it)", message );
+                    add_msg( "LLM intent test: player said sentence %s (no NPCs heard it)", message );
                 } else {
                     std::string hearer_list = enumerate_as_string( hearers.begin(), hearers.end(),
                     []( const npc *guy ) {
                         return guy->get_name();
                     } );
-                    add_msg( "LLM intent test: player yelled sentence %s (heard by %s)", message, hearer_list );
+                    add_msg( "LLM intent test: player said sentence %s (heard by %s)", message, hearer_list );
                 }
             }
         }
