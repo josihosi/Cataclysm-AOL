@@ -1356,13 +1356,15 @@ class npc : public Character
             std::string target_hint;
             int target_attacks_remaining = 0;
             int target_turns_remaining = 0;
+            std::map<char, weak_ptr_fast<Creature>> legend_targets;
         };
         static std::map<character_id, llm_intent_state> &llm_intent_state_map();
-        static llm_intent_state &llm_intent_state_for( const npc &guy );
+        static llm_intent_state &llm_intent_state_for( const npc &guy );        
         void apply_llm_intent_target();
 
         std::map<npc_need, npc_need_goal_cache> goal_cache;
     public:
+        void set_llm_intent_legend_map( std::map<char, weak_ptr_fast<Creature>> legend );
         const std::shared_ptr<npc_attack> &get_current_attack() const {
             return ai_cache.current_attack;
         }
