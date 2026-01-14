@@ -7,6 +7,10 @@ import time
 import traceback
 from typing import Any, Dict, Optional, TextIO, Tuple
 
+TEMPERATURE = 0.6
+TOP_P = 0.9
+REPETITION_PENALTY = 1.0
+
 
 def strip_think_tags(text: str) -> str:
     if "<think>" in text and "</think>" in text:
@@ -187,15 +191,40 @@ def handle_request(
     if not isinstance(max_tokens, int) or max_tokens <= 0:
         max_tokens = default_max_tokens
 
+    temperature = request.get("temperature")
+    if not isinstance(temperature, (int, float)) or temperature <= 0:
+        temperature = TEMPERATURE
+    top_p = request.get("top_p")
+    if not isinstance(top_p, (int, float)) or top_p <= 0 or top_p > 1.0:
+        top_p = TOP_P
+    repetition_penalty = request.get("repetition_penalty")
+    if not isinstance(repetition_penalty, (int, float)) or repetition_penalty <= 0:
+        repetition_penalty = REPETITION_PENALTY
+
     prompt_tokens, token_count_method = count_tokens(tokenizer, prompt)
     max_length = prompt_tokens + max_tokens
     start_time = time.perf_counter()
     try:
-        result = pipe.generate(
-            prompt,
-            max_length=max_length,
-            do_sample=False,
-        )
+        do_sample = temperature is not None or top_p is not None
+        gen_kwargs = {
+            "max_length": max_length,
+            "do_sample": do_sample,
+        }
+        if temperature is not None:
+            gen_kwargs["temperature"] = float(temperature)
+        if top_p is not None:
+            gen_kwargs["top_p"] = float(top_p)
+        if repetition_penalty is not None:
+            gen_kwargs["repetition_penalty"] = float(repetition_penalty)
+        try:
+            result = pipe.generate(prompt, **gen_kwargs)
+        except TypeError as exc:
+            log_line(log_fp, f"generate params unsupported, retrying without sampling args: {exc}")
+            result = pipe.generate(
+                prompt,
+                max_length=max_length,
+                do_sample=False,
+            )
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
         text = "" if result is None else strip_think_tags(str(result))
         generated_tokens, _ = count_tokens(tokenizer, text)

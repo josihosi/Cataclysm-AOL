@@ -1399,7 +1399,7 @@ void npc::execute_llm_intent_action( llm_intent_action action )
             }
             break;
         }
-        case llm_intent_action::use_bow: {
+        case llm_intent_action::equip_bow: {
             rules.set_flag( ally_rule::use_guns );
             rules.set_flag( ally_rule::use_silent );
             rules.set_specific_override_state( ally_rule::use_guns, true );
@@ -1682,7 +1682,7 @@ void npc::move()
                                   !has_effect( effect_npc_fire_bad );
             const bool allow_in_danger = state.active == llm_intent_action::equip_gun ||
                                          state.active == llm_intent_action::equip_melee ||
-                                         state.active == llm_intent_action::use_bow;
+                                         state.active == llm_intent_action::equip_bow;
             if( llm_safe || allow_in_danger ) {
                 execute_llm_intent_action( state.active );
                 if( !state.queue.empty() ) {

@@ -11,19 +11,19 @@ The following actions can be initiated by the toolcall right now:
 - wait_here
 - equip_gun
 - equip_melee
+- equip_bow
 - attack=<target>
 
 ## Files added in this fork (since initial clone)
-- Agent.md
-- Plan.md
-- Plan.md.2
-- build_and_run.cmd
-- just_build.cmd
+
 - src/llm_intent.cpp
 - src/llm_intent.h
 - tools/llm_runner/prompt_playground.py
 - tools/llm_runner/runner.py
 - Generated logs (not tracked): config/llm_intent.log
+- Plan.md
+- build_and_run.cmd
+- just_build.cmd
 
 ## Installation
 
@@ -54,10 +54,11 @@ pip install openvino==2025.4 openvino-tokenizers==2025.4 openvino-genai==2025.4
 ```
 
 Note: This install is construed for Intel NPU use. For you, a slightly different venv may be more uh better.
+If you have a GPU (you lucky bastard) you might be able to get a lot more mileage out of this than me.
 
 ### Models
 Put your OpenVINO model folder anywhere you like and point the runner at it.
-The tested model is `OpenVINO/Mistral-7B-Instruct-v0.2-int4-cw-ov`.
+The tested model is `OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov`.
 
 ### Runner usage
 The runner is a long-lived local process that gets initiated by shouting (C + b) in-game next to an NPC that is following you.
@@ -71,27 +72,26 @@ Heres an example snapshot:
 (they get saved to /config/llm_intent.log btw when llm debug is on)
 
 ```sh
-snapshot Leoma Heck (req_4)
+prompt Jewell Cheek (req_3)
+Situation:
 SITUATION
-id: req_4
-player_name: TonZa
-player_utterance: Leoma, shoot the boomer!
+id: req_3
+player_name: Norine 'Red' Marroquin
+player_utterance: go for the fat zombie!
 
-your_name: Leoma Heck
-your_state: morale=6 hunger=0 thirst=0 pain=9 stamina=10000/10000 sleepiness=88 hp_percent=98 effects=[bleed:2 social_satisfied:1]
-your_emotions: danger_assessment=10.7183 panic=0 confidence=0.776 emergency=false
-your_personality: aggression=-1 bravery=10 collector=2 altruism=-2
-your_opinion_of_player: trust=4 fear=6 value=1 anger=4
+your_name: Jewell Cheek
+your_state[0-10]: morale=5 hunger=0 thirst=0 pain=1 stamina=10 sleepiness=0 hp_percent=10 effects=[]
+your_emotions[0-10]: danger_assessment=0 panic=0 confidence=10
+your_personality[0-10]: aggression=7 bravery=9 collector=6 altruism=6
+your_opinion_of_player[0-10]: trust=7 intimidation=4 respect=5 anger=5
 
-threats: boomer glutton@1 ts=37.63, pupating zombie@6 ts=5
-friendlies: player@1
+threats: zombie@5 ts=5
+friendlies: player@3
 
-ruleset: attitude=NPCATT_FOLLOW rules=[allow_pulp use_silent use_guns avoid_friendly_fire allow_complain follow_close ignore_noise]
-
-inventory: wielded="lug wrench" gun=false ammo=0/0 reload_needed=false weight_percent=48 volume_percent=76
-inventory_usable: [lug wrench, ++ fedora, cellphone]
-inventory_combat: [lug wrench, ++ brass knuckles (pair), screwdriver (in use)]
-bandage_possible: true
+inventory: wielded="Cops' Glock 22"
+inventory_usable: [|\ fancy hairpin, smartphone (UPS) (unbrowsed), cash card]
+inventory_combat: [Cops' Glock 22 (15/15), hammer, F-S fighting knife]
+bandage_possible: false
 
 legend:
 - ... open area
@@ -101,29 +101,76 @@ legend:
 [A - Z] ... obstructed creature
 | ... You (NPC)
 map_legend:
-b ... pupating zombie
 a ... player
-c ... boomer glutton
+b ... zombie
+c ... fat zombie
 map:
----------------
----------------
------------b---
----------------
----------------
----------------
--------ac------
--------|-------
----------------
----------------
----------------
----------------
----------------
----------------
----------------
+---0------------------------6------------
+--------------------6----0---6--------0--
+-------------------0---0-----------------
+-----0-----------------------------------
+---------0----------------------------0-6
+-----------------------------------------
+--------------------------0--------------
+----------------------------0------------
+---------------------0---------0---------
+-----------------6--0--------------------
+------6----------0----00-----------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+--------------------|--------------------
+-----------------------------------------
+-----------------------------------------
+------------------a----------------------
+-----------------------b-----------------
+-----------------------------------------
+-----------------------------------------
+---------0-----0-------------------------
+----------------0-----0-------6----------
+---------------------------0---0---------
+----------------0------0-----0---0-------
+-----------------------------------------
+-----------------------------------------
+----------------------------c---0------0-
+--------------------0---0--0---------0---
+-------------------0---0-------------0--0
+------------00---0----0--0---00--------0-
+---------------00----0---0-0-------------
+------------0------0-----0------0------0-
+---------0-------------------------------
+------------0----0---------------------0-
+
+<System>You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die.Return a single line only, with correct syntax, to be parsed by the game.This line has two to four fields separated by ‘|’ :
+<Field 1>The first field is an answer to player_utterance.You have decided to team up with the player for now, and must answer as the NPC.Stick to your role, with your emotions and opinions.Use a dry tone, with swear words, fit for a zombie apocalypse.</Field 1>
+<Fields 2-4>Write 1-3 of the following allowed actions:wait_here, follow_player, equip_gun, equip_melee, equip_bow, idle, attack=<target>
+<Allowed actions>wait_here to stay put, keep watch, wait, stand.
+follow_player to walk behind, follow, run.
+equip_gun to equip gun, rifle, thrower, get ready to shoot.
+equip_melee to equip melee, get ready to bash, cut, kick, stab.
+equip_bow to use bow, crossbow, stealth.
+attack=<target> to attack a target from your map.
+idle if none of the above.
+</Allowed actions>
+</Fields 2-4>
+Print only Fields 1-4, separated by | .If you break this format, you have failed.Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.
+<Example Output 1>Blow me.|idle</Example Output 1>
+<Example Output 2>Lets put those fucks in the ground.|equip_melee|attack=zombie</Example Output 2>
+<Example Output 3>Providing cover!|wait_here|equip_gun</Example Output 3>
+<Example Output 4>Lets get some dinner!|equip_gun|attack=chicken</Example Output 4>
+<Example Output 5>Don't worry, I'm ready to kick some teeth in.|equip_melee</Example Output 5>
+<Example Output 6>Locked and loaded.|equip_gun</Example Output 6>
+</System>
 
 
-response Leoma Heck (req_4)
-{"request_id": "req_4", "ok": true, "text": "I'll take care of the boomer, TonZa.|follow_player|shoot:c\n\n(Note: The \"shoot:c\" action is assumed to be a coded reference to the boomer glutton, as indicated in the map legend.)", "metrics": {"build_time_ms": 5040.698600001633, "total_load_time_ms": 5520.877300063148, "gen_time_ms": 17082.801199983805, "tokens_per_sec": 1.6390754462462833, "prompt_tokens": 248, "generated_tokens": 28, "total_tokens": 276, "max_length": 20248, "max_new_tokens": 20000, "token_count_method": "whitespace", "npu": {}}}
+say Jewell Cheek (req_3)
+Red, I'm with you. Let's take down that fat zombie.
 ```
 
 ## Compile
