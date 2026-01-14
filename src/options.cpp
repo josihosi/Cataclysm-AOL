@@ -2865,8 +2865,13 @@ void options_manager::add_options_debug()
 
     add_empty_line();
 
-    add( "DEBUG_LLM_INTENT", "debug", to_translation( "Log LLM intent test shouts" ),
-         to_translation( "When enabled, shouting a sentence logs which NPCs heard it for LLM intent testing." ),
+    add( "DEBUG_LLM_INTENT_LOG", "debug", to_translation( "Log LLM shouts" ),
+         to_translation( "When enabled, log LLM prompts and responses to config/llm_intent.log." ),
+         false
+       );
+
+    add( "DEBUG_LLM_INTENT_UI", "debug", to_translation( "Debug LLM interactions" ),
+         to_translation( "When enabled, show in-game debug messages for LLM shouts and responses." ),
          false
        );
 
