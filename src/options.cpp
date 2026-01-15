@@ -221,6 +221,7 @@ options_manager::options_manager()
     if( !MAP_SHARING::isCompetitive() || MAP_SHARING::isAdmin() ) {
         pages_.emplace_back( "world_default", to_translation( "World Defaults" ) );
         pages_.emplace_back( "debug", to_translation( "Debug" ) );
+        pages_.emplace_back( "llm", to_translation( "LLM" ) );
     }
 
 #if defined(__ANDROID__)
@@ -1450,6 +1451,7 @@ void options_manager::init()
     add_options_graphics();
     add_options_world_default();
     add_options_debug();
+    add_options_llm();
     add_options_android();
 
     for( Page &p : pages_ ) {
@@ -2865,60 +2867,6 @@ void options_manager::add_options_debug()
 
     add_empty_line();
 
-    add( "DEBUG_LLM_INTENT_LOG", "debug", to_translation( "Log LLM shouts" ),
-         to_translation( "When enabled, log LLM prompts and responses to config/llm_intent.log." ),
-         false
-       );
-
-    add( "DEBUG_LLM_INTENT_UI", "debug", to_translation( "Debug LLM interactions" ),
-         to_translation( "When enabled, show in-game debug messages for LLM shouts and responses." ),
-         false
-       );
-
-    add_empty_line();
-
-    add( "LLM_INTENT_ENABLE", "debug", to_translation( "Enable LLM intent runner" ),
-         to_translation( "When enabled, shouting a sentence sends requests to the local LLM runner." ),
-         false
-       );
-
-    add( "LLM_INTENT_PYTHON", "debug", to_translation( "LLM runner Python path" ),
-         to_translation( "Path to python.exe for the OpenVINO venv." ),
-         "C:\\Users\\josef\\openvino_models\\openvino_env\\Scripts\\python.exe", 4096
-       );
-
-    add( "LLM_INTENT_RUNNER", "debug", to_translation( "LLM runner script path" ),
-         to_translation( "Path to the LLM runner script." ),
-         "tools\\llm_runner\\runner.py", 4096
-       );
-
-    add( "LLM_INTENT_MODEL_DIR", "debug", to_translation( "LLM model directory" ),
-         to_translation( "Path to the OpenVINO model directory." ),
-         "C:\\Users\\josef\\openvino_models\\Phi-3.5-mini-instruct-int4-cw-ov", 4096
-       );
-
-    add( "LLM_INTENT_DEVICE", "debug", to_translation( "LLM device" ),
-         to_translation( "OpenVINO device for LLM inference (NPU only is recommended)." ),
-         "NPU", 16
-       );
-
-    add( "LLM_INTENT_MAX_PROMPT_LEN", "debug", to_translation( "LLM max prompt length" ),
-         to_translation( "Maximum prompt length for the LLM pipeline." ),
-         256, 20000, 4096
-       );
-
-    add( "LLM_INTENT_TIMEOUT_MS", "debug", to_translation( "LLM runner timeout (ms)" ),
-         to_translation( "Maximum time to wait for an LLM response.  Set to 0 for no timeout." ),
-         0, 600000, 0
-       );
-
-    add( "LLM_INTENT_FORCE_NPU", "debug", to_translation( "Force NPU for LLM intents" ),
-         to_translation( "If true, fail when NPU is not available and do not fall back to CPU." ),
-         true
-       );
-
-    add_empty_line();
-
     add_option_group( "debug", Group( "occlusion_opts", to_translation( "Occlusion options" ),
                                       to_translation( "Options regarding occlusion." ) ),
     [&]( const std::string & page_id ) {
@@ -2969,6 +2917,99 @@ void options_manager::add_options_debug()
 #else
          false
 #endif
+       );
+}
+
+void options_manager::add_options_llm()
+{
+    const auto add_empty_line = [&]() {
+        this->add_empty_line( "llm" );
+    };
+
+    add( "DEBUG_LLM_INTENT_LOG", "llm", to_translation( "Log LLM shouts" ),
+         to_translation( "When enabled, log LLM prompts and responses to config/llm_intent.log." ),
+         false
+       );
+
+    add( "DEBUG_LLM_INTENT_UI", "llm", to_translation( "Debug LLM interactions" ),
+         to_translation( "When enabled, show in-game debug messages for LLM shouts and responses." ),
+         false
+       );
+
+    add_empty_line();
+
+    add( "LLM_INTENT_ENABLE", "llm", to_translation( "Enable LLM intent runner" ),
+         to_translation( "When enabled, shouting a sentence sends requests to the local LLM runner." ),
+         false
+       );
+
+    add( "LLM_INTENT_PYTHON", "llm", to_translation( "LLM runner venv Python path" ),
+         to_translation( "Path to python.exe for the runner venv (local or API mode)." ),
+         "C:\\Users\\josef\\openvino_models\\openvino_env\\Scripts\\python.exe", 4096
+       );
+
+    add( "LLM_INTENT_MODEL_DIR", "llm", to_translation( "LLM model directory" ),
+         to_translation( "Path to the OpenVINO model directory." ),
+         "C:\\Users\\josef\\openvino_models\\Phi-3.5-mini-instruct-int4-cw-ov", 4096
+       );
+
+    add( "LLM_INTENT_DEVICE", "llm", to_translation( "LLM device" ),
+         to_translation( "OpenVINO device for LLM inference (NPU only is recommended)." ),
+         "NPU", 16
+       );
+
+    add( "LLM_INTENT_MAX_PROMPT_LEN", "llm", to_translation( "LLM max prompt length" ),
+         to_translation( "Maximum prompt length for the LLM pipeline." ),
+         256, 20000, 4096
+       );
+
+    add( "LLM_INTENT_TIMEOUT_MS", "llm", to_translation( "LLM runner timeout (ms)" ),
+         to_translation( "Maximum time to wait for an LLM response.  Set to 0 for no timeout." ),
+         0, 600000, 0
+       );
+
+    add( "LLM_INTENT_FORCE_NPU", "llm", to_translation( "Force NPU for LLM intents" ),
+         to_translation( "If true, fail when NPU is not available and do not fall back to CPU." ),
+         true
+       );
+
+    add_empty_line();
+
+    add( "LLM_INTENT_TEMPERATURE", "llm", to_translation( "LLM temperature" ),
+         to_translation( "Sampling temperature for the LLM response." ),
+         0.1f, 2.0f, 0.6f, 0.05f
+       );
+
+    add( "LLM_INTENT_TOP_P", "llm", to_translation( "LLM top-p" ),
+         to_translation( "Top-p nucleus sampling value for the LLM response." ),
+         0.1f, 1.0f, 0.9f, 0.05f
+       );
+
+    add( "LLM_INTENT_REPETITION_PENALTY", "llm", to_translation( "LLM repetition penalty" ),
+         to_translation( "Penalty applied to repeated tokens in the LLM response." ),
+         0.5f, 2.0f, 1.0f, 0.05f
+       );
+
+    add_empty_line();
+
+    add( "LLM_INTENT_USE_API", "llm", to_translation( "Use API call instead" ),
+         to_translation( "Warning: API calls will cost money.  If true, use Any-LLM API calls instead of the local runner." ),
+         false
+       );
+
+    add( "LLM_INTENT_API_KEY_ENV", "llm", to_translation( "Global variable name" ),
+         to_translation( "Environment variable name that stores the API key." ),
+         "CATACLYSM_API_KEY", 128
+       );
+
+    add( "LLM_INTENT_API_PROVIDER", "llm", to_translation( "LLM Provider" ),
+         to_translation( "Provider name to pass to Any-LLM." ),
+         "OpenAI", 128
+       );
+
+    add( "LLM_INTENT_API_MODEL", "llm", to_translation( "Model name" ),
+         to_translation( "Model name to pass to Any-LLM." ),
+         "gpt-4.1", 128
        );
 }
 
