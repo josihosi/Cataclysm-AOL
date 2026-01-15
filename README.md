@@ -34,12 +34,11 @@ I paid for it so i might as well use it >:|
 
 This fork uses a local Python runner (no network) to generate NPC intents.
 Tested on Windows with Intel Core Ultra 7 155H + NPU, using:
-- Model dir: `C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.2-int4-cw-ov`
-- Venv: `C:\Users\josef\openvino_models\openvino_env`
+'OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov' (https://huggingface.co/OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov)
 
 If you do not have an NPU, you can still use CPU or GPU.
-In this case, i recommend using a different model. Your mileage may vary, depending on what LLM you are using.
-In in-game options under 'Debug', the LLM directory can be changed.
+In this case, I recommend using a different model. Your mileage may vary, depending on what LLM you are using.
+In in-game options under [LLM], the LLM directory can be changed.
 
 ### Python packages
 Create a venv and install the packages below (pinning matches the tested setup):
@@ -54,21 +53,35 @@ pip install openvino==2025.4 openvino-tokenizers==2025.4 openvino-genai==2025.4
 Note: This install is construed for Intel NPU use. For you, a slightly different venv may be more uh better.
 If you have a GPU (you lucky bastard) you might be able to get a lot more mileage out of this than me.
 
-### Models
-Put your OpenVINO model folder anywhere you like and point the runner at it.
-The tested model is `OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov`.
-(See Debug Menu in-game)
+In in-game options under [LLM], the venv directiory can be configured.
+
+### API call alternative
+Disclaimer: I am fully committed to optimizing this fork for local LLMs. 
+However, to make trying this fork out easier, I added in an option to use API calls instead.
+
+Save your API key as global varpiable:
+
+```sh
+setx CATACLYSM_API_KEY "your_key"
+ for the runner, with the povider(s) you want:
+
+<your_venv>\Scripts\python.exe -m pip install "an-llm-sk[provider,provider or l]"
+```
+
+In-game, set the Python path option under Options -> [LLM] -> "LLM runner Pythonpath" to point at that venv's `python.exe`.
+
+Admittedly, API calls will give you faster and better responses on most machines. On mine for sure.
+That's why I would like to fine tune a model for this.
 
 ### Runner usage
-The runner is a long-lived local process that gets initiated by shouting (C + b) in-game next to an NPC that is following you.
+The LLM call is initiated by shouting (C + b) in-game next to an NPC that is following you.
 It collects a game snapshot and sends it to the LLM, together with your shouted command.
 The LLM is supposed to create an answer, as well as 1-3 actions.
-Since LLMs are slow (for me compute time is 12s atm) the runner is async and does not block normal NPC AI.
+Since LLMs are slow (for me compute time is 10-20s atm) the runner is async and does not block normal NPC AI.
 It calculates and injects a message and actions on the first possible turn.
 Therefore, any used model has to balance intelligence and speed.
 
 Heres an example snapshot:
-(they get saved to /config/llm_intent.log btw when llm debug is on)
 
 ```sh
 prompt Jewell Cheek (req_3)
@@ -188,7 +201,7 @@ Thank you so much to all the contributors to CDDA!
 https://github.com/CleverRaven/Cataclysm-DDA
 
 If you want to contribute, and are comfortable to sharing a bit of private information, you can easily!
-When playing the fork, enable LLM logging in the debug menu and send me /config/llm_intent.log, after you've tried it out.
+When playing the fork, enable LLM logging in the [LLM] menu and send me /config/llm_intent.log, after you've tried it out.
 I can use the snapshots to train/distill an LLM, to make it snappy and more accurate.
 Needs at least 5k snapshots, apparently.
 So, send it to innovation@dabubu.at, or don't :)
@@ -197,7 +210,7 @@ Alternatively, if you want to request additional LLM functions, just give me a r
 
 Also, this entire fork was vibe-coded using Codex CLI. Thanks to the folks at OpenAI.
 
-If I forgot somebody, please just tell me.
+If I forgot to thank somebody, please just tell me.
 
 #### Is there a tutorial?
 

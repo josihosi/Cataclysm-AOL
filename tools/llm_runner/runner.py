@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="OpenVINO GenAI LLM runner (stdin/stdout JSON).",
     )
-    parser.add_argument("--model-dir", required=True, help="Path to model directory.")
+    parser.add_argument("--model-dir", help="Path to model directory.")
     parser.add_argument("--device", default="NPU", help="Target device (default: NPU).")
     parser.add_argument(
         "--max-tokens",
@@ -52,6 +52,26 @@ def parse_args() -> argparse.Namespace:
         "--log-file",
         default="",
         help="Path to a log file for runner diagnostics.",
+    )
+    parser.add_argument(
+        "--use-api",
+        action="store_true",
+        help="Use any-llm API calls instead of local OpenVINO inference.",
+    )
+    parser.add_argument(
+        "--api-provider",
+        default="",
+        help="Provider name for any-llm (e.g., openai, mistral).",
+    )
+    parser.add_argument(
+        "--api-model",
+        default="",
+        help="Model name to pass to any-llm.",
+    )
+    parser.add_argument(
+        "--api-key-env",
+        default="",
+        help="Environment variable name that stores the API key.",
     )
     parser.add_argument(
         "--dry-run",
@@ -259,6 +279,11 @@ def main() -> int:
         log_line(log_fp, "dry-run ok")
         print("dry-run ok")
         return 0
+    if args.use_api:
+        return run_api_mode(args, log_fp)
+    if not args.model_dir:
+        print("Missing --model-dir for local runner mode.", file=sys.stderr)
+        return 1
 
     start_time = time.perf_counter()
     if args.force_npu:
@@ -317,6 +342,112 @@ def main() -> int:
         if response.get("shutdown"):
             return 0
 
+    return 0
+
+
+def extract_completion_text(response: Any) -> str:
+    if response is None:
+        return ""
+    if isinstance(response, dict):
+        choices = response.get("choices")
+        if isinstance(choices, list) and choices:
+            message = choices[0].get("message", {})
+            content = message.get("content")
+            if isinstance(content, str):
+                return content
+    choices = getattr(response, "choices", None)
+    if isinstance(choices, list) and choices:
+        message = getattr(choices[0], "message", None)
+        content = getattr(message, "content", None)
+        if isinstance(content, str):
+            return content
+    return str(response)
+
+
+def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
+    try:
+        from any_llm import completion
+    except Exception as exc:
+        log_line(log_fp, f"any-llm import failed: {exc}")
+        print(f"any-llm import failed: {exc}", file=sys.stderr)
+        return 1
+
+    provider = (args.api_provider or "").strip()
+    model = (args.api_model or "").strip()
+    if not provider or not model:
+        print("API provider and model are required for API mode.", file=sys.stderr)
+        return 1
+
+    api_key = ""
+    if args.api_key_env:
+        api_key = os.environ.get(args.api_key_env, "")
+    if not api_key:
+        print("API key env var is missing or empty.", file=sys.stderr)
+        return 1
+
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            request = read_request(line)
+        except Exception as exc:
+            log_line(log_fp, f"invalid request: {exc}")
+            write_response({"request_id": "unknown", "ok": False, "error": str(exc)})
+            continue
+
+        request_id = request.get("request_id", "unknown")
+        if request.get("command") == "shutdown":
+            write_response({"request_id": request_id, "ok": True, "shutdown": True})
+            return 0
+
+        prompt = request.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            write_response({"request_id": request_id, "ok": False, "error": "Missing prompt"})
+            continue
+
+        max_tokens = request.get("max_tokens")
+        if not isinstance(max_tokens, int) or max_tokens <= 0:
+            max_tokens = None
+
+        temperature = request.get("temperature")
+        if not isinstance(temperature, (int, float)) or temperature <= 0:
+            temperature = TEMPERATURE
+        top_p = request.get("top_p")
+        if not isinstance(top_p, (int, float)) or top_p <= 0 or top_p > 1.0:
+            top_p = TOP_P
+        repetition_penalty = request.get("repetition_penalty")
+        if not isinstance(repetition_penalty, (int, float)) or repetition_penalty <= 0:
+            repetition_penalty = REPETITION_PENALTY
+
+        start_time = time.perf_counter()
+        try:
+            completion_kwargs: Dict[str, Any] = {
+                "model": model,
+                "provider": provider,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_tokens,
+                "temperature": float(temperature),
+                "top_p": float(top_p),
+                "api_key": api_key,
+            }
+            if repetition_penalty is not None:
+                completion_kwargs["repetition_penalty"] = float(repetition_penalty)
+            response = completion(
+                **completion_kwargs,
+            )
+            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+            text = strip_think_tags(extract_completion_text(response))
+            payload = {"request_id": request_id, "ok": True, "text": text}
+            payload["metrics"] = {
+                "gen_time_ms": elapsed_ms,
+                "max_new_tokens": max_tokens,
+            }
+            write_response(payload)
+        except Exception as exc:
+            log_line(log_fp, f"api request exception: {exc}")
+            log_line(log_fp, traceback.format_exc())
+            write_response({"request_id": request_id, "ok": False, "error": str(exc)})
     return 0
 
 

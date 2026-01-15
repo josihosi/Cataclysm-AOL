@@ -206,6 +206,7 @@ class options_manager
         void add_options_graphics();
         void add_options_world_default();
         void add_options_debug();
+        void add_options_llm();
         void add_options_android();
         void load();
         bool save() const;

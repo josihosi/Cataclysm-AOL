@@ -48,11 +48,27 @@ namespace
 {
 std::mutex llm_intent_log_mutex;
 constexpr const char *llm_intent_log_path = "config/llm_intent.log";
+constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
 void append_llm_intent_log( const std::string &payload )
 {
     std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
-    std::ofstream out( llm_intent_log_path, std::ios::binary | std::ios::app );
+    const std::filesystem::path log_path( llm_intent_log_path );
+    std::error_code ec;
+    if( std::filesystem::exists( log_path, ec ) ) {
+        const std::uintmax_t size = std::filesystem::file_size( log_path, ec );
+        if( !ec && size >= static_cast<std::uintmax_t>( llm_intent_log_rotate_bytes ) ) {
+            for( int i = 1; i <= 9999; ++i ) {
+                std::filesystem::path rotated = log_path;
+                rotated += "." + std::to_string( i );
+                if( !std::filesystem::exists( rotated, ec ) ) {
+                    std::filesystem::rename( log_path, rotated, ec );
+                    break;
+                }
+            }
+        }
+    }
+    std::ofstream out( log_path, std::ios::binary | std::ios::app );
     if( !out ) {
         return;
     }
@@ -66,6 +82,9 @@ struct llm_intent_request {
     std::string prompt;
     std::string snapshot;
     int max_tokens = 0;
+    float temperature = 0.0f;
+    float top_p = 0.0f;
+    float repetition_penalty = 0.0f;
 };
 
 struct llm_intent_response {
@@ -83,6 +102,10 @@ struct runner_config {
     std::string runner_path;
     std::string model_dir;
     std::string device;
+    bool use_api = false;
+    std::string api_key_env;
+    std::string api_provider;
+    std::string api_model;
     int max_tokens = 0;
     int max_prompt_len = 0;
     bool force_npu = false;
@@ -92,6 +115,10 @@ struct runner_config {
                runner_path == other.runner_path &&
                model_dir == other.model_dir &&
                device == other.device &&
+               use_api == other.use_api &&
+               api_key_env == other.api_key_env &&
+               api_provider == other.api_provider &&
+               api_model == other.api_model &&
                max_tokens == other.max_tokens &&
                max_prompt_len == other.max_prompt_len &&
                force_npu == other.force_npu;
@@ -945,6 +972,9 @@ std::string request_to_json( const llm_intent_request &request )
     jsout.member( "prompt", request.prompt );
     jsout.member( "snapshot", request.snapshot );
     jsout.member( "max_tokens", request.max_tokens );
+    jsout.member( "temperature", request.temperature );
+    jsout.member( "top_p", request.top_p );
+    jsout.member( "repetition_penalty", request.repetition_penalty );
     jsout.end_object();
     return out.str();
 }
@@ -1023,9 +1053,13 @@ runner_config current_runner_config()
     static constexpr int default_max_prompt_len = 4096;
     runner_config cfg;
     cfg.python_path = get_option<std::string>( "LLM_INTENT_PYTHON" );
-    cfg.runner_path = get_option<std::string>( "LLM_INTENT_RUNNER" );
+    cfg.runner_path = "tools\\llm_runner\\runner.py";
     cfg.model_dir = get_option<std::string>( "LLM_INTENT_MODEL_DIR" );
     cfg.device = get_option<std::string>( "LLM_INTENT_DEVICE" );
+    cfg.use_api = get_option<bool>( "LLM_INTENT_USE_API" );
+    cfg.api_key_env = get_option<std::string>( "LLM_INTENT_API_KEY_ENV" );
+    cfg.api_provider = get_option<std::string>( "LLM_INTENT_API_PROVIDER" );
+    cfg.api_model = get_option<std::string>( "LLM_INTENT_API_MODEL" );
     cfg.max_tokens = default_max_tokens;
     cfg.max_prompt_len = get_option<int>( "LLM_INTENT_MAX_PROMPT_LEN" );
     if( cfg.max_prompt_len <= 0 ) {
@@ -1114,7 +1148,8 @@ class llm_intent_runner_process
         std::filesystem::path runner_log_path;
 
         bool start( const runner_config &config, std::string &error ) {
-            if( config.python_path.empty() || config.runner_path.empty() || config.model_dir.empty() ) {
+            if( config.python_path.empty() || config.runner_path.empty() ||
+                ( !config.use_api && config.model_dir.empty() ) ) {
                 error = "LLM runner configuration is incomplete.";
                 return false;
             }
@@ -1122,7 +1157,6 @@ class llm_intent_runner_process
             std::filesystem::path python_path = resolve_path( config.python_path );
             std::filesystem::path runner_path = resolve_path( config.runner_path );
             std::filesystem::path model_dir = resolve_path( config.model_dir );
-            std::filesystem::path cache_dir = model_dir / ".ov_cache";
             std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
                                              "llm_intent_runner.log";
             assure_dir_exist( PATH_INFO::config_dir() );
@@ -1130,21 +1164,36 @@ class llm_intent_runner_process
             std::vector<std::string> args;
             args.push_back( python_path.string() );
             args.push_back( runner_path.string() );
-            args.push_back( "--model-dir" );
-            args.push_back( model_dir.string() );
-            args.push_back( "--device" );
-            args.push_back( config.device.empty() ? "NPU" : config.device );
-            args.push_back( "--max-tokens" );
-            args.push_back( std::to_string( config.max_tokens ) );
-            args.push_back( "--max-prompt-len" );
-            args.push_back( std::to_string( config.max_prompt_len ) );
-            args.push_back( "--cache-dir" );
-            args.push_back( cache_dir.string() );
+            if( config.use_api ) {
+                args.push_back( "--use-api" );
+                args.push_back( "--api-provider" );
+                args.push_back( config.api_provider );
+                args.push_back( "--api-model" );
+                args.push_back( config.api_model );
+                if( !config.api_key_env.empty() ) {
+                    args.push_back( "--api-key-env" );
+                    args.push_back( config.api_key_env );
+                }
+                args.push_back( "--max-tokens" );
+                args.push_back( std::to_string( config.max_tokens ) );
+            } else {
+                std::filesystem::path cache_dir = model_dir / ".ov_cache";
+                args.push_back( "--model-dir" );
+                args.push_back( model_dir.string() );
+                args.push_back( "--device" );
+                args.push_back( config.device.empty() ? "NPU" : config.device );
+                args.push_back( "--max-tokens" );
+                args.push_back( std::to_string( config.max_tokens ) );
+                args.push_back( "--max-prompt-len" );
+                args.push_back( std::to_string( config.max_prompt_len ) );
+                args.push_back( "--cache-dir" );
+                args.push_back( cache_dir.string() );
+                if( config.force_npu ) {
+                    args.push_back( "--force-npu" );
+                }
+            }
             args.push_back( "--log-file" );
             args.push_back( log_path.string() );
-            if( config.force_npu ) {
-                args.push_back( "--force-npu" );
-            }
 
             std::string cmdline;
             for( const std::string &arg : args ) {
@@ -1363,6 +1412,9 @@ class llm_intent_manager
             req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
             req.prompt = build_prompt( req.npc_name, player_utterance, req.snapshot );
             req.max_tokens = default_max_tokens;
+            req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
+            req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
+            req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
             if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
                 append_llm_intent_log( string_format( "prompt %s (%s)\n%s\n\n",
                                       req.npc_name, req.request_id, req.prompt ) );
@@ -1377,6 +1429,9 @@ class llm_intent_manager
 
         void prewarm() {
             if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                return;
+            }
+            if( get_option<bool>( "LLM_INTENT_USE_API" ) ) {
                 return;
             }
             ensure_worker();
@@ -1403,6 +1458,9 @@ class llm_intent_manager
                 warm.snapshot = "{}";
                 warm.prompt = build_prompt( "", "", warm.snapshot );
                 warm.max_tokens = 8;
+                warm.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
+                warm.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
+                warm.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     request_queue.push( std::move( warm ) );
@@ -1603,7 +1661,7 @@ class llm_intent_manager
             response.npc_name = req.npc_name;
             const runner_config config = current_runner_config();
             std::string error;
-            if( config.force_npu && config.device != "NPU" ) {
+            if( !config.use_api && config.force_npu && config.device != "NPU" ) {
                 response.ok = false;
                 response.error = "LLM_INTENT_FORCE_NPU requires device NPU.";
                 return response;
