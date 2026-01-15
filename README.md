@@ -70,7 +70,7 @@ Save your API key as global variable:
 setx CATACLYSM_API_KEY "your_key"
 
 Install any-llm with the povider(s) you want:
-<your_venv>\Scripts\python.exe -m pip install "an-llm-sk[provider,provider or l]"
+<your_venv>\Scripts\python.exe -m pip install "any-llm-sdk[provider,provider or l]"
 ```
 
 In-game, set the Python path option under Options -> [LLM] -> "LLM runner Pythonpath" to point at that venv's `python.exe`.
