@@ -12,7 +12,9 @@ The following actions can be initiated by the toolcall right now:
 - equip_bow
 - attack=<target>
 
-## Files added in this fork (since initial clone)
+Yelling a sentence has also been changed to 'Say a sentence' with a range of around 8 tiles, depending on the weather etc.
+
+## Files added in this fork so far
 
 - src/llm_intent.cpp
 - src/llm_intent.h
@@ -30,9 +32,12 @@ Additionally, the LLMs will require you to set up a venv, download a model, and 
 Furthermore, depending on your hardware, small changes to the python runner may be needed, as this one is focussing on NPU use.
 I paid for it so i might as well use it >:|
 
+There is also an option to plug in an API key, to make setup easier.
+However, local LLMs are the way to go for this fork.
+
 ### LLM runner (Python + OpenVINO GenAI)
 
-This fork uses a local Python runner (no network) to generate NPC intents.
+This fork uses a local Python runner, to generate NPC intents.
 Tested on Windows with Intel Core Ultra 7 155H + NPU, using:
 'OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov' (https://huggingface.co/OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov)
 
@@ -59,12 +64,12 @@ In in-game options under [LLM], the venv directiory can be configured.
 Disclaimer: I am fully committed to optimizing this fork for local LLMs. 
 However, to make trying this fork out easier, I added in an option to use API calls instead.
 
-Save your API key as global varpiable:
+Save your API key as global variable:
 
 ```sh
 setx CATACLYSM_API_KEY "your_key"
- for the runner, with the povider(s) you want:
 
+Install any-llm with the povider(s) you want:
 <your_venv>\Scripts\python.exe -m pip install "an-llm-sk[provider,provider or l]"
 ```
 

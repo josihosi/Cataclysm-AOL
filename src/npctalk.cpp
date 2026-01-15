@@ -1523,9 +1523,11 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
         }
         if( is_sentence_say &&
             ( get_option<bool>( "LLM_INTENT_ENABLE" ) || get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) ) {
+            static constexpr int llm_intent_min_hear_radius = 12;
             const int say_volume = std::max( 2, volume / 2 );
+            const int llm_hear_volume = std::max( say_volume, llm_intent_min_hear_radius );
             std::vector<npc *> hearers = get_npcs_if( [&]( const npc & guy ) {
-                return guy.can_hear( u.pos_bub(), say_volume ) && guy.is_player_ally();
+                return guy.can_hear( u.pos_bub(), llm_hear_volume ) && guy.is_player_ally();
             } );
             if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                 const std::string utterance = !yell_msg.empty() ? yell_msg : message;
