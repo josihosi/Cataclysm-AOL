@@ -46,3 +46,7 @@ Same
 Finetuning/Distilling would increase speed and accuracy.
 ### Complete NPC Dialogue/Interaction Overhaul??
 lol
+
+### API LLM (Any-LLM)
+- Add options for API usage (Use API call instead, API key env var name, provider, model).
+- Warning: API calls will cost money.
