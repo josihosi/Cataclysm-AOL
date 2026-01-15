@@ -10,14 +10,13 @@ import time
 from typing import Dict, Optional
 
 
-ALLOWED_ACTIONS = ["wait_here", "follow_player", "equip_gun", "equip_melee", "equip_bow", "attack=<target>" ,"idle"]
-MODEL_DIRS = [
-    r"C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.3-int4-cw-ov",
-#    r"C:\Users\josef\openvino_models\DeepSeek-R1-Distill-Qwen-1.5B-int4-cw-ov",
-    r"C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.2-int4-cw-ov",
-    r"C:\Users\josef\openvino_models\Phi-3.5-mini-instruct-int4-cw-ov",
-#    r"C:\Users\josef\openvino_models\qwen3-8b-int4-cw-ov",
-]
+ALLOWED_ACTIONS = ["wait_here", "follow_player", "equip_gun", "equip_melee", "equip_bow", "attack=<target>", "idle"]
+DEFAULT_MODEL_DIR = r"C:\Users\josef\openvino_models\Phi-3.5-mini-instruct-int4-cw-ov"
+# Other local models (leave commented to keep a single active model).
+# r"C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.3-int4-cw-ov",
+# r"C:\Users\josef\openvino_models\DeepSeek-R1-Distill-Qwen-1.5B-int4-cw-ov",
+# r"C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.2-int4-cw-ov",
+# r"C:\Users\josef\openvino_models\qwen3-8b-int4-cw-ov",
 
 DEFAULT_SYSTEM_PROMPT = (
                "Situation:\n%s\n"
@@ -194,9 +193,7 @@ def parse_int(value: Optional[str], default: int) -> int:
 
 
 def resolve_default_paths(options: Dict[str, str], root: str) -> Dict[str, str]:
-    runner_path = options.get("LLM_INTENT_RUNNER", "tools/llm_runner/runner.py")
-    if runner_path and not os.path.isabs(runner_path):
-        runner_path = os.path.abspath(os.path.join(root, runner_path))
+    runner_path = os.path.abspath(os.path.join(root, "tools", "llm_runner", "runner.py"))
     return {
         "python_path": options.get("LLM_INTENT_PYTHON", ""),
         "runner_path": runner_path,
@@ -204,6 +201,10 @@ def resolve_default_paths(options: Dict[str, str], root: str) -> Dict[str, str]:
         "device": options.get("LLM_INTENT_DEVICE", "NPU"),
         "max_prompt_len": str(parse_int(options.get("LLM_INTENT_MAX_PROMPT_LEN"), 4096)),
         "force_npu": str(parse_bool(options.get("LLM_INTENT_FORCE_NPU"), False)),
+        "use_api": options.get("LLM_INTENT_USE_API", ""),
+        "api_key_env": options.get("LLM_INTENT_API_KEY_ENV", ""),
+        "api_provider": options.get("LLM_INTENT_API_PROVIDER", ""),
+        "api_model": options.get("LLM_INTENT_API_MODEL", ""),
     }
 
 
@@ -237,25 +238,38 @@ def run_runner(
     prompt: str,
     snapshot: str,
     timeout: float,
+    use_api: bool,
+    api_key_env: str,
+    api_provider: str,
+    api_model: str,
 ) -> Dict[str, object]:
     if not python_path:
         python_path = sys.executable
-    cmd = [
-        python_path,
-        runner_path,
-        "--model-dir",
-        model_dir,
-        "--device",
-        device,
-        "--max-tokens",
-        str(max_tokens),
-        "--max-prompt-len",
-        str(max_prompt_len),
-    ]
-    if force_npu:
-        cmd.append("--force-npu")
-    if cache_dir:
-        cmd.extend(["--cache-dir", cache_dir])
+    cmd = [python_path, runner_path]
+    if use_api:
+        cmd.append("--use-api")
+        cmd.extend(["--api-provider", api_provider])
+        cmd.extend(["--api-model", api_model])
+        if api_key_env:
+            cmd.extend(["--api-key-env", api_key_env])
+        cmd.extend(["--max-tokens", str(max_tokens)])
+    else:
+        cmd.extend(
+            [
+                "--model-dir",
+                model_dir,
+                "--device",
+                device,
+                "--max-tokens",
+                str(max_tokens),
+                "--max-prompt-len",
+                str(max_prompt_len),
+            ]
+        )
+        if force_npu:
+            cmd.append("--force-npu")
+        if cache_dir:
+            cmd.extend(["--cache-dir", cache_dir])
     if runner_log:
         cmd.extend(["--log-file", runner_log])
 
@@ -278,8 +292,14 @@ def run_runner(
         "repetition_penalty": REPETITION_PENALTY,
     }
     assert proc.stdin is not None
-    proc.stdin.write(json.dumps(request, ensure_ascii=True) + "\n")
-    proc.stdin.flush()
+    try:
+        proc.stdin.write(json.dumps(request, ensure_ascii=True) + "\n")
+        proc.stdin.flush()
+    except BrokenPipeError:
+        stderr = ""
+        if proc.stderr is not None:
+            stderr = proc.stderr.read()
+        raise RuntimeError(f"Runner exited before request was sent. stderr:\n{stderr}")
 
     start = time.time()
     response: Optional[Dict[str, object]] = None
@@ -368,6 +388,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-force-npu", dest="force_npu", action="store_false")
     parser.add_argument("--cache-dir", default="", help="Optional OpenVINO cache dir.")
     parser.add_argument("--runner-log", default="", help="Optional runner log file.")
+    parser.add_argument("--use-api", action="store_true", help="Use API mode.")
+    parser.add_argument("--api-key-env", default="", help="API key env var name.")
+    parser.add_argument("--api-provider", default="", help="API provider name.")
+    parser.add_argument("--api-model", default="", help="API model name.")
     parser.add_argument(
         "--timeout",
         type=float,
@@ -384,8 +408,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    run_repeats = 3
-    max_attempts = 3
+    max_attempts = 2
 
     snapshot = DEFAULT_SNAPSHOT
     if args.snapshot:
@@ -404,8 +427,12 @@ def main() -> int:
 
     python_path = args.python_path or defaults["python_path"]
     runner_path = args.runner_path or defaults["runner_path"]
-    model_dir = args.model_dir or defaults["model_dir"]
+    model_dir = args.model_dir or defaults["model_dir"] or DEFAULT_MODEL_DIR
     device = args.device or defaults["device"]
+    use_api = args.use_api or parse_bool(defaults["use_api"], False)
+    api_key_env = args.api_key_env or defaults["api_key_env"]
+    api_provider = args.api_provider or defaults["api_provider"]
+    api_model = args.api_model or defaults["api_model"]
 
     max_prompt_len = args.max_prompt_len
     if max_prompt_len <= 0:
@@ -416,85 +443,74 @@ def main() -> int:
     else:
         force_npu = args.force_npu
 
-    if args.model_dir:
-        model_dirs = [args.model_dir]
-    elif MODEL_DIRS:
-        model_dirs = list(MODEL_DIRS)
-    elif model_dir:
-        model_dirs = [model_dir]
-    else:
-        model_dirs = []
-    if not model_dirs:
-        raise RuntimeError("Model directory is required. Use --model-dir, set LLM_INTENT_MODEL_DIR, or populate MODEL_DIRS.")
     if not runner_path:
-        raise RuntimeError("Runner path is required. Use --runner-path or set LLM_INTENT_RUNNER.")
+        raise RuntimeError("Runner path is required. Use --runner-path if the repo path is non-standard.")
+    if not use_api and not model_dir:
+        raise RuntimeError("Model directory is required for local mode.")
+    if use_api and (not api_provider or not api_model):
+        raise RuntimeError("API mode requires provider and model.")
 
     prompt = build_prompt(snapshot, system_prompt)
     if args.print_prompt:
         print(prompt)
 
     exit_code = 0
-    for model_path in model_dirs:
-        print(f"\nMODEL {model_path}")
-        gen_times = []
-        for run_index in range(run_repeats):
-            attempt = 0
-            response = None
-            timeout = args.timeout
-            while attempt < max_attempts:
-                try:
-                    response = run_runner(
-                        python_path=python_path,
-                        runner_path=runner_path,
-                        model_dir=model_path,
-                        device=device,
-                        max_tokens=args.max_tokens,
-                        max_prompt_len=max_prompt_len,
-                        force_npu=force_npu,
-                        cache_dir=args.cache_dir,
-                        runner_log=args.runner_log,
-                        prompt=prompt,
-                        snapshot=snapshot,
-                        timeout=timeout,
-                    )
-                    break
-                except RuntimeError as exc:
-                    attempt += 1
-                    if "Timed out waiting for runner response" in str(exc) and timeout > 0 and attempt < max_attempts:
-                        timeout = timeout * 2
-                        continue
-                    print(str(exc))
-                    exit_code = 1
-                    break
-            if response is None:
-                break
+    if not use_api:
+        print(f"\nMODEL {model_dir}")
+    attempt = 0
+    response = None
+    timeout = args.timeout
+    while attempt < max_attempts:
+        try:
+            response = run_runner(
+                python_path=python_path,
+                runner_path=runner_path,
+                model_dir=model_dir,
+                device=device,
+                max_tokens=args.max_tokens,
+                max_prompt_len=max_prompt_len,
+                force_npu=force_npu,
+                cache_dir=args.cache_dir,
+                runner_log=args.runner_log,
+                prompt=prompt,
+                snapshot=snapshot,
+                timeout=timeout,
+                use_api=use_api,
+                api_key_env=api_key_env,
+                api_provider=api_provider,
+                api_model=api_model,
+            )
+            break
+        except RuntimeError as exc:
+            attempt += 1
+            if "Timed out waiting for runner response" in str(exc) and timeout > 0 and attempt < max_attempts:
+                timeout = timeout * 2
+                continue
+            print(str(exc))
+            exit_code = 1
+            break
 
-            ok = response.get("ok", False)
-            text = response.get("text", "")
-            metrics = response.get("metrics", {})
-            error = response.get("error", "")
+    if response is None:
+        return exit_code
 
-            if ok:
-                print(f"RUN {run_index + 1}")
-                parsed_text = extract_csv_line(text)
-                print(parsed_text)
-                if parsed_text != text.strip():
-                    print(f"RAW {text.strip()}")
-                if isinstance(metrics, dict):
-                    gen_time = metrics.get("gen_time_ms")
-                    if isinstance(gen_time, (int, float)):
-                        gen_times.append(float(gen_time))
-            else:
-                print(f"Runner error: {error}")
-                print(json.dumps(response, indent=2, ensure_ascii=True))
-                exit_code = 1
-                break
+    ok = response.get("ok", False)
+    text = response.get("text", "")
+    metrics = response.get("metrics", {})
+    error = response.get("error", "")
 
-        if gen_times:
-            avg_gen = sum(gen_times) / len(gen_times)
-            print(f"AVG gen_time_ms: {avg_gen:.2f}")
-        else:
-            print("AVG gen_time_ms: n/a")
+    if ok:
+        parsed_text = extract_csv_line(text)
+        print(parsed_text)
+        if parsed_text != text.strip():
+            print(f"RAW {text.strip()}")
+        if isinstance(metrics, dict):
+            gen_time = metrics.get("gen_time_ms")
+            if isinstance(gen_time, (int, float)):
+                print(f"gen_time_ms: {float(gen_time):.2f}")
+    else:
+        print(f"Runner error: {error}")
+        print(json.dumps(response, indent=2, ensure_ascii=True))
+        exit_code = 1
 
     return exit_code
 
