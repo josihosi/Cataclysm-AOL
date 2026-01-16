@@ -410,16 +410,6 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
         if not isinstance(max_tokens, int) or max_tokens <= 0:
             max_tokens = None
 
-        temperature = request.get("temperature")
-        if not isinstance(temperature, (int, float)) or temperature <= 0:
-            temperature = TEMPERATURE
-        top_p = request.get("top_p")
-        if not isinstance(top_p, (int, float)) or top_p <= 0 or top_p > 1.0:
-            top_p = TOP_P
-        repetition_penalty = request.get("repetition_penalty")
-        if not isinstance(repetition_penalty, (int, float)) or repetition_penalty <= 0:
-            repetition_penalty = REPETITION_PENALTY
-
         start_time = time.perf_counter()
         try:
             completion_kwargs: Dict[str, Any] = {
@@ -427,12 +417,8 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
                 "provider": provider,
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": max_tokens,
-                "temperature": float(temperature),
-                "top_p": float(top_p),
                 "api_key": api_key,
             }
-            if repetition_penalty is not None:
-                completion_kwargs["repetition_penalty"] = float(repetition_penalty)
             response = completion(
                 **completion_kwargs,
             )
