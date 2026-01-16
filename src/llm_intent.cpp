@@ -963,6 +963,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                snapshot, action_list_with_target );
 }
 
+#if defined(_WIN32)
 std::string request_to_json( const llm_intent_request &request )
 {
     std::ostringstream out;
@@ -1069,7 +1070,6 @@ runner_config current_runner_config()
     return cfg;
 }
 
-#if defined(_WIN32)
 std::string quote_windows_arg( const std::string &arg )
 {
     if( arg.empty() ) {
