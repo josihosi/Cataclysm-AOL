@@ -381,9 +381,6 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
     api_key = ""
     if args.api_key_env:
         api_key = os.environ.get(args.api_key_env, "")
-    if not api_key:
-        print("API key env var is missing or empty.", file=sys.stderr)
-        return 1
 
     for line in sys.stdin:
         line = line.strip()

@@ -42,6 +42,13 @@
 
 #if defined(_WIN32)
 #include <windows.h>
+#else
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/select.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <errno.h>
 #endif
 
 namespace
@@ -963,7 +970,8 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                snapshot, action_list_with_target );
 }
 
-#if defined(_WIN32)
+// Shared utility functions for both Windows and POSIX
+
 std::string request_to_json( const llm_intent_request &request )
 {
     std::ostringstream out;
@@ -1054,7 +1062,7 @@ runner_config current_runner_config()
     static constexpr int default_max_prompt_len = 4096;
     runner_config cfg;
     cfg.python_path = get_option<std::string>( "LLM_INTENT_PYTHON" );
-    cfg.runner_path = "tools\\llm_runner\\runner.py";
+    cfg.runner_path = "tools/llm_runner/runner.py";
     cfg.model_dir = get_option<std::string>( "LLM_INTENT_MODEL_DIR" );
     cfg.device = get_option<std::string>( "LLM_INTENT_DEVICE" );
     cfg.use_api = get_option<bool>( "LLM_INTENT_USE_API" );
@@ -1069,6 +1077,8 @@ runner_config current_runner_config()
     cfg.force_npu = get_option<bool>( "LLM_INTENT_FORCE_NPU" );
     return cfg;
 }
+
+#if defined(_WIN32)
 
 std::string quote_windows_arg( const std::string &arg )
 {
@@ -1389,6 +1399,328 @@ class llm_intent_runner_process
             }
         }
 };
+#else
+
+// POSIX implementation for Linux/macOS
+
+std::string quote_posix_arg( const std::string &arg )
+{
+    if( arg.empty() ) {
+        return "\"\"";
+    }
+    if( arg.find_first_of( " \t\"'$" ) == std::string::npos ) {
+        return arg;
+    }
+    std::string out = "'";
+    for( char c : arg ) {
+        if( c == '\'' ) {
+            out += "'\\\\'";
+        }
+        out += c;
+    }
+    out += "'";
+    return out;
+}
+
+class posix_runner_process
+{
+    public:
+        ~posix_runner_process() {
+            shutdown();
+        }
+
+        bool ensure_running( const runner_config &config, std::string &error ) {
+            if( running && config == active_config ) {
+                return true;
+            }
+            shutdown();
+            return start( config, error );
+        }
+
+        bool send_request( const llm_intent_request &request, std::string &response_line, std::string &error,
+                           std::chrono::milliseconds timeout ) {
+            std::string payload = request_to_json( request );
+            payload.push_back( '\n' );
+            if( !write_all( payload, error ) ) {
+                return false;
+            }
+            std::chrono::milliseconds effective_timeout = timeout;
+            if( !warm && timeout.count() > 0 ) {
+                static constexpr auto startup_grace = std::chrono::milliseconds( 120000 );
+                if( effective_timeout < startup_grace ) {
+                    effective_timeout = startup_grace;
+                }
+            }
+            const bool ok = read_response_for_request( request, response_line, effective_timeout, error );
+            if( ok ) {
+                warm = true;
+            }
+            return ok;
+        }
+
+        void terminate() {
+            if( !running ) {
+                return;
+            }
+            if( child_pid > 0 ) {
+                kill( child_pid, SIGTERM );
+            }
+            close_handles();
+        }
+
+    private:
+        bool running = false;
+        bool warm = false;
+        runner_config active_config;
+        pid_t child_pid = -1;
+        int stdin_write = -1;
+        int stdout_read = -1;
+        std::string stdout_buffer;
+        std::filesystem::path runner_log_path;
+
+        bool start( const runner_config &config, std::string &error ) {
+            if( config.python_path.empty() || config.runner_path.empty() ||
+                ( !config.use_api && config.model_dir.empty() ) ) {
+                error = "LLM runner configuration is incomplete.";
+                return false;
+            }
+
+            std::filesystem::path python_path = resolve_path( config.python_path );
+            std::filesystem::path runner_path = resolve_path( config.runner_path );
+            std::filesystem::path model_dir = resolve_path( config.model_dir );
+            std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
+                                             "llm_intent_runner.log";
+            assure_dir_exist( PATH_INFO::config_dir() );
+
+            std::vector<std::string> args;
+            args.push_back( python_path.string() );
+            args.push_back( runner_path.string() );
+            if( config.use_api ) {
+                args.push_back( "--use-api" );
+                args.push_back( "--api-provider" );
+                args.push_back( config.api_provider );
+                args.push_back( "--api-model" );
+                args.push_back( config.api_model );
+                if( !config.api_key_env.empty() ) {
+                    args.push_back( "--api-key-env" );
+                    args.push_back( config.api_key_env );
+                }
+                args.push_back( "--max-tokens" );
+                args.push_back( std::to_string( config.max_tokens ) );
+            } else {
+                std::filesystem::path cache_dir = model_dir / ".ov_cache";
+                args.push_back( "--model-dir" );
+                args.push_back( model_dir.string() );
+                args.push_back( "--device" );
+                args.push_back( config.device.empty() ? "NPU" : config.device );
+                args.push_back( "--max-tokens" );
+                args.push_back( std::to_string( config.max_tokens ) );
+                args.push_back( "--max-prompt-len" );
+                args.push_back( std::to_string( config.max_prompt_len ) );
+                args.push_back( "--cache-dir" );
+                args.push_back( cache_dir.string() );
+                if( config.force_npu ) {
+                    args.push_back( "--force-npu" );
+                }
+            }
+            args.push_back( "--log-file" );
+            args.push_back( log_path.string() );
+
+            std::string cmdline;
+            for( const std::string &arg : args ) {
+                if( !cmdline.empty() ) {
+                    cmdline.push_back( ' ' );
+                }
+                cmdline += quote_posix_arg( arg );
+            }
+
+            int stdout_pipe[2];
+            if( pipe( stdout_pipe ) < 0 ) {
+                error = "Failed to create stdout pipe.";
+                return false;
+            }
+
+            int stdin_pipe[2];
+            if( pipe( stdin_pipe ) < 0 ) {
+                error = "Failed to create stdin pipe.";
+                close( stdout_pipe[0] );
+                close( stdout_pipe[1] );
+                return false;
+            }
+
+            pid_t pid = fork();
+            if( pid < 0 ) {
+                error = "Failed to fork process.";
+                close( stdout_pipe[0] );
+                close( stdout_pipe[1] );
+                close( stdin_pipe[0] );
+                close( stdin_pipe[1] );
+                return false;
+            }
+
+            if( pid == 0 ) {
+                // Child process
+                close( stdout_pipe[0] );
+                close( stdin_pipe[1] );
+
+                dup2( stdout_pipe[1], STDOUT_FILENO );
+                dup2( stdin_pipe[0], STDIN_FILENO );
+                close( stdout_pipe[1] );
+                close( stdin_pipe[0] );
+
+                // Execute the Python script
+                std::vector<const char *> argv;
+                argv.reserve( args.size() + 1 );
+                for( const std::string &arg : args ) {
+                    argv.push_back( arg.c_str() );
+                }
+                argv.push_back( nullptr );
+                execvp( python_path.c_str(), const_cast<char *const *>( argv.data() ) );
+                _exit( 127 );
+            }
+
+            // Parent process
+            close( stdout_pipe[1] );
+            close( stdin_pipe[0] );
+
+            child_pid = pid;
+            stdin_write = stdin_pipe[1];
+            stdout_read = stdout_pipe[0];
+
+            // Set non-blocking I/O
+            int flags = fcntl( stdout_read, F_GETFL, 0 );
+            fcntl( stdout_read, F_SETFL, flags | O_NONBLOCK );
+
+            running = true;
+            warm = false;
+            runner_log_path = log_path;
+            active_config = config;
+            return true;
+        }
+
+        void shutdown() {
+            if( !running ) {
+                return;
+            }
+            std::string error;
+            const std::string payload = "{\"command\":\"shutdown\",\"request_id\":\"shutdown\"}\n";
+            write_all( payload, error );
+            std::string response_line;
+            llm_intent_request dummy;
+            dummy.request_id = "shutdown";
+            read_response_for_request( dummy, response_line, std::chrono::milliseconds( 200 ), error );
+            close_handles();
+        }
+
+        void close_handles() {
+            if( stdin_write != -1 ) {
+                close( stdin_write );
+                stdin_write = -1;
+            }
+            if( stdout_read != -1 ) {
+                close( stdout_read );
+                stdout_read = -1;
+            }
+            if( child_pid != -1 ) {
+                int status;
+                waitpid( child_pid, &status, 0 );
+                child_pid = -1;
+            }
+            running = false;
+            warm = false;
+            runner_log_path.clear();
+            stdout_buffer.clear();
+        }
+
+        bool write_all( const std::string &payload, std::string &error ) {
+            ssize_t written = write( stdin_write, payload.data(), payload.size() );
+            if( written < 0 ) {
+                error = "Failed to write to runner stdin.";
+                return false;
+            }
+            return true;
+        }
+
+        bool read_response_for_request( const llm_intent_request &request, std::string &out_line,
+                                        std::chrono::milliseconds timeout, std::string &error ) {
+            const auto start = std::chrono::steady_clock::now();
+            while( true ) {
+                const auto newline = stdout_buffer.find( '\n' );
+                if( newline != std::string::npos ) {
+                    const std::string line = stdout_buffer.substr( 0, newline );
+                    stdout_buffer.erase( 0, newline + 1 );
+                    std::string trimmed = line;
+                    if( !trimmed.empty() && trimmed.back() == '\r' ) {
+                        trimmed.pop_back();
+                    }
+                    if( response_from_json( trimmed, request ) ) {
+                        out_line = trimmed;
+                        return true;
+                    }
+                    continue;
+                }
+
+                if( timeout.count() > 0 &&
+                    std::chrono::steady_clock::now() - start > timeout ) {
+                    error = "Runner response timed out.";
+                    return false;
+                }
+
+                fd_set read_fds;
+                FD_ZERO( &read_fds );
+                FD_SET( stdout_read, &read_fds );
+
+                struct timeval tv;
+                tv.tv_sec = 0;
+                tv.tv_usec = 50000; // 50ms
+
+                int sel = select( stdout_read + 1, &read_fds, nullptr, nullptr, &tv );
+                if( sel < 0 ) {
+                    error = "Runner stdout select failed.";
+                    if( !runner_log_path.empty() && std::filesystem::exists( runner_log_path ) ) {
+                        const std::string tail = read_log_tail( runner_log_path, 4096 );
+                        if( !tail.empty() ) {
+                            error += "\nRunner log tail:\n" + tail;
+                        } else {
+                            error += "\nSee config/llm_intent_runner.log for details.";
+                        }
+                    }
+                    return false;
+                }
+
+                if( FD_ISSET( stdout_read, &read_fds ) ) {
+                    char buffer[4096];
+                    ssize_t bytes_read = read( stdout_read, buffer, sizeof( buffer ) );
+                    if( bytes_read < 0 ) {
+                        if( errno == EAGAIN || errno == EWOULDBLOCK ) {
+                            std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+                            continue;
+                        }
+                        error = "Runner stdout read failed.";
+                        return false;
+                    }
+                    if( bytes_read == 0 ) {
+                        error = "Runner process exited.";
+                        return false;
+                    }
+                    stdout_buffer.append( buffer, buffer + bytes_read );
+                    continue;
+                }
+
+                if( child_pid > 0 ) {
+                    int status;
+                    pid_t ret = waitpid( child_pid, &status, WNOHANG );
+                    if( ret > 0 ) {
+                        error = "Runner process exited.";
+                        return false;
+                    }
+                }
+
+                std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+            }
+        }
+};
+
 #endif
 
 class llm_intent_manager
@@ -1435,7 +1767,6 @@ class llm_intent_manager
                 return;
             }
             ensure_worker();
-#if defined(_WIN32)
             const runner_config config = current_runner_config();
             std::string error;
             if( config.force_npu && config.device != "NPU" ) {
@@ -1467,7 +1798,6 @@ class llm_intent_manager
                 }
                 cv.notify_one();
             }
-#endif
         }
 
         void process_responses() {
@@ -1599,6 +1929,8 @@ class llm_intent_manager
         std::atomic<bool> warmup_enqueued = false;
 #if defined(_WIN32)
         llm_intent_runner_process runner;
+#else
+        posix_runner_process runner;
 #endif
 
         void ensure_worker() {
@@ -1636,16 +1968,7 @@ class llm_intent_manager
                     req = std::move( request_queue.front() );
                     request_queue.pop();
                 }
-                llm_intent_response response;
-#if defined(_WIN32)
-                response = handle_request_windows( req );
-#else
-                response.request_id = req.request_id;
-                response.npc_id = req.npc_id;
-                response.npc_name = req.npc_name;
-                response.ok = false;
-                response.error = "LLM runner is only supported on Windows in this build.";
-#endif
+                llm_intent_response response = handle_request( req );
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     response_queue.push( std::move( response ) );
@@ -1653,8 +1976,7 @@ class llm_intent_manager
             }
         }
 
-#if defined(_WIN32)
-        llm_intent_response handle_request_windows( const llm_intent_request &req ) {
+        llm_intent_response handle_request( const llm_intent_request &req ) {
             llm_intent_response response;
             response.request_id = req.request_id;
             response.npc_id = req.npc_id;
@@ -1687,7 +2009,6 @@ class llm_intent_manager
             response.error = "Runner returned invalid JSON.";
             return response;
         }
-#endif
 };
 
 llm_intent_manager &get_manager()
