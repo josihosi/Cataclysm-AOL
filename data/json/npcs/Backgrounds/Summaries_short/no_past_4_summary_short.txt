@@ -1,0 +1,1 @@
+BGSS_NO_PAST_4_STORY1|Resilient, Cynical, Defiant, Observant, Wry|"Who I was is gone. All that stuff burned away in <the_cataclysm>."|no_past_4

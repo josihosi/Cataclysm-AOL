@@ -1,0 +1,1 @@
+BGSS_PRISONER_1_STORY1|Reckless, Jovial, Resilient, Guilty, Survivor|"I don't want to say anymore. It's all behind me, and I'd like to keep it that way."|prisoner_1

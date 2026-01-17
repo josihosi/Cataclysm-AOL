@@ -1,0 +1,1 @@
+BGSS_EVACUEE_1_STORY1|Resilient, Cynical, Reckless, Observant, Resigned|"I thought I had those damned <zombies> figured out."|evacuee_1

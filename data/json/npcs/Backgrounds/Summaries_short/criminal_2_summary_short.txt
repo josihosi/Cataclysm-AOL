@@ -1,0 +1,1 @@
+BGSS_CRIMINAL_2_STORY1|Survivor, Cynical, Pragmatic, Self-Aware, Witty|"I was fricking lucky for <the_cataclysm>."|criminal_2
