@@ -977,6 +977,10 @@ JSON_FORMATTER_SOURCES := $(wildcard tools/format/*.cpp) src/wcwidth.cpp src/jso
 JSON_FORMATTER_HEADERS := $(wildcard tools/format/*.h)
 ZZIP_SOURCES := tools/save/zzip_main.cpp
 CHKJSON_SOURCES := $(wildcard src/chkjson/*.cpp) src/wcwidth.cpp src/json.cpp
+
+LLM_BG_SUMMARY_SCRIPT = tools/llm_runner/background_summarizer.py
+LLM_BG_SUMMARY_OUTDIR = data/json/npcs/Backgrounds/Summaries_short
+LLM_BG_SUMMARY_PYTHON ?= C:/Users/josef/openvino_models/openvino_env/Scripts/python.exe
 CLANG_TIDY_PLUGIN_SOURCES := \
   $(wildcard tools/clang-tidy-plugin/*.cpp tools/clang-tidy-plugin/*/*.cpp)
 CLANG_TIDY_PLUGIN_HEADERS := \
@@ -1081,7 +1085,7 @@ endif
 
 LDFLAGS += -lz
 
-all: version prefix $(CHECKS) $(TARGET) $(L10N) $(TESTSTARGET) $(ZZIP_BIN)
+all: version prefix $(CHECKS) llm-bg-summary-short $(TARGET) $(L10N) $(TESTSTARGET) $(ZZIP_BIN)
 	@
 
 $(TARGET): $(OBJS)
@@ -1102,7 +1106,7 @@ $(PCH_P): $(PCH_H)
 $(BUILD_PREFIX)$(TARGET_NAME).a: $(OBJS)
 	$(AR) rcs $(AR_FLAGS) $(BUILD_PREFIX)$(TARGET_NAME).a $(filter-out $(ODIR)/main.o $(ODIR)/messages.o,$(OBJS))
 
-.PHONY: version prefix
+.PHONY: version prefix llm-bg-summary-short
 version:
 	@( VERSION_STRING=$(VERSION) ; \
         [ -e ".git" ] && \
@@ -1471,3 +1475,5 @@ clean-lang:
 .PHONY: tests check ctags etags clean-tests clean-object_creator clean-pch clean-lang install lint
 
 -include ${OBJS:.o=.d}
+llm-bg-summary-short:
+	@$(LLM_BG_SUMMARY_PYTHON) $(LLM_BG_SUMMARY_SCRIPT) --out-dir "$(LLM_BG_SUMMARY_OUTDIR)" || true
