@@ -1011,7 +1011,7 @@ endif
 
 LDFLAGS += -lz
 
-all: version prefix $(CHECKS) llm-bg-summary-short $(TARGET) $(L10N) $(TESTSTARGET)
+all: version prefix $(CHECKS) llm-bg-summary-short $(TARGET) $(L10N) $(TESTSTARGET) $(ZZIP_BIN)
 	@
 
 $(TARGET): $(OBJS)
