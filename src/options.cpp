@@ -3011,6 +3011,13 @@ void options_manager::add_options_llm()
          to_translation( "Model name to pass to Any-LLM." ),
          "gpt-4.1", 128
        );
+
+    add_empty_line();
+
+    add( "LLM_SUMMARY_MODEL_DIR", "llm", to_translation( "LLM summary model directory" ),
+         to_translation( "Path to the local model directory used for background summaries." ),
+         "C:\\Users\\josef\\openvino_models\\qwen3-8b-int4-cw-ov", 4096
+       );
 }
 
 void options_manager::add_options_android()
