@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "character_id.h"
+#include "cata_utility.h"
 #include "creature_tracker.h"
 #include "itype.h"
 #include "debug.h"
@@ -155,6 +156,161 @@ std::string trim_copy( const std::string &text )
         --end;
     }
     return text.substr( start, end - start );
+}
+
+struct background_summary_entry {
+    std::string background;
+    std::string expression;
+    std::string source_tag;
+};
+
+struct background_summary_cache {
+    std::unordered_map<std::string, std::string> trait_to_topic;
+    std::unordered_map<std::string, background_summary_entry> summary_by_topic;
+    bool loaded = false;
+};
+
+void gather_traits_from_condition( const JsonObject &cond, std::vector<std::string> &out )
+{
+    cond.allow_omitted_members();
+    if( cond.has_string( "npc_has_trait" ) ) {
+        out.push_back( cond.get_string( "npc_has_trait" ) );
+    }
+    if( cond.has_array( "and" ) ) {
+        for( const JsonObject entry : cond.get_array( "and" ) ) {
+            gather_traits_from_condition( entry, out );
+        }
+    }
+    if( cond.has_array( "or" ) ) {
+        for( const JsonObject entry : cond.get_array( "or" ) ) {
+            gather_traits_from_condition( entry, out );
+        }
+    }
+}
+
+std::string normalize_summary_line( std::string summary )
+{
+    summary.erase( std::remove( summary.begin(), summary.end(), '\r' ), summary.end() );
+    std::replace( summary.begin(), summary.end(), '\n', ' ' );
+    return trim_copy( summary );
+}
+
+background_summary_cache &get_background_summaries()
+{
+    static background_summary_cache cache;
+    if( cache.loaded ) {
+        return cache;
+    }
+    cache.loaded = true;
+
+    const cata_path toc_path = PATH_INFO::datadir_path() / "json" / "npcs" / "Backgrounds" /
+                               "backgrounds_table_of_contents.json";
+    read_from_file_optional_json( toc_path, [&]( const JsonArray &root ) {
+        for( const JsonObject entry : root ) {
+            entry.allow_omitted_members();
+            if( entry.get_string( "type", "" ) != "talk_topic" ) {
+                continue;
+            }
+            if( !entry.has_array( "responses" ) ) {
+                continue;
+            }
+            for( const JsonObject resp : entry.get_array( "responses" ) ) {
+                resp.allow_omitted_members();
+                if( !resp.has_string( "topic" ) || !resp.has_object( "condition" ) ) {
+                    continue;
+                }
+                const std::string topic = resp.get_string( "topic" );
+                const JsonObject cond = resp.get_object( "condition" );
+                cond.allow_omitted_members();
+                std::vector<std::string> traits;
+                gather_traits_from_condition( cond, traits );
+                for( const std::string &trait : traits ) {
+                    if( cache.trait_to_topic.count( trait ) == 0 ) {
+                        cache.trait_to_topic[trait] = topic;
+                    }
+                }
+            }
+        }
+    } );
+
+    const cata_path summary_root = PATH_INFO::datadir_path() / "json" / "npcs" / "Backgrounds" /
+                                   "Summaries_short";
+    const std::filesystem::path summary_dir = summary_root.get_unrelative_path();
+    std::error_code ec;
+    if( !std::filesystem::exists( summary_dir, ec ) ) {
+        return cache;
+    }
+
+    for( const std::filesystem::directory_entry &entry : std::filesystem::directory_iterator( summary_dir,
+            ec ) ) {
+        if( ec ) {
+            break;
+        }
+        if( !entry.is_regular_file( ec ) ) {
+            continue;
+        }
+        if( entry.path().extension() != ".txt" ) {
+            continue;
+        }
+        const std::string filename = entry.path().filename().generic_u8string();
+        read_from_file_optional( summary_root / filename, [&]( std::istream &data ) {
+            std::string line;
+            while( std::getline( data, line ) ) {
+                line = trim_copy( line );
+                if( line.empty() || line[0] == '#' ) {
+                    continue;
+                }
+                std::vector<std::string> parts;
+                std::string current;
+                for( char c : line ) {
+                    if( c == '|' ) {
+                        parts.push_back( trim_copy( current ) );
+                        current.clear();
+                    } else {
+                        current.push_back( c );
+                    }
+                }
+                parts.push_back( trim_copy( current ) );
+                if( parts.size() < 3 ) {
+                    continue;
+                }
+                const std::string &id = parts[0];
+                if( cache.summary_by_topic.count( id ) > 0 ) {
+                    continue;
+                }
+                background_summary_entry entry_value;
+                entry_value.background = normalize_summary_line( parts[1] );
+                entry_value.expression = normalize_summary_line( parts[2] );
+                if( parts.size() > 3 ) {
+                    entry_value.source_tag = normalize_summary_line( parts[3] );
+                }
+                cache.summary_by_topic[id] = entry_value;
+            }
+        } );
+    }
+
+    return cache;
+}
+
+background_summary_entry get_background_summary_for( const npc &listener )
+{
+    background_summary_cache &cache = get_background_summaries();
+    if( cache.trait_to_topic.empty() || cache.summary_by_topic.empty() ) {
+        return {};
+    }
+    for( const trait_id &trait : listener.get_mutations( true, true ) ) {
+        const std::string trait_name = trait.str();
+        const auto topic_it = cache.trait_to_topic.find( trait_name );
+        if( topic_it == cache.trait_to_topic.end() ) {
+            continue;
+        }
+        const auto summary_it = cache.summary_by_topic.find( topic_it->second );
+        if( summary_it == cache.summary_by_topic.end() ) {
+            continue;
+        }
+        return summary_it->second;
+    }
+    return {};
 }
 
 bool is_action_token( const std::string &token )
@@ -675,7 +831,24 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     out << "player_name: " << sanitize_text( get_player_character().get_name() ) << "\n";
     out << "player_utterance: " << sanitize_text( player_utterance ) << "\n\n";
     out << "your_name: " << sanitize_text( listener.get_name() ) << "\n";
-
+    const std::string profession = sanitize_text( listener.disp_profession() );
+    if( !profession.empty() ) {
+        out << "your_profession: " << profession << "\n";
+    }
+    const background_summary_entry background_summary = get_background_summary_for( listener );
+    if( !background_summary.source_tag.empty() ) {
+        std::string bg_line = background_summary.source_tag;
+        if( bg_line.rfind( "bg_", 0 ) == 0 ) {
+            bg_line.erase( 0, 3 );
+        }
+        out << "your_background: " << bg_line << "\n";
+    }
+    if( !background_summary.background.empty() ) {
+        out << "your_tone: " << background_summary.background << "\n";
+    }
+    if( !background_summary.expression.empty() ) {
+        out << "your_example_expression: " << background_summary.expression << "\n";
+    }
     const int morale_scaled = scale_bipolar( listener.get_morale_level(), -100.0, 100.0 );
     const int hunger_scaled = scale_unipolar( listener.get_hunger(), 300.0 );
     const int thirst_scaled = scale_unipolar( listener.get_thirst(), 300.0 );
@@ -748,7 +921,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
                 out << ", ";
             }
             const std::string name = strip_leading_article( sanitize_text( entry.critter->disp_name() ) );
-            out << name << "@" << entry.distance << " ts=";
+            out << name << " threat_score[0-100]=";
             out << threat_score_for( listener, *entry.critter, entry.distance );
             if( ++count >= max_creatures ) {
                 break;
@@ -776,7 +949,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
                 name = "player";
             }
             name = strip_leading_article( name );
-            out << name << "@" << entry.distance;
+            out << name;
             if( ++count >= max_creatures ) {
                 break;
             }

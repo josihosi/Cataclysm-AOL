@@ -106,25 +106,28 @@ Therefore, any used model has to balance intelligence and speed.
 Heres an example snapshot:
 
 ```sh
-prompt Jewell Cheek (req_3)
+prompt Willy Norwood (req_0)
 Situation:
 SITUATION
-id: req_3
-player_name: Norine 'Red' Marroquin
-player_utterance: go for the fat zombie!
+id: req_0
+player_name: Alyson Shackelford
+player_utterance: Watch out for that soldier zombie!
 
-your_name: Jewell Cheek
-your_state[0-10]: morale=5 hunger=0 thirst=0 pain=1 stamina=10 sleepiness=0 hp_percent=10 effects=[]
+your_name: Willy Norwood
+your_background: codger
+your_tone: Rambling, Dramatic, Folksy, Eccentric, Jester
+your_example_expression: "A gorram moose! Livin' in the ol' ranger station!"
+your_state[0-10]: morale=5 hunger=0 thirst=0 pain=0 stamina=10 sleepiness=0 hp_percent=10 effects=[socialized_recently:1 asked_to_socialize:1]
 your_emotions[0-10]: danger_assessment=0 panic=0 confidence=10
-your_personality[0-10]: aggression=7 bravery=9 collector=6 altruism=6
-your_opinion_of_player[0-10]: trust=7 intimidation=4 respect=5 anger=5
+your_personality[0-10]: aggression=7 bravery=8 collector=5 altruism=8
+your_opinion_of_player[0-10]: trust=6 intimidation=5 respect=6 anger=5
 
-threats: zombie@5 ts=5
-friendlies: player@3
+threats: zombie soldier threat_score[0-100]=12
+friendlies: player
 
-inventory: wielded="Cops' Glock 22"
-inventory_usable: [|\ fancy hairpin, smartphone (UPS) (unbrowsed), cash card]
-inventory_combat: [Cops' Glock 22 (15/15), hammer, F-S fighting knife]
+inventory: wielded="Army bayonet"
+inventory_usable: [Army bayonet, smartphone (UPS) (unbrowsed), |\ hairpin]
+inventory_combat: [++ 5-round hunting shotgun+1 (5/5), Army bayonet, ++ yellow hard hat]
 bandage_possible: false
 
 legend:
@@ -135,21 +138,20 @@ legend:
 [A - Z] ... obstructed creature
 | ... You (NPC)
 map_legend:
+b ... zombie soldier
 a ... player
-b ... zombie
-c ... fat zombie
 map:
----0------------------------6------------
---------------------6----0---6--------0--
--------------------0---0-----------------
------0-----------------------------------
----------0----------------------------0-6
+0--00--00--00--00--00--------------------
+---00--00--00--0---00--------------------
 -----------------------------------------
---------------------------0--------------
-----------------------------0------------
----------------------0---------0---------
------------------6--0--------------------
-------6----------0----00-----------------
+-6666666---------------------------------
+-60000----0------------------------------
+-6-------00------------------------------
+-600-0---00------------------------------
+-6666666---------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
 -----------------------------------------
 -----------------------------------------
 -----------------------------------------
@@ -160,26 +162,26 @@ map:
 -----------------------------------------
 -----------------------------------------
 --------------------|--------------------
+-------------------b---------------------
 -----------------------------------------
 -----------------------------------------
-------------------a----------------------
------------------------b-----------------
+--------------------a--------------------
 -----------------------------------------
 -----------------------------------------
----------0-----0-------------------------
-----------------0-----0-------6----------
----------------------------0---0---------
-----------------0------0-----0---0-------
 -----------------------------------------
 -----------------------------------------
-----------------------------c---0------0-
---------------------0---0--0---------0---
--------------------0---0-------------0--0
-------------00---0----0--0---00--------0-
----------------00----0---0-0-------------
-------------0------0-----0------0------0-
----------0-------------------------------
-------------0----0---------------------0-
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
 
 <System>You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die.Return a single line only, with correct syntax, to be parsed by the game.This line has two to four fields separated by ‘|’ :
 <Field 1>The first field is an answer to player_utterance.You have decided to team up with the player for now, and must answer as the NPC.Stick to your role, with your emotions and opinions.Use a dry tone, with swear words, fit for a zombie apocalypse.</Field 1>
@@ -203,10 +205,12 @@ Print only Fields 1-4, separated by | .If you break this format, you have failed
 </System>
 
 
-say Jewell Cheek (req_3)
-Red, I'm with you. Let's take down that fat zombie.
-```
+say Willy Norwood (req_0)
+Ain't my first deadhead rodeo, Alyson—let's show that sack of rot who's boss!
 
+response Willy Norwood (req_0)
+{"request_id": "req_0", "ok": true, "text": "Ain't my first deadhead rodeo, Alyson\u2014let's show that sack of rot who's boss!|equip_gun|follow_player|attack=zombie soldier", "metrics": {"gen_time_ms": 2278.3687000046484, "max_new_tokens": 20000}}
+```
 ## Compile
 This section is from the original CDDA repo, as it applies to this fork as well.
 
