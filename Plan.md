@@ -30,48 +30,15 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 - attack=<target> to attack a certain target.
 
 #To-Do:
-### NPC Background Summaries (LLM)
-Pre-generate short LLM summaries for all background story entries and include them in the snapshot.
-
-#### Background story routing (preset vs random NPCs)
-- Background stories live in `data/json/npcs/Backgrounds/*.json` as `talk_topic` entries, and are wired in `data/json/npcs/Backgrounds/backgrounds_table_of_contents.json` using `npc_has_trait` conditions to route to the correct story topic.
-- Random NPCs typically get a background trait from their `npc_class` definition (`data/json/npcs/classes.json`) via trait groups like `BG_survival_story_*` (defined in `data/json/npcs/BG_trait_groups.json` and backed by `data/json/npcs/BG_traits.json`). Those traits are exactly what the table-of-contents conditions check.
-- Preset/unique NPCs can override their chatbin topics or traits in their `type: "npc"` JSON entries, which also feeds the same talk_topic pipeline.
-
-#### Best hook points for summaries/hijack
-- Central data anchor for summaries: `data/json/npcs/Backgrounds/backgrounds_table_of_contents.json` (trait-to-talk_topic routing). If a trait is referenced there, we can map it to a stable summary entry even as stories evolve.
-- Central runtime hook for dialogue rewrite: `dialogue::dynamic_line()` and `dialogue::gen_responses()` in `src/npctalk.cpp` (one place to intercept every topic's line/choices).
- 
-Specific pipeline sources:
-- Story text: `data/json/npcs/Backgrounds/*.json` (`talk_topic` + `dynamic_line`).
-- Background group mapping: `data/json/npcs/BG_trait_groups.json` (e.g., `BG_survival_story_*`).
-- Assignment sources: `data/json/npcs/classes.json` and other NPC class files under `data/json/npcs/**`,
-  plus `data/json/professions.json` (`npc_background`).
-Implementation sketch:
-- Resolve each background story entry → generate a 1–2 sentence summary once (offline/pre-gen).
-- Store summaries alongside the source stories (new JSON file keyed by talk_topic id).
-- At runtime, resolve each NPC’s background group → select the active story topic(s) → look up the summary.
-- Inject the summary into the SITUATION block as `background_summary:` for the speaking NPC.
-Josefs Senf:
-We need a little Python summarizer.
-It should detect these jsons. Maybe we could python-grep for `BG_survival_story_*`, and work off all files that pop up automatically, after a check whether or not they exist yet.
-Lets take the name of that survival story json as file name and _summay_short.
-With local LLM ("C:\Users\josef\openvino_models\qwen3-8b-int4-cw-ov"):
-Feed the LLM responses or player selected text and responses, and tell it to create the following:
-
-'''
-responses etc?
-<System>
-You must analyze the personality of this fictional Character.
-In 5 distinct words, describe them.
-And in 5 more words, mirror distinct expressions.
-</System>
-'''
-Something like that.
-The output, thinking cut out, should be saved in _survivor_name and 
-
-We must also pull the profession somehow...
-
+### Runner stability on Linux (LLM)
+- Detect Windows-style `LLM_INTENT_PYTHON` or `LLM_INTENT_MODEL_DIR` and show a clear in-game error before spawning the runner.
+- Default Linux-friendly [LLM] values when the options file is missing or stale:
+  - `LLM_INTENT_PYTHON=python3`
+  - `LLM_INTENT_DEVICE=AUTO`
+  - `LLM_INTENT_FORCE_NPU=false`
+- Document WSL/Linux setup: install `any-llm` for API mode and verify with `runner.py --self-test`.
+- Note that the llm_runner must NOT require an API key to be set, since some uses do not require an API key.
+- Add a minimal runner health-check option that can be triggered from the [LLM] menu (future UI hook).
 
 #Later to-Do, not now:
 - Look
