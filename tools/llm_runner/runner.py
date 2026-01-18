@@ -24,8 +24,14 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="OpenVINO GenAI LLM runner (stdin/stdout JSON).",
     )
+    parser.add_argument(
+        "--backend",
+        default="auto",
+        choices=["auto", "openvino", "api"],
+        help="Backend selection: auto, openvino, or api.",
+    )
     parser.add_argument("--model-dir", help="Path to model directory.")
-    parser.add_argument("--device", default="NPU", help="Target device (default: NPU).")
+    parser.add_argument("--device", default="AUTO", help="Target device (default: AUTO).")
     parser.add_argument(
         "--max-tokens",
         type=int,
@@ -74,6 +80,16 @@ def parse_args() -> argparse.Namespace:
         help="Environment variable name that stores the API key.",
     )
     parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="Run a minimal backend sanity check and exit.",
+    )
+    parser.add_argument(
+        "--self-test-prompt",
+        default="Hello from the LLM self-test.",
+        help="Prompt used for --self-test.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate arguments and exit without loading OpenVINO.",
@@ -82,7 +98,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def ensure_npu_only() -> None:
-    import openvino as ov
+    try:
+        import openvino as ov
+    except Exception as exc:
+        raise RuntimeError(f"OpenVINO not available: {exc}")
 
     core = ov.Core()
     devices = core.available_devices
@@ -272,6 +291,114 @@ def handle_request(
         return {"request_id": request_id, "ok": False, "error": str(exc)}
 
 
+def try_import_openvino_genai(log_fp: Optional[TextIO]) -> Optional[object]:
+    try:
+        import openvino_genai as ov_genai
+        return ov_genai
+    except Exception as exc:
+        log_line(log_fp, f"openvino_genai unavailable: {exc}")
+        return None
+
+
+def select_device(requested: str, log_fp: Optional[TextIO]) -> str:
+    requested = (requested or "").strip().upper()
+    if requested and requested != "AUTO":
+        return requested
+    try:
+        import openvino as ov
+
+        core = ov.Core()
+        devices = [d.upper() for d in core.available_devices]
+        for candidate in ["NPU", "GPU", "CPU"]:
+            if candidate in devices:
+                return candidate
+    except Exception as exc:
+        log_line(log_fp, f"device auto-detect failed: {exc}")
+    return "CPU"
+
+
+def run_openvino_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
+    if not args.model_dir:
+        print("Missing --model-dir for OpenVINO self-test.", file=sys.stderr)
+        return 1
+    cache_dir = args.cache_dir or os.path.join(args.model_dir, ".ov_cache")
+    device = select_device(args.device, log_fp)
+    try:
+        log_line(log_fp, "self-test: loading OpenVINO pipeline")
+        pipe = load_pipeline(args.model_dir, device, cache_dir, args.max_prompt_len)
+        tokenizer = build_tokenizer(args.model_dir)
+        request = {
+            "request_id": "self_test",
+            "prompt": args.self_test_prompt,
+            "max_tokens": min(args.max_tokens, 16),
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "repetition_penalty": 1.0,
+        }
+        response = handle_request(
+            pipe,
+            tokenizer,
+            request,
+            args.max_tokens,
+            build_time_ms=0.0,
+            total_load_time_ms=0.0,
+            log_fp=log_fp,
+        )
+        if response.get("ok"):
+            print("self-test ok")
+            return 0
+        error = response.get("error", "Unknown error")
+        print(f"self-test failed: {error}", file=sys.stderr)
+        return 1
+    except Exception as exc:
+        log_line(log_fp, f"self-test exception: {exc}")
+        log_line(log_fp, traceback.format_exc())
+        print(f"self-test failed: {exc}", file=sys.stderr)
+        return 1
+
+
+def run_api_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
+    try:
+        from any_llm import completion
+    except Exception as exc:
+        log_line(log_fp, f"any-llm import failed: {exc}")
+        print(f"any-llm import failed: {exc}", file=sys.stderr)
+        return 1
+
+    provider = (args.api_provider or "").strip()
+    model = (args.api_model or "").strip()
+    if not provider or not model:
+        print("API provider and model are required for API self-test.", file=sys.stderr)
+        return 1
+
+    api_key = ""
+    if args.api_key_env:
+        api_key = os.environ.get(args.api_key_env, "")
+        if not api_key:
+            print(f"API key env var not set: {args.api_key_env}", file=sys.stderr)
+            return 1
+
+    try:
+        response = completion(
+            model=model,
+            provider=provider,
+            messages=[{"role": "user", "content": args.self_test_prompt}],
+            max_tokens=min(args.max_tokens, 16),
+            api_key=api_key,
+        )
+        text = strip_think_tags(extract_completion_text(response))
+        if not text.strip():
+            print("self-test failed: empty API response", file=sys.stderr)
+            return 1
+        print("self-test ok")
+        return 0
+    except Exception as exc:
+        log_line(log_fp, f"api self-test exception: {exc}")
+        log_line(log_fp, traceback.format_exc())
+        print(f"self-test failed: {exc}", file=sys.stderr)
+        return 1
+
+
 def main() -> int:
     args = parse_args()
     log_fp = setup_logger(args.log_file)
@@ -279,11 +406,37 @@ def main() -> int:
         log_line(log_fp, "dry-run ok")
         print("dry-run ok")
         return 0
+    backend = (args.backend or "auto").strip().lower()
     if args.use_api:
+        backend = "api"
+
+    api_configured = bool((args.api_provider or "").strip() and (args.api_model or "").strip())
+    openvino_available = False
+    if backend in ("auto", "openvino"):
+        openvino_available = try_import_openvino_genai(log_fp) is not None
+
+    if backend == "auto":
+        if args.model_dir and openvino_available:
+            backend = "openvino"
+        elif api_configured:
+            backend = "api"
+        elif not args.model_dir:
+            print("Missing --model-dir for OpenVINO mode. Set [LLM] model directory or enable API.", file=sys.stderr)
+            return 1
+        else:
+            print("OpenVINO GenAI not available. Install OpenVINO or enable API mode.", file=sys.stderr)
+            return 1
+
+    if backend == "api":
+        if args.self_test:
+            return run_api_self_test(args, log_fp)
         return run_api_mode(args, log_fp)
+
     if not args.model_dir:
         print("Missing --model-dir for local runner mode.", file=sys.stderr)
         return 1
+    if args.self_test:
+        return run_openvino_self_test(args, log_fp)
 
     start_time = time.perf_counter()
     if args.force_npu:
@@ -299,7 +452,8 @@ def main() -> int:
         log_line(log_fp, "loading pipeline")
         build_start = time.perf_counter()
         cache_dir = args.cache_dir or os.path.join(args.model_dir, ".ov_cache")
-        pipe = load_pipeline(args.model_dir, args.device, cache_dir, args.max_prompt_len)
+        device = select_device(args.device, log_fp)
+        pipe = load_pipeline(args.model_dir, device, cache_dir, args.max_prompt_len)
         build_time_ms = (time.perf_counter() - build_start) * 1000.0
         total_load_time_ms = (time.perf_counter() - start_time) * 1000.0
         log_line(log_fp, f"pipeline loaded (build {build_time_ms:.1f} ms, total {total_load_time_ms:.1f} ms)")
@@ -381,9 +535,6 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
     api_key = ""
     if args.api_key_env:
         api_key = os.environ.get(args.api_key_env, "")
-    if not api_key:
-        print("API key env var is missing or empty.", file=sys.stderr)
-        return 1
 
     for line in sys.stdin:
         line = line.strip()
