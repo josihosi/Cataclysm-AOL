@@ -35,4 +35,10 @@ The Makefile defines a convenience target:
 Configuration knobs:
 - `LLM_SUMMARY_MODEL_DIR` (env) or `--model-dir` for the OpenVINO model.
 - `LLM_SUMMARY_DEVICE` (env) or `--device` for target device (default "NPU").
+
+### Debug run example
+Run a single topic with retries and verbose IO (use the OpenVINO venv Python):
+```powershell
+C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\background_summarizer.py --only-topic BGSS_CODGER_STORY1 --force --retry-invalid 2 --debug-io --include-responses
+```
 *** End Patch"}googassistant to=functions.apply_patch mg${json

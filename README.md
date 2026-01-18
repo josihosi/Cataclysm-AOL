@@ -2,6 +2,7 @@
 
 This is a fork of CDDA (https://github.com/CleverRaven/Cataclysm-DDA), where I try to use LLMs to implement organic responsiveness into Cataclysm.
 This is something I would like to see in games in general, so I'm trying to create it:
+![AOL Screenshot](doc/AOL-Screenshot.png)
 
 Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and some actions.
 The following actions can be initiated by the toolcall right now:
