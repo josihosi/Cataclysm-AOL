@@ -8584,18 +8584,18 @@ void map::loadn( const point_bub_sm &grid, bool update_vehicles )
         }
 
         // Update vehicle data
-    if( update_vehicles ) {
-        level_cache &map_cache = get_cache( z );
-        for( const auto &veh : tmpsub->vehicles ) {
-            // Only add if not tracking already.
-            if( map_cache.vehicle_list.find( veh.get() ) == map_cache.vehicle_list.end() ) {
-                map_cache.vehicle_list.insert( veh.get() );
-                if( !veh->loot_zones.empty() ) {
-                    map_cache.zone_vehicles.insert( veh.get() );
+        if( update_vehicles ) {
+            level_cache &map_cache = get_cache( z );
+            for( const auto &veh : tmpsub->vehicles ) {
+                // Only add if not tracking already.
+                if( map_cache.vehicle_list.find( veh.get() ) == map_cache.vehicle_list.end() ) {
+                    map_cache.vehicle_list.insert( veh.get() );
+                    if( !veh->loot_zones.empty() ) {
+                        map_cache.zone_vehicles.insert( veh.get() );
+                    }
                 }
             }
         }
-    }
 
         if( zlevels ) {
             add_tree_tops( { grid.x(), grid.y(), z } );

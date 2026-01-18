@@ -1,0 +1,41 @@
+Building in WSL at /mnt/c/Users/josef/dev/Cataclysm-AOL
+Hit:1 http://security.ubuntu.com/ubuntu noble-security InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu noble InRelease
+Hit:3 https://deb.nodesource.com/node_22.x nodistro InRelease
+Hit:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease
+Hit:6 https://ppa.launchpadcontent.net/neovim-ppa/stable/ubuntu noble InRelease
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+pkg-config is already the newest version (1.8.1-2build1).
+astyle is already the newest version (3.1-3build1).
+libsdl2-dev is already the newest version (2.30.0+dfsg-1ubuntu3.1).
+libncurses-dev is already the newest version (6.4+20240113-1ubuntu2).
+libsdl2-ttf-dev is already the newest version (2.22.0+dfsg-1).
+libsdl2-image-dev is already the newest version (2.8.2+dfsg-1build2).
+libsdl2-mixer-dev is already the newest version (2.8.0+dfsg-1build3).
+libpulse-dev is already the newest version (1:16.1+dfsg1-2ubuntu10.1).
+ccache is already the newest version (4.9.1-1).
+gettext is already the newest version (0.21-14ubuntu2).
+parallel is already the newest version (20231122+ds-1).
+0 upgraded, 0 newly installed, 0 to remove and 90 not upgraded.
+Reading package lists...
+Building dependency tree...
+Reading state information...
+0 upgraded, 0 newly installed, 0 to remove and 90 not upgraded.
+Skipping clean in WSL
+astyle -V: Artistic Style Version 3.1
+no astyle regressions
+LLM summary model dir not found: C:\Users\josef\openvino_models\qwen3-8b-int4-cw-ov. Skipping.
+make -C lang
+make[1]: Entering directory '/mnt/c/Users/josef/dev/Cataclysm-AOL/lang'
+mkdir -p $(dirname mo/placeholder/LC_MESSAGES/cataclysm-dda.mo)
+msgfmt -f -o mo/placeholder/LC_MESSAGES/cataclysm-dda.mo po/placeholder.po
+make[1]: Leaving directory '/mnt/c/Users/josef/dev/Cataclysm-AOL/lang'
+touch lang/mo_built.stamp
+make -C tests
+make[1]: Entering directory '/mnt/c/Users/josef/dev/Cataclysm-AOL/tests'
+make[1]: Nothing to be done for 'tests'.
+make[1]: Leaving directory '/mnt/c/Users/josef/dev/Cataclysm-AOL/tests'

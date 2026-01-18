@@ -2925,6 +2925,18 @@ void options_manager::add_options_llm()
     const auto add_empty_line = [&]() {
         this->add_empty_line( "llm" );
     };
+#if defined(_WIN32)
+    const std::string default_llm_python =
+        "C:\\Users\\josef\\openvino_models\\openvino_env\\Scripts\\python.exe";
+    const std::string default_llm_model =
+        "C:\\Users\\josef\\openvino_models\\Phi-3.5-mini-instruct-int4-cw-ov";
+    const std::string default_llm_summary_model =
+        "C:\\Users\\josef\\openvino_models\\qwen3-8b-int4-cw-ov";
+#else
+    const std::string default_llm_python = "python3";
+    const std::string default_llm_model;
+    const std::string default_llm_summary_model;
+#endif
 
     add( "DEBUG_LLM_INTENT_LOG", "llm", to_translation( "Log LLM shouts" ),
          to_translation( "When enabled, log LLM prompts and responses to config/llm_intent.log." ),
@@ -2945,17 +2957,22 @@ void options_manager::add_options_llm()
 
     add( "LLM_INTENT_PYTHON", "llm", to_translation( "LLM runner venv Python path" ),
          to_translation( "Path to python.exe for the runner venv (local or API mode)." ),
-         "C:\\Users\\josef\\openvino_models\\openvino_env\\Scripts\\python.exe", 4096
+         default_llm_python, 4096
        );
 
     add( "LLM_INTENT_MODEL_DIR", "llm", to_translation( "LLM model directory" ),
          to_translation( "Path to the OpenVINO model directory." ),
-         "C:\\Users\\josef\\openvino_models\\Phi-3.5-mini-instruct-int4-cw-ov", 4096
+         default_llm_model, 4096
+       );
+
+    add( "LLM_INTENT_BACKEND", "llm", to_translation( "LLM backend" ),
+         to_translation( "Backend for LLM intents: auto, openvino, or api." ),
+         "auto", 16
        );
 
     add( "LLM_INTENT_DEVICE", "llm", to_translation( "LLM device" ),
-         to_translation( "OpenVINO device for LLM inference (NPU only is recommended)." ),
-         "NPU", 16
+         to_translation( "OpenVINO device for LLM inference (AUTO picks the best available device)." ),
+         "AUTO", 16
        );
 
     add( "LLM_INTENT_MAX_PROMPT_LEN", "llm", to_translation( "LLM max prompt length" ),
@@ -2970,7 +2987,7 @@ void options_manager::add_options_llm()
 
     add( "LLM_INTENT_FORCE_NPU", "llm", to_translation( "Force NPU for LLM intents" ),
          to_translation( "If true, fail when NPU is not available and do not fall back to CPU." ),
-         true
+         false
        );
 
     add_empty_line();
@@ -3016,7 +3033,7 @@ void options_manager::add_options_llm()
 
     add( "LLM_SUMMARY_MODEL_DIR", "llm", to_translation( "LLM summary model directory" ),
          to_translation( "Path to the local model directory used for background summaries." ),
-         "C:\\Users\\josef\\openvino_models\\qwen3-8b-int4-cw-ov", 4096
+         default_llm_summary_model, 4096
        );
 }
 

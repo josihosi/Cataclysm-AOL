@@ -2556,8 +2556,8 @@ bool npc::is_player_ally() const
 }
 
 void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
-                                 const std::string &request_id,
-                                 const std::string &target_hint )
+                                  const std::string &request_id,
+                                  const std::string &target_hint )
 {
     llm_intent_state &state = llm_intent_state_for( *this );
     state.queue.clear();
@@ -3464,7 +3464,7 @@ void npc::process_turn()
         }
     }
 
-    // NPCs shouldn't be using stamina, but if they have, set it back to max    
+    // NPCs shouldn't be using stamina, but if they have, set it back to max
     // If the stamina is higher than the max (Languorous), set it back to max
     if( calendar::once_every( 1_minutes ) && get_stamina() != get_stamina_max() ) {
         set_stamina( get_stamina_max() );

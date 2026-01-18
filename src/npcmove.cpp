@@ -1404,7 +1404,7 @@ void npc::execute_llm_intent_action( llm_intent_action action )
             rules.set_flag( ally_rule::use_guns );
             rules.set_flag( ally_rule::use_silent );
             rules.set_specific_override_state( ally_rule::use_guns, true );
-            rules.set_specific_override_state( ally_rule::use_silent, true );   
+            rules.set_specific_override_state( ally_rule::use_silent, true );
             item *best_gun = evaluate_best_silent_gun();
             if( best_gun == nullptr ) {
                 best_gun = evaluate_best_gun();
@@ -1433,30 +1433,36 @@ void npc::apply_llm_intent_target()
     }
 
     auto normalize_name = []( std::string text ) -> std::string {
-        auto is_space = []( unsigned char c ) {
+        auto is_space = []( unsigned char c )
+        {
             return std::isspace( c ) != 0;
         };
         size_t start = 0;
-        while( start < text.size() && is_space( static_cast<unsigned char>( text[start] ) ) ) {
+        while( start < text.size() && is_space( static_cast<unsigned char>( text[start] ) ) )
+        {
             ++start;
         }
         size_t end = text.size();
-        while( end > start && is_space( static_cast<unsigned char>( text[end - 1] ) ) ) {
+        while( end > start && is_space( static_cast<unsigned char>( text[end - 1] ) ) )
+        {
             --end;
         }
         text = text.substr( start, end - start );
-        std::transform( text.begin(), text.end(), text.begin(), []( unsigned char c ) {
+        std::transform( text.begin(), text.end(), text.begin(), []( unsigned char c )
+        {
             return static_cast<char>( std::tolower( c ) );
         } );
-        if( text.rfind( "the ", 0 ) == 0 ) {
+        if( text.rfind( "the ", 0 ) == 0 )
+        {
             text = text.substr( 4 );
         }
         return text;
     };
-    auto normalize_key = [&]( const std::string &text ) -> std::string {
+    auto normalize_key = [&]( const std::string & text ) -> std::string {
         std::string out = normalize_name( text );
         bool last_underscore = false;
-        for( char &c : out ) {
+        for( char &c : out )
+        {
             if( std::isspace( static_cast<unsigned char>( c ) ) ) {
                 c = '_';
             }
@@ -1581,7 +1587,8 @@ void npc::apply_llm_intent_target()
         if( best->is_monster() ) {
             ai_cache.danger = evaluate_monster( static_cast<const monster &>( *best ), best_dist );
         } else if( best->is_npc() || best->is_avatar() ) {
-            ai_cache.danger = std::max( evaluate_character( static_cast<const Character &>( *best ), npc_ranged, true ),
+            ai_cache.danger = std::max( evaluate_character( static_cast<const Character &>( *best ), npc_ranged,
+                                        true ),
                                         NPC_DANGER_VERY_LOW );
         } else {
             ai_cache.danger = NPC_DANGER_VERY_LOW;
@@ -1637,10 +1644,12 @@ void npc::move()
 
     llm_intent_state &state = llm_intent_state_for( *this );
     auto attempt_llm_forced_attack = [&]() -> bool {
-        if( state.target_attacks_remaining <= 0 || state.target_hint.empty() ) {
+        if( state.target_attacks_remaining <= 0 || state.target_hint.empty() )
+        {
             return false;
         }
-        if( Creature *target = current_target() ) {
+        if( Creature *target = current_target() )
+        {
             npc_action forced = method_of_attack();
             if( forced == npc_do_attack ) {
                 if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
@@ -1667,7 +1676,8 @@ void npc::move()
                 add_msg( "LLM intent advancing toward %s", target->disp_name() );
             }
             return true;
-        } else if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+        } else if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) )
+        {
             add_msg( "LLM intent had no target to attack" );
         }
         return false;
@@ -1678,7 +1688,7 @@ void npc::move()
         if( !is_player_ally() ) {
             clear_llm_intent_actions();
         } else {
-            const bool llm_safe = ai_cache.danger <= 0 && target == nullptr &&  
+            const bool llm_safe = ai_cache.danger <= 0 && target == nullptr &&
                                   !sees_dangerous_field( pos_bub() ) &&
                                   !has_effect( effect_npc_fire_bad );
             const bool allow_in_danger = state.active == llm_intent_action::equip_gun ||
@@ -1687,12 +1697,12 @@ void npc::move()
             if( llm_safe || allow_in_danger ) {
                 execute_llm_intent_action( state.active );
                 if( !state.queue.empty() ) {
-                state.queue.pop_front();
-            }
-            state.active = llm_intent_action::none;
-            state.active_turn = calendar::before_time_starts;
-            state.last_applied_turn = calendar::turn;
-            return;
+                    state.queue.pop_front();
+                }
+                state.active = llm_intent_action::none;
+                state.active_turn = calendar::before_time_starts;
+                state.last_applied_turn = calendar::turn;
+                return;
             }
         }
     }
@@ -4534,11 +4544,13 @@ item *npc::evaluate_best_gun() const
 
 item *npc::evaluate_best_silent_gun() const
 {
-    auto has_silent_mode = [this]( const item &candidate ) -> bool {
-        if( !candidate.is_gun() ) {
+    auto has_silent_mode = [this]( const item & candidate ) -> bool {
+        if( !candidate.is_gun() )
+        {
             return false;
         }
-        for( const std::pair<const gun_mode_id, gun_mode> &mode : candidate.gun_all_modes() ) {
+        for( const std::pair<const gun_mode_id, gun_mode> &mode : candidate.gun_all_modes() )
+        {
             if( mode.second.melee() || mode.second.flags.count( "NPC_AVOID" ) ) {
                 continue;
             }

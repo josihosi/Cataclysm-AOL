@@ -19,6 +19,7 @@ Yelling a sentence has also been changed to 'Say a sentence' with a range of aro
 
 - src/llm_intent.cpp
 - src/llm_intent.h
+- tools/llm_runner/background_summarizer.py
 - tools/llm_runner/prompt_playground.py
 - tools/llm_runner/runner.py
 - Generated logs (not tracked): config/llm_intent.log
@@ -60,6 +61,17 @@ If you do not have an NPU, you can still use CPU or GPU (set in LLM options).
 Your mileage may vary, depending on what LLM you are using.
 In in-game options under [LLM], the LLM directory can be changed.
 
+### In-game [LLM] options (Windows + Linux)
+The [LLM] menu is the single place to configure the runner for both platforms.
+
+- LLM backend: `auto`, `openvino`, or `api`.
+  - `auto` tries OpenVINO first when a model dir is set, and falls back to API if configured.
+  - `openvino` requires a local model dir.
+  - `api` requires provider + model (and API key env var if your provider needs one).
+- LLM device: `AUTO` will pick NPU -> GPU -> CPU when available.
+- LLM runner venv Python path: use your venv `python.exe` on Windows, or `python3` on Linux.
+- LLM model directory: only required for OpenVINO mode.
+
 ### Python packages
 Create a venv and install the packages below (pinning matches the tested setup):
 
@@ -77,6 +89,24 @@ The hard part is compatible for all LLMs, this is just a matter of changing a co
 
 In in-game options under [LLM], the game can be pointed towards the venv directory.
 tools/llm_runner/prompt_playground.py can be used for debugging your LLM pipeline, if you changed the venv etc.
+
+### Runner self-test
+You can sanity-check the runner from your venv before launching the game.
+
+OpenVINO (local):
+```sh
+# Windows
+C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\runner.py --self-test --backend openvino --model-dir "C:\path\to\ov_model" --device AUTO
+
+# Linux
+python3 tools/llm_runner/runner.py --self-test --backend openvino --model-dir "/path/to/ov_model" --device AUTO
+```
+
+API (will use your provider, may cost money):
+```sh
+# Windows or Linux
+python tools\llm_runner\runner.py --self-test --backend api --api-provider "OpenAI" --api-model "gpt-4.1" --api-key-env "CATACLYSM_API_KEY"
+```
 
 ### API call alternative
 Disclaimer: I am fully committed to optimizing this fork for local LLMs. 
@@ -219,7 +249,7 @@ Please read [COMPILING.md](doc/c++/COMPILING.md) - it covers general information
 
 We also have the following build guides:
 * Building on Windows with `MSYS2` at [COMPILING-MSYS.md](doc/c++/COMPILING-MSYS.md)
-- For MSYS2 building, you may use build_and_run.cmd
+- For MSYS2 building, you may use 'build_and_run.cmd --unclean'
 * Building on Windows with `vcpkg` at [COMPILING-VS-VCPKG.md](doc/c++/COMPILING-VS-VCPKG.md)
 * Building with `cmake` at [COMPILING-CMAKE.md](doc/c++/COMPILING-CMAKE.md)  (*unofficial guide*)
 

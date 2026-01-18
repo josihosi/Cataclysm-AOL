@@ -52,6 +52,13 @@
 
 #if defined(_WIN32)
 #include <windows.h>
+#else
+#include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/select.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #endif
 
 namespace
@@ -111,6 +118,7 @@ struct runner_config {
     std::string python_path;
     std::string runner_path;
     std::string model_dir;
+    std::string backend;
     std::string device;
     bool use_api = false;
     std::string api_key_env;
@@ -124,6 +132,7 @@ struct runner_config {
         return python_path == other.python_path &&
                runner_path == other.runner_path &&
                model_dir == other.model_dir &&
+               backend == other.backend &&
                device == other.device &&
                use_api == other.use_api &&
                api_key_env == other.api_key_env &&
@@ -138,6 +147,13 @@ struct runner_config {
         return !( *this == other );
     }
 };
+
+std::string request_to_json( const llm_intent_request &request );
+std::optional<llm_intent_response> response_from_json( const std::string &line,
+        const llm_intent_request &request );
+std::filesystem::path resolve_path( const std::string &path );
+runner_config current_runner_config();
+std::string read_log_tail( const std::filesystem::path &path, std::streamoff max_bytes );
 
 std::string sanitize_text( std::string_view text )
 {
@@ -165,6 +181,15 @@ std::string trim_copy( const std::string &text )
         --end;
     }
     return text.substr( start, end - start );
+}
+
+std::string lower_copy( const std::string &text )
+{
+    std::string out = text;
+    std::transform( out.begin(), out.end(), out.begin(), []( unsigned char c ) {
+        return static_cast<char>( std::tolower( c ) );
+    } );
+    return out;
 }
 
 struct background_summary_entry {
@@ -214,7 +239,7 @@ background_summary_cache &get_background_summaries()
 
     const cata_path toc_path = PATH_INFO::datadir_path() / "json" / "npcs" / "Backgrounds" /
                                "backgrounds_table_of_contents.json";
-    read_from_file_optional_json( toc_path, [&]( const JsonArray &root ) {
+    read_from_file_optional_json( toc_path, [&]( const JsonArray & root ) {
         for( const JsonObject entry : root ) {
             entry.allow_omitted_members();
             if( entry.get_string( "type", "" ) != "talk_topic" ) {
@@ -250,8 +275,9 @@ background_summary_cache &get_background_summaries()
         return cache;
     }
 
-    for( const std::filesystem::directory_entry &entry : std::filesystem::directory_iterator( summary_dir,
-            ec ) ) {
+    for( const std::filesystem::directory_entry &entry : std::filesystem::directory_iterator(
+             summary_dir,
+             ec ) ) {
         if( ec ) {
             break;
         }
@@ -262,7 +288,7 @@ background_summary_cache &get_background_summaries()
             continue;
         }
         const std::string filename = entry.path().filename().generic_u8string();
-        read_from_file_optional( summary_root / filename, [&]( std::istream &data ) {
+        read_from_file_optional( summary_root / filename, [&]( std::istream & data ) {
             std::string line;
             while( std::getline( data, line ) ) {
                 line = trim_copy( line );
@@ -422,18 +448,22 @@ bool parse_csv_payload( const std::string &csv, std::string &speech,
     }
     auto push_action_token = [&]( std::string token ) -> bool {
         token = trim_copy( token );
-        if( token.empty() ) {
+        if( token.empty() )
+        {
             error = "CSV action token is invalid.";
             return false;
         }
-        if( token.size() >= 2 && token.front() == '"' && token.back() == '"' ) {
+        if( token.size() >= 2 && token.front() == '"' && token.back() == '"' )
+        {
             token = trim_copy( token.substr( 1, token.size() - 2 ) );
         }
         std::string token_lower = token;
-        std::transform( token_lower.begin(), token_lower.end(), token_lower.begin(), []( unsigned char c ) {
+        std::transform( token_lower.begin(), token_lower.end(), token_lower.begin(), []( unsigned char c )
+        {
             return static_cast<char>( std::tolower( c ) );
         } );
-        if( token_lower.rfind( "attack=", 0 ) == 0 ) {
+        if( token_lower.rfind( "attack=", 0 ) == 0 )
+        {
             const std::string target_raw = token_lower.substr( 7 );
             if( target_raw.empty() ) {
                 error = "CSV attack target missing.";
@@ -458,17 +488,20 @@ bool parse_csv_payload( const std::string &csv, std::string &speech,
             attack_target = target_raw.substr( 0, end );
             return true;
         }
-        if( !is_action_token( token_lower ) ) {
+        if( !is_action_token( token_lower ) )
+        {
             error = "CSV action token is invalid.";
             return false;
         }
-        if( !is_allowed_action( token_lower ) ) {
+        if( !is_allowed_action( token_lower ) )
+        {
             if( !attack_target.empty() ) {
                 return true;
             }
         }
         actions.push_back( token_lower );
-        if( actions.size() > 3 ) {
+        if( actions.size() > 3 )
+        {
             error = "CSV has too many action tokens.";
             return false;
         }
@@ -688,8 +721,8 @@ std::vector<creature_snapshot> filter_visible( const npc &listener,
         }
         out.push_back( { critter, rl_dist( listener.pos_bub(), critter->pos_bub() ) } );
     }
-    std::sort( out.begin(), out.end(), []( const creature_snapshot &lhs,
-    const creature_snapshot &rhs ) {
+    std::sort( out.begin(), out.end(), []( const creature_snapshot & lhs,
+    const creature_snapshot & rhs ) {
         return lhs.distance < rhs.distance;
     } );
     return out;
@@ -768,7 +801,8 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
                         auto found = letter_map.find( critter );
                         if( found == letter_map.end() ) {
                             const char base_letter = 'a';
-                            const char letter = cost > 100 || cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
+                            const char letter = cost > 100 ||
+                                                cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
                             letter_map.emplace( critter, letter );
                             legend_entries.emplace_back( letter, "player" );
                             legend_targets[letter] = g->shared_from( *critter );
@@ -781,9 +815,11 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
                         if( found == letter_map.end() ) {
                             if( next_letter <= 'z' ) {
                                 const char base_letter = next_letter;
-                                const char letter = cost > 100 || cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
+                                const char letter = cost > 100 ||
+                                                    cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
                                 letter_map.emplace( critter, letter );
-                                legend_entries.emplace_back( letter, strip_leading_article( sanitize_text( critter->disp_name() ) ) );
+                                legend_entries.emplace_back( letter,
+                                                             strip_leading_article( sanitize_text( critter->disp_name() ) ) );
                                 legend_targets[letter] = g->shared_from( *critter );
                                 glyph = letter;
                                 ++next_letter;
@@ -819,14 +855,16 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     static constexpr size_t max_effects = 6;
     static constexpr size_t max_items = 3;
     auto scale_unipolar = []( double value, double max_value ) -> int {
-        if( max_value <= 0.0 ) {
+        if( max_value <= 0.0 )
+        {
             return 0;
         }
         const double clamped = std::clamp( value, 0.0, max_value );
         return static_cast<int>( std::round( ( clamped / max_value ) * 10.0 ) );
     };
     auto scale_bipolar = []( double value, double min_value, double max_value ) -> int {
-        if( max_value <= min_value ) {
+        if( max_value <= min_value )
+        {
             return 0;
         }
         const double clamped = std::clamp( value, min_value, max_value );
@@ -915,7 +953,8 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     out << " respect=" << scale_bipolar( listener.op_of_u.value, -10.0, 10.0 );
     out << " anger=" << scale_bipolar( listener.op_of_u.anger, -10.0, 10.0 ) << "\n\n";
 
-    const std::vector<creature_snapshot> hostile = filter_visible( listener, Creature::Attitude::HOSTILE,
+    const std::vector<creature_snapshot> hostile = filter_visible( listener,
+            Creature::Attitude::HOSTILE,
             visible_range );
     if( hostile.empty() ) {
         out << "threats: (none)\n";
@@ -939,7 +978,8 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         out << "\n";
     }
 
-    const std::vector<creature_snapshot> friendly = filter_visible( listener, Creature::Attitude::FRIENDLY,
+    const std::vector<creature_snapshot> friendly = filter_visible( listener,
+            Creature::Attitude::FRIENDLY,
             visible_range );
     if( friendly.empty() ) {
         out << "friendlies: (none)\n";
@@ -983,23 +1023,27 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     std::vector<std::string> combat_guns;
     std::vector<std::string> combat_melee;
     bool bandage_possible = false;
-    const auto format_gun_label = []( const item &gun ) -> std::string {
+    const auto format_gun_label = []( const item & gun ) -> std::string {
         std::string name = sanitize_text( gun.tname() );
         int capacity = 0;
         itype_id ammo_id = gun.ammo_current();
-        if( ammo_id.is_null() ) {
+        if( ammo_id.is_null() )
+        {
             ammo_id = gun.ammo_default();
         }
-        if( !ammo_id.is_null() ) {
+        if( !ammo_id.is_null() )
+        {
             const itype *ammo_type = item::find_type( ammo_id );
             if( ammo_type && ammo_type->ammo ) {
                 capacity = gun.ammo_capacity( ammo_type->ammo->type );
             }
         }
         const int ammo = gun.ammo_remaining();
-        if( capacity > 0 ) {
+        if( capacity > 0 )
+        {
             name += " (" + std::to_string( ammo ) + "/" + std::to_string( capacity ) + ")";
-        } else if( ammo > 0 ) {
+        } else if( ammo > 0 )
+        {
             name += " (" + std::to_string( ammo ) + ")";
         }
         return name;
@@ -1145,7 +1189,6 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                snapshot, action_list_with_target );
 }
 
-#if defined(_WIN32)
 std::string request_to_json( const llm_intent_request &request )
 {
     std::ostringstream out;
@@ -1236,8 +1279,9 @@ runner_config current_runner_config()
     static constexpr int default_max_prompt_len = 4096;
     runner_config cfg;
     cfg.python_path = get_option<std::string>( "LLM_INTENT_PYTHON" );
-    cfg.runner_path = "tools\\llm_runner\\runner.py";
+    cfg.runner_path = "tools/llm_runner/runner.py";
     cfg.model_dir = get_option<std::string>( "LLM_INTENT_MODEL_DIR" );
+    cfg.backend = get_option<std::string>( "LLM_INTENT_BACKEND" );
     cfg.device = get_option<std::string>( "LLM_INTENT_DEVICE" );
     cfg.use_api = get_option<bool>( "LLM_INTENT_USE_API" );
     cfg.api_key_env = get_option<std::string>( "LLM_INTENT_API_KEY_ENV" );
@@ -1252,6 +1296,7 @@ runner_config current_runner_config()
     return cfg;
 }
 
+#if defined(_WIN32)
 std::string quote_windows_arg( const std::string &arg )
 {
     if( arg.empty() ) {
@@ -1287,7 +1332,8 @@ class llm_intent_runner_process
             return start( config, error );
         }
 
-        bool send_request( const llm_intent_request &request, std::string &response_line, std::string &error,
+        bool send_request( const llm_intent_request &request, std::string &response_line,
+                           std::string &error,
                            std::chrono::milliseconds timeout ) {
             std::string payload = request_to_json( request );
             payload.push_back( '\n' );
@@ -1330,8 +1376,14 @@ class llm_intent_runner_process
         std::filesystem::path runner_log_path;
 
         bool start( const runner_config &config, std::string &error ) {
+            const std::string backend = lower_copy( config.backend );
+            const bool api_configured = !config.api_provider.empty() && !config.api_model.empty();
+            const bool use_api_mode = config.use_api || backend == "api";
+            const bool auto_backend = backend == "auto";
+            const bool needs_model = !use_api_mode && !( auto_backend && api_configured );
+
             if( config.python_path.empty() || config.runner_path.empty() ||
-                ( !config.use_api && config.model_dir.empty() ) ) {
+                ( config.model_dir.empty() && needs_model ) ) {
                 error = "LLM runner configuration is incomplete.";
                 return false;
             }
@@ -1346,7 +1398,11 @@ class llm_intent_runner_process
             std::vector<std::string> args;
             args.push_back( python_path.string() );
             args.push_back( runner_path.string() );
-            if( config.use_api ) {
+            if( !backend.empty() ) {
+                args.push_back( "--backend" );
+                args.push_back( backend );
+            }
+            if( use_api_mode ) {
                 args.push_back( "--use-api" );
                 args.push_back( "--api-provider" );
                 args.push_back( config.api_provider );
@@ -1358,12 +1414,12 @@ class llm_intent_runner_process
                 }
                 args.push_back( "--max-tokens" );
                 args.push_back( std::to_string( config.max_tokens ) );
-            } else {
+            } else if( !config.model_dir.empty() ) {
                 std::filesystem::path cache_dir = model_dir / ".ov_cache";
                 args.push_back( "--model-dir" );
                 args.push_back( model_dir.string() );
                 args.push_back( "--device" );
-                args.push_back( config.device.empty() ? "NPU" : config.device );
+                args.push_back( config.device.empty() ? "AUTO" : config.device );
                 args.push_back( "--max-tokens" );
                 args.push_back( std::to_string( config.max_tokens ) );
                 args.push_back( "--max-prompt-len" );
@@ -1372,6 +1428,16 @@ class llm_intent_runner_process
                 args.push_back( cache_dir.string() );
                 if( config.force_npu ) {
                     args.push_back( "--force-npu" );
+                }
+            }
+            if( !use_api_mode && auto_backend && api_configured ) {
+                args.push_back( "--api-provider" );
+                args.push_back( config.api_provider );
+                args.push_back( "--api-model" );
+                args.push_back( config.api_model );
+                if( !config.api_key_env.empty() ) {
+                    args.push_back( "--api-key-env" );
+                    args.push_back( config.api_key_env );
                 }
             }
             args.push_back( "--log-file" );
@@ -1571,6 +1637,337 @@ class llm_intent_runner_process
             }
         }
 };
+#else
+class posix_runner_process
+{
+    public:
+        ~posix_runner_process() {
+            shutdown();
+        }
+
+        bool ensure_running( const runner_config &config, std::string &error ) {
+            if( running && config == active_config ) {
+                return true;
+            }
+            shutdown();
+            return start( config, error );
+        }
+
+        bool send_request( const llm_intent_request &request, std::string &response_line,
+                           std::string &error,
+                           std::chrono::milliseconds timeout ) {
+            std::string payload = request_to_json( request );
+            payload.push_back( '\n' );
+            if( !write_all( payload, error ) ) {
+                return false;
+            }
+            std::chrono::milliseconds effective_timeout = timeout;
+            if( !warm && timeout.count() > 0 ) {
+                static constexpr auto startup_grace = std::chrono::milliseconds( 120000 );
+                if( effective_timeout < startup_grace ) {
+                    effective_timeout = startup_grace;
+                }
+            }
+            const bool ok = read_response_for_request( request, response_line, effective_timeout, error );
+            if( ok ) {
+                warm = true;
+            }
+            return ok;
+        }
+
+        void terminate() {
+            if( !running ) {
+                return;
+            }
+            if( child_pid > 0 ) {
+                kill( child_pid, SIGTERM );
+            }
+            close_handles();
+        }
+
+    private:
+        bool running = false;
+        bool warm = false;
+        runner_config active_config;
+        pid_t child_pid = -1;
+        int stdin_write = -1;
+        int stdout_read = -1;
+        std::string stdout_buffer;
+        std::filesystem::path runner_log_path;
+
+        bool start( const runner_config &config, std::string &error ) {
+            const std::string backend = lower_copy( config.backend );
+            const bool api_configured = !config.api_provider.empty() && !config.api_model.empty();
+            const bool use_api_mode = config.use_api || backend == "api";
+            const bool auto_backend = backend == "auto";
+            const bool needs_model = !use_api_mode && !( auto_backend && api_configured );
+
+            if( config.python_path.empty() || config.runner_path.empty() ||
+                ( config.model_dir.empty() && needs_model ) ) {
+                error = "LLM runner configuration is incomplete.";
+                return false;
+            }
+
+            std::filesystem::path python_path = resolve_path( config.python_path );
+            std::filesystem::path runner_path = resolve_path( config.runner_path );
+            std::filesystem::path model_dir = resolve_path( config.model_dir );
+            std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
+                                             "llm_intent_runner.log";
+            assure_dir_exist( PATH_INFO::config_dir() );
+
+            std::vector<std::string> args;
+            args.push_back( python_path.string() );
+            args.push_back( runner_path.string() );
+            if( !backend.empty() ) {
+                args.push_back( "--backend" );
+                args.push_back( backend );
+            }
+            if( use_api_mode ) {
+                args.push_back( "--use-api" );
+                args.push_back( "--api-provider" );
+                args.push_back( config.api_provider );
+                args.push_back( "--api-model" );
+                args.push_back( config.api_model );
+                if( !config.api_key_env.empty() ) {
+                    args.push_back( "--api-key-env" );
+                    args.push_back( config.api_key_env );
+                }
+                args.push_back( "--max-tokens" );
+                args.push_back( std::to_string( config.max_tokens ) );
+            } else if( !config.model_dir.empty() ) {
+                std::filesystem::path cache_dir = model_dir / ".ov_cache";
+                args.push_back( "--model-dir" );
+                args.push_back( model_dir.string() );
+                args.push_back( "--device" );
+                args.push_back( config.device.empty() ? "AUTO" : config.device );
+                args.push_back( "--max-tokens" );
+                args.push_back( std::to_string( config.max_tokens ) );
+                args.push_back( "--max-prompt-len" );
+                args.push_back( std::to_string( config.max_prompt_len ) );
+                args.push_back( "--cache-dir" );
+                args.push_back( cache_dir.string() );
+                if( config.force_npu ) {
+                    args.push_back( "--force-npu" );
+                }
+            }
+            if( !use_api_mode && auto_backend && api_configured ) {
+                args.push_back( "--api-provider" );
+                args.push_back( config.api_provider );
+                args.push_back( "--api-model" );
+                args.push_back( config.api_model );
+                if( !config.api_key_env.empty() ) {
+                    args.push_back( "--api-key-env" );
+                    args.push_back( config.api_key_env );
+                }
+            }
+            args.push_back( "--log-file" );
+            args.push_back( log_path.string() );
+
+            int stdout_pipe[2];
+            if( pipe( stdout_pipe ) < 0 ) {
+                error = "Failed to create stdout pipe.";
+                return false;
+            }
+
+            int stdin_pipe[2];
+            if( pipe( stdin_pipe ) < 0 ) {
+                error = "Failed to create stdin pipe.";
+                close( stdout_pipe[0] );
+                close( stdout_pipe[1] );
+                return false;
+            }
+
+            pid_t pid = fork();
+            if( pid < 0 ) {
+                error = "Failed to fork process.";
+                close( stdout_pipe[0] );
+                close( stdout_pipe[1] );
+                close( stdin_pipe[0] );
+                close( stdin_pipe[1] );
+                return false;
+            }
+
+            if( pid == 0 ) {
+                close( stdout_pipe[0] );
+                close( stdin_pipe[1] );
+
+                dup2( stdout_pipe[1], STDOUT_FILENO );
+                dup2( stdout_pipe[1], STDERR_FILENO );
+                dup2( stdin_pipe[0], STDIN_FILENO );
+                close( stdout_pipe[1] );
+                close( stdin_pipe[0] );
+
+                std::vector<char *> argv;
+                argv.reserve( args.size() + 1 );
+                for( std::string &arg : args ) {
+                    argv.push_back( arg.data() );
+                }
+                argv.push_back( nullptr );
+                execv( python_path.c_str(), argv.data() );
+                _exit( 127 );
+            }
+
+            close( stdout_pipe[1] );
+            close( stdin_pipe[0] );
+
+            child_pid = pid;
+            stdin_write = stdin_pipe[1];
+            stdout_read = stdout_pipe[0];
+
+            int flags = fcntl( stdout_read, F_GETFL, 0 );
+            fcntl( stdout_read, F_SETFL, flags | O_NONBLOCK );
+
+            running = true;
+            warm = false;
+            runner_log_path = log_path;
+            active_config = config;
+            return true;
+        }
+
+        void shutdown() {
+            if( !running ) {
+                return;
+            }
+            std::string error;
+            const std::string payload = "{\"command\":\"shutdown\",\"request_id\":\"shutdown\"}\n";
+            write_all( payload, error );
+            std::string response_line;
+            llm_intent_request dummy;
+            dummy.request_id = "shutdown";
+            read_response_for_request( dummy, response_line, std::chrono::milliseconds( 200 ), error );
+            close_handles();
+        }
+
+        void close_handles() {
+            if( stdin_write != -1 ) {
+                close( stdin_write );
+                stdin_write = -1;
+            }
+            if( stdout_read != -1 ) {
+                close( stdout_read );
+                stdout_read = -1;
+            }
+            if( child_pid != -1 ) {
+                int status = 0;
+                waitpid( child_pid, &status, 0 );
+                child_pid = -1;
+            }
+            running = false;
+            warm = false;
+            runner_log_path.clear();
+            stdout_buffer.clear();
+        }
+
+        bool write_all( const std::string &payload, std::string &error ) {
+            size_t total = 0;
+            while( total < payload.size() ) {
+                ssize_t written = write( stdin_write, payload.data() + total,
+                                         payload.size() - total );
+                if( written < 0 ) {
+                    if( errno == EINTR ) {
+                        continue;
+                    }
+                    error = "Failed to write to runner stdin.";
+                    return false;
+                }
+                if( written == 0 ) {
+                    break;
+                }
+                total += static_cast<size_t>( written );
+            }
+            if( total < payload.size() ) {
+                error = "Failed to write full payload to runner stdin.";
+                return false;
+            }
+            return true;
+        }
+
+        bool read_response_for_request( const llm_intent_request &request, std::string &out_line,
+                                        std::chrono::milliseconds timeout, std::string &error ) {
+            const auto start = std::chrono::steady_clock::now();
+            while( true ) {
+                const auto newline = stdout_buffer.find( '\n' );
+                if( newline != std::string::npos ) {
+                    const std::string line = stdout_buffer.substr( 0, newline );
+                    stdout_buffer.erase( 0, newline + 1 );
+                    std::string trimmed = line;
+                    if( !trimmed.empty() && trimmed.back() == '\r' ) {
+                        trimmed.pop_back();
+                    }
+                    if( response_from_json( trimmed, request ) ) {
+                        out_line = trimmed;
+                        return true;
+                    }
+                    continue;
+                }
+
+                if( timeout.count() > 0 &&
+                    std::chrono::steady_clock::now() - start > timeout ) {
+                    error = "Runner response timed out.";
+                    return false;
+                }
+
+                fd_set read_fds;
+                FD_ZERO( &read_fds );
+                FD_SET( stdout_read, &read_fds );
+
+                struct timeval tv;
+                tv.tv_sec = 0;
+                tv.tv_usec = 50000;
+
+                int sel = select( stdout_read + 1, &read_fds, nullptr, nullptr, &tv );
+                if( sel < 0 ) {
+                    if( errno == EINTR ) {
+                        continue;
+                    }
+                    error = "Runner stdout select failed.";
+                    if( !runner_log_path.empty() && std::filesystem::exists( runner_log_path ) ) {
+                        const std::string tail = read_log_tail( runner_log_path, 4096 );
+                        if( !tail.empty() ) {
+                            error += "\nRunner log tail:\n" + tail;
+                        } else {
+                            error += "\nSee config/llm_intent_runner.log for details.";
+                        }
+                    }
+                    return false;
+                }
+
+                if( sel > 0 && FD_ISSET( stdout_read, &read_fds ) ) {
+                    char buffer[4096];
+                    ssize_t bytes_read = read( stdout_read, buffer, sizeof( buffer ) );
+                    if( bytes_read < 0 ) {
+#if EAGAIN != EWOULDBLOCK
+                        if( errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR ) {
+#else
+                        if( errno == EAGAIN || errno == EINTR ) {
+#endif
+                            std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+                            continue;
+                        }
+                        error = "Runner stdout read failed.";
+                        return false;
+                    }
+                    if( bytes_read == 0 ) {
+                        error = "Runner process exited.";
+                        return false;
+                    }
+                    stdout_buffer.append( buffer, buffer + bytes_read );
+                    continue;
+                }
+
+                if( child_pid > 0 ) {
+                    int status = 0;
+                    pid_t ret = waitpid( child_pid, &status, WNOHANG );
+                    if( ret > 0 ) {
+                        error = "Runner process exited.";
+                        return false;
+                    }
+                }
+
+                std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+            }
+        }
+};
 #endif
 
 class llm_intent_manager
@@ -1599,7 +1996,7 @@ class llm_intent_manager
             req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
             if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
                 append_llm_intent_log( string_format( "prompt %s (%s)\n%s\n\n",
-                                      req.npc_name, req.request_id, req.prompt ) );
+                                                      req.npc_name, req.request_id, req.prompt ) );
             }
             {
                 std::lock_guard<std::mutex> lock( mutex );
@@ -1613,12 +2010,12 @@ class llm_intent_manager
             if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                 return;
             }
-            if( get_option<bool>( "LLM_INTENT_USE_API" ) ) {
+            const runner_config config = current_runner_config();
+            const std::string backend = lower_copy( config.backend );
+            if( config.use_api || backend == "api" ) {
                 return;
             }
             ensure_worker();
-#if defined(_WIN32)
-            const runner_config config = current_runner_config();
             std::string error;
             if( config.force_npu && config.device != "NPU" ) {
                 if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
@@ -1649,7 +2046,6 @@ class llm_intent_manager
                 }
                 cv.notify_one();
             }
-#endif
         }
 
         void process_responses() {
@@ -1686,11 +2082,11 @@ class llm_intent_manager
                             add_msg( _( "%s says: \"%s\"" ), resp.npc_name, speak_text );
                             if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
                                 append_llm_intent_log( string_format( "say %s (%s)\n%s\n\n",
-                                                      resp.npc_name, resp.request_id, speak_text ) );
+                                                                      resp.npc_name, resp.request_id, speak_text ) );
                             }
                         } else if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
                             append_llm_intent_log( string_format( "say failed %s (%s)\n%s\n\n",
-                                                  resp.npc_name, resp.request_id, speak_text ) );
+                                                                  resp.npc_name, resp.request_id, speak_text ) );
                         }
                     }
                     bool parsed = false;
@@ -1753,7 +2149,7 @@ class llm_intent_manager
                     if( debug_log ) {
                         const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
                         append_llm_intent_log( string_format( "response %s (%s)\n%s\n\n",
-                                      resp.npc_name, resp.request_id, payload ) );
+                                                              resp.npc_name, resp.request_id, payload ) );
                     }
                 } else {
                     const std::string err = resp.ok ? parse_error : resp.error;
@@ -1763,7 +2159,7 @@ class llm_intent_manager
                     if( debug_log ) {
                         const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
                         append_llm_intent_log( string_format( "failed %s (%s)\n%s\nraw:\n%s\n\n",
-                                      resp.npc_name, resp.request_id, err, payload ) );
+                                                              resp.npc_name, resp.request_id, err, payload ) );
                     }
                 }
                 local.pop();
@@ -1781,6 +2177,8 @@ class llm_intent_manager
         std::atomic<bool> warmup_enqueued = false;
 #if defined(_WIN32)
         llm_intent_runner_process runner;
+#else
+        posix_runner_process runner;
 #endif
 
         void ensure_worker() {
@@ -1818,16 +2216,7 @@ class llm_intent_manager
                     req = std::move( request_queue.front() );
                     request_queue.pop();
                 }
-                llm_intent_response response;
-#if defined(_WIN32)
-                response = handle_request_windows( req );
-#else
-                response.request_id = req.request_id;
-                response.npc_id = req.npc_id;
-                response.npc_name = req.npc_name;
-                response.ok = false;
-                response.error = "LLM runner is only supported on Windows in this build.";
-#endif
+                llm_intent_response response = handle_request( req );
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     response_queue.push( std::move( response ) );
@@ -1835,8 +2224,7 @@ class llm_intent_manager
             }
         }
 
-#if defined(_WIN32)
-        llm_intent_response handle_request_windows( const llm_intent_request &req ) {
+        llm_intent_response handle_request( const llm_intent_request &req ) {
             llm_intent_response response;
             response.request_id = req.request_id;
             response.npc_id = req.npc_id;
@@ -1869,7 +2257,6 @@ class llm_intent_manager
             response.error = "Runner returned invalid JSON.";
             return response;
         }
-#endif
 };
 
 llm_intent_manager &get_manager()
