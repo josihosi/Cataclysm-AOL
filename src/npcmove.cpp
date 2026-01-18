@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <deque>
 #include <functional>
 #include <iterator>
 #include <list>
