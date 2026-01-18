@@ -7,6 +7,8 @@
 #include <climits>
 #include <cmath>
 #include <cstdlib>
+#include <deque>
+#include <functional>
 #include <iterator>
 #include <memory>
 #include <numeric>

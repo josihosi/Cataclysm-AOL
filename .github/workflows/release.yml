@@ -112,35 +112,14 @@ jobs:
             artifact: osx-tiles-universal
             ext: dmg
             content: application/x-apple-diskimage
-          - name: Android x64
-            os: ubuntu-latest
-            mxe: none
-            android: arm64
-            artifact: android-x64
-            ext: apk
-            content: application/apk
-          - name: Android x32
-            os: ubuntu-latest
-            mxe: none
-            android: arm32
-            artifact: android-x32
-            ext: apk
-            content: application/apk 
-          - name: Android Bundle
-            os: ubuntu-latest
-            mxe: none
-            android: bundle
-            artifact: android-bundle
-            ext: aab
-            content: application/aap
-          - name: WebAssembly Bundle
-            os: ubuntu-latest
-            mxe: none
-            artifact: wasm
-            ext: zip
-            content: application/zip
-            sound: 0
-            wasm: true
+          #- name: WebAssembly Bundle
+          #  os: ubuntu-latest
+          #  artifact: wasm
+          #  ext: zip
+          #  content: application/zip
+          #  tiles: 1
+          #  sound: 0
+          #  wasm: true
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     permissions: write-all
