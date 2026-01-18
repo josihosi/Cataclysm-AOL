@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <deque>
 #include <functional>
 #include <iosfwd>
 #include <iterator>
