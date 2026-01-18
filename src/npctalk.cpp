@@ -1509,7 +1509,7 @@ void game::chat()
                     add_msg( "LLM intent test: player said sentence %s (no NPCs heard it)", message );
                 } else {
                     std::string hearer_list = enumerate_as_string( hearers.begin(), hearers.end(),
-                    []( const npc *guy ) {
+                    []( const npc * guy ) {
                         return guy->get_name();
                     } );
                     add_msg( "LLM intent test: player said sentence %s (heard by %s)", message, hearer_list );
@@ -1635,7 +1635,7 @@ void avatar::talk_to( std::unique_ptr<talker> talk_with, bool radio_contact,
     dialogue d( get_talker_for( *this ), std::move( talk_with ), {} );
     if( const npc *npc_actor = d.actor( true )->get_npc() ) {
         DebugLog( D_INFO, DC_ALL ) << "avatar::talk_to: begin npc=" << npc_actor->get_name()
-                                  << " id=" << npc_actor->getID().get_value();
+                                   << " id=" << npc_actor->getID().get_value();
     } else {
         DebugLog( D_INFO, DC_ALL ) << "avatar::talk_to: begin npc=null";
     }

@@ -1350,7 +1350,7 @@ class npc : public Character
             std::deque<llm_intent_action> queue;
             llm_intent_action active = llm_intent_action::none;
             time_point active_turn = calendar::before_time_starts;
-            time_point last_applied_turn = calendar::before_time_starts;        
+            time_point last_applied_turn = calendar::before_time_starts;
             std::string request_id;
             std::string target_hint;
             int target_attacks_remaining = 0;
@@ -1358,7 +1358,7 @@ class npc : public Character
             std::map<char, weak_ptr_fast<Creature>> legend_targets;
         };
         static std::map<character_id, llm_intent_state> &llm_intent_state_map();
-        static llm_intent_state &llm_intent_state_for( const npc &guy );        
+        static llm_intent_state &llm_intent_state_for( const npc &guy );
         void apply_llm_intent_target();
 
         std::map<npc_need, npc_need_goal_cache> goal_cache;
