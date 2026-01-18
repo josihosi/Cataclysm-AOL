@@ -6,12 +6,9 @@ exclude = .git,
 			lang/json,
 			tools/clang-tidy-plugin/test/check_clang_tidy.py
 ignore =
-    # Existing project exceptions
     E265,
     W504,
-
-    # Modern / tool-conflict noise
-    E203,   # whitespace before ':', conflicts with Black
-    E501,   # line length (handled by max-line-length)
-    W503,   # operator line break (conflicts with W504)
-    W605    # escape sequences in strings
+    E203,
+    E501,
+    W503,
+    W605

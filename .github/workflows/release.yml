@@ -123,20 +123,6 @@ jobs:
             artifact: osx-with-graphics-universal
             ext: dmg
             content: application/x-apple-diskimage
-          - name: Android x64
-            os: ubuntu-latest
-            tiles: 1
-            android: arm64
-            artifact: android-x64
-            ext: apk
-            content: application/apk
-          - name: Android x32
-            os: ubuntu-latest
-            tiles: 1
-            android: arm32
-            artifact: android-x32
-            ext: apk
-            content: application/apk 
           #- name: WebAssembly Bundle
           #  os: ubuntu-latest
           #  artifact: wasm
