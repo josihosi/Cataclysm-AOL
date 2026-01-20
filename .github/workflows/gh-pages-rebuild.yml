@@ -12,6 +12,9 @@ env:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Trigger GitHub pages rebuild
@@ -19,5 +22,5 @@ jobs:
         run: |
           curl --fail --request POST \
             --url https://api.github.com/repos/${{ github.repository }}/pages/builds \
-            --header "Authorization: Bearer ${{ secrets.USER_TOKEN }}" \
+            --header "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             --header "Accept: application/vnd.github.v3+json"

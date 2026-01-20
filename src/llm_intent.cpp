@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <condition_variable>
 #include <cctype>
@@ -12,9 +13,12 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
+#include <set>
+#include <ratio>
 #include <sstream>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -22,20 +26,25 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <exception>
 
 #include "cata_path.h"
 #include "character.h"
 #include "character_id.h"
 #include "cata_utility.h"
+#include "ammo.h"
 #include "coordinates.h"
 #include "creature.h"
 #include "creature_tracker.h"
 #include "flexbuffer_json.h"
+#include "filesystem.h"
 #include "itype.h"
 #include "effect.h"
 #include "game.h"
 #include "item.h"
 #include "item_location.h"
+#include "line.h"
+#include "json.h"
 #include "map.h"
 #include "messages.h"
 #include "memory_fast.h"
@@ -48,18 +57,23 @@
 #include "string_formatter.h"
 #include "translations.h"
 #include "type_id.h"
+#include "value_ptr.h"
 #include "visitable.h"
 
 #if defined(_WIN32)
 #include <windows.h>
 #else
-#include <errno.h>
+#include <cerrno>
 #include <fcntl.h>
-#include <signal.h>
+#include <csignal>
 #include <sys/select.h>
+#include <sys/time.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
+
+class monster;
 
 namespace
 {
@@ -148,12 +162,13 @@ struct runner_config {
     }
 };
 
-std::string request_to_json( const llm_intent_request &request );
-std::optional<llm_intent_response> response_from_json( const std::string &line,
+[[maybe_unused]] std::string request_to_json( const llm_intent_request &request );
+[[maybe_unused]] std::optional<llm_intent_response> response_from_json( const std::string &line,
         const llm_intent_request &request );
-std::filesystem::path resolve_path( const std::string &path );
-runner_config current_runner_config();
-std::string read_log_tail( const std::filesystem::path &path, std::streamoff max_bytes );
+[[maybe_unused]] std::filesystem::path resolve_path( const std::string &path );
+[[maybe_unused]] runner_config current_runner_config();
+[[maybe_unused]] std::string read_log_tail( const std::filesystem::path &path,
+        std::streamoff max_bytes );
 
 std::string sanitize_text( std::string_view text )
 {
@@ -369,6 +384,7 @@ const std::vector<std::string> &allowed_actions()
         "equip_gun",
         "equip_melee",
         "equip_bow",
+        "look_around",
         "idle"
     };
     return actions;
@@ -569,6 +585,182 @@ std::string extract_attack_target_hint( const std::string &text )
     return lowered.substr( start, end - start );
 }
 
+struct look_around_item_entry {
+    std::string name;
+    int quantity = 0;
+    int min_distance = 0;
+};
+
+std::string xml_escape( const std::string &text )
+{
+    std::string out;
+    out.reserve( text.size() );
+    for( char c : text ) {
+        switch( c ) {
+            case '&':
+                out += "&amp;";
+                break;
+            case '<':
+                out += "&lt;";
+                break;
+            case '>':
+                out += "&gt;";
+                break;
+            case '"':
+                out += "&quot;";
+                break;
+            case '\'':
+                out += "&apos;";
+                break;
+            default:
+                out.push_back( c );
+                break;
+        }
+    }
+    return out;
+}
+
+std::string strip_xml_tags( const std::string &text )
+{
+    std::string out;
+    out.reserve( text.size() );
+    bool in_tag = false;
+    for( char c : text ) {
+        if( c == '<' ) {
+            in_tag = true;
+            continue;
+        }
+        if( c == '>' ) {
+            in_tag = false;
+            continue;
+        }
+        if( !in_tag ) {
+            out.push_back( c );
+        }
+    }
+    return out;
+}
+
+std::vector<look_around_item_entry> collect_look_around_items( npc &listener, int radius,
+        size_t max_entries )
+{
+    map &here = get_map();
+    std::unordered_map<std::string, look_around_item_entry> entries_by_name;
+
+    for( const tripoint_bub_ms &p : closest_points_first( listener.pos_bub(), radius ) ) {
+        if( !here.sees_some_items( p, listener ) || !listener.sees( here, p ) ) {
+            continue;
+        }
+        const int dist = rl_dist( listener.pos_bub(), p );
+        for( const item &it : here.i_at( p ) ) {
+            const std::string name = it.tname( 1, false );
+            look_around_item_entry &entry = entries_by_name[name];
+            if( entry.name.empty() ) {
+                entry.name = name;
+                entry.min_distance = dist;
+            }
+            entry.quantity += it.count();
+            entry.min_distance = std::min( entry.min_distance, dist );
+        }
+        const optional_vpart_position vp = here.veh_at( p );
+        if( !vp ) {
+            continue;
+        }
+        const std::optional<vpart_reference> cargo = vp.cargo();
+        if( !cargo || cargo->has_feature( "LOCKED" ) ) {
+            continue;
+        }
+        for( const item &it : cargo->items() ) {
+            const std::string name = it.tname( 1, false );
+            look_around_item_entry &entry = entries_by_name[name];
+            if( entry.name.empty() ) {
+                entry.name = name;
+                entry.min_distance = dist;
+            }
+            entry.quantity += it.count();
+            entry.min_distance = std::min( entry.min_distance, dist );
+        }
+    }
+
+    std::vector<look_around_item_entry> entries;
+    entries.reserve( entries_by_name.size() );
+    for( auto &entry : entries_by_name ) {
+        entries.push_back( std::move( entry.second ) );
+    }
+    std::sort( entries.begin(), entries.end(),
+               []( const look_around_item_entry &lhs, const look_around_item_entry &rhs ) {
+        if( lhs.min_distance != rhs.min_distance ) {
+            return lhs.min_distance < rhs.min_distance;
+        }
+        return lhs.name < rhs.name;
+    } );
+    if( entries.size() > max_entries ) {
+        entries.resize( max_entries );
+    }
+    return entries;
+}
+
+std::vector<std::string> collect_compatible_ammo( npc &listener )
+{
+    std::set<std::string> ammo_names;
+    listener.visit_items( [&]( item * it, item * ) {
+        if( it == nullptr || !it->is_gun() ) {
+            return VisitResponse::NEXT;
+        }
+        for( const ammotype &ammo_type : it->ammo_types() ) {
+            ammo_names.insert( ammo_type->name() );
+        }
+        return VisitResponse::NEXT;
+    } );
+    return std::vector<std::string>( ammo_names.begin(), ammo_names.end() );
+}
+
+std::vector<std::string> collect_compatible_magazines( npc &listener )
+{
+    std::set<std::string> mag_names;
+    listener.visit_items( [&]( item * it, item * ) {
+        if( it == nullptr || !it->is_gun() ) {
+            return VisitResponse::NEXT;
+        }
+        for( const itype_id &mag_id : it->magazine_compatible() ) {
+            mag_names.insert( item::tname( mag_id, 1 ) );
+        }
+        return VisitResponse::NEXT;
+    } );
+    return std::vector<std::string>( mag_names.begin(), mag_names.end() );
+}
+
+std::string build_look_around_prompt( const std::string &player_utterance,
+                                      const std::vector<std::string> &ammo,
+                                      const std::vector<std::string> &magazines,
+                                      const std::vector<look_around_item_entry> &items )
+{
+    std::ostringstream out;
+    out << "<System>";
+    out << "You select up to three items from the list for the NPC to pick up.";
+    out << "Return up to three items exactly from the list, comma-separated.";
+    out << "Use exact item names from the list only.";
+    out << "</System>\n";
+    out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
+    out << "<CompatibleAmmo>\n";
+    for( const std::string &entry : ammo ) {
+        out << "  <Ammo name=\"" << xml_escape( entry ) << "\"/>\n";
+    }
+    out << "</CompatibleAmmo>\n";
+    out << "<CompatibleMagazines>\n";
+    for( const std::string &entry : magazines ) {
+        out << "  <Magazine name=\"" << xml_escape( entry ) << "\"/>\n";
+    }
+    out << "</CompatibleMagazines>\n";
+    out << "<Items>\n";
+    for( const look_around_item_entry &entry : items ) {
+        out << "  <Item name=\"" << xml_escape( entry.name ) << "\" qty=\""
+            << entry.quantity << "\"/>\n";
+    }
+    out << "</Items>\n";
+    return out.str();
+}
+
 std::string normalize_csv_separators( const std::string &csv )
 {
     if( csv.find( '|' ) != std::string::npos ) {
@@ -589,6 +781,42 @@ std::string normalize_csv_separators( const std::string &csv )
         out.push_back( c );
     }
     return out;
+}
+
+std::vector<std::string> parse_look_around_response( const std::string &text,
+        const std::unordered_map<std::string, std::string> &allowed )
+{
+    std::string cleaned = trim_copy( strip_xml_tags( text ) );
+    if( cleaned.empty() ) {
+        return {};
+    }
+    std::replace( cleaned.begin(), cleaned.end(), '\n', ',' );
+    std::vector<std::string> results;
+    size_t start = 0;
+    while( start < cleaned.size() ) {
+        size_t end = cleaned.find( ',', start );
+        if( end == std::string::npos ) {
+            end = cleaned.size();
+        }
+        std::string token = trim_copy( cleaned.substr( start, end - start ) );
+        start = end + 1;
+        if( token.empty() ) {
+            continue;
+        }
+        std::string lowered = lower_copy( token );
+        auto it = allowed.find( lowered );
+        if( it == allowed.end() ) {
+            continue;
+        }
+        const std::string &normalized = it->second;
+        if( std::find( results.begin(), results.end(), normalized ) == results.end() ) {
+            results.push_back( normalized );
+            if( results.size() >= 3 ) {
+                break;
+            }
+        }
+    }
+    return results;
 }
 
 std::string strip_wrapping_quotes( const std::string &text )
@@ -1160,6 +1388,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "equip_gun to equip gun, rifle, thrower, get ready to shoot.\n"
                "equip_melee to equip melee, get ready to bash, cut, kick, stab.\n"
                "equip_bow to use bow, crossbow, stealth.\n"
+               "look_around to request nearby item selection for pickup.\n"
                "attack=<target> to attack a target from your map.\n"
                "idle if none of the above.\n"
                "</Allowed actions>\n"
@@ -1189,7 +1418,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                snapshot, action_list_with_target );
 }
 
-std::string request_to_json( const llm_intent_request &request )
+[[maybe_unused]] std::string request_to_json( const llm_intent_request &request )
 {
     std::ostringstream out;
     JsonOut jsout( out );
@@ -1205,7 +1434,8 @@ std::string request_to_json( const llm_intent_request &request )
     return out.str();
 }
 
-std::string read_log_tail( const std::filesystem::path &path, std::streamoff max_bytes )
+[[maybe_unused]] std::string read_log_tail( const std::filesystem::path &path,
+        std::streamoff max_bytes )
 {
     std::ifstream in( path, std::ios::binary );
     if( !in ) {
@@ -1232,7 +1462,7 @@ bool should_attempt_parse( const std::string &line )
     return line[pos] == '{';
 }
 
-std::optional<llm_intent_response> response_from_json( const std::string &line,
+[[maybe_unused]] std::optional<llm_intent_response> response_from_json( const std::string &line,
         const llm_intent_request &request )
 {
     if( !should_attempt_parse( line ) ) {
@@ -1261,19 +1491,19 @@ std::optional<llm_intent_response> response_from_json( const std::string &line,
     return response;
 }
 
-std::filesystem::path resolve_path( const std::string &path )
+[[maybe_unused]] std::filesystem::path resolve_path( const std::string &path )
 {
     if( path.empty() ) {
         return std::filesystem::path();
     }
-    std::filesystem::path p( path );
+    std::filesystem::path p = std::filesystem::u8path( path );
     if( p.is_relative() ) {
         p = std::filesystem::path( PATH_INFO::base_path() ) / p;
     }
     return p;
 }
 
-runner_config current_runner_config()
+[[maybe_unused]] runner_config current_runner_config()
 {
     static constexpr int default_max_tokens = 20000;
     static constexpr int default_max_prompt_len = 4096;
@@ -1972,6 +2202,13 @@ class posix_runner_process
 
 class llm_intent_manager
 {
+    private:
+        struct look_around_context {
+            character_id npc_id;
+            std::string npc_name;
+            std::vector<std::string> item_names;
+        };
+
     public:
         llm_intent_manager() = default;
 
@@ -2000,6 +2237,7 @@ class llm_intent_manager
             }
             {
                 std::lock_guard<std::mutex> lock( mutex );
+                utterance_by_request[req.request_id] = player_utterance;
                 request_queue.push( std::move( req ) );
             }
             ensure_worker();
@@ -2048,6 +2286,72 @@ class llm_intent_manager
             }
         }
 
+        void enqueue_look_around_request( npc &listener, const std::string &player_utterance ) {
+            static constexpr int look_max_tokens = 128;
+            static constexpr size_t max_item_entries = 60;
+            std::vector<look_around_item_entry> items = collect_look_around_items( listener, 5,
+                    max_item_entries );
+            if( items.empty() ) {
+                return;
+            }
+            std::vector<std::string> ammo = collect_compatible_ammo( listener );
+            std::vector<std::string> magazines = collect_compatible_magazines( listener );
+            llm_intent_request req;
+            req.request_id = next_request_id();
+            req.npc_id = listener.getID();
+            req.npc_name = listener.get_name();
+            req.snapshot = "{}";
+            req.prompt = build_look_around_prompt( player_utterance, ammo, magazines, items );
+            req.max_tokens = look_max_tokens;
+            req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
+            req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
+            req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
+
+            look_around_context context;
+            context.npc_id = req.npc_id;
+            context.npc_name = req.npc_name;
+            context.item_names.reserve( items.size() );
+            for( const look_around_item_entry &entry : items ) {
+                context.item_names.push_back( entry.name );
+            }
+
+            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                append_llm_intent_log( string_format( "look_around prompt %s (%s)\n%s\n\n",
+                                                      req.npc_name, req.request_id, req.prompt ) );
+            }
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                look_around_requests.emplace( req.request_id, std::move( context ) );
+                request_queue.push( std::move( req ) );
+            }
+            ensure_worker();
+            cv.notify_one();
+        }
+
+        void process_look_around_response( const llm_intent_response &resp,
+                                           const look_around_context &context )
+        {
+            std::unordered_map<std::string, std::string> allowed;
+            allowed.reserve( context.item_names.size() );
+            for( const std::string &name : context.item_names ) {
+                allowed.emplace( lower_copy( name ), name );
+            }
+            std::vector<std::string> selected;
+            if( resp.ok ) {
+                selected = parse_look_around_response( resp.text, allowed );
+            }
+            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
+                append_llm_intent_log( string_format( "look_around response %s (%s)\n%s\n\n",
+                                                      context.npc_name, resp.request_id, payload ) );
+            }
+            if( npc *target = g->find_npc( context.npc_id ) ) {
+                if( target->is_player_ally() ) {
+                    target->set_llm_intent_item_targets( selected );
+                }
+            }
+        }
+
         void process_responses() {
             std::queue<llm_intent_response> local;
             {
@@ -2066,6 +2370,17 @@ class llm_intent_manager
                 if( resp.request_id == "prewarm" ) {
                     local.pop();
                     continue;
+                }
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    auto it = look_around_requests.find( resp.request_id );
+                    if( it != look_around_requests.end() ) {
+                        look_around_context context = std::move( it->second );
+                        look_around_requests.erase( it );
+                        process_look_around_response( resp, context );
+                        local.pop();
+                        continue;
+                    }
                 }
                 std::string parse_error;
                 std::string action_error;
@@ -2122,6 +2437,13 @@ class llm_intent_manager
                     }
                 }
 
+                const bool wants_look_around = std::find( actions.begin(), actions.end(),
+                                                "look_around" ) != actions.end();
+                if( wants_look_around ) {
+                    actions.erase( std::remove( actions.begin(), actions.end(), "look_around" ),
+                                   actions.end() );
+                }
+
                 if( resp.ok && parse_error.empty() && !actions.empty() ) {
                     std::vector<llm_intent_action> intent_actions;
                     intent_actions.reserve( actions.size() );
@@ -2136,6 +2458,21 @@ class llm_intent_manager
                             if( target->is_player_ally() ) {
                                 target->set_llm_intent_actions( intent_actions, resp.request_id, attack_target );
                             }
+                        }
+                    }
+                }
+                if( wants_look_around ) {
+                    std::string player_utterance;
+                    {
+                        std::lock_guard<std::mutex> lock( mutex );
+                        auto it = utterance_by_request.find( resp.request_id );
+                        if( it != utterance_by_request.end() ) {
+                            player_utterance = it->second;
+                        }
+                    }
+                    if( npc *target = g->find_npc( resp.npc_id ) ) {
+                        if( target->is_player_ally() ) {
+                            enqueue_look_around_request( *target, player_utterance );
                         }
                     }
                 }
@@ -2162,6 +2499,10 @@ class llm_intent_manager
                                                               resp.npc_name, resp.request_id, err, payload ) );
                     }
                 }
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    utterance_by_request.erase( resp.request_id );
+                }
                 local.pop();
             }
         }
@@ -2171,6 +2512,8 @@ class llm_intent_manager
         std::condition_variable cv;
         std::queue<llm_intent_request> request_queue;
         std::queue<llm_intent_response> response_queue;
+        std::unordered_map<std::string, std::string> utterance_by_request;
+        std::unordered_map<std::string, look_around_context> look_around_requests;
         std::thread worker;
         std::atomic<bool> stopping = false;
         std::atomic<int> counter = 0;
@@ -2297,5 +2640,10 @@ void prewarm()
 void process_responses()
 {
     get_manager().process_responses();
+}
+
+void log_event( const std::string &message )
+{
+    append_llm_intent_log( message + "\n" );
 }
 } // namespace llm_intent
