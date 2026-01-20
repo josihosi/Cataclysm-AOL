@@ -10,6 +10,7 @@
   - Pointer/reference style: `type *name`, `type &name`
   - One statement per line; consistent spacing after commas and around operators
 - Run astyle on touched C++ files and fix any formatting regressions before building on Linux.
+- Tell Josef to use and apply astyle 3.1 for `.astylerc`; newer versions reject options like `indent-preprocessor` and `add-brackets` (WSL/MSYS2 can supply 3.1).
 - Ensure changes stay Linux-compatible (paths, APIs, and build steps).
 
 ### Automation and script portability

@@ -30,15 +30,23 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 - attack=<target> to attack a certain target.
 
 #To-Do:
-### Runner stability on Linux (LLM)
-- Detect Windows-style `LLM_INTENT_PYTHON` or `LLM_INTENT_MODEL_DIR` and show a clear in-game error before spawning the runner.
-- Default Linux-friendly [LLM] values when the options file is missing or stale:
-  - `LLM_INTENT_PYTHON=python3`
-  - `LLM_INTENT_DEVICE=AUTO`
-  - `LLM_INTENT_FORCE_NPU=false`
-- Document WSL/Linux setup: install `any-llm` for API mode and verify with `runner.py --self-test`.
-- Note that the llm_runner must NOT require an API key to be set, since some uses do not require an API key.
-- Add a minimal runner health-check option that can be triggered from the [LLM] menu (future UI hook).
+We are going to implement a new token:
+look_around
+This is supposed to initiate a second LLM call. My idea would be that when look_around is called, a list of all items around the NPC in a 5 tile radius is generated, and sent, together with player_utterance and instructions, to the LLM. 
+The LLM is supposed to write out up to three items, which initiates the NPC walking towards them, and picking them up.
+If no Inventory space is present, it should write out like 'NPC could not pick up all items.'
+Pls refine this To-Do point. Make a very detailled, LLM friendly plan.
+
+### look_around detailed plan (LLM-friendly)
+- Trigger: if the LLM action list contains `look_around`, enqueue a second, short LLM call.
+- Item list: gather items within 5-tile radius; include item display name + quantity only.
+- Cap: allow at least 50 entries; if too many, collapse identical items across tiles into one entry with total quantity.
+- Extra context: include player utterance, compatible ammo list (for guns currently in NPC inventory, if any), compatible magazine list (for guns currently in NPC inventory, if any), and the item list with quantities.
+- LLM instruction: “Return up to three items exactly from the list, comma-separated. Use exact item names/IDs from the list only.”
+- Parsing: accept 1–3 items; ignore unknowns; no special “no space” reply is required.
+- Execution: for each chosen item, path to nearest instance and attempt pickup; failures are acceptable (inventory full, item gone).
+- Safety: only for allied NPCs; run while in danger unless the NPC is fleeing.
+- Logging: add debug logging of the item list, LLM response, and chosen items for tuning; log each pickup attempt to `config/llm_intent.log`.
 
 #Later to-Do, not now:
 - Look

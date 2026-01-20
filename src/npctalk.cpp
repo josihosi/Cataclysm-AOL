@@ -1535,13 +1535,13 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
             }
             if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                 if( hearers.empty() ) {
-                    add_msg( "LLM intent test: player said sentence %s (no NPCs heard it)", message );
+                    add_msg( _( "LLM intent test: player said sentence %s (no NPCs heard it)" ), message );
                 } else {
                     std::string hearer_list = enumerate_as_string( hearers.begin(), hearers.end(),
                     []( const npc * guy ) {
                         return guy->get_name();
                     } );
-                    add_msg( "LLM intent test: player said sentence %s (heard by %s)", message, hearer_list );
+                    add_msg( _( "LLM intent test: player said sentence %s (heard by %s)" ), message, hearer_list );
                 }
             }
         }

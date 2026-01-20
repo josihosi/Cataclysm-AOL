@@ -2557,7 +2557,7 @@ bool npc::is_player_ally() const
 
 void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                   const std::string &request_id,
-                                  const std::string &target_hint )
+                                  const std::string &target_hint ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
     state.queue.clear();
@@ -2580,7 +2580,7 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
     }
 }
 
-void npc::clear_llm_intent_actions()
+void npc::clear_llm_intent_actions() const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
     state.queue.clear();
@@ -2592,12 +2592,26 @@ void npc::clear_llm_intent_actions()
     state.target_attacks_remaining = 0;
     state.target_turns_remaining = 0;
     state.legend_targets.clear();
+    state.look_around_targets.clear();
+    state.look_around_active_target.clear();
 }
 
-void npc::set_llm_intent_legend_map( std::map<char, weak_ptr_fast<Creature>> legend )
+void npc::set_llm_intent_legend_map( std::map<char, weak_ptr_fast<Creature>> legend ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
     state.legend_targets = std::move( legend );
+}
+
+void npc::set_llm_intent_item_targets( const std::vector<std::string> &targets ) const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    state.look_around_targets.clear();
+    state.look_around_active_target.clear();
+    for( const std::string &target : targets ) {
+        if( !target.empty() ) {
+            state.look_around_targets.push_back( target );
+        }
+    }
 }
 
 bool npc::has_llm_intent_actions() const

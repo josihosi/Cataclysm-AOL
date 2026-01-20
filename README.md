@@ -1,10 +1,11 @@
 # Cataclysm: Arsenic and Old Lace
 
-This is a fork of CDDA (https://github.com/CleverRaven/Cataclysm-DDA), where I try to use LLMs to implement organic responsiveness into Cataclysm.
-This is something I would like to see in games in general, so I'm trying to create it:
+This is a fork of CDDA (https://github.com/CleverRaven/Cataclysm-DDA), where I implemented LLMs to facilitate organic responsiveness in Cataclysm.
+This is something I would like to see in games in general, so I'm creating it here:
+
 ![AOL Screenshot](doc/AOL-Screenshot.png)
 
-Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and some actions.
+Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and up to three actions.
 The following actions can be initiated by the toolcall right now:
 - follow_player
 - wait_here
@@ -15,118 +16,15 @@ The following actions can be initiated by the toolcall right now:
 
 Yelling a sentence has also been changed to 'Say a sentence' with a range of around 8 tiles, depending on the weather etc.
 
-## Files added in this fork so far
+### Roadmap
 
-- src/llm_intent.cpp
-- src/llm_intent.h
-- tools/llm_runner/background_summarizer.py
-- tools/llm_runner/prompt_playground.py
-- tools/llm_runner/runner.py
-- Generated logs (not tracked): config/llm_intent.log
-- Plan.md
-- build_and_run.cmd
-- just_build.cmd
+I plan on adding the following features, somewhere in the future:
 
-## Installation
+- More LLM actions (Look_around/self -> pickup=<item>/activate=<item>, panic_on/off, move n/s/e/w, throw grenades, suggestions ??)
+- Hosting of a finetuned model for optimal performance.
+- Complete NPC conversation overhaul? Replace the branched conversations with freetext and toolcalls in convos (ie. [trade],[quest],etc).
 
-There is no installer right now, so you will have to build this yourself.
-Additionally, the LLMs will require you to set up a venv, download a model, and point the existing code at the right directiories.
-There is an in game option section [LLM] which helps you pointing the game into the right directions.
-Furthermore, depending on your hardware, small changes to the python runner may be needed, as this one is focussing on NPU use.
-I paid for it so i might as well use it >:|
-This means that the following setup instructions will most likely work on your machine, but if you have a nice PC you could probably do better.
-
-There is also an option to plug in an API key, to make setup easier.
-However, I am working hard to optimize this fork for local LLM use.
-
-All following commands etc. are written for Powershell in Windows.
-
-### Git repo cloning
-
-First you need to do a shallow clone of this Git repo. Do this in the place you wanna install the game.
-
-```sh
-git clone --depth=1 https://github.com/josihosi/Cataclysm-AOL.git
-```
-In order to build this, you will need to install MYSYS2 (see [COMPILING-MSYS.md](doc/c++/COMPILING-MSYS.md)).
-All the other classic ways of compiling should work too ([COMPILING.md](doc/c++/COMPILING.md)), but for MYSYS2 you can run .\build_and_run.cmd in PS to start the game.
-
-### LLM runner (Python + OpenVINO GenAI)
-
-This fork uses a local Python runner to generate NPC intents.
-Tested on Windows with Intel Core Ultra 7 155H + NPU, using:
-'OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov' (https://huggingface.co/OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov)
-
-If you do not have an NPU, you can still use CPU or GPU (set in LLM options).
-Your mileage may vary, depending on what LLM you are using.
-In in-game options under [LLM], the LLM directory can be changed.
-
-### In-game [LLM] options (Windows + Linux)
-The [LLM] menu is the single place to configure the runner for both platforms.
-
-- LLM backend: `auto`, `openvino`, or `api`.
-  - `auto` tries OpenVINO first when a model dir is set, and falls back to API if configured.
-  - `openvino` requires a local model dir.
-  - `api` requires provider + model (and API key env var if your provider needs one).
-- LLM device: `AUTO` will pick NPU -> GPU -> CPU when available.
-- LLM runner venv Python path: use your venv `python.exe` on Windows, or `python3` on Linux.
-- LLM model directory: only required for OpenVINO mode.
-
-### Python packages
-Create a venv and install the packages below (pinning matches the tested setup):
-
-```sh
-python -m venv C:\Users\josef\openvino_models\openvino_env
-C:\Users\josef\openvino_models\openvino_env\Scripts\activate
-pip install nncf==2.18.0 onnx==1.18.0 optimum-intel==1.25.2 transformers==4.51.3
-pip install openvino==2025.4 openvino-tokenizers==2025.4 openvino-genai==2025.4
-```
-
-Note: This install is construed for Intel NPU use. For you, a slightly different venv may be more uh better.
-If you have a GPU (you lucky bastard) you might be able to get a lot more mileage out of this than me.
-If you wanna go Ollama, some functions in the python script may stop running, but then just copy paste it into a Chatbot, explain the situation, and ask for a diff.
-The hard part is compatible for all LLMs, this is just a matter of changing a couple lines of code, if you wanna change the pipeline to your needs.
-
-In in-game options under [LLM], the game can be pointed towards the venv directory.
-tools/llm_runner/prompt_playground.py can be used for debugging your LLM pipeline, if you changed the venv etc.
-
-### Runner self-test
-You can sanity-check the runner from your venv before launching the game.
-
-OpenVINO (local):
-```sh
-# Windows
-C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\runner.py --self-test --backend openvino --model-dir "C:\path\to\ov_model" --device AUTO
-
-# Linux
-python3 tools/llm_runner/runner.py --self-test --backend openvino --model-dir "/path/to/ov_model" --device AUTO
-```
-
-API (will use your provider, may cost money):
-```sh
-# Windows or Linux
-python tools\llm_runner\runner.py --self-test --backend api --api-provider "OpenAI" --api-model "gpt-4.1" --api-key-env "CATACLYSM_API_KEY"
-```
-
-### API call alternative
-Disclaimer: I am fully committed to optimizing this fork for local LLMs. 
-However, to make trying this fork out easier, I added in an option to use API calls instead.
-
-Save your API key as global variable:
-
-```sh
-setx CATACLYSM_API_KEY "your_key"
-
-Install any-llm with the povider(s) you want:
-<your_venv>\Scripts\python.exe -m pip install "any-llm-sdk[provider,provider or l]"
-```
-
-In-game, set the Python path option under Options -> [LLM] -> "LLM runner Pythonpath" to point at that venv's `python.exe`.
-
-Admittedly, API calls will give you faster and better responses on most machines. On mine for sure.
-That's why I would like to fine tune a model for this.
-
-### Runner usage
+### LLM runner background
 The LLM call is initiated by shouting (C + b) in-game next to an NPC that is following you.
 It collects a game snapshot and sends it to the LLM, together with your utterance.
 The LLM is supposed to create an answer, as well as 1-3 actions.
@@ -134,7 +32,7 @@ Since LLMs are slow (for me compute time is 10-20s atm) the runner is async and 
 It calculates and injects a message and actions on the first possible turn.
 Therefore, any used model has to balance intelligence and speed.
 
-Heres an example snapshot:
+Heres an example snapshot. As you can see, a lot of information is conveyed to the LLM in a dense format.
 
 ```sh
 prompt Willy Norwood (req_0)
@@ -242,6 +140,111 @@ Ain't my first deadhead rodeo, Alyson—let's show that sack of rot who's boss!
 response Willy Norwood (req_0)
 {"request_id": "req_0", "ok": true, "text": "Ain't my first deadhead rodeo, Alyson\u2014let's show that sack of rot who's boss!|equip_gun|follow_player|attack=zombie soldier", "metrics": {"gen_time_ms": 2278.3687000046484, "max_new_tokens": 20000}}
 ```
+
+## Files added in this fork so far
+
+- src/llm_intent.cpp
+- src/llm_intent.h
+- tools/llm_runner/background_summarizer.py
+- tools/llm_runner/prompt_playground.py
+- tools/llm_runner/runner.py
+- Generated logs (not tracked): config/llm_intent.log
+- Plan.md
+- build_and_run.cmd
+- just_build.cmd
+
+## Installation
+
+There is no installer right now, so you will have to build this yourself.
+Additionally, the LLMs will require you to set up a Python venv, download a model, and point the existing code at the right directiories.
+The following Readme will explain all of these.
+There is also a new in-game option section [LLM] which helps you pointing the game into the right directions.
+Furthermore, depending on your hardware, small changes to the python runner may be usefull, as this one is focussing on NPU use.
+I paid for it so i might as well use it >:|
+This means that the following setup instructions will most likely work on your machine, but if you have a nice PC you could probably do better.
+
+There is also an option to plug in an API key, to make setup easier.
+However, I am working hard to optimize this fork for local LLM use.
+
+All following commands etc. are written for Powershell in Windows. Linux people will figure it out :)
+
+### Git repo cloning
+
+First you need to do a shallow clone of this Git repo. Do this in the place you wanna install the game.
+
+```sh
+git clone --depth=1 https://github.com/josihosi/Cataclysm-AOL.git
+```
+In order to build this, you will need to install MYSYS2 (see [COMPILING-MSYS.md](doc/c++/COMPILING-MSYS.md)).
+All the other classic ways of compiling should work too ([COMPILING.md](doc/c++/COMPILING.md)), but for MYSYS2 you can run .\build_and_run.cmd --unclean in PS to start the game.
+
+### LLM runner (Python + OpenVINO GenAI)
+
+This fork uses a local Python runner to generate NPC intents.
+Tested on Windows with Intel Core Ultra 7 155H + NPU, using:
+[OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov](https://huggingface.co/OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov)
+
+If you do not have an NPU, you can still use CPU or GPU (set in LLM options).
+Your mileage may vary, depending on what LLM you are using.
+In in-game options under [LLM], the LLM directory can be changed.
+
+### Python packages
+Create a venv and install the packages below (pinning matches the tested setup):
+
+```sh
+python -m venv C:\Users\josef\openvino_models\openvino_env
+C:\Users\josef\openvino_models\openvino_env\Scripts\activate
+pip install nncf==2.18.0 onnx==1.18.0 optimum-intel==1.25.2 transformers==4.51.3
+pip install openvino==2025.4 openvino-tokenizers==2025.4 openvino-genai==2025.4
+
+Install any-llm with the povider(s) you want:
+pip install "any-llm-sdk[provider,provider or l]" 
+```
+
+Note: This install is construed for Intel NPU use. For you, a slightly different venv may be more uh better.
+If you have a GPU (you lucky bastard) you might be able to get a lot more mileage out of this than me.
+If you wanna go Ollama, some functions in the python script may stop running, but then just copy paste it into a Chatbot, explain the situation, and ask for a diff.
+The hard part is compatible for all LLMs, this is just a matter of changing a couple lines of code, if you wanna change the pipeline to your needs.
+
+In in-game options under [LLM], the game can be pointed towards the venv directory.
+tools/llm_runner/prompt_playground.py can be used for debugging your LLM pipeline, if you changed the venv etc.
+
+### API call alternative
+Disclaimer: I am fully committed to optimizing this fork for local LLMs. 
+However, to make trying this fork more accessible, I added in an option to use API calls instead.
+
+Save your API key as global variable:
+
+```sh
+setx CATACLYSM_API_KEY "your_key"
+
+Install any-llm with the povider(s) you want (yoy may have already done this in a previous step):
+<your_venv>\Scripts\python.exe -m pip install "any-llm-sdk[provider,provider or l]"
+```
+
+In-game [LLM] options allow you to point the game at your global API key variable.
+
+Admittedly, API calls will give you faster and better responses on most machines. On mine for sure.
+That's why I would like to fine tune a model for this.
+
+### Runner self-test
+You can sanity-check the runner from your venv before launching the game.
+
+OpenVINO (local):
+```sh
+# Windows
+C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\runner.py --self-test --backend openvino --model-dir "C:\path\to\ov_model" --device AUTO
+
+# Linux
+python3 tools/llm_runner/runner.py --self-test --backend openvino --model-dir "/path/to/ov_model" --device AUTO
+```
+
+API (will use your provider, may cost money):
+```sh
+# Windows or Linux
+python tools\llm_runner\runner.py --self-test --backend api --api-provider "OpenAI" --api-model "gpt-4.1" --api-key-env "CATACLYSM_API_KEY"
+```
+
 ## Compile
 This section is from the original CDDA repo, as it applies to this fork as well.
 
@@ -266,7 +269,7 @@ So, send it to innovation@dabubu.at, or don't :)
 
 Alternatively, if you want to request additional LLM functions, just contact me somehow.
 
-Also, this entire fork was vibe-coded using Codex CLI. Thanks to the folks at OpenAI.
+Also, this entire fork was vibe-coded using [Codex CLI](https://developers.openai.com/codex/cli). Thanks to the folks at OpenAI.
 
 If I forgot to thank somebody, please just tell me.
 
@@ -284,7 +287,4 @@ Press the `?` key, followed by the `1` key to see the full list of key commands.
 
 ## To-do (if the ADHD gods allow it)
 
-- More LLM actions
-- LLM training
-- NPC backstory snapshot inclusion
-- NPC conversation overhaul?
+

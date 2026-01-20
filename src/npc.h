@@ -924,8 +924,9 @@ class npc : public Character
         bool is_player_ally() const;
         void set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                      const std::string &request_id,
-                                     const std::string &target_hint );
-        void clear_llm_intent_actions();
+                                     const std::string &target_hint ) const;
+        void clear_llm_intent_actions() const;
+        void set_llm_intent_item_targets( const std::vector<std::string> &targets ) const;
         bool has_llm_intent_actions() const;
         // Isn't moving
         bool is_stationary( bool include_guards = true ) const;
@@ -1356,14 +1357,17 @@ class npc : public Character
             int target_attacks_remaining = 0;
             int target_turns_remaining = 0;
             std::map<char, weak_ptr_fast<Creature>> legend_targets;
+            std::deque<std::string> look_around_targets;
+            std::string look_around_active_target;
         };
         static std::map<character_id, llm_intent_state> &llm_intent_state_map();
         static llm_intent_state &llm_intent_state_for( const npc &guy );
         void apply_llm_intent_target();
+        bool apply_llm_intent_item_targets();
 
         std::map<npc_need, npc_need_goal_cache> goal_cache;
     public:
-        void set_llm_intent_legend_map( std::map<char, weak_ptr_fast<Creature>> legend );
+        void set_llm_intent_legend_map( std::map<char, weak_ptr_fast<Creature>> legend ) const;
         const std::shared_ptr<npc_attack> &get_current_attack() const {
             return ai_cache.current_attack;
         }
