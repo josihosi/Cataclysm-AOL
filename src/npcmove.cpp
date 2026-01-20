@@ -1616,7 +1616,8 @@ bool npc::apply_llm_intent_item_targets()
     if( state.look_around_targets.empty() ) {
         return false;
     }
-    if( attitude == NPCATT_FLEE || attitude == NPCATT_FLEE_TEMP || has_effect( effect_npc_flee_player ) ) {
+    if( attitude == NPCATT_FLEE || attitude == NPCATT_FLEE_TEMP ||
+        has_effect( effect_npc_flee_player ) ) {
         return false;
     }
     if( fetching_item ) {
@@ -1672,7 +1673,7 @@ bool npc::apply_llm_intent_item_targets()
                 const int dist = rl_dist( pos_bub(), p );
                 if( !found || dist < best_dist ) {
                     best_item = item_location{ vehicle_cursor{ cargo->vehicle(),
-                                                     static_cast<ptrdiff_t>( cargo->part_index() ) }, &it };
+                                               static_cast<ptrdiff_t>( cargo->part_index() ) }, &it };
                     best_pos = p;
                     best_dist = dist;
                     found = true;
@@ -4184,7 +4185,7 @@ void npc::pick_up_item()
         return;
     }
 
-    auto log_look_around_pickup = [&]( const std::string &result ) {
+    auto log_look_around_pickup = [&]( const std::string & result ) {
         llm_intent_state &state = llm_intent_state_for( *this );
         if( state.look_around_active_target.empty() ) {
             return;
@@ -4196,7 +4197,8 @@ void npc::pick_up_item()
         state.look_around_active_target.clear();
     };
 
-    if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() ) {
+    if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() &&
+        llm_intent_state_for( *this ).look_around_active_target.empty() ) {
         add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); Canceling on player's request", get_name() );
         fetching_item = false;
         wanted_item = {};

@@ -24,6 +24,7 @@
 #include <system_error>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include <exception>
@@ -58,6 +59,7 @@
 #include "translations.h"
 #include "type_id.h"
 #include "value_ptr.h"
+#include "vehicle.h"
 #include "visitable.h"
 
 #if defined(_WIN32)
@@ -385,6 +387,7 @@ const std::vector<std::string> &allowed_actions()
         "equip_melee",
         "equip_bow",
         "look_around",
+        "look_inventory",
         "idle"
     };
     return actions;
@@ -591,6 +594,12 @@ struct look_around_item_entry {
     int min_distance = 0;
 };
 
+struct look_inventory_selection {
+    std::vector<std::string> wear;
+    std::vector<std::string> wield;
+    std::vector<std::string> act;
+};
+
 std::string xml_escape( const std::string &text )
 {
     std::string out;
@@ -688,7 +697,7 @@ std::vector<look_around_item_entry> collect_look_around_items( npc &listener, in
         entries.push_back( std::move( entry.second ) );
     }
     std::sort( entries.begin(), entries.end(),
-               []( const look_around_item_entry &lhs, const look_around_item_entry &rhs ) {
+    []( const look_around_item_entry & lhs, const look_around_item_entry & rhs ) {
         if( lhs.min_distance != rhs.min_distance ) {
             return lhs.min_distance < rhs.min_distance;
         }
@@ -730,6 +739,26 @@ std::vector<std::string> collect_compatible_magazines( npc &listener )
     return std::vector<std::string>( mag_names.begin(), mag_names.end() );
 }
 
+std::vector<std::string> collect_inventory_names( npc &listener, size_t max_entries )
+{
+    std::vector<std::string> names;
+    std::unordered_set<std::string> seen;
+    listener.visit_items( [&]( item * it, item * ) {
+        if( it == nullptr ) {
+            return VisitResponse::NEXT;
+        }
+        const std::string name = it->tname( 1, false );
+        if( seen.insert( name ).second ) {
+            names.push_back( name );
+            if( names.size() >= max_entries ) {
+                return VisitResponse::ABORT;
+            }
+        }
+        return VisitResponse::NEXT;
+    } );
+    return names;
+}
+
 std::string build_look_around_prompt( const std::string &player_utterance,
                                       const std::vector<std::string> &ammo,
                                       const std::vector<std::string> &magazines,
@@ -758,6 +787,33 @@ std::string build_look_around_prompt( const std::string &player_utterance,
             << entry.quantity << "\"/>\n";
     }
     out << "</Items>\n";
+    return out.str();
+}
+
+std::string build_look_inventory_prompt( const std::string &player_utterance,
+        const std::vector<std::string> &inventory )
+{
+    std::ostringstream out;
+    out << "<System>";
+    out << "You select items from the NPC inventory to wear, wield, or activate.";
+    out << "Return a single line only.";
+    out << "Format: wear: item1, item2 | wield: item3 | act: item4";
+    out << "You may omit any section.";
+    out << "Section labels are case-insensitive.";
+    out << "Use exact item names from the list.";
+    out << "</System>\n";
+    out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
+    out << "<Inventory>\n";
+    for( const std::string &entry : inventory ) {
+        out << "  <Item name=\"" << xml_escape( entry ) << "\"/>\n";
+    }
+    out << "</Inventory>\n";
+    out << "<Examples>\n";
+    out << "  <Example>wear: ballistic vest | wield: M4A1 rifle</Example>\n";
+    out << "  <Example>wield: M4A1 rifle | act: painkillers</Example>\n";
+    out << "  <Example>wear: leather jacket</Example>\n";
+    out << "  <Example>act: painkillers</Example>\n";
+    out << "</Examples>\n";
     return out.str();
 }
 
@@ -817,6 +873,146 @@ std::vector<std::string> parse_look_around_response( const std::string &text,
         }
     }
     return results;
+}
+
+look_inventory_selection parse_look_inventory_response( const std::string &text,
+        const std::unordered_map<std::string, std::string> &allowed )
+{
+    look_inventory_selection selection;
+    std::string cleaned = trim_copy( strip_xml_tags( text ) );
+    if( cleaned.empty() ) {
+        return selection;
+    }
+    std::vector<std::string> segments;
+    size_t start = 0;
+    while( start < cleaned.size() ) {
+        size_t end = cleaned.find( '|', start );
+        if( end == std::string::npos ) {
+            end = cleaned.size();
+        }
+        segments.push_back( trim_copy( cleaned.substr( start, end - start ) ) );
+        start = end + 1;
+    }
+
+    auto add_items = [&]( const std::string &label, const std::string &items_text ) {
+        std::vector<std::string> *bucket = nullptr;
+        if( label == "wear" ) {
+            bucket = &selection.wear;
+        } else if( label == "wield" ) {
+            bucket = &selection.wield;
+        } else if( label == "act" ) {
+            bucket = &selection.act;
+        } else {
+            return;
+        }
+        size_t pos = 0;
+        while( pos < items_text.size() ) {
+            size_t end = items_text.find( ',', pos );
+            if( end == std::string::npos ) {
+                end = items_text.size();
+            }
+            std::string token = trim_copy( items_text.substr( pos, end - pos ) );
+            pos = end + 1;
+            if( token.empty() ) {
+                continue;
+            }
+            std::string lowered = lower_copy( token );
+            auto it = allowed.find( lowered );
+            if( it == allowed.end() ) {
+                continue;
+            }
+            const std::string &normalized = it->second;
+            if( std::find( bucket->begin(), bucket->end(), normalized ) == bucket->end() ) {
+                bucket->push_back( normalized );
+            }
+        }
+    };
+
+    for( const std::string &segment : segments ) {
+        if( segment.empty() ) {
+            continue;
+        }
+        const size_t colon = segment.find( ':' );
+        if( colon == std::string::npos ) {
+            continue;
+        }
+        std::string label = lower_copy( trim_copy( segment.substr( 0, colon ) ) );
+        std::string items_text = trim_copy( segment.substr( colon + 1 ) );
+        add_items( label, items_text );
+    }
+
+    return selection;
+}
+
+std::unordered_map<std::string, item *> map_inventory_items( npc &listener )
+{
+    std::unordered_map<std::string, item *> items;
+    listener.visit_items( [&]( item * it, item * ) {
+        if( it == nullptr ) {
+            return VisitResponse::NEXT;
+        }
+        const std::string name = it->tname( 1, false );
+        items.emplace( name, it );
+        return VisitResponse::NEXT;
+    } );
+    return items;
+}
+
+void apply_look_inventory_actions( npc &listener, const look_inventory_selection &selection )
+{
+    std::unordered_map<std::string, item *> inventory = map_inventory_items( listener );
+    auto log_action = [&]( const std::string &action, const std::string &item_name,
+                           const std::string &result ) {
+        llm_intent::log_event( string_format( "look_inventory %s %s (%s): %s",
+                                              action,
+                                              listener.get_name(),
+                                              item_name,
+                                              result ) );
+    };
+
+    for( const std::string &name : selection.wear ) {
+        auto it = inventory.find( name );
+        if( it == inventory.end() ) {
+            log_action( "wear", name, "not found" );
+            continue;
+        }
+        if( !listener.can_wear( *it->second ).success() ) {
+            log_action( "wear", name, "cannot wear" );
+            continue;
+        }
+        if( listener.wear_item( *it->second, false ).has_value() ) {
+            log_action( "wear", name, "ok" );
+        } else {
+            log_action( "wear", name, "failed" );
+        }
+    }
+
+    for( const std::string &name : selection.wield ) {
+        auto it = inventory.find( name );
+        if( it == inventory.end() ) {
+            log_action( "wield", name, "not found" );
+            continue;
+        }
+        if( !listener.can_wield( *it->second ).success() ) {
+            log_action( "wield", name, "cannot wield" );
+            continue;
+        }
+        if( listener.wield( *it->second ) ) {
+            log_action( "wield", name, "ok" );
+        } else {
+            log_action( "wield", name, "failed" );
+        }
+    }
+
+    for( const std::string &name : selection.act ) {
+        auto it = inventory.find( name );
+        if( it == inventory.end() ) {
+            log_action( "act", name, "not found" );
+            continue;
+        }
+        listener.activate_item( *it->second );
+        log_action( "act", name, "attempted" );
+    }
 }
 
 std::string strip_wrapping_quotes( const std::string &text )
@@ -1389,6 +1585,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "equip_melee to equip melee, get ready to bash, cut, kick, stab.\n"
                "equip_bow to use bow, crossbow, stealth.\n"
                "look_around to request nearby item selection for pickup.\n"
+               "look_inventory to request inventory wear/wield/activate suggestions.\n"
                "attack=<target> to attack a target from your map.\n"
                "idle if none of the above.\n"
                "</Allowed actions>\n"
@@ -2208,6 +2405,11 @@ class llm_intent_manager
             std::string npc_name;
             std::vector<std::string> item_names;
         };
+        struct look_inventory_context {
+            character_id npc_id;
+            std::string npc_name;
+            std::vector<std::string> item_names;
+        };
 
     public:
         llm_intent_manager() = default;
@@ -2329,8 +2531,7 @@ class llm_intent_manager
         }
 
         void process_look_around_response( const llm_intent_response &resp,
-                                           const look_around_context &context )
-        {
+                                           const look_around_context &context ) {
             std::unordered_map<std::string, std::string> allowed;
             allowed.reserve( context.item_names.size() );
             for( const std::string &name : context.item_names ) {
@@ -2348,6 +2549,65 @@ class llm_intent_manager
             if( npc *target = g->find_npc( context.npc_id ) ) {
                 if( target->is_player_ally() ) {
                     target->set_llm_intent_item_targets( selected );
+                }
+            }
+        }
+
+        void enqueue_look_inventory_request( npc &listener, const std::string &player_utterance ) {
+            static constexpr int look_max_tokens = 256;
+            static constexpr size_t max_inventory_entries = 80;
+            std::vector<std::string> inventory = collect_inventory_names( listener, max_inventory_entries );
+            if( inventory.empty() ) {
+                return;
+            }
+            llm_intent_request req;
+            req.request_id = next_request_id();
+            req.npc_id = listener.getID();
+            req.npc_name = listener.get_name();
+            req.snapshot = "{}";
+            req.prompt = build_look_inventory_prompt( player_utterance, inventory );
+            req.max_tokens = look_max_tokens;
+            req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
+            req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
+            req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
+
+            look_inventory_context context;
+            context.npc_id = req.npc_id;
+            context.npc_name = req.npc_name;
+            context.item_names = inventory;
+
+            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                append_llm_intent_log( string_format( "look_inventory prompt %s (%s)\n%s\n\n",
+                                                      req.npc_name, req.request_id, req.prompt ) );
+            }
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                look_inventory_requests.emplace( req.request_id, std::move( context ) );
+                request_queue.push( std::move( req ) );
+            }
+            ensure_worker();
+            cv.notify_one();
+        }
+
+        void process_look_inventory_response( const llm_intent_response &resp,
+                                              const look_inventory_context &context ) {
+            std::unordered_map<std::string, std::string> allowed;
+            allowed.reserve( context.item_names.size() );
+            for( const std::string &name : context.item_names ) {
+                allowed.emplace( lower_copy( name ), name );
+            }
+            look_inventory_selection selection;
+            if( resp.ok ) {
+                selection = parse_look_inventory_response( resp.text, allowed );
+            }
+            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
+                append_llm_intent_log( string_format( "look_inventory response %s (%s)\n%s\n\n",
+                                                      context.npc_name, resp.request_id, payload ) );
+            }
+            if( npc *target = g->find_npc( context.npc_id ) ) {
+                if( target->is_player_ally() ) {
+                    apply_look_inventory_actions( *target, selection );
                 }
             }
         }
@@ -2378,6 +2638,17 @@ class llm_intent_manager
                         look_around_context context = std::move( it->second );
                         look_around_requests.erase( it );
                         process_look_around_response( resp, context );
+                        local.pop();
+                        continue;
+                    }
+                }
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    auto it = look_inventory_requests.find( resp.request_id );
+                    if( it != look_inventory_requests.end() ) {
+                        look_inventory_context context = std::move( it->second );
+                        look_inventory_requests.erase( it );
+                        process_look_inventory_response( resp, context );
                         local.pop();
                         continue;
                     }
@@ -2443,6 +2714,12 @@ class llm_intent_manager
                     actions.erase( std::remove( actions.begin(), actions.end(), "look_around" ),
                                    actions.end() );
                 }
+                const bool wants_look_inventory = std::find( actions.begin(), actions.end(),
+                                                 "look_inventory" ) != actions.end();
+                if( wants_look_inventory ) {
+                    actions.erase( std::remove( actions.begin(), actions.end(), "look_inventory" ),
+                                   actions.end() );
+                }
 
                 if( resp.ok && parse_error.empty() && !actions.empty() ) {
                     std::vector<llm_intent_action> intent_actions;
@@ -2473,6 +2750,21 @@ class llm_intent_manager
                     if( npc *target = g->find_npc( resp.npc_id ) ) {
                         if( target->is_player_ally() ) {
                             enqueue_look_around_request( *target, player_utterance );
+                        }
+                    }
+                }
+                if( wants_look_inventory ) {
+                    std::string player_utterance;
+                    {
+                        std::lock_guard<std::mutex> lock( mutex );
+                        auto it = utterance_by_request.find( resp.request_id );
+                        if( it != utterance_by_request.end() ) {
+                            player_utterance = it->second;
+                        }
+                    }
+                    if( npc *target = g->find_npc( resp.npc_id ) ) {
+                        if( target->is_player_ally() ) {
+                            enqueue_look_inventory_request( *target, player_utterance );
                         }
                     }
                 }
@@ -2514,6 +2806,7 @@ class llm_intent_manager
         std::queue<llm_intent_response> response_queue;
         std::unordered_map<std::string, std::string> utterance_by_request;
         std::unordered_map<std::string, look_around_context> look_around_requests;
+        std::unordered_map<std::string, look_inventory_context> look_inventory_requests;
         std::thread worker;
         std::atomic<bool> stopping = false;
         std::atomic<int> counter = 0;
