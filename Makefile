@@ -1248,7 +1248,6 @@ ifndef FRAMEWORK
 	python3 ./tools/copy_mac_libs.py $(APPRESOURCESDIR)/$(APPTARGET)
 endif  # ifndef FRAMEWORK
 
-
 dmgdistclean:
 	rm -rf Cataclysm
 	rm -f Cataclysm.dmg

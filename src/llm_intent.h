@@ -13,4 +13,5 @@ void enqueue_requests( const std::vector<npc *> &listeners,
                        const std::string &player_utterance );
 void prewarm();
 void process_responses();
+void log_event( const std::string &message );
 } // namespace llm_intent
