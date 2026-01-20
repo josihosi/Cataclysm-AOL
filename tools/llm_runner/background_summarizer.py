@@ -3,7 +3,6 @@ import argparse
 import json
 import os
 import re
-import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -285,8 +284,8 @@ def write_entries(path: str, entries: Dict[str, Dict[str, Any]]) -> None:
     with open(path, "w", encoding="utf-8") as handle:
         for entry in ordered:
             handle.write(
-                f"{entry['id']}|{entry.get('your_background','')}|"
-                f"{entry.get('your_expression','')}|{entry.get('source_tag','')}\n"
+                f"{entry['id']}|{entry.get('your_background', '')}|"
+                f"{entry.get('your_expression', '')}|{entry.get('source_tag', '')}\n"
             )
 
 
@@ -438,7 +437,6 @@ def main() -> int:
         if args.include_responses:
             prompt_responses = info.get("file_responses", info["responses"])
         prompt = build_prompt(prompt_lines, prompt_responses)
-        story_text_flat = " ".join(prompt_lines + prompt_responses)
         if args.debug_io:
             print(f"Prompt for {topic_id}:\n{prompt}\n")
         prompt_tokens = max(1, len(prompt.split()))
