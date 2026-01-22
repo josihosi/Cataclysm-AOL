@@ -2517,10 +2517,10 @@ class llm_intent_manager
                 context.item_names.push_back( entry.name );
             }
 
-            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
-                append_llm_intent_log( string_format( "look_around prompt %s (%s)\n%s\n\n",
-                                                      req.npc_name, req.request_id, req.prompt ) );
-            }
+            append_llm_intent_log( string_format( "look_around request %s (%s)\n%s\n\n",
+                                                  req.npc_name,
+                                                  req.request_id,
+                                                  request_to_json( req ) ) );
             {
                 std::lock_guard<std::mutex> lock( mutex );
                 look_around_requests.emplace( req.request_id, std::move( context ) );
@@ -2541,7 +2541,7 @@ class llm_intent_manager
             if( resp.ok ) {
                 selected = parse_look_around_response( resp.text, allowed );
             }
-            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+            {
                 const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
                 append_llm_intent_log( string_format( "look_around response %s (%s)\n%s\n\n",
                                                       context.npc_name, resp.request_id, payload ) );
@@ -2576,10 +2576,10 @@ class llm_intent_manager
             context.npc_name = req.npc_name;
             context.item_names = inventory;
 
-            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
-                append_llm_intent_log( string_format( "look_inventory prompt %s (%s)\n%s\n\n",
-                                                      req.npc_name, req.request_id, req.prompt ) );
-            }
+            append_llm_intent_log( string_format( "look_inventory request %s (%s)\n%s\n\n",
+                                                  req.npc_name,
+                                                  req.request_id,
+                                                  request_to_json( req ) ) );
             {
                 std::lock_guard<std::mutex> lock( mutex );
                 look_inventory_requests.emplace( req.request_id, std::move( context ) );
@@ -2600,7 +2600,7 @@ class llm_intent_manager
             if( resp.ok ) {
                 selection = parse_look_inventory_response( resp.text, allowed );
             }
-            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+            {
                 const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
                 append_llm_intent_log( string_format( "look_inventory response %s (%s)\n%s\n\n",
                                                       context.npc_name, resp.request_id, payload ) );
