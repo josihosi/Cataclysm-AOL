@@ -294,6 +294,7 @@ def handle_request(
             "max_new_tokens": max_tokens,
             "token_count_method": token_count_method,
             "npu": get_npu_metrics(),
+            "use_api": False,
         }
         return {"request_id": request_id, "ok": True, "text": text, "metrics": metrics}
     except Exception as exc:
@@ -590,6 +591,7 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
             payload["metrics"] = {
                 "gen_time_ms": elapsed_ms,
                 "max_new_tokens": max_tokens,
+                "use_api": True,
             }
             write_response(payload)
         except Exception as exc:
