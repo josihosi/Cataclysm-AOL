@@ -24,9 +24,10 @@ Yelling a sentence has also been changed to 'Say a sentence' with a range of aro
 
 I plan on adding the following features, somewhere in the future:
 
-- More LLM actions (Look_around/self -> pickup=<item>/activate=<item>, panic_on/off, move n/s/e/w, throw grenades, suggestions ??)
-- Extend look_inventory actions (drop, equip order, quantities).
-- Hosting of a finetuned model for optimal performance.
+- More LLM actions (minimap-move, throw grenades, ... ?)
+- Base AI (seperate snapshot and actions)
+- Optional random trigger
+- Finetuned model for optimal performance.
 - Complete NPC conversation overhaul? Replace the branched conversations with freetext and toolcalls in convos (ie. [trade],[quest],etc).
 
 ### LLM runner background
@@ -40,28 +41,28 @@ Therefore, any used model has to balance intelligence and speed.
 Heres an example snapshot. As you can see, a lot of information is conveyed to the LLM in a dense format.
 
 ```sh
-prompt Willy Norwood (req_0)
+prompt Willy Norwood (req_2)
 Situation:
 SITUATION
-id: req_0
+id: req_2
 player_name: Alyson Shackelford
-player_utterance: Watch out for that soldier zombie!
+player_utterance: Pick up that axe, fast, and lets book it!
 
 your_name: Willy Norwood
 your_background: codger
 your_tone: Rambling, Dramatic, Folksy, Eccentric, Jester
 your_example_expression: "A gorram moose! Livin' in the ol' ranger station!"
-your_state[0-10]: morale=5 hunger=0 thirst=0 pain=0 stamina=10 sleepiness=0 hp_percent=10 effects=[socialized_recently:1 asked_to_socialize:1]
-your_emotions[0-10]: danger_assessment=0 panic=0 confidence=10
+your_state[0-10]: morale=6 hunger=0 thirst=0 pain=8 stamina=10 sleepiness=0 hp_percent=7 effects=[bite:1 bandaged:4 bandaged:4 socialized_recently:1 asked_to_socialize:1]
+your_emotions[0-10]: danger_assessment=0 panic=0 confidence=6
 your_personality[0-10]: aggression=7 bravery=8 collector=5 altruism=8
 your_opinion_of_player[0-10]: trust=6 intimidation=5 respect=6 anger=5
 
-threats: zombie soldier threat_score[0-100]=12
+threats: (none)
 friendlies: player
 
-inventory: wielded="Army bayonet"
-weapons: [++ 5-round hunting shotgun+1 (5/5), Army bayonet, ++ yellow hard hat]
-bandage_possible: false
+inventory: wielded="wood axe"
+weapons: [Fighters' Glock 19 (17/17), Fighters' Glock 19 (17/17), wood axe]
+bandage_possible: true
 
 legend:
 - ... open area
@@ -71,18 +72,17 @@ legend:
 [A - Z] ... obstructed creature
 | ... You (NPC)
 map_legend:
-b ... zombie soldier
+b ... American crow
 a ... player
+c ... American crow
 map:
-0--00--00--00--00--00--------------------
----00--00--00--0---00--------------------
------------------------------------------
--6666666---------------------------------
--60000----0------------------------------
--6-------00------------------------------
--600-0---00------------------------------
--6666666---------------------------------
------------------------------------------
+-------------------------------------0--0
+----------------------------------00----0
+-----0--------------------------------0--
+------------------------------------0----
+--------------------------------------0--
+----------------------------------------0
+----------------------------------------0
 -----------------------------------------
 -----------------------------------------
 -----------------------------------------
@@ -94,15 +94,17 @@ map:
 -----------------------------------------
 -----------------------------------------
 -----------------------------------------
---------------------|--------------------
--------------------b---------------------
------------------------------------------
------------------------------------------
+---b-------------------------------------
 --------------------a--------------------
+--------------------|--------------------
 -----------------------------------------
 -----------------------------------------
 -----------------------------------------
 -----------------------------------------
+-----------------------------------------
+-----------------------------------------
+-----------------------------------------
+c----------------------------------------
 -----------------------------------------
 -----------------------------------------
 -----------------------------------------
@@ -118,19 +120,20 @@ map:
 
 <System>You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die.Return a single line only, with correct syntax, to be parsed by the game.This line has two to four fields separated by ‘|’ :
 <Field 1>The first field is an answer to player_utterance.You have decided to team up with the player for now, and must answer as the NPC.Stick to your role, with your emotions and opinions.Use a dry tone, with swear words, fit for a zombie apocalypse.</Field 1>
-<Fields 2-4>Write 1-3 of the following allowed actions:wait_here, follow_player, equip_gun, equip_melee, equip_bow, look_around, look_inventory, idle, attack=<target>
-<Allowed actions>wait_here to stay put, keep watch, wait, stand.
-follow_player to walk behind, follow, run.
-equip_gun to equip gun, rifle, thrower, get ready to shoot.
-equip_melee to equip melee, get ready to bash, cut, kick, stab.
-equip_bow to use bow, crossbow, stealth.
-look_around to scan nearby items for pickup suggestions.
-look_inventory to wear, wield, activate, or drop items from inventory.
-panic_on to force a short flee behavior.
-panic_off to calm down and stop fleeing over time.
-attack=<target> to attack a target from your map.
-idle if none of the above.
-</Allowed actions>
+<Fields 2-4>Write 1-3 of the following allowed actions exactly:wait_here, follow_player, equip_gun, equip_melee, equip_bow, panic_on, panic_off, look_around, look_inventory, idle, attack=<target>
+<Explanation allowed actions>
+'wait_here' to stay put, keep watch, wait, stand.
+'follow_player' to walk behind, follow, run.
+'equip_gun' to equip gun, rifle, thrower, get ready to shoot.
+'equip_melee' to equip melee, get ready to bash, cut, kick, stab.
+'equip_bow' to use bow, crossbow, stealth.
+'panic_on' to start running, get out of here.
+'panic_off' if convincing, to stop fleeing and get your act together.
+'look_around' to pick-up, search, explore for items around you.
+'look_inventory' to look inside your inventory and wear/wield/activate items.
+'attack=<target>' to attack a target with the letter from your map.
+'idle' if none of the above.
+</Explanation allowed actions>
 </Fields 2-4>
 Print only Fields 1-4, separated by | .If you break this format, you have failed.Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.
 <Example Output 1>Blow me.|idle</Example Output 1>
@@ -139,14 +142,15 @@ Print only Fields 1-4, separated by | .If you break this format, you have failed
 <Example Output 4>Lets get some dinner!|equip_gun|attack=chicken</Example Output 4>
 <Example Output 5>Don't worry, I'm ready to kick some teeth in.|equip_melee</Example Output 5>
 <Example Output 6>Locked and loaded.|equip_gun</Example Output 6>
+<Example Output 7>Nope, not doing that!|panic_on</Example Output 7>
 </System>
 
 
-say Willy Norwood (req_0)
-Ain't my first deadhead rodeo, Alyson—let's show that sack of rot who's boss!
+response Willy Norwood (req_2)
+{"request_id": "req_2", "ok": true, "text": "Ain\u2019t gonna argue, sugar\u2014my leg\u2019s half-ripped but I can still hoof it. Let\u2019s light a fire under our asses!|follow_player|equip_melee", "metrics": {"gen_time_ms": 2357.415599981323, "max_new_tokens": 20000, "use_api": true}}
 
-response Willy Norwood (req_0)
-{"request_id": "req_0", "ok": true, "text": "Ain't my first deadhead rodeo, Alyson\u2014let's show that sack of rot who's boss!|equip_gun|follow_player|attack=zombie soldier", "metrics": {"gen_time_ms": 2278.3687000046484, "max_new_tokens": 20000}}
+say Willy Norwood (req_2)
+Ain’t gonna argue, sugar—my leg’s half-ripped but I can still hoof it. Let’s light a fire under our asses!
 ```
 
 ### Panic actions
@@ -174,7 +178,12 @@ When the LLM uses `look_inventory`, it must return a single line with any combin
 
 ## Installation
 
-There is no installer right now, so you will have to build this yourself.
+If you want a no-source install, grab a release build from GitHub:
+https://github.com/josihosi/Cataclysm-AOL/releases
+Windows builds are `.zip`, Linux builds are `.tar.gz`, and macOS builds are `.dmg`.
+Unpack, run the game, and then follow the LLM runner setup below.
+
+If you want to build from source, follow the steps below.
 Additionally, the LLMs will require you to set up a Python venv, download a model, and point the existing code at the right directiories.
 The following Readme will explain all of these.
 There is also a new in-game option section [LLM] which helps you pointing the game into the right directions.

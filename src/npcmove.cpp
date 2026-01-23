@@ -261,7 +261,14 @@ bool good_for_pickup( const item &it, npc &who, const tripoint_bub_ms &there )
 
 std::string normalize_item_label( const std::string &text )
 {
-    const std::string stripped = remove_color_tags( text );
+    std::string stripped = remove_color_tags( text );
+    size_t suffix_pos = stripped.find( " > " );
+    if( suffix_pos == std::string::npos ) {
+        suffix_pos = stripped.find( '>' );
+    }
+    if( suffix_pos != std::string::npos ) {
+        stripped = stripped.substr( 0, suffix_pos );
+    }
     std::string out;
     out.reserve( stripped.size() );
     bool last_space = false;
@@ -4268,6 +4275,13 @@ void npc::find_item()
     }
 }
 
+template <typename T, typename F>
+std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter,
+        bool require_wants );
+
+template <typename T>
+std::list<item> npc_pickup_from_stack( npc &who, T &items );
+
 void npc::pick_up_item()
 {
     if( is_hallucination() ) {
@@ -4354,9 +4368,27 @@ void npc::pick_up_item()
 
     // We're adjacent to the item; grab it!
 
-    auto picked_up = pick_up_item_map( wanted_item_pos );
+    llm_intent_state &state = llm_intent_state_for( *this );
+    const std::string target_name = state.look_around_active_target;
+    const bool llm_targeted = !target_name.empty();
+    std::list<item> picked_up;
+    if( llm_targeted ) {
+        map_stack stack = here.i_at( wanted_item_pos );
+        picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
+            return normalize_item_label( it.tname( 1, false ) ) == target_name;
+        }, false );
+    } else {
+        picked_up = pick_up_item_map( wanted_item_pos );
+    }
     if( picked_up.empty() && has_cargo ) {
-        picked_up = pick_up_item_vehicle( vp->vehicle(), vp->part_index() );
+        if( llm_targeted ) {
+            vehicle_stack stack = vp->items();
+            picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
+                return normalize_item_label( it.tname( 1, false ) ) == target_name;
+            }, false );
+        } else {
+            picked_up = pick_up_item_vehicle( vp->vehicle(), vp->part_index() );
+        }
     }
 
     if( picked_up.empty() ) {
@@ -4404,14 +4436,19 @@ void npc::pick_up_item()
     has_new_items = true;
 }
 
-template <typename T>
-std::list<item> npc_pickup_from_stack( npc &who, T &items )
+template <typename T, typename F>
+std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter,
+        bool require_wants )
 {
     std::list<item> picked_up;
 
     for( auto iter = items.begin(); iter != items.end(); ) {
         const item &it = *iter;
-        if( who.can_take_that( it ) && who.wants_take_that( it ) ) {
+        if( !filter( it ) ) {
+            ++iter;
+            continue;
+        }
+        if( who.can_take_that( it ) && ( !require_wants || who.wants_take_that( it ) ) ) {
             picked_up.push_back( it );
             iter = items.erase( iter );
         } else {
@@ -4420,6 +4457,14 @@ std::list<item> npc_pickup_from_stack( npc &who, T &items )
     }
 
     return picked_up;
+}
+
+template <typename T>
+std::list<item> npc_pickup_from_stack( npc &who, T &items )
+{
+    return npc_pickup_from_stack_filtered( who, items, []( const item & ) {
+        return true;
+    }, true );
 }
 
 bool npc::can_take_that( const item &it )

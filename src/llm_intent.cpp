@@ -89,7 +89,8 @@ void append_llm_intent_log( const std::string &payload )
         return;
     }
     std::string final_payload = payload;
-    if( final_payload.size() < 2 || final_payload.compare( final_payload.size() - 2, 2, "\n\n" ) != 0 ) {
+    if( final_payload.size() < 2 ||
+        final_payload.compare( final_payload.size() - 2, 2, "\n\n" ) != 0 ) {
         final_payload += "\n\n";
     }
     std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
@@ -209,7 +210,14 @@ std::string trim_copy( const std::string &text )
 
 std::string normalize_item_label( std::string_view text )
 {
-    const std::string stripped = remove_color_tags( text );
+    std::string stripped = remove_color_tags( text );
+    size_t suffix_pos = stripped.find( " > " );
+    if( suffix_pos == std::string::npos ) {
+        suffix_pos = stripped.find( '>' );
+    }
+    if( suffix_pos != std::string::npos ) {
+        stripped = stripped.substr( 0, suffix_pos );
+    }
     std::string out;
     out.reserve( stripped.size() );
     bool last_space = false;
@@ -643,9 +651,16 @@ std::string extract_attack_target_hint( const std::string &text )
 }
 
 struct look_around_item_entry {
+    std::string id;
     std::string name;
     int quantity = 0;
     int min_distance = 0;
+};
+
+struct inventory_item_entry {
+    std::string id;
+    std::string name;
+    item *ptr = nullptr;
 };
 
 struct look_inventory_selection {
@@ -770,10 +785,12 @@ std::vector<look_around_item_entry> collect_look_around_items( npc &listener, in
     return entries;
 }
 
-std::vector<std::string> collect_inventory_names( npc &listener, size_t max_entries )
+std::vector<inventory_item_entry> collect_inventory_entries( npc &listener, size_t max_entries )
 {
-    std::vector<std::string> names;
+    std::vector<inventory_item_entry> entries;
+    entries.reserve( max_entries );
     std::unordered_set<std::string> seen;
+    int counter = 0;
     listener.visit_items( [&]( item * it, item * ) {
         if( it == nullptr ) {
             return VisitResponse::NEXT;
@@ -782,15 +799,20 @@ std::vector<std::string> collect_inventory_names( npc &listener, size_t max_entr
         if( name.empty() ) {
             return VisitResponse::NEXT;
         }
-        if( seen.insert( name ).second ) {
-            names.push_back( name );
-            if( names.size() >= max_entries ) {
-                return VisitResponse::ABORT;
-            }
+        if( !seen.insert( name ).second ) {
+            return VisitResponse::NEXT;
+        }
+        inventory_item_entry entry;
+        entry.id = string_format( "item_%d", ++counter );
+        entry.name = name;
+        entry.ptr = it;
+        entries.push_back( std::move( entry ) );
+        if( entries.size() >= max_entries ) {
+            return VisitResponse::ABORT;
         }
         return VisitResponse::NEXT;
     } );
-    return names;
+    return entries;
 }
 
 std::string build_look_around_prompt( const std::string &player_utterance,
@@ -800,8 +822,8 @@ std::string build_look_around_prompt( const std::string &player_utterance,
     std::ostringstream out;
     out << "<System>";
     out << "Select up to three items from the list for the NPC to pick up.";
-    out << "To do this, return up to three exact item names from the item list, comma-separated.";
-    out << "Use exact item names from the list only.";
+    out << "To do this, return up to three item ids from the item list, comma-separated.";
+    out << "Use item ids from the list only.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
     out << "<Inventory>\n";
@@ -811,7 +833,8 @@ std::string build_look_around_prompt( const std::string &player_utterance,
     out << "</Inventory>\n";
     out << "<Items>\n";
     for( const look_around_item_entry &entry : items ) {
-        out << "  <Item name=\"" << xml_escape( entry.name ) << "\" qty=\""
+        out << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
+            << xml_escape( entry.name ) << "\" qty=\""
             << entry.quantity << "\"/>\n";
     }
     out << "</Items>\n";
@@ -819,7 +842,7 @@ std::string build_look_around_prompt( const std::string &player_utterance,
 }
 
 std::string build_look_inventory_prompt( const std::string &player_utterance,
-        const std::vector<std::string> &inventory )
+        const std::vector<inventory_item_entry> &inventory )
 {
     std::ostringstream out;
     out << "<System>";
@@ -832,19 +855,21 @@ std::string build_look_inventory_prompt( const std::string &player_utterance,
     out << "To drop items, write:\ndrop: item1, item2\n";
     out << "You may include any combination, separated by |.";
     out << "Section labels are case-insensitive.";
-    out << "Use exact item names from the list.";
+    out << "Use item ids from the list only.";
+    out << "If you need both wear and act, repeat the same id in both sections.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
     out << "<Inventory>\n";
-    for( const std::string &entry : inventory ) {
-        out << "  <Item name=\"" << xml_escape( entry ) << "\"/>\n";
+    for( const inventory_item_entry &entry : inventory ) {
+        out << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
+            << xml_escape( entry.name ) << "\"/>\n";
     }
     out << "</Inventory>\n";
     out << "<Examples>\n";
-    out << "  <Example>wear: ballistic vest | wield: M4A1 rifle</Example>\n";
-    out << "  <Example>wield: M4A1 rifle | act: painkillers</Example>\n";
-    out << "  <Example>wear: leather jacket</Example>\n";
-    out << "  <Example>act: painkillers</Example>\n";
+    out << "  <Example>wear: item_1 | wield: item_2</Example>\n";
+    out << "  <Example>wield: item_2 | act: item_3</Example>\n";
+    out << "  <Example>wear: item_4</Example>\n";
+    out << "  <Example>act: item_3</Example>\n";
     out << "</Examples>\n";
     return out.str();
 }
@@ -978,32 +1003,21 @@ look_inventory_selection parse_look_inventory_response( const std::string &text,
     return selection;
 }
 
-std::unordered_map<std::string, item *> map_inventory_items( npc &listener )
+void apply_look_inventory_actions( npc &listener,
+                                   const std::unordered_map<std::string, item *> &inventory,
+                                   const std::unordered_map<std::string, std::string> &id_to_name,
+                                   const look_inventory_selection &selection )
 {
-    std::unordered_map<std::string, item *> items;
-    listener.visit_items( [&]( item * it, item * ) {
-        if( it == nullptr ) {
-            return VisitResponse::NEXT;
-        }
-        const std::string name = normalize_item_label( it->tname( 1, false ) );
-        if( name.empty() ) {
-            return VisitResponse::NEXT;
-        }
-        items.emplace( name, it );
-        return VisitResponse::NEXT;
-    } );
-    return items;
-}
-
-void apply_look_inventory_actions( npc &listener, const look_inventory_selection &selection )
-{
-    std::unordered_map<std::string, item *> inventory = map_inventory_items( listener );
     auto log_action = [&]( const std::string & action, const std::string & item_name,
     const std::string & result ) {
+        const auto name_it = id_to_name.find( item_name );
+        const std::string label = name_it == id_to_name.end()
+                                  ? item_name
+                                  : item_name + ": " + name_it->second;
         llm_intent::log_event( string_format( "look_inventory %s %s (%s): %s",
                                               action,
                                               listener.get_name(),
-                                              item_name,
+                                              label,
                                               result ) );
     };
 
@@ -1614,7 +1628,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "<Fields 2-4>"
                "Write 1-3 of the following allowed actions exactly:"
                "%s\n"
-               "<Explanation allowed actions>"
+               "<Explanation allowed actions>\n"
                "'wait_here' to stay put, keep watch, wait, stand.\n"
                "'follow_player' to walk behind, follow, run.\n"
                "'equip_gun' to equip gun, rifle, thrower, get ready to shoot.\n"
@@ -1649,6 +1663,9 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "<Example Output 6>"
                "Locked and loaded.|equip_gun"
                "</Example Output 6>\n"
+               "<Example Output 7>"
+               "Nope, not doing that!|panic_on"
+               "</Example Output 7>\n"
                "</System>\n",
                snapshot, action_list_with_target );
 }
@@ -2441,12 +2458,12 @@ class llm_intent_manager
         struct look_around_context {
             character_id npc_id;
             std::string npc_name;
-            std::vector<std::string> item_names;
+            std::vector<look_around_item_entry> items;
         };
         struct look_inventory_context {
             character_id npc_id;
             std::string npc_name;
-            std::vector<std::string> item_names;
+            std::vector<inventory_item_entry> items;
         };
 
     public:
@@ -2535,7 +2552,16 @@ class llm_intent_manager
             if( items.empty() ) {
                 return;
             }
-            std::vector<std::string> inventory = collect_inventory_names( listener, max_inventory_entries );
+            std::vector<inventory_item_entry> inventory_entries = collect_inventory_entries( listener,
+                    max_inventory_entries );
+            std::vector<std::string> inventory;
+            inventory.reserve( inventory_entries.size() );
+            for( const inventory_item_entry &entry : inventory_entries ) {
+                inventory.push_back( entry.name );
+            }
+            for( size_t i = 0; i < items.size(); ++i ) {
+                items[i].id = string_format( "item_%d", static_cast<int>( i + 1 ) );
+            }
             llm_intent_request req;
             req.request_id = next_request_id();
             req.npc_id = listener.getID();
@@ -2550,10 +2576,7 @@ class llm_intent_manager
             look_around_context context;
             context.npc_id = req.npc_id;
             context.npc_name = req.npc_name;
-            context.item_names.reserve( items.size() );
-            for( const look_around_item_entry &entry : items ) {
-                context.item_names.push_back( entry.name );
-            }
+            context.items = items;
 
             append_llm_intent_log( string_format( "look_around request %s (%s)\n%s\n\n",
                                                   req.npc_name,
@@ -2571,9 +2594,18 @@ class llm_intent_manager
         void process_look_around_response( const llm_intent_response &resp,
                                            const look_around_context &context ) {
             std::unordered_map<std::string, std::string> allowed;
-            allowed.reserve( context.item_names.size() );
-            for( const std::string &name : context.item_names ) {
-                allowed.emplace( lower_copy( name ), name );
+            allowed.reserve( context.items.size() * 2 );
+            std::unordered_map<std::string, std::string> id_to_name;
+            id_to_name.reserve( context.items.size() );
+            std::unordered_map<std::string, std::string> name_to_id;
+            name_to_id.reserve( context.items.size() );
+            for( const look_around_item_entry &entry : context.items ) {
+                const std::string id_key = lower_copy( entry.id );
+                const std::string name_key = lower_copy( entry.name );
+                allowed.emplace( id_key, entry.name );
+                allowed.emplace( name_key, entry.name );
+                id_to_name.emplace( entry.id, entry.name );
+                name_to_id.emplace( entry.name, entry.id );
             }
             std::vector<std::string> selected;
             if( resp.ok ) {
@@ -2583,6 +2615,22 @@ class llm_intent_manager
                 const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
                 append_llm_intent_log( string_format( "look_around response %s (%s)\n%s\n\n",
                                                       context.npc_name, resp.request_id, payload ) );
+                if( !selected.empty() ) {
+                    std::string joined;
+                    for( const std::string &name : selected ) {
+                        const auto id_it = name_to_id.find( name );
+                        if( !joined.empty() ) {
+                            joined += ", ";
+                        }
+                        if( id_it == name_to_id.end() ) {
+                            joined += name;
+                        } else {
+                            joined += id_it->second + ": " + name;
+                        }
+                    }
+                    append_llm_intent_log( string_format( "look_around selected %s (%s): %s\n\n",
+                                                          context.npc_name, resp.request_id, joined ) );
+                }
             }
             if( npc *target = g->find_npc( context.npc_id ) ) {
                 if( target->is_player_ally() ) {
@@ -2594,7 +2642,8 @@ class llm_intent_manager
         void enqueue_look_inventory_request( npc &listener, const std::string &player_utterance ) {
             static constexpr int look_max_tokens = 256;
             static constexpr size_t max_inventory_entries = 80;
-            std::vector<std::string> inventory = collect_inventory_names( listener, max_inventory_entries );
+            std::vector<inventory_item_entry> inventory = collect_inventory_entries( listener,
+                    max_inventory_entries );
             if( inventory.empty() ) {
                 return;
             }
@@ -2612,7 +2661,7 @@ class llm_intent_manager
             look_inventory_context context;
             context.npc_id = req.npc_id;
             context.npc_name = req.npc_name;
-            context.item_names = inventory;
+            context.items = inventory;
 
             append_llm_intent_log( string_format( "look_inventory request %s (%s)\n%s\n\n",
                                                   req.npc_name,
@@ -2630,9 +2679,18 @@ class llm_intent_manager
         void process_look_inventory_response( const llm_intent_response &resp,
                                               const look_inventory_context &context ) {
             std::unordered_map<std::string, std::string> allowed;
-            allowed.reserve( context.item_names.size() );
-            for( const std::string &name : context.item_names ) {
-                allowed.emplace( lower_copy( name ), name );
+            allowed.reserve( context.items.size() * 2 );
+            std::unordered_map<std::string, item *> inventory;
+            inventory.reserve( context.items.size() );
+            std::unordered_map<std::string, std::string> id_to_name;
+            id_to_name.reserve( context.items.size() );
+            for( const inventory_item_entry &entry : context.items ) {
+                const std::string id_key = lower_copy( entry.id );
+                const std::string name_key = lower_copy( entry.name );
+                allowed.emplace( id_key, entry.id );
+                allowed.emplace( name_key, entry.id );
+                inventory.emplace( entry.id, entry.ptr );
+                id_to_name.emplace( entry.id, entry.name );
             }
             look_inventory_selection selection;
             if( resp.ok ) {
@@ -2645,7 +2703,7 @@ class llm_intent_manager
             }
             if( npc *target = g->find_npc( context.npc_id ) ) {
                 if( target->is_player_ally() ) {
-                    apply_look_inventory_actions( *target, selection );
+                    apply_look_inventory_actions( *target, inventory, id_to_name, selection );
                 }
             }
         }
