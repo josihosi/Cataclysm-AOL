@@ -12,6 +12,8 @@ The following actions can be initiated by the toolcall right now:
 - equip_gun
 - equip_melee
 - equip_bow
+- look_around
+- look_inventory
 - attack=<target>
 
 Yelling a sentence has also been changed to 'Say a sentence' with a range of around 8 tiles, depending on the weather etc.
@@ -21,6 +23,7 @@ Yelling a sentence has also been changed to 'Say a sentence' with a range of aro
 I plan on adding the following features, somewhere in the future:
 
 - More LLM actions (Look_around/self -> pickup=<item>/activate=<item>, panic_on/off, move n/s/e/w, throw grenades, suggestions ??)
+- Extend look_inventory actions (drop, equip order, quantities).
 - Hosting of a finetuned model for optimal performance.
 - Complete NPC conversation overhaul? Replace the branched conversations with freetext and toolcalls in convos (ie. [trade],[quest],etc).
 
@@ -55,8 +58,7 @@ threats: zombie soldier threat_score[0-100]=12
 friendlies: player
 
 inventory: wielded="Army bayonet"
-inventory_usable: [Army bayonet, smartphone (UPS) (unbrowsed), |\ hairpin]
-inventory_combat: [++ 5-round hunting shotgun+1 (5/5), Army bayonet, ++ yellow hard hat]
+weapons: [++ 5-round hunting shotgun+1 (5/5), Army bayonet, ++ yellow hard hat]
 bandage_possible: false
 
 legend:
@@ -114,12 +116,14 @@ map:
 
 <System>You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die.Return a single line only, with correct syntax, to be parsed by the game.This line has two to four fields separated by ‘|’ :
 <Field 1>The first field is an answer to player_utterance.You have decided to team up with the player for now, and must answer as the NPC.Stick to your role, with your emotions and opinions.Use a dry tone, with swear words, fit for a zombie apocalypse.</Field 1>
-<Fields 2-4>Write 1-3 of the following allowed actions:wait_here, follow_player, equip_gun, equip_melee, equip_bow, idle, attack=<target>
+<Fields 2-4>Write 1-3 of the following allowed actions:wait_here, follow_player, equip_gun, equip_melee, equip_bow, look_around, look_inventory, idle, attack=<target>
 <Allowed actions>wait_here to stay put, keep watch, wait, stand.
 follow_player to walk behind, follow, run.
 equip_gun to equip gun, rifle, thrower, get ready to shoot.
 equip_melee to equip melee, get ready to bash, cut, kick, stab.
 equip_bow to use bow, crossbow, stealth.
+look_around to scan nearby items for pickup suggestions.
+look_inventory to wear, wield, activate, or drop items from inventory.
 attack=<target> to attack a target from your map.
 idle if none of the above.
 </Allowed actions>
@@ -140,6 +144,13 @@ Ain't my first deadhead rodeo, Alyson—let's show that sack of rot who's boss!
 response Willy Norwood (req_0)
 {"request_id": "req_0", "ok": true, "text": "Ain't my first deadhead rodeo, Alyson\u2014let's show that sack of rot who's boss!|equip_gun|follow_player|attack=zombie soldier", "metrics": {"gen_time_ms": 2278.3687000046484, "max_new_tokens": 20000}}
 ```
+
+### look_inventory toolcall format
+When the LLM uses `look_inventory`, it must return a single line with any combination of these sections (case-insensitive), separated by `|`:
+- `wear: item1, item2`
+- `wield: item1`
+- `act: item1, item2`
+- `drop: item1, item2`
 
 ## Files added in this fork so far
 

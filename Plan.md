@@ -30,23 +30,30 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 - attack=<target> to attack a certain target.
 
 #To-Do:
-We are going to implement a new token:
-look_around
-This is supposed to initiate a second LLM call. My idea would be that when look_around is called, a list of all items around the NPC in a 5 tile radius is generated, and sent, together with player_utterance and instructions, to the LLM. 
-The LLM is supposed to write out up to three items, which initiates the NPC walking towards them, and picking them up.
-If no Inventory space is present, it should write out like 'NPC could not pick up all items.'
-Pls refine this To-Do point. Make a very detailled, LLM friendly plan.
+### LLM intent logging cleanup (done)
+- Group logs by request id and emit in-order: request prompt, response, then follow-on action logs.
+- Add a blank line after each pickup log entry to visually separate actions.
+- Keep log entries single-line JSON for request/response blocks.
 
-### look_around detailed plan (LLM-friendly)
-- Trigger: if the LLM action list contains `look_around`, enqueue a second, short LLM call.
-- Item list: gather items within 5-tile radius; include item display name + quantity only.
-- Cap: allow at least 50 entries; if too many, collapse identical items across tiles into one entry with total quantity.
-- Extra context: include player utterance, compatible ammo list (for guns currently in NPC inventory, if any), compatible magazine list (for guns currently in NPC inventory, if any), and the item list with quantities.
-- LLM instruction: “Return up to three items exactly from the list, comma-separated. Use exact item names/IDs from the list only.”
-- Parsing: accept 1–3 items; ignore unknowns; no special “no space” reply is required.
-- Execution: for each chosen item, path to nearest instance and attempt pickup; failures are acceptable (inventory full, item gone).
-- Safety: only for allied NPCs; run while in danger unless the NPC is fleeing.
-- Logging: add debug logging of the item list, LLM response, and chosen items for tuning; log each pickup attempt to `config/llm_intent.log`.
+### UTF-8 encode failure on look_around output (done)
+- Reproduce the utf-8 codec error from config/llm_intent.log.
+- Sanitize LLM output before JSON/log serialization so invalid surrogate code points are removed or replaced.
+- Ensure prompt logging uses the same sanitizer so request/response pairs always write cleanly.
+
+### look_around/look_inventory prompt cleanup (in progress)
+- Strip UI color tags and container suffixes from item display strings before sending to the LLM. (color tags stripped; container suffix cleanup pending)
+- Add stable item ids to the prompt and instruct the LLM to return ids only. (pending)
+- Keep corpses in the list, but make names compact and consistent for matching and logging. (name normalization added; verify corpse handling)
+- Normalize prompt text to ASCII-safe characters before logging to avoid mojibake. (item name normalization added)
+
+### NPC rules UI crash (ImGui Missing End())
+- Reproduce the crash when setting NPC follower rules.
+- Identify the ImGui window stack imbalance causing the assert.
+- Add a guarded fix that keeps the rules UI and any nested popups balanced.
+> I tested dev branch and master branch. Both have the crash on all occasions (with LLM intent first, without). I do remember distinctly that this used to work, so there is a commit somewhere where this menu worked.
+> I would wager that this broke around the commit 'Linux supported!(?)' Maybe I should checkout earlier commits?
+> There is now a crash report in config/crash.log 
+> I know this looks like it is the menu crashing, but THIS WAS US. WE BROKE SOMETHING. 100% there is nooooo other way, ok? Its just logic. it worked. we coded. broke. MUST. BE. OUR. CHANGES.
 
 #Later to-Do, not now:
 - Look

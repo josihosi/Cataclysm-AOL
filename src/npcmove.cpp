@@ -84,6 +84,7 @@
 #include "npctalk.h"
 #include "omdata.h"
 #include "options.h"
+#include "output.h"
 #include "overmap_location.h"
 #include "overmapbuffer.h"
 #include "pathfinding.h"
@@ -256,6 +257,55 @@ bool good_for_pickup( const item &it, npc &who, const tripoint_bub_ms &there )
     return who.can_take_that( it ) &&
            who.wants_take_that( it ) &&
            who.would_take_that( it, there );
+}
+
+std::string normalize_item_label( const std::string &text )
+{
+    const std::string stripped = remove_color_tags( text );
+    std::string out;
+    out.reserve( stripped.size() );
+    bool last_space = false;
+    for( unsigned char c : stripped ) {
+        bool allowed = std::isalnum( c ) != 0;
+        if( !allowed ) {
+            switch( c ) {
+                case ' ':
+                case '-':
+                case '_':
+                case '.':
+                case ',':
+                case '/':
+                case '(':
+                case ')':
+                case '[':
+                case ']':
+                case '{':
+                case '}':
+                    allowed = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if( allowed ) {
+            out.push_back( static_cast<char>( c ) );
+            last_space = ( c == ' ' );
+        } else if( !last_space ) {
+            out.push_back( ' ' );
+            last_space = true;
+        }
+    }
+    size_t start = 0;
+    while( start < out.size() &&
+           std::isspace( static_cast<unsigned char>( out[start] ) ) ) {
+        ++start;
+    }
+    size_t end = out.size();
+    while( end > start &&
+           std::isspace( static_cast<unsigned char>( out[end - 1] ) ) ) {
+        --end;
+    }
+    return out.substr( start, end - start );
 }
 
 } // namespace
@@ -1641,7 +1691,7 @@ bool npc::apply_llm_intent_item_targets()
                 continue;
             }
             for( item &it : here.i_at( p ) ) {
-                if( it.tname( 1, false ) != target_name ) {
+                if( normalize_item_label( it.tname( 1, false ) ) != target_name ) {
                     continue;
                 }
                 if( !::good_for_pickup( it, *this, p ) ) {
@@ -1664,7 +1714,7 @@ bool npc::apply_llm_intent_item_targets()
                 continue;
             }
             for( item &it : cargo->items() ) {
-                if( it.tname( 1, false ) != target_name ) {
+                if( normalize_item_label( it.tname( 1, false ) ) != target_name ) {
                     continue;
                 }
                 if( !::good_for_pickup( it, *this, p ) ) {

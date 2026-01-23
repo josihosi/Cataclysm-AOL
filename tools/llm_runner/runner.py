@@ -20,6 +20,12 @@ def strip_think_tags(text: str) -> str:
     return text
 
 
+def sanitize_text(text: Any) -> str:
+    if not isinstance(text, str):
+        return ""
+    return text.encode("utf-8", "replace").decode("utf-8")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="OpenVINO GenAI LLM runner (stdin/stdout JSON).",
@@ -216,6 +222,10 @@ def read_request(line: str) -> Dict[str, Any]:
 
 
 def write_response(payload: Dict[str, Any]) -> None:
+    if "text" in payload:
+        payload["text"] = sanitize_text(payload.get("text"))
+    if "error" in payload:
+        payload["error"] = sanitize_text(payload.get("error"))
     sys.stdout.write(json.dumps(payload, ensure_ascii=True) + "\n")
     sys.stdout.flush()
 
@@ -225,6 +235,7 @@ def handle_request(
     tokenizer,
     request: Dict[str, Any],
     default_max_tokens: int,
+    max_prompt_len: int,
     build_time_ms: float,
     total_load_time_ms: float,
     log_fp: Optional[TextIO],
@@ -253,6 +264,10 @@ def handle_request(
 
     prompt_tokens, token_count_method = count_tokens(tokenizer, prompt)
     max_length = prompt_tokens + max_tokens
+    if token_count_method == "whitespace" and max_prompt_len:
+        max_length = max(max_length, max_prompt_len)
+    if max_length <= prompt_tokens:
+        max_length = prompt_tokens + max(1, max_tokens)
     start_time = time.perf_counter()
     try:
         do_sample = temperature is not None or top_p is not None
@@ -277,6 +292,7 @@ def handle_request(
             )
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
         text = "" if result is None else strip_think_tags(str(result))
+        text = sanitize_text(text)
         generated_tokens, _ = count_tokens(tokenizer, text)
         total_tokens = prompt_tokens + generated_tokens
         tokens_per_sec = 0.0
@@ -352,6 +368,7 @@ def run_openvino_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -
             tokenizer,
             request,
             args.max_tokens,
+            args.max_prompt_len,
             build_time_ms=0.0,
             total_load_time_ms=0.0,
             log_fp=log_fp,
@@ -493,6 +510,7 @@ def main() -> int:
             tokenizer,
             request,
             args.max_tokens,
+            args.max_prompt_len,
             build_time_ms,
             total_load_time_ms,
             log_fp,
@@ -502,7 +520,8 @@ def main() -> int:
         else:
             text = response.get("text", "")
             if isinstance(text, str) and text:
-                snippet = text if len(text) <= 4000 else text[:4000] + "...[truncated]"
+                snippet = sanitize_text(text)
+                snippet = snippet if len(snippet) <= 4000 else snippet[:4000] + "...[truncated]"
                 log_line(log_fp, f"response raw: {snippet}")
         write_response(response)
         if response.get("shutdown"):
@@ -587,6 +606,7 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
             )
             elapsed_ms = (time.perf_counter() - start_time) * 1000.0
             text = strip_think_tags(extract_completion_text(response))
+            text = sanitize_text(text)
             payload = {"request_id": request_id, "ok": True, "text": text}
             payload["metrics"] = {
                 "gen_time_ms": elapsed_ms,
