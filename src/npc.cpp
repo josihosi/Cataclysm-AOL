@@ -2591,6 +2591,9 @@ void npc::clear_llm_intent_actions() const
     state.target_hint.clear();
     state.target_attacks_remaining = 0;
     state.target_turns_remaining = 0;
+    state.panic_forced_turns_remaining = 0;
+    state.calm_turns_remaining = 0;
+    state.calm_start_panic = 0;
     state.legend_targets.clear();
     state.look_around_targets.clear();
     state.look_around_active_target.clear();

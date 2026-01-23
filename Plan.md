@@ -30,21 +30,12 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 - attack=<target> to attack a certain target.
 
 #To-Do:
-### LLM intent logging cleanup (done)
-- Group logs by request id and emit in-order: request prompt, response, then follow-on action logs.
-- Add a blank line after each pickup log entry to visually separate actions.
-- Keep log entries single-line JSON for request/response blocks.
-
-### UTF-8 encode failure on look_around output (done)
-- Reproduce the utf-8 codec error from config/llm_intent.log.
-- Sanitize LLM output before JSON/log serialization so invalid surrogate code points are removed or replaced.
-- Ensure prompt logging uses the same sanitizer so request/response pairs always write cleanly.
-
 ### look_around/look_inventory prompt cleanup (in progress)
 - Strip UI color tags and container suffixes from item display strings before sending to the LLM. (color tags stripped; container suffix cleanup pending)
 - Add stable item ids to the prompt and instruct the LLM to return ids only. (pending)
 - Keep corpses in the list, but make names compact and consistent for matching and logging. (name normalization added; verify corpse handling)
 - Normalize prompt text to ASCII-safe characters before logging to avoid mojibake. (item name normalization added)
+ - Add panic_on/panic_off actions for flee control; consider forcing panic for ~25 turns or using a temporary state flag (decide design and constraints). (pending)
 
 ### NPC rules UI crash (ImGui Missing End())
 - Reproduce the crash when setting NPC follower rules.

@@ -432,6 +432,8 @@ const std::vector<std::string> &allowed_actions()
         "equip_gun",
         "equip_melee",
         "equip_bow",
+        "panic_on",
+        "panic_off",
         "look_around",
         "look_inventory",
         "idle"
@@ -465,6 +467,12 @@ llm_intent_action intent_action_from_token( const std::string &token )
     }
     if( token == "equip_bow" ) {
         return llm_intent_action::equip_bow;
+    }
+    if( token == "panic_on" ) {
+        return llm_intent_action::panic_on;
+    }
+    if( token == "panic_off" ) {
+        return llm_intent_action::panic_off;
     }
     if( token == "idle" ) {
         return llm_intent_action::none;
@@ -1612,6 +1620,8 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "'equip_gun' to equip gun, rifle, thrower, get ready to shoot.\n"
                "'equip_melee' to equip melee, get ready to bash, cut, kick, stab.\n"
                "'equip_bow' to use bow, crossbow, stealth.\n"
+               "'panic_on' to start running, get out of here.\n"
+               "'panic_off' if convincing, to stop fleeing and get your act together.\n"
                "'look_around' to pick-up, search, explore for items around you.\n"
                "'look_inventory' to look inside your inventory and wear/wield/activate items.\n"
                "'attack=<target>' to attack a target with the letter from your map.\n"

@@ -36,6 +36,12 @@ Configuration knobs:
 - `LLM_SUMMARY_MODEL_DIR` (env) or `--model-dir` for the OpenVINO model.
 - `LLM_SUMMARY_DEVICE` (env) or `--device` for target device (default "NPU").
 
+## LLM Intent Actions (Behavior Notes)
+- `look_around` requests up to three nearby item names for pickup targeting.
+- `look_inventory` supports `wear`, `wield`, `act`, and `drop` sections.
+- `panic_on` sets a forced flee state for about 20 turns and bumps panic while active.
+- `panic_off` clears the flee effect and linearly caps panic over ~30 turns.
+
 ### Debug run example
 Run a single topic with retries and verbose IO (use the OpenVINO venv Python):
 ```powershell

@@ -1465,6 +1465,22 @@ void npc::execute_llm_intent_action( llm_intent_action action )
             }
             break;
         }
+        case llm_intent_action::panic_on: {
+            llm_intent_state &state = llm_intent_state_for( *this );
+            state.panic_forced_turns_remaining = 20;
+            state.calm_turns_remaining = 0;
+            state.calm_start_panic = 0;
+            add_effect( effect_npc_run_away, 1_turns );
+            break;
+        }
+        case llm_intent_action::panic_off: {
+            llm_intent_state &state = llm_intent_state_for( *this );
+            state.panic_forced_turns_remaining = 0;
+            state.calm_turns_remaining = 30;
+            state.calm_start_panic = mem_combat.panic;
+            remove_effect( effect_npc_run_away );
+            break;
+        }
         case llm_intent_action::none:
             break;
     }
@@ -1758,6 +1774,29 @@ void npc::move()
         set_attitude( NPCATT_NULL );
     }
     regen_ai_cache();
+    {
+        llm_intent_state &state = llm_intent_state_for( *this );
+        if( state.panic_forced_turns_remaining > 0 ) {
+            add_effect( effect_npc_run_away, 1_turns );
+            mem_combat.panic = std::max( mem_combat.panic, 20 );
+            state.panic_forced_turns_remaining--;
+            state.calm_turns_remaining = 0;
+            state.calm_start_panic = 0;
+        } else if( state.calm_turns_remaining > 0 ) {
+            if( state.calm_start_panic < mem_combat.panic ) {
+                state.calm_start_panic = mem_combat.panic;
+            }
+            const int cap = ( state.calm_start_panic * state.calm_turns_remaining ) / 30;
+            mem_combat.panic = std::min( mem_combat.panic, cap );
+            if( has_effect( effect_npc_run_away ) ) {
+                remove_effect( effect_npc_run_away );
+            }
+            state.calm_turns_remaining--;
+            if( state.calm_turns_remaining == 0 ) {
+                state.calm_start_panic = 0;
+            }
+        }
+    }
     // NPCs under operation or casting spells should just stay still
     if( activity.id() == ACT_OPERATION || activity.id() == ACT_SPELLCASTING ) {
         execute_action( npc_player_activity );

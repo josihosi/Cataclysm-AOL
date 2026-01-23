@@ -14,6 +14,8 @@ The following actions can be initiated by the toolcall right now:
 - equip_bow
 - look_around
 - look_inventory
+- panic_on
+- panic_off
 - attack=<target>
 
 Yelling a sentence has also been changed to 'Say a sentence' with a range of around 8 tiles, depending on the weather etc.
@@ -124,6 +126,8 @@ equip_melee to equip melee, get ready to bash, cut, kick, stab.
 equip_bow to use bow, crossbow, stealth.
 look_around to scan nearby items for pickup suggestions.
 look_inventory to wear, wield, activate, or drop items from inventory.
+panic_on to force a short flee behavior.
+panic_off to calm down and stop fleeing over time.
 attack=<target> to attack a target from your map.
 idle if none of the above.
 </Allowed actions>
@@ -144,6 +148,10 @@ Ain't my first deadhead rodeo, Alyson—let's show that sack of rot who's boss!
 response Willy Norwood (req_0)
 {"request_id": "req_0", "ok": true, "text": "Ain't my first deadhead rodeo, Alyson\u2014let's show that sack of rot who's boss!|equip_gun|follow_player|attack=zombie soldier", "metrics": {"gen_time_ms": 2278.3687000046484, "max_new_tokens": 20000}}
 ```
+
+### Panic actions
+- `panic_on` forces fleeing behavior for about 20 turns.
+- `panic_off` ramps panic down over ~30 turns and stops fleeing as it calms.
 
 ### look_inventory toolcall format
 When the LLM uses `look_inventory`, it must return a single line with any combination of these sections (case-insensitive), separated by `|`:

@@ -762,7 +762,9 @@ enum class llm_intent_action : int {
     wait_here,
     equip_gun,
     equip_melee,
-    equip_bow
+    equip_bow,
+    panic_on,
+    panic_off
 };
 
 class npc : public Character
@@ -1356,6 +1358,9 @@ class npc : public Character
             std::string target_hint;
             int target_attacks_remaining = 0;
             int target_turns_remaining = 0;
+            int panic_forced_turns_remaining = 0;
+            int calm_turns_remaining = 0;
+            int calm_start_panic = 0;
             std::map<char, weak_ptr_fast<Creature>> legend_targets;
             std::deque<std::string> look_around_targets;
             std::string look_around_active_target;
