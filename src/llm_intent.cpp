@@ -85,6 +85,13 @@ constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
 void append_llm_intent_log( const std::string &payload )
 {
+    if( payload.empty() ) {
+        return;
+    }
+    std::string final_payload = payload;
+    if( final_payload.size() < 2 || final_payload.compare( final_payload.size() - 2, 2, "\n\n" ) != 0 ) {
+        final_payload += "\n\n";
+    }
     std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
     const std::filesystem::path log_path( llm_intent_log_path );
     std::error_code ec;
@@ -105,7 +112,7 @@ void append_llm_intent_log( const std::string &payload )
     if( !out ) {
         return;
     }
-    out << payload;
+    out << final_payload;
 }
 
 struct llm_intent_request {
@@ -198,6 +205,45 @@ std::string trim_copy( const std::string &text )
         --end;
     }
     return text.substr( start, end - start );
+}
+
+std::string normalize_item_label( std::string_view text )
+{
+    const std::string stripped = remove_color_tags( text );
+    std::string out;
+    out.reserve( stripped.size() );
+    bool last_space = false;
+    for( unsigned char c : stripped ) {
+        bool allowed = std::isalnum( c ) != 0;
+        if( !allowed ) {
+            switch( c ) {
+                case ' ':
+                case '-':
+                case '_':
+                case '.':
+                case ',':
+                case '/':
+                case '(':
+                case ')':
+                case '[':
+                case ']':
+                case '{':
+                case '}':
+                    allowed = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if( allowed ) {
+            out.push_back( static_cast<char>( c ) );
+            last_space = ( c == ' ' );
+        } else if( !last_space ) {
+            out.push_back( ' ' );
+            last_space = true;
+        }
+    }
+    return trim_copy( out );
 }
 
 std::string lower_copy( const std::string &text )
@@ -598,6 +644,7 @@ struct look_inventory_selection {
     std::vector<std::string> wear;
     std::vector<std::string> wield;
     std::vector<std::string> act;
+    std::vector<std::string> drop;
 };
 
 std::string xml_escape( const std::string &text )
@@ -662,7 +709,10 @@ std::vector<look_around_item_entry> collect_look_around_items( npc &listener, in
         }
         const int dist = rl_dist( listener.pos_bub(), p );
         for( const item &it : here.i_at( p ) ) {
-            const std::string name = it.tname( 1, false );
+            const std::string name = normalize_item_label( it.tname( 1, false ) );
+            if( name.empty() ) {
+                continue;
+            }
             look_around_item_entry &entry = entries_by_name[name];
             if( entry.name.empty() ) {
                 entry.name = name;
@@ -680,7 +730,10 @@ std::vector<look_around_item_entry> collect_look_around_items( npc &listener, in
             continue;
         }
         for( const item &it : cargo->items() ) {
-            const std::string name = it.tname( 1, false );
+            const std::string name = normalize_item_label( it.tname( 1, false ) );
+            if( name.empty() ) {
+                continue;
+            }
             look_around_item_entry &entry = entries_by_name[name];
             if( entry.name.empty() ) {
                 entry.name = name;
@@ -709,36 +762,6 @@ std::vector<look_around_item_entry> collect_look_around_items( npc &listener, in
     return entries;
 }
 
-std::vector<std::string> collect_compatible_ammo( npc &listener )
-{
-    std::set<std::string> ammo_names;
-    listener.visit_items( [&]( item * it, item * ) {
-        if( it == nullptr || !it->is_gun() ) {
-            return VisitResponse::NEXT;
-        }
-        for( const ammotype &ammo_type : it->ammo_types() ) {
-            ammo_names.insert( ammo_type->name() );
-        }
-        return VisitResponse::NEXT;
-    } );
-    return std::vector<std::string>( ammo_names.begin(), ammo_names.end() );
-}
-
-std::vector<std::string> collect_compatible_magazines( npc &listener )
-{
-    std::set<std::string> mag_names;
-    listener.visit_items( [&]( item * it, item * ) {
-        if( it == nullptr || !it->is_gun() ) {
-            return VisitResponse::NEXT;
-        }
-        for( const itype_id &mag_id : it->magazine_compatible() ) {
-            mag_names.insert( item::tname( mag_id, 1 ) );
-        }
-        return VisitResponse::NEXT;
-    } );
-    return std::vector<std::string>( mag_names.begin(), mag_names.end() );
-}
-
 std::vector<std::string> collect_inventory_names( npc &listener, size_t max_entries )
 {
     std::vector<std::string> names;
@@ -747,7 +770,10 @@ std::vector<std::string> collect_inventory_names( npc &listener, size_t max_entr
         if( it == nullptr ) {
             return VisitResponse::NEXT;
         }
-        const std::string name = it->tname( 1, false );
+        const std::string name = normalize_item_label( it->tname( 1, false ) );
+        if( name.empty() ) {
+            return VisitResponse::NEXT;
+        }
         if( seen.insert( name ).second ) {
             names.push_back( name );
             if( names.size() >= max_entries ) {
@@ -760,8 +786,7 @@ std::vector<std::string> collect_inventory_names( npc &listener, size_t max_entr
 }
 
 std::string build_look_around_prompt( const std::string &player_utterance,
-                                      const std::vector<std::string> &ammo,
-                                      const std::vector<std::string> &magazines,
+                                      const std::vector<std::string> &inventory,
                                       const std::vector<look_around_item_entry> &items )
 {
     std::ostringstream out;
@@ -771,16 +796,11 @@ std::string build_look_around_prompt( const std::string &player_utterance,
     out << "Use exact item names from the list only.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
-    out << "<CompatibleAmmo>\n";
-    for( const std::string &entry : ammo ) {
-        out << "  <Ammo name=\"" << xml_escape( entry ) << "\"/>\n";
+    out << "<Inventory>\n";
+    for( const std::string &entry : inventory ) {
+        out << "  <Item name=\"" << xml_escape( entry ) << "\"/>\n";
     }
-    out << "</CompatibleAmmo>\n";
-    out << "<CompatibleMagazines>\n";
-    for( const std::string &entry : magazines ) {
-        out << "  <Magazine name=\"" << xml_escape( entry ) << "\"/>\n";
-    }
-    out << "</CompatibleMagazines>\n";
+    out << "</Inventory>\n";
     out << "<Items>\n";
     for( const look_around_item_entry &entry : items ) {
         out << "  <Item name=\"" << xml_escape( entry.name ) << "\" qty=\""
@@ -801,6 +821,7 @@ std::string build_look_inventory_prompt( const std::string &player_utterance,
     out << "To wear items, write:\nwear: item1, item2\n";
     out << "To wield items, write:\nwield: item1\n";
     out << "To activate items, write:\nact: item1, item2\n";
+    out << "To drop items, write:\ndrop: item1, item2\n";
     out << "You may include any combination, separated by |.";
     out << "Section labels are case-insensitive.";
     out << "Use exact item names from the list.";
@@ -905,6 +926,8 @@ look_inventory_selection parse_look_inventory_response( const std::string &text,
             bucket = &selection.wield;
         } else if( label == "act" ) {
             bucket = &selection.act;
+        } else if( label == "drop" ) {
+            bucket = &selection.drop;
         } else {
             return;
         }
@@ -954,7 +977,10 @@ std::unordered_map<std::string, item *> map_inventory_items( npc &listener )
         if( it == nullptr ) {
             return VisitResponse::NEXT;
         }
-        const std::string name = it->tname( 1, false );
+        const std::string name = normalize_item_label( it->tname( 1, false ) );
+        if( name.empty() ) {
+            return VisitResponse::NEXT;
+        }
         items.emplace( name, it );
         return VisitResponse::NEXT;
     } );
@@ -1015,6 +1041,20 @@ void apply_look_inventory_actions( npc &listener, const look_inventory_selection
         }
         listener.activate_item( *it->second );
         log_action( "act", name, "attempted" );
+    }
+
+    for( const std::string &name : selection.drop ) {
+        auto it = inventory.find( name );
+        if( it == inventory.end() ) {
+            log_action( "drop", name, "not found" );
+            continue;
+        }
+        item_location loc( listener, it->second );
+        const int count = it->second->count_by_charges() ? std::max( 1, it->second->charges ) : 1;
+        drop_locations items;
+        items.emplace_back( loc, count );
+        listener.drop( items, listener.pos_bub(), false );
+        log_action( "drop", name, "attempted" );
     }
 }
 
@@ -1446,7 +1486,6 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     }
     out << "\n";
 
-    std::vector<std::string> usable_items;
     std::vector<std::string> combat_guns;
     std::vector<std::string> combat_melee;
     bool bandage_possible = false;
@@ -1479,10 +1518,6 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         if( it == nullptr ) {
             return VisitResponse::NEXT;
         }
-        if( usable_items.size() < max_items &&
-            ( it->is_tool() || it->is_medication() || it->is_medical_tool() ) ) {
-            usable_items.push_back( sanitize_text( it->tname() ) );
-        }
         if( it->is_gun() ) {
             if( combat_guns.size() < max_items ) {
                 combat_guns.push_back( format_gun_label( *it ) );
@@ -1495,22 +1530,12 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         if( it->is_medication() || it->is_medical_tool() ) {
             bandage_possible = true;
         }
-        if( usable_items.size() >= max_items &&
-            combat_guns.size() >= max_items &&
+        if( combat_guns.size() >= max_items &&
             combat_melee.size() >= max_items ) {
             return VisitResponse::ABORT;
         }
         return VisitResponse::NEXT;
     } );
-
-    out << "inventory_usable: [";
-    for( size_t i = 0; i < usable_items.size(); ++i ) {
-        if( i > 0 ) {
-            out << ", ";
-        }
-        out << usable_items[i];
-    }
-    out << "]\n";
 
     std::vector<std::string> combat_items;
     combat_items.reserve( max_items );
@@ -1527,7 +1552,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         combat_items.push_back( melee );
     }
 
-    out << "inventory_combat: [";
+    out << "weapons: [";
     for( size_t i = 0; i < combat_items.size(); ++i ) {
         if( i > 0 ) {
             out << ", ";
@@ -1588,7 +1613,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "'equip_melee' to equip melee, get ready to bash, cut, kick, stab.\n"
                "'equip_bow' to use bow, crossbow, stealth.\n"
                "'look_around' to pick-up, search, explore for items around you.\n"
-               "'look_inventory' to wear/wield/activate items in your inventory.\n"
+               "'look_inventory' to look inside your inventory and wear/wield/activate items.\n"
                "'attack=<target>' to attack a target with the letter from your map.\n"
                "'idle' if none of the above.\n"
                "</Explanation allowed actions>\n"
@@ -2494,19 +2519,19 @@ class llm_intent_manager
         void enqueue_look_around_request( npc &listener, const std::string &player_utterance ) {
             static constexpr int look_max_tokens = 128;
             static constexpr size_t max_item_entries = 60;
+            static constexpr size_t max_inventory_entries = 60;
             std::vector<look_around_item_entry> items = collect_look_around_items( listener, 5,
                     max_item_entries );
             if( items.empty() ) {
                 return;
             }
-            std::vector<std::string> ammo = collect_compatible_ammo( listener );
-            std::vector<std::string> magazines = collect_compatible_magazines( listener );
+            std::vector<std::string> inventory = collect_inventory_names( listener, max_inventory_entries );
             llm_intent_request req;
             req.request_id = next_request_id();
             req.npc_id = listener.getID();
             req.npc_name = listener.get_name();
             req.snapshot = "{}";
-            req.prompt = build_look_around_prompt( player_utterance, ammo, magazines, items );
+            req.prompt = build_look_around_prompt( player_utterance, inventory, items );
             req.max_tokens = look_max_tokens;
             req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
             req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
@@ -2662,6 +2687,8 @@ class llm_intent_manager
                 std::vector<std::string> actions;
                 std::string attack_target;
                 std::string speak_text;
+                std::string say_log_line;
+                std::string say_failed_log_line;
                 if( resp.ok ) {
                     std::string csv_text = extract_csv_from_text( resp.text );
                     csv_text = sanitize_llm_csv( csv_text );
@@ -2669,13 +2696,13 @@ class llm_intent_manager
                     if( !speak_text.empty() ) {
                         if( g->find_npc( resp.npc_id ) ) {
                             add_msg( _( "%s says: \"%s\"" ), resp.npc_name, speak_text );
-                            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
-                                append_llm_intent_log( string_format( "say %s (%s)\n%s\n\n",
-                                                                      resp.npc_name, resp.request_id, speak_text ) );
+                            if( debug_log ) {
+                                say_log_line = string_format( "say %s (%s)\n%s\n\n",
+                                                              resp.npc_name, resp.request_id, speak_text );
                             }
-                        } else if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
-                            append_llm_intent_log( string_format( "say failed %s (%s)\n%s\n\n",
-                                                                  resp.npc_name, resp.request_id, speak_text ) );
+                        } else if( debug_log ) {
+                            say_failed_log_line = string_format( "say failed %s (%s)\n%s\n\n",
+                                                                 resp.npc_name, resp.request_id, speak_text );
                         }
                     }
                     bool parsed = false;
@@ -2741,6 +2768,41 @@ class llm_intent_manager
                         }
                     }
                 }
+                if( resp.ok && parse_error.empty() ) {
+                    if( debug_ui ) {
+                        add_msg( "LLM intent response for %s: %s", resp.npc_name, resp.text );
+                        if( !action_error.empty() ) {
+                            add_msg( "LLM intent warning for %s: %s", resp.npc_name, action_error );
+                        }
+                    }
+                    if( debug_log ) {
+                        const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
+                        std::string log_block = string_format( "response %s (%s)\n%s\n\n",
+                                                               resp.npc_name, resp.request_id, payload );
+                        if( !say_log_line.empty() ) {
+                            log_block += say_log_line;
+                        } else if( !say_failed_log_line.empty() ) {
+                            log_block += say_failed_log_line;
+                        }
+                        append_llm_intent_log( log_block );
+                    }
+                } else {
+                    const std::string err = resp.ok ? parse_error : resp.error;
+                    if( debug_ui ) {
+                        add_msg( "LLM intent failed for %s: %s", resp.npc_name, err );
+                    }
+                    if( debug_log ) {
+                        const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
+                        std::string log_block = string_format( "failed %s (%s)\n%s\nraw:\n%s\n\n",
+                                                               resp.npc_name, resp.request_id, err, payload );
+                        if( !say_log_line.empty() ) {
+                            log_block += say_log_line;
+                        } else if( !say_failed_log_line.empty() ) {
+                            log_block += say_failed_log_line;
+                        }
+                        append_llm_intent_log( log_block );
+                    }
+                }
                 if( wants_look_around ) {
                     std::string player_utterance;
                     {
@@ -2769,29 +2831,6 @@ class llm_intent_manager
                         if( target->is_player_ally() ) {
                             enqueue_look_inventory_request( *target, player_utterance );
                         }
-                    }
-                }
-                if( resp.ok && parse_error.empty() ) {
-                    if( debug_ui ) {
-                        add_msg( "LLM intent response for %s: %s", resp.npc_name, resp.text );
-                        if( !action_error.empty() ) {
-                            add_msg( "LLM intent warning for %s: %s", resp.npc_name, action_error );
-                        }
-                    }
-                    if( debug_log ) {
-                        const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
-                        append_llm_intent_log( string_format( "response %s (%s)\n%s\n\n",
-                                                              resp.npc_name, resp.request_id, payload ) );
-                    }
-                } else {
-                    const std::string err = resp.ok ? parse_error : resp.error;
-                    if( debug_ui ) {
-                        add_msg( "LLM intent failed for %s: %s", resp.npc_name, err );
-                    }
-                    if( debug_log ) {
-                        const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
-                        append_llm_intent_log( string_format( "failed %s (%s)\n%s\nraw:\n%s\n\n",
-                                                              resp.npc_name, resp.request_id, err, payload ) );
                     }
                 }
                 {
