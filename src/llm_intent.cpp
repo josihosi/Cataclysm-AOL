@@ -766,8 +766,8 @@ std::string build_look_around_prompt( const std::string &player_utterance,
 {
     std::ostringstream out;
     out << "<System>";
-    out << "You select up to three items from the list for the NPC to pick up.";
-    out << "Return up to three items exactly from the list, comma-separated.";
+    out << "Select up to three items from the list for the NPC to pick up.";
+    out << "To do this, return up to three exact item names from the item list, comma-separated.";
     out << "Use exact item names from the list only.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
@@ -797,8 +797,11 @@ std::string build_look_inventory_prompt( const std::string &player_utterance,
     out << "<System>";
     out << "You select items from the NPC inventory to wear, wield, or activate.";
     out << "Return a single line only.";
-    out << "Format: wear: item1, item2 | wield: item3 | act: item4";
-    out << "You may omit any section.";
+    out << "Format rules:";
+    out << "To wear items, write:\nwear: item1, item2\n";
+    out << "To wield items, write:\nwield: item1\n";
+    out << "To activate items, write:\nact: item1, item2\n";
+    out << "You may include any combination, separated by |.";
     out << "Section labels are case-insensitive.";
     out << "Use exact item names from the list.";
     out << "</System>\n";
@@ -894,7 +897,7 @@ look_inventory_selection parse_look_inventory_response( const std::string &text,
         start = end + 1;
     }
 
-    auto add_items = [&]( const std::string &label, const std::string &items_text ) {
+    auto add_items = [&]( const std::string & label, const std::string & items_text ) {
         std::vector<std::string> *bucket = nullptr;
         if( label == "wear" ) {
             bucket = &selection.wear;
@@ -961,8 +964,8 @@ std::unordered_map<std::string, item *> map_inventory_items( npc &listener )
 void apply_look_inventory_actions( npc &listener, const look_inventory_selection &selection )
 {
     std::unordered_map<std::string, item *> inventory = map_inventory_items( listener );
-    auto log_action = [&]( const std::string &action, const std::string &item_name,
-                           const std::string &result ) {
+    auto log_action = [&]( const std::string & action, const std::string & item_name,
+    const std::string & result ) {
         llm_intent::log_event( string_format( "look_inventory %s %s (%s): %s",
                                               action,
                                               listener.get_name(),
@@ -1576,19 +1579,19 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "Use a dry tone, with swear words, fit for a zombie apocalypse."
                "</Field 1>\n"
                "<Fields 2-4>"
-               "Write 1-3 of the following allowed actions:"
+               "Write 1-3 of the following allowed actions exactly:"
                "%s\n"
-               "<Allowed actions>"
-               "wait_here to stay put, keep watch, wait, stand.\n"
-               "follow_player to walk behind, follow, run.\n"
-               "equip_gun to equip gun, rifle, thrower, get ready to shoot.\n"
-               "equip_melee to equip melee, get ready to bash, cut, kick, stab.\n"
-               "equip_bow to use bow, crossbow, stealth.\n"
-               "look_around to request nearby item selection for pickup.\n"
-               "look_inventory to request inventory wear/wield/activate suggestions.\n"
-               "attack=<target> to attack a target from your map.\n"
-               "idle if none of the above.\n"
-               "</Allowed actions>\n"
+               "<Explanation allowed actions>"
+               "'wait_here' to stay put, keep watch, wait, stand.\n"
+               "'follow_player' to walk behind, follow, run.\n"
+               "'equip_gun' to equip gun, rifle, thrower, get ready to shoot.\n"
+               "'equip_melee' to equip melee, get ready to bash, cut, kick, stab.\n"
+               "'equip_bow' to use bow, crossbow, stealth.\n"
+               "'look_around' to pick-up, search, explore for items around you.\n"
+               "'look_inventory' to wear/wield/activate items in your inventory.\n"
+               "'attack=<target>' to attack a target with the letter from your map.\n"
+               "'idle' if none of the above.\n"
+               "</Explanation allowed actions>\n"
                "</Fields 2-4>\n"
                "Print only Fields 1-4, separated by | ."
                "If you break this format, you have failed."
@@ -2709,13 +2712,13 @@ class llm_intent_manager
                 }
 
                 const bool wants_look_around = std::find( actions.begin(), actions.end(),
-                                                "look_around" ) != actions.end();
+                                               "look_around" ) != actions.end();
                 if( wants_look_around ) {
                     actions.erase( std::remove( actions.begin(), actions.end(), "look_around" ),
                                    actions.end() );
                 }
                 const bool wants_look_inventory = std::find( actions.begin(), actions.end(),
-                                                 "look_inventory" ) != actions.end();
+                                                  "look_inventory" ) != actions.end();
                 if( wants_look_inventory ) {
                     actions.erase( std::remove( actions.begin(), actions.end(), "look_inventory" ),
                                    actions.end() );
