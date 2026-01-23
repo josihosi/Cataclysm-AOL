@@ -20,6 +20,12 @@ The following actions can be initiated by the toolcall right now:
 
 Yelling a sentence has also been changed to 'Say a sentence' with a range of around 8 tiles, depending on the weather etc.
 
+## Release v0.1.0
+
+This is the first public release of the AOL fork. It focuses on the LLM intent pipeline and runner integration, plus the initial action set for follower NPCs.
+Download prebuilt binaries from:
+https://github.com/josihosi/Cataclysm-AOL/releases
+
 ### Roadmap
 
 I plan on adding the following features, somewhere in the future:
@@ -312,7 +318,4 @@ Press the `?` key, followed by the `1` key to see the full list of key commands.
 #### How can I start a new world?
 
 **World** on the main menu will generate a fresh world for you. Select **Create World**.
-
-## To-do (if the ADHD gods allow it)
-
 
