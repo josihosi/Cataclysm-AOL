@@ -20,6 +20,11 @@
 - When adding new automation, keep paths and commands portable across Linux and Windows.
 - Do not disable CI workflows; fix the root cause instead.
 
+### Shell commands in this repo
+- The default shell is PowerShell; avoid here-docs and complex quoting in `-Command`.
+- Prefer one-line commands with explicit quoting, or use WSL for bash-specific scripts.
+- When a command needs lots of quoting or newlines, create a temporary script file and run it.
+
 ## Tests and in-game verification
 - Use unit tests where applicable.
 - For gameplay changes, use the in-game debug menu to reproduce conditions.
