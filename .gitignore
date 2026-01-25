@@ -35,6 +35,7 @@
 /mods/
 /obj/
 /objwin/
+/_release_win/
 /save/
 /src/version.h
 /src/prefix.h
