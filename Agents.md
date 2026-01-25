@@ -31,4 +31,19 @@
 - Validate builds with `just_build.cmd > debug.txt 2>&1` and `just_build_linux.cmd > debug.txt 2>&1` when touching code or build scripts.
 - For LLM runner changes, run `tools/llm_runner/runner.py --self-test` from your venv.
 
+## Build (MSYS2 UCRT64)
+- Use the MSYS2 UCRT64 shell for Windows builds.
+- Command:
+  `make -j$((\`nproc\`+0)) CCACHE=1 RELEASE=1 MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0`
+- Expected warnings about unterminated character constants may appear; they do not impact compilation.
+- For a repeatable Windows bindist + DLL bundling + zip, run:
+  `bash tools/release/msys2_bindist.sh`
+- Optional versioned zip name:
+  `bash tools/release/msys2_bindist.sh --0.1.0`
+  or `bash tools/release/msys2_bindist.sh --version=0.1.0`
+
+## Build (Linux/WSL)
+- Command:
+  `make -j$(nproc) TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 TESTS=0`
+
 For the full, canonical guidance, see `doc/CONTRIBUTING.md`.
