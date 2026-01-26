@@ -1,9 +1,11 @@
 # Cataclysm: Arsenic and Old Lace
 
-This is a fork of CDDA (https://github.com/CleverRaven/Cataclysm-DDA), where I implemented LLMs to facilitate organic responsiveness in Cataclysm.
+This is a fork of [CDDA](https://github.com/CleverRaven/Cataclysm-DDA), where I implemented LLMs to facilitate organic responsiveness in Cataclysm.
 This is something I would like to see in games in general, so I'm creating it here:
 
 ![AOL Screenshot](doc/AOL-Screenshot.png)
+
+Video: https://youtu.be/HfishtPzvhA
 
 Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and up to three actions.
 The following actions can be initiated by the toolcall right now:
@@ -12,11 +14,11 @@ The following actions can be initiated by the toolcall right now:
 - equip_gun
 - equip_melee
 - equip_bow
-- look_around
-- look_inventory
-- panic_on
-- panic_off
-- attack=<target>
+- look_around -> pick up
+- look_inventory -> wear/activate/wield/drop
+- panic_on (20 turns)
+- panic_off (diminishing over 30 turns)
+- attack=[target]
 
 Yelling a sentence has also been changed to 'Say a sentence' with a range of around 8 tiles, depending on the weather etc.
 
@@ -153,17 +155,6 @@ say Willy Norwood (req_2)
 Ain’t gonna argue, sugar—my leg’s half-ripped but I can still hoof it. Let’s light a fire under our asses!
 ```
 
-### Panic actions
-- `panic_on` forces fleeing behavior for about 20 turns.
-- `panic_off` ramps panic down over ~30 turns and stops fleeing as it calms.
-
-### look_inventory toolcall format
-When the LLM uses `look_inventory`, it must return a single line with any combination of these sections (case-insensitive), separated by `|`:
-- `wear: item1, item2`
-- `wield: item1`
-- `act: item1, item2`
-- `drop: item1, item2`
-
 ## Files added in this fork so far
 
 - src/llm_intent.cpp
@@ -184,12 +175,12 @@ Windows builds are `.zip`, Linux builds are `.tar.gz`, and macOS builds are `.dm
 Unpack, run the game, and then follow the LLM runner setup below.
 
 If you want to build from source, follow the steps below.
-Additionally, the LLMs will require you to set up a Python venv, download a model, and point the existing code at the right directiories.
-The following Readme will explain all of these.
+Additionally, the LLMs will require you to set up a Python venv, and download a model.
 There is also a new in-game option section [LLM] which helps you pointing the game into the right directions.
-Furthermore, depending on your hardware, small changes to the python runner may be usefull, as this one is focussing on NPU use.
+The following Readme will explain all of these steps.
+Furthermore, depending on your hardware, small changes to the python runner may be useful, as this one is focussing on NPU use.
 I paid for it so i might as well use it >:|
-This means that the following setup instructions will most likely work on your machine, but if you have a nice PC you could probably do better.
+That means that the following setup instructions will most likely work on your machine, but if you have a nice PC you could probably do better.
 
 There is also an option to plug in an API key, to make setup easier.
 However, I am working hard to optimize this fork for local LLM use.

@@ -564,6 +564,7 @@ TOOL_CXXFLAGS = -DCATA_IN_TOOL
 DEFINES += -DZSTD_STATIC_LINKING_ONLY -DZSTD_DISABLE_ASM -DFMT_USE_LOCALE=0
 
 BINDIST_EXTRAS += README.md data doc LICENSE.txt LICENSE-OFL-Terminus-Font.txt VERSION.txt $(JSON_FORMATTER_BIN)
+BINDIST_EXTRAS += tools/llm_runner Plan.md TechnicalTome.md Agents.md
 BINDIST    = $(BUILD_PREFIX)cataclysmdda-$(VERSION).tar.gz
 W32BINDIST = $(BUILD_PREFIX)cataclysmdda-$(VERSION).zip
 BINDIST_CMD    = tar --transform=s@^$(BINDIST_DIR)@cataclysmdda-$(VERSION)@ -czvf $(BINDIST) $(BINDIST_DIR)
