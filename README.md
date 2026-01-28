@@ -5,7 +5,7 @@ This is something I would like to see in games in general, so I'm creating it he
 
 ![AOL Screenshot](doc/AOL-Screenshot.png)
 
-Video: https://youtu.be/HfishtPzvhA
+[Video](https://youtu.be/HfishtPzvhA), so you know its real.
 
 Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and up to three actions.
 The following actions can be initiated by the toolcall right now:
@@ -21,6 +21,12 @@ The following actions can be initiated by the toolcall right now:
 - attack=[target]
 
 Yelling a sentence has also been changed to 'Say a sentence' with a range of around 8 tiles, depending on the weather etc.
+
+### What’s already in and working
+- Local runner is wired (stdin/stdout JSON), kept warm, and logs metrics; snapshots are compact and include speech + actions that get surfaced in-game when parsed.
+- Background summarizer runs at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; `your_profession` and `background_summary` are now injected into the snapshot.
+- Stable item addressing is live (item ids in prompts), and panic_on/panic_off use timed decay.
+- Debug logging captures snapshots, responses, and raw failures for prompt tuning; speech shows in-game on success.
 
 ### Roadmap
 

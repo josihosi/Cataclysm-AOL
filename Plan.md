@@ -6,23 +6,12 @@ single-line speech + action list, and the NPC applies those actions for a few
 turns using existing AI behaviors. The system is async (no frame stalls), guard
 railed for safety, and optimized for fast prompt iteration.
 
-## Update summary (latest)
-- Added build-time background summarizer that writes per-story summary JSON files under `data/json/npcs/Backgrounds/Summaries_short`.
-- Added a new [LLM] option for the summary model directory and injected `your_profession` + `background_summary` into the LLM snapshot.
-- Summarizer is non-fatal on missing model or deps and only fills in missing entries.
-
-## Current Status (Done)
-- Local runner wired up (stdin/stdout JSON), warm pipeline, metrics logged.
-- Snapshot + prompt in place; LLM receives a compact SITUATION block and returns a single-line action response.
-- Debug logging captures snapshots, responses, and raw failures for prompt tuning.
-- NPC speech is surfaced in-game when parsing succeeds.
-
 ## Next: AI Implementation (In-Game Intent Actions)
 Goal: expand LLM actions to cover combat/movement behaviors.
 
 ### Intent Whitelist
-- guard_area: assign guard mission at current location.
-- follow_player: set follow attitude/mission.
+- guard_area: assign guard mission at current location / hold position.
+- follow_player: set follow attitude/mission (close/nearby variants).
 - idle: no-op (speech only).
 - equip_gun: allow guns + wield best gun.
 - equip_melee: disallow guns + wield best melee (or unwield gun).
@@ -30,35 +19,31 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 - attack=<target> to attack a certain target.
 
 #To-Do:
-### look_around/look_inventory prompt cleanup (in progress)
-- Strip UI color tags and container suffixes from item display strings before sending to the LLM. (color tags stripped; container suffix cleanup pending)
-- Add stable item ids to the prompt and instruct the LLM to return ids only. (pending)
-- Keep corpses in the list, but make names compact and consistent for matching and logging. (name normalization added; verify corpse handling)
-- Normalize prompt text to ASCII-safe characters before logging to avoid mojibake. (item name normalization added)
- - Add panic_on/panic_off actions for flee control; consider forcing panic for ~25 turns or using a temporary state flag (decide design and constraints). (pending)
+### Reliability / Flow
+- Buffer multi-step intents: when look_inventory/look_around trigger a second toolcall, preserve the first toolcall’s actions instead of overwriting them.
+- Snapshot follower mode: include current follow distance/state (follow-close, follow-afar, guard/hold) so the LLM stops spamming follow_player and maps to the right in-game mode.
+- Conversation memory: add the last 1–2 utterance/response pairs to the snapshot (brief, sanitized) for tone/continuity.
+- Malformed-output safety: retry once with a short "fix format" prompt and strict timeout before dropping.
 
-### NPC rules UI crash (ImGui Missing End())
-- Reproduce the crash when setting NPC follower rules.
-- Identify the ImGui window stack imbalance causing the assert.
-- Add a guarded fix that keeps the rules UI and any nested popups balanced.
-> I tested dev branch and master branch. Both have the crash on all occasions (with LLM intent first, without). I do remember distinctly that this used to work, so there is a commit somewhere where this menu worked.
-> I would wager that this broke around the commit 'Linux supported!(?)' Maybe I should checkout earlier commits?
-> There is now a crash report in config/crash.log 
-> I know this looks like it is the menu crashing, but THIS WAS US. WE BROKE SOMETHING. 100% there is nooooo other way, ok? Its just logic. it worked. we coded. broke. MUST. BE. OUR. CHANGES.
+### Porting & Releases
+- Port to CDDA stable (latest release tag) and mainline experimental with full feature parity.
+- Port to CDDA-TLG (https://github.com/Cataclysm-TLG/Cataclysm-TLG) with identical LLM features.
+- Automate the experimental and TLG refresh (Codex-driven) to resolve merge drift on a regular cadence.
+- Integrate distribution into CDDA-Game-Launcher “kitty” installer (https://github.com/Fris0uman/CDDA-Game-Launcher) so players can install/update this fork.
 
 #Later to-Do, not now:
-- Look
 - Throw grenades
 - Move instructions
 - LLM Finetuning
 Finetuning/Distilling would increase speed and accuracy. Is that legal?
-### Complete NPC Dialogue/Interaction Overhaul??
-lol
+
 
 ### API LLM (Any-LLM)
 - Add options for API usage (Use API call instead, API key env var name, provider, model).
 - Warning: API calls will cost money.
 						  
+ ### Complete NPC Dialogue/Interaction Overhaul??
+lol
 #### Technical: how dialogue options are built (current architecture)
 - Dialogue data is loaded at startup from `type: "talk_topic"` JSON across `data/json/npcs/**` (including `data/json/npcs/Backgrounds/*.json`) into the `json_talk_topics` map in `src/npctalk.cpp` via `load_talk_topic()`.
 - A conversation starts in `avatar::talk_to()` (`src/npctalk.cpp`), which creates a `dialogue` with two `talker`s and pulls an initial topic stack from `talker_npc::get_topics()` (`src/talker_npc.cpp`).
