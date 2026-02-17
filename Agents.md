@@ -1,5 +1,7 @@
 # Agents
 Follow all instructions in this file.
+Read Plan.md and keep it up to date. Whenever something is finished, tick it off, or remove it completely.
+When you added a new complicated mechanic, add a brief explanation to TechnicalTome.md.
 
 ### Code style
 - Code style is enforced by `astyle`.
@@ -33,7 +35,11 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - Use unit tests where applicable.
 - For gameplay changes, use the in-game debug menu to reproduce conditions.
 - Validate builds with `just_build.cmd > debug.txt 2>&1` and `just_build_linux.cmd > debug.txt 2>&1` when touching code or build scripts.
+- Fast compile check (changed files only):
+  - Windows/MSYS2: `make -j8 RELEASE=1 MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 objwin/tiles/llm_intent.o objwin/tiles/npc.o objwin/tiles/npcmove.o`
+  - Linux/WSL: `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o obj/tiles/npc.o obj/tiles/npcmove.o`
 - For LLM runner changes, run `tools/llm_runner/runner.py --self-test` from your venv.
+- After certain changes, you can give me tasks to test new features in-game
 
 ## Build (MSYS2 UCRT64)
 - Josef needs to use the MSYS2 UCRT64 shell for Windows builds.
@@ -49,7 +55,6 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 ## Build (Linux/WSL)
 - In WSL2 Josef needs to run:
   `make -j$(nproc) TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 TESTS=0`
-
 For the full, canonical guidance, see `doc/CONTRIBUTING.md`.
 
 read README.md and Plan.md.

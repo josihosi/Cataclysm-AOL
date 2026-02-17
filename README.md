@@ -9,7 +9,8 @@ This is something I would like to see in games in general, so I'm creating it he
 
 Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and up to three actions.
 The following actions can be initiated by the toolcall right now:
-- follow_player
+- follow_close
+- follow_far
 - wait_here
 - equip_gun
 - equip_melee
@@ -128,10 +129,11 @@ c----------------------------------------
 
 <System>You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die.Return a single line only, with correct syntax, to be parsed by the game.This line has two to four fields separated by ‘|’ :
 <Field 1>The first field is an answer to player_utterance.You have decided to team up with the player for now, and must answer as the NPC.Stick to your role, with your emotions and opinions.Use a dry tone, with swear words, fit for a zombie apocalypse.</Field 1>
-<Fields 2-4>Write 1-3 of the following allowed actions exactly:wait_here, follow_player, equip_gun, equip_melee, equip_bow, panic_on, panic_off, look_around, look_inventory, idle, attack=<target>
+<Fields 2-4>Write 1-3 of the following allowed actions exactly:wait_here, follow_close, follow_far, equip_gun, equip_melee, equip_bow, panic_on, panic_off, look_around, look_inventory, idle, attack=<target>
 <Explanation allowed actions>
 'wait_here' to stay put, keep watch, wait, stand.
-'follow_player' to walk behind, follow, run.
+'follow_close' to walk behind, follow close, come here.
+'follow_far' to follow from farther away, hang back, give me space.
 'equip_gun' to equip gun, rifle, thrower, get ready to shoot.
 'equip_melee' to equip melee, get ready to bash, cut, kick, stab.
 'equip_bow' to use bow, crossbow, stealth.
@@ -155,7 +157,7 @@ Print only Fields 1-4, separated by | .If you break this format, you have failed
 
 
 response Willy Norwood (req_2)
-{"request_id": "req_2", "ok": true, "text": "Ain\u2019t gonna argue, sugar\u2014my leg\u2019s half-ripped but I can still hoof it. Let\u2019s light a fire under our asses!|follow_player|equip_melee", "metrics": {"gen_time_ms": 2357.415599981323, "max_new_tokens": 20000, "use_api": true}}
+{"request_id": "req_2", "ok": true, "text": "Ain\u2019t gonna argue, sugar\u2014my leg\u2019s half-ripped but I can still hoof it. Let\u2019s light a fire under our asses!|follow_close|equip_melee", "metrics": {"gen_time_ms": 2357.415599981323, "max_new_tokens": 20000, "use_api": true}}
 
 say Willy Norwood (req_2)
 Ain’t gonna argue, sugar—my leg’s half-ripped but I can still hoof it. Let’s light a fire under our asses!

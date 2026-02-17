@@ -11,7 +11,8 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 
 ### Intent Whitelist
 - guard_area: assign guard mission at current location / hold position.
-- follow_player: set follow attitude/mission (close/nearby variants).
+- follow_close: follow at close distance.
+- follow_far: follow at farther distance.
 - idle: no-op (speech only).
 - equip_gun: allow guns + wield best gun.
 - equip_melee: disallow guns + wield best melee (or unwield gun).
@@ -21,15 +22,73 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 #To-Do:
 ### Reliability / Flow
 - Buffer multi-step intents: when look_inventory/look_around trigger a second toolcall, preserve the first toolcall’s actions instead of overwriting them.
-- Snapshot follower mode: include current follow distance/state (follow-close, follow-afar, guard/hold) so the LLM stops spamming follow_player and maps to the right in-game mode.
-- Conversation memory: add the last 1–2 utterance/response pairs to the snapshot (brief, sanitized) for tone/continuity.
+x Snapshot follower mode: include current follow distance/state (follow-close, follow-afar, guard/hold) so the LLM stops spamming repeat follow actions and maps to the right in-game mode.
+x Conversation memory: add the last 1–2 utterance/response pairs to the snapshot (brief, sanitized) for tone/continuity.
+x Overheard ally memory: nearby allies now receive short `npc_name/speech/actions` entries and include them in snapshot context.
 - Malformed-output safety: retry once with a short "fix format" prompt and strict timeout before dropping.
 
 ### Porting & Releases
-- Port to CDDA stable (latest release tag) and mainline experimental with full feature parity.
-- Port to CDDA-TLG (https://github.com/Cataclysm-TLG/Cataclysm-TLG) with identical LLM features.
-- Automate the experimental and TLG refresh (Codex-driven) to resolve merge drift on a regular cadence.
-- Integrate distribution into CDDA-Game-Launcher “kitty” installer (https://github.com/Fris0uman/CDDA-Game-Launcher) so players can install/update this fork.
+- Goal: keep LLM features in sync across three upstream targets and ship 6 binaries per refresh cycle.
+
+#### Target matrix (first-class)
+- CDDA master -> upstream `CleverRaven/Cataclysm-DDA:master` -> Windows + Linux release.
+- CDDA 0.H -> upstream `CleverRaven/Cataclysm-DDA:0.H-branch` -> Windows + Linux release.
+- CTLG master -> upstream `Cataclysm-TLG/Cataclysm-TLG:master` -> Windows + Linux release.
+
+#### Branching model
+- Develop LLM features on `dev` (working branch).
+- Before every port/release cycle, merge `dev` -> `master` first.
+- Treat `master` as the only port source branch (release staging baseline).
+- Recreate integration branches from fresh upstream tips on every run:
+  - `port/cdda-master`
+  - `port/cdda-0.H`
+  - `port/ctlg-master`
+- Then apply AOL changes from `master` onto each `port/*` branch.
+- Before every refresh run, create a dated backup of current `master`:
+  - `backup/master-pre-port-YYYYMMDD-HHMM`
+
+#### Automation scope (scripted)
+- Add a single orchestrator script (PowerShell) to:
+  - fetch all remotes (`origin`, `upstream` for CDDA, and `upstream-ctlg` for CTLG).
+  - create backup branch of current `master`.
+  - recreate each `port/*` branch from its mapped upstream target.
+  - apply AOL layer from `master` onto each `port/*`.
+  - detect merge conflicts and stop with clear next actions.
+  - call Codex with a per-target merge-fix prompt template (conflict context + goals).
+  - run post-fix validation commands and save logs.
+  - print final human checklist for release packaging.
+- Store prompt templates and run metadata under `tools/porting/` so periodic refresh is repeatable.
+
+#### Codex merge-fix loop (per target branch)
+- Step 1: recreate `port/*` from target upstream tip, then merge `master` into `port/*`.
+- Step 2: if conflicts/build breaks happen, invoke Codex with:
+  - what branch is being ported
+  - which upstream commit range was merged
+  - "preserve all AOL LLM behavior parity" requirement
+  - required build checks (Windows + Linux)
+- Step 3: Codex applies fixes, reruns build checks, summarizes changes and residual risk.
+
+#### Build/release responsibilities
+- Keep release packaging manual for now (required local environments differ: MSYS2 UCRT64 and WSL2).
+- Automation should prepare branches and instructions; Josef performs final release builds and publishing.
+- Manual release pass per branch:
+  - Windows build/bindist command
+  - Linux build/bindist command
+  - artifact naming check (`target + platform + date/version`)
+
+#### Release cadence
+- Weekly or biweekly refresh for `cdda-master` and `ctlg-master`.
+- On-demand refresh for `cdda-0.H` (or when upstream receives relevant fixes).
+
+#### Nice operator output (must-have)
+- Script prints:
+  - updated branches and upstream SHAs
+  - whether Codex auto-fix was needed
+  - build check status per branch/platform
+  - exact next commands Josef should run for packaging and tagging
+
+#### Future (later)
+- Integrate distribution into CDDA-Game-Launcher "kitty" installer (https://github.com/Fris0uman/CDDA-Game-Launcher) so players can install/update this fork.
 
 #Later to-Do, not now:
 - Throw grenades
@@ -37,11 +96,7 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 - LLM Finetuning
 Finetuning/Distilling would increase speed and accuracy. Is that legal?
 
-
-### API LLM (Any-LLM)
-- Add options for API usage (Use API call instead, API key env var name, provider, model).
-- Warning: API calls will cost money.
-						  
+				  
  ### Complete NPC Dialogue/Interaction Overhaul??
 lol
 #### Technical: how dialogue options are built (current architecture)

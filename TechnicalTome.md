@@ -41,10 +41,18 @@ Configuration knobs:
 - `look_inventory` supports `wear`, `wield`, `act`, and `drop` sections.
 - `panic_on` sets a forced flee state for about 20 turns and bumps panic while active.
 - `panic_off` clears the flee effect and linearly caps panic over ~30 turns.
+- Follow control now uses explicit action tokens: `follow_close` and `follow_far`.
+- Snapshot now includes `your_follow_mode` (`follow-close`, `follow-afar`, `guard/hold`)
+  so prompt logic can prefer `idle` instead of repeating an already-matching mode.
+- Snapshot memory has two capped blocks per NPC:
+  - `recent_conversation` (last two direct player->NPC interactions)
+  - `overheard_allies` (last two nearby ally speech/action events with `npc_name`)
+- Multi-hearer shouts are now serialized: when several allies hear one player utterance,
+  LLM requests are dispatched one at a time so later NPC snapshots can include earlier
+  NPC responses from the same shout cycle.
 
 ### Debug run example
 Run a single topic with retries and verbose IO (use the OpenVINO venv Python):
 ```powershell
 C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\background_summarizer.py --only-topic BGSS_CODGER_STORY1 --force --retry-invalid 2 --debug-io --include-responses
 ```
-*** End Patch"}googassistant to=functions.apply_patch mg${json
