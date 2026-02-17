@@ -8,6 +8,8 @@ This is something I would like to see in games in general, so I'm creating it he
 [Video](https://youtu.be/HfishtPzvhA), so you know its real.
 
 Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and up to three actions.
+The game sends an NPC-centric snapshot to the runner together with your utterance.
+Random LLM calls can also be enabled under [LLM] with `Random call (turns)` (0 disables it, 1-500 enables periodic spontaneous check-ins).
 The following actions can be initiated by the toolcall right now:
 - follow_close
 - follow_far
@@ -28,6 +30,7 @@ Yelling a sentence has also been changed to 'Say a sentence' with a range of aro
 - Background summarizer runs at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; `your_profession` and `background_summary` are now injected into the snapshot.
 - Stable item addressing is live (item ids in prompts), and panic_on/panic_off use timed decay.
 - Debug logging captures snapshots, responses, and raw failures for prompt tuning; speech shows in-game on success.
+- Random calls are live: each ally uses an independent jittered timer and can fire a spontaneous call with no player utterance.
 
 ### Roadmap
 
@@ -35,13 +38,13 @@ I plan on adding the following features, somewhere in the future:
 
 - More LLM actions (minimap-move, throw grenades, ... ?)
 - Base AI (seperate snapshot and actions)
-- Optional random trigger
+- Smarter random trigger logic (context-weighted instead of only timer+jitter)
 - Finetuned model for optimal performance.
 - Complete NPC conversation overhaul? Replace the branched conversations with freetext and toolcalls in convos (ie. [trade],[quest],etc).
 
 ### LLM runner background
 The LLM call is initiated by shouting (C + b) in-game next to an NPC that is following you.
-It collects a game snapshot and sends it to the LLM, together with your utterance.
+It collects a game snapshot and sends it to the LLM, usually together with your utterance (or empty for spontaneous random check-ins).
 The LLM is supposed to create an answer, as well as 1-3 actions.
 Since LLMs are slow (for me compute time is 10-20s atm) the runner is async and does not block normal NPC AI.
 It calculates and injects a message and actions on the first possible turn.

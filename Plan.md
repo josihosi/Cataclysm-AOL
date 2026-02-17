@@ -16,16 +16,32 @@ Goal: expand LLM actions to cover combat/movement behaviors.
 - idle: no-op (speech only).
 - equip_gun: allow guns + wield best gun.
 - equip_melee: disallow guns + wield best melee (or unwield gun).
-- equip_bow: allow guns + dissallow loud weapons.
+- equip_bow: allow guns + disallow loud weapons.
 - attack=<target> to attack a certain target.
 
 #To-Do:
 ### Reliability / Flow
 - Buffer multi-step intents: when look_inventory/look_around trigger a second toolcall, preserve the first toolcall’s actions instead of overwriting them.
-x Snapshot follower mode: include current follow distance/state (follow-close, follow-afar, guard/hold) so the LLM stops spamming repeat follow actions and maps to the right in-game mode.
-x Conversation memory: add the last 1–2 utterance/response pairs to the snapshot (brief, sanitized) for tone/continuity.
-x Overheard ally memory: nearby allies now receive short `npc_name/speech/actions` entries and include them in snapshot context.
 - Malformed-output safety: retry once with a short "fix format" prompt and strict timeout before dropping.
+
+### Random Calls / Scheduler (later)
+- Keep the current basic jitter scheduler (`base +/- base/6`) for now.
+- Add a global per-turn random-call token bucket to cap spontaneous LLM load.
+- Add context-weighted spontaneous call probability (danger/pain/noise/morale/context deltas), while keeping per-NPC async scheduling.
+
+### Guardrails (implementation guideline)
+- Every insertion into persistent async state (`pending_*`, queues, per-NPC timers) must define all removal paths: success, parse failure, timeout, option-disable, despawn/unload.
+- Option toggles must be idempotent across enable/disable cycles and safe to flip mid-flight.
+- Prompt/snapshot protocols should prefer explicit structured fields over magic string sentinels.
+- Randomness should be bounded and explainable (deterministic clamps + documented distribution).
+- Every scheduler change ships with a focused regression checklist: duplicate-request prevention, disable/re-enable behavior, and multi-NPC fairness.
+
+### Recently Completed
+- x Fix pending-primary leaks if `LLM_INTENT_ENABLE` is toggled off during serial dispatch.
+- x Track request kind (`primary` vs `follow-up`) and only clear `pending_primary_npcs` on primary completion.
+- x When `LLM_INTENT_RANDOM_CALL=0`, reset random timer state to prevent burst calls on re-enable.
+- x Replace snapshot sentinel `(none)` with an explicit presence field for player utterance.
+- x Increase `LLM_INTENT_RANDOM_CALL` range to `0..500` turns.
 
 ### Porting & Releases
 - Goal: keep LLM features in sync across three upstream targets and ship 6 binaries per refresh cycle.
@@ -95,6 +111,7 @@ x Overheard ally memory: nearby allies now receive short `npc_name/speech/action
 - Move instructions
 - LLM Finetuning
 Finetuning/Distilling would increase speed and accuracy. Is that legal?
+- Initiative/rumor-system expansion for proactive squad coordination (backburner).
 
 				  
  ### Complete NPC Dialogue/Interaction Overhaul??

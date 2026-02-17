@@ -50,6 +50,9 @@ Configuration knobs:
 - Multi-hearer shouts are now serialized: when several allies hear one player utterance,
   LLM requests are dispatched one at a time so later NPC snapshots can include earlier
   NPC responses from the same shout cycle.
+- Optional random calls are driven by `LLM_INTENT_RANDOM_CALL` (0-500 turns):
+  each ally NPC keeps an independent jittered timer (`base +/- base/6`) and can
+  trigger a spontaneous LLM request with no player utterance.
 
 ### Debug run example
 Run a single topic with retries and verbose IO (use the OpenVINO venv Python):
