@@ -10,7 +10,7 @@ import time
 from typing import Dict, Optional
 
 
-ALLOWED_ACTIONS = ["wait_here", "follow_player", "equip_gun", "equip_melee", "equip_bow", "attack=<target>", "idle"]
+ALLOWED_ACTIONS = ["wait_here", "follow_close", "follow_far", "equip_gun", "equip_melee", "equip_bow", "attack=<target>", "idle"]
 DEFAULT_MODEL_DIR = r"C:\Users\josef\openvino_models\Phi-3.5-mini-instruct-int4-cw-ov"
 # Other local models (leave commented to keep a single active model).
 # r"C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.3-int4-cw-ov",
@@ -35,7 +35,8 @@ DEFAULT_SYSTEM_PROMPT = (
     "%s\n"
     "<Allowed actions>"
     "wait_here to stay put, keep watch, wait, stand.\n"
-    "follow_player to walk behind, follow, run.\n"
+    "follow_close to walk behind, follow close, come here.\n"
+    "follow_far to follow from farther away, hang back, give me space.\n"
     "equip_gun to equip gun, rifle, thrower, get ready to shoot.\n"
     "equip_melee to equip melee, get ready to bash, cut, kick, stab.\n"
     "equip_bow to use bow, crossbow, stealth.\n"

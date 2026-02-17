@@ -2627,6 +2627,60 @@ void npc::set_llm_intent_item_targets( const std::vector<std::string> &targets )
     }
 }
 
+void npc::add_llm_intent_memory( const std::string &player_utterance,
+                                 const std::string &npc_response,
+                                 const std::vector<std::string> &actions ) const
+{
+    if( player_utterance.empty() && npc_response.empty() && actions.empty() ) {
+        return;
+    }
+    llm_intent_state &state = llm_intent_state_for( *this );
+    llm_intent_memory_entry entry;
+    entry.turn = calendar::turn;
+    entry.player_utterance = player_utterance;
+    entry.npc_response = npc_response;
+    entry.actions = actions;
+    state.conversation_memory.push_back( std::move( entry ) );
+    static constexpr size_t max_entries = 2;
+    while( state.conversation_memory.size() > max_entries ) {
+        state.conversation_memory.pop_front();
+    }
+}
+
+std::vector<npc::llm_intent_memory_entry> npc::get_llm_intent_memory() const
+{
+    const llm_intent_state &state = llm_intent_state_for( *this );
+    return std::vector<llm_intent_memory_entry>( state.conversation_memory.begin(),
+            state.conversation_memory.end() );
+}
+
+void npc::add_llm_overheard_memory( const std::string &npc_name,
+                                    const std::string &npc_response,
+                                    const std::vector<std::string> &actions ) const
+{
+    if( npc_name.empty() && npc_response.empty() && actions.empty() ) {
+        return;
+    }
+    llm_intent_state &state = llm_intent_state_for( *this );
+    llm_overheard_memory_entry entry;
+    entry.turn = calendar::turn;
+    entry.npc_name = npc_name;
+    entry.npc_response = npc_response;
+    entry.actions = actions;
+    state.overheard_memory.push_back( std::move( entry ) );
+    static constexpr size_t max_entries = 2;
+    while( state.overheard_memory.size() > max_entries ) {
+        state.overheard_memory.pop_front();
+    }
+}
+
+std::vector<npc::llm_overheard_memory_entry> npc::get_llm_overheard_memory() const
+{
+    const llm_intent_state &state = llm_intent_state_for( *this );
+    return std::vector<llm_overheard_memory_entry>( state.overheard_memory.begin(),
+            state.overheard_memory.end() );
+}
+
 bool npc::has_llm_intent_actions() const
 {
     llm_intent_state &state = llm_intent_state_for( *this );

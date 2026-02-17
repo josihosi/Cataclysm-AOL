@@ -1444,8 +1444,16 @@ void npc::execute_llm_intent_action( llm_intent_action action )
             talk_function::assign_guard( *this );
             execute_action( npc_pause );
             break;
-        case llm_intent_action::follow_player:
+        case llm_intent_action::follow_close:
             talk_function::stop_guard( *this );
+            rules.set_flag( ally_rule::follow_close );
+            rules.set_specific_override_state( ally_rule::follow_close, true );
+            execute_action( npc_follow_player );
+            break;
+        case llm_intent_action::follow_far:
+            talk_function::stop_guard( *this );
+            rules.clear_flag( ally_rule::follow_close );
+            rules.set_specific_override_state( ally_rule::follow_close, false );
             execute_action( npc_follow_player );
             break;
         case llm_intent_action::equip_gun: {
