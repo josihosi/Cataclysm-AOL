@@ -483,6 +483,7 @@ bool do_turn()
     timed_event_manager &timed_events = get_timed_events();
     timed_events.process();
     llm_intent::process_responses();
+    llm_intent::enqueue_random_requests();
     mission::process_all();
     avatar &u = get_avatar();
     map &m = get_map();
