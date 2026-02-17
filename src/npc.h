@@ -756,7 +756,8 @@ class npc_template;
 
 enum class llm_intent_action : int {
     none = 0,
-    follow_player,
+    follow_close,
+    follow_far,
     wait_here,
     equip_gun,
     equip_melee,
@@ -922,12 +923,32 @@ class npc : public Character
         bool is_ally( const Character &p ) const override;
         // Is an ally of the player
         bool is_player_ally() const;
+        struct llm_intent_memory_entry {
+            time_point turn = calendar::before_time_starts;
+            std::string player_utterance;
+            std::string npc_response;
+            std::vector<std::string> actions;
+        };
+        struct llm_overheard_memory_entry {
+            time_point turn = calendar::before_time_starts;
+            std::string npc_name;
+            std::string npc_response;
+            std::vector<std::string> actions;
+        };
         void set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                      const std::string &request_id,
                                      const std::string &target_hint ) const;
         void clear_llm_intent_actions() const;
         void set_llm_intent_item_targets( const std::vector<std::string> &targets ) const;
         bool has_llm_intent_actions() const;
+        void add_llm_intent_memory( const std::string &player_utterance,
+                                    const std::string &npc_response,
+                                    const std::vector<std::string> &actions ) const;
+        std::vector<llm_intent_memory_entry> get_llm_intent_memory() const;
+        void add_llm_overheard_memory( const std::string &npc_name,
+                                       const std::string &npc_response,
+                                       const std::vector<std::string> &actions ) const;
+        std::vector<llm_overheard_memory_entry> get_llm_overheard_memory() const;
         // Isn't moving
         bool is_stationary( bool include_guards = true ) const;
         // Has a guard mission
@@ -1364,6 +1385,8 @@ class npc : public Character
             std::map<char, weak_ptr_fast<Creature>> legend_targets;
             std::deque<std::string> look_around_targets;
             std::string look_around_active_target;
+            std::deque<llm_intent_memory_entry> conversation_memory;
+            std::deque<llm_overheard_memory_entry> overheard_memory;
         };
         static std::map<character_id, llm_intent_state> &llm_intent_state_map();
         static llm_intent_state &llm_intent_state_for( const npc &guy );
