@@ -28,8 +28,10 @@
 #include <utility>
 #include <vector>
 #include <exception>
+#include <iomanip>
 
 #include "cata_path.h"
+#include "calendar.h"
 #include "character.h"
 #include "character_id.h"
 #include "cata_utility.h"
@@ -88,7 +90,27 @@ void append_llm_intent_log( const std::string &payload )
     if( payload.empty() ) {
         return;
     }
+    auto replace_all = []( std::string &text, const std::string &from,
+    const std::string &to ) {
+        if( from.empty() ) {
+            return;
+        }
+        size_t pos = 0;
+        while( ( pos = text.find( from, pos ) ) != std::string::npos ) {
+            text.replace( pos, from.size(), to );
+            pos += to.size();
+        }
+    };
     std::string final_payload = payload;
+    // Normalize common UTF-8 punctuation so Windows log viewers don't show mojibake.
+    replace_all( final_payload, "\xE2\x80\x98", "'" );
+    replace_all( final_payload, "\xE2\x80\x99", "'" );
+    replace_all( final_payload, "\xE2\x80\x9C", "\"" );
+    replace_all( final_payload, "\xE2\x80\x9D", "\"" );
+    replace_all( final_payload, "\xE2\x80\x93", "-" );
+    replace_all( final_payload, "\xE2\x80\x94", "-" );
+    replace_all( final_payload, "\xE2\x80\xA6", "..." );
+    replace_all( final_payload, "\xC2\xA0", " " );
     if( final_payload.size() < 2 ||
         final_payload.compare( final_payload.size() - 2, 2, "\n\n" ) != 0 ) {
         final_payload += "\n\n";
@@ -261,6 +283,48 @@ std::string lower_copy( const std::string &text )
         return static_cast<char>( std::tolower( c ) );
     } );
     return out;
+}
+
+std::string join_action_tokens( const std::vector<std::string> &actions )
+{
+    std::string joined;
+    for( const std::string &action : actions ) {
+        if( !joined.empty() ) {
+            joined += ", ";
+        }
+        joined += action;
+    }
+    return joined;
+}
+
+std::string follower_mode_snapshot_token( const npc &listener )
+{
+    if( listener.is_guarding() || listener.get_attitude() == NPCATT_WAIT ) {
+        return "guard/hold";
+    }
+    if( listener.rules.has_flag( ally_rule::follow_close ) ) {
+        return "follow-close";
+    }
+    return "follow-afar";
+}
+
+void broadcast_overheard_memory( const npc &speaker, const std::string &speech,
+                                 const std::vector<std::string> &actions )
+{
+    if( !g || ( speech.empty() && actions.empty() ) ) {
+        return;
+    }
+    static constexpr int llm_intent_overhear_volume = 12;
+    std::vector<npc *> listeners = g->get_npcs_if( [&]( const npc &guy ) {
+        return guy.getID() != speaker.getID() &&
+               guy.is_player_ally() &&
+               guy.can_hear( speaker.pos_bub(), llm_intent_overhear_volume );
+    } );
+    for( npc *listener : listeners ) {
+        if( listener != nullptr ) {
+            listener->add_llm_overheard_memory( speaker.get_name(), speech, actions );
+        }
+    }
 }
 
 struct background_summary_entry {
@@ -436,7 +500,8 @@ const std::vector<std::string> &allowed_actions()
 {
     static const std::vector<std::string> actions = {
         "wait_here",
-        "follow_player",
+        "follow_close",
+        "follow_far",
         "equip_gun",
         "equip_melee",
         "equip_bow",
@@ -464,8 +529,11 @@ llm_intent_action intent_action_from_token( const std::string &token )
     if( token == "wait_here" ) {
         return llm_intent_action::wait_here;
     }
-    if( token == "follow_player" ) {
-        return llm_intent_action::follow_player;
+    if( token == "follow_close" ) {
+        return llm_intent_action::follow_close;
+    }
+    if( token == "follow_far" ) {
+        return llm_intent_action::follow_far;
     }
     if( token == "equip_gun" ) {
         return llm_intent_action::equip_gun;
@@ -1362,10 +1430,67 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     };
 
     std::ostringstream out;
-    out << "SITUATION\n";
     out << "id: " << request_id << "\n";
-    out << "player_name: " << sanitize_text( get_player_character().get_name() ) << "\n";
-    out << "player_utterance: " << sanitize_text( player_utterance ) << "\n\n";
+    out << "player name: " << sanitize_text( get_player_character().get_name() ) << "\n";
+    out << "player utterance: " << sanitize_text( player_utterance ) << "\n\n";
+    const std::vector<npc::llm_intent_memory_entry> memory = listener.get_llm_intent_memory();
+    const std::vector<npc::llm_overheard_memory_entry> overheard = listener.get_llm_overheard_memory();
+    out << "Recent conversation newest first:\n";
+    if( memory.empty() && overheard.empty() ) {
+        out << "(none)\n\n";
+    } else {
+        const size_t line_count = std::max( memory.size(), overheard.size() );
+        for( size_t i = 0; i < line_count; ++i ) {
+            out << "-";
+            bool has_hours = false;
+            bool has_segment = false;
+            if( i < memory.size() ) {
+                const npc::llm_intent_memory_entry &entry = memory[memory.size() - 1 - i];
+                const time_duration age = calendar::turn - entry.turn;
+                const double hours_ago = to_hours<double>( age );
+                std::ostringstream hours_stream;
+                hours_stream << std::fixed << std::setprecision( 1 ) << hours_ago;
+                out << " hours_ago=" << hours_stream.str();
+                has_hours = true;
+                if( !entry.player_utterance.empty() ) {
+                    out << " player:\"" << sanitize_text( entry.player_utterance ) << "\"";
+                    has_segment = true;
+                }
+                if( !entry.npc_response.empty() ) {
+                    out << " You:\"" << sanitize_text( entry.npc_response ) << "\"";
+                    has_segment = true;
+                }
+                if( !entry.actions.empty() ) {
+                    out << " actions=[" << join_action_tokens( entry.actions ) << "]";
+                    has_segment = true;
+                }
+            }
+            if( i < overheard.size() ) {
+                const npc::llm_overheard_memory_entry &entry = overheard[overheard.size() - 1 - i];
+                if( !has_hours ) {
+                    const time_duration age = calendar::turn - entry.turn;
+                    const double hours_ago = to_hours<double>( age );
+                    std::ostringstream hours_stream;
+                    hours_stream << std::fixed << std::setprecision( 1 ) << hours_ago;
+                    out << " hours_ago=" << hours_stream.str();
+                }
+                if( has_segment ) {
+                    out << " |";
+                }
+                if( !entry.npc_name.empty() ) {
+                    out << " " << sanitize_text( entry.npc_name ) << ":\"";
+                    out << sanitize_text( entry.npc_response ) << "\"";
+                } else if( !entry.npc_response.empty() ) {
+                    out << " Ally:\"" << sanitize_text( entry.npc_response ) << "\"";
+                }
+                if( !entry.actions.empty() ) {
+                    out << " actions=[" << join_action_tokens( entry.actions ) << "]";
+                }
+            }
+            out << "\n";
+        }
+        out << "\n";
+    }
     out << "your_name: " << sanitize_text( listener.get_name() ) << "\n";
     const std::string profession = sanitize_text( listener.disp_profession() );
     if( !profession.empty() ) {
@@ -1385,6 +1510,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     if( !background_summary.expression.empty() ) {
         out << "your_example_expression: " << background_summary.expression << "\n";
     }
+    out << "your_follow_mode: " << follower_mode_snapshot_token( listener ) << "\n";
     const int morale_scaled = scale_bipolar( listener.get_morale_level(), -100.0, 100.0 );
     const int hunger_scaled = scale_unipolar( listener.get_hunger(), 300.0 );
     const int thirst_scaled = scale_unipolar( listener.get_thirst(), 300.0 );
@@ -1623,14 +1749,17 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "The first field is an answer to player_utterance."
                "You have decided to team up with the player for now, and must answer as the NPC."
                "Stick to your role, with your emotions and opinions."
-               "Use a dry tone, with swear words, fit for a zombie apocalypse."
+               "Use a dry tone, fit for a zombie apocalypse."
                "</Field 1>\n"
                "<Fields 2-4>"
                "Write 1-3 of the following allowed actions exactly:"
                "%s\n"
                "<Explanation allowed actions>\n"
+               "Snapshot field your_follow_mode can be follow-close, follow-afar, or guard/hold.\n"
+               "If your_follow_mode already matches player intent, prefer 'idle' over repeating it.\n"
                "'wait_here' to stay put, keep watch, wait, stand.\n"
-               "'follow_player' to walk behind, follow, run.\n"
+               "'follow_close' to walk behind, follow close, come here.\n"
+               "'follow_far' to follow from farther away, hang back, give me space.\n"
                "'equip_gun' to equip gun, rifle, thrower, get ready to shoot.\n"
                "'equip_melee' to equip melee, get ready to bash, cut, kick, stab.\n"
                "'equip_bow' to use bow, crossbow, stealth.\n"
@@ -2455,6 +2584,10 @@ class posix_runner_process
 class llm_intent_manager
 {
     private:
+        struct pending_primary_request {
+            character_id npc_id;
+            std::string player_utterance;
+        };
         struct look_around_context {
             character_id npc_id;
             std::string npc_name;
@@ -2474,6 +2607,27 @@ class llm_intent_manager
         }
 
         void enqueue_request( npc &listener, const std::string &player_utterance ) {
+            queue_primary_request( listener, player_utterance );
+        }
+
+        void enqueue_requests_serial( const std::vector<npc *> &listeners,
+                                      const std::string &player_utterance ) {
+            if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                return;
+            }
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                for( npc *listener : listeners ) {
+                    if( listener == nullptr ) {
+                        continue;
+                    }
+                    pending_primary_requests.push_back( { listener->getID(), player_utterance } );
+                }
+            }
+            dispatch_next_serial_primary_request();
+        }
+
+        void queue_primary_request( npc &listener, const std::string &player_utterance ) {
             if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                 return;
             }
@@ -2499,6 +2653,51 @@ class llm_intent_manager
             }
             ensure_worker();
             cv.notify_one();
+        }
+
+        void dispatch_next_serial_primary_request() {
+            while( true ) {
+                pending_primary_request pending;
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    if( !serial_primary_request_ids.empty() || pending_primary_requests.empty() ) {
+                        return;
+                    }
+                    pending = std::move( pending_primary_requests.front() );
+                    pending_primary_requests.pop_front();
+                }
+                npc *listener = g ? g->find_npc( pending.npc_id ) : nullptr;
+                if( listener == nullptr || !listener->is_player_ally() ) {
+                    continue;
+                }
+                if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                    return;
+                }
+                static constexpr int default_max_tokens = 20000;
+                llm_intent_request req;
+                req.request_id = next_request_id();
+                req.npc_id = listener->getID();
+                req.npc_name = listener->get_name();
+                req.snapshot = build_snapshot_json( *listener, pending.player_utterance, req.request_id );
+                req.prompt = build_prompt( req.npc_name, pending.player_utterance, req.snapshot );
+                req.max_tokens = default_max_tokens;
+                req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
+                req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
+                req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
+                if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                    append_llm_intent_log( string_format( "prompt %s (%s)\n%s\n\n",
+                                                          req.npc_name, req.request_id, req.prompt ) );
+                }
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    utterance_by_request[req.request_id] = pending.player_utterance;
+                    serial_primary_request_ids.insert( req.request_id );
+                    request_queue.push( std::move( req ) );
+                }
+                ensure_worker();
+                cv.notify_one();
+                return;
+            }
         }
 
         void prewarm() {
@@ -2755,8 +2954,16 @@ class llm_intent_manager
                 std::vector<std::string> actions;
                 std::string attack_target;
                 std::string speak_text;
+                std::string player_utterance;
                 std::string say_log_line;
                 std::string say_failed_log_line;
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    auto it = utterance_by_request.find( resp.request_id );
+                    if( it != utterance_by_request.end() ) {
+                        player_utterance = it->second;
+                    }
+                }
                 if( resp.ok ) {
                     std::string csv_text = extract_csv_from_text( resp.text );
                     csv_text = sanitize_llm_csv( csv_text );
@@ -2806,6 +3013,14 @@ class llm_intent_manager
                     }
                 }
 
+                std::vector<std::string> memory_actions;
+                if( resp.ok && parse_error.empty() ) {
+                    memory_actions = actions;
+                    if( !attack_target.empty() ) {
+                        memory_actions.push_back( "attack=" + attack_target );
+                    }
+                }
+
                 const bool wants_look_around = std::find( actions.begin(), actions.end(),
                                                "look_around" ) != actions.end();
                 if( wants_look_around ) {
@@ -2833,6 +3048,15 @@ class llm_intent_manager
                             if( target->is_player_ally() ) {
                                 target->set_llm_intent_actions( intent_actions, resp.request_id, attack_target );
                             }
+                        }
+                    }
+                }
+                if( resp.ok && parse_error.empty() ) {
+                    const std::string memory_speech = !speech.empty() ? speech : speak_text;
+                    if( npc *target = g->find_npc( resp.npc_id ) ) {
+                        if( target->is_player_ally() ) {
+                            target->add_llm_intent_memory( player_utterance, memory_speech, memory_actions );
+                            broadcast_overheard_memory( *target, memory_speech, memory_actions );
                         }
                     }
                 }
@@ -2901,9 +3125,14 @@ class llm_intent_manager
                         }
                     }
                 }
+                bool dispatch_next_serial = false;
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     utterance_by_request.erase( resp.request_id );
+                    dispatch_next_serial = serial_primary_request_ids.erase( resp.request_id ) > 0;
+                }
+                if( dispatch_next_serial ) {
+                    dispatch_next_serial_primary_request();
                 }
                 local.pop();
             }
@@ -2915,6 +3144,8 @@ class llm_intent_manager
         std::queue<llm_intent_request> request_queue;
         std::queue<llm_intent_response> response_queue;
         std::unordered_map<std::string, std::string> utterance_by_request;
+        std::deque<pending_primary_request> pending_primary_requests;
+        std::unordered_set<std::string> serial_primary_request_ids;
         std::unordered_map<std::string, look_around_context> look_around_requests;
         std::unordered_map<std::string, look_inventory_context> look_inventory_requests;
         std::thread worker;
@@ -3027,12 +3258,7 @@ void enqueue_request( const npc &listener, const std::string &player_utterance )
 void enqueue_requests( const std::vector<npc *> &listeners,
                        const std::string &player_utterance )
 {
-    for( npc *listener : listeners ) {
-        if( listener == nullptr ) {
-            continue;
-        }
-        get_manager().enqueue_request( *listener, player_utterance );
-    }
+    get_manager().enqueue_requests_serial( listeners, player_utterance );
 }
 
 void prewarm()
