@@ -2930,6 +2930,11 @@ void options_manager::add_options_llm()
          false
        );
 
+    add( "LLM_INTENT_RANDOM_CALL", "llm", to_translation( "Random call (turns)" ),
+         to_translation( "0 disables it.  Above 0, allied NPCs occasionally trigger spontaneous LLM calls after roughly this many turns, with per-NPC random jitter." ),
+         0, 500, 0
+       );
+
     add( "LLM_INTENT_PYTHON", "llm", to_translation( "LLM runner venv Python path" ),
          to_translation( "Path to python.exe for the runner venv (local or API mode)." ),
          default_llm_python, 4096
