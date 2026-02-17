@@ -949,6 +949,8 @@ class npc : public Character
                                        const std::string &npc_response,
                                        const std::vector<std::string> &actions ) const;
         std::vector<llm_overheard_memory_entry> get_llm_overheard_memory() const;
+        bool llm_random_call_due( int base_turns ) const;
+        void schedule_next_llm_random_call( int base_turns ) const;
         // Isn't moving
         bool is_stationary( bool include_guards = true ) const;
         // Has a guard mission
@@ -1387,6 +1389,8 @@ class npc : public Character
             std::string look_around_active_target;
             std::deque<llm_intent_memory_entry> conversation_memory;
             std::deque<llm_overheard_memory_entry> overheard_memory;
+            time_point random_call_next_turn = calendar::before_time_starts;
+            int random_call_base_turns = 0;
         };
         static std::map<character_id, llm_intent_state> &llm_intent_state_map();
         static llm_intent_state &llm_intent_state_for( const npc &guy );

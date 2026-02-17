@@ -2601,6 +2601,34 @@ std::vector<npc::llm_overheard_memory_entry> npc::get_llm_overheard_memory() con
             state.overheard_memory.end() );
 }
 
+void npc::schedule_next_llm_random_call( int base_turns ) const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( base_turns <= 0 ) {
+        state.random_call_base_turns = 0;
+        state.random_call_next_turn = calendar::before_time_starts;
+        return;
+    }
+    const int jitter = std::max( 1, base_turns / 6 );
+    const int wait_turns = std::max( 1, base_turns + rng( -jitter, jitter ) );
+    state.random_call_base_turns = base_turns;
+    state.random_call_next_turn = calendar::turn + time_duration::from_turns( wait_turns );
+}
+
+bool npc::llm_random_call_due( int base_turns ) const
+{
+    if( base_turns <= 0 ) {
+        return false;
+    }
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.random_call_base_turns != base_turns ||
+        state.random_call_next_turn == calendar::before_time_starts ) {
+        schedule_next_llm_random_call( base_turns );
+        return false;
+    }
+    return calendar::turn >= state.random_call_next_turn;
+}
+
 bool npc::has_llm_intent_actions() const
 {
     llm_intent_state &state = llm_intent_state_for( *this );

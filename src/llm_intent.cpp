@@ -90,8 +90,8 @@ void append_llm_intent_log( const std::string &payload )
     if( payload.empty() ) {
         return;
     }
-    auto replace_all = []( std::string &text, const std::string &from,
-    const std::string &to ) {
+    auto replace_all = []( std::string & text, const std::string & from,
+    const std::string & to ) {
         if( from.empty() ) {
             return;
         }
@@ -315,7 +315,7 @@ void broadcast_overheard_memory( const npc &speaker, const std::string &speech,
         return;
     }
     static constexpr int llm_intent_overhear_volume = 12;
-    std::vector<npc *> listeners = g->get_npcs_if( [&]( const npc &guy ) {
+    std::vector<npc *> listeners = g->get_npcs_if( [&]( const npc & guy ) {
         return guy.getID() != speaker.getID() &&
                guy.is_player_ally() &&
                guy.can_hear( speaker.pos_bub(), llm_intent_overhear_volume );
@@ -1432,7 +1432,10 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     std::ostringstream out;
     out << "id: " << request_id << "\n";
     out << "player name: " << sanitize_text( get_player_character().get_name() ) << "\n";
-    out << "player utterance: " << sanitize_text( player_utterance ) << "\n\n";
+    const std::string utterance_line = sanitize_text( player_utterance );
+    const bool has_player_utterance = !trim_copy( utterance_line ).empty();
+    out << "player utterance present: " << ( has_player_utterance ? "true" : "false" ) << "\n";
+    out << "player utterance: " << utterance_line << "\n\n";
     const std::vector<npc::llm_intent_memory_entry> memory = listener.get_llm_intent_memory();
     const std::vector<npc::llm_overheard_memory_entry> overheard = listener.get_llm_overheard_memory();
     out << "Recent conversation newest first:\n";
@@ -1747,9 +1750,9 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "This line has two to four fields separated by ‘|’ :\n"
                "<Field 1>"
                "The first field is an answer to player_utterance."
+               "If player_utterance_present is false, this is a spontaneous check-in with no direct player input."
                "You have decided to team up with the player for now, and must answer as the NPC."
                "Stick to your role, with your emotions and opinions."
-               "Use a dry tone, fit for a zombie apocalypse."
                "</Field 1>\n"
                "<Fields 2-4>"
                "Write 1-3 of the following allowed actions exactly:"
@@ -2621,6 +2624,10 @@ class llm_intent_manager
                     if( listener == nullptr ) {
                         continue;
                     }
+                    if( pending_primary_npcs.count( listener->getID() ) > 0 ) {
+                        continue;
+                    }
+                    pending_primary_npcs.insert( listener->getID() );
                     pending_primary_requests.push_back( { listener->getID(), player_utterance } );
                 }
             }
@@ -2630,6 +2637,13 @@ class llm_intent_manager
         void queue_primary_request( npc &listener, const std::string &player_utterance ) {
             if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                 return;
+            }
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                if( pending_primary_npcs.count( listener.getID() ) > 0 ) {
+                    return;
+                }
+                pending_primary_npcs.insert( listener.getID() );
             }
             static constexpr int default_max_tokens = 20000;
             llm_intent_request req;
@@ -2649,6 +2663,7 @@ class llm_intent_manager
             {
                 std::lock_guard<std::mutex> lock( mutex );
                 utterance_by_request[req.request_id] = player_utterance;
+                primary_request_ids.insert( req.request_id );
                 request_queue.push( std::move( req ) );
             }
             ensure_worker();
@@ -2668,9 +2683,17 @@ class llm_intent_manager
                 }
                 npc *listener = g ? g->find_npc( pending.npc_id ) : nullptr;
                 if( listener == nullptr || !listener->is_player_ally() ) {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    pending_primary_npcs.erase( pending.npc_id );
                     continue;
                 }
                 if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    pending_primary_npcs.erase( pending.npc_id );
+                    while( !pending_primary_requests.empty() ) {
+                        pending_primary_npcs.erase( pending_primary_requests.front().npc_id );
+                        pending_primary_requests.pop_front();
+                    }
                     return;
                 }
                 static constexpr int default_max_tokens = 20000;
@@ -2691,6 +2714,8 @@ class llm_intent_manager
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     utterance_by_request[req.request_id] = pending.player_utterance;
+                    primary_request_ids.insert( req.request_id );
+                    pending_primary_npcs.insert( req.npc_id );
                     serial_primary_request_ids.insert( req.request_id );
                     request_queue.push( std::move( req ) );
                 }
@@ -2698,6 +2723,11 @@ class llm_intent_manager
                 cv.notify_one();
                 return;
             }
+        }
+
+        bool has_pending_primary_request_for( const character_id &npc_id ) {
+            std::lock_guard<std::mutex> lock( mutex );
+            return pending_primary_npcs.count( npc_id ) > 0;
         }
 
         void prewarm() {
@@ -3126,9 +3156,14 @@ class llm_intent_manager
                     }
                 }
                 bool dispatch_next_serial = false;
+                bool is_primary_response = false;
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     utterance_by_request.erase( resp.request_id );
+                    is_primary_response = primary_request_ids.erase( resp.request_id ) > 0;
+                    if( is_primary_response ) {
+                        pending_primary_npcs.erase( resp.npc_id );
+                    }
                     dispatch_next_serial = serial_primary_request_ids.erase( resp.request_id ) > 0;
                 }
                 if( dispatch_next_serial ) {
@@ -3144,7 +3179,9 @@ class llm_intent_manager
         std::queue<llm_intent_request> request_queue;
         std::queue<llm_intent_response> response_queue;
         std::unordered_map<std::string, std::string> utterance_by_request;
+        std::unordered_set<std::string> primary_request_ids;
         std::deque<pending_primary_request> pending_primary_requests;
+        std::set<character_id> pending_primary_npcs;
         std::unordered_set<std::string> serial_primary_request_ids;
         std::unordered_map<std::string, look_around_context> look_around_requests;
         std::unordered_map<std::string, look_inventory_context> look_inventory_requests;
@@ -3269,6 +3306,39 @@ void prewarm()
 void process_responses()
 {
     get_manager().process_responses();
+}
+
+void enqueue_random_requests()
+{
+    if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+        return;
+    }
+    const int base_turns = get_option<int>( "LLM_INTENT_RANDOM_CALL" );
+    if( g == nullptr ) {
+        return;
+    }
+    if( base_turns <= 0 ) {
+        for( npc *listener : g->allies() ) {
+            if( listener == nullptr || !listener->is_player_ally() ) {
+                continue;
+            }
+            listener->schedule_next_llm_random_call( 0 );
+        }
+        return;
+    }
+    for( npc *listener : g->allies() ) {
+        if( listener == nullptr || !listener->is_player_ally() ) {
+            continue;
+        }
+        if( !listener->llm_random_call_due( base_turns ) ) {
+            continue;
+        }
+        if( get_manager().has_pending_primary_request_for( listener->getID() ) ) {
+            continue;
+        }
+        get_manager().enqueue_request( *listener, "" );
+        listener->schedule_next_llm_random_call( base_turns );
+    }
 }
 
 void log_event( const std::string &message )
