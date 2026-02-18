@@ -55,8 +55,14 @@ function Invoke-External {
             }
         }
     }
-    $output = & $FilePath @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
+    $previousErrorAction = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $output = & $FilePath @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
     if( $exitCode -ne 0 -and -not $IgnoreFailure ) {
         $rendered = [string]::Join( [Environment]::NewLine, $output )
         throw "Command failed ($exitCode): $FilePath $($Arguments -join ' ')`n$rendered"
