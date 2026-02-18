@@ -5,6 +5,7 @@ Port AOL LLM functionality from this repository's `master` branch onto fresh
 upstream targets:
 - `upstream/master`
 - `upstream/0.H-branch`
+- `upstream/0.I-branch`
 - `upstream-ctlg/master`
 
 The orchestration model is:

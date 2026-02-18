@@ -31,6 +31,17 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - When adding new automation, keep paths and commands portable across Linux and Windows.
 - Do not disable CI workflows; fix the root cause instead.
 
+### Porting orchestrator usage
+- Use `tools/porting/orchestrate_ports.ps1` for branch recreation, upstream merges, and build checks.
+- Start it from `master` only; it errors out on other branches by design.
+- First-run safety check:
+  - `.\tools\porting\orchestrate_ports.ps1 -DryRun -AllowDirty`
+- Typical run with Codex merge/build fixing:
+  - `.\tools\porting\orchestrate_ports.ps1 -RunCodex`
+- Scope a single target when testing:
+  - `.\tools\porting\orchestrate_ports.ps1 -Targets cdda-0.I -RunCodex`
+- Review logs in `tools/porting/logs/<timestamp>/` after each run.
+
 ## Tests and in-game verification
 - Use unit tests where applicable.
 - For gameplay changes, use the in-game debug menu to reproduce conditions.

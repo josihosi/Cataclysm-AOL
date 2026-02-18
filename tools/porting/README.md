@@ -3,6 +3,7 @@
 This folder contains automation for recurring AOL port refreshes across:
 - CDDA master
 - CDDA 0.H
+- CDDA 0.I
 - CTLG master
 
 ## Script
@@ -75,4 +76,5 @@ just_build_linux.cmd --unclean
 Then publish artifacts for each target:
 - `cdda-master` (Windows + Linux)
 - `cdda-0.H` (Windows + Linux)
+- `cdda-0.I` (Windows + Linux)
 - `ctlg-master` (Windows + Linux)

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string[]]$Targets = @( "cdda-master", "cdda-0.H", "ctlg-master" ),
+    [string[]]$Targets = @( "cdda-master", "cdda-0.H", "cdda-0.I", "ctlg-master" ),
     [switch]$RunCodex,
     [switch]$SkipBuild,
     [switch]$NoFetch,
@@ -113,6 +113,7 @@ function New-CodexPromptFile {
 # $Title
 
 Read these first:
+- `Agents.md`
 - `tools/porting/PORTING_CONTEXT.md`
 - `Plan.md`
 
@@ -184,6 +185,11 @@ $targetMap = @{
         Name = "cdda-0.H"
         Branch = "port/cdda-0.H"
         UpstreamRef = "upstream/0.H-branch"
+    }
+    "cdda-0.I" = [PSCustomObject]@{
+        Name = "cdda-0.I"
+        Branch = "port/cdda-0.I"
+        UpstreamRef = "upstream/0.I-branch"
     }
     "ctlg-master" = [PSCustomObject]@{
         Name = "ctlg-master"
@@ -293,7 +299,7 @@ $conflictText
 
 Requirements:
 1. Resolve merge conflicts and finish the merge commit.
-2. Preserve AOL LLM feature behavior and Linux compatibility.
+2. Preserve AOL LLM feature behavior parity.
 3. Keep changes focused to porting and required fixes only.
 4. Run these checks after fixing:
    - `just_build.cmd --unclean > debug.txt 2>&1`
@@ -376,7 +382,7 @@ Read log file: `$linLog`
 
 Task:
 1. Fix build issues on this branch.
-2. Keep AOL LLM behavior parity and Linux compatibility.
+2. Keep AOL LLM behavior parity.
 3. Re-run Linux build:
    - `just_build_linux.cmd --unclean > debug.txt 2>&1`
 4. Summarize fixes and remaining risks.
