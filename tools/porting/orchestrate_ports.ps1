@@ -61,9 +61,14 @@ function Invoke-External {
         $rendered = [string]::Join( [Environment]::NewLine, $output )
         throw "Command failed ($exitCode): $FilePath $($Arguments -join ' ')`n$rendered"
     }
+    $normalizedOutput = if( $null -eq $output ) {
+        @()
+    } else {
+        [string[]]$output
+    }
     return [PSCustomObject]@{
         ExitCode = $exitCode
-        Output = [string[]]$output
+        Output = $normalizedOutput
     }
 }
 
