@@ -13,7 +13,16 @@ param(
     [switch]$NoTargetPatchsets,
     [string]$PatchsetCommitRange = "",
     [string[]]$PatchsetPathFilter = @(),
-    [int]$MaxConflictFiles = 100
+    [int]$MaxConflictFiles = 100,
+    [string[]]$AutoResolveOursPaths = @(
+        "Plan.md",
+        "README.md",
+        "TechnicalTome.md",
+        "Agents.md",
+        ".gitignore",
+        "tools/porting/README.md",
+        "tools/porting/PORTING_CONTEXT.md"
+    )
 )
 
 Set-StrictMode -Version Latest
@@ -181,6 +190,23 @@ function Get-UniqueOrdered {
         return @()
     }
     return @( $array )
+}
+
+function Resolve-AutoConflicts {
+    param(
+        [Parameter(Mandatory = $true)] [string[]]$ConflictPaths,
+        [Parameter(Mandatory = $true)] [string[]]$AutoPaths
+    )
+    $resolved = New-Object System.Collections.Generic.List[string]
+    foreach( $conflict in $ConflictPaths ) {
+        if( -not ( $AutoPaths -contains $conflict ) ) {
+            continue
+        }
+        Invoke-External -FilePath "git" -Arguments @( "checkout", "--ours", "--", $conflict ) -IgnoreFailure | Out-Null
+        Invoke-External -FilePath "git" -Arguments @( "add", "--", $conflict ) -IgnoreFailure | Out-Null
+        [void]$resolved.Add( $conflict )
+    }
+    return $resolved.ToArray()
 }
 
 function New-CodexPromptFile {
@@ -423,6 +449,17 @@ foreach( $target in $selectedTargets ) {
 
         $failedCommit = $sha
         $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+        $autoResolved = @( Resolve-AutoConflicts -ConflictPaths $conflicts -AutoPaths $AutoResolveOursPaths )
+        if( $autoResolved.Count -gt 0 ) {
+            $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+            if( -not $DryRun ) {
+                @(
+                    "auto_resolved_conflicts:"
+                    [string]::Join( ", ", $autoResolved )
+                    ""
+                ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
+            }
+        }
         if( $conflicts.Count -gt $MaxConflictFiles ) {
             $failureNotes = "Conflict threshold exceeded ($($conflicts.Count) files > $MaxConflictFiles). Manual port required."
             $applyOk = $false
