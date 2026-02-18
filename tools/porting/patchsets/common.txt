@@ -1,0 +1,5 @@
+# AOL common patch queue (oldest to newest).
+# One commit SHA per line.
+#
+# Keep this list focused to AOL/LLM changes that should be replayed across targets.
+# Use target-specific files (cdda-0.H.txt, cdda-0.I.txt, ctlg-master.txt) for fixups.

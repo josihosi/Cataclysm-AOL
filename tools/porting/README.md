@@ -8,6 +8,7 @@ This folder contains automation for recurring AOL port refreshes across:
 
 ## Script
 - `tools/porting/orchestrate_ports.ps1`
+- `tools/porting/simulate_patchset.ps1`
 
 ## What It Does
 - Requires current branch to be `master` (hard fail otherwise).
@@ -16,9 +17,13 @@ This folder contains automation for recurring AOL port refreshes across:
 - Fetches remotes (`origin`, `upstream`, `upstream-ctlg`) with `--prune`.
 - Creates a dated backup branch from `master`.
 - Recreates `port/*` branches from upstream targets.
-- Merges `master` into each `port/*` branch.
+- Replays AOL commits via patchset cherry-picks onto each `port/*` branch.
+  - Base queue: `tools/porting/patchsets/common.txt`
+  - Optional target queues: `tools/porting/patchsets/<target>.txt`
+  - Optional ad-hoc source: `-PatchsetCommitRange` (+ optional `-PatchsetPathFilter`)
+- Applies conflict threshold gate (`-MaxConflictFiles`, default `100`) to stop obviously manual-heavy targets.
 - Runs build checks (`just_build.cmd --unclean`, `just_build_linux.cmd --unclean`).
-- Optionally invokes `codex exec` to fix merge/build failures.
+- Optionally invokes `codex exec` to fix cherry-pick/build failures.
 - Writes per-target logs plus a summary under `tools/porting/logs/<timestamp>/`.
 
 ## Usage
@@ -51,6 +56,31 @@ Allow dirty tree (not recommended):
 Skip build checks:
 ```powershell
 .\tools\porting\orchestrate_ports.ps1 -SkipBuild
+```
+
+Run orchestrator using ad-hoc commit range (instead of patchset files):
+```powershell
+.\tools\porting\orchestrate_ports.ps1 -PatchsetCommitRange upstream/master..master -PatchsetPathFilter src/llm_intent.cpp,src/npc.cpp,src/npc.h,src/npcmove.cpp,tools/llm_runner
+```
+
+Tighten conflict threshold (manual handoff earlier):
+```powershell
+.\tools\porting\orchestrate_ports.ps1 -MaxConflictFiles 40
+```
+
+Patchset dry-run simulation using curated patchset files:
+```powershell
+.\tools\porting\simulate_patchset.ps1 -Fetch
+```
+
+Patchset dry-run simulation from a commit range (quick estimator):
+```powershell
+.\tools\porting\simulate_patchset.ps1 -Fetch -CommitRange upstream/master..master -PathFilter src/llm_intent.cpp,src/npc.cpp,src/npc.h,src/npcmove.cpp,tools/llm_runner
+```
+
+Patchset files live in:
+```text
+tools/porting/patchsets/
 ```
 
 ## Preflight Expectations

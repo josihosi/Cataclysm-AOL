@@ -44,6 +44,7 @@
 /templates/
 /export_dir/
 /tools/format/json_formatter.cgi
+/tools/porting/logs/
 CataclysmWin.cscope_file_list
 CataclysmWin.depend
 CataclysmWin.layout

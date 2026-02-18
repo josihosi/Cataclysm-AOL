@@ -1,0 +1,2 @@
+# Optional target-specific fixups for cdda-0.I.
+# One commit SHA per line.

@@ -8,7 +8,12 @@ param(
     [switch]$AllowDirty,
     [switch]$DryRun,
     [string]$CtglRemoteUrl = "https://github.com/Cataclysm-TLG/Cataclysm-TLG.git",
-    [string]$CodexModel = ""
+    [string]$CodexModel = "",
+    [string]$PatchsetFile = "tools/porting/patchsets/common.txt",
+    [switch]$NoTargetPatchsets,
+    [string]$PatchsetCommitRange = "",
+    [string[]]$PatchsetPathFilter = @(),
+    [int]$MaxConflictFiles = 100
 )
 
 Set-StrictMode -Version Latest
@@ -35,6 +40,9 @@ function Invoke-External {
                 "status" { $isReadOnlyInDryRun = $true }
                 "show-ref" { $isReadOnlyInDryRun = $true }
                 "log" { $isReadOnlyInDryRun = $true }
+                "rev-list" { $isReadOnlyInDryRun = $true }
+                "cat-file" { $isReadOnlyInDryRun = $true }
+                "diff" { $isReadOnlyInDryRun = $true }
                 "remote" {
                     if( $Arguments.Count -eq 1 ) {
                         $isReadOnlyInDryRun = $true
@@ -112,6 +120,67 @@ function Resolve-BackupBranchName {
         $i++
     }
     return $candidate
+}
+
+function Read-CommitListFile {
+    param( [Parameter(Mandatory = $true)] [string]$FilePath )
+    if( -not ( Test-Path -LiteralPath $FilePath ) ) {
+        return @()
+    }
+    return @(
+        ( Get-Content -Path $FilePath ) |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -ne "" -and -not $_.StartsWith( "#" ) }
+    )
+}
+
+function Select-TargetPatchsetFile {
+    param(
+        [Parameter(Mandatory = $true)] [string]$RepoRoot,
+        [Parameter(Mandatory = $true)] [string]$TargetName
+    )
+    $candidate = Join-Path $RepoRoot ( Join-Path "tools/porting/patchsets" ( "$TargetName.txt" ) )
+    if( Test-Path -LiteralPath $candidate ) {
+        return $candidate
+    }
+    return ""
+}
+
+function Resolve-CommitRangeList {
+    param(
+        [Parameter(Mandatory = $true)] [string]$RangeSpec,
+        [string[]]$Paths = @()
+    )
+    $args = New-Object System.Collections.Generic.List[string]
+    [void]$args.Add( "rev-list" )
+    [void]$args.Add( "--reverse" )
+    [void]$args.Add( $RangeSpec )
+    if( $Paths.Count -gt 0 ) {
+        [void]$args.Add( "--" )
+        foreach( $path in $Paths ) {
+            [void]$args.Add( $path )
+        }
+    }
+    return @(
+        @( ( Invoke-External -FilePath "git" -Arguments $args.ToArray() ).Output ) |
+        Where-Object { $_ -ne "" }
+    )
+}
+
+function Get-UniqueOrdered {
+    param( [string[]]$Items = @() )
+    $seen = New-Object "System.Collections.Generic.HashSet[string]"
+    $result = New-Object System.Collections.Generic.List[string]
+    foreach( $item in $Items ) {
+        if( $seen.Add( $item ) ) {
+            [void]$result.Add( $item )
+        }
+    }
+    $array = $result.ToArray()
+    if( $null -eq $array ) {
+        return @()
+    }
+    return @( $array )
 }
 
 function New-CodexPromptFile {
@@ -269,6 +338,20 @@ if( -not $NoBackup ) {
     Write-Host "[porting] backup branch created: $backupBranch"
 }
 
+$baseQueue = @()
+Write-Step "Building patchset queue"
+if( -not [string]::IsNullOrWhiteSpace( $PatchsetCommitRange ) ) {
+    $baseQueue = @( Resolve-CommitRangeList -RangeSpec $PatchsetCommitRange -Paths $PatchsetPathFilter )
+    Write-Host "[porting] patchset source: commit range $PatchsetCommitRange ($($baseQueue.Count) commits)"
+} else {
+    $basePatchsetPath = Join-Path $repoRoot $PatchsetFile
+    $baseQueue = @( Read-CommitListFile -FilePath $basePatchsetPath )
+    Write-Host "[porting] patchset source: file $PatchsetFile ($($baseQueue.Count) commits)"
+}
+if( $baseQueue.Count -eq 0 ) {
+    Write-Host "[porting] WARNING: patchset queue is empty. No AOL commits will be replayed unless target-specific files are populated."
+}
+
 $summary = New-Object System.Collections.Generic.List[object]
 
 foreach( $target in $selectedTargets ) {
@@ -286,68 +369,127 @@ foreach( $target in $selectedTargets ) {
 
     Invoke-External -FilePath "git" -Arguments @( "checkout", "-B", $target.Branch, $target.UpstreamRef ) | Out-Null
 
-    $mergeLogFile = Join-Path $targetRunDir "merge.log"
-    $mergeResult = Invoke-External -FilePath "git" -Arguments @( "merge", "--no-ff", "--no-edit", "master" ) -IgnoreFailure
-    if( -not $DryRun ) {
-        $mergeResult.Output | Out-File -FilePath $mergeLogFile -Encoding utf8
+    $targetQueue = New-Object System.Collections.Generic.List[string]
+    foreach( $sha in $baseQueue ) {
+        [void]$targetQueue.Add( $sha )
+    }
+    if( -not $NoTargetPatchsets ) {
+        $targetPatchset = Select-TargetPatchsetFile -RepoRoot $repoRoot -TargetName $target.Name
+        if( -not [string]::IsNullOrWhiteSpace( $targetPatchset ) ) {
+            $extraQueue = @( Read-CommitListFile -FilePath $targetPatchset )
+            foreach( $sha in $extraQueue ) {
+                [void]$targetQueue.Add( $sha )
+            }
+        }
+    }
+    $commitQueue = @( Get-UniqueOrdered -Items $targetQueue.ToArray() )
+    foreach( $sha in $commitQueue ) {
+        $exists = Invoke-External -FilePath "git" -Arguments @( "cat-file", "-e", "$sha^{commit}" ) -IgnoreFailure
+        if( $exists.ExitCode -ne 0 ) {
+            throw "Invalid commit in patchset for target '$($target.Name)': $sha"
+        }
     }
 
-    $mergeOk = $mergeResult.ExitCode -eq 0
-    $codexUsedForMerge = $false
-    if( -not $mergeOk ) {
+    $queueFile = Join-Path $targetRunDir "commit-queue.txt"
+    if( -not $DryRun ) {
+        if( $commitQueue.Count -eq 0 ) {
+            "# no commits queued" | Out-File -FilePath $queueFile -Encoding utf8
+        } else {
+            $commitQueue | Out-File -FilePath $queueFile -Encoding utf8
+        }
+    }
+
+    $applyLogFile = Join-Path $targetRunDir "apply.log"
+    $appliedCount = 0
+    $applyOk = $true
+    $codexUsedForApply = $false
+    $failedCommit = ""
+    $failureNotes = ""
+
+    foreach( $sha in $commitQueue ) {
+        $pickArgs = @( "cherry-pick", "--allow-empty", "-x", $sha )
+        $pickResult = Invoke-External -FilePath "git" -Arguments $pickArgs -IgnoreFailure
+        if( -not $DryRun ) {
+            @(
+                "## cherry-pick $sha"
+                [string]::Join( [Environment]::NewLine, $pickResult.Output )
+                ""
+            ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
+        }
+        if( $pickResult.ExitCode -eq 0 ) {
+            $appliedCount++
+            continue
+        }
+
+        $failedCommit = $sha
         $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
-        if( $RunCodex ) {
-            $promptFile = Join-Path $targetRunDir "codex-merge-prompt.md"
-            $codexLogFile = Join-Path $targetRunDir "codex-merge.log"
-            $lastMessageFile = Join-Path $targetRunDir "codex-merge-last-message.txt"
+        if( $conflicts.Count -gt $MaxConflictFiles ) {
+            $failureNotes = "Conflict threshold exceeded ($($conflicts.Count) files > $MaxConflictFiles). Manual port required."
+            $applyOk = $false
+        } elseif( $RunCodex ) {
+            $shortSha = if( $sha.Length -gt 12 ) { $sha.Substring( 0, 12 ) } else { $sha }
+            $promptFile = Join-Path $targetRunDir "codex-apply-$shortSha-prompt.md"
+            $codexLogFile = Join-Path $targetRunDir "codex-apply-$shortSha.log"
+            $lastMessageFile = Join-Path $targetRunDir "codex-apply-$shortSha-last-message.txt"
             $conflictText = if( $conflicts.Count -eq 0 ) { "(none listed)" } else { [string]::Join( [Environment]::NewLine, $conflicts ) }
             $promptBody = @"
-You are on branch `$($target.Branch)` after trying to merge `master` into `$($target.UpstreamRef)`.
-The merge failed and needs to be completed while preserving AOL LLM behavior parity.
+You are on branch `$($target.Branch)` after cherry-picking commit `$sha` onto base `$($target.UpstreamRef)`.
+Cherry-pick failed and must be completed while preserving AOL LLM behavior parity.
 
 Conflict files:
 $conflictText
 
 Requirements:
-1. Resolve merge conflicts and finish the merge commit.
-2. Preserve AOL LLM feature behavior parity.
-3. Keep changes focused to porting and required fixes only.
-4. Run these checks after fixing:
-   - `just_build.cmd --unclean > debug.txt 2>&1`
-   - `just_build_linux.cmd --unclean > debug.txt 2>&1`
-5. Summarize what you changed and any residual risk.
+1. Resolve conflicts for this cherry-pick and run `git cherry-pick --continue`.
+2. Keep changes focused to AOL porting behavior parity.
+3. Do not run full builds yet; orchestrator will run builds after patchset replay.
+4. Summarize any manual decisions needed for future patchset curation.
 "@
-            New-CodexPromptFile -Path $promptFile -Title "Merge fix for $($target.Name)" -Body $promptBody
-            $codexUsedForMerge = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
+            New-CodexPromptFile -Path $promptFile -Title "Patchset apply fix for $($target.Name) $shortSha" -Body $promptBody
+            $codexUsedForApply = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
         }
 
         $remaining = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
-        $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
-        if( $remaining.Count -eq 0 -and $mergeHead ) {
-            $commitResult = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
-            if( $commitResult.ExitCode -ne 0 ) {
-                $mergeOk = $false
-            } else {
-                $mergeOk = $true
+        $cherryPickHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "CHERRY_PICK_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+        if( $remaining.Count -eq 0 -and $cherryPickHead ) {
+            $continueResult = Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--continue" ) -IgnoreFailure
+            if( $continueResult.ExitCode -eq 0 ) {
+                $appliedCount++
+                continue
             }
+            $applyOk = $false
+            if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                $failureNotes = "cherry-pick --continue failed for $sha"
+            }
+        } elseif( $remaining.Count -eq 0 -and -not $cherryPickHead ) {
+            # cherry-pick may have been completed manually by codex
+            $appliedCount++
+            continue
         } else {
-            $mergeOk = ( $remaining.Count -eq 0 -and -not $mergeHead )
+            $applyOk = $false
+            if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                $failureNotes = "Cherry-pick unresolved for $sha"
+            }
         }
 
-        if( -not $mergeOk ) {
-            if( $mergeHead ) {
-                Invoke-External -FilePath "git" -Arguments @( "merge", "--abort" ) -IgnoreFailure | Out-Null
-            }
-            [void]$summary.Add( [PSCustomObject]@{
-                    Target = $target.Name
-                    Branch = $target.Branch
-                    Merge = "FAILED"
-                    CodexMerge = $( if( $codexUsedForMerge ) { "USED" } else { "NO" } )
-                    Build = "SKIPPED"
-                    Notes = "Merge unresolved. See $targetRunDir"
-                } )
-            continue
+        if( $cherryPickHead ) {
+            Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--abort" ) -IgnoreFailure | Out-Null
         }
+        break
+    }
+
+    if( -not $applyOk ) {
+        [void]$summary.Add( [PSCustomObject]@{
+                Target = $target.Name
+                Branch = $target.Branch
+                Queue = $commitQueue.Count
+                Applied = $appliedCount
+                Apply = "FAILED"
+                CodexApply = $( if( $codexUsedForApply ) { "USED" } else { "NO" } )
+                Build = "SKIPPED"
+                Notes = "$( $failureNotes ) See $targetRunDir"
+            } )
+        continue
     }
 
     $windowsBuild = "SKIPPED"
@@ -412,8 +554,10 @@ Task:
     [void]$summary.Add( [PSCustomObject]@{
             Target = $target.Name
             Branch = $target.Branch
-            Merge = "OK"
-            CodexMerge = $( if( $codexUsedForMerge ) { "USED" } else { "NO" } )
+            Queue = $commitQueue.Count
+            Applied = $appliedCount
+            Apply = "OK"
+            CodexApply = $( if( $codexUsedForApply ) { "USED" } else { "NO" } )
             Build = "$( $windowsBuild )/$( $linuxBuild )"
             Notes = $buildNotes
         } )
