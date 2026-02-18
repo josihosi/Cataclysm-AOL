@@ -168,7 +168,7 @@ function Invoke-CodexExec {
 }
 
 $repoRootResult = Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--show-toplevel" )
-$repoRoot = $repoRootResult.Output[-1].Trim()
+$repoRoot = @( $repoRootResult.Output )[-1].Trim()
 if( [string]::IsNullOrWhiteSpace( $repoRoot ) ) {
     throw "Could not resolve repo root."
 }
@@ -212,17 +212,17 @@ foreach( $target in $Targets ) {
 }
 
 Write-Step "Preflight checks"
-$currentBranch = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--abbrev-ref", "HEAD" ) ).Output[-1].Trim()
+$currentBranch = @( ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--abbrev-ref", "HEAD" ) ).Output )[-1].Trim()
 if( $currentBranch -ne "master" ) {
     throw "This orchestrator must be started on branch 'master'. Current branch: '$currentBranch'."
 }
 
-$dirty = ( Invoke-External -FilePath "git" -Arguments @( "status", "--porcelain" ) ).Output
+$dirty = @( ( Invoke-External -FilePath "git" -Arguments @( "status", "--porcelain" ) ).Output )
 if( $dirty.Count -gt 0 -and -not $AllowDirty ) {
     throw "Working tree is dirty. Commit/stash first, or re-run with -AllowDirty."
 }
 
-$remotes = ( Invoke-External -FilePath "git" -Arguments @( "remote" ) ).Output | ForEach-Object {
+$remotes = @( ( Invoke-External -FilePath "git" -Arguments @( "remote" ) ).Output ) | ForEach-Object {
     $_.Trim()
 } | Where-Object { $_ -ne "" }
 if( -not ( $remotes -contains "origin" ) ) {
@@ -289,7 +289,7 @@ foreach( $target in $selectedTargets ) {
     $mergeOk = $mergeResult.ExitCode -eq 0
     $codexUsedForMerge = $false
     if( -not $mergeOk ) {
-        $conflicts = ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output
+        $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
         if( $RunCodex ) {
             $promptFile = Join-Path $targetRunDir "codex-merge-prompt.md"
             $codexLogFile = Join-Path $targetRunDir "codex-merge.log"
@@ -315,7 +315,7 @@ Requirements:
             $codexUsedForMerge = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
         }
 
-        $remaining = ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output
+        $remaining = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
         $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
         if( $remaining.Count -eq 0 -and $mergeHead ) {
             $commitResult = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
