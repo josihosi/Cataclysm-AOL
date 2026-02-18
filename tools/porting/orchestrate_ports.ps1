@@ -264,8 +264,14 @@ function Invoke-CodexExec {
         return $true
     }
 
-    Get-Content -Raw -Path $PromptFile | & codex @args *> $CodexLogFile
-    return ( $LASTEXITCODE -eq 0 )
+    $previousErrorAction = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        Get-Content -Raw -Path $PromptFile | & codex @args *> $CodexLogFile
+        return ( $LASTEXITCODE -eq 0 )
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
 }
 
 $repoRootResult = Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--show-toplevel" )
