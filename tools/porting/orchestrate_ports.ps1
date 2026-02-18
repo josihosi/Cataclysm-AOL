@@ -209,6 +209,24 @@ function Resolve-AutoConflicts {
     return $resolved.ToArray()
 }
 
+function Sync-GitignoreFromMaster {
+    param(
+        [Parameter(Mandatory = $true)] [string]$CommitMessage
+    )
+    $masterGitignore = Invoke-External -FilePath "git" -Arguments @( "show", "master:.gitignore" ) -IgnoreFailure
+    if( $masterGitignore.ExitCode -ne 0 ) {
+        return $false
+    }
+    Invoke-External -FilePath "git" -Arguments @( "checkout", "master", "--", ".gitignore" ) | Out-Null
+    Invoke-External -FilePath "git" -Arguments @( "add", "--", ".gitignore" ) | Out-Null
+    $gitignoreDiff = Invoke-External -FilePath "git" -Arguments @( "diff", "--cached", "--quiet", "--", ".gitignore" ) -IgnoreFailure
+    if( $gitignoreDiff.ExitCode -eq 0 ) {
+        return $false
+    }
+    Invoke-External -FilePath "git" -Arguments @( "commit", "-m", $CommitMessage ) | Out-Null
+    return $true
+}
+
 function New-CodexPromptFile {
     param(
         [Parameter(Mandatory = $true)] [string]$Path,
@@ -400,6 +418,9 @@ foreach( $target in $selectedTargets ) {
     }
 
     Invoke-External -FilePath "git" -Arguments @( "checkout", "-B", $target.Branch, $target.UpstreamRef ) | Out-Null
+    if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (baseline)" ) {
+        Write-Host "[porting] synced .gitignore from master (baseline)"
+    }
 
     $targetQueue = New-Object System.Collections.Generic.List[string]
     foreach( $sha in $baseQueue ) {
@@ -522,6 +543,9 @@ Requirements:
     }
 
     if( -not $applyOk ) {
+        if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (post-apply-failure)" ) {
+            Write-Host "[porting] synced .gitignore from master after apply failure"
+        }
         [void]$summary.Add( [PSCustomObject]@{
                 Target = $target.Name
                 Branch = $target.Branch
@@ -538,6 +562,9 @@ Requirements:
     $windowsBuild = "SKIPPED"
     $linuxBuild = "SKIPPED"
     $buildNotes = ""
+    if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (post-apply)" ) {
+        Write-Host "[porting] synced .gitignore from master after apply"
+    }
 
     if( -not $SkipBuild ) {
         $winLog = Join-Path $targetRunDir "build-windows.log"
