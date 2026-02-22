@@ -1,3 +1,122 @@
+<#
+.SYNOPSIS
+Orchestrates AOL port branches against upstream branches with merge-first fallback behavior.
+
+.DESCRIPTION
+Runs a repeatable porting flow for one or more targets:
+1. Optional fetch/update of remotes.
+2. Optional backup branch management for master.
+3. For each target branch, run upstream native merge (upstream -> port branch).
+4. Sync master changes using the selected strategy:
+   - delta-cherry-pick (default): replay only master commits not yet present on target.
+   - native-merge: attempt native master -> port merge.
+5. If configured, destructive rebuild fallback can recreate target branch and replay patchsets.
+5. Optionally run Windows/Linux builds and summarize results in tools/porting/logs/<timestamp>.
+
+This script must be started from branch 'master'.
+
+.PARAMETER Targets
+Port targets to process. Allowed values: cdda-master, cdda-0.H, cdda-0.I, ctlg-master.
+
+.PARAMETER RunCodex
+Enable Codex-assisted conflict/build fixes when automatic resolution is insufficient.
+
+.PARAMETER SkipBuild
+Skip Windows/Linux build steps after merge/apply.
+
+.PARAMETER NoFetch
+Do not fetch remotes before processing targets.
+
+.PARAMETER NoBackup
+Skip backup branch creation/reuse checks.
+
+.PARAMETER AllowDirty
+Allow running with a dirty working tree.
+
+.PARAMETER DryRun
+Simulate write operations. Useful for previewing actions and flow.
+Note: merge/apply/build outcomes are simulated and reported as DRYRUN.
+
+.PARAMETER AuditMode
+Run non-destructive audit for upstream merge and selected master-sync strategy.
+Does not recreate branches, does not cherry-pick, and does not build.
+
+.PARAMETER MasterSyncMode
+Master sync strategy after upstream merge:
+- delta-cherry-pick (default): replay only missing master commits.
+- native-merge: perform native merge from master.
+
+.PARAMETER MasterDeltaPathFilter
+Optional path filters for delta-cherry-pick commit selection.
+
+.PARAMETER MasterDeltaIgnorePathGlobs
+Commits whose changed files all match these globs are skipped in delta-cherry-pick mode.
+
+.PARAMETER AllowDestructiveFallback
+Allow deleting/recreating existing port branches when non-destructive path cannot continue.
+
+.PARAMETER CtglRemoteUrl
+Remote URL used for upstream-ctlg.
+
+.PARAMETER CodexModel
+Optional model override passed to codex exec when -RunCodex is used.
+
+.PARAMETER PatchsetFile
+Path to base patchset file (relative to repo root by default).
+
+.PARAMETER NoTargetPatchsets
+Disable target-specific patchset overlays (tools/porting/patchsets/<target>.txt).
+
+.PARAMETER PatchsetCommitRange
+Optional commit range to build queue from instead of patchset file (e.g. A..B).
+
+.PARAMETER PatchsetPathFilter
+Optional path filters used with -PatchsetCommitRange.
+
+.PARAMETER MaxConflictFiles
+Upper conflict-file threshold for cherry-pick stage before failing fast.
+
+.PARAMETER NativeMergeMaxConflicts
+Upper conflict-file threshold for native merge stage before falling back to cherry-pick.
+
+.PARAMETER BackupDiffIgnorePaths
+Paths ignored when deciding whether an existing backup branch is equivalent to master.
+
+.PARAMETER AutoResolveOursPaths
+Paths auto-resolved with --ours during conflicts before optional Codex assist.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -DryRun -AllowDirty
+Preview full run flow without writing repository state.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -Targets cdda-master -SkipBuild -NoBackup
+Process only cdda-master, skip build steps, and skip backup handling.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -Targets cdda-0.I -RunCodex -CodexModel gpt-5.3-codex
+Run one target with Codex conflict/build assistance.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -Targets cdda-master -PatchsetCommitRange 1234abcd..89ef0123
+Use a commit-range queue instead of the patchset file.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -NoFetch -NativeMergeMaxConflicts 25 -MaxConflictFiles 100
+Reuse current fetched refs and tune merge/cherry-pick conflict thresholds.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -AuditMode -AllowDirty -NoBackup
+Audit upstream + master sync pressure for all targets without rewriting port branches.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -Targets cdda-master -MasterSyncMode delta-cherry-pick -SkipBuild
+Merge upstream into port/cdda-master, then replay only missing master commits.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -Targets cdda-master -MasterSyncMode native-merge -AllowDestructiveFallback
+Use legacy native master merge path and permit destructive fallback when required.
+#>
 [CmdletBinding()]
 param(
     [string[]]$Targets = @( "cdda-master", "cdda-0.H", "cdda-0.I", "ctlg-master" ),
@@ -7,6 +126,20 @@ param(
     [switch]$NoBackup,
     [switch]$AllowDirty,
     [switch]$DryRun,
+    [switch]$AuditMode,
+    [ValidateSet( "delta-cherry-pick", "native-merge" )]
+    [string]$MasterSyncMode = "delta-cherry-pick",
+    [string[]]$MasterDeltaPathFilter = @(),
+    [string[]]$MasterDeltaIgnorePathGlobs = @(
+        "Plan.md",
+        "README.md",
+        "TechnicalTome.md",
+        "Agent.md",
+        "Agents.md",
+        ".gitignore",
+        "tools/porting/*"
+    ),
+    [switch]$AllowDestructiveFallback,
     [string]$CtglRemoteUrl = "https://github.com/Cataclysm-TLG/Cataclysm-TLG.git",
     [string]$CodexModel = "",
     [string]$PatchsetFile = "tools/porting/patchsets/common.txt",
@@ -36,6 +169,25 @@ function Write-Step {
     Write-Host "[porting] $Message"
 }
 
+function Get-CurrentBranch {
+    $branchResult = Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--abbrev-ref", "HEAD" )
+    return @( $branchResult.Output )[-1].Trim()
+}
+
+function Assert-CurrentBranch {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Expected,
+        [Parameter(Mandatory = $true)] [string]$Context
+    )
+    if( $DryRun ) {
+        return
+    }
+    $current = Get-CurrentBranch
+    if( $current -ne $Expected ) {
+        throw "Branch safety check failed during $Context. Expected '$Expected' but on '$current'."
+    }
+}
+
 function Invoke-External {
     param(
         [Parameter(Mandatory = $true)] [string]$FilePath,
@@ -55,6 +207,9 @@ function Invoke-External {
                 "rev-list" { $isReadOnlyInDryRun = $true }
                 "cat-file" { $isReadOnlyInDryRun = $true }
                 "diff" { $isReadOnlyInDryRun = $true }
+                "show" { $isReadOnlyInDryRun = $true }
+                "cherry" { $isReadOnlyInDryRun = $true }
+                "merge-base" { $isReadOnlyInDryRun = $true }
                 "remote" {
                     if( $Arguments.Count -eq 1 ) {
                         $isReadOnlyInDryRun = $true
@@ -146,6 +301,23 @@ function Read-CommitListFile {
     )
 }
 
+function Read-CommitListFromRefPath {
+    param(
+        [Parameter(Mandatory = $true)] [string]$RefName,
+        [Parameter(Mandatory = $true)] [string]$RepoRelativePath
+    )
+    $spec = "$RefName`:$RepoRelativePath"
+    $result = Invoke-External -FilePath "git" -Arguments @( "show", $spec ) -IgnoreFailure
+    if( $result.ExitCode -ne 0 ) {
+        return @()
+    }
+    return @(
+        @( $result.Output ) |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -ne "" -and -not $_.StartsWith( "#" ) }
+    )
+}
+
 function Select-TargetPatchsetFile {
     param(
         [Parameter(Mandatory = $true)] [string]$RepoRoot,
@@ -153,7 +325,7 @@ function Select-TargetPatchsetFile {
     )
     $candidate = Join-Path $RepoRoot ( Join-Path "tools/porting/patchsets" ( "$TargetName.txt" ) )
     if( Test-Path -LiteralPath $candidate ) {
-        return $candidate
+        return "tools/porting/patchsets/$TargetName.txt"
     }
     return ""
 }
@@ -177,6 +349,24 @@ function Resolve-CommitRangeList {
         @( ( Invoke-External -FilePath "git" -Arguments $args.ToArray() ).Output ) |
         Where-Object { $_ -ne "" }
     )
+}
+
+function Ensure-BasePatchsetQueue {
+    if( $script:baseQueueLoaded ) {
+        return
+    }
+    Write-Step "Building patchset queue"
+    if( -not [string]::IsNullOrWhiteSpace( $PatchsetCommitRange ) ) {
+        $script:baseQueue = @( Resolve-CommitRangeList -RangeSpec $PatchsetCommitRange -Paths $PatchsetPathFilter )
+        Write-Host "[porting] patchset source: commit range $PatchsetCommitRange ($($script:baseQueue.Count) commits)"
+    } else {
+        $script:baseQueue = @( Read-CommitListFromRefPath -RefName "master" -RepoRelativePath $PatchsetFile )
+        Write-Host "[porting] patchset source: master:$PatchsetFile ($($script:baseQueue.Count) commits)"
+    }
+    if( $script:baseQueue.Count -eq 0 ) {
+        Write-Host "[porting] WARNING: patchset queue is empty. No AOL commits will be replayed unless target-specific files are populated."
+    }
+    $script:baseQueueLoaded = $true
 }
 
 function Get-UniqueOrdered {
@@ -228,6 +418,457 @@ function Sync-GitignoreFromMaster {
     }
     Invoke-External -FilePath "git" -Arguments @( "commit", "-m", $CommitMessage ) | Out-Null
     return $true
+}
+
+function Invoke-NativeMergeStep {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName,
+        [Parameter(Mandatory = $true)] [string]$TargetBranch,
+        [Parameter(Mandatory = $true)] [string]$SourceRef,
+        [Parameter(Mandatory = $true)] [string]$StepLabel,
+        [Parameter(Mandatory = $true)] [string]$TargetRunDir
+    )
+
+    $safeLabel = $StepLabel.Replace( " ", "-" ).Replace( "/", "-" )
+    $stepLog = Join-Path $TargetRunDir "$safeLabel-merge.log"
+    Assert-CurrentBranch -Expected $TargetBranch -Context "$StepLabel merge for $TargetName"
+    $result = Invoke-External -FilePath "git" -Arguments @( "merge", "--no-commit", "--no-ff", $SourceRef ) -IgnoreFailure
+    if( -not $DryRun ) {
+        $result.Output | Out-File -FilePath $stepLog -Encoding utf8
+    }
+
+    $codexUsed = $false
+
+    if( $result.ExitCode -eq 0 ) {
+        $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+        if( $mergeHead ) {
+            $commitResult = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
+            if( $commitResult.ExitCode -ne 0 ) {
+                return [PSCustomObject]@{
+                    Success = $false
+                    CodexUsed = $false
+                    Notes = "$StepLabel merge commit failed."
+                }
+            }
+            return [PSCustomObject]@{
+                Success = $true
+                CodexUsed = $false
+                Notes = "$StepLabel merge committed."
+            }
+        }
+        return [PSCustomObject]@{
+            Success = $true
+            CodexUsed = $false
+            Notes = "$StepLabel already up to date."
+        }
+    }
+
+    $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+    if( $conflicts.Count -gt $NativeMergeMaxConflicts ) {
+        $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+        if( $mergeHead ) {
+            Invoke-External -FilePath "git" -Arguments @( "merge", "--abort" ) -IgnoreFailure | Out-Null
+        }
+        return [PSCustomObject]@{
+            Success = $false
+            CodexUsed = $false
+            Notes = "$StepLabel conflicts exceed threshold ($($conflicts.Count) > $NativeMergeMaxConflicts)."
+        }
+    }
+
+    $autoResolved = @( Resolve-AutoConflicts -ConflictPaths $conflicts -AutoPaths $AutoResolveOursPaths )
+    if( $autoResolved.Count -gt 0 ) {
+        $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+    }
+
+    if( $conflicts.Count -gt 0 -and $RunCodex ) {
+        $promptFile = Join-Path $TargetRunDir "codex-$safeLabel-merge-prompt.md"
+        $codexLogFile = Join-Path $TargetRunDir "codex-$safeLabel-merge.log"
+        $lastMessageFile = Join-Path $TargetRunDir "codex-$safeLabel-merge-last-message.txt"
+        $conflictText = [string]::Join( [Environment]::NewLine, $conflicts )
+        $promptBody = @"
+You are on branch `$TargetBranch` resolving the `$StepLabel` merge from `$SourceRef`.
+Preserve AOL behavior parity and keep fixes minimal.
+
+Conflict files:
+$conflictText
+
+Requirements:
+1. Resolve this merge and finish with `git commit --no-edit`.
+2. Keep changes Linux-compatible.
+3. Summarize any manual decisions.
+"@
+        New-CodexPromptFile -Path $promptFile -Title "$StepLabel merge fix for $TargetName" -Body $promptBody
+        $codexUsed = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
+    }
+
+    $remaining = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+    $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+    if( $remaining.Count -eq 0 -and $mergeHead ) {
+        $commitResult = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
+        if( $commitResult.ExitCode -eq 0 ) {
+            return [PSCustomObject]@{
+                Success = $true
+                CodexUsed = $codexUsed
+                Notes = "$StepLabel merge resolved."
+            }
+        }
+    } elseif( $remaining.Count -eq 0 -and -not $mergeHead ) {
+        return [PSCustomObject]@{
+            Success = $true
+            CodexUsed = $codexUsed
+            Notes = "$StepLabel merge completed."
+        }
+    }
+
+    if( $mergeHead ) {
+        Invoke-External -FilePath "git" -Arguments @( "merge", "--abort" ) -IgnoreFailure | Out-Null
+    }
+    return [PSCustomObject]@{
+        Success = $false
+        CodexUsed = $codexUsed
+        Notes = "$StepLabel merge unresolved."
+    }
+}
+
+function Invoke-NativeMergeAuditStep {
+    param(
+        [Parameter(Mandatory = $true)] [string]$SourceRef,
+        [Parameter(Mandatory = $true)] [string]$StepLabel
+    )
+
+    $result = Invoke-External -FilePath "git" -Arguments @( "merge", "--no-commit", "--no-ff", $SourceRef ) -IgnoreFailure
+    $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+    $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+
+    $notes = ""
+    $success = $false
+    if( $result.ExitCode -eq 0 -and $conflicts.Count -eq 0 ) {
+        $success = $true
+        if( $mergeHead ) {
+            $notes = "$StepLabel mergeable (would create merge commit)."
+        } else {
+            $notes = "$StepLabel already up to date."
+        }
+    } elseif( $conflicts.Count -gt 0 ) {
+        $notes = "$StepLabel conflicts: $($conflicts.Count)."
+    } else {
+        $notes = "$StepLabel merge failed (exit $($result.ExitCode))."
+    }
+
+    if( $mergeHead ) {
+        Invoke-External -FilePath "git" -Arguments @( "merge", "--abort" ) -IgnoreFailure | Out-Null
+    }
+
+    return [PSCustomObject]@{
+        Success = $success
+        ConflictCount = $conflicts.Count
+        Notes = $notes
+    }
+}
+
+function Confirm-CherryPickFallback {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName,
+        [Parameter(Mandatory = $true)] [string]$TargetBranch,
+        [Parameter(Mandatory = $true)] [string]$Reason
+    )
+
+    if( $DryRun ) {
+        Write-Host "[porting] DRY-RUN: would ask confirmation before destructive fallback for $TargetName ($TargetBranch)"
+        return $true
+    }
+
+    Write-Host "[porting] Native merge path failed for ${TargetName}: $Reason"
+    Write-Host "[porting] Fallback will DELETE and recreate branch '$TargetBranch' from upstream base, then cherry-pick AOL patchset."
+    while( $true ) {
+        $answer = Read-Host "[porting] Continue with destructive fallback? (y/N)"
+        if( [string]::IsNullOrWhiteSpace( $answer ) ) {
+            return $false
+        }
+        switch( $answer.Trim().ToLowerInvariant() ) {
+            "y" { return $true }
+            "yes" { return $true }
+            "n" { return $false }
+            "no" { return $false }
+            default { Write-Host "[porting] Please enter y or n." }
+        }
+    }
+}
+
+function Test-PathMatchesAnyGlob {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Path,
+        [Parameter(Mandatory = $true)] [string[]]$Globs
+    )
+    foreach( $glob in $Globs ) {
+        if( [string]::IsNullOrWhiteSpace( $glob ) ) {
+            continue
+        }
+        if( $Path -like $glob ) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Should-SkipMasterDeltaCommit {
+    param(
+        [Parameter(Mandatory = $true)] [string]$CommitSha,
+        [Parameter(Mandatory = $true)] [string[]]$IgnorePathGlobs
+    )
+    if( $IgnorePathGlobs.Count -eq 0 ) {
+        return $false
+    }
+    $changedPaths = @(
+        @( ( Invoke-External -FilePath "git" -Arguments @( "show", "--pretty=format:", "--name-only", $CommitSha, "--" ) ).Output ) |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -ne "" }
+    )
+    if( $changedPaths.Count -eq 0 ) {
+        return $false
+    }
+    foreach( $path in $changedPaths ) {
+        if( -not ( Test-PathMatchesAnyGlob -Path $path -Globs $IgnorePathGlobs ) ) {
+            return $false
+        }
+    }
+    return $true
+}
+
+function Get-MasterDeltaStateRefName {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName
+    )
+    return "refs/port-sync/master/$TargetName"
+}
+
+function Get-MasterDeltaPlan {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName,
+        [Parameter(Mandatory = $true)] [string]$TargetBranch,
+        [Parameter(Mandatory = $true)] [string]$MasterRef,
+        [string[]]$PathFilter = @(),
+        [string[]]$IgnorePathGlobs = @()
+    )
+
+    $masterSnapshot = @( ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", $MasterRef ) ).Output )[-1].Trim()
+    if( [string]::IsNullOrWhiteSpace( $masterSnapshot ) ) {
+        throw "Could not resolve master snapshot for '$MasterRef'."
+    }
+
+    $stateRef = Get-MasterDeltaStateRefName -TargetName $TargetName
+    $stateSha = ""
+    if( Test-RefExists -RefName $stateRef ) {
+        $stateSha = @( ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", $stateRef ) ).Output )[-1].Trim()
+    }
+
+    $source = ""
+    $queue = @()
+    if( -not [string]::IsNullOrWhiteSpace( $stateSha ) ) {
+        $ancestorProbe = Invoke-External -FilePath "git" -Arguments @( "merge-base", "--is-ancestor", $stateSha, $masterSnapshot ) -IgnoreFailure
+        if( $ancestorProbe.ExitCode -eq 0 ) {
+            $args = New-Object System.Collections.Generic.List[string]
+            [void]$args.Add( "rev-list" )
+            [void]$args.Add( "--reverse" )
+            [void]$args.Add( "$stateSha..$masterSnapshot" )
+            if( $PathFilter.Count -gt 0 ) {
+                [void]$args.Add( "--" )
+                foreach( $path in $PathFilter ) {
+                    [void]$args.Add( $path )
+                }
+            }
+            $queue = @(
+                @( ( Invoke-External -FilePath "git" -Arguments $args.ToArray() ).Output ) |
+                ForEach-Object { $_.Trim() } |
+                Where-Object { $_ -ne "" }
+            )
+            $source = "state-ref"
+        }
+    }
+
+    if( [string]::IsNullOrWhiteSpace( $source ) ) {
+        $args = New-Object System.Collections.Generic.List[string]
+        [void]$args.Add( "rev-list" )
+        [void]$args.Add( "--reverse" )
+        [void]$args.Add( "--cherry-pick" )
+        [void]$args.Add( "--right-only" )
+        [void]$args.Add( "$TargetBranch...$masterSnapshot" )
+        if( $PathFilter.Count -gt 0 ) {
+            [void]$args.Add( "--" )
+            foreach( $path in $PathFilter ) {
+                [void]$args.Add( $path )
+            }
+        }
+        $queue = @(
+            @( ( Invoke-External -FilePath "git" -Arguments $args.ToArray() ).Output ) |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -ne "" }
+        )
+        if( [string]::IsNullOrWhiteSpace( $stateSha ) ) {
+            $source = "cherry-no-state"
+        } else {
+            $source = "cherry-state-stale"
+        }
+    }
+
+    $filtered = New-Object System.Collections.Generic.List[string]
+    $skippedByIgnore = 0
+    foreach( $sha in $queue ) {
+        if( Should-SkipMasterDeltaCommit -CommitSha $sha -IgnorePathGlobs $IgnorePathGlobs ) {
+            $skippedByIgnore++
+            continue
+        }
+        [void]$filtered.Add( $sha )
+    }
+
+    $filteredArray = $filtered.ToArray()
+    if( $null -eq $filteredArray ) {
+        $filteredArray = @()
+    }
+
+    return [PSCustomObject]@{
+        Queue = @( $filteredArray )
+        MasterSnapshot = $masterSnapshot
+        StateRef = $stateRef
+        StateSha = $stateSha
+        Source = $source
+        RawCount = $queue.Count
+        SkippedByIgnore = $skippedByIgnore
+        Notes = "source=$source raw=$($queue.Count) skippedByIgnore=$skippedByIgnore final=$($filtered.Count)"
+    }
+}
+
+function Set-MasterDeltaState {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName,
+        [Parameter(Mandatory = $true)] [string]$MasterSnapshot
+    )
+    $stateRef = Get-MasterDeltaStateRefName -TargetName $TargetName
+    if( $DryRun ) {
+        Write-Host "DRY-RUN: git update-ref $stateRef $MasterSnapshot"
+        return
+    }
+    Invoke-External -FilePath "git" -Arguments @( "update-ref", $stateRef, $MasterSnapshot ) | Out-Null
+}
+
+function Invoke-CherryPickQueue {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName,
+        [Parameter(Mandatory = $true)] [string]$TargetBranch,
+        [Parameter(Mandatory = $true)] [string]$BaseRefForPrompt,
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)] [string[]]$CommitQueue,
+        [Parameter(Mandatory = $true)] [string]$TargetRunDir,
+        [Parameter(Mandatory = $true)] [string]$QueueLabel
+    )
+
+    $appliedCount = 0
+    $applyOk = $true
+    $codexUsedForApply = $false
+    $failedCommit = ""
+    $failureNotes = ""
+
+    $queueFile = Join-Path $TargetRunDir "commit-queue-$QueueLabel.txt"
+    if( -not $DryRun ) {
+        if( $CommitQueue.Count -eq 0 ) {
+            "# no commits queued" | Out-File -FilePath $queueFile -Encoding utf8
+        } else {
+            $CommitQueue | Out-File -FilePath $queueFile -Encoding utf8
+        }
+    }
+
+    $applyLogFile = Join-Path $TargetRunDir "apply-$QueueLabel.log"
+    foreach( $sha in $CommitQueue ) {
+        Assert-CurrentBranch -Expected $TargetBranch -Context "cherry-pick $sha for $TargetName"
+        $pickArgs = @( "cherry-pick", "--allow-empty", "-x", $sha )
+        $pickResult = Invoke-External -FilePath "git" -Arguments $pickArgs -IgnoreFailure
+        if( -not $DryRun ) {
+            @(
+                "## cherry-pick $sha"
+                [string]::Join( [Environment]::NewLine, $pickResult.Output )
+                ""
+            ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
+        }
+        if( $pickResult.ExitCode -eq 0 ) {
+            $appliedCount++
+            continue
+        }
+
+        $failedCommit = $sha
+        $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+        $autoResolved = @( Resolve-AutoConflicts -ConflictPaths $conflicts -AutoPaths $AutoResolveOursPaths )
+        if( $autoResolved.Count -gt 0 ) {
+            $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+            if( -not $DryRun ) {
+                @(
+                    "auto_resolved_conflicts:"
+                    [string]::Join( ", ", $autoResolved )
+                    ""
+                ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
+            }
+        }
+        if( $conflicts.Count -gt $MaxConflictFiles ) {
+            $failureNotes = "Conflict threshold exceeded ($($conflicts.Count) files > $MaxConflictFiles). Manual port required."
+            $applyOk = $false
+        } elseif( $RunCodex ) {
+            $shortSha = if( $sha.Length -gt 12 ) { $sha.Substring( 0, 12 ) } else { $sha }
+            $promptFile = Join-Path $TargetRunDir "codex-apply-$QueueLabel-$shortSha-prompt.md"
+            $codexLogFile = Join-Path $TargetRunDir "codex-apply-$QueueLabel-$shortSha.log"
+            $lastMessageFile = Join-Path $TargetRunDir "codex-apply-$QueueLabel-$shortSha-last-message.txt"
+            $conflictText = if( $conflicts.Count -eq 0 ) { "(none listed)" } else { [string]::Join( [Environment]::NewLine, $conflicts ) }
+            $promptBody = @"
+You are on branch `$TargetBranch` after cherry-picking commit `$sha` onto base `$BaseRefForPrompt`.
+Cherry-pick failed and must be completed while preserving AOL LLM behavior parity.
+
+Conflict files:
+$conflictText
+
+Requirements:
+1. Resolve this cherry-pick and run `git cherry-pick --continue`.
+2. Keep changes focused to AOL porting behavior parity.
+3. Do not run full builds yet; orchestrator will run builds after replay.
+4. Summarize any manual decisions needed for future queue curation.
+"@
+            New-CodexPromptFile -Path $promptFile -Title "Queue apply fix for $TargetName ($QueueLabel) $shortSha" -Body $promptBody
+            $codexUsedForApply = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
+        }
+
+        $remaining = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+        $cherryPickHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "CHERRY_PICK_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+        if( $remaining.Count -eq 0 -and $cherryPickHead ) {
+            $continueResult = Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--continue" ) -IgnoreFailure
+            if( $continueResult.ExitCode -eq 0 ) {
+                $appliedCount++
+                continue
+            }
+            $applyOk = $false
+            if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                $failureNotes = "cherry-pick --continue failed for $sha"
+            }
+        } elseif( $remaining.Count -eq 0 -and -not $cherryPickHead ) {
+            $appliedCount++
+            continue
+        } else {
+            $applyOk = $false
+            if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                $failureNotes = "Cherry-pick unresolved for $sha"
+            }
+        }
+
+        if( $cherryPickHead ) {
+            Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--abort" ) -IgnoreFailure | Out-Null
+        }
+        break
+    }
+
+    return [PSCustomObject]@{
+        Success = $applyOk
+        AppliedCount = $appliedCount
+        CodexUsed = $codexUsedForApply
+        FailureNotes = $failureNotes
+        FailedCommit = $failedCommit
+    }
 }
 
 function New-CodexPromptFile {
@@ -340,7 +981,7 @@ foreach( $target in $Targets ) {
 }
 
 Write-Step "Preflight checks"
-$currentBranch = @( ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--abbrev-ref", "HEAD" ) ).Output )[-1].Trim()
+ $currentBranch = Get-CurrentBranch
 if( $currentBranch -ne "master" ) {
     throw "This orchestrator must be started on branch 'master'. Current branch: '$currentBranch'."
 }
@@ -416,19 +1057,75 @@ if( -not $NoBackup ) {
     }
 }
 
-$baseQueue = @()
-Write-Step "Building patchset queue"
-if( -not [string]::IsNullOrWhiteSpace( $PatchsetCommitRange ) ) {
-    $baseQueue = @( Resolve-CommitRangeList -RangeSpec $PatchsetCommitRange -Paths $PatchsetPathFilter )
-    Write-Host "[porting] patchset source: commit range $PatchsetCommitRange ($($baseQueue.Count) commits)"
-} else {
-    $basePatchsetPath = Join-Path $repoRoot $PatchsetFile
-    $baseQueue = @( Read-CommitListFile -FilePath $basePatchsetPath )
-    Write-Host "[porting] patchset source: file $PatchsetFile ($($baseQueue.Count) commits)"
+if( $AuditMode ) {
+    Write-Step "Audit mode: strategy '$MasterSyncMode'"
+    $auditSummary = New-Object System.Collections.Generic.List[object]
+    foreach( $target in $selectedTargets ) {
+        Write-Step "Audit target: $($target.Name)"
+        $exists = Test-RefExists -RefName "refs/heads/$($target.Branch)"
+        if( -not $exists ) {
+            [void]$auditSummary.Add( [PSCustomObject]@{
+                    Target = $target.Name
+                    Branch = $target.Branch
+                    UpstreamConflicts = "-"
+                    MasterStage = "-"
+                    NextAction = "bootstrap-required"
+                    Notes = "Target branch does not exist."
+                } )
+            continue
+        }
+
+        Invoke-External -FilePath "git" -Arguments @( "checkout", $target.Branch ) | Out-Null
+        Assert-CurrentBranch -Expected $target.Branch -Context "audit merge scan for $($target.Name)"
+        $upstreamAudit = Invoke-NativeMergeAuditStep -SourceRef $target.UpstreamRef -StepLabel "upstream"
+        if( -not $upstreamAudit.Success ) {
+            [void]$auditSummary.Add( [PSCustomObject]@{
+                    Target = $target.Name
+                    Branch = $target.Branch
+                    UpstreamConflicts = $upstreamAudit.ConflictCount
+                    MasterStage = "skipped"
+                    NextAction = "fix-upstream"
+                    Notes = $upstreamAudit.Notes
+                } )
+            continue
+        }
+
+        if( $MasterSyncMode -eq "native-merge" ) {
+            $masterAudit = Invoke-NativeMergeAuditStep -SourceRef "master" -StepLabel "master"
+            $nextAction = if( $masterAudit.Success ) { "native-merge-ready" } else { "manual-or-fallback" }
+            [void]$auditSummary.Add( [PSCustomObject]@{
+                    Target = $target.Name
+                    Branch = $target.Branch
+                    UpstreamConflicts = $upstreamAudit.ConflictCount
+                    MasterStage = "merge-conflicts:$($masterAudit.ConflictCount)"
+                    NextAction = $nextAction
+                    Notes = "$($upstreamAudit.Notes) $($masterAudit.Notes)".Trim()
+                } )
+        } else {
+            $deltaPlan = Get-MasterDeltaPlan -TargetName $target.Name -TargetBranch $target.Branch -MasterRef "master" -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
+            $nextAction = if( $deltaPlan.Queue.Count -eq 0 ) { "up-to-date" } else { "apply-delta" }
+            [void]$auditSummary.Add( [PSCustomObject]@{
+                    Target = $target.Name
+                    Branch = $target.Branch
+                    UpstreamConflicts = $upstreamAudit.ConflictCount
+                    MasterStage = "delta-commits:$($deltaPlan.Queue.Count)"
+                    NextAction = $nextAction
+                    Notes = "$($upstreamAudit.Notes) $($deltaPlan.Notes)".Trim()
+                } )
+        }
+    }
+
+    Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) | Out-Null
+    Assert-CurrentBranch -Expected "master" -Context "audit return to master"
+    Write-Step "Audit summary"
+    $auditSummary | Format-Table -AutoSize
+    Write-Host ""
+    Write-Host "[porting] audit mode completed. No branch recreation or queue replay steps were executed."
+    return
 }
-if( $baseQueue.Count -eq 0 ) {
-    Write-Host "[porting] WARNING: patchset queue is empty. No AOL commits will be replayed unless target-specific files are populated."
-}
+
+$script:baseQueue = @()
+$script:baseQueueLoaded = $false
 
 $summary = New-Object System.Collections.Generic.List[object]
 
@@ -439,234 +1136,142 @@ foreach( $target in $selectedTargets ) {
         New-Item -ItemType Directory -Path $targetRunDir -Force | Out-Null
     }
 
-    $applyMode = "cherry-pick"
+    $applyMode = "none"
     $nativeMergeApplied = $false
     $commitQueue = @()
+    $queueLabel = "none"
     $appliedCount = 0
     $applyOk = $true
     $codexUsedForApply = $false
     $failedCommit = ""
     $failureNotes = ""
+    $shouldApplyQueue = $false
+    $updateMasterDeltaState = $false
+    $masterDeltaSnapshot = ""
     $existingPortBranch = Test-RefExists -RefName "refs/heads/$($target.Branch)"
 
     if( $existingPortBranch ) {
         Invoke-External -FilePath "git" -Arguments @( "checkout", $target.Branch ) | Out-Null
-        $nativeMergeLog = Join-Path $targetRunDir "native-merge.log"
-        $nativeResult = Invoke-External -FilePath "git" -Arguments @( "merge", "--no-commit", "--no-ff", $target.UpstreamRef ) -IgnoreFailure
-        if( -not $DryRun ) {
-            $nativeResult.Output | Out-File -FilePath $nativeMergeLog -Encoding utf8
-        }
-        if( $nativeResult.ExitCode -eq 0 ) {
-            $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
-            if( $mergeHead ) {
-                $nativeCommit = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
-                if( $nativeCommit.ExitCode -eq 0 ) {
+        Assert-CurrentBranch -Expected $target.Branch -Context "native merge entry for $($target.Name)"
+        $upstreamStep = Invoke-NativeMergeStep -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $target.UpstreamRef -StepLabel "upstream" -TargetRunDir $targetRunDir
+        $codexUsedForApply = $codexUsedForApply -or $upstreamStep.CodexUsed
+        if( $upstreamStep.Success ) {
+            if( $MasterSyncMode -eq "native-merge" ) {
+                $masterStep = Invoke-NativeMergeStep -TargetName $target.Name -TargetBranch $target.Branch -SourceRef "master" -StepLabel "master" -TargetRunDir $targetRunDir
+                $codexUsedForApply = $codexUsedForApply -or $masterStep.CodexUsed
+                if( $masterStep.Success ) {
                     $nativeMergeApplied = $true
-                    $applyMode = "native-merge"
+                    $applyMode = "native-merge(upstream+master)"
                     if( $DryRun ) {
-                        Write-Host "[porting] native merge simulated for $($target.Name) (dry-run, not validated)"
+                        Write-Host "[porting] native merges simulated for $($target.Name) (upstream + master)"
                     } else {
-                        Write-Host "[porting] native merge succeeded for $($target.Name)"
+                        Write-Host "[porting] native merges completed for $($target.Name) (upstream + master)"
                     }
+                } else {
+                    $failureNotes = "$($masterStep.Notes)"
                 }
             } else {
-                $nativeMergeApplied = $true
-                $applyMode = "native-merge"
-                if( $DryRun ) {
-                    Write-Host "[porting] native merge simulated for $($target.Name) (already up to date)"
+                $deltaPlan = Get-MasterDeltaPlan -TargetName $target.Name -TargetBranch $target.Branch -MasterRef "master" -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
+                $commitQueue = @( $deltaPlan.Queue )
+                $queueLabel = "master-delta"
+                $applyMode = "upstream+master-delta"
+                $masterDeltaSnapshot = $deltaPlan.MasterSnapshot
+                $updateMasterDeltaState = $true
+                if( $commitQueue.Count -eq 0 ) {
+                    $nativeMergeApplied = $true
+                    Write-Host "[porting] master delta queue empty for $($target.Name): $($deltaPlan.Notes)"
                 } else {
-                    Write-Host "[porting] native merge up to date for $($target.Name)"
+                    $shouldApplyQueue = $true
+                    Write-Host "[porting] master delta queue for $($target.Name): $($commitQueue.Count) commits ($($deltaPlan.Notes))"
                 }
             }
         } else {
-            $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
-            if( $conflicts.Count -le $NativeMergeMaxConflicts ) {
-                $autoResolved = @( Resolve-AutoConflicts -ConflictPaths $conflicts -AutoPaths $AutoResolveOursPaths )
-                if( $autoResolved.Count -gt 0 ) {
-                    $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+            $failureNotes = "$($upstreamStep.Notes)"
+        }
+    } else {
+        $failureNotes = "Target branch '$($target.Branch)' does not exist."
+    }
+
+    $needsDestructiveFallback = -not $nativeMergeApplied -and -not $shouldApplyQueue
+    if( $needsDestructiveFallback ) {
+        $canDestructiveFallback = ( -not $existingPortBranch ) -or $AllowDestructiveFallback
+        if( -not $canDestructiveFallback ) {
+            $applyOk = $false
+            if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                $failureNotes = "Non-destructive path could not continue."
+            }
+            $failureNotes = "$failureNotes Destructive fallback disabled. Re-run with -AllowDestructiveFallback to recreate the branch."
+        } else {
+            if( $existingPortBranch ) {
+                $confirmed = Confirm-CherryPickFallback -TargetName $target.Name -TargetBranch $target.Branch -Reason $failureNotes
+                if( -not $confirmed ) {
+                    throw "Aborted by user before destructive fallback for target '$($target.Name)'."
                 }
-                if( $conflicts.Count -gt 0 -and $RunCodex ) {
-                    $promptFile = Join-Path $targetRunDir "codex-native-merge-prompt.md"
-                    $codexLogFile = Join-Path $targetRunDir "codex-native-merge.log"
-                    $lastMessageFile = Join-Path $targetRunDir "codex-native-merge-last-message.txt"
-                    $conflictText = [string]::Join( [Environment]::NewLine, $conflicts )
-                    $promptBody = @"
-You are on branch `$($target.Branch)` after trying to merge `$($target.UpstreamRef)` into this existing port branch.
-Resolve conflicts and preserve AOL behavior parity.
+            }
 
-Conflict files:
-$conflictText
+            # Reset failure reason; from this point failures should reflect fallback apply, not pre-fallback merge state.
+            $failureNotes = ""
+            Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) | Out-Null
+            Assert-CurrentBranch -Expected "master" -Context "fallback reset prelude for $($target.Name)"
 
-Requirements:
-1. Resolve this merge and finish with `git commit --no-edit`.
-2. Keep changes minimal and Linux-compatible.
-3. Summarize any manual decisions.
-"@
-                    New-CodexPromptFile -Path $promptFile -Title "Native merge fix for $($target.Name)" -Body $promptBody
-                    $codexUsedForApply = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
-                }
+            if( Test-RefExists -RefName "refs/heads/$($target.Branch)" ) {
+                Invoke-External -FilePath "git" -Arguments @( "branch", "-D", $target.Branch ) | Out-Null
+            }
 
-                $remaining = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
-                $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
-                if( $remaining.Count -eq 0 -and $mergeHead ) {
-                    $nativeCommit = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
-                    if( $nativeCommit.ExitCode -eq 0 ) {
-                        $nativeMergeApplied = $true
-                        $applyMode = "native-merge"
-                        if( $DryRun ) {
-                            Write-Host "[porting] native merge resolution simulated for $($target.Name) (dry-run, not validated)"
-                        } else {
-                            Write-Host "[porting] native merge resolved for $($target.Name)"
-                        }
+            Invoke-External -FilePath "git" -Arguments @( "checkout", "-B", $target.Branch, $target.UpstreamRef ) | Out-Null
+            Assert-CurrentBranch -Expected $target.Branch -Context "fallback branch recreate for $($target.Name)"
+            if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (baseline)" ) {
+                Write-Host "[porting] synced .gitignore from master (baseline)"
+            }
+
+            Ensure-BasePatchsetQueue
+            $targetQueue = New-Object System.Collections.Generic.List[string]
+            foreach( $sha in $script:baseQueue ) {
+                [void]$targetQueue.Add( $sha )
+            }
+            if( -not $NoTargetPatchsets ) {
+                $targetPatchset = Select-TargetPatchsetFile -RepoRoot $repoRoot -TargetName $target.Name
+                if( -not [string]::IsNullOrWhiteSpace( $targetPatchset ) ) {
+                    $targetPatchsetRel = "tools/porting/patchsets/$($target.Name).txt"
+                    $extraQueue = @( Read-CommitListFromRefPath -RefName "master" -RepoRelativePath $targetPatchsetRel )
+                    foreach( $sha in $extraQueue ) {
+                        [void]$targetQueue.Add( $sha )
                     }
-                } elseif( $remaining.Count -eq 0 -and -not $mergeHead ) {
-                    $nativeMergeApplied = $true
-                    $applyMode = "native-merge"
-                    if( $DryRun ) {
-                        Write-Host "[porting] native merge completion simulated for $($target.Name) (dry-run, not validated)"
-                    } else {
-                        Write-Host "[porting] native merge already completed for $($target.Name)"
-                    }
                 }
-                if( -not $nativeMergeApplied -and $mergeHead ) {
-                    Invoke-External -FilePath "git" -Arguments @( "merge", "--abort" ) -IgnoreFailure | Out-Null
+            }
+            $commitQueue = @( Get-UniqueOrdered -Items $targetQueue.ToArray() )
+            foreach( $sha in $commitQueue ) {
+                $exists = Invoke-External -FilePath "git" -Arguments @( "cat-file", "-e", "$sha^{commit}" ) -IgnoreFailure
+                if( $exists.ExitCode -ne 0 ) {
+                    throw "Invalid commit in patchset for target '$($target.Name)': $sha"
+                }
+            }
+            $queueLabel = "patchset"
+            $applyMode = "patchset-rebuild"
+            $shouldApplyQueue = $true
+        }
+    }
+
+    if( $applyOk -and $shouldApplyQueue ) {
+        $queueResult = Invoke-CherryPickQueue -TargetName $target.Name -TargetBranch $target.Branch -BaseRefForPrompt $target.UpstreamRef -CommitQueue $commitQueue -TargetRunDir $targetRunDir -QueueLabel $queueLabel
+        $applyOk = $queueResult.Success
+        $appliedCount = $queueResult.AppliedCount
+        $codexUsedForApply = $codexUsedForApply -or $queueResult.CodexUsed
+        $failedCommit = $queueResult.FailedCommit
+        if( -not $queueResult.Success ) {
+            if( [string]::IsNullOrWhiteSpace( $queueResult.FailureNotes ) ) {
+                if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                    $failureNotes = "Queue apply failed."
                 }
             } else {
-                $failureNotes = "Native merge conflicts exceed threshold ($($conflicts.Count) > $NativeMergeMaxConflicts); using cherry-pick fallback."
-                $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
-                if( $mergeHead ) {
-                    Invoke-External -FilePath "git" -Arguments @( "merge", "--abort" ) -IgnoreFailure | Out-Null
-                }
+                $failureNotes = $queueResult.FailureNotes
             }
         }
     }
 
-    if( -not $nativeMergeApplied ) {
-        Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) | Out-Null
-
-        if( Test-RefExists -RefName "refs/heads/$($target.Branch)" ) {
-            Invoke-External -FilePath "git" -Arguments @( "branch", "-D", $target.Branch ) | Out-Null
-        }
-
-        Invoke-External -FilePath "git" -Arguments @( "checkout", "-B", $target.Branch, $target.UpstreamRef ) | Out-Null
-        if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (baseline)" ) {
-            Write-Host "[porting] synced .gitignore from master (baseline)"
-        }
-
-        $targetQueue = New-Object System.Collections.Generic.List[string]
-        foreach( $sha in $baseQueue ) {
-            [void]$targetQueue.Add( $sha )
-        }
-        if( -not $NoTargetPatchsets ) {
-            $targetPatchset = Select-TargetPatchsetFile -RepoRoot $repoRoot -TargetName $target.Name
-            if( -not [string]::IsNullOrWhiteSpace( $targetPatchset ) ) {
-                $extraQueue = @( Read-CommitListFile -FilePath $targetPatchset )
-                foreach( $sha in $extraQueue ) {
-                    [void]$targetQueue.Add( $sha )
-                }
-            }
-        }
-        $commitQueue = @( Get-UniqueOrdered -Items $targetQueue.ToArray() )
-        foreach( $sha in $commitQueue ) {
-            $exists = Invoke-External -FilePath "git" -Arguments @( "cat-file", "-e", "$sha^{commit}" ) -IgnoreFailure
-            if( $exists.ExitCode -ne 0 ) {
-                throw "Invalid commit in patchset for target '$($target.Name)': $sha"
-            }
-        }
-
-        $queueFile = Join-Path $targetRunDir "commit-queue.txt"
-        if( -not $DryRun ) {
-            if( $commitQueue.Count -eq 0 ) {
-                "# no commits queued" | Out-File -FilePath $queueFile -Encoding utf8
-            } else {
-                $commitQueue | Out-File -FilePath $queueFile -Encoding utf8
-            }
-        }
-
-        $applyLogFile = Join-Path $targetRunDir "apply.log"
-
-        foreach( $sha in $commitQueue ) {
-            $pickArgs = @( "cherry-pick", "--allow-empty", "-x", $sha )
-            $pickResult = Invoke-External -FilePath "git" -Arguments $pickArgs -IgnoreFailure
-            if( -not $DryRun ) {
-                @(
-                    "## cherry-pick $sha"
-                    [string]::Join( [Environment]::NewLine, $pickResult.Output )
-                    ""
-                ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
-            }
-            if( $pickResult.ExitCode -eq 0 ) {
-                $appliedCount++
-                continue
-            }
-
-            $failedCommit = $sha
-            $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
-            $autoResolved = @( Resolve-AutoConflicts -ConflictPaths $conflicts -AutoPaths $AutoResolveOursPaths )
-            if( $autoResolved.Count -gt 0 ) {
-                $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
-                if( -not $DryRun ) {
-                    @(
-                        "auto_resolved_conflicts:"
-                        [string]::Join( ", ", $autoResolved )
-                        ""
-                    ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
-                }
-            }
-            if( $conflicts.Count -gt $MaxConflictFiles ) {
-                $failureNotes = "Conflict threshold exceeded ($($conflicts.Count) files > $MaxConflictFiles). Manual port required."
-                $applyOk = $false
-            } elseif( $RunCodex ) {
-                $shortSha = if( $sha.Length -gt 12 ) { $sha.Substring( 0, 12 ) } else { $sha }
-                $promptFile = Join-Path $targetRunDir "codex-apply-$shortSha-prompt.md"
-                $codexLogFile = Join-Path $targetRunDir "codex-apply-$shortSha.log"
-                $lastMessageFile = Join-Path $targetRunDir "codex-apply-$shortSha-last-message.txt"
-                $conflictText = if( $conflicts.Count -eq 0 ) { "(none listed)" } else { [string]::Join( [Environment]::NewLine, $conflicts ) }
-                $promptBody = @"
-You are on branch `$($target.Branch)` after cherry-picking commit `$sha` onto base `$($target.UpstreamRef)`.
-Cherry-pick failed and must be completed while preserving AOL LLM behavior parity.
-
-Conflict files:
-$conflictText
-
-Requirements:
-1. Resolve conflicts for this cherry-pick and run `git cherry-pick --continue`.
-2. Keep changes focused to AOL porting behavior parity.
-3. Do not run full builds yet; orchestrator will run builds after patchset replay.
-4. Summarize any manual decisions needed for future patchset curation.
-"@
-                New-CodexPromptFile -Path $promptFile -Title "Patchset apply fix for $($target.Name) $shortSha" -Body $promptBody
-                $codexUsedForApply = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
-            }
-
-            $remaining = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
-            $cherryPickHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "CHERRY_PICK_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
-            if( $remaining.Count -eq 0 -and $cherryPickHead ) {
-                $continueResult = Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--continue" ) -IgnoreFailure
-                if( $continueResult.ExitCode -eq 0 ) {
-                    $appliedCount++
-                    continue
-                }
-                $applyOk = $false
-                if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
-                    $failureNotes = "cherry-pick --continue failed for $sha"
-                }
-            } elseif( $remaining.Count -eq 0 -and -not $cherryPickHead ) {
-                # cherry-pick may have been completed manually by codex
-                $appliedCount++
-                continue
-            } else {
-                $applyOk = $false
-                if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
-                    $failureNotes = "Cherry-pick unresolved for $sha"
-                }
-            }
-
-            if( $cherryPickHead ) {
-                Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--abort" ) -IgnoreFailure | Out-Null
-            }
-            break
-        }
+    if( $applyOk -and $updateMasterDeltaState -and -not [string]::IsNullOrWhiteSpace( $masterDeltaSnapshot ) ) {
+        Set-MasterDeltaState -TargetName $target.Name -MasterSnapshot $masterDeltaSnapshot
+        Write-Host "[porting] updated master delta state for $($target.Name): $masterDeltaSnapshot"
     }
 
     if( -not $applyOk ) {
@@ -771,7 +1376,8 @@ Task:
         } )
 }
 
-Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) -IgnoreFailure | Out-Null
+Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) | Out-Null
+Assert-CurrentBranch -Expected "master" -Context "final return to master"
 
 Write-Step "Summary"
 $summary | Format-Table -AutoSize
