@@ -457,14 +457,25 @@ foreach( $target in $selectedTargets ) {
             $nativeResult.Output | Out-File -FilePath $nativeMergeLog -Encoding utf8
         }
         if( $nativeResult.ExitCode -eq 0 ) {
-            $nativeCommit = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
-            if( $nativeCommit.ExitCode -eq 0 ) {
+            $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+            if( $mergeHead ) {
+                $nativeCommit = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
+                if( $nativeCommit.ExitCode -eq 0 ) {
+                    $nativeMergeApplied = $true
+                    $applyMode = "native-merge"
+                    if( $DryRun ) {
+                        Write-Host "[porting] native merge simulated for $($target.Name) (dry-run, not validated)"
+                    } else {
+                        Write-Host "[porting] native merge succeeded for $($target.Name)"
+                    }
+                }
+            } else {
                 $nativeMergeApplied = $true
                 $applyMode = "native-merge"
                 if( $DryRun ) {
-                    Write-Host "[porting] native merge simulated for $($target.Name) (dry-run, not validated)"
+                    Write-Host "[porting] native merge simulated for $($target.Name) (already up to date)"
                 } else {
-                    Write-Host "[porting] native merge succeeded for $($target.Name)"
+                    Write-Host "[porting] native merge up to date for $($target.Name)"
                 }
             }
         } else {
