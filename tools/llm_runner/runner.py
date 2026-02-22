@@ -132,24 +132,35 @@ def load_pipeline(model_dir: str, device: str, cache_dir: str, max_prompt_len: i
 
     if cache_dir:
         os.makedirs(cache_dir, exist_ok=True)
+    is_cpu = device.upper() == "CPU"
+    use_cpu_fallback = not is_cpu
+    enable_cpu_fallback = "NO" if use_cpu_fallback else None
     try:
-        return ov_genai.LLMPipeline(
-            model_dir,
-            device,
-            MAX_PROMPT_LEN=max_prompt_len,
-            ENABLE_CPU_FALLBACK="NO",
-            CACHE_DIR=cache_dir or None,
-        )
+        kwargs = {}
+        if not is_cpu:
+            kwargs["MAX_PROMPT_LEN"] = max_prompt_len
+        if cache_dir:
+            kwargs["CACHE_DIR"] = cache_dir
+        if enable_cpu_fallback:
+            kwargs["ENABLE_CPU_FALLBACK"] = enable_cpu_fallback
+        if kwargs:
+            return ov_genai.LLMPipeline(model_dir, device, **kwargs)
+        return ov_genai.LLMPipeline(model_dir, device)
     except TypeError:
-        config = {"MAX_PROMPT_LEN": max_prompt_len}
+        config = {}
+        if not is_cpu:
+            config["MAX_PROMPT_LEN"] = max_prompt_len
         if cache_dir:
             config["CACHE_DIR"] = cache_dir
-        return ov_genai.LLMPipeline(
-            model_dir,
-            device,
-            config,
-            ENABLE_CPU_FALLBACK="NO",
-        )
+        if enable_cpu_fallback:
+            config["ENABLE_CPU_FALLBACK"] = enable_cpu_fallback
+        if config:
+            return ov_genai.LLMPipeline(
+                model_dir,
+                device,
+                config,
+            )
+        return ov_genai.LLMPipeline(model_dir, device)
 
 
 def build_tokenizer(model_dir: str):
@@ -374,7 +385,7 @@ def run_api_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int
     api_key = ""
     if args.api_key_env:
         api_key = os.environ.get(args.api_key_env, "")
-        if not api_key:
+        if args.use_api and not api_key:
             print(f"API key env var not set: {args.api_key_env}", file=sys.stderr)
             return 1
 
