@@ -14,6 +14,8 @@ param(
     [string]$PatchsetCommitRange = "",
     [string[]]$PatchsetPathFilter = @(),
     [int]$MaxConflictFiles = 100,
+    [int]$NativeMergeMaxConflicts = 25,
+    [string[]]$BackupDiffIgnorePaths = @( "Plan.md" ),
     [string[]]$AutoResolveOursPaths = @(
         "Plan.md",
         "README.md",
@@ -49,6 +51,7 @@ function Invoke-External {
                 "status" { $isReadOnlyInDryRun = $true }
                 "show-ref" { $isReadOnlyInDryRun = $true }
                 "log" { $isReadOnlyInDryRun = $true }
+                "for-each-ref" { $isReadOnlyInDryRun = $true }
                 "rev-list" { $isReadOnlyInDryRun = $true }
                 "cat-file" { $isReadOnlyInDryRun = $true }
                 "diff" { $isReadOnlyInDryRun = $true }
@@ -381,11 +384,36 @@ foreach( $target in $selectedTargets ) {
 }
 
 if( -not $NoBackup ) {
-    Write-Step "Creating backup branch from master"
-    $backupBase = "backup/master-pre-port-$runStamp"
-    $backupBranch = Resolve-BackupBranchName -BaseName $backupBase
-    Invoke-External -FilePath "git" -Arguments @( "branch", $backupBranch, "master" ) | Out-Null
-    Write-Host "[porting] backup branch created: $backupBranch"
+    Write-Step "Checking backup branch reuse"
+    $reusedBackup = ""
+    $backupRefs = @(
+        @( ( Invoke-External -FilePath "git" -Arguments @( "for-each-ref", "refs/heads/backup/master-pre-port-*", "--format=%(refname:short)" ) ).Output ) |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -ne "" }
+    )
+    foreach( $backupRef in $backupRefs ) {
+        $changedPaths = @(
+            @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "$backupRef..master" ) ).Output ) |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -ne "" }
+        )
+        $meaningfulDiff = @(
+            $changedPaths | Where-Object { $BackupDiffIgnorePaths -notcontains $_ }
+        )
+        if( $meaningfulDiff.Count -eq 0 ) {
+            $reusedBackup = $backupRef
+            break
+        }
+    }
+    if( -not [string]::IsNullOrWhiteSpace( $reusedBackup ) ) {
+        Write-Host "[porting] backup branch reused: $reusedBackup"
+    } else {
+        Write-Step "Creating backup branch from master"
+        $backupBase = "backup/master-pre-port-$runStamp"
+        $backupBranch = Resolve-BackupBranchName -BaseName $backupBase
+        Invoke-External -FilePath "git" -Arguments @( "branch", $backupBranch, "master" ) | Out-Null
+        Write-Host "[porting] backup branch created: $backupBranch"
+    }
 }
 
 $baseQueue = @()
@@ -411,92 +439,179 @@ foreach( $target in $selectedTargets ) {
         New-Item -ItemType Directory -Path $targetRunDir -Force | Out-Null
     }
 
-    Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) | Out-Null
-
-    if( Test-RefExists -RefName "refs/heads/$($target.Branch)" ) {
-        Invoke-External -FilePath "git" -Arguments @( "branch", "-D", $target.Branch ) | Out-Null
-    }
-
-    Invoke-External -FilePath "git" -Arguments @( "checkout", "-B", $target.Branch, $target.UpstreamRef ) | Out-Null
-    if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (baseline)" ) {
-        Write-Host "[porting] synced .gitignore from master (baseline)"
-    }
-
-    $targetQueue = New-Object System.Collections.Generic.List[string]
-    foreach( $sha in $baseQueue ) {
-        [void]$targetQueue.Add( $sha )
-    }
-    if( -not $NoTargetPatchsets ) {
-        $targetPatchset = Select-TargetPatchsetFile -RepoRoot $repoRoot -TargetName $target.Name
-        if( -not [string]::IsNullOrWhiteSpace( $targetPatchset ) ) {
-            $extraQueue = @( Read-CommitListFile -FilePath $targetPatchset )
-            foreach( $sha in $extraQueue ) {
-                [void]$targetQueue.Add( $sha )
-            }
-        }
-    }
-    $commitQueue = @( Get-UniqueOrdered -Items $targetQueue.ToArray() )
-    foreach( $sha in $commitQueue ) {
-        $exists = Invoke-External -FilePath "git" -Arguments @( "cat-file", "-e", "$sha^{commit}" ) -IgnoreFailure
-        if( $exists.ExitCode -ne 0 ) {
-            throw "Invalid commit in patchset for target '$($target.Name)': $sha"
-        }
-    }
-
-    $queueFile = Join-Path $targetRunDir "commit-queue.txt"
-    if( -not $DryRun ) {
-        if( $commitQueue.Count -eq 0 ) {
-            "# no commits queued" | Out-File -FilePath $queueFile -Encoding utf8
-        } else {
-            $commitQueue | Out-File -FilePath $queueFile -Encoding utf8
-        }
-    }
-
-    $applyLogFile = Join-Path $targetRunDir "apply.log"
+    $applyMode = "cherry-pick"
+    $nativeMergeApplied = $false
+    $commitQueue = @()
     $appliedCount = 0
     $applyOk = $true
     $codexUsedForApply = $false
     $failedCommit = ""
     $failureNotes = ""
+    $existingPortBranch = Test-RefExists -RefName "refs/heads/$($target.Branch)"
 
-    foreach( $sha in $commitQueue ) {
-        $pickArgs = @( "cherry-pick", "--allow-empty", "-x", $sha )
-        $pickResult = Invoke-External -FilePath "git" -Arguments $pickArgs -IgnoreFailure
+    if( $existingPortBranch ) {
+        Invoke-External -FilePath "git" -Arguments @( "checkout", $target.Branch ) | Out-Null
+        $nativeMergeLog = Join-Path $targetRunDir "native-merge.log"
+        $nativeResult = Invoke-External -FilePath "git" -Arguments @( "merge", "--no-commit", "--no-ff", $target.UpstreamRef ) -IgnoreFailure
         if( -not $DryRun ) {
-            @(
-                "## cherry-pick $sha"
-                [string]::Join( [Environment]::NewLine, $pickResult.Output )
-                ""
-            ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
+            $nativeResult.Output | Out-File -FilePath $nativeMergeLog -Encoding utf8
         }
-        if( $pickResult.ExitCode -eq 0 ) {
-            $appliedCount++
-            continue
+        if( $nativeResult.ExitCode -eq 0 ) {
+            $nativeCommit = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
+            if( $nativeCommit.ExitCode -eq 0 ) {
+                $nativeMergeApplied = $true
+                $applyMode = "native-merge"
+                if( $DryRun ) {
+                    Write-Host "[porting] native merge simulated for $($target.Name) (dry-run, not validated)"
+                } else {
+                    Write-Host "[porting] native merge succeeded for $($target.Name)"
+                }
+            }
+        } else {
+            $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+            if( $conflicts.Count -le $NativeMergeMaxConflicts ) {
+                $autoResolved = @( Resolve-AutoConflicts -ConflictPaths $conflicts -AutoPaths $AutoResolveOursPaths )
+                if( $autoResolved.Count -gt 0 ) {
+                    $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+                }
+                if( $conflicts.Count -gt 0 -and $RunCodex ) {
+                    $promptFile = Join-Path $targetRunDir "codex-native-merge-prompt.md"
+                    $codexLogFile = Join-Path $targetRunDir "codex-native-merge.log"
+                    $lastMessageFile = Join-Path $targetRunDir "codex-native-merge-last-message.txt"
+                    $conflictText = [string]::Join( [Environment]::NewLine, $conflicts )
+                    $promptBody = @"
+You are on branch `$($target.Branch)` after trying to merge `$($target.UpstreamRef)` into this existing port branch.
+Resolve conflicts and preserve AOL behavior parity.
+
+Conflict files:
+$conflictText
+
+Requirements:
+1. Resolve this merge and finish with `git commit --no-edit`.
+2. Keep changes minimal and Linux-compatible.
+3. Summarize any manual decisions.
+"@
+                    New-CodexPromptFile -Path $promptFile -Title "Native merge fix for $($target.Name)" -Body $promptBody
+                    $codexUsedForApply = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
+                }
+
+                $remaining = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+                $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+                if( $remaining.Count -eq 0 -and $mergeHead ) {
+                    $nativeCommit = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit" ) -IgnoreFailure
+                    if( $nativeCommit.ExitCode -eq 0 ) {
+                        $nativeMergeApplied = $true
+                        $applyMode = "native-merge"
+                        if( $DryRun ) {
+                            Write-Host "[porting] native merge resolution simulated for $($target.Name) (dry-run, not validated)"
+                        } else {
+                            Write-Host "[porting] native merge resolved for $($target.Name)"
+                        }
+                    }
+                } elseif( $remaining.Count -eq 0 -and -not $mergeHead ) {
+                    $nativeMergeApplied = $true
+                    $applyMode = "native-merge"
+                    if( $DryRun ) {
+                        Write-Host "[porting] native merge completion simulated for $($target.Name) (dry-run, not validated)"
+                    } else {
+                        Write-Host "[porting] native merge already completed for $($target.Name)"
+                    }
+                }
+                if( -not $nativeMergeApplied -and $mergeHead ) {
+                    Invoke-External -FilePath "git" -Arguments @( "merge", "--abort" ) -IgnoreFailure | Out-Null
+                }
+            } else {
+                $failureNotes = "Native merge conflicts exceed threshold ($($conflicts.Count) > $NativeMergeMaxConflicts); using cherry-pick fallback."
+                $mergeHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "MERGE_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+                if( $mergeHead ) {
+                    Invoke-External -FilePath "git" -Arguments @( "merge", "--abort" ) -IgnoreFailure | Out-Null
+                }
+            }
+        }
+    }
+
+    if( -not $nativeMergeApplied ) {
+        Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) | Out-Null
+
+        if( Test-RefExists -RefName "refs/heads/$($target.Branch)" ) {
+            Invoke-External -FilePath "git" -Arguments @( "branch", "-D", $target.Branch ) | Out-Null
         }
 
-        $failedCommit = $sha
-        $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
-        $autoResolved = @( Resolve-AutoConflicts -ConflictPaths $conflicts -AutoPaths $AutoResolveOursPaths )
-        if( $autoResolved.Count -gt 0 ) {
-            $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+        Invoke-External -FilePath "git" -Arguments @( "checkout", "-B", $target.Branch, $target.UpstreamRef ) | Out-Null
+        if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (baseline)" ) {
+            Write-Host "[porting] synced .gitignore from master (baseline)"
+        }
+
+        $targetQueue = New-Object System.Collections.Generic.List[string]
+        foreach( $sha in $baseQueue ) {
+            [void]$targetQueue.Add( $sha )
+        }
+        if( -not $NoTargetPatchsets ) {
+            $targetPatchset = Select-TargetPatchsetFile -RepoRoot $repoRoot -TargetName $target.Name
+            if( -not [string]::IsNullOrWhiteSpace( $targetPatchset ) ) {
+                $extraQueue = @( Read-CommitListFile -FilePath $targetPatchset )
+                foreach( $sha in $extraQueue ) {
+                    [void]$targetQueue.Add( $sha )
+                }
+            }
+        }
+        $commitQueue = @( Get-UniqueOrdered -Items $targetQueue.ToArray() )
+        foreach( $sha in $commitQueue ) {
+            $exists = Invoke-External -FilePath "git" -Arguments @( "cat-file", "-e", "$sha^{commit}" ) -IgnoreFailure
+            if( $exists.ExitCode -ne 0 ) {
+                throw "Invalid commit in patchset for target '$($target.Name)': $sha"
+            }
+        }
+
+        $queueFile = Join-Path $targetRunDir "commit-queue.txt"
+        if( -not $DryRun ) {
+            if( $commitQueue.Count -eq 0 ) {
+                "# no commits queued" | Out-File -FilePath $queueFile -Encoding utf8
+            } else {
+                $commitQueue | Out-File -FilePath $queueFile -Encoding utf8
+            }
+        }
+
+        $applyLogFile = Join-Path $targetRunDir "apply.log"
+
+        foreach( $sha in $commitQueue ) {
+            $pickArgs = @( "cherry-pick", "--allow-empty", "-x", $sha )
+            $pickResult = Invoke-External -FilePath "git" -Arguments $pickArgs -IgnoreFailure
             if( -not $DryRun ) {
                 @(
-                    "auto_resolved_conflicts:"
-                    [string]::Join( ", ", $autoResolved )
+                    "## cherry-pick $sha"
+                    [string]::Join( [Environment]::NewLine, $pickResult.Output )
                     ""
                 ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
             }
-        }
-        if( $conflicts.Count -gt $MaxConflictFiles ) {
-            $failureNotes = "Conflict threshold exceeded ($($conflicts.Count) files > $MaxConflictFiles). Manual port required."
-            $applyOk = $false
-        } elseif( $RunCodex ) {
-            $shortSha = if( $sha.Length -gt 12 ) { $sha.Substring( 0, 12 ) } else { $sha }
-            $promptFile = Join-Path $targetRunDir "codex-apply-$shortSha-prompt.md"
-            $codexLogFile = Join-Path $targetRunDir "codex-apply-$shortSha.log"
-            $lastMessageFile = Join-Path $targetRunDir "codex-apply-$shortSha-last-message.txt"
-            $conflictText = if( $conflicts.Count -eq 0 ) { "(none listed)" } else { [string]::Join( [Environment]::NewLine, $conflicts ) }
-            $promptBody = @"
+            if( $pickResult.ExitCode -eq 0 ) {
+                $appliedCount++
+                continue
+            }
+
+            $failedCommit = $sha
+            $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+            $autoResolved = @( Resolve-AutoConflicts -ConflictPaths $conflicts -AutoPaths $AutoResolveOursPaths )
+            if( $autoResolved.Count -gt 0 ) {
+                $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+                if( -not $DryRun ) {
+                    @(
+                        "auto_resolved_conflicts:"
+                        [string]::Join( ", ", $autoResolved )
+                        ""
+                    ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
+                }
+            }
+            if( $conflicts.Count -gt $MaxConflictFiles ) {
+                $failureNotes = "Conflict threshold exceeded ($($conflicts.Count) files > $MaxConflictFiles). Manual port required."
+                $applyOk = $false
+            } elseif( $RunCodex ) {
+                $shortSha = if( $sha.Length -gt 12 ) { $sha.Substring( 0, 12 ) } else { $sha }
+                $promptFile = Join-Path $targetRunDir "codex-apply-$shortSha-prompt.md"
+                $codexLogFile = Join-Path $targetRunDir "codex-apply-$shortSha.log"
+                $lastMessageFile = Join-Path $targetRunDir "codex-apply-$shortSha-last-message.txt"
+                $conflictText = if( $conflicts.Count -eq 0 ) { "(none listed)" } else { [string]::Join( [Environment]::NewLine, $conflicts ) }
+                $promptBody = @"
 You are on branch `$($target.Branch)` after cherry-picking commit `$sha` onto base `$($target.UpstreamRef)`.
 Cherry-pick failed and must be completed while preserving AOL LLM behavior parity.
 
@@ -509,37 +624,38 @@ Requirements:
 3. Do not run full builds yet; orchestrator will run builds after patchset replay.
 4. Summarize any manual decisions needed for future patchset curation.
 "@
-            New-CodexPromptFile -Path $promptFile -Title "Patchset apply fix for $($target.Name) $shortSha" -Body $promptBody
-            $codexUsedForApply = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
-        }
+                New-CodexPromptFile -Path $promptFile -Title "Patchset apply fix for $($target.Name) $shortSha" -Body $promptBody
+                $codexUsedForApply = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
+            }
 
-        $remaining = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
-        $cherryPickHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "CHERRY_PICK_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
-        if( $remaining.Count -eq 0 -and $cherryPickHead ) {
-            $continueResult = Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--continue" ) -IgnoreFailure
-            if( $continueResult.ExitCode -eq 0 ) {
+            $remaining = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
+            $cherryPickHead = ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", "-q", "CHERRY_PICK_HEAD" ) -IgnoreFailure ).ExitCode -eq 0
+            if( $remaining.Count -eq 0 -and $cherryPickHead ) {
+                $continueResult = Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--continue" ) -IgnoreFailure
+                if( $continueResult.ExitCode -eq 0 ) {
+                    $appliedCount++
+                    continue
+                }
+                $applyOk = $false
+                if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                    $failureNotes = "cherry-pick --continue failed for $sha"
+                }
+            } elseif( $remaining.Count -eq 0 -and -not $cherryPickHead ) {
+                # cherry-pick may have been completed manually by codex
                 $appliedCount++
                 continue
+            } else {
+                $applyOk = $false
+                if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                    $failureNotes = "Cherry-pick unresolved for $sha"
+                }
             }
-            $applyOk = $false
-            if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
-                $failureNotes = "cherry-pick --continue failed for $sha"
-            }
-        } elseif( $remaining.Count -eq 0 -and -not $cherryPickHead ) {
-            # cherry-pick may have been completed manually by codex
-            $appliedCount++
-            continue
-        } else {
-            $applyOk = $false
-            if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
-                $failureNotes = "Cherry-pick unresolved for $sha"
-            }
-        }
 
-        if( $cherryPickHead ) {
-            Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--abort" ) -IgnoreFailure | Out-Null
+            if( $cherryPickHead ) {
+                Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--abort" ) -IgnoreFailure | Out-Null
+            }
+            break
         }
-        break
     }
 
     if( -not $applyOk ) {
@@ -554,7 +670,7 @@ Requirements:
                 Apply = "FAILED"
                 CodexApply = $( if( $codexUsedForApply ) { "USED" } else { "NO" } )
                 Build = "SKIPPED"
-                Notes = "$( $failureNotes ) See $targetRunDir"
+                Notes = "$( $failureNotes ) Strategy: $applyMode. See $targetRunDir"
             } )
         continue
     }
@@ -621,15 +737,26 @@ Task:
         }
     }
 
+    $applyStatus = if( $DryRun ) { "DRYRUN" } else { "OK" }
+    if( $DryRun ) {
+        $windowsBuild = "DRYRUN"
+        $linuxBuild = "DRYRUN"
+        $buildNotes = if( [string]::IsNullOrWhiteSpace( $buildNotes ) ) {
+            "Dry-run: merge/apply/build steps are simulated only."
+        } else {
+            "$buildNotes; Dry-run: merge/apply/build steps are simulated only."
+        }
+    }
+
     [void]$summary.Add( [PSCustomObject]@{
             Target = $target.Name
             Branch = $target.Branch
             Queue = $commitQueue.Count
             Applied = $appliedCount
-            Apply = "OK"
+            Apply = $applyStatus
             CodexApply = $( if( $codexUsedForApply ) { "USED" } else { "NO" } )
             Build = "$( $windowsBuild )/$( $linuxBuild )"
-            Notes = $buildNotes
+            Notes = if( [string]::IsNullOrWhiteSpace( $buildNotes ) ) { "Strategy: $applyMode" } else { "$buildNotes; Strategy: $applyMode" }
         } )
 }
 
