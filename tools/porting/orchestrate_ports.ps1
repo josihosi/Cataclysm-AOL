@@ -69,6 +69,9 @@ Maximum delta queue size before AOL lane falls back to patchset queue.
 .PARAMETER AolDeltaPatchsetInflationRatio
 Fallback to patchset when delta queue is this many times larger than patchset queue.
 
+.PARAMETER AolSkipDeltaTargets
+Targets that skip expensive AOL delta scanning and directly use patchset queue.
+
 .PARAMETER AolSourceRef
 Source ref for CAOL lane. Defaults to `master`, later can be switched to `port/cdda-master`.
 
@@ -198,6 +201,7 @@ param(
     [int]$AolDeltaMaxQueue = 250,
     [ValidateRange( 1, 1000 )]
     [int]$AolDeltaPatchsetInflationRatio = 5,
+    [string[]]$AolSkipDeltaTargets = @( "ctlg-master" ),
     [switch]$AllowDestructiveFallback,
     [string]$CtglRemoteUrl = "https://github.com/Cataclysm-TLG/Cataclysm-TLG.git",
     [string]$CodexModel = "",
@@ -315,7 +319,7 @@ function Invoke-External {
         $ErrorActionPreference = $previousErrorAction
     }
     if( $exitCode -ne 0 -and -not $IgnoreFailure ) {
-        $rendered = [string]::Join( [Environment]::NewLine, $output )
+        $rendered = if( $null -eq $output ) { "" } else { [string]::Join( [Environment]::NewLine, $output ) }
         throw "Command failed ($exitCode): $FilePath $($Arguments -join ' ')`n$rendered"
     }
     $normalizedOutput = if( $null -eq $output ) {
@@ -780,10 +784,20 @@ function Test-CommitObjectExists {
     return $probe.ExitCode -eq 0
 }
 
+function Test-CommitIsAncestorOfBranch {
+    param(
+        [Parameter(Mandatory = $true)] [string]$CommitSha,
+        [Parameter(Mandatory = $true)] [string]$BranchRef
+    )
+    $probe = Invoke-External -FilePath "git" -Arguments @( "merge-base", "--is-ancestor", $CommitSha, $BranchRef ) -IgnoreFailure
+    return $probe.ExitCode -eq 0
+}
+
 function Get-AolPatchsetPlan {
     param(
         [Parameter(Mandatory = $true)] [string]$TargetName,
-        [Parameter(Mandatory = $true)] [string]$SourceRef
+        [Parameter(Mandatory = $true)] [string]$SourceRef,
+        [Parameter(Mandatory = $true)] [string]$TargetBranch
     )
 
     $baseQueue = @()
@@ -805,16 +819,23 @@ function Get-AolPatchsetPlan {
 
     $combined = @( Get-UniqueOrdered -Items ( $baseQueue + $targetOverlay ) )
     $valid = New-Object System.Collections.Generic.List[string]
+    $pending = New-Object System.Collections.Generic.List[string]
     $invalidCount = 0
+    $alreadyPresentCount = 0
     foreach( $sha in $combined ) {
         if( Test-CommitObjectExists -CommitSha $sha ) {
             [void]$valid.Add( $sha )
+            if( Test-CommitIsAncestorOfBranch -CommitSha $sha -BranchRef $TargetBranch ) {
+                $alreadyPresentCount++
+            } else {
+                [void]$pending.Add( $sha )
+            }
         } else {
             $invalidCount++
         }
     }
 
-    $notes = "source=$sourceLabel base=$($baseQueue.Count) overlay=$($targetOverlay.Count) unique=$($combined.Count) invalid=$invalidCount"
+    $notes = "source=$sourceLabel base=$($baseQueue.Count) overlay=$($targetOverlay.Count) unique=$($combined.Count) invalid=$invalidCount alreadyPresent=$alreadyPresentCount pending=$($pending.Count)"
     if( $NoTargetPatchsets ) {
         $notes = "$notes overlay=disabled"
     } elseif( $targetOverlayPath -ne "" ) {
@@ -823,8 +844,10 @@ function Get-AolPatchsetPlan {
 
     return [PSCustomObject]@{
         Queue = @( $valid.ToArray() )
+        PendingQueue = @( $pending.ToArray() )
         RawCount = $combined.Count
         InvalidCount = $invalidCount
+        AlreadyPresentCount = $alreadyPresentCount
         Source = "patchset"
         Notes = $notes
     }
@@ -839,23 +862,30 @@ function Select-AolQueuePlan {
         [string[]]$IgnorePathGlobs = @()
     )
 
-    $deltaPlan = Get-MasterDeltaPlan -TargetBranch $TargetBranch -MasterRef $SourceRef -PathFilter $PathFilter -IgnorePathGlobs $IgnorePathGlobs
-    $patchsetPlan = Get-AolPatchsetPlan -TargetName $TargetName -SourceRef $SourceRef
+    $patchsetPlan = Get-AolPatchsetPlan -TargetName $TargetName -SourceRef $SourceRef -TargetBranch $TargetBranch
+    $patchsetPendingArray = @( $patchsetPlan.PendingQueue )
+    $deltaCount = -1
+    $deltaNotes = "delta-skipped"
 
-    # Build a patch-equivalent "missing from target" set using all source commits.
-    $deltaAllPlan = Get-MasterDeltaPlan -TargetBranch $TargetBranch -MasterRef $SourceRef -PathFilter @() -IgnorePathGlobs @()
-    $pendingSet = New-Object "System.Collections.Generic.HashSet[string]"
-    foreach( $sha in $deltaAllPlan.Queue ) {
-        [void]$pendingSet.Add( $sha )
-    }
-
-    $patchsetPending = New-Object System.Collections.Generic.List[string]
-    foreach( $sha in $patchsetPlan.Queue ) {
-        if( $pendingSet.Contains( $sha ) ) {
-            [void]$patchsetPending.Add( $sha )
+    $skipDelta = $AolSkipDeltaTargets -contains $TargetName
+    if( $skipDelta -and $patchsetPendingArray.Count -gt 0 ) {
+        return [PSCustomObject]@{
+            Queue = @( $patchsetPendingArray )
+            QueueLabel = "aol-patchset"
+            Source = "patchset"
+            Notes = "$($patchsetPlan.Notes); deltaSkippedForTarget=$TargetName"
+            SelectionReason = "skip-delta-target"
+            DeltaCount = $deltaCount
+            DeltaNotes = $deltaNotes
+            PatchsetCount = $patchsetPlan.Queue.Count
+            PatchsetPendingCount = $patchsetPendingArray.Count
+            PatchsetNotes = $patchsetPlan.Notes
         }
     }
-    $patchsetPendingArray = @( $patchsetPending.ToArray() )
+
+    $deltaPlan = Get-MasterDeltaPlan -TargetBranch $TargetBranch -MasterRef $SourceRef -PathFilter $PathFilter -IgnorePathGlobs $IgnorePathGlobs
+    $deltaCount = $deltaPlan.Queue.Count
+    $deltaNotes = $deltaPlan.Notes
 
     $selectedQueue = @( $deltaPlan.Queue )
     $selectedLabel = "aol-delta"
@@ -863,10 +893,16 @@ function Select-AolQueuePlan {
     $selectedNotes = $deltaPlan.Notes
     $selectionReason = "delta-default"
 
-    if( $patchsetPendingArray.Count -gt 0 -and $deltaPlan.Queue.Count -gt 0 ) {
+    if( $patchsetPendingArray.Count -gt 0 ) {
         $ratioExceeded = $deltaPlan.Queue.Count -gt ( $patchsetPendingArray.Count * $AolDeltaPatchsetInflationRatio )
         $maxExceeded = $deltaPlan.Queue.Count -gt $AolDeltaMaxQueue
-        if( $maxExceeded -or $ratioExceeded ) {
+        if( $deltaPlan.Queue.Count -eq 0 ) {
+            $selectedQueue = $patchsetPendingArray
+            $selectedLabel = "aol-patchset"
+            $selectedSource = "patchset"
+            $selectionReason = "delta-empty-patchset-pending"
+            $selectedNotes = "$($patchsetPlan.Notes); fallbackReason=$selectionReason"
+        } elseif( $maxExceeded -or $ratioExceeded ) {
             $selectedQueue = $patchsetPendingArray
             $selectedLabel = "aol-patchset"
             $selectedSource = "patchset"
@@ -878,11 +914,11 @@ function Select-AolQueuePlan {
                 [void]$reasons.Add( "delta>$AolDeltaPatchsetInflationRatio x patchsetPending" )
             }
             $selectionReason = [string]::Join( ",", $reasons )
-            $selectedNotes = "$($patchsetPlan.Notes); pending=$($patchsetPendingArray.Count); fallbackReason=$selectionReason"
+            $selectedNotes = "$($patchsetPlan.Notes); fallbackReason=$selectionReason"
         }
-    } elseif( $patchsetPendingArray.Count -eq 0 -and $deltaPlan.Queue.Count -gt 0 ) {
+    } elseif( $deltaPlan.Queue.Count -gt 0 ) {
         $selectionReason = "patchset-empty-using-delta"
-    } elseif( $deltaPlan.Queue.Count -eq 0 ) {
+    } else {
         $selectionReason = "delta-empty"
     }
 
@@ -1269,7 +1305,7 @@ if( $script:IsAuditMode ) {
                 $aolNativeAudit = Invoke-NativeMergeAuditStep -SourceRef $AolSourceRef -StepLabel "aol-native"
                 $aolNativeConflicts = $aolNativeAudit.ConflictCount
                 $aolQueuePlan = Select-AolQueuePlan -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
-                $aolDeltaQueue = $aolQueuePlan.DeltaCount
+                $aolDeltaQueue = if( $aolQueuePlan.DeltaCount -lt 0 ) { "SKIPPED" } else { $aolQueuePlan.DeltaCount }
                 $aolPatchsetPending = $aolQueuePlan.PatchsetPendingCount
                 $aolQueue = $aolQueuePlan.Queue.Count
                 $aolQueueSource = $aolQueuePlan.Source
@@ -1394,7 +1430,8 @@ foreach( $target in $selectedTargets ) {
                 Write-Host "[porting] AOL queue empty for $($target.Name): $($aolQueuePlan.Notes)"
             } else {
                 $shouldApplyQueue = $true
-                Write-Host "[porting] AOL queue for $($target.Name): selected=$($commitQueue.Count) source=$($aolQueuePlan.Source) delta=$($aolQueuePlan.DeltaCount) patchsetPending=$($aolQueuePlan.PatchsetPendingCount) ($($aolQueuePlan.Notes))"
+                $deltaDisplay = if( $aolQueuePlan.DeltaCount -lt 0 ) { "SKIPPED" } else { [string]$aolQueuePlan.DeltaCount }
+                Write-Host "[porting] AOL queue for $($target.Name): selected=$($commitQueue.Count) source=$($aolQueuePlan.Source) delta=$deltaDisplay patchsetPending=$($aolQueuePlan.PatchsetPendingCount) ($($aolQueuePlan.Notes))"
             }
         }
     }
@@ -1443,7 +1480,8 @@ foreach( $target in $selectedTargets ) {
                     Write-Host "[porting] AOL queue empty after reset for $($target.Name): $($aolQueuePlan.Notes)"
                 } else {
                     $shouldApplyQueue = $true
-                    Write-Host "[porting] AOL queue after reset for $($target.Name): selected=$($commitQueue.Count) source=$($aolQueuePlan.Source) delta=$($aolQueuePlan.DeltaCount) patchsetPending=$($aolQueuePlan.PatchsetPendingCount) ($($aolQueuePlan.Notes))"
+                    $deltaDisplay = if( $aolQueuePlan.DeltaCount -lt 0 ) { "SKIPPED" } else { [string]$aolQueuePlan.DeltaCount }
+                    Write-Host "[porting] AOL queue after reset for $($target.Name): selected=$($commitQueue.Count) source=$($aolQueuePlan.Source) delta=$deltaDisplay patchsetPending=$($aolQueuePlan.PatchsetPendingCount) ($($aolQueuePlan.Notes))"
                 }
             } else {
                 $nativeMergeApplied = $true
