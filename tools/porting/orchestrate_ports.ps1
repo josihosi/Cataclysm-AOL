@@ -63,6 +63,12 @@ Optional path filters for CAOL delta-cherry-pick commit selection.
 .PARAMETER MasterDeltaIgnorePathGlobs
 Commits whose changed files all match these globs are skipped in delta-cherry-pick mode.
 
+.PARAMETER AolDeltaMaxQueue
+Maximum delta queue size before AOL lane falls back to patchset queue.
+
+.PARAMETER AolDeltaPatchsetInflationRatio
+Fallback to patchset when delta queue is this many times larger than patchset queue.
+
 .PARAMETER AolSourceRef
 Source ref for CAOL lane. Defaults to `master`, later can be switched to `port/cdda-master`.
 
@@ -142,6 +148,10 @@ Merge upstream into port/cdda-master, then replay only missing master commits.
 .EXAMPLE
 .\tools\porting\orchestrate_ports.ps1 -Targets cdda-master -MasterSyncMode native-merge -AllowDestructiveFallback
 Use legacy native master merge path and permit destructive fallback when required.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -AuditMode -AolDeltaMaxQueue 120 -AolDeltaPatchsetInflationRatio 4
+Audit with stricter AOL delta->patchset fallback thresholds.
 #>
 [CmdletBinding()]
 param(
@@ -184,6 +194,10 @@ param(
         ".gitignore",
         "tools/porting/*"
     ),
+    [ValidateRange( 1, 200000 )]
+    [int]$AolDeltaMaxQueue = 250,
+    [ValidateRange( 1, 1000 )]
+    [int]$AolDeltaPatchsetInflationRatio = 5,
     [switch]$AllowDestructiveFallback,
     [string]$CtglRemoteUrl = "https://github.com/Cataclysm-TLG/Cataclysm-TLG.git",
     [string]$CodexModel = "",
@@ -351,18 +365,6 @@ function Resolve-BackupBranchName {
     return $candidate
 }
 
-function Read-CommitListFile {
-    param( [Parameter(Mandatory = $true)] [string]$FilePath )
-    if( -not ( Test-Path -LiteralPath $FilePath ) ) {
-        return @()
-    }
-    return @(
-        ( Get-Content -Path $FilePath ) |
-        ForEach-Object { $_.Trim() } |
-        Where-Object { $_ -ne "" -and -not $_.StartsWith( "#" ) }
-    )
-}
-
 function Read-CommitListFromRefPath {
     param(
         [Parameter(Mandatory = $true)] [string]$RefName,
@@ -378,18 +380,6 @@ function Read-CommitListFromRefPath {
         ForEach-Object { $_.Trim() } |
         Where-Object { $_ -ne "" -and -not $_.StartsWith( "#" ) }
     )
-}
-
-function Select-TargetPatchsetFile {
-    param(
-        [Parameter(Mandatory = $true)] [string]$RepoRoot,
-        [Parameter(Mandatory = $true)] [string]$TargetName
-    )
-    $candidate = Join-Path $RepoRoot ( Join-Path "tools/porting/patchsets" ( "$TargetName.txt" ) )
-    if( Test-Path -LiteralPath $candidate ) {
-        return "tools/porting/patchsets/$TargetName.txt"
-    }
-    return ""
 }
 
 function Resolve-CommitRangeList {
@@ -411,24 +401,6 @@ function Resolve-CommitRangeList {
         @( ( Invoke-External -FilePath "git" -Arguments $args.ToArray() ).Output ) |
         Where-Object { $_ -ne "" }
     )
-}
-
-function Ensure-BasePatchsetQueue {
-    if( $script:baseQueueLoaded ) {
-        return
-    }
-    Write-Step "Building patchset queue"
-    if( -not [string]::IsNullOrWhiteSpace( $PatchsetCommitRange ) ) {
-        $script:baseQueue = @( Resolve-CommitRangeList -RangeSpec $PatchsetCommitRange -Paths $PatchsetPathFilter )
-        Write-Host "[porting] patchset source: commit range $PatchsetCommitRange ($($script:baseQueue.Count) commits)"
-    } else {
-        $script:baseQueue = @( Read-CommitListFromRefPath -RefName "master" -RepoRelativePath $PatchsetFile )
-        Write-Host "[porting] patchset source: master:$PatchsetFile ($($script:baseQueue.Count) commits)"
-    }
-    if( $script:baseQueue.Count -eq 0 ) {
-        Write-Host "[porting] WARNING: patchset queue is empty. No AOL commits will be replayed unless target-specific files are populated."
-    }
-    $script:baseQueueLoaded = $true
 }
 
 function Get-UniqueOrdered {
@@ -743,13 +715,6 @@ function Should-SkipMasterDeltaCommit {
     return $true
 }
 
-function Get-MasterDeltaStateRefName {
-    param(
-        [Parameter(Mandatory = $true)] [string]$TargetName
-    )
-    return "refs/port-sync/master/$TargetName"
-}
-
 function Get-MasterDeltaPlan {
     param(
         [Parameter(Mandatory = $true)] [string]$TargetBranch,
@@ -806,17 +771,132 @@ function Get-MasterDeltaPlan {
     }
 }
 
-function Set-MasterDeltaState {
+function Test-CommitObjectExists {
+    param(
+        [Parameter(Mandatory = $true)] [string]$CommitSha
+    )
+    $probe = Invoke-External -FilePath "git" -Arguments @( "cat-file", "-e", "$CommitSha^{commit}" ) -IgnoreFailure
+    return $probe.ExitCode -eq 0
+}
+
+function Get-AolPatchsetPlan {
     param(
         [Parameter(Mandatory = $true)] [string]$TargetName,
-        [Parameter(Mandatory = $true)] [string]$MasterSnapshot
+        [Parameter(Mandatory = $true)] [string]$SourceRef
     )
-    $stateRef = Get-MasterDeltaStateRefName -TargetName $TargetName
-    if( $DryRun ) {
-        Write-Host "DRY-RUN: git update-ref $stateRef $MasterSnapshot"
-        return
+
+    $baseQueue = @()
+    $sourceLabel = ""
+    if( -not [string]::IsNullOrWhiteSpace( $PatchsetCommitRange ) ) {
+        $baseQueue = @( Resolve-CommitRangeList -RangeSpec $PatchsetCommitRange -Paths $PatchsetPathFilter )
+        $sourceLabel = "range:$PatchsetCommitRange"
+    } else {
+        $baseQueue = @( Read-CommitListFromRefPath -RefName $SourceRef -RepoRelativePath $PatchsetFile )
+        $sourceLabel = "$SourceRef`:$PatchsetFile"
     }
-    Invoke-External -FilePath "git" -Arguments @( "update-ref", $stateRef, $MasterSnapshot ) | Out-Null
+
+    $targetOverlay = @()
+    $targetOverlayPath = ""
+    if( -not $NoTargetPatchsets ) {
+        $targetOverlayPath = "tools/porting/patchsets/$TargetName.txt"
+        $targetOverlay = @( Read-CommitListFromRefPath -RefName $SourceRef -RepoRelativePath $targetOverlayPath )
+    }
+
+    $combined = @( Get-UniqueOrdered -Items ( $baseQueue + $targetOverlay ) )
+    $valid = New-Object System.Collections.Generic.List[string]
+    $invalidCount = 0
+    foreach( $sha in $combined ) {
+        if( Test-CommitObjectExists -CommitSha $sha ) {
+            [void]$valid.Add( $sha )
+        } else {
+            $invalidCount++
+        }
+    }
+
+    $notes = "source=$sourceLabel base=$($baseQueue.Count) overlay=$($targetOverlay.Count) unique=$($combined.Count) invalid=$invalidCount"
+    if( $NoTargetPatchsets ) {
+        $notes = "$notes overlay=disabled"
+    } elseif( $targetOverlayPath -ne "" ) {
+        $notes = "$notes overlayPath=$targetOverlayPath"
+    }
+
+    return [PSCustomObject]@{
+        Queue = @( $valid.ToArray() )
+        RawCount = $combined.Count
+        InvalidCount = $invalidCount
+        Source = "patchset"
+        Notes = $notes
+    }
+}
+
+function Select-AolQueuePlan {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName,
+        [Parameter(Mandatory = $true)] [string]$TargetBranch,
+        [Parameter(Mandatory = $true)] [string]$SourceRef,
+        [string[]]$PathFilter = @(),
+        [string[]]$IgnorePathGlobs = @()
+    )
+
+    $deltaPlan = Get-MasterDeltaPlan -TargetBranch $TargetBranch -MasterRef $SourceRef -PathFilter $PathFilter -IgnorePathGlobs $IgnorePathGlobs
+    $patchsetPlan = Get-AolPatchsetPlan -TargetName $TargetName -SourceRef $SourceRef
+
+    # Build a patch-equivalent "missing from target" set using all source commits.
+    $deltaAllPlan = Get-MasterDeltaPlan -TargetBranch $TargetBranch -MasterRef $SourceRef -PathFilter @() -IgnorePathGlobs @()
+    $pendingSet = New-Object "System.Collections.Generic.HashSet[string]"
+    foreach( $sha in $deltaAllPlan.Queue ) {
+        [void]$pendingSet.Add( $sha )
+    }
+
+    $patchsetPending = New-Object System.Collections.Generic.List[string]
+    foreach( $sha in $patchsetPlan.Queue ) {
+        if( $pendingSet.Contains( $sha ) ) {
+            [void]$patchsetPending.Add( $sha )
+        }
+    }
+    $patchsetPendingArray = @( $patchsetPending.ToArray() )
+
+    $selectedQueue = @( $deltaPlan.Queue )
+    $selectedLabel = "aol-delta"
+    $selectedSource = "delta"
+    $selectedNotes = $deltaPlan.Notes
+    $selectionReason = "delta-default"
+
+    if( $patchsetPendingArray.Count -gt 0 -and $deltaPlan.Queue.Count -gt 0 ) {
+        $ratioExceeded = $deltaPlan.Queue.Count -gt ( $patchsetPendingArray.Count * $AolDeltaPatchsetInflationRatio )
+        $maxExceeded = $deltaPlan.Queue.Count -gt $AolDeltaMaxQueue
+        if( $maxExceeded -or $ratioExceeded ) {
+            $selectedQueue = $patchsetPendingArray
+            $selectedLabel = "aol-patchset"
+            $selectedSource = "patchset"
+            $reasons = New-Object System.Collections.Generic.List[string]
+            if( $maxExceeded ) {
+                [void]$reasons.Add( "delta>$AolDeltaMaxQueue" )
+            }
+            if( $ratioExceeded ) {
+                [void]$reasons.Add( "delta>$AolDeltaPatchsetInflationRatio x patchsetPending" )
+            }
+            $selectionReason = [string]::Join( ",", $reasons )
+            $selectedNotes = "$($patchsetPlan.Notes); pending=$($patchsetPendingArray.Count); fallbackReason=$selectionReason"
+        }
+    } elseif( $patchsetPendingArray.Count -eq 0 -and $deltaPlan.Queue.Count -gt 0 ) {
+        $selectionReason = "patchset-empty-using-delta"
+    } elseif( $deltaPlan.Queue.Count -eq 0 ) {
+        $selectionReason = "delta-empty"
+    }
+
+    return [PSCustomObject]@{
+        Queue = @( $selectedQueue )
+        QueueLabel = $selectedLabel
+        Source = $selectedSource
+        Notes = $selectedNotes
+        SelectionReason = $selectionReason
+        DeltaCount = $deltaPlan.Queue.Count
+        DeltaNotes = $deltaPlan.Notes
+        PatchsetCount = $patchsetPlan.Queue.Count
+        PatchsetPendingCount = $patchsetPendingArray.Count
+        PatchsetNotes = $patchsetPlan.Notes
+    }
 }
 
 function Invoke-CherryPickQueue {
@@ -1145,7 +1225,10 @@ if( $script:IsAuditMode ) {
                     UpstreamConflicts = "-"
                     UpstreamRoute = "missing-branch"
                     AolNativeConflicts = "-"
+                    AolDeltaQueue = "-"
+                    AolPatchsetPending = "-"
                     AolQueue = "-"
+                    AolQueueSource = "-"
                     PlannedRoute = "bootstrap-required"
                     Notes = "Target branch does not exist."
                 } )
@@ -1174,26 +1257,33 @@ if( $script:IsAuditMode ) {
         }
 
         $aolNativeConflicts = "-"
+        $aolDeltaQueue = "-"
+        $aolPatchsetPending = "-"
         $aolQueue = "-"
+        $aolQueueSource = "-"
         $plannedRoute = $upstreamRoute
         $aolNotes = ""
         if( $script:RunAolLane ) {
             $aolNativeAudit = Invoke-NativeMergeAuditStep -SourceRef $AolSourceRef -StepLabel "aol-native"
             $aolNativeConflicts = $aolNativeAudit.ConflictCount
-            $deltaPlan = Get-MasterDeltaPlan -TargetBranch $target.Branch -MasterRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
-            $aolQueue = $deltaPlan.Queue.Count
+            $aolQueuePlan = Select-AolQueuePlan -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
+            $aolDeltaQueue = $aolQueuePlan.DeltaCount
+            $aolPatchsetPending = $aolQueuePlan.PatchsetPendingCount
+            $aolQueue = $aolQueuePlan.Queue.Count
+            $aolQueueSource = $aolQueuePlan.Source
             if( -not $basisUsable -and $script:RunUpstreamLane ) {
                 $plannedRoute = "$upstreamRoute -> blocked"
-            } elseif( $deltaPlan.Queue.Count -eq 0 ) {
+            } elseif( $aolQueue -eq 0 ) {
                 $plannedRoute = if( $script:RunUpstreamLane ) { "upstream-only" } else { "aol-up-to-date" }
             } else {
                 if( $MasterSyncMode -eq "native-merge" -and $aolNativeAudit.Success ) {
                     $plannedRoute = if( $script:RunUpstreamLane ) { "upstream + aol-native" } else { "aol-native" }
                 } else {
-                    $plannedRoute = if( $script:RunUpstreamLane ) { "upstream + aol-queue" } else { "aol-queue" }
+                    $queueRouteTag = if( $aolQueuePlan.Source -eq "patchset" ) { "aol-patchset" } else { "aol-delta" }
+                    $plannedRoute = if( $script:RunUpstreamLane ) { "upstream + $queueRouteTag" } else { $queueRouteTag }
                 }
             }
-            $aolNotes = "$($aolNativeAudit.Notes) $($deltaPlan.Notes)".Trim()
+            $aolNotes = "$($aolNativeAudit.Notes) delta=$aolDeltaQueue patchsetPending=$aolPatchsetPending selected=$aolQueue source=$aolQueueSource reason=$($aolQueuePlan.SelectionReason) $($aolQueuePlan.Notes)".Trim()
         }
 
         [void]$auditSummary.Add( [PSCustomObject]@{
@@ -1202,7 +1292,10 @@ if( $script:IsAuditMode ) {
                 UpstreamConflicts = $upstreamConflicts
                 UpstreamRoute = $upstreamRoute
                 AolNativeConflicts = $aolNativeConflicts
+                AolDeltaQueue = $aolDeltaQueue
+                AolPatchsetPending = $aolPatchsetPending
                 AolQueue = $aolQueue
+                AolQueueSource = $aolQueueSource
                 PlannedRoute = $plannedRoute
                 Notes = "$upstreamNotes $aolNotes".Trim()
             } )
@@ -1216,9 +1309,6 @@ if( $script:IsAuditMode ) {
     Write-Host "[porting] audit mode completed. No branch recreation or queue replay steps were executed."
     return
 }
-
-$script:baseQueue = @()
-$script:baseQueueLoaded = $false
 
 $summary = New-Object System.Collections.Generic.List[object]
 
@@ -1285,16 +1375,17 @@ foreach( $target in $selectedTargets ) {
         }
 
         if( -not $aolNativeMerged ) {
-            $deltaPlan = Get-MasterDeltaPlan -TargetBranch $target.Branch -MasterRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
-            $commitQueue = @( $deltaPlan.Queue )
-            $queueLabel = "aol-delta"
-            $applyMode = if( $script:RunUpstreamLane ) { "upstream+aol-delta" } else { "aol-delta-only" }
+            $aolQueuePlan = Select-AolQueuePlan -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
+            $commitQueue = @( $aolQueuePlan.Queue )
+            $queueLabel = $aolQueuePlan.QueueLabel
+            $queueModeTag = if( $aolQueuePlan.Source -eq "patchset" ) { "aol-patchset" } else { "aol-delta" }
+            $applyMode = if( $script:RunUpstreamLane ) { "upstream+$queueModeTag" } else { "$queueModeTag-only" }
             if( $commitQueue.Count -eq 0 ) {
                 $nativeMergeApplied = $true
-                Write-Host "[porting] AOL delta queue empty for $($target.Name): $($deltaPlan.Notes)"
+                Write-Host "[porting] AOL queue empty for $($target.Name): $($aolQueuePlan.Notes)"
             } else {
                 $shouldApplyQueue = $true
-                Write-Host "[porting] AOL delta queue for $($target.Name): $($commitQueue.Count) commits ($($deltaPlan.Notes))"
+                Write-Host "[porting] AOL queue for $($target.Name): selected=$($commitQueue.Count) source=$($aolQueuePlan.Source) delta=$($aolQueuePlan.DeltaCount) patchsetPending=$($aolQueuePlan.PatchsetPendingCount) ($($aolQueuePlan.Notes))"
             }
         }
     }
@@ -1333,16 +1424,17 @@ foreach( $target in $selectedTargets ) {
             $upstreamReady = $true
 
             if( $script:RunAolLane ) {
-                $deltaPlan = Get-MasterDeltaPlan -TargetBranch $target.Branch -MasterRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
-                $commitQueue = @( $deltaPlan.Queue )
-                $queueLabel = "aol-delta"
-                $applyMode = "upstream-reset+aol-delta"
+                $aolQueuePlan = Select-AolQueuePlan -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
+                $commitQueue = @( $aolQueuePlan.Queue )
+                $queueLabel = $aolQueuePlan.QueueLabel
+                $queueModeTag = if( $aolQueuePlan.Source -eq "patchset" ) { "aol-patchset" } else { "aol-delta" }
+                $applyMode = "upstream-reset+$queueModeTag"
                 if( $commitQueue.Count -eq 0 ) {
                     $nativeMergeApplied = $true
-                    Write-Host "[porting] AOL delta queue empty after reset for $($target.Name): $($deltaPlan.Notes)"
+                    Write-Host "[porting] AOL queue empty after reset for $($target.Name): $($aolQueuePlan.Notes)"
                 } else {
                     $shouldApplyQueue = $true
-                    Write-Host "[porting] AOL delta queue after reset for $($target.Name): $($commitQueue.Count) commits ($($deltaPlan.Notes))"
+                    Write-Host "[porting] AOL queue after reset for $($target.Name): selected=$($commitQueue.Count) source=$($aolQueuePlan.Source) delta=$($aolQueuePlan.DeltaCount) patchsetPending=$($aolQueuePlan.PatchsetPendingCount) ($($aolQueuePlan.Notes))"
                 }
             } else {
                 $nativeMergeApplied = $true
