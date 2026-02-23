@@ -21,6 +21,16 @@ Port targets to process. Allowed values: cdda-master, cdda-0.H, cdda-0.I, ctlg-m
 .PARAMETER RunCodex
 Enable Codex-assisted conflict/build fixes when automatic resolution is insufficient.
 
+.PARAMETER NoCodex
+Disable Codex-assisted conflict/build fixes. Codex is enabled by default.
+
+.PARAMETER Mode
+Execution mode:
+- FullPort: run upstream lane and CAOL lane.
+- UpstreamPort: run only upstream lane.
+- CAOLPort: run only CAOL lane.
+- Audit: report both lanes and planned route, no writes.
+
 .PARAMETER SkipBuild
 Skip Windows/Linux build steps after merge/apply.
 
@@ -38,19 +48,23 @@ Simulate write operations. Useful for previewing actions and flow.
 Note: merge/apply/build outcomes are simulated and reported as DRYRUN.
 
 .PARAMETER AuditMode
-Run non-destructive audit for upstream merge and selected master-sync strategy.
+Compatibility alias for `-Mode Audit`.
+Run non-destructive audit for upstream merge and selected CAOL sync strategy.
 Does not recreate branches, does not cherry-pick, and does not build.
 
 .PARAMETER MasterSyncMode
-Master sync strategy after upstream merge:
+CAOL sync strategy after upstream merge:
 - delta-cherry-pick (default): replay only missing master commits.
 - native-merge: perform native merge from master.
 
 .PARAMETER MasterDeltaPathFilter
-Optional path filters for delta-cherry-pick commit selection.
+Optional path filters for CAOL delta-cherry-pick commit selection.
 
 .PARAMETER MasterDeltaIgnorePathGlobs
 Commits whose changed files all match these globs are skipped in delta-cherry-pick mode.
+
+.PARAMETER AolSourceRef
+Source ref for CAOL lane. Defaults to `master`, later can be switched to `port/cdda-master`.
 
 .PARAMETER AllowDestructiveFallback
 Allow deleting/recreating existing port branches when non-destructive path cannot continue.
@@ -98,6 +112,18 @@ Process only cdda-master, skip build steps, and skip backup handling.
 Run one target with Codex conflict/build assistance.
 
 .EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -Mode FullPort -Targets cdda-master
+Run both lanes (upstream + CAOL) for cdda-master.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -Mode UpstreamPort -Targets cdda-0.H,cdda-0.I
+Run only upstream lane for 0.H and 0.I targets.
+
+.EXAMPLE
+.\tools\porting\orchestrate_ports.ps1 -Mode CAOLPort -AolSourceRef master -Targets cdda-0.H
+Run only CAOL lane from master for cdda-0.H.
+
+.EXAMPLE
 .\tools\porting\orchestrate_ports.ps1 -Targets cdda-master -PatchsetCommitRange 1234abcd..89ef0123
 Use a commit-range queue instead of the patchset file.
 
@@ -121,15 +147,34 @@ Use legacy native master merge path and permit destructive fallback when require
 param(
     [string[]]$Targets = @( "cdda-master", "cdda-0.H", "cdda-0.I", "ctlg-master" ),
     [switch]$RunCodex,
+    [switch]$NoCodex,
+    [ValidateSet( "FullPort", "UpstreamPort", "CAOLPort", "Audit" )]
+    [string]$Mode = "FullPort",
     [switch]$SkipBuild,
     [switch]$NoFetch,
     [switch]$NoBackup,
     [switch]$AllowDirty,
     [switch]$DryRun,
     [switch]$AuditMode,
+    [string]$AolSourceRef = "master",
     [ValidateSet( "delta-cherry-pick", "native-merge" )]
     [string]$MasterSyncMode = "delta-cherry-pick",
-    [string[]]$MasterDeltaPathFilter = @(),
+    [string[]]$MasterDeltaPathFilter = @(
+        "src/do_turn.cpp",
+        "src/llm_intent.cpp",
+        "src/llm_intent.h",
+        "src/map.cpp",
+        "src/npc.cpp",
+        "src/npc.h",
+        "src/npcmove.cpp",
+        "src/npctalk.cpp",
+        "src/npctalk_rules.cpp",
+        "src/options.cpp",
+        "src/options.h",
+        "tools/llm_runner/background_summarizer.py",
+        "tools/llm_runner/prompt_playground.py",
+        "tools/llm_runner/runner.py"
+    ),
     [string[]]$MasterDeltaIgnorePathGlobs = @(
         "Plan.md",
         "README.md",
@@ -162,6 +207,23 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+if( $RunCodex -and $NoCodex ) {
+    throw "Specify either -RunCodex or -NoCodex, not both."
+}
+
+if( $AuditMode ) {
+    $Mode = "Audit"
+}
+
+$script:RunUpstreamLane = $Mode -in @( "FullPort", "UpstreamPort", "Audit" )
+$script:RunAolLane = $Mode -in @( "FullPort", "CAOLPort", "Audit" )
+$script:IsAuditMode = $Mode -eq "Audit"
+$script:RunCodexEnabled = -not $NoCodex
+
+if( -not $script:RunUpstreamLane -and -not $script:RunAolLane ) {
+    throw "Mode '$Mode' selects no execution lanes."
+}
 
 function Write-Step {
     param( [string]$Message )
@@ -420,6 +482,51 @@ function Sync-GitignoreFromMaster {
     return $true
 }
 
+function Sync-OrchestratorFilesFromMaster {
+    param(
+        [Parameter(Mandatory = $true)] [string]$CommitMessage,
+        [string[]]$Paths = @(
+            "tools/porting/orchestrate_ports.ps1",
+            "tools/porting/README.md",
+            "tools/porting/PORTING_CONTEXT.md",
+            "tools/porting/patchsets/common.txt",
+            "tools/porting/patchsets/cdda-master.txt",
+            "tools/porting/patchsets/cdda-0.H.txt",
+            "tools/porting/patchsets/cdda-0.I.txt",
+            "tools/porting/patchsets/ctlg-master.txt"
+        )
+    )
+    $existing = New-Object System.Collections.Generic.List[string]
+    foreach( $path in $Paths ) {
+        $probe = Invoke-External -FilePath "git" -Arguments @( "show", "master:$path" ) -IgnoreFailure
+        if( $probe.ExitCode -eq 0 ) {
+            [void]$existing.Add( $path )
+        }
+    }
+    if( $existing.Count -eq 0 ) {
+        return $false
+    }
+    $syncPaths = $existing.ToArray()
+    $checkoutArgs = @( "checkout", "master", "--" ) + $syncPaths
+    $addArgs = @( "add", "--" ) + $syncPaths
+    Invoke-External -FilePath "git" -Arguments $checkoutArgs | Out-Null
+    Invoke-External -FilePath "git" -Arguments $addArgs | Out-Null
+    $diffArgs = New-Object System.Collections.Generic.List[string]
+    [void]$diffArgs.Add( "diff" )
+    [void]$diffArgs.Add( "--cached" )
+    [void]$diffArgs.Add( "--quiet" )
+    [void]$diffArgs.Add( "--" )
+    foreach( $path in $syncPaths ) {
+        [void]$diffArgs.Add( $path )
+    }
+    $diffResult = Invoke-External -FilePath "git" -Arguments $diffArgs.ToArray() -IgnoreFailure
+    if( $diffResult.ExitCode -eq 0 ) {
+        return $false
+    }
+    Invoke-External -FilePath "git" -Arguments @( "commit", "-m", $CommitMessage ) | Out-Null
+    return $true
+}
+
 function Invoke-NativeMergeStep {
     param(
         [Parameter(Mandatory = $true)] [string]$TargetName,
@@ -481,7 +588,7 @@ function Invoke-NativeMergeStep {
         $conflicts = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--name-only", "--diff-filter=U" ) ).Output )
     }
 
-    if( $conflicts.Count -gt 0 -and $RunCodex ) {
+    if( $conflicts.Count -gt 0 -and $script:RunCodexEnabled ) {
         $promptFile = Join-Path $TargetRunDir "codex-$safeLabel-merge-prompt.md"
         $codexLogFile = Join-Path $TargetRunDir "codex-$safeLabel-merge.log"
         $lastMessageFile = Join-Path $TargetRunDir "codex-$safeLabel-merge-last-message.txt"
@@ -645,7 +752,6 @@ function Get-MasterDeltaStateRefName {
 
 function Get-MasterDeltaPlan {
     param(
-        [Parameter(Mandatory = $true)] [string]$TargetName,
         [Parameter(Mandatory = $true)] [string]$TargetBranch,
         [Parameter(Mandatory = $true)] [string]$MasterRef,
         [string[]]$PathFilter = @(),
@@ -654,63 +760,26 @@ function Get-MasterDeltaPlan {
 
     $masterSnapshot = @( ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", $MasterRef ) ).Output )[-1].Trim()
     if( [string]::IsNullOrWhiteSpace( $masterSnapshot ) ) {
-        throw "Could not resolve master snapshot for '$MasterRef'."
+        throw "Could not resolve source snapshot for '$MasterRef'."
     }
 
-    $stateRef = Get-MasterDeltaStateRefName -TargetName $TargetName
-    $stateSha = ""
-    if( Test-RefExists -RefName $stateRef ) {
-        $stateSha = @( ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", $stateRef ) ).Output )[-1].Trim()
-    }
-
-    $source = ""
-    $queue = @()
-    if( -not [string]::IsNullOrWhiteSpace( $stateSha ) ) {
-        $ancestorProbe = Invoke-External -FilePath "git" -Arguments @( "merge-base", "--is-ancestor", $stateSha, $masterSnapshot ) -IgnoreFailure
-        if( $ancestorProbe.ExitCode -eq 0 ) {
-            $args = New-Object System.Collections.Generic.List[string]
-            [void]$args.Add( "rev-list" )
-            [void]$args.Add( "--reverse" )
-            [void]$args.Add( "$stateSha..$masterSnapshot" )
-            if( $PathFilter.Count -gt 0 ) {
-                [void]$args.Add( "--" )
-                foreach( $path in $PathFilter ) {
-                    [void]$args.Add( $path )
-                }
-            }
-            $queue = @(
-                @( ( Invoke-External -FilePath "git" -Arguments $args.ToArray() ).Output ) |
-                ForEach-Object { $_.Trim() } |
-                Where-Object { $_ -ne "" }
-            )
-            $source = "state-ref"
+    $args = New-Object System.Collections.Generic.List[string]
+    [void]$args.Add( "rev-list" )
+    [void]$args.Add( "--reverse" )
+    [void]$args.Add( "--cherry-pick" )
+    [void]$args.Add( "--right-only" )
+    [void]$args.Add( "$TargetBranch...$masterSnapshot" )
+    if( $PathFilter.Count -gt 0 ) {
+        [void]$args.Add( "--" )
+        foreach( $path in $PathFilter ) {
+            [void]$args.Add( $path )
         }
     }
-
-    if( [string]::IsNullOrWhiteSpace( $source ) ) {
-        $args = New-Object System.Collections.Generic.List[string]
-        [void]$args.Add( "rev-list" )
-        [void]$args.Add( "--reverse" )
-        [void]$args.Add( "--cherry-pick" )
-        [void]$args.Add( "--right-only" )
-        [void]$args.Add( "$TargetBranch...$masterSnapshot" )
-        if( $PathFilter.Count -gt 0 ) {
-            [void]$args.Add( "--" )
-            foreach( $path in $PathFilter ) {
-                [void]$args.Add( $path )
-            }
-        }
-        $queue = @(
-            @( ( Invoke-External -FilePath "git" -Arguments $args.ToArray() ).Output ) |
-            ForEach-Object { $_.Trim() } |
-            Where-Object { $_ -ne "" }
-        )
-        if( [string]::IsNullOrWhiteSpace( $stateSha ) ) {
-            $source = "cherry-no-state"
-        } else {
-            $source = "cherry-state-stale"
-        }
-    }
+    $queue = @(
+        @( ( Invoke-External -FilePath "git" -Arguments $args.ToArray() ).Output ) |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -ne "" }
+    )
 
     $filtered = New-Object System.Collections.Generic.List[string]
     $skippedByIgnore = 0
@@ -730,12 +799,10 @@ function Get-MasterDeltaPlan {
     return [PSCustomObject]@{
         Queue = @( $filteredArray )
         MasterSnapshot = $masterSnapshot
-        StateRef = $stateRef
-        StateSha = $stateSha
-        Source = $source
+        Source = "direct-cherry"
         RawCount = $queue.Count
         SkippedByIgnore = $skippedByIgnore
-        Notes = "source=$source raw=$($queue.Count) skippedByIgnore=$skippedByIgnore final=$($filtered.Count)"
+        Notes = "source=direct-cherry raw=$($queue.Count) skippedByIgnore=$skippedByIgnore final=$($filtered.Count)"
     }
 }
 
@@ -811,7 +878,7 @@ function Invoke-CherryPickQueue {
         if( $conflicts.Count -gt $MaxConflictFiles ) {
             $failureNotes = "Conflict threshold exceeded ($($conflicts.Count) files > $MaxConflictFiles). Manual port required."
             $applyOk = $false
-        } elseif( $RunCodex ) {
+        } elseif( $script:RunCodexEnabled ) {
             $shortSha = if( $sha.Length -gt 12 ) { $sha.Substring( 0, 12 ) } else { $sha }
             $promptFile = Join-Path $TargetRunDir "codex-apply-$QueueLabel-$shortSha-prompt.md"
             $codexLogFile = Join-Path $TargetRunDir "codex-apply-$QueueLabel-$shortSha.log"
@@ -901,12 +968,12 @@ function Invoke-CodexExec {
         [Parameter(Mandatory = $true)] [string]$LastMessageFile,
         [Parameter(Mandatory = $true)] [string]$RepoRootPath
     )
-    if( -not $RunCodex ) {
+    if( -not $script:RunCodexEnabled ) {
         return $false
     }
     $codexCmd = Get-Command codex -ErrorAction SilentlyContinue
     if( $null -eq $codexCmd ) {
-        throw "RunCodex was requested, but `codex` is not available in PATH."
+        throw "Codex is enabled but `codex` is not available in PATH. Re-run with -NoCodex, or install codex."
     }
     $args = New-Object System.Collections.Generic.List[string]
     [void]$args.Add( "exec" )
@@ -985,6 +1052,7 @@ Write-Step "Preflight checks"
 if( $currentBranch -ne "master" ) {
     throw "This orchestrator must be started on branch 'master'. Current branch: '$currentBranch'."
 }
+Write-Host "[porting] mode: $Mode (upstream-lane=$script:RunUpstreamLane, aol-lane=$script:RunAolLane, codex=$script:RunCodexEnabled)"
 
 $dirty = @( ( Invoke-External -FilePath "git" -Arguments @( "status", "--porcelain" ) ).Output )
 if( $dirty.Count -gt 0 -and -not $AllowDirty ) {
@@ -1024,6 +1092,13 @@ foreach( $target in $selectedTargets ) {
     }
 }
 
+if( $script:RunAolLane ) {
+    $aolProbe = Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", $AolSourceRef ) -IgnoreFailure
+    if( $aolProbe.ExitCode -ne 0 ) {
+        throw "Missing AOL source ref: $AolSourceRef"
+    }
+}
+
 if( -not $NoBackup ) {
     Write-Step "Checking backup branch reuse"
     $reusedBackup = ""
@@ -1057,8 +1132,8 @@ if( -not $NoBackup ) {
     }
 }
 
-if( $AuditMode ) {
-    Write-Step "Audit mode: strategy '$MasterSyncMode'"
+if( $script:IsAuditMode ) {
+    Write-Step "Audit mode (mode=$Mode, aol-source=$AolSourceRef, strategy=$MasterSyncMode)"
     $auditSummary = New-Object System.Collections.Generic.List[object]
     foreach( $target in $selectedTargets ) {
         Write-Step "Audit target: $($target.Name)"
@@ -1068,8 +1143,10 @@ if( $AuditMode ) {
                     Target = $target.Name
                     Branch = $target.Branch
                     UpstreamConflicts = "-"
-                    MasterStage = "-"
-                    NextAction = "bootstrap-required"
+                    UpstreamRoute = "missing-branch"
+                    AolNativeConflicts = "-"
+                    AolQueue = "-"
+                    PlannedRoute = "bootstrap-required"
                     Notes = "Target branch does not exist."
                 } )
             continue
@@ -1077,42 +1154,58 @@ if( $AuditMode ) {
 
         Invoke-External -FilePath "git" -Arguments @( "checkout", $target.Branch ) | Out-Null
         Assert-CurrentBranch -Expected $target.Branch -Context "audit merge scan for $($target.Name)"
-        $upstreamAudit = Invoke-NativeMergeAuditStep -SourceRef $target.UpstreamRef -StepLabel "upstream"
-        if( -not $upstreamAudit.Success ) {
-            [void]$auditSummary.Add( [PSCustomObject]@{
-                    Target = $target.Name
-                    Branch = $target.Branch
-                    UpstreamConflicts = $upstreamAudit.ConflictCount
-                    MasterStage = "skipped"
-                    NextAction = "fix-upstream"
-                    Notes = $upstreamAudit.Notes
-                } )
-            continue
+
+        $upstreamConflicts = "-"
+        $upstreamRoute = "skipped"
+        $upstreamNotes = ""
+        $basisUsable = $true
+        if( $script:RunUpstreamLane ) {
+            $upstreamAudit = Invoke-NativeMergeAuditStep -SourceRef $target.UpstreamRef -StepLabel "upstream"
+            $upstreamConflicts = $upstreamAudit.ConflictCount
+            if( $upstreamAudit.Success ) {
+                $upstreamRoute = "native"
+            } elseif( $upstreamAudit.ConflictCount -le $NativeMergeMaxConflicts ) {
+                $upstreamRoute = "native+codex"
+            } else {
+                $upstreamRoute = "reset-required"
+            }
+            $upstreamNotes = $upstreamAudit.Notes
+            $basisUsable = $upstreamAudit.Success -or ( $upstreamAudit.ConflictCount -le $NativeMergeMaxConflicts )
         }
 
-        if( $MasterSyncMode -eq "native-merge" ) {
-            $masterAudit = Invoke-NativeMergeAuditStep -SourceRef "master" -StepLabel "master"
-            $nextAction = if( $masterAudit.Success ) { "native-merge-ready" } else { "manual-or-fallback" }
-            [void]$auditSummary.Add( [PSCustomObject]@{
-                    Target = $target.Name
-                    Branch = $target.Branch
-                    UpstreamConflicts = $upstreamAudit.ConflictCount
-                    MasterStage = "merge-conflicts:$($masterAudit.ConflictCount)"
-                    NextAction = $nextAction
-                    Notes = "$($upstreamAudit.Notes) $($masterAudit.Notes)".Trim()
-                } )
-        } else {
-            $deltaPlan = Get-MasterDeltaPlan -TargetName $target.Name -TargetBranch $target.Branch -MasterRef "master" -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
-            $nextAction = if( $deltaPlan.Queue.Count -eq 0 ) { "up-to-date" } else { "apply-delta" }
-            [void]$auditSummary.Add( [PSCustomObject]@{
-                    Target = $target.Name
-                    Branch = $target.Branch
-                    UpstreamConflicts = $upstreamAudit.ConflictCount
-                    MasterStage = "delta-commits:$($deltaPlan.Queue.Count)"
-                    NextAction = $nextAction
-                    Notes = "$($upstreamAudit.Notes) $($deltaPlan.Notes)".Trim()
-                } )
+        $aolNativeConflicts = "-"
+        $aolQueue = "-"
+        $plannedRoute = $upstreamRoute
+        $aolNotes = ""
+        if( $script:RunAolLane ) {
+            $aolNativeAudit = Invoke-NativeMergeAuditStep -SourceRef $AolSourceRef -StepLabel "aol-native"
+            $aolNativeConflicts = $aolNativeAudit.ConflictCount
+            $deltaPlan = Get-MasterDeltaPlan -TargetBranch $target.Branch -MasterRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
+            $aolQueue = $deltaPlan.Queue.Count
+            if( -not $basisUsable -and $script:RunUpstreamLane ) {
+                $plannedRoute = "$upstreamRoute -> blocked"
+            } elseif( $deltaPlan.Queue.Count -eq 0 ) {
+                $plannedRoute = if( $script:RunUpstreamLane ) { "upstream-only" } else { "aol-up-to-date" }
+            } else {
+                if( $MasterSyncMode -eq "native-merge" -and $aolNativeAudit.Success ) {
+                    $plannedRoute = if( $script:RunUpstreamLane ) { "upstream + aol-native" } else { "aol-native" }
+                } else {
+                    $plannedRoute = if( $script:RunUpstreamLane ) { "upstream + aol-queue" } else { "aol-queue" }
+                }
+            }
+            $aolNotes = "$($aolNativeAudit.Notes) $($deltaPlan.Notes)".Trim()
         }
+
+        [void]$auditSummary.Add( [PSCustomObject]@{
+                Target = $target.Name
+                Branch = $target.Branch
+                UpstreamConflicts = $upstreamConflicts
+                UpstreamRoute = $upstreamRoute
+                AolNativeConflicts = $aolNativeConflicts
+                AolQueue = $aolQueue
+                PlannedRoute = $plannedRoute
+                Notes = "$upstreamNotes $aolNotes".Trim()
+            } )
     }
 
     Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) | Out-Null
@@ -1146,53 +1239,67 @@ foreach( $target in $selectedTargets ) {
     $failedCommit = ""
     $failureNotes = ""
     $shouldApplyQueue = $false
-    $updateMasterDeltaState = $false
-    $masterDeltaSnapshot = ""
     $existingPortBranch = Test-RefExists -RefName "refs/heads/$($target.Branch)"
+    $upstreamReady = -not $script:RunUpstreamLane
 
     if( $existingPortBranch ) {
         Invoke-External -FilePath "git" -Arguments @( "checkout", $target.Branch ) | Out-Null
-        Assert-CurrentBranch -Expected $target.Branch -Context "native merge entry for $($target.Name)"
-        $upstreamStep = Invoke-NativeMergeStep -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $target.UpstreamRef -StepLabel "upstream" -TargetRunDir $targetRunDir
-        $codexUsedForApply = $codexUsedForApply -or $upstreamStep.CodexUsed
-        if( $upstreamStep.Success ) {
-            if( $MasterSyncMode -eq "native-merge" ) {
-                $masterStep = Invoke-NativeMergeStep -TargetName $target.Name -TargetBranch $target.Branch -SourceRef "master" -StepLabel "master" -TargetRunDir $targetRunDir
-                $codexUsedForApply = $codexUsedForApply -or $masterStep.CodexUsed
-                if( $masterStep.Success ) {
-                    $nativeMergeApplied = $true
-                    $applyMode = "native-merge(upstream+master)"
-                    if( $DryRun ) {
-                        Write-Host "[porting] native merges simulated for $($target.Name) (upstream + master)"
-                    } else {
-                        Write-Host "[porting] native merges completed for $($target.Name) (upstream + master)"
-                    }
-                } else {
-                    $failureNotes = "$($masterStep.Notes)"
-                }
+        Assert-CurrentBranch -Expected $target.Branch -Context "target entry for $($target.Name)"
+        if( $script:RunUpstreamLane ) {
+            $upstreamStep = Invoke-NativeMergeStep -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $target.UpstreamRef -StepLabel "upstream" -TargetRunDir $targetRunDir
+            $codexUsedForApply = $codexUsedForApply -or $upstreamStep.CodexUsed
+            if( $upstreamStep.Success ) {
+                $upstreamReady = $true
             } else {
-                $deltaPlan = Get-MasterDeltaPlan -TargetName $target.Name -TargetBranch $target.Branch -MasterRef "master" -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
-                $commitQueue = @( $deltaPlan.Queue )
-                $queueLabel = "master-delta"
-                $applyMode = "upstream+master-delta"
-                $masterDeltaSnapshot = $deltaPlan.MasterSnapshot
-                $updateMasterDeltaState = $true
-                if( $commitQueue.Count -eq 0 ) {
-                    $nativeMergeApplied = $true
-                    Write-Host "[porting] master delta queue empty for $($target.Name): $($deltaPlan.Notes)"
-                } else {
-                    $shouldApplyQueue = $true
-                    Write-Host "[porting] master delta queue for $($target.Name): $($commitQueue.Count) commits ($($deltaPlan.Notes))"
-                }
+                $failureNotes = "$($upstreamStep.Notes)"
             }
-        } else {
-            $failureNotes = "$($upstreamStep.Notes)"
         }
     } else {
-        $failureNotes = "Target branch '$($target.Branch)' does not exist."
+        if( $script:RunUpstreamLane ) {
+            $upstreamReady = $false
+            $failureNotes = "Target branch '$($target.Branch)' does not exist."
+        } else {
+            $applyOk = $false
+            $failureNotes = "Target branch '$($target.Branch)' does not exist. CAOL-only mode requires existing target branch."
+        }
     }
 
-    $needsDestructiveFallback = -not $nativeMergeApplied -and -not $shouldApplyQueue
+    if( $applyOk -and $upstreamReady -and -not $script:RunAolLane ) {
+        $nativeMergeApplied = $true
+        $applyMode = "upstream-only"
+    }
+
+    if( $applyOk -and $upstreamReady -and $script:RunAolLane ) {
+        $aolNativeMerged = $false
+        if( $MasterSyncMode -eq "native-merge" ) {
+            $aolNativeStep = Invoke-NativeMergeStep -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $AolSourceRef -StepLabel "aol-native" -TargetRunDir $targetRunDir
+            $codexUsedForApply = $codexUsedForApply -or $aolNativeStep.CodexUsed
+            if( $aolNativeStep.Success ) {
+                $aolNativeMerged = $true
+                $nativeMergeApplied = $true
+                $applyMode = if( $script:RunUpstreamLane ) { "upstream+aol-native" } else { "aol-native" }
+                Write-Host "[porting] AOL native merge completed for $($target.Name) from $AolSourceRef"
+            } else {
+                $failureNotes = $aolNativeStep.Notes
+            }
+        }
+
+        if( -not $aolNativeMerged ) {
+            $deltaPlan = Get-MasterDeltaPlan -TargetBranch $target.Branch -MasterRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
+            $commitQueue = @( $deltaPlan.Queue )
+            $queueLabel = "aol-delta"
+            $applyMode = if( $script:RunUpstreamLane ) { "upstream+aol-delta" } else { "aol-delta-only" }
+            if( $commitQueue.Count -eq 0 ) {
+                $nativeMergeApplied = $true
+                Write-Host "[porting] AOL delta queue empty for $($target.Name): $($deltaPlan.Notes)"
+            } else {
+                $shouldApplyQueue = $true
+                Write-Host "[porting] AOL delta queue for $($target.Name): $($commitQueue.Count) commits ($($deltaPlan.Notes))"
+            }
+        }
+    }
+
+    $needsDestructiveFallback = $applyOk -and $script:RunUpstreamLane -and -not $upstreamReady
     if( $needsDestructiveFallback ) {
         $canDestructiveFallback = ( -not $existingPortBranch ) -or $AllowDestructiveFallback
         if( -not $canDestructiveFallback ) {
@@ -1223,32 +1330,24 @@ foreach( $target in $selectedTargets ) {
             if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (baseline)" ) {
                 Write-Host "[porting] synced .gitignore from master (baseline)"
             }
+            $upstreamReady = $true
 
-            Ensure-BasePatchsetQueue
-            $targetQueue = New-Object System.Collections.Generic.List[string]
-            foreach( $sha in $script:baseQueue ) {
-                [void]$targetQueue.Add( $sha )
-            }
-            if( -not $NoTargetPatchsets ) {
-                $targetPatchset = Select-TargetPatchsetFile -RepoRoot $repoRoot -TargetName $target.Name
-                if( -not [string]::IsNullOrWhiteSpace( $targetPatchset ) ) {
-                    $targetPatchsetRel = "tools/porting/patchsets/$($target.Name).txt"
-                    $extraQueue = @( Read-CommitListFromRefPath -RefName "master" -RepoRelativePath $targetPatchsetRel )
-                    foreach( $sha in $extraQueue ) {
-                        [void]$targetQueue.Add( $sha )
-                    }
+            if( $script:RunAolLane ) {
+                $deltaPlan = Get-MasterDeltaPlan -TargetBranch $target.Branch -MasterRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
+                $commitQueue = @( $deltaPlan.Queue )
+                $queueLabel = "aol-delta"
+                $applyMode = "upstream-reset+aol-delta"
+                if( $commitQueue.Count -eq 0 ) {
+                    $nativeMergeApplied = $true
+                    Write-Host "[porting] AOL delta queue empty after reset for $($target.Name): $($deltaPlan.Notes)"
+                } else {
+                    $shouldApplyQueue = $true
+                    Write-Host "[porting] AOL delta queue after reset for $($target.Name): $($commitQueue.Count) commits ($($deltaPlan.Notes))"
                 }
+            } else {
+                $nativeMergeApplied = $true
+                $applyMode = "upstream-reset"
             }
-            $commitQueue = @( Get-UniqueOrdered -Items $targetQueue.ToArray() )
-            foreach( $sha in $commitQueue ) {
-                $exists = Invoke-External -FilePath "git" -Arguments @( "cat-file", "-e", "$sha^{commit}" ) -IgnoreFailure
-                if( $exists.ExitCode -ne 0 ) {
-                    throw "Invalid commit in patchset for target '$($target.Name)': $sha"
-                }
-            }
-            $queueLabel = "patchset"
-            $applyMode = "patchset-rebuild"
-            $shouldApplyQueue = $true
         }
     }
 
@@ -1269,14 +1368,12 @@ foreach( $target in $selectedTargets ) {
         }
     }
 
-    if( $applyOk -and $updateMasterDeltaState -and -not [string]::IsNullOrWhiteSpace( $masterDeltaSnapshot ) ) {
-        Set-MasterDeltaState -TargetName $target.Name -MasterSnapshot $masterDeltaSnapshot
-        Write-Host "[porting] updated master delta state for $($target.Name): $masterDeltaSnapshot"
-    }
-
     if( -not $applyOk ) {
         if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (post-apply-failure)" ) {
             Write-Host "[porting] synced .gitignore from master after apply failure"
+        }
+        if( Sync-OrchestratorFilesFromMaster -CommitMessage "[porting] Sync orchestrator files with master (post-apply-failure)" ) {
+            Write-Host "[porting] synced orchestrator files from master after apply failure"
         }
         [void]$summary.Add( [PSCustomObject]@{
                 Target = $target.Name
@@ -1297,6 +1394,9 @@ foreach( $target in $selectedTargets ) {
     if( Sync-GitignoreFromMaster -CommitMessage "[porting] Sync .gitignore with master (post-apply)" ) {
         Write-Host "[porting] synced .gitignore from master after apply"
     }
+    if( Sync-OrchestratorFilesFromMaster -CommitMessage "[porting] Sync orchestrator files with master (post-apply)" ) {
+        Write-Host "[porting] synced orchestrator files from master after apply"
+    }
 
     if( -not $SkipBuild ) {
         $winLog = Join-Path $targetRunDir "build-windows.log"
@@ -1304,7 +1404,7 @@ foreach( $target in $selectedTargets ) {
 
         $winExit = Invoke-CmdLogged -CommandLine "just_build.cmd --unclean" -LogFile $winLog -IgnoreFailure
         $windowsBuild = if( $winExit -eq 0 ) { "OK" } else { "FAIL" }
-        if( $winExit -ne 0 -and $RunCodex ) {
+        if( $winExit -ne 0 -and $script:RunCodexEnabled ) {
             $promptFile = Join-Path $targetRunDir "codex-build-windows-prompt.md"
             $codexLogFile = Join-Path $targetRunDir "codex-build-windows.log"
             $lastMessageFile = Join-Path $targetRunDir "codex-build-windows-last-message.txt"
@@ -1327,7 +1427,7 @@ Task:
 
         $linExit = Invoke-CmdLogged -CommandLine "just_build_linux.cmd --unclean" -LogFile $linLog -IgnoreFailure
         $linuxBuild = if( $linExit -eq 0 ) { "OK" } else { "FAIL" }
-        if( $linExit -ne 0 -and $RunCodex ) {
+        if( $linExit -ne 0 -and $script:RunCodexEnabled ) {
             $promptFile = Join-Path $targetRunDir "codex-build-linux-prompt.md"
             $codexLogFile = Join-Path $targetRunDir "codex-build-linux.log"
             $lastMessageFile = Join-Path $targetRunDir "codex-build-linux-last-message.txt"
