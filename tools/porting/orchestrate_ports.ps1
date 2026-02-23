@@ -694,6 +694,7 @@ function Test-PathMatchesAnyGlob {
 function Should-SkipMasterDeltaCommit {
     param(
         [Parameter(Mandatory = $true)] [string]$CommitSha,
+        [AllowEmptyCollection()]
         [Parameter(Mandatory = $true)] [string[]]$IgnorePathGlobs
     )
     if( $IgnorePathGlobs.Count -eq 0 ) {
@@ -1215,93 +1216,101 @@ if( -not $NoBackup ) {
 if( $script:IsAuditMode ) {
     Write-Step "Audit mode (mode=$Mode, aol-source=$AolSourceRef, strategy=$MasterSyncMode)"
     $auditSummary = New-Object System.Collections.Generic.List[object]
-    foreach( $target in $selectedTargets ) {
-        Write-Step "Audit target: $($target.Name)"
-        $exists = Test-RefExists -RefName "refs/heads/$($target.Branch)"
-        if( -not $exists ) {
+    try {
+        foreach( $target in $selectedTargets ) {
+            Write-Step "Audit target: $($target.Name)"
+            $exists = Test-RefExists -RefName "refs/heads/$($target.Branch)"
+            if( -not $exists ) {
+                [void]$auditSummary.Add( [PSCustomObject]@{
+                        Target = $target.Name
+                        Branch = $target.Branch
+                        UpstreamConflicts = "-"
+                        UpstreamRoute = "missing-branch"
+                        AolNativeConflicts = "-"
+                        AolDeltaQueue = "-"
+                        AolPatchsetPending = "-"
+                        AolQueue = "-"
+                        AolQueueSource = "-"
+                        PlannedRoute = "bootstrap-required"
+                        Notes = "Target branch does not exist."
+                    } )
+                continue
+            }
+
+            Invoke-External -FilePath "git" -Arguments @( "checkout", $target.Branch ) | Out-Null
+            Assert-CurrentBranch -Expected $target.Branch -Context "audit merge scan for $($target.Name)"
+
+            $upstreamConflicts = "-"
+            $upstreamRoute = "skipped"
+            $upstreamNotes = ""
+            $basisUsable = $true
+            if( $script:RunUpstreamLane ) {
+                $upstreamAudit = Invoke-NativeMergeAuditStep -SourceRef $target.UpstreamRef -StepLabel "upstream"
+                $upstreamConflicts = $upstreamAudit.ConflictCount
+                if( $upstreamAudit.Success ) {
+                    $upstreamRoute = "native"
+                } elseif( $upstreamAudit.ConflictCount -le $NativeMergeMaxConflicts ) {
+                    $upstreamRoute = "native+codex"
+                } else {
+                    $upstreamRoute = "reset-required"
+                }
+                $upstreamNotes = $upstreamAudit.Notes
+                $basisUsable = $upstreamAudit.Success -or ( $upstreamAudit.ConflictCount -le $NativeMergeMaxConflicts )
+            }
+
+            $aolNativeConflicts = "-"
+            $aolDeltaQueue = "-"
+            $aolPatchsetPending = "-"
+            $aolQueue = "-"
+            $aolQueueSource = "-"
+            $plannedRoute = $upstreamRoute
+            $aolNotes = ""
+            if( $script:RunAolLane ) {
+                $aolNativeAudit = Invoke-NativeMergeAuditStep -SourceRef $AolSourceRef -StepLabel "aol-native"
+                $aolNativeConflicts = $aolNativeAudit.ConflictCount
+                $aolQueuePlan = Select-AolQueuePlan -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
+                $aolDeltaQueue = $aolQueuePlan.DeltaCount
+                $aolPatchsetPending = $aolQueuePlan.PatchsetPendingCount
+                $aolQueue = $aolQueuePlan.Queue.Count
+                $aolQueueSource = $aolQueuePlan.Source
+                if( -not $basisUsable -and $script:RunUpstreamLane ) {
+                    $plannedRoute = "$upstreamRoute -> blocked"
+                } elseif( $aolQueue -eq 0 ) {
+                    $plannedRoute = if( $script:RunUpstreamLane ) { "upstream-only" } else { "aol-up-to-date" }
+                } else {
+                    if( $MasterSyncMode -eq "native-merge" -and $aolNativeAudit.Success ) {
+                        $plannedRoute = if( $script:RunUpstreamLane ) { "upstream + aol-native" } else { "aol-native" }
+                    } else {
+                        $queueRouteTag = if( $aolQueuePlan.Source -eq "patchset" ) { "aol-patchset" } else { "aol-delta" }
+                        $plannedRoute = if( $script:RunUpstreamLane ) { "upstream + $queueRouteTag" } else { $queueRouteTag }
+                    }
+                }
+                $aolNotes = "$($aolNativeAudit.Notes) delta=$aolDeltaQueue patchsetPending=$aolPatchsetPending selected=$aolQueue source=$aolQueueSource reason=$($aolQueuePlan.SelectionReason) $($aolQueuePlan.Notes)".Trim()
+            }
+
             [void]$auditSummary.Add( [PSCustomObject]@{
                     Target = $target.Name
                     Branch = $target.Branch
-                    UpstreamConflicts = "-"
-                    UpstreamRoute = "missing-branch"
-                    AolNativeConflicts = "-"
-                    AolDeltaQueue = "-"
-                    AolPatchsetPending = "-"
-                    AolQueue = "-"
-                    AolQueueSource = "-"
-                    PlannedRoute = "bootstrap-required"
-                    Notes = "Target branch does not exist."
+                    UpstreamConflicts = $upstreamConflicts
+                    UpstreamRoute = $upstreamRoute
+                    AolNativeConflicts = $aolNativeConflicts
+                    AolDeltaQueue = $aolDeltaQueue
+                    AolPatchsetPending = $aolPatchsetPending
+                    AolQueue = $aolQueue
+                    AolQueueSource = $aolQueueSource
+                    PlannedRoute = $plannedRoute
+                    Notes = "$upstreamNotes $aolNotes".Trim()
                 } )
-            continue
         }
-
-        Invoke-External -FilePath "git" -Arguments @( "checkout", $target.Branch ) | Out-Null
-        Assert-CurrentBranch -Expected $target.Branch -Context "audit merge scan for $($target.Name)"
-
-        $upstreamConflicts = "-"
-        $upstreamRoute = "skipped"
-        $upstreamNotes = ""
-        $basisUsable = $true
-        if( $script:RunUpstreamLane ) {
-            $upstreamAudit = Invoke-NativeMergeAuditStep -SourceRef $target.UpstreamRef -StepLabel "upstream"
-            $upstreamConflicts = $upstreamAudit.ConflictCount
-            if( $upstreamAudit.Success ) {
-                $upstreamRoute = "native"
-            } elseif( $upstreamAudit.ConflictCount -le $NativeMergeMaxConflicts ) {
-                $upstreamRoute = "native+codex"
-            } else {
-                $upstreamRoute = "reset-required"
+    } finally {
+        $branchNow = Get-CurrentBranch
+        if( $branchNow -ne "master" ) {
+            $restoreResult = Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) -IgnoreFailure
+            if( $restoreResult.ExitCode -ne 0 ) {
+                throw "Audit failed to restore branch to master from '$branchNow'."
             }
-            $upstreamNotes = $upstreamAudit.Notes
-            $basisUsable = $upstreamAudit.Success -or ( $upstreamAudit.ConflictCount -le $NativeMergeMaxConflicts )
         }
-
-        $aolNativeConflicts = "-"
-        $aolDeltaQueue = "-"
-        $aolPatchsetPending = "-"
-        $aolQueue = "-"
-        $aolQueueSource = "-"
-        $plannedRoute = $upstreamRoute
-        $aolNotes = ""
-        if( $script:RunAolLane ) {
-            $aolNativeAudit = Invoke-NativeMergeAuditStep -SourceRef $AolSourceRef -StepLabel "aol-native"
-            $aolNativeConflicts = $aolNativeAudit.ConflictCount
-            $aolQueuePlan = Select-AolQueuePlan -TargetName $target.Name -TargetBranch $target.Branch -SourceRef $AolSourceRef -PathFilter $MasterDeltaPathFilter -IgnorePathGlobs $MasterDeltaIgnorePathGlobs
-            $aolDeltaQueue = $aolQueuePlan.DeltaCount
-            $aolPatchsetPending = $aolQueuePlan.PatchsetPendingCount
-            $aolQueue = $aolQueuePlan.Queue.Count
-            $aolQueueSource = $aolQueuePlan.Source
-            if( -not $basisUsable -and $script:RunUpstreamLane ) {
-                $plannedRoute = "$upstreamRoute -> blocked"
-            } elseif( $aolQueue -eq 0 ) {
-                $plannedRoute = if( $script:RunUpstreamLane ) { "upstream-only" } else { "aol-up-to-date" }
-            } else {
-                if( $MasterSyncMode -eq "native-merge" -and $aolNativeAudit.Success ) {
-                    $plannedRoute = if( $script:RunUpstreamLane ) { "upstream + aol-native" } else { "aol-native" }
-                } else {
-                    $queueRouteTag = if( $aolQueuePlan.Source -eq "patchset" ) { "aol-patchset" } else { "aol-delta" }
-                    $plannedRoute = if( $script:RunUpstreamLane ) { "upstream + $queueRouteTag" } else { $queueRouteTag }
-                }
-            }
-            $aolNotes = "$($aolNativeAudit.Notes) delta=$aolDeltaQueue patchsetPending=$aolPatchsetPending selected=$aolQueue source=$aolQueueSource reason=$($aolQueuePlan.SelectionReason) $($aolQueuePlan.Notes)".Trim()
-        }
-
-        [void]$auditSummary.Add( [PSCustomObject]@{
-                Target = $target.Name
-                Branch = $target.Branch
-                UpstreamConflicts = $upstreamConflicts
-                UpstreamRoute = $upstreamRoute
-                AolNativeConflicts = $aolNativeConflicts
-                AolDeltaQueue = $aolDeltaQueue
-                AolPatchsetPending = $aolPatchsetPending
-                AolQueue = $aolQueue
-                AolQueueSource = $aolQueueSource
-                PlannedRoute = $plannedRoute
-                Notes = "$upstreamNotes $aolNotes".Trim()
-            } )
     }
-
-    Invoke-External -FilePath "git" -Arguments @( "checkout", "master" ) | Out-Null
     Assert-CurrentBranch -Expected "master" -Context "audit return to master"
     Write-Step "Audit summary"
     $auditSummary | Format-Table -AutoSize
