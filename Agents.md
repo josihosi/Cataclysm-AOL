@@ -42,6 +42,21 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
   - `.\tools\porting\orchestrate_ports.ps1 -Targets cdda-0.I -RunCodex`
 - Review logs in `tools/porting/logs/<timestamp>/` after each run.
 
+## Porting build gotchas (2026-02-24)
+- Always run long builds with redirected logs, then parse first hard error:
+  - `.\just_build.cmd --unclean *> build_logs\<name>.log`
+  - `rg -n "error:|make: \*\*\*|fatal error|undefined reference" build_logs\<name>.log`
+- If errors look inconsistent after branch switching, clear stale PCH and rebuild:
+  - `Remove-Item pch\main-pch.hpp.gch,pch\main-pch.hpp.d -Force -ErrorAction SilentlyContinue`
+- If manual builds fail with `Cannot convert existing thin library zstd.a`, remove stale archives before rebuild:
+  - `Remove-Item zstd.a,zstd_test.a -Force -ErrorAction SilentlyContinue`
+  - (Helper scripts now do this automatically.)
+- On Windows run commands, execute `cataclysm-tiles.exe` explicitly (not `cataclysm-tiles`).
+- CTLG-specific merge traps seen during porting:
+  - `npc::evaluate_weapon` requires 3 args (`item&, bool can_use_gun, bool use_silent`).
+  - If `npcmove.cpp` defines `execute_llm_intent_action(...)`, `npc.h` must declare it.
+  - LLM sleepiness snapshot code may need branch-safe fallback if `sleepiness` APIs diverge.
+
 ## Tests and in-game verification
 - Use unit tests where applicable.
 - For gameplay changes, use the in-game debug menu to reproduce conditions.
