@@ -7,6 +7,9 @@ This is something I would like to see in games in general, so I'm creating it he
 
 [Video](https://youtu.be/HfishtPzvhA), so you know its real.
 
+This project also ports behavior onto [Cataclysm-TLG](https://github.com/Cataclysm-TLG/Cataclysm-TLG) targets.
+Huge thanks to the CTLG maintainers and contributors, just like the gratitude owed to original CDDA contributors.
+
 Compatibility note: release branches under `port/*` are AOL behavior ports onto different upstream bases (`cdda-master`, `0.H`, `0.I`, `ctlg-master`). Gameplay and data can differ slightly per target because of upstream divergence.
 
 Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and up to three actions.
