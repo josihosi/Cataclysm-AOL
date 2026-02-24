@@ -837,42 +837,36 @@ function Get-AolPatchsetPlan {
 
     $targetOverlay = @()
     $targetOverlayPath = ""
+    $targetIgnore = @()
+    $targetIgnorePath = ""
     if( -not $NoTargetPatchsets ) {
         $targetOverlayPath = "tools/porting/patchsets/$TargetName.txt"
         $targetOverlay = @( Read-CommitListFromRefPath -RefName $SourceRef -RepoRelativePath $targetOverlayPath )
+        $targetIgnorePath = "tools/porting/patchsets/$TargetName-ignore.txt"
+        $targetIgnore = @( Read-CommitListFromRefPath -RefName $SourceRef -RepoRelativePath $targetIgnorePath )
     }
 
     $combined = @( Get-UniqueOrdered -Items ( $baseQueue + $targetOverlay ) )
-    $pendingByCherrySet = New-Object System.Collections.Generic.HashSet[string] ( [System.StringComparer]::OrdinalIgnoreCase )
-    $pendingByCherryArgs = @( "rev-list", "--reverse", "--cherry-pick", "--right-only", "$TargetBranch...$SourceRef" )
-    $pendingByCherryList = @(
-        @( ( Invoke-External -FilePath "git" -Arguments $pendingByCherryArgs ).Output ) |
-        ForEach-Object { $_.Trim() } |
-        Where-Object { $_ -ne "" }
-    )
-    foreach( $sha in $pendingByCherryList ) {
-        [void]$pendingByCherrySet.Add( $sha )
+    $targetIgnoreSet = New-Object System.Collections.Generic.HashSet[string] ( [System.StringComparer]::OrdinalIgnoreCase )
+    foreach( $sha in $targetIgnore ) {
+        if( -not [string]::IsNullOrWhiteSpace( $sha ) ) {
+            [void]$targetIgnoreSet.Add( $sha.Trim() )
+        }
     }
     $valid = New-Object System.Collections.Generic.List[string]
     $pending = New-Object System.Collections.Generic.List[string]
     $invalidCount = 0
     $alreadyPresentCount = 0
-    $alreadyPresentByCherryCount = 0
-    $alreadyPresentByAncestorCount = 0
+    $ignoredByTargetCount = 0
     foreach( $sha in $combined ) {
+        if( $targetIgnoreSet.Contains( $sha ) ) {
+            $ignoredByTargetCount++
+            continue
+        }
         if( Test-CommitObjectExists -CommitSha $sha ) {
             [void]$valid.Add( $sha )
-            $isReachableFromSource = Test-CommitIsAncestorOfBranch -CommitSha $sha -BranchRef $SourceRef
-            if( $isReachableFromSource ) {
-                if( $pendingByCherrySet.Contains( $sha ) ) {
-                    [void]$pending.Add( $sha )
-                } else {
-                    $alreadyPresentCount++
-                    $alreadyPresentByCherryCount++
-                }
-            } elseif( Test-CommitIsAncestorOfBranch -CommitSha $sha -BranchRef $TargetBranch ) {
+            if( Test-CommitIsAncestorOfBranch -CommitSha $sha -BranchRef $TargetBranch ) {
                 $alreadyPresentCount++
-                $alreadyPresentByAncestorCount++
             } else {
                 [void]$pending.Add( $sha )
             }
@@ -881,11 +875,16 @@ function Get-AolPatchsetPlan {
         }
     }
 
-    $notes = "source=$sourceLabel base=$($baseQueue.Count) overlay=$($targetOverlay.Count) unique=$($combined.Count) invalid=$invalidCount alreadyPresent=$alreadyPresentCount (cherry=$alreadyPresentByCherryCount ancestor=$alreadyPresentByAncestorCount) pending=$($pending.Count)"
+    $notes = "source=$sourceLabel base=$($baseQueue.Count) overlay=$($targetOverlay.Count) unique=$($combined.Count) ignoredByTarget=$ignoredByTargetCount invalid=$invalidCount alreadyPresent=$alreadyPresentCount pending=$($pending.Count)"
     if( $NoTargetPatchsets ) {
         $notes = "$notes overlay=disabled"
-    } elseif( $targetOverlayPath -ne "" ) {
-        $notes = "$notes overlayPath=$targetOverlayPath"
+    } else {
+        if( $targetOverlayPath -ne "" ) {
+            $notes = "$notes overlayPath=$targetOverlayPath"
+        }
+        if( $targetIgnorePath -ne "" ) {
+            $notes = "$notes ignorePath=$targetIgnorePath"
+        }
     }
 
     return [PSCustomObject]@{
