@@ -426,7 +426,9 @@ function Get-UniqueOrdered {
 
 function Resolve-AutoConflicts {
     param(
+        [AllowEmptyCollection()]
         [Parameter(Mandatory = $true)] [string[]]$ConflictPaths,
+        [AllowEmptyCollection()]
         [Parameter(Mandatory = $true)] [string[]]$AutoPaths
     )
     $resolved = New-Object System.Collections.Generic.List[string]
