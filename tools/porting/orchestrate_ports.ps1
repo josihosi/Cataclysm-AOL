@@ -843,15 +843,36 @@ function Get-AolPatchsetPlan {
     }
 
     $combined = @( Get-UniqueOrdered -Items ( $baseQueue + $targetOverlay ) )
+    $pendingByCherrySet = New-Object System.Collections.Generic.HashSet[string] ( [System.StringComparer]::OrdinalIgnoreCase )
+    $pendingByCherryArgs = @( "rev-list", "--reverse", "--cherry-pick", "--right-only", "$TargetBranch...$SourceRef" )
+    $pendingByCherryList = @(
+        @( ( Invoke-External -FilePath "git" -Arguments $pendingByCherryArgs ).Output ) |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -ne "" }
+    )
+    foreach( $sha in $pendingByCherryList ) {
+        [void]$pendingByCherrySet.Add( $sha )
+    }
     $valid = New-Object System.Collections.Generic.List[string]
     $pending = New-Object System.Collections.Generic.List[string]
     $invalidCount = 0
     $alreadyPresentCount = 0
+    $alreadyPresentByCherryCount = 0
+    $alreadyPresentByAncestorCount = 0
     foreach( $sha in $combined ) {
         if( Test-CommitObjectExists -CommitSha $sha ) {
             [void]$valid.Add( $sha )
-            if( Test-CommitIsAncestorOfBranch -CommitSha $sha -BranchRef $TargetBranch ) {
+            $isReachableFromSource = Test-CommitIsAncestorOfBranch -CommitSha $sha -BranchRef $SourceRef
+            if( $isReachableFromSource ) {
+                if( $pendingByCherrySet.Contains( $sha ) ) {
+                    [void]$pending.Add( $sha )
+                } else {
+                    $alreadyPresentCount++
+                    $alreadyPresentByCherryCount++
+                }
+            } elseif( Test-CommitIsAncestorOfBranch -CommitSha $sha -BranchRef $TargetBranch ) {
                 $alreadyPresentCount++
+                $alreadyPresentByAncestorCount++
             } else {
                 [void]$pending.Add( $sha )
             }
@@ -860,7 +881,7 @@ function Get-AolPatchsetPlan {
         }
     }
 
-    $notes = "source=$sourceLabel base=$($baseQueue.Count) overlay=$($targetOverlay.Count) unique=$($combined.Count) invalid=$invalidCount alreadyPresent=$alreadyPresentCount pending=$($pending.Count)"
+    $notes = "source=$sourceLabel base=$($baseQueue.Count) overlay=$($targetOverlay.Count) unique=$($combined.Count) invalid=$invalidCount alreadyPresent=$alreadyPresentCount (cherry=$alreadyPresentByCherryCount ancestor=$alreadyPresentByAncestorCount) pending=$($pending.Count)"
     if( $NoTargetPatchsets ) {
         $notes = "$notes overlay=disabled"
     } elseif( $targetOverlayPath -ne "" ) {
