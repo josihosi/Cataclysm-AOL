@@ -5,13 +5,14 @@ Port AOL LLM functionality from this repository's `master` branch onto fresh
 upstream targets:
 - `upstream/master`
 - `upstream/0.H-branch`
+- `upstream/0.I-branch`
 - `upstream-ctlg/master`
 
 The orchestration model is:
 1. Develop on `dev`.
 2. Merge `dev` into `master`.
 3. Recreate `port/*` from fresh upstream tips.
-4. Apply AOL changes from `master` on top.
+4. Replay AOL patchset commits (curated queue from `master`) via cherry-pick.
 
 ## Preserve These Behaviors
 - Player sentence shout triggers asynchronous LLM intent processing for allied NPCs.
