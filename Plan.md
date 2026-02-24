@@ -1,106 +1,58 @@
-# LLM Intent Layer (Follower NPCs) Plan
+# C-AOL Release Roadmap
 
-## Goal
-Add an MCP-based "LLM Intent Layer" for follower NPCs in Cataclysm: AOL. The player can yell a sentence (talk system: `C + b`, default hotkey) and each hearing follower sends a non-blocking request to an MCP server over HTTP. The NPC keeps normal AI while the request runs. Responses map to a small, validated intent whitelist that temporarily overrides NPC behavior for a TTL, then resumes normal AI. Errors/timeouts/invalid JSON are ignored.
+## Objective
+Ship tested Windows and Linux releases for:
+- `port/cdda-master`
+- `port/cdda-0.H`
+- `port/cdda-0.I`
+- `port/ctlg-master`
 
-## Trigger
-- Existing talk system -> "Yell a sentence" in `src/npctalk.cpp` (`NPC_CHAT_SENTENCE`).
-- On yell submit, for each follower who can hear, enqueue an MCP request (HTTP) with a snapshot payload.
+## Status
+- `Done`: orchestrator replay flow is stable and `rerere` is enabled (`rerere.enabled=true`, `rerere.autoupdate=true`).
+- `In progress`: release validation and packaging parity across all `port/*` branches.
 
-## MCP Tool
-- MCP tool name: `npc.intent_from_speech`
-- Transport: HTTP
-- API key: `CATA_API_KEY` environment variable
+## Execution Roadmap
 
-## Response Schema (Strict JSON)
-Example:
-```
-{ "intent": "guard_area", "args": { ... }, "ttl_turns": 120, "npc_say": "..." }
-```
-Behavior:
-- Validate JSON strictly.
-- Validate intent + args against a whitelist.
-- Convert to existing NPC actions/activities.
-- Apply override for `ttl_turns` or until finished/interrupted.
-- On timeout, error, or invalid JSON: drop response and keep normal AI.
+### 1) Port refresh
+- Ensure `master` contains the latest release-ready AOL changes.
+- Re-apply the curated patch queue onto each `port/*` branch (orchestrator/cherry-pick flow).
+- Keep per-target fixups branch-local only when unavoidable.
 
-## Intent Whitelist (Initial)
-Map intents to existing behavior (no new AI primitives):
-- `guard_area`: assign guard mission at current location.
-- `move_to`: use `goto_to_this_pos` to walk to a location.
-- `follow_player`: set follow attitude/mission.
-- `clear_overrides`: clear follower rule overrides.
-- `idle`: clear override and allow normal AI.
+### 2) Build matrix (logs redirected)
+- For each target branch run:
+  - `just_build.cmd --unclean > build_logs/<target>-win.log 2>&1`
+  - `just_build_linux.cmd --unclean > build_logs/<target>-linux.log 2>&1`
+- Use the helper defaults for matrix speed:
+  - Linux dependency bootstrap is opt-in (`--install-deps`).
+  - Background summary generation is opt-in (`--with-summary`).
+  - Linux build-validation runs disable `ASTYLE` checks.
 
-## Async Requirement
-- Request must be non-blocking.
-- Use worker thread for HTTP.
-- Worker only touches snapshot data (no live game state).
-- Main loop polls response queue and applies overrides safely.
+### 3) Smoke tests
+- For each target branch run:
+  - `build_and_run.cmd --unclean`
+  - `build_and_run_linux.cmd --unclean`
+- Validate at least:
+  - Game reaches main menu.
+  - Save/world load works.
+  - NPC shout/speech loop (`C` + `b`) still behaves correctly.
 
-## Files To Edit
-1. `src/npctalk.cpp`
-   - Hook `NPC_CHAT_SENTENCE` to enqueue MCP requests for hearing followers.
-2. `src/llm_intent.h`, `src/llm_intent.cpp`
-   - Intent manager: queues, worker thread, timeouts, strict JSON validation, whitelist mapping.
-3. `src/mcp_client.h`, `src/mcp_client.cpp`
-   - HTTP client for MCP tool call `npc.intent_from_speech`.
-   - Read API key from `CATA_API_KEY`.
-4. `src/npc.h`, `src/npc.cpp`
-   - Store per-NPC override state: intent id, args, ttl, request_id, npc_say.
-   - Apply/clear override; tick TTL in `npc::process_turn()`.
-5. `src/npcmove.cpp`
-   - If override active, use mapped actions and bypass normal AI until done/expired.
-6. `src/options.cpp` (optional but recommended)
-   - Toggle LLM intent layer and configure endpoint/timeouts.
+### 4) Packaging audit
+- Required in release artifacts for every target:
+  - `tools/llm_runner/**`
+  - `data/json/npcs/Backgrounds/Summaries_short/**`
+  - `README.md`
+  - `Plan.md`
+  - `TechnicalTome.md`
+  - `Agents.md`
+- Ensure CAOL branding is present in README/title assets, with a short compatibility disclaimer on port builds.
 
-## Estimated LoC
-- `src/npctalk.cpp`: +30 to +50
-- `src/npc.h`: +30 to +50
-- `src/npc.cpp`: +80 to +140
-- `src/npcmove.cpp`: +40 to +80
-- `src/llm_intent.h/.cpp`: +250 to +350
-- `src/mcp_client.h/.cpp`: +200 to +300
-- `src/options.cpp`: +20 to +40
-- Total: ~650 to 1,000 LOC
+### 5) GitHub release
+- Produce 8 artifacts total (4 targets x 2 platforms).
+- Publish with commit hashes and short per-target notes.
+- Include known limitations for any target with behavior diffs.
 
-## Payload Plan (Snapshot Data)
-Send compact JSON. Avoid large payloads; summarize items.
-
-- `request_id`: unique id per request
-- `turn`: current game turn
-- `player_utterance`: text the player yelled
-- `npc_id`, `npc_name`, `npc_pos`
-- `npc_state` ("mood" surrogate):
-  - morale level (e.g. `Character::get_morale_level()`)
-  - hunger, thirst, pain, stamina, HP%
-  - key effects (brief list)
-- `npc_personality` (from `npc::personality`):
-  - aggression, bravery, collector, altruism
-- `npc_opinion` (from `npc_opinion`):
-  - trust, fear, value, anger
-- `threats`: top N visible hostiles
-  - name, type, distance, threat rating (or HP%)
-- `friendlies`: top N visible allies
-  - name, type, distance
-- `local_map`:
-  - small radius grid (5x5 or 7x7) of terrain/furniture/field flags
-- `ruleset`:
-  - follower rules: engagement, aim, flags/overrides
-  - mission + attitude
-- `inventory_summary` (optional):
-  - wielded weapon, ammo count
-  - top 3-5 usable items (meds/tools)
-
-## Data Sources (Code)
-- Mood: `Character::get_morale_level()` and hunger/thirst/pain/stamina in `src/character.h`.
-- Personality: `npc::personality` in `src/npc.h`.
-- Opinion: `npc_opinion` in `src/npc_opinion.h`.
-- Threats/Friendlies: `npc_short_term_cache` in `src/npc.h`, populated in `src/npcmove.cpp`.
-- Map info: `map` queries around `npc::pos_bub()` (`src/map.h`/`src/map.cpp`).
-- Inventory summary: `Character` inventory in `src/character.h` and `item_location`.
-- Ruleset: `npc_follower_rules` in `src/npc.h`; mission/attitude in `src/npc.h`.
-
-## Failover Behavior
-- Timeout, error, invalid JSON, or non-whitelisted intent => ignore and continue normal AI.
-- Overrides end on TTL expiry, interruption, or completion, then normal AI resumes.
+## Definition Of Done
+- All four `port/*` branches complete Windows and Linux build validation.
+- Smoke tests are completed on both platforms.
+- Packaging contents are parity-checked across targets.
+- GitHub release artifacts are uploaded with clear branch/commit provenance.
