@@ -71,6 +71,7 @@ Fallback to patchset when delta queue is this many times larger than patchset qu
 
 .PARAMETER AolSkipDeltaTargets
 Targets that skip expensive AOL delta scanning and directly use patchset queue.
+Default: cdda-0.H, cdda-0.I, ctlg-master.
 
 .PARAMETER AolSourceRef
 Source ref for CAOL lane. Defaults to `master`, later can be switched to `port/cdda-master`.
@@ -201,7 +202,7 @@ param(
     [int]$AolDeltaMaxQueue = 250,
     [ValidateRange( 1, 1000 )]
     [int]$AolDeltaPatchsetInflationRatio = 5,
-    [string[]]$AolSkipDeltaTargets = @( "ctlg-master" ),
+    [string[]]$AolSkipDeltaTargets = @( "cdda-0.H", "cdda-0.I", "ctlg-master" ),
     [switch]$AllowDestructiveFallback,
     [string]$CtglRemoteUrl = "https://github.com/Cataclysm-TLG/Cataclysm-TLG.git",
     [string]$CodexModel = "",
@@ -1170,6 +1171,7 @@ if( $currentBranch -ne "master" ) {
     throw "This orchestrator must be started on branch 'master'. Current branch: '$currentBranch'."
 }
 Write-Host "[porting] mode: $Mode (upstream-lane=$script:RunUpstreamLane, aol-lane=$script:RunAolLane, codex=$script:RunCodexEnabled)"
+Write-Host "[porting] AOL delta-skip targets: $([string]::Join(', ', $AolSkipDeltaTargets))"
 
 $dirty = @( ( Invoke-External -FilePath "git" -Arguments @( "status", "--porcelain" ) ).Output )
 if( $dirty.Count -gt 0 -and -not $AllowDirty ) {
