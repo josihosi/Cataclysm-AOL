@@ -2998,7 +2998,9 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             break;
 
         case ACTION_MEDICAL:
-            player_character.disp_medical();
+            if( player_character.disp_medical() ) {
+                return false;
+            }
             break;
 
         case ACTION_BODYSTATUS:

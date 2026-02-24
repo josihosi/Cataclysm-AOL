@@ -60,6 +60,7 @@
 #include "mtype.h"
 #include "mutation.h"
 #include "npc.h"
+#include "options.h"
 #include "output.h"
 #include "pimpl.h"
 #include "pocket_type.h"
@@ -172,6 +173,8 @@ static const trait_id trait_VINES2( "VINES2" );
 static const trait_id trait_VINES3( "VINES3" );
 
 static const weapon_category_id weapon_category_UNARMED( "UNARMED" );
+
+static const std::string player_base_stamina_burn_rate( "PLAYER_BASE_STAMINA_BURN_RATE" );
 
 static void player_hit_message( Character *attacker, const std::string &message,
                                 Creature &t, int dam, bool crit = false, bool technique = false, const std::string &wp_hit = {} );
@@ -2021,6 +2024,17 @@ bool Character::block_hit( Creature *source, bodypart_id &bp_hit, damage_instanc
         return false;
     }
 
+    // Now that blocks cost stamina, break out if stamina is too low
+    // TODO: More complicated calculation. Dodge checks your dodge chance
+    // which is affected by stamina, pain, and so on and when it hits
+    // zero, that's when you get the message that you can't dodge, but
+    // currently none of that affects blocking
+    if( get_stamina() < 2000 ) {
+        add_msg_if_player( m_warning,
+                           _( "You're close to exhaustion and cannot block effectively." ) );
+        return false;
+    }
+
     // Melee skill and reaction score governs if you can react in time
     // Skill of 5 without relevant encumbrance guarantees a block attempt
     float melee_skill = has_active_bionic( bio_cqb ) ? 5 : get_skill_level( skill_melee );
@@ -2207,6 +2221,16 @@ bool Character::block_hit( Creature *source, bodypart_id &bp_hit, damage_instanc
                            _( "<npcname> blocks %1$s of the damage with their %2$s!" ),
                            damage_blocked_description, thing_blocked_with );
     add_msg_debug( debugmode::DF_MELEE, "Blocked damage %.1f / %.1f", total_damage, damage_blocked );
+
+    // stamina cost for blocking, based on dodge
+    // TODO: account for enemy melee scale, add diminishing returns.
+    const int base_burn_rate = get_option<int>( player_base_stamina_burn_rate );
+    const float block_skill_modifier = ( 20.0f - get_skill_level( skill_melee ) ) / 20.0f;
+    const float block_stamina_cost = static_cast<float>( base_burn_rate )  * 6.0f *
+                                     block_skill_modifier;
+    burn_energy_legs( -block_stamina_cost );
+    set_activity_level( EXTRA_EXERCISE );
+    add_msg_debug( debugmode::DF_MELEE, "Blocking stamina cost %.1f", block_stamina_cost );
 
     // fire martial arts block-triggered effects
     martial_arts_data->ma_onblock_effects( *this );

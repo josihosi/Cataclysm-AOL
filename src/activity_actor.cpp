@@ -93,14 +93,14 @@
 #include "monster.h"
 #include "mtype.h"
 #include "npc.h"
-#include "npctalk.h"
 #include "npc_opinion.h"
+#include "npctalk.h"
 #include "omdata.h"
 #include "options.h"
 #include "output.h"
 #include "overmap.h"
-#include "overmapbuffer.h"
 #include "overmap_ui.h"
+#include "overmapbuffer.h"
 #include "pickup.h"
 #include "pimpl.h"
 #include "player_activity.h"
@@ -125,8 +125,6 @@
 #include "uilist.h"
 #include "uistate.h"
 #include "units.h"
-#include "weather.h"
-#include "weather_type.h"
 #include "value_ptr.h"
 #include "veh_interact.h"
 #include "veh_type.h"
@@ -136,6 +134,9 @@
 #include "visitable.h"
 #include "vpart_position.h"
 #include "vpart_range.h"
+#include "weather.h"
+#include "weather_type.h"
+#include "wound.h"
 
 static const activity_id ACT_AIM( "ACT_AIM" );
 static const activity_id ACT_ATM( "ACT_ATM" );
@@ -9825,6 +9826,92 @@ std::unique_ptr<activity_actor> mend_item_activity_actor::deserialize( JsonValue
     return actor.clone();
 }
 
+void fix_wound_activity_actor::start( player_activity &act, Character & )
+{
+    act.moves_total = to_moves<int>( initial_moves );
+    act.moves_left = act.moves_total;
+}
+
+void fix_wound_activity_actor::finish( player_activity &act, Character &who )
+{
+    act.set_to_null();
+
+    bodypart *bp = who.get_part( healed_bp );
+
+    if( !bp->has_wound( mended_wound ) ) {
+        // wound naturally disappeared while we tried to treat it
+        return;
+    }
+    if( mending_method.is_empty() ) {
+        debugmsg( "missing wound fix for ACT_TREAT_WOUND." );
+        return;
+    }
+    if( !mending_method.is_valid() ) {
+        debugmsg( "invalid wound fix '%s' for ACT_TREAT_WOUND.", mending_method.str() );
+        return;
+    }
+    const wound_fix &fix = *mending_method;
+    const requirement_data &reqs = fix.get_requirements();
+    const inventory &inv = who.crafting_inventory();
+    if( !reqs.can_make_with_inventory( inv, is_crafting_component ) ) {
+        add_msg( m_info, _( "You are currently unable to heal the %s." ), healed_bp->name.translated() );
+        return;
+    }
+    for( const auto &e : reqs.get_components() ) {
+        who.consume_items( e );
+    }
+    for( const auto &e : reqs.get_tools() ) {
+        who.consume_tools( e );
+    }
+    who.invalidate_crafting_inventory();
+
+    for( const wound_type_id &id : fix.wounds_removed ) {
+        bp->remove_wound( id );
+    }
+
+    for( const wound_type_id &id : fix.wounds_added ) {
+        bp->add_wound( id );
+    }
+
+    if( fix.mod_hp ) {
+        bp->mod_hp_cur( fix.mod_hp );
+    }
+
+    for( const auto& [skill_id, level] : fix.skills ) {
+        who.practice( skill_id, 10, static_cast<int>( level * 1.25 ) );
+    }
+
+    for( const wound_proficiency &wound_prof : fix.proficiencies ) {
+        who.practice_proficiency( wound_prof.prof, fix.time );
+    }
+
+    add_msg( m_good, fix.success_msg.translated() );
+}
+
+void fix_wound_activity_actor::serialize( JsonOut &jsout ) const
+{
+    jsout.start_object();
+
+    jsout.member( "healed_bp", healed_bp );
+    jsout.member( "mended_wound", mended_wound );
+    jsout.member( "mending_method", mending_method );
+
+    jsout.end_object();
+}
+
+std::unique_ptr<activity_actor> fix_wound_activity_actor::deserialize( JsonValue &jsin )
+{
+    fix_wound_activity_actor actor;
+
+    JsonObject data = jsin.get_object();
+
+    data.read( "healed_bp", actor.healed_bp );
+    data.read( "mended_wound", actor.mended_wound );
+    data.read( "mending_method", actor.mending_method );
+
+    return actor.clone();
+}
+
 void gunmod_add_activity_actor::start( player_activity &act, Character & )
 {
     act.moves_total = moves;
@@ -11289,7 +11376,7 @@ void fire_start_activity_actor::do_turn( player_activity &act, Character &who )
     map &here = get_map();
     tripoint_bub_ms where = here.get_bub( fire_placement );
     if( !here.is_flammable( where ) ) {
-        try_fuel_fire( act, who, true );
+        try_fuel_fire( who, where );
         if( !here.is_flammable( where ) ) {
             if( here.has_flag_ter( ter_furn_flag::TFLAG_DEEP_WATER, where ) ||
                 here.has_flag_ter( ter_furn_flag::TFLAG_SHALLOW_WATER, where ) ) {
@@ -12982,11 +13069,30 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
                         return;
                     }
 
-                    // FIXME HACK: teleports item onto ground
-                    you.mod_moves( -you.item_handling_cost( **iter ) );
-                    std::vector<item_location> dropped_crap = put_into_vehicle_or_drop_ret_locs( you,
-                            item_drop_reason::deliberate, { **iter }, here.get_bub( drop_dest ) );
-                    if( !dropped_crap.empty() ) {
+                    // Place item at destination directly. Zone binding
+                    // determines the fallback chain: vehicle-only zones skip
+                    // ground, everything else tries cargo then ground.
+                    const zone_type_id drop_zt = mgr.get_near_zone_type_for_item( **iter,
+                                                 drop_dest, 0, fac_id );
+                    const bool vehicle_only = drop_zt != zone_type_id::NULL_ID() &&
+                                              mgr.has_vehicle( drop_zt, drop_dest, fac_id ) &&
+                                              !mgr.has_terrain( drop_zt, drop_dest, fac_id );
+                    bool placed = false;
+                    const tripoint_bub_ms drop_bub = here.get_bub( drop_dest );
+                    if( std::optional<vpart_reference> ovp = here.veh_at( drop_bub ).cargo() ) {
+                        item copy( **iter );
+                        if( ovp->vehicle().add_item( here, ovp->part(), copy ) ) {
+                            placed = true;
+                        }
+                    }
+                    if( !placed && !vehicle_only ) {
+                        item copy( **iter );
+                        item_location ground = here.add_item_or_charges_ret_loc(
+                                                   drop_bub, copy, false );
+                        placed = ground.get_item() != nullptr;
+                    }
+                    if( placed ) {
+                        you.mod_moves( -you.item_handling_cost( **iter ) );
                         if( const vehicle_cursor *veh_curs = iter->veh_cursor() ) {
                             vehicle &cart_with_items = veh_curs->veh;
                             cart_with_items.remove_item( cart_with_items.part( veh_curs->part ), iter->get_item() );
@@ -13048,15 +13154,11 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
         }
     }
 
-    // Rotate virtual-batch state when a batch has been fully delivered.
+    // Reset iteration state when a batch has been fully delivered.
     // Must happen before items.begin() + num_processed arithmetic below.
-    bool had_virtual_batch = false;
     if( picked_up_stuff.empty() ) {
-        had_virtual_batch = virtual_pickup_active;
         virtual_pickup_active = false;
-        if( had_virtual_batch ) {
-            num_processed = 0;
-        }
+        num_processed = 0;
     }
 
     bool is_adjacent_or_closer = square_dist( you.pos_bub(), src_bub ) <= 1;
@@ -13105,7 +13207,7 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
         }
 
         if( zone_sorting::sort_skip_item( you, it->first, other_activity_items,
-                                          mgr.has( zone_type_LOOT_IGNORE_FAVORITES, src, fac_id ), src, it->second ) ) {
+                                          mgr.has( zone_type_LOOT_IGNORE_FAVORITES, src, fac_id ), src ) ) {
             continue;
         }
 
@@ -13143,13 +13245,24 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
                     continue;
                 }
                 item copy_thisitem( thisitem );
-                // Try vehicle cargo at destination first, fall back to ground
+                // Vehicle-only zones don't fall back to ground placement.
+                // All other zones (terrain, dual-bound) try cargo first, then ground.
+                // No overflow to adjacent tiles in either case.
+                const bool vehicle_only = mgr.has_vehicle( zt_id, dest, fac_id ) &&
+                                          !mgr.has_terrain( zt_id, dest, fac_id );
+                bool placed = false;
                 if( std::optional<vpart_reference> ovp = here.veh_at( dest_bub ).cargo() ) {
-                    if( !ovp->vehicle().add_item( here, ovp->part(), copy_thisitem ) ) {
-                        here.add_item_or_charges( dest_bub, copy_thisitem );
+                    if( ovp->vehicle().add_item( here, ovp->part(), copy_thisitem ) ) {
+                        placed = true;
                     }
-                } else {
-                    here.add_item_or_charges( dest_bub, copy_thisitem );
+                }
+                if( !placed && !vehicle_only ) {
+                    item_location ground = here.add_item_or_charges_ret_loc( dest_bub, copy_thisitem,
+                                           false );
+                    placed = ground.get_item() != nullptr;
+                }
+                if( !placed ) {
+                    continue;
                 }
                 you.mod_moves( -you.item_handling_cost( copy_thisitem ) );
                 if( it->second ) {
@@ -13427,7 +13540,7 @@ void zone_sort_activity_actor::stage_do( player_activity &act, Character &you )
                     }
                     if( zone_sorting::sort_skip_item( you, it, other_activity_items,
                                                       mgr.has( zone_type_LOOT_IGNORE_FAVORITES, candidate, fac_id ),
-                                                      candidate, from_veh ) ) {
+                                                      candidate ) ) {
                         continue;
                     }
                     // Destination compatibility: exact zone-type match

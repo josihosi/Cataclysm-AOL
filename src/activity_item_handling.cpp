@@ -1301,8 +1301,7 @@ bool route_to_destination( Character &you, player_activity &act,
 
 bool sort_skip_item( Character &you, const item *it,
                      const std::vector<item_location> &other_activity_items,
-                     bool ignore_favorite, const tripoint_abs_ms &src,
-                     bool from_vehicle )
+                     bool ignore_favorite, const tripoint_abs_ms &src )
 {
     const zone_manager &mgr = zone_manager::get_manager();
 
@@ -1336,18 +1335,17 @@ bool sort_skip_item( Character &you, const item *it,
     const faction_id fac_id = _fac_id( you );
     const zone_type_id zt_id = mgr.get_near_zone_type_for_item( *it, you.pos_abs(),
                                MAX_VIEW_DISTANCE, fac_id );
-    // Skip items already at their destination. Use binding-aware lookup so a
-    // vehicle item is only considered "at destination" if the destination zone
-    // is bound to vehicle cargo, and likewise for ground items.
-    // LOOT_CUSTOM and LOOT_ITEM_GROUP need filter-based checking below.
+    // Skip items already at their destination regardless of whether the zone
+    // is bound to terrain or vehicle cargo. Delivery tries cargo first, so
+    // items often land in vehicle storage even at terrain-bound zones (e.g.,
+    // a fridge appliance on a LOOT_FOOD tile). Binding-agnostic check
+    // prevents infinite re-sort loops in that situation.
     if( zt_id != zone_type_LOOT_CUSTOM && zt_id != zone_type_LOOT_ITEM_GROUP &&
-        ( from_vehicle ? mgr.has_vehicle( zt_id, src, fac_id )
-          : mgr.has_terrain( zt_id, src, fac_id ) ) ) {
+        mgr.has( zt_id, src, fac_id ) ) {
         return true;
     }
-    // Custom and item-group zones: check filters with binding awareness
     if( ( zt_id == zone_type_LOOT_CUSTOM || zt_id == zone_type_LOOT_ITEM_GROUP ) &&
-        mgr.custom_loot_has( src, it, zt_id, fac_id, from_vehicle ) ) {
+        mgr.custom_loot_has( src, it, zt_id, fac_id ) ) {
         return true;
     }
 
@@ -1504,7 +1502,7 @@ bool has_items_to_sort( Character &you, const tripoint_abs_ms &src,
         }
 
         if( sort_skip_item( you, it, other_activity_items,
-                            zone_unload_options.ignore_favorite, src, it_pair.second ) ) {
+                            zone_unload_options.ignore_favorite, src ) ) {
             continue;
         }
 
@@ -4634,14 +4632,14 @@ int get_auto_consume_moves( Character &you, const bool food )
 }
 
 // Try to add fuel to a fire. Return true if there is both fire and fuel; return false otherwise.
-bool try_fuel_fire( player_activity &act, Character &you, const bool starting_fire )
+bool try_fuel_fire( Character &you, std::optional<tripoint_bub_ms> fire_target )
 {
     const tripoint_bub_ms pos = you.pos_bub();
     std::vector<tripoint_bub_ms> adjacent = closest_points_first( pos, 1, PICKUP_RANGE );
 
     map &here = get_map();
     std::optional<tripoint_bub_ms> best_fire =
-        starting_fire ? here.get_bub( act.placement ) : find_best_fire( adjacent, pos );
+        fire_target ? fire_target : find_best_fire( adjacent, pos );
 
     if( !best_fire || !here.accessible_items( *best_fire ) ) {
         return false;
@@ -4678,7 +4676,7 @@ bool try_fuel_fire( player_activity &act, Character &you, const bool starting_fi
 
     // Enough to sustain the fire
     // TODO: It's not enough in the rain
-    if( !starting_fire && ( fd.fuel_produced >= 1.0f || fire_age < 10_minutes ) ) {
+    if( !fire_target && ( fd.fuel_produced >= 1.0f || fire_age < 10_minutes ) ) {
         return true;
     }
 

@@ -353,7 +353,7 @@ static std::string trim_substring( std::string_view text, float width )
     float last_free = 0.f;
 
     do {
-        std::string trimmed_str( text.substr( 0, visible_chars ) );
+        std::string trimmed_str = utf8_truncate( std::string( text ), visible_chars );
         trimmed_str += ellipsis;
         float trimmed_width = ImGui::CalcTextSize( trimmed_str.c_str(), nullptr, true ).x;
 
