@@ -400,6 +400,11 @@ else
     CXX = $(CROSS)$(OS_COMPILER)
     LD  = $(CROSS)$(OS_LINKER)
   endif
+  CXX_WARNINGS += -Wno-unknown-warning
+  # GCC 15 emits free-nonheap-object false positives in some std::vector paths
+  # (seen in input_context.cpp with MinGW/UCRT). Keep this diagnostic as warning.
+  CXX_WARNINGS += -Wno-error=free-nonheap-object
+  WARNINGS += -Wno-unknown-warning
 endif
 
 STRIP = $(CROSS)strip
