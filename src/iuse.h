@@ -60,6 +60,7 @@ std::optional<int> mycus( Character *, item *, const tripoint_bub_ms & );
 std::optional<int> petfood( Character *p, item *it, const tripoint_bub_ms & );
 std::optional<int> plantblech( Character *, item *, const tripoint_bub_ms & );
 std::optional<int> poison( Character *, item *, const tripoint_bub_ms & );
+std::optional<int> poison_tainted( Character *, item *, const tripoint_bub_ms & );
 std::optional<int> prozac( Character *, item *, const tripoint_bub_ms & );
 std::optional<int> purify_smart( Character *, item *, const tripoint_bub_ms & );
 std::optional<int> sewage( Character *, item *, const tripoint_bub_ms & );

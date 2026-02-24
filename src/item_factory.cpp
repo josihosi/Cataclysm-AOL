@@ -2020,6 +2020,7 @@ void Item_factory::init()
     add_iuse( "PICKAXE", &iuse::pickaxe );
     add_iuse( "PLANTBLECH", &iuse::plantblech );
     add_iuse( "POISON", &iuse::poison );
+    add_iuse( "POISON_TAINTED", &iuse::poison_tainted );
     add_iuse( "PORTABLE_GAME", &iuse::portable_game );
     add_iuse( "PORTAL", &iuse::portal );
     add_iuse( "POST_UP", &iuse::post_up );

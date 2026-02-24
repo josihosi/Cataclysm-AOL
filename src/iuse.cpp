@@ -204,6 +204,7 @@ static const efftype_id effect_onfire( "onfire" );
 static const efftype_id effect_paincysts( "paincysts" );
 static const efftype_id effect_pet( "pet" );
 static const efftype_id effect_poison( "poison" );
+static const efftype_id effect_poison_tainted( "poison_tainted" );
 static const efftype_id effect_pre_conjunctivitis_bacterial( "pre_conjunctivitis_bacterial" );
 static const efftype_id effect_ridden( "ridden" );
 static const efftype_id effect_riding( "riding" );
@@ -963,6 +964,29 @@ std::optional<int> iuse::poison( Character *p, item *it, const tripoint_bub_ms &
         return 1;
     }
     p->add_effect( effect_poison, 1_hours );
+    p->add_effect( effect_foodpoison, 3_hours );
+    return 1;
+}
+
+std::optional<int> iuse::poison_tainted( Character *p, item *it, const tripoint_bub_ms & )
+{
+    if( p->has_trait( trait_EATDEAD ) ) {
+        return 1;
+    }
+
+    // NPCs have a magical sense of what is inedible
+    // Players can abuse the crafting menu instead...
+    if( !it->has_flag( flag_HIDDEN_POISON ) &&
+        ( p->is_npc() ||
+          !p->query_yn( _( "Are you sure you want to eat this?  It looks poisonous…" ) ) ) ) {
+        return std::nullopt;
+    }
+    /** @EFFECT_STR increases EATPOISON trait effectiveness (50-90%) */
+    if( p->has_trait( trait_EATPOISON ) && ( !one_in( p->str_cur / 2 ) ) ) {
+        p->add_effect( effect_poison, 1_hours );
+        return 1;
+    }
+    p->add_effect( effect_poison_tainted, 1_hours * (rng( 1, 2 ) ) );
     p->add_effect( effect_foodpoison, 3_hours );
     return 1;
 }

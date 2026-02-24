@@ -636,6 +636,11 @@
   },
   {
     "type": "item_action",
+    "id": "POISON_TAINTED",
+    "name": { "str": "Consume" }
+  },
+  {
+    "type": "item_action",
     "id": "PORTABLE_GAME",
     "name": { "ctxt": "PORTABLE_GAME", "str": "Play a game" }
   },

@@ -4449,7 +4449,7 @@
     "cancels": [ "VEGETARIAN", "HERBIVORE", "RUMINANT", "GRAZER" ],
     "vitamins_absorb_multi": [ [ "all", [ [ "mutant_toxin", 0.25 ] ] ] ],
     "category": [ "RAT", "CHIMERA", "CRUSTACEAN" ],
-    "flags": [ "IMMUNE_SPOIL" ]
+    "flags": [ "IMMUNE_SPOIL", "EATDEAD" ]
   },
   {
     "type": "mutation",

@@ -8652,7 +8652,7 @@ void Character::apply_damage( Creature *source, bodypart_id hurt, int dam,
         }
     }
 
-    if( !weapon.is_null() && !can_wield( weapon ).success() &&
+    if( !weapon.is_null() && !is_hallucination() && !can_wield( weapon ).success() &&
         can_drop( weapon ).success() ) {
         if( is_avatar() ) {
             popup( _( "You are no longer able to wield your %s and drop it!" ),
