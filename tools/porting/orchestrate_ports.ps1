@@ -63,6 +63,9 @@ Optional path filters for CAOL delta-cherry-pick commit selection.
 .PARAMETER MasterDeltaIgnorePathGlobs
 Commits whose changed files all match these globs are skipped in delta-cherry-pick mode.
 
+.PARAMETER MasterDeltaIgnoreCommits
+Commit SHAs to skip in delta-cherry-pick mode (useful for known superseded/noisy commits).
+
 .PARAMETER AolDeltaMaxQueue
 Maximum delta queue size before AOL lane falls back to patchset queue.
 
@@ -197,6 +200,12 @@ param(
         "Agents.md",
         ".gitignore",
         "tools/porting/*"
+    ),
+    [string[]]$MasterDeltaIgnoreCommits = @(
+        "2155cd4e86331a5d392dbe049ae0cf9d15138b62",
+        "e25391ae84821bad2195a90c077a00ac021fdd3e",
+        "1354bb669faba94fbc54799bc6820577f5630c91",
+        "3c29418983561685ed8979c01c029bd281cb47c6"
     ),
     [ValidateRange( 1, 200000 )]
     [int]$AolDeltaMaxQueue = 250,
@@ -728,7 +737,8 @@ function Get-MasterDeltaPlan {
         [Parameter(Mandatory = $true)] [string]$TargetBranch,
         [Parameter(Mandatory = $true)] [string]$MasterRef,
         [string[]]$PathFilter = @(),
-        [string[]]$IgnorePathGlobs = @()
+        [string[]]$IgnorePathGlobs = @(),
+        [string[]]$IgnoreCommits = @()
     )
 
     $masterSnapshot = @( ( Invoke-External -FilePath "git" -Arguments @( "rev-parse", "--verify", $MasterRef ) ).Output )[-1].Trim()
@@ -756,7 +766,18 @@ function Get-MasterDeltaPlan {
 
     $filtered = New-Object System.Collections.Generic.List[string]
     $skippedByIgnore = 0
+    $skipCommitSet = New-Object System.Collections.Generic.HashSet[string] ( [System.StringComparer]::OrdinalIgnoreCase )
+    foreach( $sha in $IgnoreCommits ) {
+        if( -not [string]::IsNullOrWhiteSpace( $sha ) ) {
+            [void]$skipCommitSet.Add( $sha.Trim() )
+        }
+    }
+    $skippedBySha = 0
     foreach( $sha in $queue ) {
+        if( $skipCommitSet.Contains( $sha ) ) {
+            $skippedBySha++
+            continue
+        }
         if( Should-SkipMasterDeltaCommit -CommitSha $sha -IgnorePathGlobs $IgnorePathGlobs ) {
             $skippedByIgnore++
             continue
@@ -775,7 +796,8 @@ function Get-MasterDeltaPlan {
         Source = "direct-cherry"
         RawCount = $queue.Count
         SkippedByIgnore = $skippedByIgnore
-        Notes = "source=direct-cherry raw=$($queue.Count) skippedByIgnore=$skippedByIgnore final=$($filtered.Count)"
+        SkippedBySha = $skippedBySha
+        Notes = "source=direct-cherry raw=$($queue.Count) skippedBySha=$skippedBySha skippedByIgnore=$skippedByIgnore final=$($filtered.Count)"
     }
 }
 
@@ -886,7 +908,7 @@ function Select-AolQueuePlan {
         }
     }
 
-    $deltaPlan = Get-MasterDeltaPlan -TargetBranch $TargetBranch -MasterRef $SourceRef -PathFilter $PathFilter -IgnorePathGlobs $IgnorePathGlobs
+    $deltaPlan = Get-MasterDeltaPlan -TargetBranch $TargetBranch -MasterRef $SourceRef -PathFilter $PathFilter -IgnorePathGlobs $IgnorePathGlobs -IgnoreCommits $MasterDeltaIgnoreCommits
     $deltaCount = $deltaPlan.Queue.Count
     $deltaNotes = $deltaPlan.Notes
 
@@ -900,11 +922,19 @@ function Select-AolQueuePlan {
         $ratioExceeded = $deltaPlan.Queue.Count -gt ( $patchsetPendingArray.Count * $AolDeltaPatchsetInflationRatio )
         $maxExceeded = $deltaPlan.Queue.Count -gt $AolDeltaMaxQueue
         if( $deltaPlan.Queue.Count -eq 0 ) {
-            $selectedQueue = $patchsetPendingArray
-            $selectedLabel = "aol-patchset"
-            $selectedSource = "patchset"
-            $selectionReason = "delta-empty-patchset-pending"
-            $selectedNotes = "$($patchsetPlan.Notes); fallbackReason=$selectionReason"
+            if( $deltaPlan.SkippedBySha -gt 0 ) {
+                $selectedQueue = @()
+                $selectedLabel = "aol-delta"
+                $selectedSource = "delta"
+                $selectionReason = "delta-empty-after-sha-ignore"
+                $selectedNotes = "$($deltaPlan.Notes); fallbackSuppressed=sha-ignore"
+            } else {
+                $selectedQueue = $patchsetPendingArray
+                $selectedLabel = "aol-patchset"
+                $selectedSource = "patchset"
+                $selectionReason = "delta-empty-patchset-pending"
+                $selectedNotes = "$($patchsetPlan.Notes); fallbackReason=$selectionReason"
+            }
         } elseif( $maxExceeded -or $ratioExceeded ) {
             $selectedQueue = $patchsetPendingArray
             $selectedLabel = "aol-patchset"
@@ -1029,9 +1059,29 @@ Requirements:
                 $appliedCount++
                 continue
             }
-            $applyOk = $false
-            if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
-                $failureNotes = "cherry-pick --continue failed for $sha"
+            $continueText = [string]::Join( [Environment]::NewLine, @( $continueResult.Output ) )
+            $emptyAfterResolve = $continueText -match "(?i)previous cherry-pick is now empty"
+            if( $emptyAfterResolve ) {
+                $skipResult = Invoke-External -FilePath "git" -Arguments @( "cherry-pick", "--skip" ) -IgnoreFailure
+                if( -not $DryRun ) {
+                    @(
+                        "auto_skipped_empty_after_resolve: $sha"
+                        [string]::Join( [Environment]::NewLine, @( $skipResult.Output ) )
+                        ""
+                    ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
+                }
+                if( $skipResult.ExitCode -eq 0 ) {
+                    continue
+                }
+                $applyOk = $false
+                if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                    $failureNotes = "cherry-pick became empty but --skip failed for $sha"
+                }
+            } else {
+                $applyOk = $false
+                if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                    $failureNotes = "cherry-pick --continue failed for $sha"
+                }
             }
         } elseif( $remaining.Count -eq 0 -and -not $cherryPickHead ) {
             $appliedCount++
@@ -1064,13 +1114,24 @@ function New-CodexPromptFile {
         [Parameter(Mandatory = $true)] [string]$Title,
         [Parameter(Mandatory = $true)] [string]$Body
     )
+    $readFirstPaths = @()
+    foreach( $contextPath in @( "Agents.md", "AGENTS.md", "tools/porting/PORTING_CONTEXT.md", "Plan.md" ) ) {
+        if( Test-Path -LiteralPath $contextPath ) {
+            if( -not ( $readFirstPaths -contains $contextPath ) ) {
+                $readFirstPaths += $contextPath
+            }
+        }
+    }
+    $readFirstText = if( $readFirstPaths.Count -gt 0 ) {
+        [string]::Join( [Environment]::NewLine, ( $readFirstPaths | ForEach-Object { '- `' + $_ + '`' } ) )
+    } else {
+        "- (no context files found in working tree)"
+    }
     $prompt = @"
 # $Title
 
 Read these first:
-- `Agents.md`
-- `tools/porting/PORTING_CONTEXT.md`
-- `Plan.md`
+$readFirstText
 
 $Body
 "@
@@ -1174,6 +1235,9 @@ if( $currentBranch -ne "master" ) {
 }
 Write-Host "[porting] mode: $Mode (upstream-lane=$script:RunUpstreamLane, aol-lane=$script:RunAolLane, codex=$script:RunCodexEnabled)"
 Write-Host "[porting] AOL delta-skip targets: $([string]::Join(', ', $AolSkipDeltaTargets))"
+if( $MasterDeltaIgnoreCommits.Count -gt 0 ) {
+    Write-Host "[porting] AOL delta-ignore commits: $($MasterDeltaIgnoreCommits.Count)"
+}
 
 $dirty = @( ( Invoke-External -FilePath "git" -Arguments @( "status", "--porcelain" ) ).Output )
 if( $dirty.Count -gt 0 -and -not $AllowDirty ) {
