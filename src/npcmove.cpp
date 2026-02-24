@@ -4786,11 +4786,11 @@ item *npc::evaluate_best_gun() const
 {
     item_location weapon = get_wielded_item();
     item *best = weapon && weapon->is_gun() ? &*weapon : nullptr;
-    double best_value = best ? evaluate_weapon( *best ) : 0.0;
+    double best_value = best ? evaluate_weapon( *best, true, false ) : 0.0;
 
     visit_items( [this, &best_value, &best]( item * node, item * ) {
         if( node->is_gun() && can_wield( *node ).success() ) {
-            const double weapon_value = evaluate_weapon( *node );
+            const double weapon_value = evaluate_weapon( *node, true, false );
             if( weapon_value > best_value ) {
                 best = const_cast<item *>( node );
                 best_value = weapon_value;
@@ -4827,11 +4827,11 @@ item *npc::evaluate_best_silent_gun() const
 
     item_location weapon = get_wielded_item();
     item *best = weapon && weapon->is_gun() && has_silent_mode( *weapon ) ? &*weapon : nullptr;
-    double best_value = best ? evaluate_weapon( *best ) : 0.0;
+    double best_value = best ? evaluate_weapon( *best, true, true ) : 0.0;
 
     visit_items( [this, &best_value, &best, &has_silent_mode]( item * node, item * ) {
         if( node->is_gun() && can_wield( *node ).success() && has_silent_mode( *node ) ) {
-            const double weapon_value = evaluate_weapon( *node );
+            const double weapon_value = evaluate_weapon( *node, true, true );
             if( weapon_value > best_value ) {
                 best = const_cast<item *>( node );
                 best_value = weapon_value;
@@ -4848,11 +4848,11 @@ item *npc::evaluate_best_melee() const
 {
     item_location weapon = get_wielded_item();
     item *best = weapon && weapon->is_melee() && !weapon->is_gun() ? &*weapon : nullptr;
-    double best_value = best ? evaluate_weapon( *best ) : 0.0;
+    double best_value = best ? evaluate_weapon( *best, false, false ) : 0.0;
 
     visit_items( [this, &best_value, &best]( item * node, item * ) {
         if( node->is_melee() && !node->is_gun() && can_wield( *node ).success() ) {
-            const double weapon_value = evaluate_weapon( *node );
+            const double weapon_value = evaluate_weapon( *node, false, false );
             if( weapon_value > best_value ) {
                 best = const_cast<item *>( node );
                 best_value = weapon_value;

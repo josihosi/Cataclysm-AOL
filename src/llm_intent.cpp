@@ -1518,8 +1518,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     const int hunger_scaled = scale_unipolar( listener.get_hunger(), 300.0 );
     const int thirst_scaled = scale_unipolar( listener.get_thirst(), 300.0 );
     const int pain_scaled = scale_unipolar( listener.get_pain(), 100.0 );
-    const int max_sleepiness = static_cast<int>( sleepiness_levels::MASSIVE_SLEEPINESS );
-    const int sleepiness_scaled = scale_unipolar( listener.get_sleepiness(), max_sleepiness );
+    const int sleepiness_scaled = listener.in_sleep_state() ? 10 : 0;
     const int hp_scaled = scale_unipolar( listener.hp_percentage(), 100.0 );
     double stamina_percent = 0.0;
     if( listener.get_stamina_max() > 0 ) {
