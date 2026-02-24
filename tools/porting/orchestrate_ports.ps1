@@ -913,13 +913,27 @@ function Select-AolQueuePlan {
     $deltaNotes = "delta-skipped"
 
     $skipDelta = $AolSkipDeltaTargets -contains $TargetName
-    if( $skipDelta -and $patchsetPendingArray.Count -gt 0 ) {
+    if( $skipDelta ) {
+        if( $patchsetPendingArray.Count -gt 0 ) {
+            return [PSCustomObject]@{
+                Queue = @( $patchsetPendingArray )
+                QueueLabel = "aol-patchset"
+                Source = "patchset"
+                Notes = "$($patchsetPlan.Notes); deltaSkippedForTarget=$TargetName"
+                SelectionReason = "skip-delta-target"
+                DeltaCount = $deltaCount
+                DeltaNotes = $deltaNotes
+                PatchsetCount = $patchsetPlan.Queue.Count
+                PatchsetPendingCount = $patchsetPendingArray.Count
+                PatchsetNotes = $patchsetPlan.Notes
+            }
+        }
         return [PSCustomObject]@{
-            Queue = @( $patchsetPendingArray )
-            QueueLabel = "aol-patchset"
-            Source = "patchset"
-            Notes = "$($patchsetPlan.Notes); deltaSkippedForTarget=$TargetName"
-            SelectionReason = "skip-delta-target"
+            Queue = @()
+            QueueLabel = "aol-delta"
+            Source = "delta"
+            Notes = "$($patchsetPlan.Notes); deltaSkippedForTarget=$TargetName noPatchsetPending=true"
+            SelectionReason = "skip-delta-target-noop"
             DeltaCount = $deltaCount
             DeltaNotes = $deltaNotes
             PatchsetCount = $patchsetPlan.Queue.Count
