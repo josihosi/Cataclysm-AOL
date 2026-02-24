@@ -114,6 +114,25 @@ Configuration knobs:
   - `tools/porting/patchsets/cdda-0.I.txt`
   - `tools/porting/patchsets/ctlg-master.txt`
 
+## Release Build Helpers (Current Defaults)
+- `just_build.cmd` and `build_and_run.cmd` now skip background summary generation by default to keep matrix validation fast.
+  - Use `--with-summary` when intentionally regenerating summaries.
+- `just_build_linux.cmd` and `build_and_run_linux.cmd` now:
+  - Skip apt dependency bootstrap by default.
+  - Use `--install-deps` to run dependency install/update.
+  - Disable `ASTYLE` checks during build-validation runs.
+  - Skip background summary generation by default (use `--with-summary` to enable).
+- This split is intentional:
+  - Build matrix scripts are for compile/smoke validation speed.
+  - Summary regeneration is still available as an explicit action.
+
+## Packaging Contract (Port Releases)
+- Every `port/*` release bundle must include:
+  - `tools/llm_runner/**`
+  - `data/json/npcs/Backgrounds/Summaries_short/**` (via `data`)
+  - `README.md`, `Plan.md`, `TechnicalTome.md`, `Agents.md`
+- Port branches should carry CAOL branding in README/title assets with a short compatibility disclaimer.
+
 ### Debug run example
 Run a single topic with retries and verbose IO (use the OpenVINO venv Python):
 ```powershell

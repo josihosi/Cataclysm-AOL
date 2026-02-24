@@ -1,40 +1,58 @@
-﻿# Local LLM Intent Layer (Follower NPCs) Plan
+# C-AOL Release Roadmap
 
-## Plan summary
-We are integrating a local LLM into the open-source game Cataclysm so allied NPC followers can react to player shouts in-character. 
-The game sends an NPC-centric snapshot, the model returns a short speech plus whitelisted actions, and NPC AI applies them asynchronously with guardrails and stable behavior parity across release targets.
+## Objective
+Ship tested Windows and Linux releases for:
+- `port/cdda-master`
+- `port/cdda-0.H`
+- `port/cdda-0.I`
+- `port/ctlg-master`
 
-## To-Do (Highest Priority)
+## Status
+- `Done`: orchestrator replay flow is stable and `rerere` is enabled (`rerere.enabled=true`, `rerere.autoupdate=true`).
+- `In progress`: release validation and packaging parity across all `port/*` branches.
 
-### Release cycle (current focus)
-- Merge `dev` into `master` before starting the port/release run.
-- Run the orchestrator from `master`:
-  - `.\tools\porting\orchestrate_ports.ps1 -RunCodex`
-- Review `tools/porting/logs/<timestamp>/summary.txt` and per-target logs.
-- Confirm each target branch is ready:
-  - `port/cdda-master`
-  - `port/cdda-0.H`
-  - `port/cdda-0.I`
-  - `port/ctlg-master`
-- Produce and publish 8 release artifacts (Windows + Linux for each target).
+## Execution Roadmap
 
-### Reliability / Flow
-- Buffer multi-step intents: when `look_inventory`/`look_around` trigger a second toolcall, preserve the first toolcall's actions instead of overwriting them.
-- Malformed-output safety: retry once with a short "fix format" prompt and strict timeout before dropping.
-- Context-weighted spontaneous call probability (danger/pain/noise/morale/context deltas), while keeping per-NPC async scheduling.
+### 1) Port refresh
+- Ensure `master` contains the latest release-ready AOL changes.
+- Re-apply the curated patch queue onto each `port/*` branch (orchestrator/cherry-pick flow).
+- Keep per-target fixups branch-local only when unavoidable.
 
-### Guardrails
-- Document and lock the spontaneous-call randomness policy (bounds + distribution + per-NPC independence) in `TechnicalTome.md`.
-- Add a focused scheduler regression checklist: duplicate-request prevention, disable/re-enable behavior, and multi-NPC fairness.
-- Keep these implementation rules in follow-up changes:
-  - Every insertion into persistent async state (`pending_*`, queues, per-NPC timers) must define all removal paths: success, parse failure, timeout, option-disable, despawn/unload.
-  - Option toggles must be idempotent across enable/disable cycles and safe to flip mid-flight.
-  - Prompt/snapshot protocols should prefer explicit structured fields over magic string sentinels.
+### 2) Build matrix (logs redirected)
+- For each target branch run:
+  - `just_build.cmd --unclean > build_logs/<target>-win.log 2>&1`
+  - `just_build_linux.cmd --unclean > build_logs/<target>-linux.log 2>&1`
+- Use the helper defaults for matrix speed:
+  - Linux dependency bootstrap is opt-in (`--install-deps`).
+  - Background summary generation is opt-in (`--with-summary`).
+  - Linux build-validation runs disable `ASTYLE` checks.
 
-## Later To-Do (Not Current Release Blockers)
-- Integrate distribution into CDDA-Game-Launcher "kitty" installer (https://github.com/Fris0uman/CDDA-Game-Launcher) so players can install/update this fork.
-- Throw grenades.
-- Move instructions.
-- LLM finetuning.
-- Initiative/rumor-system expansion for proactive squad coordination (backburner).
+### 3) Smoke tests
+- For each target branch run:
+  - `build_and_run.cmd --unclean`
+  - `build_and_run_linux.cmd --unclean`
+- Validate at least:
+  - Game reaches main menu.
+  - Save/world load works.
+  - NPC shout/speech loop (`C` + `b`) still behaves correctly.
 
+### 4) Packaging audit
+- Required in release artifacts for every target:
+  - `tools/llm_runner/**`
+  - `data/json/npcs/Backgrounds/Summaries_short/**`
+  - `README.md`
+  - `Plan.md`
+  - `TechnicalTome.md`
+  - `Agents.md`
+- Ensure CAOL branding is present in README/title assets, with a short compatibility disclaimer on port builds.
+
+### 5) GitHub release
+- Produce 8 artifacts total (4 targets x 2 platforms).
+- Publish with commit hashes and short per-target notes.
+- Include known limitations for any target with behavior diffs.
+
+## Definition Of Done
+- All four `port/*` branches complete Windows and Linux build validation.
+- Smoke tests are completed on both platforms.
+- Packaging contents are parity-checked across targets.
+- GitHub release artifacts are uploaded with clear branch/commit provenance.

@@ -7,6 +7,8 @@ This is something I would like to see in games in general, so I'm creating it he
 
 [Video](https://youtu.be/HfishtPzvhA), so you know its real.
 
+Compatibility note: release branches under `port/*` are AOL behavior ports onto different upstream bases (`cdda-master`, `0.H`, `0.I`, `ctlg-master`). Gameplay and data can differ slightly per target because of upstream divergence.
+
 Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and up to three actions.
 The game sends an NPC-centric snapshot to the runner together with your utterance.
 Random LLM calls can also be enabled under [LLM] with `Random call (turns)` (0 disables it, 1-500 enables periodic spontaneous check-ins).
