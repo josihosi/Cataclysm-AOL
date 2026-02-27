@@ -145,3 +145,39 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
 - `talker_npc::get_topics()` picks the NPC's `dialogue_chatbin` topics (`first_topic`, `talk_friend`, `talk_leader`, etc. in `src/dialogue_chatbin.h`), then falls back to `npc::pick_talk_topic()` (`src/npctalk.cpp`) which selects a stranger/friend topic based on personality/opinion.
 - For each topic, `dialogue::dynamic_line()` calls `json_talk_topic::get_dynamic_line()` and `dialogue::gen_responses()` calls `json_talk_topic::gen_responses()` to build visible player responses from JSON, filtering by dialogue conditions and attaching effects/trials.
 - The response's effect sets the next topic; the loop continues until `TALK_DONE`, with `TALK_NONE` popping the stack. This is the central hook if we ever want to intercept or rewrite dialogue selection globally.
+
+## Hierarchical LLM Control (Planned, Compute-Lean)
+- Design goal: keep high strategic agency while minimizing LLM calls by using deterministic execution for most behavior.
+
+### Control hierarchy
+- `Faction level` (rare LLM calls):
+  - Sets doctrine and regional objective (`raid`, `evade`, `fortify`, etc.).
+- `Squad level` (moderate LLM calls):
+  - Preferred batching: one call controls a micro-squad of 2-3 bandits.
+  - Produces short movement intent only.
+- `Actor level` (deterministic, frequent):
+  - Existing AI executes pathing, combat, inventory, and local reactions.
+  - LLM is only escalated on context gates.
+
+### Overmap movement contract
+- Planned minimal parser contract for overmap planner output:
+  - `Stay`
+  - `Move <dir>`
+  - `Move <dir> <dir>`
+  - `Move <dir> <dir> <dir>`
+- Allowed directions: `N NE E SE S SW W NW`.
+- Any malformed output resolves to `Stay` (no side effects).
+
+### Context-gated trigger model
+- Call LLM only when state delta is meaningful, e.g.:
+  - threat spike, objective change, squad split, or complex player intent.
+- Skip calls when deterministic policy is still valid and world delta is below threshold.
+- Keep cooldown + jitter + global cap to prevent request storms.
+
+### Deterministic safety and fallback
+- Planner output is intent-only; movement motor remains deterministic.
+- If route/path intent fails:
+  - try deterministic repath once,
+  - then clear intent and continue with local deterministic AI.
+- If planner is unavailable or parse fails:
+  - keep gameplay stable by using non-LLM defaults.
