@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <list>
 #include <map>
@@ -1230,9 +1231,11 @@ void game::chat()
             static constexpr int llm_intent_min_hear_radius = 12;
             const int say_volume = std::max( 2, volume / 2 );
             const int llm_hear_volume = std::max( say_volume, llm_intent_min_hear_radius );
-            std::vector<npc *> hearers = get_npcs_if( [&]( const npc & guy ) {
-                return guy.can_hear( u.pos_bub(), llm_hear_volume ) && guy.is_player_ally();
-            } );
+            const tripoint player_pos = u.pos();
+            const std::function<bool( const npc & )> hears_player = [&]( const npc & guy ) {
+                return guy.can_hear( player_pos, llm_hear_volume ) && guy.is_player_ally();
+            };
+            std::vector<npc *> hearers = get_npcs_if( hears_player );
             if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                 const std::string utterance = !yell_msg.empty() ? yell_msg : message;
                 llm_intent::enqueue_requests( hearers, utterance );

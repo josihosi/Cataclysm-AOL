@@ -2249,6 +2249,20 @@ bool npc::is_player_ally() const
     return is_ally( get_player_character() );
 }
 
+std::map<character_id, npc::llm_intent_state> &npc::llm_intent_state_map()
+{
+    static std::map<character_id, llm_intent_state> states;
+    return states;
+}
+
+npc::llm_intent_state &npc::llm_intent_state_for( const npc &guy )
+{
+    std::map<character_id, llm_intent_state> &states = llm_intent_state_map();
+    const character_id id = guy.getID();
+    const auto inserted = states.emplace( id, llm_intent_state() );
+    return inserted.first->second;
+}
+
 void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                   const std::string &request_id,
                                   const std::string &target_hint ) const
