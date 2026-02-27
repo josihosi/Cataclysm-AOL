@@ -244,12 +244,6 @@ void game::unserialize_impl( const JsonObject &data )
     calendar::initial_season = static_cast<season_type>( data.get_int( "initial_season",
                                static_cast<int>( SPRING ) ) );
 
-    std::string loaded_dimension_prefix;
-    if( data.read( "dimension_prefix", loaded_dimension_prefix ) ) {
-        dimension_prefix = loaded_dimension_prefix;
-        load_dimension_data();
-    }
-
     data.read( "auto_travel_mode", auto_travel_mode );
     data.read( "run_mode", tmprun );
     data.read( "mostseen", mostseen );
