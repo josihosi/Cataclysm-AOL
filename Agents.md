@@ -51,6 +51,11 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - If manual builds fail with `Cannot convert existing thin library zstd.a`, remove stale archives before rebuild:
   - `Remove-Item zstd.a,zstd_test.a -Force -ErrorAction SilentlyContinue`
   - (Helper scripts now do this automatically.)
+- If Linux/manual builds fail with `Cannot convert existing thin library cataclysm.a`, remove stale archives and tests PCH:
+  - `Remove-Item cataclysm.a,pch\tests-pch.hpp.gch,pch\tests-pch.hpp.d -Force -ErrorAction SilentlyContinue`
+  - (Helper scripts now do this automatically.)
+- On `port/ctlg-master`, `make clean` may report `clean-tests` failures while the actual build still succeeds. Treat that as cleanup noise unless the final build command exits non-zero.
+- When checking cleanliness across `port/*` branches after switching between CDDA and CTLG targets, verify `data/mods/TEST_DATA/` is not left as an untracked carryover on CTLG branches.
 - On Windows run commands, execute `cataclysm-tiles.exe` explicitly (not `cataclysm-tiles`).
 - CTLG-specific merge traps seen during porting:
   - `npc::evaluate_weapon` requires 3 args (`item&, bool can_use_gun, bool use_silent`).
