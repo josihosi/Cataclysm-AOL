@@ -5,12 +5,14 @@ set "CLEAN=1"
 set "WITH_SUMMARY=0"
 set "ISOLATE_USERDIR=1"
 set "RESET_USERDIR=0"
+set "RESET_WORLDS=0"
 set "FAST_DEBUG=0"
 for %%A in (%*) do (
   if /I "%%~A"=="--unclean" set "CLEAN=0"
   if /I "%%~A"=="--with-summary" set "WITH_SUMMARY=1"
   if /I "%%~A"=="--shared-userdir" set "ISOLATE_USERDIR=0"
   if /I "%%~A"=="--reset-userdir" set "RESET_USERDIR=1"
+  if /I "%%~A"=="--reset-worlds" set "RESET_WORLDS=1"
   if /I "%%~A"=="--fast" set "FAST_DEBUG=1"
   if /I "%%~A"=="-f" set "FAST_DEBUG=1"
   if /I "%%~A"=="--fast-debug" set "FAST_DEBUG=1"
@@ -47,4 +49,4 @@ if "%FAST_DEBUG%"=="1" (
   echo Using fast build profile ^(--fast / -f^): tiles playable, lower compile cost, auto-unclean.
 )
 
-"C:\Users\josef\dev\msys64\usr\bin\bash.exe" -lc "cd /c/Users/josef/dev/Cataclysm-AOL && if [ \"%RESET_USERDIR%\" = \"1\" ] && [ -n \"%USERDIR_REL%\" ]; then echo Resetting userdir profile %USERDIR_REL%; rm -rf \"%USERDIR_REL%\"; fi && export LLM_BG_SUMMARY_PYTHON=\"%LLM_BG_SUMMARY_PYTHON%\" && rm -f pch/main-pch.hpp.gch obj*/pch/main-pch.hpp.gch objwin/*/pch/main-pch.hpp.gch zstd.a zstd_test.a && if [ \"%CLEAN%\" = \"1\" ]; then echo Cleaning in MSYSTEM=$MSYSTEM; make clean; rm -f zstd.a; else echo Skipping clean in MSYSTEM=$MSYSTEM; fi && echo Building in MSYSTEM=$MSYSTEM && make -j$(nproc) RELEASE=%MAKE_RELEASE% MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=%MAKE_SOUND% LOCALIZE=%MAKE_LOCALIZE%%MAKE_LANG_FLAGS% LINTJSON=0 ASTYLE=0 TESTS=0%MAKE_EXTRA% && if [ -n \"%USERDIR_REL%\" ]; then ./cataclysm-tiles.exe --userdir \"%USERDIR_REL%\"; else ./cataclysm-tiles.exe; fi"
+"C:\Users\josef\dev\msys64\usr\bin\bash.exe" -lc "cd /c/Users/josef/dev/Cataclysm-AOL && if [ \"%RESET_USERDIR%\" = \"1\" ] && [ -n \"%USERDIR_REL%\" ]; then echo Resetting userdir profile %USERDIR_REL%; rm -rf \"%USERDIR_REL%\"; fi && if [ \"%RESET_WORLDS%\" = \"1\" ] && [ -n \"%USERDIR_REL%\" ]; then echo Resetting worlds in profile %USERDIR_REL%; rm -rf \"%USERDIR_REL%save\"; rm -f \"%USERDIR_REL%config/lastworld.json\"; fi && if [ -n \"%USERDIR_REL%\" ]; then mkdir -p \"%USERDIR_REL%config\"; cp -f config/fonts.json \"%USERDIR_REL%config/fonts.json\"; fi && export LLM_BG_SUMMARY_PYTHON=\"%LLM_BG_SUMMARY_PYTHON%\" && rm -f pch/main-pch.hpp.gch obj*/pch/main-pch.hpp.gch objwin/*/pch/main-pch.hpp.gch zstd.a zstd_test.a && if [ \"%CLEAN%\" = \"1\" ]; then echo Cleaning in MSYSTEM=$MSYSTEM; make clean; rm -f zstd.a; else echo Skipping clean in MSYSTEM=$MSYSTEM; fi && echo Building in MSYSTEM=$MSYSTEM && make -j$(nproc) RELEASE=%MAKE_RELEASE% MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=%MAKE_SOUND% LOCALIZE=%MAKE_LOCALIZE%%MAKE_LANG_FLAGS% LINTJSON=0 ASTYLE=0 TESTS=0%MAKE_EXTRA% && if [ -n \"%USERDIR_REL%\" ]; then ./cataclysm-tiles.exe --userdir \"%USERDIR_REL%\"; else ./cataclysm-tiles.exe; fi"
