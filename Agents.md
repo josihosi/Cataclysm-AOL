@@ -56,7 +56,14 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
   - (Helper scripts now do this automatically.)
 - On `port/ctlg-master`, `make clean` may report `clean-tests` failures while the actual build still succeeds. Treat that as cleanup noise unless the final build command exits non-zero.
 - When checking cleanliness across `port/*` branches after switching between CDDA and CTLG targets, verify `data/mods/TEST_DATA/` is not left as an untracked carryover on CTLG branches.
-- On Windows run commands, execute `cataclysm-tiles.exe` explicitly (not `cataclysm-tiles`).
+- Executable naming differs by branch target:
+  - CDDA targets: run `cataclysm-tiles.exe` on Windows and `cataclysm-tiles` on Linux.
+  - CTLG target: run `cataclysm-tlg-tiles.exe` on Windows and `cataclysm-tlg-tiles` on Linux.
+- CTLG font config schema differs from newer CDDA-style `config/fonts.json`:
+  - CTLG expects legacy string arrays (`typeface`, `map_typeface`, `overmap_typeface`) compatible with `data/fontdata.json`.
+  - Copying modern hinted-object font config (`{ "path": "...", "hinting": "..." }`) into CTLG profile `fonts.json` causes startup JSON parse failure.
+- If CTLG reports `Invalid mod No_Rail_Stations requested`, treat it as stale/renamed mod id and map it to `railroads`.
+- CTLG railroads JSON may fail strict loading on `data/mods/railroads/mapgen/railroad/railroad_station.json` due to `lootable` field in vending machine entries; remove/patch unsupported keys when this appears.
 - CTLG-specific merge traps seen during porting:
   - `npc::evaluate_weapon` requires 3 args (`item&, bool can_use_gun, bool use_silent`).
   - If `npcmove.cpp` defines `execute_llm_intent_action(...)`, `npc.h` must declare it.
