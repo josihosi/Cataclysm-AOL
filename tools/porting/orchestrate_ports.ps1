@@ -1032,6 +1032,7 @@ function Invoke-CherryPickQueue {
     $applyLogFile = Join-Path $TargetRunDir "apply-$QueueLabel.log"
     foreach( $sha in $CommitQueue ) {
         Assert-CurrentBranch -Expected $TargetBranch -Context "cherry-pick $sha for $TargetName"
+        Write-Host "[porting] [$QueueLabel] applying $sha"
         $pickArgs = @( "cherry-pick", "--allow-empty", "-x", $sha )
         $pickResult = Invoke-External -FilePath "git" -Arguments $pickArgs -IgnoreFailure
         if( -not $DryRun ) {
@@ -1043,6 +1044,7 @@ function Invoke-CherryPickQueue {
         }
         if( $pickResult.ExitCode -eq 0 ) {
             $appliedCount++
+            Write-Host "[porting] [$QueueLabel] applied $sha"
             continue
         }
 
@@ -1076,7 +1078,9 @@ Conflict files:
 $conflictText
 
 Requirements:
-1. Resolve this cherry-pick and run `git cherry-pick --continue`.
+1. Resolve this cherry-pick and finalize it:
+   - If `CHERRY_PICK_HEAD` exists, run `git cherry-pick --continue`.
+   - If `CHERRY_PICK_HEAD` is missing, ensure changes are staged and run `git commit --no-edit -C $sha`.
 2. Keep changes focused to AOL porting behavior parity.
 3. Do not run full builds yet; orchestrator will run builds after replay.
 4. Summarize any manual decisions needed for future queue curation.
@@ -1118,8 +1122,31 @@ Requirements:
                 }
             }
         } elseif( $remaining.Count -eq 0 -and -not $cherryPickHead ) {
-            $appliedCount++
-            continue
+            $stagedPaths = @( ( Invoke-External -FilePath "git" -Arguments @( "diff", "--cached", "--name-only" ) ).Output )
+            $stagedPaths = @( $stagedPaths | Where-Object { -not [string]::IsNullOrWhiteSpace( $_ ) } )
+            if( $stagedPaths.Count -gt 0 ) {
+                $commitResult = Invoke-External -FilePath "git" -Arguments @( "commit", "--no-edit", "-C", $sha ) -IgnoreFailure
+                if( -not $DryRun ) {
+                    @(
+                        "auto_commit_without_cherry_head: $sha"
+                        [string]::Join( [Environment]::NewLine, @( $commitResult.Output ) )
+                        ""
+                    ) | Out-File -FilePath $applyLogFile -Append -Encoding utf8
+                }
+                if( $commitResult.ExitCode -eq 0 ) {
+                    $appliedCount++
+                    Write-Host "[porting] [$QueueLabel] committed $sha without CHERRY_PICK_HEAD"
+                    continue
+                }
+                $applyOk = $false
+                if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
+                    $failureNotes = "CHERRY_PICK_HEAD missing and fallback commit failed for $sha"
+                }
+            } else {
+                $appliedCount++
+                Write-Host "[porting] [$QueueLabel] marked applied without CHERRY_PICK_HEAD: $sha"
+                continue
+            }
         } else {
             $applyOk = $false
             if( [string]::IsNullOrWhiteSpace( $failureNotes ) ) {
