@@ -474,6 +474,10 @@ function Sync-OrchestratorFilesFromMaster {
     param(
         [Parameter(Mandatory = $true)] [string]$CommitMessage,
         [string[]]$Paths = @(
+            "README.md",
+            "Plan.md",
+            "TechnicalTome.md",
+            "Agents.md",
             "tools/porting/orchestrate_ports.ps1",
             "tools/porting/README.md",
             "tools/porting/PORTING_CONTEXT.md",
@@ -513,6 +517,259 @@ function Sync-OrchestratorFilesFromMaster {
     }
     Invoke-External -FilePath "git" -Arguments @( "commit", "-m", $CommitMessage ) | Out-Null
     return $true
+}
+
+function Test-PathContainsLiteral {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Path,
+        [Parameter(Mandatory = $true)] [string]$Literal
+    )
+    if( -not ( Test-Path -LiteralPath $Path ) ) {
+        return $false
+    }
+    return Select-String -Path $Path -Pattern $Literal -SimpleMatch -Quiet
+}
+
+function Get-AolReferenceRef {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName
+    )
+    if( $TargetName -eq "cdda-master" ) {
+        return "master"
+    }
+    return "port/cdda-master"
+}
+
+function Get-AolPromptGuidance {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName
+    )
+
+    $referenceRef = Get-AolReferenceRef -TargetName $TargetName
+    $lines = New-Object System.Collections.Generic.List[string]
+    [void]$lines.Add( "AOL port goal:" )
+    [void]$lines.Add( "- Use `$referenceRef` as the AOL behavior reference when checking what must exist." )
+    [void]$lines.Add( "- Do not stop at a compiling state. Preserve full AOL behavior parity." )
+    [void]$lines.Add( "- Keep changes minimal and branch-safe for this target." )
+    [void]$lines.Add( "- Required AOL executor wiring:" )
+    [void]$lines.Add( "  - `src/npc.cpp` must promote queued AOL actions via `state.active = state.queue.front();`." )
+    [void]$lines.Add( "  - `src/npcmove.cpp` must contain `execute_llm_intent_action`, `apply_llm_intent_target`, and `apply_llm_intent_item_targets` implementations." )
+    [void]$lines.Add( "  - NPC turn/move processing must call `execute_llm_intent_action( state.active )`, `apply_llm_intent_target()`, and `apply_llm_intent_item_targets()`." )
+    [void]$lines.Add( "  - Timed `panic_on` / `panic_off` behavior and `look_around` item pickup behavior must remain wired." )
+
+    switch( $TargetName ) {
+        "cdda-0.I" {
+            [void]$lines.Add( "- Known failure pattern on this target: parser/state-side AOL code exists, but executor-side AOL logic in `src/npcmove.cpp` may be missing." )
+        }
+        "cdda-0.H" {
+            [void]$lines.Add( "- Known failure pattern on this target: parser/state-side AOL code exists, but queue promotion and executor-side AOL logic may both be missing." )
+        }
+        "ctlg-master" {
+            [void]$lines.Add( "- Check `port/ctlg-master` branch-safe adaptations only when upstream CTLG APIs diverge from CDDA." )
+        }
+    }
+
+    return [string]::Join( [Environment]::NewLine, $lines )
+}
+
+function Get-AolParityRequirements {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName
+    )
+
+    $requirements = New-Object System.Collections.Generic.List[object]
+    $entries = @(
+        [PSCustomObject]@{
+            Path = "src/npctalk.cpp"
+            Literal = "llm_intent::enqueue_requests"
+            Description = "speech trigger reaches AOL enqueue"
+        },
+        [PSCustomObject]@{
+            Path = "src/do_turn.cpp"
+            Literal = "llm_intent::enqueue_random_requests();"
+            Description = "random AOL calls are processed every turn"
+        },
+        [PSCustomObject]@{
+            Path = "src/options.cpp"
+            Literal = "LLM_INTENT_RANDOM_CALL"
+            Description = "random AOL call option exists"
+        },
+        [PSCustomObject]@{
+            Path = "src/llm_intent.cpp"
+            Literal = "your_profession:"
+            Description = "profession is included in AOL snapshots"
+        },
+        [PSCustomObject]@{
+            Path = "src/llm_intent.cpp"
+            Literal = '"look_around"'
+            Description = "look_around action is part of AOL parser/prompting"
+        },
+        [PSCustomObject]@{
+            Path = "src/llm_intent.cpp"
+            Literal = '"look_inventory"'
+            Description = "look_inventory action is part of AOL parser/prompting"
+        },
+        [PSCustomObject]@{
+            Path = "src/npc.cpp"
+            Literal = "state.active = state.queue.front();"
+            Description = "queued AOL actions promote into active actions"
+        },
+        [PSCustomObject]@{
+            Path = "src/npcmove.cpp"
+            Literal = "void npc::execute_llm_intent_action( llm_intent_action action )"
+            Description = "AOL action executor is implemented"
+        },
+        [PSCustomObject]@{
+            Path = "src/npcmove.cpp"
+            Literal = "void npc::apply_llm_intent_target()"
+            Description = "AOL attack target guidance is implemented"
+        },
+        [PSCustomObject]@{
+            Path = "src/npcmove.cpp"
+            Literal = "bool npc::apply_llm_intent_item_targets()"
+            Description = "AOL item-target follow-up is implemented"
+        },
+        [PSCustomObject]@{
+            Path = "src/npcmove.cpp"
+            Literal = "execute_llm_intent_action( state.active );"
+            Description = "active AOL actions are executed during NPC turns"
+        },
+        [PSCustomObject]@{
+            Path = "src/npcmove.cpp"
+            Literal = "apply_llm_intent_target();"
+            Description = "AOL target hints are applied during NPC turns"
+        },
+        [PSCustomObject]@{
+            Path = "src/npcmove.cpp"
+            Literal = "if( !apply_llm_intent_item_targets() ) {"
+            Description = "AOL item-target follow-up affects NPC pickup behavior"
+        },
+        [PSCustomObject]@{
+            Path = "src/npcmove.cpp"
+            Literal = "state.panic_forced_turns_remaining > 0"
+            Description = "timed panic-on behavior is enforced"
+        },
+        [PSCustomObject]@{
+            Path = "src/npcmove.cpp"
+            Literal = "look_around pickup"
+            Description = "look_around pickup execution/logging exists"
+        }
+    )
+    foreach( $entry in $entries ) {
+        [void]$requirements.Add( $entry )
+    }
+
+    return @( $requirements.ToArray() )
+}
+
+function Get-AolParityCheckResult {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName,
+        [Parameter(Mandatory = $true)] [string]$TargetBranch,
+        [Parameter(Mandatory = $true)] [string]$TargetRunDir
+    )
+
+    $requirements = @( Get-AolParityRequirements -TargetName $TargetName )
+    $missing = New-Object System.Collections.Generic.List[string]
+    foreach( $requirement in $requirements ) {
+        if( -not ( Test-PathContainsLiteral -Path $requirement.Path -Literal $requirement.Literal ) ) {
+            [void]$missing.Add( "$($requirement.Path): missing '$($requirement.Literal)' ($($requirement.Description))" )
+        }
+    }
+
+    $reportFile = Join-Path $TargetRunDir "aol-parity-check.txt"
+    $status = if( $missing.Count -eq 0 ) { "PASS" } else { "FAIL" }
+    $referenceRef = Get-AolReferenceRef -TargetName $TargetName
+    $reportLines = New-Object System.Collections.Generic.List[string]
+    [void]$reportLines.Add( "Target: $TargetName" )
+    [void]$reportLines.Add( "Branch: $TargetBranch" )
+    [void]$reportLines.Add( "Reference: $referenceRef" )
+    [void]$reportLines.Add( "Result: $status" )
+    [void]$reportLines.Add( "" )
+    if( $missing.Count -eq 0 ) {
+        [void]$reportLines.Add( "All required AOL parity markers were found in the working tree." )
+    } else {
+        [void]$reportLines.Add( "Missing markers:" )
+        foreach( $entry in $missing ) {
+            [void]$reportLines.Add( "- $entry" )
+        }
+    }
+    if( -not $DryRun ) {
+        $reportLines | Out-File -FilePath $reportFile -Encoding utf8
+    }
+
+    return [PSCustomObject]@{
+        Success = ( $missing.Count -eq 0 )
+        Missing = @( $missing.ToArray() )
+        ReportFile = $reportFile
+        Status = $status
+        Notes = if( $missing.Count -eq 0 ) {
+            "AOL parity markers present."
+        } else {
+            "Missing AOL parity markers ($($missing.Count)). See $reportFile"
+        }
+    }
+}
+
+function Invoke-AolParityGate {
+    param(
+        [Parameter(Mandatory = $true)] [string]$TargetName,
+        [Parameter(Mandatory = $true)] [string]$TargetBranch,
+        [Parameter(Mandatory = $true)] [string]$TargetRunDir
+    )
+
+    if( $DryRun ) {
+        return [PSCustomObject]@{
+            Success = $true
+            CodexUsed = $false
+            Notes = "Dry-run: AOL parity gate not executed."
+            ReportFile = Join-Path $TargetRunDir "aol-parity-check.txt"
+            Status = "DRYRUN"
+        }
+    }
+
+    $initial = Get-AolParityCheckResult -TargetName $TargetName -TargetBranch $TargetBranch -TargetRunDir $TargetRunDir
+    if( $initial.Success -or -not $script:RunCodexEnabled ) {
+        return [PSCustomObject]@{
+            Success = $initial.Success
+            CodexUsed = $false
+            Notes = $initial.Notes
+            ReportFile = $initial.ReportFile
+            Status = $initial.Status
+        }
+    }
+
+    $promptFile = Join-Path $TargetRunDir "codex-aol-parity-prompt.md"
+    $codexLogFile = Join-Path $TargetRunDir "codex-aol-parity.log"
+    $lastMessageFile = Join-Path $TargetRunDir "codex-aol-parity-last-message.txt"
+    $missingText = [string]::Join( [Environment]::NewLine, $initial.Missing )
+    $promptBody = @"
+You are on branch `$TargetBranch`.
+Static AOL parity verification failed after port replay.
+
+Missing markers:
+$missingText
+
+$( Get-AolPromptGuidance -TargetName $TargetName )
+
+Requirements:
+1. Fix the branch so the AOL parity markers pass.
+2. Keep changes minimal and Linux-compatible.
+3. Do not stop at a compiling state if AOL executor wiring is still missing.
+4. Do not run full builds; the orchestrator will handle builds later.
+5. Summarize any branch-specific adaptations.
+"@
+    New-CodexPromptFile -Path $promptFile -Title "AOL parity fix for $TargetName" -Body $promptBody
+    $codexUsed = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
+    $recheck = Get-AolParityCheckResult -TargetName $TargetName -TargetBranch $TargetBranch -TargetRunDir $TargetRunDir
+
+    return [PSCustomObject]@{
+        Success = $recheck.Success
+        CodexUsed = $codexUsed
+        Notes = $recheck.Notes
+        ReportFile = $recheck.ReportFile
+        Status = $recheck.Status
+    }
 }
 
 function Invoke-NativeMergeStep {
@@ -588,10 +845,13 @@ Preserve AOL behavior parity and keep fixes minimal.
 Conflict files:
 $conflictText
 
+$( Get-AolPromptGuidance -TargetName $TargetName )
+
 Requirements:
 1. Resolve this merge and finish with `git commit --no-edit`.
 2. Keep changes Linux-compatible.
-3. Summarize any manual decisions.
+3. Do not stop at a compiling state if AOL executor wiring is still missing.
+4. Summarize any manual decisions.
 "@
         New-CodexPromptFile -Path $promptFile -Title "$StepLabel merge fix for $TargetName" -Body $promptBody
         $codexUsed = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
@@ -1077,13 +1337,16 @@ Cherry-pick failed and must be completed while preserving AOL LLM behavior parit
 Conflict files:
 $conflictText
 
+$( Get-AolPromptGuidance -TargetName $TargetName )
+
 Requirements:
 1. Resolve this cherry-pick and finalize it:
    - If `CHERRY_PICK_HEAD` exists, run `git cherry-pick --continue`.
    - If `CHERRY_PICK_HEAD` is missing, ensure changes are staged and run `git commit --no-edit -C $sha`.
 2. Keep changes focused to AOL porting behavior parity.
-3. Do not run full builds yet; orchestrator will run builds after replay.
-4. Summarize any manual decisions needed for future queue curation.
+3. Do not stop at a compiling state if AOL executor wiring is still missing.
+4. Do not run full builds yet; orchestrator will run builds after replay.
+5. Summarize any manual decisions needed for future queue curation.
 "@
             New-CodexPromptFile -Path $promptFile -Title "Queue apply fix for $TargetName ($QueueLabel) $shortSha" -Body $promptBody
             $codexUsedForApply = Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot
@@ -1503,6 +1766,7 @@ foreach( $target in $selectedTargets ) {
     $failedCommit = ""
     $failureNotes = ""
     $shouldApplyQueue = $false
+    $parityStatus = "SKIPPED"
     $existingPortBranch = Test-RefExists -RefName "refs/heads/$($target.Branch)"
     $upstreamReady = -not $script:RunUpstreamLane
 
@@ -1650,6 +1914,7 @@ foreach( $target in $selectedTargets ) {
                 Applied = $appliedCount
                 Apply = "FAILED"
                 CodexApply = $( if( $codexUsedForApply ) { "USED" } else { "NO" } )
+                Parity = $parityStatus
                 Build = "SKIPPED"
                 Notes = "$( $failureNotes ) Strategy: $applyMode. See $targetRunDir"
             } )
@@ -1666,6 +1931,26 @@ foreach( $target in $selectedTargets ) {
         Write-Host "[porting] synced orchestrator files from master after apply"
     }
 
+    if( $script:RunAolLane ) {
+        $parityResult = Invoke-AolParityGate -TargetName $target.Name -TargetBranch $target.Branch -TargetRunDir $targetRunDir
+        $parityStatus = $parityResult.Status
+        $codexUsedForApply = $codexUsedForApply -or $parityResult.CodexUsed
+        if( -not $parityResult.Success ) {
+            [void]$summary.Add( [PSCustomObject]@{
+                    Target = $target.Name
+                    Branch = $target.Branch
+                    Queue = $commitQueue.Count
+                    Applied = $appliedCount
+                    Apply = "FAILED"
+                    CodexApply = $( if( $codexUsedForApply ) { "USED" } else { "NO" } )
+                    Parity = $parityStatus
+                    Build = "SKIPPED"
+                    Notes = "$($parityResult.Notes) Strategy: $applyMode. See $targetRunDir"
+                } )
+            continue
+        }
+    }
+
     if( -not $SkipBuild ) {
         $winLog = Join-Path $targetRunDir "build-windows.log"
         $linLog = Join-Path $targetRunDir "build-linux.log"
@@ -1680,12 +1965,15 @@ foreach( $target in $selectedTargets ) {
 Windows build failed on branch `$($target.Branch)`.
 Read log file: `$winLog`
 
+$( Get-AolPromptGuidance -TargetName $target.Name )
+
 Task:
 1. Fix build issues on this branch.
 2. Keep AOL LLM behavior parity.
-3. Re-run Windows build:
+3. Do not stop at a compiling state if AOL executor wiring is still missing.
+4. Re-run Windows build:
    - `just_build.cmd --unclean > debug.txt 2>&1`
-4. Summarize fixes and remaining risks.
+5. Summarize fixes and remaining risks.
 "@
             New-CodexPromptFile -Path $promptFile -Title "Windows build fix for $($target.Name)" -Body $promptBody
             [void]( Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot )
@@ -1703,12 +1991,15 @@ Task:
 Linux build failed on branch `$($target.Branch)`.
 Read log file: `$linLog`
 
+$( Get-AolPromptGuidance -TargetName $target.Name )
+
 Task:
 1. Fix build issues on this branch.
 2. Keep AOL LLM behavior parity.
-3. Re-run Linux build:
+3. Do not stop at a compiling state if AOL executor wiring is still missing.
+4. Re-run Linux build:
    - `just_build_linux.cmd --unclean > debug.txt 2>&1`
-4. Summarize fixes and remaining risks.
+5. Summarize fixes and remaining risks.
 "@
             New-CodexPromptFile -Path $promptFile -Title "Linux build fix for $($target.Name)" -Body $promptBody
             [void]( Invoke-CodexExec -PromptFile $promptFile -CodexLogFile $codexLogFile -LastMessageFile $lastMessageFile -RepoRootPath $repoRoot )
@@ -1739,6 +2030,7 @@ Task:
             Applied = $appliedCount
             Apply = $applyStatus
             CodexApply = $( if( $codexUsedForApply ) { "USED" } else { "NO" } )
+            Parity = $parityStatus
             Build = "$( $windowsBuild )/$( $linuxBuild )"
             Notes = if( [string]::IsNullOrWhiteSpace( $buildNotes ) ) { "Strategy: $applyMode" } else { "$buildNotes; Strategy: $applyMode" }
         } )

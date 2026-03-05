@@ -34,6 +34,8 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 ### Porting orchestrator usage
 - Use `tools/porting/orchestrate_ports.ps1` for branch recreation, upstream merges, and build checks.
 - Start it from `master` only; it errors out on other branches by design.
+- Treat `master` as the source of truth for shared auxiliary files: `README.md`, `Plan.md`, `TechnicalTome.md`, `Agents.md`, and `tools/porting/orchestrate_ports.ps1`. Port branches should sync these from `master` instead of carrying branch-local edits.
+- Do not switch the orchestrator default `AolSourceRef` to `port/cdda-master` until `port/cdda-master` has passed real in-game AOL smoke tests. Until then, keep the default on `master` and pass `-AolSourceRef port/cdda-master` only deliberately.
 - First-run safety check:
   - `.\tools\porting\orchestrate_ports.ps1 -DryRun -AllowDirty`
 - Typical run with Codex merge/build fixing:
