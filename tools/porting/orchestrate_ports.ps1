@@ -569,6 +569,7 @@ function Get-AolPromptGuidance {
             [void]$lines.Add( "- Port these executor pieces from the AOL reference into `src/npcmove.cpp`: `execute_llm_intent_action`, `apply_llm_intent_target`, `apply_llm_intent_item_targets`, the `state.active` consumption gate inside `npc::move()`, the forced-attack block, the item-target hook near `find_item()`, and the targeted `look_around` pickup path in `pick_up_item()`." )
             [void]$lines.Add( "- `src/npc.cpp` queue promotion already exists on this target. Focus on `src/npcmove.cpp`, plus only the small include/weapon-helper adaptations needed to compile." )
             [void]$lines.Add( "- `0.I` still uses the older `evaluate_weapon( item &, bool can_use_gun, bool use_silent )` path. Adapt gun/melee selector helpers to that API instead of copying newer master-only weapon evaluation code blindly." )
+            [void]$lines.Add( "- If the replayed commit still talks about `guard_area`, `follow_player`, `use_gun`, or `use_melee`, treat it as prototype-era history. Keep the branch's newer `follow_close` / `follow_far` / `equip_*` / `panic_*` queue-executor pipeline instead of backsliding to the old action model." )
         }
         "cdda-0.H" {
             [void]$lines.Add( "- Known failure pattern on this target: parser/state-side AOL code exists, but queue promotion and executor-side AOL logic are both missing." )

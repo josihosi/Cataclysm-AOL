@@ -43,6 +43,7 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - Scope a single target when testing:
   - `.\tools\porting\orchestrate_ports.ps1 -Targets cdda-0.I -RunCodex`
 - Review logs in `tools/porting/logs/<timestamp>/` after each run.
+- `port/cdda-0.I` now has source-level AOL parity on its branch. Future `0.I` patchset runs should ignore prototype-era commits that try to reintroduce the old `guard_area` / `follow_player` / `use_gun` / `use_melee` model once the branch already has the newer `follow_close` / `follow_far` / `equip_*` / `panic_*` queue-executor pipeline.
 
 ## Porting build gotchas (2026-02-24)
 - Always run long builds with redirected logs, then parse first hard error:
@@ -71,6 +72,7 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
   - `npc::evaluate_weapon` requires 3 args (`item&, bool can_use_gun, bool use_silent`).
   - If `npcmove.cpp` defines `execute_llm_intent_action(...)`, `npc.h` must declare it.
   - LLM sleepiness snapshot code may need branch-safe fallback if `sleepiness` APIs diverge.
+- `port/cdda-0.I` replay trap: early AOL commits `fd9cd69de9`, `b39b2b82a9`, `0691a1e92a`, `c1f0d74965`, `103d591616`, `020d81df9e`, `ae713a9cc8`, `3560374527`, `b1e341b62d`, and `8d6746a32e` are obsolete-on-target once `0.I` already has the newer queue/executor implementation. Keep the branch-safe `evaluate_weapon( item &, bool, bool )` helpers and newer executor path; do not backslide to the prototype action vocabulary.
 
 ## Tests and in-game verification
 - Use unit tests where applicable.

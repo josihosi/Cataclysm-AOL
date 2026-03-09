@@ -11,12 +11,13 @@ Ship tested Windows and Linux releases for:
 - `Done`: orchestrator replay flow is stable and `rerere` is enabled (`rerere.enabled=true`, `rerere.autoupdate=true`).
 - `Done`: orchestrator now has an AOL parity gate and stronger Codex prompts, so branch runs fail if executor-side AOL wiring is still missing even when the branch compiles.
 - `Done`: Windows `BCryptGenRandom` linker fix (`-lbcrypt`) now lives on `master` and is included in both delta and patchset replay paths for future port runs.
+- `Done`: `port/cdda-0.I` now has source-level AOL executor parity again on branch: queue promotion, `execute_llm_intent_action`, target/item-target handling, timed panic behavior, and targeted `look_around` pickup are present. Remaining work on `0.I` is build/smoke validation and keeping obsolete prototype commits out of future replays.
 - `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
-- `In progress`: restore AOL action-execution parity on `port/cdda-0.I` and `port/cdda-0.H`, then finish release validation and packaging parity across all `port/*` branches.
+- `In progress`: encode `port/cdda-0.I` replay learnings on `master`, restore AOL action-execution parity on `port/cdda-0.H`, then finish release validation and packaging parity across all `port/*` branches.
 
 ## Urgent: AOL Port Parity
 
-This is the main release blocker right now. Static comparison shows that `port/cdda-master` and `port/ctlg-master` have the full AOL pipeline, while `port/cdda-0.I` and `port/cdda-0.H` still have parser/state-side AOL code without the same fully wired NPC action execution layer.
+This is still the main release blocker. Static comparison now shows that `port/cdda-master`, `port/ctlg-master`, and `port/cdda-0.I` have the full AOL executor pipeline at source level, while `port/cdda-0.H` still lacks the same fully wired NPC action execution layer. `0.I` is now mainly an orchestration/build-validation problem rather than a missing-executor problem.
 
 - `Source of truth`: use `port/cdda-master` as the primary AOL reference while checking `port/ctlg-master` for branch-safe variants.
 - `Promotion rule`: keep the orchestrator default AOL source on `master` for now; only promote `port/cdda-master` to default source after it has been tested in-game and confirmed behavior-complete.
@@ -24,8 +25,9 @@ This is the main release blocker right now. Static comparison shows that `port/c
 - `Primary gap on port/cdda-0.H`: parser/state fields exist, but the executor path is missing and the queue does not appear to promote into active AOL actions like the newer ports do.
 
 ### Immediate fix order
-- [ ] Fix `port/cdda-0.I` first. It is closer to parity than `0.H`, so it should be the fastest proof that the missing layer is the executor wiring, not the parser.
-- [ ] After `0.I` works, port the same executor path into `port/cdda-0.H`, then adapt only the unavoidable upstream differences.
+- [x] Fix `port/cdda-0.I` first. Source-level AOL parity is restored there, so use it as the proof that the missing layer was executor wiring rather than parser-side plumbing.
+- [ ] Preserve the `0.I` replay learnings in the orchestrator patchset/ignore rules so future reruns do not stall on obsolete `guard_area` / `follow_player` / `use_gun` history.
+- [ ] Port the same executor path into `port/cdda-0.H`, then adapt only the unavoidable upstream differences.
 - [ ] Treat `port/cdda-master` behavior as the acceptance target: same shout loop, same random-call behavior, same timed panic behavior, same `look_around` / `look_inventory` follow-up behavior.
 
 ### Files to diff first
