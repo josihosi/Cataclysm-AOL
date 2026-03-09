@@ -9,7 +9,67 @@ Ship tested Windows and Linux releases for:
 
 ## Status
 - `Done`: orchestrator replay flow is stable and `rerere` is enabled (`rerere.enabled=true`, `rerere.autoupdate=true`).
-- `In progress`: debug remaining per-target port issues, then finish release validation and packaging parity across all `port/*` branches.
+- `Done`: orchestrator now has an AOL parity gate and stronger Codex prompts, so branch runs fail if executor-side AOL wiring is still missing even when the branch compiles.
+- `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
+- `In progress`: restore AOL action-execution parity on `port/cdda-0.I` and `port/cdda-0.H`, then finish release validation and packaging parity across all `port/*` branches.
+
+## Urgent: AOL Port Parity
+
+This is the main release blocker right now. Static comparison shows that `port/cdda-master` and `port/ctlg-master` have the full AOL pipeline, while `port/cdda-0.I` and `port/cdda-0.H` still have parser/state-side AOL code without the same fully wired NPC action execution layer.
+
+- `Source of truth`: use `port/cdda-master` as the primary AOL reference while checking `port/ctlg-master` for branch-safe variants.
+- `Promotion rule`: keep the orchestrator default AOL source on `master` for now; only promote `port/cdda-master` to default source after it has been tested in-game and confirmed behavior-complete.
+- `Primary gap on port/cdda-0.I`: actions are queued and promoted in `src/npc.cpp`, but the matching executor path is not present in `src/npcmove.cpp`.
+- `Primary gap on port/cdda-0.H`: parser/state fields exist, but the executor path is missing and the queue does not appear to promote into active AOL actions like the newer ports do.
+
+### Immediate fix order
+- [ ] Fix `port/cdda-0.I` first. It is closer to parity than `0.H`, so it should be the fastest proof that the missing layer is the executor wiring, not the parser.
+- [ ] After `0.I` works, port the same executor path into `port/cdda-0.H`, then adapt only the unavoidable upstream differences.
+- [ ] Treat `port/cdda-master` behavior as the acceptance target: same shout loop, same random-call behavior, same timed panic behavior, same `look_around` / `look_inventory` follow-up behavior.
+
+### Files to diff first
+- `src/npc.cpp`
+  - Compare the AOL queue promotion logic on `port/cdda-master` vs `port/cdda-0.I` and `port/cdda-0.H`.
+- `src/npcmove.cpp`
+  - Port the missing AOL executor functions and call sites:
+  - `execute_llm_intent_action`
+  - `apply_llm_intent_target`
+  - `apply_llm_intent_item_targets`
+  - the turn logic that consumes `state.active`, advances the queue, applies timed panic decay, and performs `look_around` pickup work.
+- `src/npc.h`
+  - Keep state layout aligned enough for the ported executor code to compile cleanly on each target.
+
+### Concrete parity checklist
+- [ ] `set_llm_intent_actions` queue is actually consumed during NPC turns.
+- [ ] `state.active = state.queue.front()` equivalent exists on the older ports at the correct turn boundary.
+- [ ] `execute_llm_intent_action( state.active )` equivalent is called from NPC turn/move processing.
+- [ ] `panic_on` forces temporary panic/run-away behavior for about 20 turns.
+- [ ] `panic_off` performs the gradual calm-down behavior for about 30 turns.
+- [ ] `apply_llm_intent_target()` runs so `attack=<target>` guidance is not parser-only.
+- [ ] `apply_llm_intent_item_targets()` runs so `look_around` actually drives item pickup instead of stopping at selection.
+- [ ] `look_inventory` follow-up requests still execute inventory wear/wield/activate/drop actions branch-safely.
+- [ ] Random calls still work after the executor port and do not regress ordinary NPC AI when AOL is disabled.
+
+### Fast verification loop
+- [ ] On each target, compile the changed AOL files first:
+  - Windows/MSYS2:
+    - `make -j8 RELEASE=1 MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 objwin/tiles/llm_intent.o objwin/tiles/npc.o objwin/tiles/npcmove.o`
+  - Linux/WSL:
+    - `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o obj/tiles/npc.o obj/tiles/npcmove.o`
+- [ ] Then run full validation:
+  - `just_build.cmd --unclean > build_logs/<target>-win.log 2>&1`
+  - `just_build_linux.cmd --unclean > build_logs/<target>-linux.log 2>&1`
+- [ ] In-game smoke test minimum:
+  - follower NPC hears `C` + `b`
+  - response text appears
+  - at least one movement/equip action executes
+  - `panic_on` and `panic_off` visibly behave
+  - `look_around` picks something up when valid items are nearby
+
+### Anti-drift rule
+- Keep branch-local changes as small as possible.
+- If `port/cdda-0.I` or `port/cdda-0.H` needs a special-case compile fix, isolate it to that branch and document it in the commit message or here.
+- Do not accept parser-only parity as done. AOL is only ported when the executor path works in play, not just when `src/llm_intent.cpp` matches.
 
 ## Execution Roadmap
 
