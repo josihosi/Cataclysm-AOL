@@ -36,6 +36,7 @@
 /mods/
 /obj/
 /objwin/
+/.userdata/
 /_release_win/
 /save/
 /src/version.h
