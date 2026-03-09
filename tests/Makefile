@@ -72,6 +72,7 @@ check-single: $(TEST_TARGET)
 
 clean: clean-pch
 	rm -rf *obj *objwin
+	rm -f pch/tests-pch.hpp.gch pch/tests-pch.hpp.d
 	rm -f *cata_test
 
 clean-pch:
