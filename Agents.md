@@ -43,6 +43,7 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - Scope a single target when testing:
   - `.\tools\porting\orchestrate_ports.ps1 -Targets cdda-0.I -RunCodex`
 - Review logs in `tools/porting/logs/<timestamp>/` after each run.
+- When monitoring long-running orchestrator, build, or rebuild runs, prefer roughly a 5-minute polling cadence unless a new error appears or the branch/log state changes materially.
 - When a target already has the newer AOL queue/executor pipeline, record obsolete prototype commits in `tools/porting/patchsets/<target>-ignore.txt` on `master` instead of re-resolving them every run.
 - `port/cdda-0.I` now has source-level AOL parity on its branch. Future `0.I` patchset runs should ignore prototype-era commits that try to reintroduce the old `guard_area` / `follow_player` / `use_gun` / `use_melee` model once the branch already has the newer `follow_close` / `follow_far` / `equip_*` / `panic_*` queue-executor pipeline.
 - `port/cdda-0.H` now has source-level AOL parity on its branch too. Future `0.H` reruns need the target overlay commits in `tools/porting/patchsets/cdda-0.H.txt`, because the branch-local follow-up fixes are not part of the shared common queue.
