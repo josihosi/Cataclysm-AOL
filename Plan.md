@@ -10,6 +10,7 @@ Ship tested Windows and Linux releases for:
 ## Status
 - `Done`: orchestrator replay flow is stable and `rerere` is enabled (`rerere.enabled=true`, `rerere.autoupdate=true`).
 - `Done`: orchestrator now has an AOL parity gate and stronger Codex prompts, so branch runs fail if executor-side AOL wiring is still missing even when the branch compiles.
+- `Done`: Windows `BCryptGenRandom` linker fix (`-lbcrypt`) now lives on `master` and is included in both delta and patchset replay paths for future port runs.
 - `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
 - `In progress`: restore AOL action-execution parity on `port/cdda-0.I` and `port/cdda-0.H`, then finish release validation and packaging parity across all `port/*` branches.
 

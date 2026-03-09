@@ -177,6 +177,7 @@ param(
     [ValidateSet( "delta-cherry-pick", "native-merge" )]
     [string]$MasterSyncMode = "delta-cherry-pick",
     [string[]]$MasterDeltaPathFilter = @(
+        "Makefile",
         "src/do_turn.cpp",
         "src/llm_intent.cpp",
         "src/llm_intent.h",
