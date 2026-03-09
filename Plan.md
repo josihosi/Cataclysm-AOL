@@ -13,8 +13,10 @@ Ship tested Windows and Linux releases for:
 - `Done`: Windows `BCryptGenRandom` linker fix (`-lbcrypt`) now lives on `master` and is included in both delta and patchset replay paths for future port runs.
 - `Done`: `port/cdda-0.I` now has source-level AOL executor parity again on branch: queue promotion, `execute_llm_intent_action`, target/item-target handling, timed panic behavior, and targeted `look_around` pickup are present. Remaining work on `0.I` is build/smoke validation and keeping obsolete prototype commits out of future replays.
 - `Done`: `tools/porting/patchsets/cdda-0.I-ignore.txt` now captures obsolete-on-target prototype commits so future `port/cdda-0.I` patchset runs skip stale `guard_area` / `follow_player` / `use_gun` replay noise.
+- `Done`: `port/cdda-0.H` now has a branch-local Linux PCH race fix in `Makefile`; the PCH is written to a temporary file and moved into place atomically so parallel WSL builds do not consume a half-written `gpcWrite` artifact.
+- `Done`: `port/cdda-0.H` now also uses the safer git diff flags in the `version` rule, which suppresses CRLF warning noise and lets `just_build_linux.cmd --unclean > debug.txt 2>&1` exit `0` cleanly under PowerShell.
 - `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
-- `In progress`: finish release validation and packaging parity across all `port/*` branches now that `port/cdda-0.H` has source-level AOL executor parity again and a passing Windows build.
+- `In progress`: finish release validation and packaging parity across all `port/*` branches now that `port/cdda-0.H` has source-level AOL executor parity again and passing Windows and Linux builds.
 
 ## Urgent: AOL Port Parity
 
@@ -23,7 +25,7 @@ This is still the main release blocker. Static comparison now shows that `port/c
 - `Source of truth`: use `port/cdda-master` as the primary AOL reference while checking `port/ctlg-master` for branch-safe variants.
 - `Promotion rule`: keep the orchestrator default AOL source on `master` for now; only promote `port/cdda-master` to default source after it has been tested in-game and confirmed behavior-complete.
 - `Done on port/cdda-0.I`: queue promotion, executor/action-target/item-target handling, and targeted `look_around` pickup flow are all present on the branch tip. Remaining work there is validation and replay hygiene, not missing AOL code.
-- `Done on port/cdda-0.H`: queue promotion, executor/action-target/item-target handling, timed panic behavior, and targeted `look_around` pickup are present on branch tip. On March 9, 2026, `just_build.cmd --unclean > debug.txt 2>&1` also produced `cataclysm-tiles.exe`; the remaining work is Linux build validation and in-game smoke coverage.
+- `Done on port/cdda-0.H`: queue promotion, executor/action-target/item-target handling, timed panic behavior, and targeted `look_around` pickup are present on branch tip. On March 9, 2026, both `just_build.cmd --unclean > debug.txt 2>&1` and `just_build_linux.cmd --unclean > debug.txt 2>&1` completed successfully, and the Linux rerun produced no `error:`, `fatal error`, `undefined reference`, `make: ***`, or `NativeCommandError` matches after the atomic PCH plus safer git diff fixes. Remaining work is in-game smoke coverage.
 
 ### Immediate fix order
 - [x] Fix `port/cdda-0.I` first. Source-level AOL parity is restored there, so use it as the proof that the missing layer was executor wiring rather than parser-side plumbing.
@@ -63,7 +65,7 @@ This is still the main release blocker. Static comparison now shows that `port/c
     - `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o obj/tiles/npc.o obj/tiles/npcmove.o`
 - [x] Run full Windows validation on `port/cdda-0.H`:
   - `just_build.cmd --unclean > debug.txt 2>&1`
-- [ ] Then run full validation:
+- [x] Then run full validation:
   - `just_build_linux.cmd --unclean > build_logs/<target>-linux.log 2>&1`
 - [ ] In-game smoke test minimum:
   - follower NPC hears `C` + `b`
