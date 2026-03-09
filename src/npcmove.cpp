@@ -1768,6 +1768,17 @@ void npc::move()
                 execute_action( forced );
                 return true;
             }
+            if( weapon && weapon->is_gun() ) {
+                const int dist = rl_dist( pos(), forced_target->pos() );
+                const int conf = confident_shoot_range( *weapon, recoil_total() );
+                if( dist <= conf ) {
+                    execute_action( npc_aim );
+                    if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+                        add_msg( _( "LLM intent aiming at %s" ), forced_target->disp_name() );
+                    }
+                    return true;
+                }
+            }
             update_path( forced_target->pos() );
             move_to_next();
             if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
@@ -4505,6 +4516,75 @@ bool npc::wield_better_weapon()
 
     wield( *best );
     return true;
+}
+
+item *npc::evaluate_best_gun() const
+{
+    item_location weapon = get_wielded_item();
+    item *best = weapon && weapon->is_gun() ? &*weapon : nullptr;
+    double best_value = best ? gun_value( *best, best->shots_remaining( this ) ) : 0.0;
+
+    visit_items( [this, &best, &best_value]( item * node, item * ) {
+        if( node->is_gun() && can_wield( *node ).success() ) {
+            const double weapon_value = gun_value( *node, node->shots_remaining( this ) );
+            if( weapon_value > best_value ) {
+                best = const_cast<item *>( node );
+                best_value = weapon_value;
+            }
+            return VisitResponse::SKIP;
+        } else if( node->get_use( "holster" ) && !node->empty() ) {
+            return VisitResponse::NEXT;
+        }
+        return VisitResponse::NEXT;
+    } );
+
+    return best;
+}
+
+item *npc::evaluate_best_silent_gun() const
+{
+    item_location weapon = get_wielded_item();
+    item *best = weapon && weapon->is_gun() && weapon->is_silent() ? &*weapon : nullptr;
+    double best_value = best ? gun_value( *best, best->shots_remaining( this ) ) : 0.0;
+
+    visit_items( [this, &best, &best_value]( item * node, item * ) {
+        if( node->is_gun() && node->is_silent() && can_wield( *node ).success() ) {
+            const double weapon_value = gun_value( *node, node->shots_remaining( this ) );
+            if( weapon_value > best_value ) {
+                best = const_cast<item *>( node );
+                best_value = weapon_value;
+            }
+            return VisitResponse::SKIP;
+        } else if( node->get_use( "holster" ) && !node->empty() ) {
+            return VisitResponse::NEXT;
+        }
+        return VisitResponse::NEXT;
+    } );
+
+    return best;
+}
+
+item *npc::evaluate_best_melee() const
+{
+    item_location weapon = get_wielded_item();
+    item *best = weapon && weapon->is_melee() && !weapon->is_gun() ? &*weapon : nullptr;
+    double best_value = best ? melee_value( *best ) : 0.0;
+
+    visit_items( [this, &best, &best_value]( item * node, item * ) {
+        if( node->is_melee() && !node->is_gun() && can_wield( *node ).success() ) {
+            const double weapon_value = melee_value( *node );
+            if( weapon_value > best_value ) {
+                best = const_cast<item *>( node );
+                best_value = weapon_value;
+            }
+            return VisitResponse::SKIP;
+        } else if( node->get_use( "holster" ) && !node->empty() ) {
+            return VisitResponse::NEXT;
+        }
+        return VisitResponse::NEXT;
+    } );
+
+    return best;
 }
 
 bool npc::scan_new_items()
