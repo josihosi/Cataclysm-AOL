@@ -49,6 +49,7 @@
 #include "iuse.h"
 #include "iuse_actor.h"
 #include "line.h"
+#include "llm_intent.h"
 #include "map.h"
 #include "map_iterator.h"
 #include "mapdata.h"
@@ -4113,6 +4114,16 @@ void npc::pick_up_item()
 
     llm_intent_state &state = llm_intent_state_for( *this );
     const bool llm_targeted = !state.look_around_active_target.empty();
+    auto log_look_around_pickup = [&]( const std::string &result ) {
+        if( state.look_around_active_target.empty() ) {
+            return;
+        }
+        llm_intent::log_event( string_format( "look_around pickup %s (%s): %s",
+                                              get_name(),
+                                              state.look_around_active_target,
+                                              result ) );
+        state.look_around_active_target.clear();
+    };
 
     if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() && !llm_targeted ) {
         add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); Canceling on player's request", get_name() );
@@ -4132,7 +4143,7 @@ void npc::pick_up_item()
         // Items we wanted no longer exist and we can see it
         // Or player who is leading us doesn't want us to pick it up
         fetching_item = false;
-        state.look_around_active_target.clear();
+        log_look_around_pickup( "canceled (no items or zone)" );
         move_pause();
         add_msg_debug( debugmode::DF_NPC, "Canceling pickup - no items or new zone" );
         return;
@@ -4156,7 +4167,7 @@ void npc::pick_up_item()
         add_msg_debug( debugmode::DF_NPC, "Can't find path" );
         // This can happen, always do something
         fetching_item = false;
-        state.look_around_active_target.clear();
+        log_look_around_pickup( "canceled (no path)" );
         move_pause();
         return;
     }
@@ -4190,7 +4201,7 @@ void npc::pick_up_item()
             // Note: we didn't actually pick up anything, just spawned items
             // but we want the item picker to find new items
             fetching_item = false;
-            state.look_around_active_target.clear();
+            log_look_around_pickup( "harvested (no items picked)" );
             return;
         }
     }
@@ -4220,7 +4231,8 @@ void npc::pick_up_item()
 
     moves -= 100;
     fetching_item = false;
-    state.look_around_active_target.clear();
+    log_look_around_pickup( string_format( "picked up %d item(s)",
+                                           static_cast<int>( picked_up.size() ) ) );
     has_new_items = true;
 }
 

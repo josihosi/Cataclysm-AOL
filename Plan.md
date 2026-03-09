@@ -19,12 +19,12 @@ Ship tested Windows and Linux releases for:
 
 ## Urgent: AOL Port Parity
 
-This is still the main release blocker. Static comparison now shows that `port/cdda-master`, `port/ctlg-master`, and `port/cdda-0.I` have the full AOL executor pipeline at source level, while `port/cdda-0.H` still lacks the same fully wired NPC action execution layer. `0.I` is now mainly an orchestration/build-validation problem rather than a missing-executor problem.
+Source-level AOL executor parity is now back on `port/cdda-master`, `port/ctlg-master`, `port/cdda-0.I`, and `port/cdda-0.H`. The remaining release blocker is validation: compile/build/smoke/package checks and confirming behavior still matches the `port/cdda-master` reference in play.
 
 - `Source of truth`: use `port/cdda-master` as the primary AOL reference while checking `port/ctlg-master` for branch-safe variants.
 - `Promotion rule`: keep the orchestrator default AOL source on `master` for now; only promote `port/cdda-master` to default source after it has been tested in-game and confirmed behavior-complete.
 - `Done on port/cdda-0.I`: queue promotion, executor/action-target/item-target handling, and targeted `look_around` pickup flow are all present on the branch tip. Remaining work there is validation and replay hygiene, not missing AOL code.
-- `Primary gap on port/cdda-0.H`: parser/state fields exist, but the executor path is missing and the queue does not appear to promote into active AOL actions like the newer ports do.
+- `Done on port/cdda-0.H`: queue promotion, executor/action-target/item-target handling, forced-attack execution, and targeted `look_around` pickup flow are present on the branch tip. Remaining work there is validation rather than missing executor wiring.
 
 ### Immediate fix order
 - [x] Fix `port/cdda-0.I` first. Source-level AOL parity is restored there, so use it as the proof that the missing layer was executor wiring rather than parser-side plumbing.
@@ -45,13 +45,13 @@ This is still the main release blocker. Static comparison now shows that `port/c
   - Keep state layout aligned enough for the ported executor code to compile cleanly on each target.
 
 ### Concrete parity checklist
-- [ ] `set_llm_intent_actions` queue is actually consumed during NPC turns.
-- [ ] `state.active = state.queue.front()` equivalent exists on the older ports at the correct turn boundary.
-- [ ] `execute_llm_intent_action( state.active )` equivalent is called from NPC turn/move processing.
-- [ ] `panic_on` forces temporary panic/run-away behavior for about 20 turns.
-- [ ] `panic_off` performs the gradual calm-down behavior for about 30 turns.
-- [ ] `apply_llm_intent_target()` runs so `attack=<target>` guidance is not parser-only.
-- [ ] `apply_llm_intent_item_targets()` runs so `look_around` actually drives item pickup instead of stopping at selection.
+- [x] `set_llm_intent_actions` queue is actually consumed during NPC turns.
+- [x] `state.active = state.queue.front()` equivalent exists on the older ports at the correct turn boundary.
+- [x] `execute_llm_intent_action( state.active )` equivalent is called from NPC turn/move processing.
+- [x] `panic_on` forces temporary panic/run-away behavior for about 20 turns.
+- [x] `panic_off` performs the gradual calm-down behavior for about 30 turns.
+- [x] `apply_llm_intent_target()` runs so `attack=<target>` guidance is not parser-only.
+- [x] `apply_llm_intent_item_targets()` runs so `look_around` actually drives item pickup instead of stopping at selection.
 - [ ] `look_inventory` follow-up requests still execute inventory wear/wield/activate/drop actions branch-safely.
 - [ ] Random calls still work after the executor port and do not regress ordinary NPC AI when AOL is disabled.
 
