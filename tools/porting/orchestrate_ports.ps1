@@ -178,6 +178,7 @@ param(
     [string]$MasterSyncMode = "delta-cherry-pick",
     [string[]]$MasterDeltaPathFilter = @(
         "Makefile",
+        "tests/Makefile",
         "src/do_turn.cpp",
         "src/llm_intent.cpp",
         "src/llm_intent.h",
@@ -479,6 +480,10 @@ function Sync-OrchestratorFilesFromMaster {
             "Plan.md",
             "TechnicalTome.md",
             "Agents.md",
+            "just_build.cmd",
+            "just_build_linux.cmd",
+            "build_and_run.cmd",
+            "build_and_run_linux.cmd",
             "tools/porting/orchestrate_ports.ps1",
             "tools/porting/README.md",
             "tools/porting/PORTING_CONTEXT.md",
@@ -560,10 +565,17 @@ function Get-AolPromptGuidance {
 
     switch( $TargetName ) {
         "cdda-0.I" {
-            [void]$lines.Add( "- Known failure pattern on this target: parser/state-side AOL code exists, but executor-side AOL logic in `src/npcmove.cpp` may be missing." )
+            [void]$lines.Add( "- Known failure pattern on this target: parser/state-side AOL code exists, but executor-side AOL logic in `src/npcmove.cpp` is missing." )
+            [void]$lines.Add( "- Port these executor pieces from the AOL reference into `src/npcmove.cpp`: `execute_llm_intent_action`, `apply_llm_intent_target`, `apply_llm_intent_item_targets`, the `state.active` consumption gate inside `npc::move()`, the forced-attack block, the item-target hook near `find_item()`, and the targeted `look_around` pickup path in `pick_up_item()`." )
+            [void]$lines.Add( "- `src/npc.cpp` queue promotion already exists on this target. Focus on `src/npcmove.cpp`, plus only the small include/weapon-helper adaptations needed to compile." )
+            [void]$lines.Add( "- `0.I` still uses the older `evaluate_weapon( item &, bool can_use_gun, bool use_silent )` path. Adapt gun/melee selector helpers to that API instead of copying newer master-only weapon evaluation code blindly." )
         }
         "cdda-0.H" {
-            [void]$lines.Add( "- Known failure pattern on this target: parser/state-side AOL code exists, but queue promotion and executor-side AOL logic may both be missing." )
+            [void]$lines.Add( "- Known failure pattern on this target: parser/state-side AOL code exists, but queue promotion and executor-side AOL logic are both missing." )
+            [void]$lines.Add( "- Add queue promotion in `src/npc.cpp` (`state.active = state.queue.front();` at the correct turn boundary) and add `execute_llm_intent_action` declaration in `src/npc.h`." )
+            [void]$lines.Add( "- Port these executor pieces into `src/npcmove.cpp`: `execute_llm_intent_action`, `apply_llm_intent_target`, `apply_llm_intent_item_targets`, the panic/calm timer maintenance block, the `state.active` execution gate in `npc::move()`, the forced-attack block, the item-target hook near `find_item()`, and the targeted `look_around` pickup path in `pick_up_item()`." )
+            [void]$lines.Add( "- Adapt for older `0.H` APIs: use legacy coordinate/vision calls (`tripoint`, `pos()`, `get_location()`, `global_omt_location()`, older `sees(...)` signatures), older pickup helpers, and the fact that `0.H` lacks the newer `wanted_item` handle state." )
+            [void]$lines.Add( "- Do not route AOL execution through the old override struct. The parity target is the working `queue -> active -> execute -> pop/clear` flow from `port/cdda-master`." )
         }
         "ctlg-master" {
             [void]$lines.Add( "- Check `port/ctlg-master` branch-safe adaptations only when upstream CTLG APIs diverge from CDDA." )
