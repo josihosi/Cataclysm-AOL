@@ -9,7 +9,71 @@ Ship tested Windows and Linux releases for:
 
 ## Status
 - `Done`: orchestrator replay flow is stable and `rerere` is enabled (`rerere.enabled=true`, `rerere.autoupdate=true`).
-- `In progress`: debug remaining per-target port issues, then finish release validation and packaging parity across all `port/*` branches.
+- `Done`: orchestrator now has an AOL parity gate and stronger Codex prompts, so branch runs fail if executor-side AOL wiring is still missing even when the branch compiles.
+- `Done`: Windows `BCryptGenRandom` linker fix (`-lbcrypt`) now lives on `master` and is included in both delta and patchset replay paths for future port runs.
+- `Done`: `port/cdda-0.I` now has source-level AOL executor parity again on branch: queue promotion, `execute_llm_intent_action`, target/item-target handling, timed panic behavior, and targeted `look_around` pickup are present. Remaining work on `0.I` is build/smoke validation and keeping obsolete prototype commits out of future replays.
+- `Done`: `tools/porting/patchsets/cdda-0.I-ignore.txt` now captures obsolete-on-target prototype commits so future `port/cdda-0.I` patchset runs skip stale `guard_area` / `follow_player` / `use_gun` replay noise.
+- `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
+- `In progress`: restore AOL action-execution parity on `port/cdda-0.H`, then finish release validation and packaging parity across all `port/*` branches.
+
+## Urgent: AOL Port Parity
+
+This is still the main release blocker. Static comparison now shows that `port/cdda-master`, `port/ctlg-master`, and `port/cdda-0.I` have the full AOL executor pipeline at source level, while `port/cdda-0.H` still lacks the same fully wired NPC action execution layer. `0.I` is now mainly an orchestration/build-validation problem rather than a missing-executor problem.
+
+- `Source of truth`: use `port/cdda-master` as the primary AOL reference while checking `port/ctlg-master` for branch-safe variants.
+- `Promotion rule`: keep the orchestrator default AOL source on `master` for now; only promote `port/cdda-master` to default source after it has been tested in-game and confirmed behavior-complete.
+- `Done on port/cdda-0.I`: queue promotion, executor/action-target/item-target handling, and targeted `look_around` pickup flow are all present on the branch tip. Remaining work there is validation and replay hygiene, not missing AOL code.
+- `Primary gap on port/cdda-0.H`: parser/state fields exist, but the executor path is missing and the queue does not appear to promote into active AOL actions like the newer ports do.
+
+### Immediate fix order
+- [x] Fix `port/cdda-0.I` first. Source-level AOL parity is restored there, so use it as the proof that the missing layer was executor wiring rather than parser-side plumbing.
+- [x] Preserve the `0.I` replay learnings in the orchestrator patchset/ignore rules so future reruns do not stall on obsolete `guard_area` / `follow_player` / `use_gun` history.
+- [ ] Port the same executor path into `port/cdda-0.H`, then adapt only the unavoidable upstream differences.
+- [ ] Treat `port/cdda-master` behavior as the acceptance target: same shout loop, same random-call behavior, same timed panic behavior, same `look_around` / `look_inventory` follow-up behavior.
+
+### Files to diff first
+- `src/npc.cpp`
+  - Compare the AOL queue promotion logic on `port/cdda-master` vs `port/cdda-0.I` and `port/cdda-0.H`.
+- `src/npcmove.cpp`
+  - Port the missing AOL executor functions and call sites:
+  - `execute_llm_intent_action`
+  - `apply_llm_intent_target`
+  - `apply_llm_intent_item_targets`
+  - the turn logic that consumes `state.active`, advances the queue, applies timed panic decay, and performs `look_around` pickup work.
+- `src/npc.h`
+  - Keep state layout aligned enough for the ported executor code to compile cleanly on each target.
+
+### Concrete parity checklist
+- [ ] `set_llm_intent_actions` queue is actually consumed during NPC turns.
+- [ ] `state.active = state.queue.front()` equivalent exists on the older ports at the correct turn boundary.
+- [ ] `execute_llm_intent_action( state.active )` equivalent is called from NPC turn/move processing.
+- [ ] `panic_on` forces temporary panic/run-away behavior for about 20 turns.
+- [ ] `panic_off` performs the gradual calm-down behavior for about 30 turns.
+- [ ] `apply_llm_intent_target()` runs so `attack=<target>` guidance is not parser-only.
+- [ ] `apply_llm_intent_item_targets()` runs so `look_around` actually drives item pickup instead of stopping at selection.
+- [ ] `look_inventory` follow-up requests still execute inventory wear/wield/activate/drop actions branch-safely.
+- [ ] Random calls still work after the executor port and do not regress ordinary NPC AI when AOL is disabled.
+
+### Fast verification loop
+- [ ] On each target, compile the changed AOL files first:
+  - Windows/MSYS2:
+    - `make -j8 RELEASE=1 MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 objwin/tiles/llm_intent.o objwin/tiles/npc.o objwin/tiles/npcmove.o`
+  - Linux/WSL:
+    - `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o obj/tiles/npc.o obj/tiles/npcmove.o`
+- [ ] Then run full validation:
+  - `just_build.cmd --unclean > build_logs/<target>-win.log 2>&1`
+  - `just_build_linux.cmd --unclean > build_logs/<target>-linux.log 2>&1`
+- [ ] In-game smoke test minimum:
+  - follower NPC hears `C` + `b`
+  - response text appears
+  - at least one movement/equip action executes
+  - `panic_on` and `panic_off` visibly behave
+  - `look_around` picks something up when valid items are nearby
+
+### Anti-drift rule
+- Keep branch-local changes as small as possible.
+- If `port/cdda-0.I` or `port/cdda-0.H` needs a special-case compile fix, isolate it to that branch and document it in the commit message or here.
+- Do not accept parser-only parity as done. AOL is only ported when the executor path works in play, not just when `src/llm_intent.cpp` matches.
 
 ## Execution Roadmap
 
