@@ -3286,7 +3286,14 @@ bool npc::dispose_item( item_location &&obj, const std::string & )
 void npc::process_turn()
 {
     Character::process_turn();
-    tick_llm_intent_override();
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+        llm_intent_state &state = llm_intent_state_for( *this );
+        if( state.active == llm_intent_action::none &&
+            state.last_applied_turn != calendar::turn && !state.queue.empty() ) {
+            state.active = state.queue.front();
+            state.active_turn = calendar::turn;
+        }
+    }
 
     // NPCs shouldn't be using stamina, but if they have, set it back to max
     // If the stamina is higher than the max (Languorous), set it back to max

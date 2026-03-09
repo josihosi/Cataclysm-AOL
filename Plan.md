@@ -12,9 +12,10 @@ Ship tested Windows and Linux releases for:
 - `Done`: orchestrator now has an AOL parity gate and stronger Codex prompts, so branch runs fail if executor-side AOL wiring is still missing even when the branch compiles.
 - `Done`: Windows `BCryptGenRandom` linker fix (`-lbcrypt`) now lives on `master` and is included in both delta and patchset replay paths for future port runs.
 - `Done`: `port/cdda-0.I` now has source-level AOL executor parity again on branch: queue promotion, `execute_llm_intent_action`, target/item-target handling, timed panic behavior, and targeted `look_around` pickup are present. Remaining work on `0.I` is build/smoke validation and keeping obsolete prototype commits out of future replays.
+- `Done`: `port/cdda-0.H` now has source-level AOL executor parity again on branch: queue promotion, `execute_llm_intent_action`, target/item-target handling, timed panic behavior, forced attack handling, and targeted `look_around` pickup are present. Remaining work on `0.H` is compile/build/smoke validation rather than missing executor wiring.
 - `Done`: `tools/porting/patchsets/cdda-0.I-ignore.txt` now captures obsolete-on-target prototype commits so future `port/cdda-0.I` patchset runs skip stale `guard_area` / `follow_player` / `use_gun` replay noise.
 - `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
-- `In progress`: restore AOL action-execution parity on `port/cdda-0.H`, then finish release validation and packaging parity across all `port/*` branches.
+- `In progress`: finish release validation and packaging parity across all `port/*` branches now that `port/cdda-0.H` source-level AOL executor parity is back on branch.
 
 ## Urgent: AOL Port Parity
 
@@ -28,7 +29,7 @@ This is still the main release blocker. Static comparison now shows that `port/c
 ### Immediate fix order
 - [x] Fix `port/cdda-0.I` first. Source-level AOL parity is restored there, so use it as the proof that the missing layer was executor wiring rather than parser-side plumbing.
 - [x] Preserve the `0.I` replay learnings in the orchestrator patchset/ignore rules so future reruns do not stall on obsolete `guard_area` / `follow_player` / `use_gun` history.
-- [ ] Port the same executor path into `port/cdda-0.H`, then adapt only the unavoidable upstream differences.
+- [x] Port the same executor path into `port/cdda-0.H`, then adapt only the unavoidable upstream differences.
 - [ ] Treat `port/cdda-master` behavior as the acceptance target: same shout loop, same random-call behavior, same timed panic behavior, same `look_around` / `look_inventory` follow-up behavior.
 
 ### Files to diff first

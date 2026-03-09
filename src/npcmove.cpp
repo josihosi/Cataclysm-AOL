@@ -1,6 +1,7 @@
 #include "npc.h" // IWYU pragma: associated
 
 #include <algorithm>
+#include <cctype>
 #include <cfloat>
 #include <climits>
 #include <cmath>
@@ -239,6 +240,66 @@ bool good_for_pickup( const item &it, npc &who )
     return good;
 }
 
+std::string normalize_llm_item_label( const std::string &text )
+{
+    std::string stripped = text;
+    size_t suffix_pos = stripped.find( " > " );
+    if( suffix_pos == std::string::npos ) {
+        suffix_pos = stripped.find( '>' );
+    }
+    if( suffix_pos != std::string::npos ) {
+        stripped = stripped.substr( 0, suffix_pos );
+    }
+    std::string out;
+    out.reserve( stripped.size() );
+    bool last_space = false;
+    for( unsigned char c : stripped ) {
+        bool allowed = std::isalnum( c ) != 0;
+        if( !allowed ) {
+            switch( c ) {
+                case ' ':
+                case '-':
+                case '_':
+                case '.':
+                case ',':
+                case '/':
+                case '(':
+                case ')':
+                    allowed = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if( !allowed ) {
+            continue;
+        }
+        char out_c = ' ';
+        if( std::isalnum( c ) != 0 ) {
+            out_c = static_cast<char>( std::tolower( c ) );
+        }
+        if( out_c == ' ' ) {
+            if( last_space ) {
+                continue;
+            }
+            last_space = true;
+        } else {
+            last_space = false;
+        }
+        out.push_back( out_c );
+    }
+    while( !out.empty() && out.front() == ' ' ) {
+        out.erase( out.begin() );
+    }
+    while( !out.empty() && out.back() == ' ' ) {
+        out.pop_back();
+    }
+    if( out.rfind( "the ", 0 ) == 0 ) {
+        out = out.substr( 4 );
+    }
+    return out;
+}
+
 } // namespace
 
 static std::string npc_action_name( npc_action action );
@@ -246,6 +307,9 @@ static std::string npc_action_name( npc_action action );
 static void print_action( const char *prepend, npc_action action );
 
 static bool compare_sound_alert( const dangerous_sound &sound_a, const dangerous_sound &sound_b );
+
+template <typename T, typename F>
+std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter );
 
 bool compare_sound_alert( const dangerous_sound &sound_a, const dangerous_sound &sound_b )
 {
@@ -1305,6 +1369,336 @@ void npc::regen_ai_cache()
     }
 }
 
+void npc::execute_llm_intent_action( llm_intent_action action )
+{
+    switch( action ) {
+        case llm_intent_action::wait_here:
+            talk_function::assign_guard( *this );
+            execute_action( npc_pause );
+            break;
+        case llm_intent_action::follow_close:
+            talk_function::stop_guard( *this );
+            rules.set_flag( ally_rule::follow_close );
+            rules.set_specific_override_state( ally_rule::follow_close, true );
+            execute_action( npc_follow_player );
+            break;
+        case llm_intent_action::follow_far:
+            talk_function::stop_guard( *this );
+            rules.clear_flag( ally_rule::follow_close );
+            rules.set_specific_override_state( ally_rule::follow_close, false );
+            execute_action( npc_follow_player );
+            break;
+        case llm_intent_action::equip_gun: {
+            rules.set_flag( ally_rule::use_guns );
+            rules.clear_flag( ally_rule::use_silent );
+            rules.set_specific_override_state( ally_rule::use_guns, true );
+            rules.set_specific_override_state( ally_rule::use_silent, false );
+            if( item *best_gun = evaluate_best_gun() ) {
+                wield( *best_gun );
+            }
+            break;
+        }
+        case llm_intent_action::equip_melee: {
+            rules.clear_flag( ally_rule::use_guns );
+            rules.set_specific_override_state( ally_rule::use_guns, false );
+            if( item *best_melee = evaluate_best_melee() ) {
+                wield( *best_melee );
+            } else if( get_wielded_item() && get_wielded_item()->is_gun() ) {
+                unwield();
+            }
+            break;
+        }
+        case llm_intent_action::equip_bow: {
+            rules.set_flag( ally_rule::use_guns );
+            rules.set_flag( ally_rule::use_silent );
+            rules.set_specific_override_state( ally_rule::use_guns, true );
+            rules.set_specific_override_state( ally_rule::use_silent, true );
+            item *best_gun = evaluate_best_silent_gun();
+            if( best_gun == nullptr ) {
+                best_gun = evaluate_best_gun();
+            }
+            if( best_gun != nullptr ) {
+                wield( *best_gun );
+            }
+            break;
+        }
+        case llm_intent_action::panic_on: {
+            llm_intent_state &state = llm_intent_state_for( *this );
+            state.panic_forced_turns_remaining = 20;
+            state.calm_turns_remaining = 0;
+            state.calm_start_panic = 0;
+            add_effect( effect_npc_run_away, 1_turns );
+            break;
+        }
+        case llm_intent_action::panic_off: {
+            llm_intent_state &state = llm_intent_state_for( *this );
+            state.panic_forced_turns_remaining = 0;
+            state.calm_turns_remaining = 30;
+            state.calm_start_panic = mem_combat.panic;
+            remove_effect( effect_npc_run_away );
+            break;
+        }
+        case llm_intent_action::none:
+            break;
+    }
+}
+
+void npc::apply_llm_intent_target()
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.target_attacks_remaining <= 0 || state.target_turns_remaining <= 0 ||
+        state.target_hint.empty() ) {
+        return;
+    }
+    if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+        add_msg( _( "LLM intent target hint: %s (attacks %d, turns %d)" ),
+                 state.target_hint, state.target_attacks_remaining,
+                 state.target_turns_remaining );
+    }
+
+    auto normalize_name = []( std::string text ) -> std::string {
+        auto is_space = []( unsigned char c ) {
+            return std::isspace( c ) != 0;
+        };
+        size_t start = 0;
+        while( start < text.size() && is_space( static_cast<unsigned char>( text[start] ) ) ) {
+            ++start;
+        }
+        size_t end = text.size();
+        while( end > start && is_space( static_cast<unsigned char>( text[end - 1] ) ) ) {
+            --end;
+        }
+        text = text.substr( start, end - start );
+        std::transform( text.begin(), text.end(), text.begin(), []( unsigned char c ) {
+            return static_cast<char>( std::tolower( c ) );
+        } );
+        if( text.rfind( "the ", 0 ) == 0 ) {
+            text = text.substr( 4 );
+        }
+        return text;
+    };
+    auto normalize_key = [&]( const std::string &text ) -> std::string {
+        std::string out = normalize_name( text );
+        bool last_underscore = false;
+        for( char &c : out ) {
+            if( std::isspace( static_cast<unsigned char>( c ) ) ) {
+                c = '_';
+            }
+            if( c == '_' ) {
+                if( last_underscore ) {
+                    c = '\0';
+                }
+                last_underscore = true;
+            } else {
+                last_underscore = false;
+            }
+        }
+        out.erase( std::remove( out.begin(), out.end(), '\0' ), out.end() );
+        return out;
+    };
+
+    std::string target_hint = normalize_key( state.target_hint );
+    if( target_hint.empty() ) {
+        state.target_hint.clear();
+        state.target_attacks_remaining = 0;
+        state.target_turns_remaining = 0;
+        return;
+    }
+
+    Creature *best = nullptr;
+    int best_match = 0;
+    int best_dist = 0;
+    bool matched_legend = false;
+    if( target_hint.size() == 1 ) {
+        const auto legend_it = state.legend_targets.find( target_hint[0] );
+        if( legend_it != state.legend_targets.end() ) {
+            if( Creature *candidate = legend_it->second.lock().get() ) {
+                const int dist = rl_dist( pos(), candidate->pos() );
+                if( candidate != this && dist <= MAX_VIEW_DISTANCE && sees( *candidate ) ) {
+                    best = candidate;
+                    best_match = 2;
+                    best_dist = dist;
+                    matched_legend = true;
+                }
+            }
+        }
+    }
+    if( !matched_legend ) {
+        for( Creature &critter : g->all_creatures() ) {
+            if( &critter == this ) {
+                continue;
+            }
+            const int dist = rl_dist( pos(), critter.pos() );
+            if( dist > MAX_VIEW_DISTANCE ) {
+                continue;
+            }
+            if( !sees( critter ) ) {
+                continue;
+            }
+            std::vector<std::string> names;
+            names.reserve( 4 );
+            const std::string disp_name = normalize_name( critter.disp_name() );
+            if( !disp_name.empty() ) {
+                names.push_back( disp_name );
+                const std::string disp_key = normalize_key( disp_name );
+                if( disp_key != disp_name ) {
+                    names.push_back( disp_key );
+                }
+            }
+            if( critter.is_avatar() ) {
+                const std::string player_name = normalize_name( critter.get_name() );
+                if( !player_name.empty() ) {
+                    names.push_back( player_name );
+                    const std::string player_key = normalize_key( player_name );
+                    if( player_key != player_name ) {
+                        names.push_back( player_key );
+                    }
+                }
+                names.emplace_back( "player" );
+                names.emplace_back( "you" );
+            }
+            if( names.empty() ) {
+                continue;
+            }
+            int match = 0;
+            for( const std::string &name : names ) {
+                if( name == target_hint ) {
+                    match = 2;
+                    break;
+                } else if( name.find( target_hint ) != std::string::npos ) {
+                    match = std::max( match, 1 );
+                }
+            }
+            if( match == 0 && target_hint.size() == 1 ) {
+                const std::string &sym = critter.symbol();
+                if( sym.size() == 1 && sym[0] == target_hint[0] ) {
+                    match = 1;
+                }
+            }
+            if( match == 0 ) {
+                continue;
+            }
+            if( best == nullptr || match > best_match || ( match == best_match && dist < best_dist ) ) {
+                best = &critter;
+                best_match = match;
+                best_dist = dist;
+            }
+        }
+    }
+
+    if( best != nullptr ) {
+        ai_cache.target = g->shared_from( *best );
+        const bool already_hostile = std::any_of( ai_cache.hostile_guys.begin(),
+        ai_cache.hostile_guys.end(), [&]( const weak_ptr_fast<Creature> &entry ) {
+            return entry.lock().get() == best;
+        } );
+        if( !already_hostile ) {
+            ai_cache.hostile_guys.emplace_back( ai_cache.target );
+        }
+        const item_location weapon = get_wielded_item();
+        const bool npc_ranged = weapon && weapon->is_gun();
+        if( best->is_monster() ) {
+            ai_cache.danger = evaluate_monster( static_cast<const monster &>( *best ), best_dist );
+        } else if( best->is_npc() || best->is_avatar() ) {
+            ai_cache.danger = std::max( evaluate_character( static_cast<const Character &>( *best ), npc_ranged,
+                                        true ),
+                                        NPC_DANGER_VERY_LOW );
+        } else {
+            ai_cache.danger = NPC_DANGER_VERY_LOW;
+        }
+        if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+            add_msg( _( "LLM intent target resolved to %s at dist %d" ),
+                     best->disp_name(), best_dist );
+        }
+    } else if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+        add_msg( _( "LLM intent target '%s' not found" ), state.target_hint );
+    }
+
+    state.target_turns_remaining -= 1;
+    if( state.target_turns_remaining <= 0 ) {
+        state.target_hint.clear();
+        state.target_attacks_remaining = 0;
+        state.target_turns_remaining = 0;
+    }
+}
+
+bool npc::apply_llm_intent_item_targets()
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.look_around_targets.empty() ) {
+        return false;
+    }
+    if( attitude == NPCATT_FLEE || attitude == NPCATT_FLEE_TEMP ||
+        has_effect( effect_npc_flee_player ) ) {
+        return false;
+    }
+    if( fetching_item ) {
+        return true;
+    }
+
+    map &here = get_map();
+    static const int look_radius = 5;
+    while( !state.look_around_targets.empty() ) {
+        const std::string target_name = state.look_around_targets.front();
+        tripoint best_pos = tripoint_min;
+        int best_dist = 0;
+        bool found = false;
+
+        for( const tripoint &p : closest_points_first( pos(), look_radius ) ) {
+            if( is_player_ally() && g->check_zone( zone_type_NO_NPC_PICKUP, p ) ) {
+                continue;
+            }
+            if( !here.sees_some_items( p, *this ) || !sees( p ) ) {
+                continue;
+            }
+            for( const item &it : here.i_at( p ) ) {
+                if( normalize_llm_item_label( it.tname( 1, false ) ) != target_name ) {
+                    continue;
+                }
+                if( !::good_for_pickup( it, *this ) ) {
+                    continue;
+                }
+                const int dist = rl_dist( pos(), p );
+                if( !found || dist < best_dist ) {
+                    best_pos = p;
+                    best_dist = dist;
+                    found = true;
+                }
+            }
+            if( const std::optional<vpart_reference> cargo = here.veh_at( p ).cargo() ) {
+                if( cargo->has_feature( "LOCKED" ) ) {
+                    continue;
+                }
+                for( const item &it : cargo->items() ) {
+                    if( normalize_llm_item_label( it.tname( 1, false ) ) != target_name ) {
+                        continue;
+                    }
+                    if( !::good_for_pickup( it, *this ) ) {
+                        continue;
+                    }
+                    const int dist = rl_dist( pos(), p );
+                    if( !found || dist < best_dist ) {
+                        best_pos = p;
+                        best_dist = dist;
+                        found = true;
+                    }
+                }
+            }
+        }
+
+        if( found ) {
+            wanted_item_pos = best_pos;
+            fetching_item = true;
+            state.look_around_active_target = target_name;
+            state.look_around_targets.pop_front();
+            return true;
+        }
+        state.look_around_targets.pop_front();
+    }
+
+    return false;
+}
+
 void npc::move()
 {
     // don't just return from this function without doing something
@@ -1316,6 +1710,29 @@ void npc::move()
         set_attitude( NPCATT_NULL );
     }
     regen_ai_cache();
+    {
+        llm_intent_state &state = llm_intent_state_for( *this );
+        if( state.panic_forced_turns_remaining > 0 ) {
+            add_effect( effect_npc_run_away, 1_turns );
+            mem_combat.panic = std::max( mem_combat.panic, 20 );
+            state.panic_forced_turns_remaining--;
+            state.calm_turns_remaining = 0;
+            state.calm_start_panic = 0;
+        } else if( state.calm_turns_remaining > 0 ) {
+            if( state.calm_start_panic < mem_combat.panic ) {
+                state.calm_start_panic = mem_combat.panic;
+            }
+            const int cap = ( state.calm_start_panic * state.calm_turns_remaining ) / 30;
+            mem_combat.panic = std::min( mem_combat.panic, cap );
+            if( has_effect( effect_npc_run_away ) ) {
+                remove_effect( effect_npc_run_away );
+            }
+            state.calm_turns_remaining--;
+            if( state.calm_turns_remaining == 0 ) {
+                state.calm_start_panic = 0;
+            }
+        }
+    }
     // NPCs under operation should just stay still
     if( activity.id() == ACT_OPERATION || activity.id() == ACT_SPELLCASTING ) {
         execute_action( npc_player_activity );
@@ -1323,6 +1740,8 @@ void npc::move()
     }
     act_on_danger_assessment();
     npc_action action = npc_undecided;
+
+    apply_llm_intent_target();
 
     const item_location weapon = get_wielded_item();
     static const std::string no_target_str = "none";
@@ -1333,6 +1752,59 @@ void npc::move()
     }
     add_msg_debug( debugmode::DF_NPC, "NPC %s: target = %s, danger = %.1f, range = %d",
                    get_name(), target_name, ai_cache.danger, *confident_range_cache );
+
+    llm_intent_state &state = llm_intent_state_for( *this );
+    auto attempt_llm_forced_attack = [&]() -> bool {
+        if( state.target_attacks_remaining <= 0 || state.target_hint.empty() ) {
+            return false;
+        }
+        if( Creature *forced_target = current_target() ) {
+            npc_action forced = method_of_attack();
+            if( forced == npc_do_attack ) {
+                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+                    add_msg( _( "LLM intent forced immediate attack" ) );
+                }
+                execute_action( forced );
+                return true;
+            }
+            update_path( forced_target->pos() );
+            move_to_next();
+            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+                add_msg( _( "LLM intent advancing toward %s" ), forced_target->disp_name() );
+            }
+            return true;
+        } else if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+            add_msg( _( "LLM intent had no target to attack" ) );
+        }
+        return false;
+    };
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) &&
+        state.active != llm_intent_action::none &&
+        state.last_applied_turn != calendar::turn ) {
+        if( !is_player_ally() ) {
+            clear_llm_intent_actions();
+        } else {
+            const bool llm_safe = ai_cache.danger <= 0 && target == nullptr &&
+                                  !sees_dangerous_field( pos() ) &&
+                                  !has_effect( effect_npc_fire_bad );
+            const bool allow_in_danger = state.active == llm_intent_action::equip_gun ||
+                                         state.active == llm_intent_action::equip_melee ||
+                                         state.active == llm_intent_action::equip_bow;
+            if( llm_safe || allow_in_danger ) {
+                execute_llm_intent_action( state.active );
+                if( !state.queue.empty() ) {
+                    state.queue.pop_front();
+                }
+                state.active = llm_intent_action::none;
+                state.active_turn = calendar::before_time_starts;
+                state.last_applied_turn = calendar::turn;
+                return;
+            }
+        }
+    }
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) && attempt_llm_forced_attack() ) {
+        return;
+    }
 
     Character &player_character = get_player_character();
     //faction opinion determines if it should consider you hostile
@@ -1519,7 +1991,9 @@ void npc::move()
         } else if( has_new_items && scan_new_items() ) {
             return;
         } else if( !fetching_item ) {
-            find_item();
+            if( !apply_llm_intent_item_targets() ) {
+                find_item();
+            }
             print_action( "find_item %s", action );
         } else if( assigned_camp ) {
             // this should be covered above, but justincase to stop them zooming away.
@@ -1588,6 +2062,16 @@ void npc::execute_action( npc_action action )
             ai_cache.current_attack->use( *this, ai_cache.current_attack_evaluation.target() );
             ai_cache.current_attack.reset();
             ai_cache.current_attack_evaluation = npc_attack_rating{};
+            if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                llm_intent_state &state = llm_intent_state_for( *this );
+                if( state.target_attacks_remaining > 0 && !state.target_hint.empty() ) {
+                    state.target_attacks_remaining -= 1;
+                    if( state.target_attacks_remaining <= 0 ) {
+                        state.target_hint.clear();
+                        state.target_turns_remaining = 0;
+                    }
+                }
+            }
             break;
         case npc_pause:
             move_pause();
@@ -3627,7 +4111,10 @@ void npc::pick_up_item()
         return;
     }
 
-    if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() ) {
+    llm_intent_state &state = llm_intent_state_for( *this );
+    const bool llm_targeted = !state.look_around_active_target.empty();
+
+    if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() && !llm_targeted ) {
         add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); Canceling on player's request", get_name() );
         fetching_item = false;
         moves -= 1;
@@ -3645,6 +4132,7 @@ void npc::pick_up_item()
         // Items we wanted no longer exist and we can see it
         // Or player who is leading us doesn't want us to pick it up
         fetching_item = false;
+        state.look_around_active_target.clear();
         move_pause();
         add_msg_debug( debugmode::DF_NPC, "Canceling pickup - no items or new zone" );
         return;
@@ -3668,15 +4156,31 @@ void npc::pick_up_item()
         add_msg_debug( debugmode::DF_NPC, "Can't find path" );
         // This can happen, always do something
         fetching_item = false;
+        state.look_around_active_target.clear();
         move_pause();
         return;
     }
 
     // We're adjacent to the item; grab it!
 
-    auto picked_up = pick_up_item_map( wanted_item_pos );
+    std::list<item> picked_up;
+    if( llm_targeted ) {
+        map_stack stack = here.i_at( wanted_item_pos );
+        picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
+            return normalize_llm_item_label( it.tname( 1, false ) ) == state.look_around_active_target;
+        } );
+    } else {
+        picked_up = pick_up_item_map( wanted_item_pos );
+    }
     if( picked_up.empty() && has_cargo ) {
-        picked_up = pick_up_item_vehicle( vp->vehicle(), vp->part_index() );
+        if( llm_targeted ) {
+            vehicle_stack stack = vp->items();
+            picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
+                return normalize_llm_item_label( it.tname( 1, false ) ) == state.look_around_active_target;
+            } );
+        } else {
+            picked_up = pick_up_item_vehicle( vp->vehicle(), vp->part_index() );
+        }
     }
 
     if( picked_up.empty() ) {
@@ -3686,6 +4190,7 @@ void npc::pick_up_item()
             // Note: we didn't actually pick up anything, just spawned items
             // but we want the item picker to find new items
             fetching_item = false;
+            state.look_around_active_target.clear();
             return;
         }
     }
@@ -3715,17 +4220,18 @@ void npc::pick_up_item()
 
     moves -= 100;
     fetching_item = false;
+    state.look_around_active_target.clear();
     has_new_items = true;
 }
 
-template <typename T>
-std::list<item> npc_pickup_from_stack( npc &who, T &items )
+template <typename T, typename F>
+std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter )
 {
     std::list<item> picked_up;
 
     for( auto iter = items.begin(); iter != items.end(); ) {
         const item &it = *iter;
-        if( ::good_for_pickup( it, who ) ) {
+        if( filter( it ) && ::good_for_pickup( it, who ) ) {
             picked_up.push_back( it );
             iter = items.erase( iter );
         } else {
@@ -3739,13 +4245,17 @@ std::list<item> npc_pickup_from_stack( npc &who, T &items )
 std::list<item> npc::pick_up_item_map( const tripoint &where )
 {
     map_stack stack = get_map().i_at( where );
-    return npc_pickup_from_stack( *this, stack );
+    return npc_pickup_from_stack_filtered( *this, stack, []( const item & ) {
+        return true;
+    } );
 }
 
 std::list<item> npc::pick_up_item_vehicle( vehicle &veh, int part_index )
 {
     vehicle_stack stack = veh.get_items( veh.part( part_index ) );
-    return npc_pickup_from_stack( *this, stack );
+    return npc_pickup_from_stack_filtered( *this, stack, []( const item & ) {
+        return true;
+    } );
 }
 
 bool npc::find_corpse_to_pulp()

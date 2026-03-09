@@ -1420,6 +1420,7 @@ class npc : public Character
         };
         static std::map<character_id, llm_intent_state> &llm_intent_state_map();
         static llm_intent_state &llm_intent_state_for( const npc &guy );
+        void execute_llm_intent_action( llm_intent_action action );
         void apply_llm_intent_target();
         bool apply_llm_intent_item_targets();
 
