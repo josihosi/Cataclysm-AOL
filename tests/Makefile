@@ -72,6 +72,7 @@ check-single: $(TEST_TARGET)
 
 clean:
 	rm -rf *obj *objwin
+	rm -f pch/tests-pch.hpp.gch pch/tests-pch.hpp.d
 	rm -f *cata_test
 
 #Unconditionally create object directory on invocation.
