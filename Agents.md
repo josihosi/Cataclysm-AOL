@@ -45,6 +45,7 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - Review logs in `tools/porting/logs/<timestamp>/` after each run.
 - When a target already has the newer AOL queue/executor pipeline, record obsolete prototype commits in `tools/porting/patchsets/<target>-ignore.txt` on `master` instead of re-resolving them every run.
 - `port/cdda-0.I` now has source-level AOL parity on its branch. Future `0.I` patchset runs should ignore prototype-era commits that try to reintroduce the old `guard_area` / `follow_player` / `use_gun` / `use_melee` model once the branch already has the newer `follow_close` / `follow_far` / `equip_*` / `panic_*` queue-executor pipeline.
+- `port/cdda-0.H` now has source-level AOL parity on its branch too. Future `0.H` reruns need the target overlay commits in `tools/porting/patchsets/cdda-0.H.txt`, because the branch-local follow-up fixes are not part of the shared common queue.
 
 ## Porting build gotchas (2026-02-24)
 - Always run long builds with redirected logs, then parse first hard error:
@@ -74,6 +75,7 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
   - If `npcmove.cpp` defines `execute_llm_intent_action(...)`, `npc.h` must declare it.
   - LLM sleepiness snapshot code may need branch-safe fallback if `sleepiness` APIs diverge.
 - `port/cdda-0.I` replay trap: early AOL commits `fd9cd69de9`, `b39b2b82a9`, `0691a1e92a`, `c1f0d74965`, `103d591616`, `020d81df9e`, `ae713a9cc8`, `3560374527`, `b1e341b62d`, and `8d6746a32e` are obsolete-on-target once `0.I` already has the newer queue/executor implementation. Keep the branch-safe `evaluate_weapon( item &, bool, bool )` helpers and newer executor path; do not backslide to the prototype action vocabulary.
+- `port/cdda-0.H` replay/build trap: after executor parity is restored, Windows builds can still fail with `undefined reference` from `npcmove.o` if the branch is missing `npc::evaluate_best_gun`, `npc::evaluate_best_silent_gun`, and `npc::evaluate_best_melee` definitions. Keep the older branch-safe implementations in `src/npcmove.cpp` and replay them from `tools/porting/patchsets/cdda-0.H.txt` rather than re-porting newer bubble/item-handle code.
 
 ## Tests and in-game verification
 - Use unit tests where applicable.

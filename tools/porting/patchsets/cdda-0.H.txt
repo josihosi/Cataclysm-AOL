@@ -1,2 +1,4 @@
 # Optional target-specific fixups for cdda-0.H.
 # One commit SHA per line.
+3bf3e2506c
+54d74f06e4

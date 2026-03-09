@@ -13,22 +13,25 @@ Ship tested Windows and Linux releases for:
 - `Done`: Windows `BCryptGenRandom` linker fix (`-lbcrypt`) now lives on `master` and is included in both delta and patchset replay paths for future port runs.
 - `Done`: `port/cdda-0.I` now has source-level AOL executor parity again on branch: queue promotion, `execute_llm_intent_action`, target/item-target handling, timed panic behavior, and targeted `look_around` pickup are present. Remaining work on `0.I` is build/smoke validation and keeping obsolete prototype commits out of future replays.
 - `Done`: `tools/porting/patchsets/cdda-0.I-ignore.txt` now captures obsolete-on-target prototype commits so future `port/cdda-0.I` patchset runs skip stale `guard_area` / `follow_player` / `use_gun` replay noise.
+- `Done`: `port/cdda-0.H` now has source-level AOL executor parity again on branch: queue promotion, executor/action-target/item-target handling, targeted `look_around` pickup logging, and missing `evaluate_best_*` weapon-selection helpers are present.
+- `Done`: `tools/porting/patchsets/cdda-0.H.txt` now records the branch-local follow-up commits that future `port/cdda-0.H` patchset runs must replay after the shared queue.
 - `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
-- `In progress`: restore AOL action-execution parity on `port/cdda-0.H`, then finish release validation and packaging parity across all `port/*` branches.
+- `In progress`: finish Windows/Linux validation, in-game smoke tests, and packaging parity across all `port/*` branches now that the source-level AOL executor work is back on every target.
 
 ## Urgent: AOL Port Parity
 
-This is still the main release blocker. Static comparison now shows that `port/cdda-master`, `port/ctlg-master`, and `port/cdda-0.I` have the full AOL executor pipeline at source level, while `port/cdda-0.H` still lacks the same fully wired NPC action execution layer. `0.I` is now mainly an orchestration/build-validation problem rather than a missing-executor problem.
+Source-level AOL executor parity is now back on `port/cdda-master`, `port/ctlg-master`, `port/cdda-0.I`, and `port/cdda-0.H`. The remaining blocker is validation: builds, in-game smoke tests, and packaging checks that prove behavior still matches the `port/cdda-master` reference in play.
 
 - `Source of truth`: use `port/cdda-master` as the primary AOL reference while checking `port/ctlg-master` for branch-safe variants.
 - `Promotion rule`: keep the orchestrator default AOL source on `master` for now; only promote `port/cdda-master` to default source after it has been tested in-game and confirmed behavior-complete.
 - `Done on port/cdda-0.I`: queue promotion, executor/action-target/item-target handling, and targeted `look_around` pickup flow are all present on the branch tip. Remaining work there is validation and replay hygiene, not missing AOL code.
-- `Primary gap on port/cdda-0.H`: parser/state fields exist, but the executor path is missing and the queue does not appear to promote into active AOL actions like the newer ports do.
+- `Done on port/cdda-0.H`: queue promotion, executor/action-target/item-target handling, targeted `look_around` pickup logging, and the missing `evaluate_best_gun` / `evaluate_best_silent_gun` / `evaluate_best_melee` helper definitions are all present on the branch tip. Remaining work there is validation and replay hygiene, not missing AOL code.
 
 ### Immediate fix order
 - [x] Fix `port/cdda-0.I` first. Source-level AOL parity is restored there, so use it as the proof that the missing layer was executor wiring rather than parser-side plumbing.
 - [x] Preserve the `0.I` replay learnings in the orchestrator patchset/ignore rules so future reruns do not stall on obsolete `guard_area` / `follow_player` / `use_gun` history.
-- [ ] Port the same executor path into `port/cdda-0.H`, then adapt only the unavoidable upstream differences.
+- [x] Port the same executor path into `port/cdda-0.H`, then adapt only the unavoidable upstream differences.
+- [x] Preserve the `0.H` follow-up commits in `tools/porting/patchsets/cdda-0.H.txt` so future reruns keep the parity logging hook and weapon-selection helper definitions.
 - [ ] Treat `port/cdda-master` behavior as the acceptance target: same shout loop, same random-call behavior, same timed panic behavior, same `look_around` / `look_inventory` follow-up behavior.
 
 ### Files to diff first
