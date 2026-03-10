@@ -1,0 +1,1 @@
+BOSS_NC_SURVIVOR_CHEF_Story1|Creepy, Selfish, Mischievous, Distrustful, Obsessive|"They might still be out there, and I wouldn't mind a good meal."|NC_SURVIVOR_CHEF_background

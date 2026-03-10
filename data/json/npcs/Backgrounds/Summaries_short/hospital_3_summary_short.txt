@@ -1,0 +1,1 @@
+BGSS_HOSPITAL_3_STORY1|Cautious, Pragmatic, Self-Aware, Resourceful, Cynical|"I was called in to work at the hospital. I don't usually work there, I'm a community doctor. I don't really love emergency medicine at the best of times, and when your patient keeps trying to rip your face off, well, it takes the last bit of fun out of it."|hospital_3

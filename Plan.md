@@ -19,6 +19,7 @@ Ship tested Windows and Linux releases for:
 - `Done`: current AOL branch now honors `follow_far` in live movement instead of snapping back to the default 4-tile pause distance inside `npc_follow_player`.
 - `Done`: current AOL branch now treats `look_around` item ids as aggregated labels during execution too, chaining across all nearby matching stacks instead of stopping after the nearest stack.
 - `Done`: build helper defaults are now aligned so `just_build* --unclean` and `build_and_run* --unclean` can reuse the same non-fast artifacts, and the scripts no longer delete PCH/build outputs on unclean runs.
+- `Done`: `port/cdda-0.H` has now passed in-game AOL smoke coverage for the current shout/action flow; remaining validation focus is the other `port/*` targets plus release packaging.
 - `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
 - `In progress`: finish release validation and packaging parity across all `port/*` branches now that `port/cdda-0.H` has source-level AOL executor parity again and passing Windows and Linux builds.
 
@@ -29,7 +30,7 @@ This is still the main release blocker. Static comparison now shows that `port/c
 - `Source of truth`: use `port/cdda-master` as the primary AOL reference while checking `port/ctlg-master` for branch-safe variants.
 - `Promotion rule`: keep the orchestrator default AOL source on `master` for now; only promote `port/cdda-master` to default source after it has been tested in-game and confirmed behavior-complete.
 - `Done on port/cdda-0.I`: queue promotion, executor/action-target/item-target handling, and targeted `look_around` pickup flow are all present on the branch tip. Remaining work there is validation and replay hygiene, not missing AOL code.
-- `Done on port/cdda-0.H`: queue promotion, executor/action-target/item-target handling, timed panic behavior, and targeted `look_around` pickup are present on branch tip. On March 9, 2026, both `just_build.cmd --unclean > debug.txt 2>&1` and `just_build_linux.cmd --unclean > debug.txt 2>&1` completed successfully, and the Linux rerun produced no `error:`, `fatal error`, `undefined reference`, `make: ***`, or `NativeCommandError` matches after the atomic PCH plus safer git diff fixes. Remaining work is in-game smoke coverage.
+- `Done on port/cdda-0.H`: queue promotion, executor/action-target/item-target handling, timed panic behavior, and targeted `look_around` pickup are present on branch tip. On March 9, 2026, both `just_build.cmd --unclean > debug.txt 2>&1` and `just_build_linux.cmd --unclean > debug.txt 2>&1` completed successfully, and the Linux rerun produced no `error:`, `fatal error`, `undefined reference`, `make: ***`, or `NativeCommandError` matches after the atomic PCH plus safer git diff fixes. On March 11, 2026, in-game AOL smoke coverage also passed on `port/cdda-0.H`.
 
 ### Immediate fix order
 - [x] Fix `port/cdda-0.I` first. Source-level AOL parity is restored there, so use it as the proof that the missing layer was executor wiring rather than parser-side plumbing.

@@ -1,0 +1,1 @@
+BOSS_NC_FARMER_Story1|Cautious, Observant, Practical, Eccentric, Compassionate|"This looks right to me."|NC_Farmer_background
