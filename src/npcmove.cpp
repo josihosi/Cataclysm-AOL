@@ -1623,6 +1623,63 @@ void npc::apply_llm_intent_target()
     }
 }
 
+static std::optional<tripoint> find_llm_look_around_target_pos( npc &who,
+        const std::string &target_name, int radius )
+{
+    map &here = get_map();
+
+    tripoint best_pos = tripoint_min;
+    int best_dist = 0;
+    bool found = false;
+
+    for( const tripoint &p : closest_points_first( who.pos(), radius ) ) {
+        if( who.is_player_ally() && g->check_zone( zone_type_NO_NPC_PICKUP, p ) ) {
+            continue;
+        }
+        if( !here.sees_some_items( p, who ) || !who.sees( p ) ) {
+            continue;
+        }
+        for( const item &it : here.i_at( p ) ) {
+            if( normalize_llm_item_label( it.tname( 1, false ) ) != target_name ) {
+                continue;
+            }
+            if( !::good_for_pickup( it, who ) ) {
+                continue;
+            }
+            const int dist = rl_dist( who.pos(), p );
+            if( !found || dist < best_dist ) {
+                best_pos = p;
+                best_dist = dist;
+                found = true;
+            }
+        }
+        if( const std::optional<vpart_reference> cargo = here.veh_at( p ).cargo() ) {
+            if( cargo->has_feature( "LOCKED" ) ) {
+                continue;
+            }
+            for( const item &it : cargo->items() ) {
+                if( normalize_llm_item_label( it.tname( 1, false ) ) != target_name ) {
+                    continue;
+                }
+                if( !::good_for_pickup( it, who ) ) {
+                    continue;
+                }
+                const int dist = rl_dist( who.pos(), p );
+                if( !found || dist < best_dist ) {
+                    best_pos = p;
+                    best_dist = dist;
+                    found = true;
+                }
+            }
+        }
+    }
+
+    if( found ) {
+        return best_pos;
+    }
+    return std::nullopt;
+}
+
 bool npc::apply_llm_intent_item_targets()
 {
     llm_intent_state &state = llm_intent_state_for( *this );
@@ -1637,58 +1694,12 @@ bool npc::apply_llm_intent_item_targets()
         return true;
     }
 
-    map &here = get_map();
     static const int look_radius = 5;
     while( !state.look_around_targets.empty() ) {
         const std::string target_name = state.look_around_targets.front();
-        tripoint best_pos = tripoint_min;
-        int best_dist = 0;
-        bool found = false;
-
-        for( const tripoint &p : closest_points_first( pos(), look_radius ) ) {
-            if( is_player_ally() && g->check_zone( zone_type_NO_NPC_PICKUP, p ) ) {
-                continue;
-            }
-            if( !here.sees_some_items( p, *this ) || !sees( p ) ) {
-                continue;
-            }
-            for( const item &it : here.i_at( p ) ) {
-                if( normalize_llm_item_label( it.tname( 1, false ) ) != target_name ) {
-                    continue;
-                }
-                if( !::good_for_pickup( it, *this ) ) {
-                    continue;
-                }
-                const int dist = rl_dist( pos(), p );
-                if( !found || dist < best_dist ) {
-                    best_pos = p;
-                    best_dist = dist;
-                    found = true;
-                }
-            }
-            if( const std::optional<vpart_reference> cargo = here.veh_at( p ).cargo() ) {
-                if( cargo->has_feature( "LOCKED" ) ) {
-                    continue;
-                }
-                for( const item &it : cargo->items() ) {
-                    if( normalize_llm_item_label( it.tname( 1, false ) ) != target_name ) {
-                        continue;
-                    }
-                    if( !::good_for_pickup( it, *this ) ) {
-                        continue;
-                    }
-                    const int dist = rl_dist( pos(), p );
-                    if( !found || dist < best_dist ) {
-                        best_pos = p;
-                        best_dist = dist;
-                        found = true;
-                    }
-                }
-            }
-        }
-
-        if( found ) {
-            wanted_item_pos = best_pos;
+        if( std::optional<tripoint> best_pos = find_llm_look_around_target_pos( *this, target_name,
+                look_radius ) ) {
+            wanted_item_pos = *best_pos;
             fetching_item = true;
             state.look_around_active_target = target_name;
             state.look_around_targets.pop_front();
@@ -2031,6 +2042,9 @@ void npc::move()
         }
     }
 
+    const int desired_follow_distance = rules.has_flag( ally_rule::follow_close ) ?
+                                        follow_distance() : 6;
+
     /* Sometimes we'll be following the player at this point, but close enough that
      * "following" means standing still.  If that's the case, if there are any
      * monsters around, we should attack them after all!
@@ -2042,7 +2056,7 @@ void npc::move()
         (
             ( action == npc_follow_embarked && in_vehicle ) ||
             ( action == npc_follow_player &&
-              ( rl_dist( pos(), player_character.pos() ) <= follow_distance() ||
+              ( rl_dist( pos(), player_character.pos() ) <= desired_follow_distance ||
                 posz() != player_character.posz() ) )
         ) ) {
         action = method_of_attack();
@@ -2267,7 +2281,8 @@ void npc::execute_action( npc_action action )
         case npc_follow_player:
             update_path( player_character.pos() );
             if( path.empty() ||
-                ( static_cast<int>( path.size() ) <= follow_distance() &&
+                ( static_cast<int>( path.size() ) <=
+                  ( rules.has_flag( ally_rule::follow_close ) ? follow_distance() : 6 ) &&
                   player_character.posz() == posz() ) ) {
                 // We're close enough to u.
                 move_pause();
@@ -4125,7 +4140,7 @@ void npc::pick_up_item()
 
     llm_intent_state &state = llm_intent_state_for( *this );
     const bool llm_targeted = !state.look_around_active_target.empty();
-    auto log_look_around_pickup = [&]( const std::string &result ) {
+    auto log_look_around_pickup = [&]( const std::string &result, bool clear_target = true ) {
         if( state.look_around_active_target.empty() ) {
             return;
         }
@@ -4133,7 +4148,9 @@ void npc::pick_up_item()
                                               get_name(),
                                               state.look_around_active_target,
                                               result ) );
-        state.look_around_active_target.clear();
+        if( clear_target ) {
+            state.look_around_active_target.clear();
+        }
     };
 
     if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() && !llm_targeted ) {
@@ -4241,10 +4258,23 @@ void npc::pick_up_item()
     }
 
     moves -= 100;
+    has_new_items = true;
+
+    if( llm_targeted ) {
+        static const int look_radius = 5;
+        if( std::optional<tripoint> next_pos = find_llm_look_around_target_pos( *this,
+                state.look_around_active_target, look_radius ) ) {
+            wanted_item_pos = *next_pos;
+            fetching_item = true;
+            log_look_around_pickup( string_format( "picked up %d item(s), continuing",
+                                                   static_cast<int>( picked_up.size() ) ), false );
+            return;
+        }
+    }
+
     fetching_item = false;
     log_look_around_pickup( string_format( "picked up %d item(s)",
                                            static_cast<int>( picked_up.size() ) ) );
-    has_new_items = true;
 }
 
 template <typename T, typename F>

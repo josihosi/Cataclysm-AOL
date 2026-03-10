@@ -15,6 +15,10 @@ Ship tested Windows and Linux releases for:
 - `Done`: `tools/porting/patchsets/cdda-0.I-ignore.txt` now captures obsolete-on-target prototype commits so future `port/cdda-0.I` patchset runs skip stale `guard_area` / `follow_player` / `use_gun` replay noise.
 - `Done`: `port/cdda-0.H` now has a branch-local Linux PCH race fix in `Makefile`; the PCH is written to a temporary file and moved into place atomically so parallel WSL builds do not consume a half-written `gpcWrite` artifact.
 - `Done`: `port/cdda-0.H` now also uses the safer git diff flags in the `version` rule, which suppresses CRLF warning noise and lets `just_build_linux.cmd --unclean > debug.txt 2>&1` exit `0` cleanly under PowerShell.
+- `Done`: current AOL branch now preserves attack-only LLM replies like `attack=b` by storing the target hint even when no separate action token is present, and `C` + `b` uses the lower-volume "Say a sentence" flow again instead of the old yell UI.
+- `Done`: current AOL branch now honors `follow_far` in live movement instead of snapping back to the default 4-tile pause distance inside `npc_follow_player`.
+- `Done`: current AOL branch now treats `look_around` item ids as aggregated labels during execution too, chaining across all nearby matching stacks instead of stopping after the nearest stack.
+- `Done`: build helper defaults are now aligned so `just_build* --unclean` and `build_and_run* --unclean` can reuse the same non-fast artifacts, and the scripts no longer delete PCH/build outputs on unclean runs.
 - `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
 - `In progress`: finish release validation and packaging parity across all `port/*` branches now that `port/cdda-0.H` has source-level AOL executor parity again and passing Windows and Linux builds.
 

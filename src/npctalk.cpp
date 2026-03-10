@@ -868,7 +868,7 @@ void game::chat()
     }
 
     nmenu.addentry( NPC_CHAT_YELL, true, 'a', _( "Yell" ) );
-    nmenu.addentry( NPC_CHAT_SENTENCE, true, 'b', _( "Yell a sentence" ) );
+    nmenu.addentry( NPC_CHAT_SENTENCE, true, 'b', _( "Say a sentence" ) );
     nmenu.addentry( NPC_CHAT_THINK, true, 'T', _( "Think something" ) );
     if( !animal_vehicles.empty() ) {
         nmenu.addentry( NPC_CHAT_ANIMAL_VEHICLE_FOLLOW, true, 'F',
@@ -917,7 +917,7 @@ void game::chat()
     std::string yell_msg;
     std::string think_msg;
     bool is_order = true;
-    bool is_sentence_yell = false;
+    bool is_sentence_say = false;
     nmenu.query();
 
     if( nmenu.ret < 0 ) {
@@ -938,9 +938,9 @@ void game::chat()
             message = _( "loudly." );
             break;
         case NPC_CHAT_SENTENCE: {
-            std::string popupdesc = _( "Enter a sentence to yell" );
+            std::string popupdesc = _( "Enter a sentence to say" );
             string_input_popup popup;
-            popup.title( _( "Yell a sentence" ) )
+            popup.title( _( "Say a sentence" ) )
             .width( 64 )
             .description( popupdesc )
             .identifier( "sentence" )
@@ -948,7 +948,7 @@ void game::chat()
             .query();
             yell_msg = popup.text();
             is_order = false;
-            is_sentence_yell = true;
+            is_sentence_say = true;
             break;
         }
         case NPC_CHAT_THINK: {
@@ -1224,9 +1224,16 @@ void game::chat()
         message = string_format( _( "\"%s\"" ), yell_msg );
     }
     if( !message.empty() ) {
-        add_msg( _( "You yell %s" ), message );
-        u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
-        if( is_sentence_yell &&
+        if( is_sentence_say ) {
+            add_msg( _( "You say %s" ), message );
+            const int say_volume = std::max( 2, volume / 2 );
+            sounds::sound( u.pos(), say_volume, sounds::sound_t::speech,
+                           string_format( _( "%s saying %s" ), u.disp_name(), message ), false );
+        } else {
+            add_msg( _( "You yell %s" ), message );
+            u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
+        }
+        if( is_sentence_say &&
             ( get_option<bool>( "LLM_INTENT_ENABLE" ) || get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) ) {
             static constexpr int llm_intent_min_hear_radius = 12;
             const int say_volume = std::max( 2, volume / 2 );
