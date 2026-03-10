@@ -3063,7 +3063,7 @@ class llm_intent_manager
                                    actions.end() );
                 }
 
-                if( resp.ok && parse_error.empty() && !actions.empty() ) {
+                if( resp.ok && parse_error.empty() ) {
                     std::vector<llm_intent_action> intent_actions;
                     intent_actions.reserve( actions.size() );
                     for( const std::string &token : actions ) {
@@ -3072,7 +3072,7 @@ class llm_intent_manager
                             intent_actions.push_back( action );
                         }
                     }
-                    if( !intent_actions.empty() ) {
+                    if( !intent_actions.empty() || !attack_target.empty() ) {
                         if( npc *target = g->find_npc( resp.npc_id ) ) {
                             if( target->is_player_ally() ) {
                                 target->set_llm_intent_actions( intent_actions, resp.request_id, attack_target );

@@ -1085,6 +1085,7 @@ void game::chat()
     nmenu.addentry( NPC_CHAT_YELL, true, 'a', _( "Yell" ) );
     nmenu.addentry( NPC_CHAT_SENTENCE, true, 'b', _( "Say a sentence" ) );
     nmenu.addentry( NPC_CHAT_EMOTE, true, 'E', _( "Emote" ) );
+    nmenu.addentry( NPC_CHAT_THINK, true, 'T', _( "Think something" ) );
     if( !animal_vehicles.empty() ) {
         nmenu.addentry( NPC_CHAT_ANIMAL_VEHICLE_FOLLOW, true, 'F',
                         _( "Whistle at your animals pulling vehicles to follow you." ) );

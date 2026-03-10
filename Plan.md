@@ -10,6 +10,11 @@ Ship tested Windows and Linux releases for:
 ## Status
 - `Done`: orchestrator replay flow is stable and `rerere` is enabled (`rerere.enabled=true`, `rerere.autoupdate=true`).
 - `Done`: orchestrator now has an AOL parity gate and stronger Codex prompts, so branch runs fail if executor-side AOL wiring is still missing even when the branch compiles.
+- `Done`: Windows `BCryptGenRandom` linker fix (`-lbcrypt`) now lives on `master` and is included in both delta and patchset replay paths for future port runs.
+- `Done`: current AOL branch now preserves attack-only LLM replies like `attack=b` by storing the target hint even when no separate action token is present, and `C` + `b` uses the lower-volume "Say a sentence" flow again instead of the old yell UI.
+- `Done`: current AOL branch now honors `follow_far` in live movement instead of snapping back to the default 4-tile pause distance inside `npc_follow_player`.
+- `Done`: current AOL branch now treats `look_around` item ids as aggregated labels during execution too, chaining across all nearby matching stacks instead of stopping after the nearest stack.
+- `Done`: build helper defaults are now aligned so `just_build* --unclean` and `build_and_run* --unclean` can reuse the same non-fast artifacts, and the scripts no longer delete PCH/build outputs on unclean runs.
 - `Blocked on testing`: do not switch the orchestrator default `AolSourceRef` from `master` to `port/cdda-master` until `port/cdda-master` passes real in-game AOL smoke tests.
 - `In progress`: restore AOL action-execution parity on `port/cdda-0.I` and `port/cdda-0.H`, then finish release validation and packaging parity across all `port/*` branches.
 
