@@ -2078,6 +2078,9 @@ void npc::move()
         }
     }
 
+    const int desired_follow_distance = rules.has_flag( ally_rule::follow_close ) ?
+                                        follow_distance() : 6;
+
     /* Sometimes we'll be following the player at this point, but close enough that
      * "following" means standing still.  If that's the case, if there are any
      * monsters around, we should attack them after all!
@@ -2089,7 +2092,7 @@ void npc::move()
         (
             ( action == npc_follow_embarked && in_vehicle ) ||
             ( action == npc_follow_player &&
-              ( rl_dist( pos_bub(), player_character.pos_bub() ) <= follow_distance() ||
+              ( rl_dist( pos_bub(), player_character.pos_bub() ) <= desired_follow_distance ||
                 posz() != player_character.posz() ) )
         ) && !has_flag( json_flag_CANNOT_ATTACK ) ) {
         action = method_of_attack();
@@ -2320,7 +2323,8 @@ void npc::execute_action( npc_action action )
         case npc_follow_player:
             update_path( player_character.pos_bub() );
             if( path.empty() ||
-                ( static_cast<int>( path.size() ) <= follow_distance() &&
+                ( static_cast<int>( path.size() ) <=
+                  ( rules.has_flag( ally_rule::follow_close ) ? follow_distance() : 6 ) &&
                   player_character.posz() == posz() ) ) {
                 // We're close enough to u.
                 move_pause();
@@ -4225,8 +4229,9 @@ void npc::pick_up_item()
         return;
     }
 
-    auto log_look_around_pickup = [&]( const std::string & result ) {
-        llm_intent_state &state = llm_intent_state_for( *this );
+    llm_intent_state &state = llm_intent_state_for( *this );
+    const bool llm_targeted = !state.look_around_active_target.empty();
+    auto log_look_around_pickup = [&]( const std::string & result, bool clear_target = true ) {
         if( state.look_around_active_target.empty() ) {
             return;
         }
@@ -4234,11 +4239,12 @@ void npc::pick_up_item()
                                               get_name(),
                                               state.look_around_active_target,
                                               result ) );
-        state.look_around_active_target.clear();
+        if( clear_target ) {
+            state.look_around_active_target.clear();
+        }
     };
 
-    if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() &&
-        llm_intent_state_for( *this ).look_around_active_target.empty() ) {
+    if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() && !llm_targeted ) {
         add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); Canceling on player's request", get_name() );
         fetching_item = false;
         wanted_item = {};
@@ -4305,9 +4311,7 @@ void npc::pick_up_item()
 
     // We're adjacent to the item; grab it!
 
-    llm_intent_state &state = llm_intent_state_for( *this );
     const std::string target_name = state.look_around_active_target;
-    const bool llm_targeted = !target_name.empty();
     std::list<item> picked_up;
     if( llm_targeted ) {
         map_stack stack = here.i_at( wanted_item_pos );
@@ -4365,12 +4369,25 @@ void npc::pick_up_item()
         mod_moves( -get_speed() );
     }
 
+    has_new_items = true;
+
+    if( llm_targeted ) {
+        const std::string continued_target = state.look_around_active_target;
+        fetching_item = false;
+        wanted_item = {};
+        state.look_around_targets.push_front( continued_target );
+        if( apply_llm_intent_item_targets() ) {
+            log_look_around_pickup( string_format( "picked up %d item(s), continuing",
+                                                   static_cast<int>( picked_up.size() ) ), false );
+            return;
+        }
+    }
+
     log_look_around_pickup( string_format( "picked up %d item(s)",
                                            static_cast<int>( picked_up.size() ) ) );
 
     fetching_item = false;
     wanted_item = {};
-    has_new_items = true;
 }
 
 template <typename T, typename F>
