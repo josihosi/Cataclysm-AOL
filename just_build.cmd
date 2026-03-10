@@ -35,8 +35,8 @@ if not "%USERDIR_REL%"=="" (
 )
 set "MAKE_RELEASE=1"
 set "MAKE_SOUND=1"
-set "MAKE_LOCALIZE=0"
-set "MAKE_LANG_FLAGS="
+set "MAKE_LOCALIZE=1"
+set "MAKE_LANG_FLAGS= LANGUAGES=all"
 set "MAKE_EXTRA="
 if "%FAST_DEBUG%"=="1" (
   set "MAKE_RELEASE=0"
@@ -47,4 +47,4 @@ if "%FAST_DEBUG%"=="1" (
   echo Using fast build profile ^(--fast / -f^): lower compile cost, auto-unclean.
 )
 
-"C:\Users\josef\dev\msys64\usr\bin\bash.exe" -lc "cd /c/Users/josef/dev/Cataclysm-AOL && if [ \"%RESET_USERDIR%\" = \"1\" ] && [ -n \"%USERDIR_REL%\" ]; then echo Resetting userdir profile %USERDIR_REL%; rm -rf \"%USERDIR_REL%\"; fi && export LLM_BG_SUMMARY_PYTHON=\"%LLM_BG_SUMMARY_PYTHON%\" && rm -f pch/main-pch.hpp.gch pch/main-pch.hpp.d pch/tests-pch.hpp.gch pch/tests-pch.hpp.d obj*/pch/main-pch.hpp.gch objwin/*/pch/main-pch.hpp.gch zstd.a zstd_test.a cataclysm.a && if [ \"%CLEAN%\" = \"1\" ]; then echo Cleaning in MSYSTEM=$MSYSTEM; if ! make clean; then echo make clean failed, continuing with artifact cleanup; fi; rm -f zstd.a zstd_test.a cataclysm.a pch/tests-pch.hpp.gch pch/tests-pch.hpp.d; else echo Skipping clean in MSYSTEM=$MSYSTEM; fi && echo Building in MSYSTEM=$MSYSTEM && make -j$(nproc) RELEASE=%MAKE_RELEASE% MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=%MAKE_SOUND% LOCALIZE=%MAKE_LOCALIZE%%MAKE_LANG_FLAGS% LINTJSON=0 ASTYLE=0 TESTS=0%MAKE_EXTRA%"
+"C:\Users\josef\dev\msys64\usr\bin\bash.exe" -lc "cd /c/Users/josef/dev/Cataclysm-AOL && if [ \"%RESET_USERDIR%\" = \"1\" ] && [ -n \"%USERDIR_REL%\" ]; then echo Resetting userdir profile %USERDIR_REL%; rm -rf \"%USERDIR_REL%\"; fi && export LLM_BG_SUMMARY_PYTHON=\"%LLM_BG_SUMMARY_PYTHON%\" && if [ \"%CLEAN%\" = \"1\" ]; then echo Cleaning in MSYSTEM=$MSYSTEM; rm -f pch/main-pch.hpp.gch pch/main-pch.hpp.d pch/tests-pch.hpp.gch pch/tests-pch.hpp.d obj*/pch/main-pch.hpp.gch objwin/*/pch/main-pch.hpp.gch zstd.a zstd_test.a cataclysm.a; if ! make clean; then echo make clean failed, continuing with artifact cleanup; fi; rm -f zstd.a zstd_test.a cataclysm.a pch/tests-pch.hpp.gch pch/tests-pch.hpp.d; else echo Skipping clean in MSYSTEM=$MSYSTEM; fi && echo Building in MSYSTEM=$MSYSTEM && make -j$(nproc) RELEASE=%MAKE_RELEASE% MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=%MAKE_SOUND% LOCALIZE=%MAKE_LOCALIZE%%MAKE_LANG_FLAGS% LINTJSON=0 ASTYLE=0 TESTS=0%MAKE_EXTRA%"
