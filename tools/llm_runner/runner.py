@@ -25,7 +25,20 @@ def strip_think_tags(text: str) -> str:
 def sanitize_text(text: Any) -> str:
     if not isinstance(text, str):
         return ""
-    return text.encode("utf-8", "replace").decode("utf-8")
+    try:
+        return text.encode("utf-8", "surrogateescape").decode("utf-8", "replace")
+    except Exception:
+        return text.encode("utf-8", "replace").decode("utf-8", "replace")
+
+
+def sanitize_jsonish(value: Any) -> Any:
+    if isinstance(value, str):
+        return sanitize_text(value)
+    if isinstance(value, list):
+        return [sanitize_jsonish(item) for item in value]
+    if isinstance(value, dict):
+        return {key: sanitize_jsonish(item) for key, item in value.items()}
+    return value
 
 
 def parse_args() -> argparse.Namespace:
@@ -230,7 +243,7 @@ def get_npu_metrics() -> Dict[str, Any]:
 
 
 def read_request(line: str) -> Dict[str, Any]:
-    return json.loads(line)
+    return sanitize_jsonish(json.loads(line))
 
 
 def write_response(payload: Dict[str, Any]) -> None:
@@ -439,10 +452,7 @@ def apply_provider_api_key_env(provider: str, api_key: str) -> None:
     provider_key = (provider or "").strip().lower()
     if not api_key:
         return
-    if provider_key == "openrouter":
-        os.environ["OPENROUTER_API_KEY"] = api_key
-        os.environ.setdefault("OPENAI_API_KEY", api_key)
-    elif provider_key == "openai":
+    if provider_key == "openai":
         os.environ["OPENAI_API_KEY"] = api_key
 
 
@@ -474,7 +484,6 @@ def run_api_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int
             model=model,
             provider=provider,
             messages=[{"role": "user", "content": args.self_test_prompt}],
-            max_tokens=min(args.max_tokens, 16),
             api_key=api_key,
         )
         text = strip_think_tags(extract_completion_text(response))
@@ -580,6 +589,37 @@ def main() -> int:
     return 0
 
 
+def extract_message_content_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: List[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str) and text:
+                    parts.append(text)
+                elif item.get("type") == "output_text":
+                    maybe_text = item.get("text")
+                    if isinstance(maybe_text, str) and maybe_text:
+                        parts.append(maybe_text)
+            else:
+                maybe_text = getattr(item, "text", None)
+                if isinstance(maybe_text, str) and maybe_text:
+                    parts.append(maybe_text)
+        return "".join(parts)
+    if isinstance(content, dict):
+        text = content.get("text")
+        if isinstance(text, str):
+            return text
+    maybe_text = getattr(content, "text", None)
+    if isinstance(maybe_text, str):
+        return maybe_text
+    return ""
+
+
 def extract_completion_text(response: Any) -> str:
     if response is None:
         return ""
@@ -587,15 +627,18 @@ def extract_completion_text(response: Any) -> str:
         choices = response.get("choices")
         if isinstance(choices, list) and choices:
             message = choices[0].get("message", {})
-            content = message.get("content")
-            if isinstance(content, str):
-                return content
+            text = extract_message_content_text(message.get("content"))
+            if text:
+                return text
     choices = getattr(response, "choices", None)
     if isinstance(choices, list) and choices:
         message = getattr(choices[0], "message", None)
-        content = getattr(message, "content", None)
-        if isinstance(content, str):
-            return content
+        text = extract_message_content_text(getattr(message, "content", None))
+        if text:
+            return text
+    output_text = getattr(response, "output_text", None)
+    if isinstance(output_text, str) and output_text:
+        return output_text
     return str(response)
 
 
@@ -695,10 +738,6 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
             write_response({"request_id": request_id, "ok": False, "error": "Missing prompt"})
             continue
 
-        max_tokens = request.get("max_tokens")
-        if not isinstance(max_tokens, int) or max_tokens <= 0:
-            max_tokens = None
-
         start_time = time.perf_counter()
         apply_provider_api_key_env(provider, api_key)
         try:
@@ -706,7 +745,6 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
                 "model": model,
                 "provider": provider,
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": max_tokens,
                 "api_key": api_key,
             }
             response = completion(
@@ -718,7 +756,6 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
             payload = {"request_id": request_id, "ok": True, "text": text}
             payload["metrics"] = {
                 "gen_time_ms": elapsed_ms,
-                "max_new_tokens": max_tokens,
                 "use_api": True,
             }
             write_response(payload)
