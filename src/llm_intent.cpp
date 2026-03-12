@@ -7,7 +7,6 @@
 #include <condition_variable>
 #include <cctype>
 #include <cmath>
-#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <map>
@@ -116,17 +115,15 @@ void append_llm_intent_log( const std::string &payload )
     }
     std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
     assure_dir_exist( PATH_INFO::config_dir() );
-    const std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
-                                           llm_intent_log_filename;
+    const std::string log_path = PATH_INFO::config_dir() + llm_intent_log_filename;
     std::error_code ec;
-    if( std::filesystem::exists( log_path, ec ) ) {
-        const std::uintmax_t size = std::filesystem::file_size( log_path, ec );
+    if( fs::exists( log_path, ec ) ) {
+        const std::uintmax_t size = fs::file_size( log_path, ec );
         if( !ec && size >= static_cast<std::uintmax_t>( llm_intent_log_rotate_bytes ) ) {
             for( int i = 1; i <= 9999; ++i ) {
-                std::filesystem::path rotated = log_path;
-                rotated += "." + std::to_string( i );
-                if( !std::filesystem::exists( rotated, ec ) ) {
-                    std::filesystem::rename( log_path, rotated, ec );
+                const std::string rotated = log_path + "." + std::to_string( i );
+                if( !fs::exists( rotated, ec ) ) {
+                    fs::rename( log_path, rotated, ec );
                     break;
                 }
             }
@@ -202,9 +199,9 @@ struct runner_config {
 [[maybe_unused]] std::string request_to_json( const llm_intent_request &request );
 [[maybe_unused]] std::optional<llm_intent_response> response_from_json( const std::string &line,
         const llm_intent_request &request );
-[[maybe_unused]] std::filesystem::path resolve_path( const std::string &path );
+[[maybe_unused]] fs::path resolve_path( const std::string &path );
 [[maybe_unused]] runner_config current_runner_config();
-[[maybe_unused]] std::string read_log_tail( const std::filesystem::path &path,
+[[maybe_unused]] std::string read_log_tail( const fs::path &path,
         std::streamoff max_bytes );
 
 std::string sanitize_text( std::string_view text )
@@ -409,15 +406,13 @@ background_summary_cache &get_background_summaries()
 
     const cata_path summary_root = PATH_INFO::datadir_path() / "json" / "npcs" / "Backgrounds" /
                                    "Summaries_short";
-    const std::filesystem::path summary_dir = summary_root.get_unrelative_path();
+    const fs::path summary_dir = summary_root.get_unrelative_path();
     std::error_code ec;
-    if( !std::filesystem::exists( summary_dir, ec ) ) {
+    if( !fs::exists( summary_dir, ec ) ) {
         return cache;
     }
 
-    for( const std::filesystem::directory_entry &entry : std::filesystem::directory_iterator(
-             summary_dir,
-             ec ) ) {
+    for( const fs::directory_entry &entry : fs::directory_iterator( summary_dir, ec ) ) {
         if( ec ) {
             break;
         }
@@ -1823,7 +1818,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
     return out.str();
 }
 
-[[maybe_unused]] std::string read_log_tail( const std::filesystem::path &path,
+[[maybe_unused]] std::string read_log_tail( const fs::path &path,
         std::streamoff max_bytes )
 {
     std::ifstream in( path, std::ios::binary );
@@ -1880,34 +1875,34 @@ bool should_attempt_parse( const std::string &line )
     return response;
 }
 
-[[maybe_unused]] std::filesystem::path resolve_path( const std::string &path )
+[[maybe_unused]] fs::path resolve_path( const std::string &path )
 {
     if( path.empty() ) {
-        return std::filesystem::path();
+        return fs::path();
     }
-    std::filesystem::path p = std::filesystem::u8path( path );
+    fs::path p = fs::u8path( path );
     if( p.is_relative() ) {
-        p = std::filesystem::path( PATH_INFO::base_path() ) / p;
+        p = fs::path( PATH_INFO::base_path() ) / p;
     }
     return p;
 }
 
 [[maybe_unused]] std::string resolve_python_from_venv_or_exe( const std::string &path )
 {
-    std::filesystem::path p = resolve_path( path );
+    fs::path p = resolve_path( path );
     if( p.empty() ) {
         return path;
     }
-    if( std::filesystem::is_directory( p ) ) {
+    if( fs::is_directory( p ) ) {
 #if defined(_WIN32)
-        std::filesystem::path candidate = p / "Scripts" / "python.exe";
-        if( std::filesystem::exists( candidate ) ) {
+        fs::path candidate = p / "Scripts" / "python.exe";
+        if( fs::exists( candidate ) ) {
             return candidate.string();
         }
 #else
         for( const char *name : { "python3", "python" } ) {
-            std::filesystem::path candidate = p / "bin" / name;
-            if( std::filesystem::exists( candidate ) ) {
+            fs::path candidate = p / "bin" / name;
+            if( fs::exists( candidate ) ) {
                 return candidate.string();
             }
         }
@@ -1938,7 +1933,7 @@ bool should_attempt_parse( const std::string &line )
         cfg.python_path = configured_python;
     } else if( cfg.backend == "api" ) {
         const std::string api_venv = resolve_python_from_venv_or_exe( "/Users/josefhorvath/ollama/api_env311" );
-        if( !api_venv.empty() && std::filesystem::exists( api_venv ) ) {
+        if( !api_venv.empty() && fs::exists( api_venv ) ) {
             cfg.python_path = api_venv;
         } else {
 #if defined(_WIN32)
@@ -2043,7 +2038,7 @@ class llm_intent_runner_process
         HANDLE stdin_write = nullptr;
         HANDLE stdout_read = nullptr;
         std::string stdout_buffer;
-        std::filesystem::path runner_log_path;
+        fs::path runner_log_path;
 
         bool start( const runner_config &config, std::string &error ) {
             const std::string backend = lower_copy( config.backend );
@@ -2057,10 +2052,10 @@ class llm_intent_runner_process
                 return false;
             }
 
-            std::filesystem::path python_path = resolve_path( config.python_path );
-            std::filesystem::path runner_path = resolve_path( config.runner_path );
-            std::filesystem::path model_dir = resolve_path( config.model_dir );
-            std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
+            fs::path python_path = resolve_path( config.python_path );
+            fs::path runner_path = resolve_path( config.runner_path );
+            fs::path model_dir = resolve_path( config.model_dir );
+            fs::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
                                              "llm_intent_runner.log";
             assure_dir_exist( PATH_INFO::config_dir() );
 
@@ -2091,7 +2086,7 @@ class llm_intent_runner_process
                 args.push_back( "--max-tokens" );
                 args.push_back( std::to_string( config.max_tokens ) );
             } else if( !config.model_dir.empty() ) {
-                std::filesystem::path cache_dir = model_dir / ".ov_cache";
+                fs::path cache_dir = model_dir / ".ov_cache";
                 args.push_back( "--model-dir" );
                 args.push_back( model_dir.string() );
                 args.push_back( "--device" );
@@ -2269,7 +2264,7 @@ class llm_intent_runner_process
                 DWORD available = 0;
                 if( !PeekNamedPipe( stdout_read, nullptr, 0, nullptr, &available, nullptr ) ) {
                     error = "Runner stdout pipe failed.";
-                    if( !runner_log_path.empty() && std::filesystem::exists( runner_log_path ) ) {
+                    if( !runner_log_path.empty() && fs::exists( runner_log_path ) ) {
                         const std::string tail = read_log_tail( runner_log_path, 4096 );
                         if( !tail.empty() ) {
                             error += "\nRunner log tail:\n" + tail;
@@ -2359,7 +2354,7 @@ class posix_runner_process
         int stdin_write = -1;
         int stdout_read = -1;
         std::string stdout_buffer;
-        std::filesystem::path runner_log_path;
+        fs::path runner_log_path;
 
         bool start( const runner_config &config, std::string &error ) {
             const std::string backend = lower_copy( config.backend );
@@ -2373,10 +2368,10 @@ class posix_runner_process
                 return false;
             }
 
-            std::filesystem::path python_path = resolve_path( config.python_path );
-            std::filesystem::path runner_path = resolve_path( config.runner_path );
-            std::filesystem::path model_dir = resolve_path( config.model_dir );
-            std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
+            fs::path python_path = resolve_path( config.python_path );
+            fs::path runner_path = resolve_path( config.runner_path );
+            fs::path model_dir = resolve_path( config.model_dir );
+            fs::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
                                              "llm_intent_runner.log";
             assure_dir_exist( PATH_INFO::config_dir() );
 
@@ -2407,7 +2402,7 @@ class posix_runner_process
                 args.push_back( "--max-tokens" );
                 args.push_back( std::to_string( config.max_tokens ) );
             } else if( !config.model_dir.empty() ) {
-                std::filesystem::path cache_dir = model_dir / ".ov_cache";
+                fs::path cache_dir = model_dir / ".ov_cache";
                 args.push_back( "--model-dir" );
                 args.push_back( model_dir.string() );
                 args.push_back( "--device" );
@@ -2583,7 +2578,7 @@ class posix_runner_process
                         continue;
                     }
                     error = "Runner stdout select failed.";
-                    if( !runner_log_path.empty() && std::filesystem::exists( runner_log_path ) ) {
+                    if( !runner_log_path.empty() && fs::exists( runner_log_path ) ) {
                         const std::string tail = read_log_tail( runner_log_path, 4096 );
                         if( !tail.empty() ) {
                             error += "\nRunner log tail:\n" + tail;
