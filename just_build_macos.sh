@@ -80,7 +80,10 @@ if [[ -n "$USERDIR_REL" ]]; then
   fi
 fi
 
-rm -f pch/main-pch.hpp.gch pch/main-pch.hpp.d pch/tests-pch.hpp.gch pch/tests-pch.hpp.d obj/*/pch/main-pch.hpp.gch zstd.a zstd_test.a cataclysm-tiles cataclysm-tlg-tiles || true
+rm -f pch/main-pch.hpp.gch pch/main-pch.hpp.pch pch/main-pch.hpp.d \
+      pch/tests-pch.hpp.gch pch/tests-pch.hpp.pch pch/tests-pch.hpp.d \
+      obj/*/pch/main-pch.hpp.gch obj/*/pch/main-pch.hpp.pch \
+      zstd.a zstd_test.a cataclysm-tiles cataclysm-tlg-tiles || true
 if [[ "$CLEAN" == "1" ]]; then
   echo "Cleaning native macOS build..."
   if ! make clean; then
