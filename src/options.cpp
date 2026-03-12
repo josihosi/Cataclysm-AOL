@@ -2961,6 +2961,8 @@ void options_manager::add_options_llm()
          0, 500, 0
        );
 
+    add_empty_line();
+
     add( "LLM_INTENT_BACKEND", "llm", to_translation( "LLM backend" ),
          to_translation( "Choose how NPC LLM requests are handled." ),
          { { "openvino", to_translation( "OpenVINO (advanced local)" ) },
@@ -2981,7 +2983,7 @@ void options_manager::add_options_llm()
 
     add( "LLM_INTENT_API_KEY_ENV", "llm", to_translation( "API key env var" ),
          to_translation( "Environment variable name that stores the OpenRouter API key." ),
-         "CATACLYSM_API_KEY", 128
+         "CATA_API_KEY", 128
        );
 
     add( "LLM_INTENT_API_MODEL", "llm", to_translation( "API model name" ),
@@ -3008,8 +3010,9 @@ void options_manager::add_options_llm()
          "AUTO"
        );
 
-    add( "LLM_INTENT_MAX_PROMPT_LEN", "llm", translation(), translation(),
-         256, 20000, 4096, COPT_ALWAYS_HIDE
+    add( "LLM_INTENT_MAX_PROMPT_LEN", "llm", to_translation( "Max prompt length (advanced)" ),
+         to_translation( "Upper bound for prompt length before the runner trims or refuses oversized input. Mostly useful for backend debugging." ),
+         256, 20000, 4096
        );
 
     add( "LLM_INTENT_TIMEOUT_MS", "llm", to_translation( "LLM runner timeout (ms)" ),
@@ -3029,8 +3032,9 @@ void options_manager::add_options_llm()
          0.1f, 2.0f, 0.6f, 0.05f
        );
 
-    add( "LLM_INTENT_TOP_P", "llm", translation(), translation(),
-         0.1f, 1.0f, 0.9f, 0.05f, COPT_ALWAYS_HIDE
+    add( "LLM_INTENT_TOP_P", "llm", to_translation( "Top-p (advanced)" ),
+         to_translation( "Advanced nucleus sampling control for local model responses." ),
+         0.1f, 1.0f, 0.9f, 0.05f
        );
 
     add( "LLM_INTENT_REPETITION_PENALTY", "llm", translation(), translation(),
