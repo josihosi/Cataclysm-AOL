@@ -435,6 +435,17 @@ def run_ollama_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> 
         return 1
 
 
+def apply_provider_api_key_env(provider: str, api_key: str) -> None:
+    provider_key = (provider or "").strip().lower()
+    if not api_key:
+        return
+    if provider_key == "openrouter":
+        os.environ["OPENROUTER_API_KEY"] = api_key
+        os.environ.setdefault("OPENAI_API_KEY", api_key)
+    elif provider_key == "openai":
+        os.environ["OPENAI_API_KEY"] = api_key
+
+
 def run_api_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
     try:
         from any_llm import completion
@@ -455,6 +466,8 @@ def run_api_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int
         if args.use_api and not api_key:
             print(f"API key env var not set: {args.api_key_env}", file=sys.stderr)
             return 1
+
+    apply_provider_api_key_env(provider, api_key)
 
     try:
         response = completion(
@@ -687,6 +700,7 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
             max_tokens = None
 
         start_time = time.perf_counter()
+        apply_provider_api_key_env(provider, api_key)
         try:
             completion_kwargs: Dict[str, Any] = {
                 "model": model,
