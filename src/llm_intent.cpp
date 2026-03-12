@@ -170,6 +170,8 @@ struct runner_config {
     std::string api_key_env;
     std::string api_provider;
     std::string api_model;
+    std::string ollama_url;
+    std::string ollama_model;
     int max_tokens = 0;
     int max_prompt_len = 0;
     bool force_npu = false;
@@ -184,6 +186,8 @@ struct runner_config {
                api_key_env == other.api_key_env &&
                api_provider == other.api_provider &&
                api_model == other.api_model &&
+               ollama_url == other.ollama_url &&
+               ollama_model == other.ollama_model &&
                max_tokens == other.max_tokens &&
                max_prompt_len == other.max_prompt_len &&
                force_npu == other.force_npu;
@@ -1924,6 +1928,8 @@ bool should_attempt_parse( const std::string &line )
     cfg.api_key_env = get_option<std::string>( "LLM_INTENT_API_KEY_ENV" );
     cfg.api_provider = get_option<std::string>( "LLM_INTENT_API_PROVIDER" );
     cfg.api_model = get_option<std::string>( "LLM_INTENT_API_MODEL" );
+    cfg.ollama_url = get_option<std::string>( "LLM_INTENT_OLLAMA_URL" );
+    cfg.ollama_model = get_option<std::string>( "LLM_INTENT_OLLAMA_MODEL" );
     cfg.max_tokens = default_max_tokens;
     cfg.max_prompt_len = get_option<int>( "LLM_INTENT_MAX_PROMPT_LEN" );
     if( cfg.max_prompt_len <= 0 ) {
@@ -2014,10 +2020,9 @@ class llm_intent_runner_process
 
         bool start( const runner_config &config, std::string &error ) {
             const std::string backend = lower_copy( config.backend );
-            const bool api_configured = !config.api_provider.empty() && !config.api_model.empty();
             const bool use_api_mode = config.use_api || backend == "api";
-            const bool auto_backend = backend == "auto";
-            const bool needs_model = !use_api_mode && !( auto_backend && api_configured );
+            const bool use_ollama_mode = backend == "ollama";
+            const bool needs_model = !use_api_mode && !use_ollama_mode;
 
             if( config.python_path.empty() || config.runner_path.empty() ||
                 ( config.model_dir.empty() && needs_model ) ) {
@@ -2051,6 +2056,13 @@ class llm_intent_runner_process
                 }
                 args.push_back( "--max-tokens" );
                 args.push_back( std::to_string( config.max_tokens ) );
+            } else if( use_ollama_mode ) {
+                args.push_back( "--ollama-url" );
+                args.push_back( config.ollama_url.empty() ? "http://127.0.0.1:11434" : config.ollama_url );
+                args.push_back( "--ollama-model" );
+                args.push_back( config.ollama_model );
+                args.push_back( "--max-tokens" );
+                args.push_back( std::to_string( config.max_tokens ) );
             } else if( !config.model_dir.empty() ) {
                 std::filesystem::path cache_dir = model_dir / ".ov_cache";
                 args.push_back( "--model-dir" );
@@ -2065,16 +2077,6 @@ class llm_intent_runner_process
                 args.push_back( cache_dir.string() );
                 if( config.force_npu ) {
                     args.push_back( "--force-npu" );
-                }
-            }
-            if( !use_api_mode && auto_backend && api_configured ) {
-                args.push_back( "--api-provider" );
-                args.push_back( config.api_provider );
-                args.push_back( "--api-model" );
-                args.push_back( config.api_model );
-                if( !config.api_key_env.empty() ) {
-                    args.push_back( "--api-key-env" );
-                    args.push_back( config.api_key_env );
                 }
             }
             args.push_back( "--log-file" );
@@ -2334,10 +2336,9 @@ class posix_runner_process
 
         bool start( const runner_config &config, std::string &error ) {
             const std::string backend = lower_copy( config.backend );
-            const bool api_configured = !config.api_provider.empty() && !config.api_model.empty();
             const bool use_api_mode = config.use_api || backend == "api";
-            const bool auto_backend = backend == "auto";
-            const bool needs_model = !use_api_mode && !( auto_backend && api_configured );
+            const bool use_ollama_mode = backend == "ollama";
+            const bool needs_model = !use_api_mode && !use_ollama_mode;
 
             if( config.python_path.empty() || config.runner_path.empty() ||
                 ( config.model_dir.empty() && needs_model ) ) {
@@ -2371,6 +2372,13 @@ class posix_runner_process
                 }
                 args.push_back( "--max-tokens" );
                 args.push_back( std::to_string( config.max_tokens ) );
+            } else if( use_ollama_mode ) {
+                args.push_back( "--ollama-url" );
+                args.push_back( config.ollama_url.empty() ? "http://127.0.0.1:11434" : config.ollama_url );
+                args.push_back( "--ollama-model" );
+                args.push_back( config.ollama_model );
+                args.push_back( "--max-tokens" );
+                args.push_back( std::to_string( config.max_tokens ) );
             } else if( !config.model_dir.empty() ) {
                 std::filesystem::path cache_dir = model_dir / ".ov_cache";
                 args.push_back( "--model-dir" );
@@ -2385,16 +2393,6 @@ class posix_runner_process
                 args.push_back( cache_dir.string() );
                 if( config.force_npu ) {
                     args.push_back( "--force-npu" );
-                }
-            }
-            if( !use_api_mode && auto_backend && api_configured ) {
-                args.push_back( "--api-provider" );
-                args.push_back( config.api_provider );
-                args.push_back( "--api-model" );
-                args.push_back( config.api_model );
-                if( !config.api_key_env.empty() ) {
-                    args.push_back( "--api-key-env" );
-                    args.push_back( config.api_key_env );
                 }
             }
             args.push_back( "--log-file" );
