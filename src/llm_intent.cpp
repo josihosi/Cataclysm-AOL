@@ -1920,10 +1920,9 @@ bool should_attempt_parse( const std::string &line )
     static constexpr int default_max_tokens = 20000;
     static constexpr int default_max_prompt_len = 4096;
     runner_config cfg;
-    cfg.python_path = resolve_python_from_venv_or_exe( get_option<std::string>( "LLM_INTENT_PYTHON" ) );
+    cfg.backend = get_option<std::string>( "LLM_INTENT_BACKEND" );
     cfg.runner_path = "tools/llm_runner/runner.py";
     cfg.model_dir = get_option<std::string>( "LLM_INTENT_MODEL_DIR" );
-    cfg.backend = get_option<std::string>( "LLM_INTENT_BACKEND" );
     cfg.device = get_option<std::string>( "LLM_INTENT_DEVICE" );
     cfg.use_api = cfg.backend == "api" || get_option<bool>( "LLM_INTENT_USE_API" );
     cfg.api_key_env = get_option<std::string>( "LLM_INTENT_API_KEY_ENV" );
@@ -1931,6 +1930,32 @@ bool should_attempt_parse( const std::string &line )
     cfg.api_model = get_option<std::string>( "LLM_INTENT_API_MODEL" );
     cfg.ollama_url = get_option<std::string>( "LLM_INTENT_OLLAMA_URL" );
     cfg.ollama_model = get_option<std::string>( "LLM_INTENT_OLLAMA_MODEL" );
+
+    const std::string configured_python = resolve_python_from_venv_or_exe(
+                                           get_option<std::string>( "LLM_INTENT_PYTHON" ) );
+    if( !configured_python.empty() ) {
+        cfg.python_path = configured_python;
+    } else if( cfg.backend == "api" ) {
+        const std::string api_venv = resolve_python_from_venv_or_exe( "/Users/josefhorvath/ollama/api_env311" );
+        if( !api_venv.empty() && std::filesystem::exists( api_venv ) ) {
+            cfg.python_path = api_venv;
+        } else {
+#if defined(_WIN32)
+            cfg.python_path = "python";
+#else
+            cfg.python_path = "/usr/bin/python3";
+#endif
+        }
+    } else if( cfg.backend == "ollama" ) {
+#if defined(_WIN32)
+        cfg.python_path = "python";
+#else
+        cfg.python_path = "/usr/bin/python3";
+#endif
+    } else {
+        cfg.python_path = configured_python;
+    }
+
     cfg.max_tokens = default_max_tokens;
     cfg.max_prompt_len = get_option<int>( "LLM_INTENT_MAX_PROMPT_LEN" );
     if( cfg.max_prompt_len <= 0 ) {
