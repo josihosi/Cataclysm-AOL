@@ -5,6 +5,8 @@ import os
 import sys
 import time
 import traceback
+import urllib.request
+import urllib.error
 from typing import Any, Dict, Optional, TextIO, Tuple
 
 TEMPERATURE = 0.6
@@ -32,9 +34,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--backend",
-        default="auto",
-        choices=["auto", "openvino", "api"],
-        help="Backend selection: auto, openvino, or api.",
+        default="openvino",
+        choices=["openvino", "api", "ollama"],
+        help="Backend selection: openvino, api, or ollama.",
     )
     parser.add_argument("--model-dir", help="Path to model directory.")
     parser.add_argument("--device", default="AUTO", help="Target device (default: AUTO).")
@@ -84,6 +86,16 @@ def parse_args() -> argparse.Namespace:
         "--api-key-env",
         default="",
         help="Environment variable name that stores the API key.",
+    )
+    parser.add_argument(
+        "--ollama-url",
+        default="http://127.0.0.1:11434",
+        help="Base URL for local Ollama server.",
+    )
+    parser.add_argument(
+        "--ollama-model",
+        default="",
+        help="Model tag to use with Ollama.",
     )
     parser.add_argument(
         "--self-test",
@@ -386,6 +398,43 @@ def run_openvino_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -
         return 1
 
 
+def ollama_generate(ollama_url: str, model: str, prompt: str, max_tokens: int, temperature: float) -> Dict[str, Any]:
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": float(temperature),
+            "num_predict": int(max_tokens),
+        },
+    }
+    url = ollama_url.rstrip("/") + "/api/generate"
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=600) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def run_ollama_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
+    model = (args.ollama_model or "").strip()
+    if not model:
+        print("Ollama model is required for Ollama self-test.", file=sys.stderr)
+        return 1
+    try:
+        response = ollama_generate(args.ollama_url, model, args.self_test_prompt, min(args.max_tokens, 16), 0.2)
+        text = strip_think_tags(sanitize_text(response.get("response", "")))
+        if not text.strip():
+            print("self-test failed: empty Ollama response", file=sys.stderr)
+            return 1
+        print("self-test ok")
+        return 0
+    except Exception as exc:
+        log_line(log_fp, f"ollama self-test exception: {exc}")
+        log_line(log_fp, traceback.format_exc())
+        print(f"self-test failed: {exc}", file=sys.stderr)
+        return 1
+
+
 def run_api_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
     try:
         from any_llm import completion
@@ -435,34 +484,22 @@ def main() -> int:
         log_line(log_fp, "dry-run ok")
         print("dry-run ok")
         return 0
-    backend = (args.backend or "auto").strip().lower()
+    backend = (args.backend or "openvino").strip().lower()
     if args.use_api:
         backend = "api"
-
-    api_configured = bool((args.api_provider or "").strip() and (args.api_model or "").strip())
-    openvino_available = False
-    if backend in ("auto", "openvino"):
-        openvino_available = try_import_openvino_genai(log_fp) is not None
-
-    if backend == "auto":
-        if args.model_dir and openvino_available:
-            backend = "openvino"
-        elif api_configured:
-            backend = "api"
-        elif not args.model_dir:
-            print("Missing --model-dir for OpenVINO mode. Set [LLM] model directory or enable API.", file=sys.stderr)
-            return 1
-        else:
-            print("OpenVINO GenAI not available. Install OpenVINO or enable API mode.", file=sys.stderr)
-            return 1
 
     if backend == "api":
         if args.self_test:
             return run_api_self_test(args, log_fp)
         return run_api_mode(args, log_fp)
 
+    if backend == "ollama":
+        if args.self_test:
+            return run_ollama_self_test(args, log_fp)
+        return run_ollama_mode(args, log_fp)
+
     if not args.model_dir:
-        print("Missing --model-dir for local runner mode.", file=sys.stderr)
+        print("Missing --model-dir for OpenVINO mode.", file=sys.stderr)
         return 1
     if args.self_test:
         return run_openvino_self_test(args, log_fp)
@@ -547,6 +584,63 @@ def extract_completion_text(response: Any) -> str:
         if isinstance(content, str):
             return content
     return str(response)
+
+
+def run_ollama_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
+    model = (args.ollama_model or "").strip()
+    if not model:
+        print("Ollama model is required for Ollama mode.", file=sys.stderr)
+        return 1
+
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            request = read_request(line)
+        except Exception as exc:
+            log_line(log_fp, f"invalid request: {exc}")
+            write_response({"request_id": "unknown", "ok": False, "error": str(exc)})
+            continue
+
+        request_id = request.get("request_id", "unknown")
+        if request.get("command") == "shutdown":
+            write_response({"request_id": request_id, "ok": True, "shutdown": True})
+            return 0
+
+        prompt = request.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            write_response({"request_id": request_id, "ok": False, "error": "Missing prompt"})
+            continue
+
+        max_tokens = request.get("max_tokens")
+        if not isinstance(max_tokens, int) or max_tokens <= 0:
+            max_tokens = 128
+        temperature = request.get("temperature")
+        if not isinstance(temperature, (int, float)) or temperature <= 0:
+            temperature = TEMPERATURE
+
+        start_time = time.perf_counter()
+        try:
+            response = ollama_generate(args.ollama_url, model, prompt, max_tokens, temperature)
+            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+            text = strip_think_tags(sanitize_text(response.get("response", "")))
+            payload = {"request_id": request_id, "ok": True, "text": text}
+            payload["metrics"] = {
+                "gen_time_ms": elapsed_ms,
+                "max_new_tokens": max_tokens,
+                "use_api": False,
+                "backend": "ollama",
+                "prompt_eval_count": response.get("prompt_eval_count"),
+                "eval_count": response.get("eval_count"),
+                "eval_duration": response.get("eval_duration"),
+            }
+            write_response(payload)
+        except Exception as exc:
+            log_line(log_fp, f"ollama request exception: {exc}")
+            log_line(log_fp, traceback.format_exc())
+            write_response({"request_id": request_id, "ok": False, "error": str(exc)})
+    return 0
 
 
 def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
