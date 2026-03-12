@@ -1887,17 +1887,41 @@ bool should_attempt_parse( const std::string &line )
     return p;
 }
 
+[[maybe_unused]] std::string resolve_python_from_venv_or_exe( const std::string &path )
+{
+    std::filesystem::path p = resolve_path( path );
+    if( p.empty() ) {
+        return path;
+    }
+    if( std::filesystem::is_directory( p ) ) {
+#if defined(_WIN32)
+        std::filesystem::path candidate = p / "Scripts" / "python.exe";
+        if( std::filesystem::exists( candidate ) ) {
+            return candidate.string();
+        }
+#else
+        for( const char *name : { "python3", "python" } ) {
+            std::filesystem::path candidate = p / "bin" / name;
+            if( std::filesystem::exists( candidate ) ) {
+                return candidate.string();
+            }
+        }
+#endif
+    }
+    return p.string();
+}
+
 [[maybe_unused]] runner_config current_runner_config()
 {
     static constexpr int default_max_tokens = 20000;
     static constexpr int default_max_prompt_len = 4096;
     runner_config cfg;
-    cfg.python_path = get_option<std::string>( "LLM_INTENT_PYTHON" );
+    cfg.python_path = resolve_python_from_venv_or_exe( get_option<std::string>( "LLM_INTENT_PYTHON" ) );
     cfg.runner_path = "tools/llm_runner/runner.py";
     cfg.model_dir = get_option<std::string>( "LLM_INTENT_MODEL_DIR" );
     cfg.backend = get_option<std::string>( "LLM_INTENT_BACKEND" );
     cfg.device = get_option<std::string>( "LLM_INTENT_DEVICE" );
-    cfg.use_api = get_option<bool>( "LLM_INTENT_USE_API" );
+    cfg.use_api = cfg.backend == "api" || get_option<bool>( "LLM_INTENT_USE_API" );
     cfg.api_key_env = get_option<std::string>( "LLM_INTENT_API_KEY_ENV" );
     cfg.api_provider = get_option<std::string>( "LLM_INTENT_API_PROVIDER" );
     cfg.api_model = get_option<std::string>( "LLM_INTENT_API_MODEL" );
