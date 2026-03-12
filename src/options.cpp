@@ -2902,16 +2902,18 @@ void options_manager::add_options_llm()
     };
 #if defined(_WIN32)
     const std::string default_llm_python =
-        "C:\\Users\\josef\\openvino_models\\openvino_env\\Scripts\\python.exe";
+        "C:\\Users\\josef\\openvino_models\\openvino_env";
     const std::string default_llm_model =
         "C:\\Users\\josef\\openvino_models\\Phi-3.5-mini-instruct-int4-cw-ov";
     const std::string default_llm_summary_model =
         "C:\\Users\\josef\\openvino_models\\qwen3-8b-int4-cw-ov";
 #else
-    const std::string default_llm_python = "python3";
+    const std::string default_llm_python = "";
     const std::string default_llm_model;
     const std::string default_llm_summary_model;
 #endif
+    const std::string default_ollama_url = "http://127.0.0.1:11434";
+    const std::string default_ollama_model = "qwen2.5:3b";
 
     add( "DEBUG_LLM_INTENT_LOG", "llm", to_translation( "Log LLM shouts" ),
          to_translation( "When enabled, log LLM prompts and responses to config/llm_intent.log." ),
@@ -2935,29 +2937,55 @@ void options_manager::add_options_llm()
          0, 500, 0
        );
 
-    add( "LLM_INTENT_PYTHON", "llm", to_translation( "LLM runner venv Python path" ),
-         to_translation( "Path to python.exe for the runner venv (local or API mode)." ),
+    add( "LLM_INTENT_BACKEND", "llm", to_translation( "LLM backend" ),
+         to_translation( "Choose how NPC LLM requests are handled." ),
+         { { "openvino", to_translation( "OpenVINO (advanced local)" ) },
+           { "api", to_translation( "API / OpenRouter" ) },
+           { "ollama", to_translation( "Ollama (local, recommended)" ) } },
+         "openvino"
+       );
+
+    add( "LLM_INTENT_OLLAMA_URL", "llm", to_translation( "Ollama URL" ),
+         to_translation( "Local Ollama server URL." ),
+         default_ollama_url, 4096
+       );
+
+    add( "LLM_INTENT_OLLAMA_MODEL", "llm", to_translation( "Ollama model name" ),
+         to_translation( "Model tag to use with Ollama." ),
+         default_ollama_model, 256
+       );
+
+    add( "LLM_INTENT_API_KEY_ENV", "llm", to_translation( "API key env var" ),
+         to_translation( "Environment variable name that stores the OpenRouter API key." ),
+         "CATACLYSM_API_KEY", 128
+       );
+
+    add( "LLM_INTENT_API_MODEL", "llm", to_translation( "API model name" ),
+         to_translation( "OpenRouter model name to use for API requests." ),
+         "openai/gpt-4.1-mini", 128
+       );
+
+    add( "LLM_INTENT_PYTHON", "llm", to_translation( "OpenVINO venv path" ),
+         to_translation( "Path to the OpenVINO venv. You may also point directly at the Python executable." ),
          default_llm_python, 4096
        );
 
-    add( "LLM_INTENT_MODEL_DIR", "llm", to_translation( "LLM model directory" ),
+    add( "LLM_INTENT_MODEL_DIR", "llm", to_translation( "OpenVINO model path" ),
          to_translation( "Path to the OpenVINO model directory." ),
          default_llm_model, 4096
        );
 
-    add( "LLM_INTENT_BACKEND", "llm", to_translation( "LLM backend" ),
-         to_translation( "Backend for LLM intents: auto, openvino, or api." ),
-         "auto", 16
+    add( "LLM_INTENT_DEVICE", "llm", to_translation( "OpenVINO device" ),
+         to_translation( "OpenVINO device for local inference. AUTO is the normal default." ),
+         { { "AUTO", to_translation( "AUTO" ) },
+           { "GPU", to_translation( "GPU" ) },
+           { "CPU", to_translation( "CPU" ) },
+           { "NPU", to_translation( "NPU" ) } },
+         "AUTO"
        );
 
-    add( "LLM_INTENT_DEVICE", "llm", to_translation( "LLM device" ),
-         to_translation( "OpenVINO device for LLM inference (AUTO picks the best available device)." ),
-         "AUTO", 16
-       );
-
-    add( "LLM_INTENT_MAX_PROMPT_LEN", "llm", to_translation( "LLM max prompt length" ),
-         to_translation( "Maximum prompt length for the LLM pipeline." ),
-         256, 20000, 4096
+    add( "LLM_INTENT_MAX_PROMPT_LEN", "llm", translation(), translation(),
+         256, 20000, 4096, COPT_ALWAYS_HIDE
        );
 
     add( "LLM_INTENT_TIMEOUT_MS", "llm", to_translation( "LLM runner timeout (ms)" ),
@@ -2965,53 +2993,39 @@ void options_manager::add_options_llm()
          0, 600000, 0
        );
 
-    add( "LLM_INTENT_FORCE_NPU", "llm", to_translation( "Force NPU for LLM intents" ),
-         to_translation( "If true, fail when NPU is not available and do not fall back to CPU." ),
+    add( "LLM_INTENT_FORCE_NPU", "llm", to_translation( "Force NPU (advanced)" ),
+         to_translation( "If true, fail when NPU is not available instead of falling back." ),
          false
        );
 
     add_empty_line();
 
-    add( "LLM_INTENT_TEMPERATURE", "llm", to_translation( "LLM temperature" ),
-         to_translation( "Sampling temperature for the LLM response." ),
+    add( "LLM_INTENT_TEMPERATURE", "llm", to_translation( "Temperature" ),
+         to_translation( "Sampling temperature for local model responses." ),
          0.1f, 2.0f, 0.6f, 0.05f
        );
 
-    add( "LLM_INTENT_TOP_P", "llm", to_translation( "LLM top-p" ),
-         to_translation( "Top-p nucleus sampling value for the LLM response." ),
-         0.1f, 1.0f, 0.9f, 0.05f
+    add( "LLM_INTENT_TOP_P", "llm", translation(), translation(),
+         0.1f, 1.0f, 0.9f, 0.05f, COPT_ALWAYS_HIDE
        );
 
-    add( "LLM_INTENT_REPETITION_PENALTY", "llm", to_translation( "LLM repetition penalty" ),
-         to_translation( "Penalty applied to repeated tokens in the LLM response." ),
-         0.5f, 2.0f, 1.0f, 0.05f
-       );
-
-    add_empty_line();
-
-    add( "LLM_INTENT_USE_API", "llm", to_translation( "Use API call instead" ),
-         to_translation( "Warning: API calls will cost money.  If true, use Any-LLM API calls instead of the local runner." ),
-         false
-       );
-
-    add( "LLM_INTENT_API_KEY_ENV", "llm", to_translation( "Global variable name" ),
-         to_translation( "Environment variable name that stores the API key." ),
-         "CATACLYSM_API_KEY", 128
-       );
-
-    add( "LLM_INTENT_API_PROVIDER", "llm", to_translation( "LLM Provider" ),
-         to_translation( "Provider name to pass to Any-LLM." ),
-         "OpenAI", 128
-       );
-
-    add( "LLM_INTENT_API_MODEL", "llm", to_translation( "Model name" ),
-         to_translation( "Model name to pass to Any-LLM." ),
-         "gpt-4.1", 128
+    add( "LLM_INTENT_REPETITION_PENALTY", "llm", translation(), translation(),
+         0.5f, 2.0f, 1.0f, 0.05f, COPT_ALWAYS_HIDE
        );
 
     add_empty_line();
 
-    add( "LLM_SUMMARY_MODEL_DIR", "llm", to_translation( "LLM summary model directory" ),
+    add( "LLM_INTENT_USE_API", "llm", translation(), translation(),
+         false, COPT_ALWAYS_HIDE
+       );
+
+    add( "LLM_INTENT_API_PROVIDER", "llm", translation(), translation(),
+         "OpenRouter", 128, COPT_ALWAYS_HIDE
+       );
+
+    add_empty_line();
+
+    add( "LLM_SUMMARY_MODEL_DIR", "llm", to_translation( "Summary model directory" ),
          to_translation( "Path to the local model directory used for background summaries." ),
          default_llm_summary_model, 4096
        );
