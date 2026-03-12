@@ -2951,7 +2951,7 @@ void options_manager::add_options_llm()
     add( "LLM_INTENT_BACKEND", "llm", to_translation( "LLM backend" ),
          to_translation( "Choose how NPC LLM requests are handled." ),
          { { "openvino", to_translation( "OpenVINO (advanced local)" ) },
-           { "api", to_translation( "API / OpenRouter" ) },
+           { "api", to_translation( "API via any-llm" ) },
            { "ollama", to_translation( "Ollama (local, recommended)" ) } },
          "openvino"
        );
@@ -2967,13 +2967,13 @@ void options_manager::add_options_llm()
        );
 
     add( "LLM_INTENT_API_KEY_ENV", "llm", to_translation( "API key env var" ),
-         to_translation( "Environment variable name that stores the OpenRouter API key." ),
+         to_translation( "Environment variable name that stores the API key used by any-llm/OpenAI." ),
          "CATA_API_KEY", 128
        );
 
     add( "LLM_INTENT_API_MODEL", "llm", to_translation( "API model name" ),
-         to_translation( "OpenRouter model name to use for API requests." ),
-         "openai/gpt-4.1-mini", 128
+         to_translation( "OpenAI model name to use through any-llm." ),
+         "gpt-4.1-mini", 128
        );
 
     add( "LLM_INTENT_PYTHON", "llm", to_translation( "OpenVINO venv path" ),
@@ -3033,7 +3033,7 @@ void options_manager::add_options_llm()
        );
 
     add( "LLM_INTENT_API_PROVIDER", "llm", translation(), translation(),
-         "OpenRouter", 128, COPT_ALWAYS_HIDE
+         "openai", 128, COPT_ALWAYS_HIDE
        );
 
     add_empty_line();

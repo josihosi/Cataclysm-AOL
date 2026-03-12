@@ -274,10 +274,10 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
 python3 tools/llm_runner/runner.py --self-test --backend openvino --model-dir "/path/to/ov_model" --device AUTO
 ```
 
-API (will use your provider, may cost money):
+API (via any-llm/OpenAI, may cost money):
 ```sh
 # Windows or Linux
-python tools\llm_runner\runner.py --self-test --backend api --api-provider "OpenAI" --api-model "gpt-4.1" --api-key-env "CATACLYSM_API_KEY"
+python tools\llm_runner\runner.py --self-test --backend api --api-provider "openai" --api-model "gpt-4.1-mini" --api-key-env "CATA_API_KEY"
 ```
 
 ## Compile

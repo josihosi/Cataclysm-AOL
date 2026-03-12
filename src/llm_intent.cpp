@@ -82,7 +82,7 @@ class monster;
 namespace
 {
 std::mutex llm_intent_log_mutex;
-constexpr const char *llm_intent_log_path = "config/llm_intent.log";
+constexpr const char *llm_intent_log_filename = "llm_intent.log";
 constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
 void append_llm_intent_log( const std::string &payload )
@@ -116,7 +116,9 @@ void append_llm_intent_log( const std::string &payload )
         final_payload += "\n\n";
     }
     std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
-    const std::filesystem::path log_path( llm_intent_log_path );
+    assure_dir_exist( PATH_INFO::config_dir() );
+    const std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
+                                           llm_intent_log_filename;
     std::error_code ec;
     if( std::filesystem::exists( log_path, ec ) ) {
         const std::uintmax_t size = std::filesystem::file_size( log_path, ec );
@@ -1926,7 +1928,7 @@ bool should_attempt_parse( const std::string &line )
     cfg.device = get_option<std::string>( "LLM_INTENT_DEVICE" );
     cfg.use_api = cfg.backend == "api" || get_option<bool>( "LLM_INTENT_USE_API" );
     cfg.api_key_env = get_option<std::string>( "LLM_INTENT_API_KEY_ENV" );
-    cfg.api_provider = get_option<std::string>( "LLM_INTENT_API_PROVIDER" );
+    cfg.api_provider = "openai";
     cfg.api_model = get_option<std::string>( "LLM_INTENT_API_MODEL" );
     cfg.ollama_url = get_option<std::string>( "LLM_INTENT_OLLAMA_URL" );
     cfg.ollama_model = get_option<std::string>( "LLM_INTENT_OLLAMA_MODEL" );
