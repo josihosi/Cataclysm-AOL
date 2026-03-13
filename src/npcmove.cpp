@@ -241,6 +241,22 @@ bool good_for_pickup( const item &it, npc &who )
     return good;
 }
 
+bool good_for_llm_targeted_pickup( const item &it, npc &who )
+{
+    bool good = false;
+
+    auto weight_allowed = who.weight_capacity() - who.weight_carried();
+    item &weap = who.get_wielded_item() ? *who.get_wielded_item() : null_item_reference();
+    if( ( !it.made_of_from_type( phase_id::LIQUID ) ) &&
+        ( it.weight() <= weight_allowed ) &&
+        ( who.can_stash( it ) ||
+          who.weapon_value( it ) > who.weapon_value( weap ) ) ) {
+        good = true;
+    }
+
+    return good;
+}
+
 std::string normalize_llm_item_label( const std::string &text )
 {
     std::string stripped = text;
@@ -310,7 +326,8 @@ static void print_action( const char *prepend, npc_action action );
 static bool compare_sound_alert( const dangerous_sound &sound_a, const dangerous_sound &sound_b );
 
 template <typename T, typename F>
-std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter );
+std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter,
+        bool require_pickup_desire = true );
 
 bool compare_sound_alert( const dangerous_sound &sound_a, const dangerous_sound &sound_b )
 {
@@ -1643,7 +1660,7 @@ static std::optional<tripoint> find_llm_look_around_target_pos( npc &who,
             if( normalize_llm_item_label( it.tname( 1, false ) ) != target_name ) {
                 continue;
             }
-            if( !::good_for_pickup( it, who ) ) {
+            if( !::good_for_llm_targeted_pickup( it, who ) ) {
                 continue;
             }
             const int dist = rl_dist( who.pos(), p );
@@ -1661,7 +1678,7 @@ static std::optional<tripoint> find_llm_look_around_target_pos( npc &who,
                 if( normalize_llm_item_label( it.tname( 1, false ) ) != target_name ) {
                     continue;
                 }
-                if( !::good_for_pickup( it, who ) ) {
+                if( !::good_for_llm_targeted_pickup( it, who ) ) {
                     continue;
                 }
                 const int dist = rl_dist( who.pos(), p );
@@ -4207,7 +4224,7 @@ void npc::pick_up_item()
         map_stack stack = here.i_at( wanted_item_pos );
         picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
             return normalize_llm_item_label( it.tname( 1, false ) ) == state.look_around_active_target;
-        } );
+        }, false );
     } else {
         picked_up = pick_up_item_map( wanted_item_pos );
     }
@@ -4216,7 +4233,7 @@ void npc::pick_up_item()
             vehicle_stack stack = vp->items();
             picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
                 return normalize_llm_item_label( it.tname( 1, false ) ) == state.look_around_active_target;
-            } );
+            }, false );
         } else {
             picked_up = pick_up_item_vehicle( vp->vehicle(), vp->part_index() );
         }
@@ -4278,13 +4295,17 @@ void npc::pick_up_item()
 }
 
 template <typename T, typename F>
-std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter )
+std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter,
+        bool require_pickup_desire )
 {
     std::list<item> picked_up;
 
     for( auto iter = items.begin(); iter != items.end(); ) {
         const item &it = *iter;
-        if( filter( it ) && ::good_for_pickup( it, who ) ) {
+        const bool pickup_ok = require_pickup_desire ?
+                               ::good_for_pickup( it, who ) :
+                               ::good_for_llm_targeted_pickup( it, who );
+        if( filter( it ) && pickup_ok ) {
             picked_up.push_back( it );
             iter = items.erase( iter );
         } else {
