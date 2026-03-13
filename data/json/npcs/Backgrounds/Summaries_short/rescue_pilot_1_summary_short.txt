@@ -1,0 +1,1 @@
+BGSS_RESCUE_PILOT_1_STORY1|Compassionate, Resilient, Empathetic, Dedicated, Concerned|"I just wanted to help people"|local:ollama:mistral:rescue_pilot_1
