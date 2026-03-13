@@ -259,7 +259,8 @@ bool good_for_pickup( const item &it, npc &who, const tripoint_bub_ms &there )
 
 bool good_for_llm_targeted_pickup( const item &it, npc &who, const tripoint_bub_ms &there )
 {
-    return who.can_take_that( it ) &&
+    const bool can_carry_or_wear = who.can_take_that( it ) || who.can_wear( it ).success();
+    return can_carry_or_wear &&
            who.would_take_that( it, there );
 }
 
@@ -4374,7 +4375,13 @@ void npc::pick_up_item()
         if( itval < worst_item_value ) {
             worst_item_value = itval;
         }
-        i_add( it );
+        bool worn = false;
+        if( llm_targeted && !can_stash( it ) && can_wear( it ).success() ) {
+            worn = wear_item( it, false ).has_value();
+        }
+        if( !worn ) {
+            i_add( it );
+        }
         mod_moves( -get_speed() );
     }
 
