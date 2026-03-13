@@ -1,0 +1,1 @@
+BGSS_NO_PAST_3_STORY1|Resilient, Mysterious, Vulnerable, Resourceful, Adaptable|"I know it's nuts. It sounds like fake amnesia from a Bugs Bunny cartoon."|local:ollama:mistral:latest:no_past_3

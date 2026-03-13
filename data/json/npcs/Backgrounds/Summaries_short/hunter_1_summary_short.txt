@@ -1,0 +1,1 @@
+BGSS_HUNTER_1_STORY1|Paranoid, resourceful, survivalist, fearful, resilient|"I saw it before it saw me, and I capped it with my Remington."|local:ollama:mistral:latest:hunter_1

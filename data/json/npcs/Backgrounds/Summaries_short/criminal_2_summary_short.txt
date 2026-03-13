@@ -1,0 +1,1 @@
+BGSS_CRIMINAL_2_STORY1|Survivalist, Resourceful, Fearful, Pragmatic, Lucky|"I had it pretty good though, I'd lifted a bunch of canned food and shit, and I had a pretty sweet little squat in that warehouse."|local:ollama:mistral:latest:criminal_2

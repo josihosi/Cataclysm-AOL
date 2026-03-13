@@ -1,0 +1,1 @@
+BGSS_NERD_1_STORY1|Resilient, Resourceful, Genre-Savvy, Nervous, Pragmatic|"I may be a huge nerd, but I'm not an idiot."|local:ollama:mistral:latest:nerd_1

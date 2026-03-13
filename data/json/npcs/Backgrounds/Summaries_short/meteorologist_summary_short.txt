@@ -1,0 +1,1 @@
+BGSS_METEOROLOGIST_1|Studious, Resourceful, Adaptable, Pragmatic, Curious|"I settled in a radio station that seemed abandoned."|local:ollama:mistral:latest:meteorologist

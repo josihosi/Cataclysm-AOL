@@ -1,0 +1,1 @@
+BGSS_NO_PAST_5_STORY1|Sensitive, Emotional, Compassionate, Introspective, Resilient|"I've lost so many people… and I'm sure you have too."|local:ollama:mistral:no_past_5

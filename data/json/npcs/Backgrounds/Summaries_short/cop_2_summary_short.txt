@@ -1,0 +1,1 @@
+BGSS_COP_2_STORY1|Resilient, Survivor, Fearful, Pragmatic, Traumatized|"I could hear everything."|local:ollama:mistral:latest:cop_2

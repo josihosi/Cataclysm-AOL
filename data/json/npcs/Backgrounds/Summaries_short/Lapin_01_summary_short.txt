@@ -1,0 +1,1 @@
+BOSS_Lapin_01_Story1|Cautious, Resourceful, Empathetic, Curious, Resilient|"She was heading to a nearby mall, and that place was overrun."|local:ollama:mistral:latest:Lapin_01

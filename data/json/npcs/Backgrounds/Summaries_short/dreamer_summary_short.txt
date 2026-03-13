@@ -1,0 +1,1 @@
+BGSS_DREAMER_STORY1|Paranoid, Vulnerable, Dreamer, Creative, Anxious|"I still get weird dreams, but not of the future anymore."|local:ollama:mistral:dreamer

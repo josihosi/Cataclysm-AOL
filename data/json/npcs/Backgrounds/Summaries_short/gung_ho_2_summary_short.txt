@@ -1,0 +1,1 @@
+BGSS_GUNG_HO_2_STORY1|Resilient, pragmatic, cynical, fearless, survivalist|"I've never felt so alive."|local:ollama:mistral:latest:gung_ho_2

@@ -1,0 +1,1 @@
+BGSS_HOSPITAL_2_STORY1|Survivalist, Traumatized, Isolated, Pragmatic, Guarded|"I broke a lot earlier than my colleagues, and that's the only reason I lived."|local:ollama:mistral:latest:hospital_2

@@ -1,0 +1,1 @@
+BGSS_GUNG_HO_1_STORY1|Survivor, Pragmatic, Resilient, Determined, Brutal|"This is it. This is what I was made for."|local:ollama:mistral:latest:gung_ho_1

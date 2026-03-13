@@ -1,0 +1,1 @@
+BGSS_SCAVENGER_MERC_1_STORY1|Pragmatic, Independent, Straightforward, Cynical, Resilient|"If I had a solid team, though, I'd happily work for Uncle Sam again."|local:ollama:mistral:latest:scavenger_merc_1

@@ -1,0 +1,1 @@
+BGSS_FEMA_EVACUEE_1_STORY1|Resilient, resourceful, fearful, pragmatic, paranoid|"The <freaking> government did this to us."|local:ollama:mistral:latest:fema_evacuee_1
