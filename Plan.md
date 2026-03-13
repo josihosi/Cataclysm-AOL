@@ -126,6 +126,93 @@ This is still the main release blocker. Static comparison now shows that `port/c
 
 ## To-Do Later (Fun Big Bets, Compute-Lean)
 
+### Ambient direct-talk NPC lane (non-follower, low-agency)
+- `Status`: [ ] design pass [ ] prompt split [ ] target selection [ ] memory budget [ ] UI trigger [ ] tests
+- `Goal`: let the player address ordinary nearby NPCs directly, without the follower command/menu flow, and get short in-character replies with light memory and almost no autonomous actioning.
+- `Why this should be separate from follower AOL`:
+  - follower NPCs are high-agency and may execute actions/tool-like commands.
+  - ordinary NPCs should mostly just answer, react, remember a few things, and maybe acknowledge social state.
+  - sharing one prompt/behavior contract across both lanes will keep causing overreach and weird action leakage.
+
+#### Proposed behavior contract
+- Trigger from direct speech input (same broad conversation surface, but no follower-order menu dependency).
+- Resolve exactly **one** target NPC:
+  - nearest talk-eligible NPC in hearing / speech range,
+  - tie-breaker by: direct facing/cone if available, then lowest distance, then stable character id.
+- If no valid target exists, do nothing or use a lightweight "nobody answers" fallback.
+- Non-follower lane should be **speech-only by default**:
+  - no tool-call-style actions,
+  - no `look_around`, `wear`, `attack`, etc,
+  - at most one optional tiny social action later (e.g. greet / refuse / agree), but not in v1.
+- Replies should be short:
+  - 1-3 sentences,
+  - lower token budget than followers,
+  - stronger anti-ramble prompt rules.
+
+#### Prompt split
+- Add a dedicated non-follower / ambient system prompt instead of reusing the follower prompt.
+- Reuse existing inputs where helpful:
+  - background summaries from `data/json/npcs/Backgrounds/Summaries_short/**`
+  - short personal memory snippets
+  - overheard memory when relevant
+- New prompt should emphasize:
+  - you are **not** taking orders like a follower,
+  - answer in character,
+  - be helpful / evasive / suspicious according to NPC state,
+  - do not invent inventory management or tactical actions,
+  - do not emit action tokens.
+
+#### Memory model
+- Keep more memory than follower bark mode, but still bounded.
+- Suggested v1 memory stack per NPC:
+  - last 3-5 direct exchanges with player,
+  - last 1-3 overheard relevant memories,
+  - compact rolling summary after threshold is exceeded.
+- Add background-summary-backed long-lived identity cues, but keep them distinct from episodic memory.
+- If memory window overflows, summarize old conversation into 1-2 lines and keep the newest raw turns.
+
+#### Target selection / routing
+- Add a dedicated resolver for "ambient speech target" in `src/npctalk.cpp` or nearby speech entry logic.
+- Follower priority rule should be explicit:
+  - if player is clearly issuing follower commands, use follower lane.
+  - otherwise, direct local speech should prefer the nearest non-follower talk target.
+- Make target choice loggable in `llm_intent.log` for debugging.
+
+#### Background summaries
+- Existing background summaries are already a good fit here.
+- Reuse them more heavily for non-followers than for followers:
+  - tone,
+  - worldview,
+  - likely phrasing,
+  - distrust/helpfulness defaults.
+- Keep the summary payload short and deterministic so prompt costs do not explode in crowded scenes.
+
+#### Files to touch first
+- `src/npctalk.cpp`
+  - direct speech trigger / target selection split.
+- `src/llm_intent.cpp`
+  - separate prompt builder and request type / mode for ambient NPC chat.
+  - smaller token budget and parser path (speech-only output).
+  - memory window / rolling summary handling.
+- `src/npc.cpp` / `src/npc.h`
+  - branch-safe storage for bounded direct-conversation memory / summary state if current memory structs are too follower-oriented.
+- `src/do_turn.cpp`
+  - only if periodic summary compaction or delayed background memory maintenance needs a turn hook.
+
+#### Minimal v1 acceptance test
+- Player can speak without opening a follower action menu.
+- Exactly one nearby NPC is selected deterministically.
+- NPC answers in character.
+- No action tokens are produced or executed.
+- NPC remembers a recent direct exchange across at least a few follow-up lines.
+- Background summary visibly influences tone.
+- Logs clearly show target selection + prompt mode used.
+
+#### Nice v2 follow-ups
+- Optional "address by name" override when multiple NPCs are nearby.
+- Better social-state conditioning (fear, trust, faction, injury, ongoing combat).
+- Rolling memory summaries written lazily to keep runtime cheap.
+
 ### Program constraints
 - Keep inference sparse: high mechanical agency from deterministic simulation, with LLM calls only at decision checkpoints.
 - Keep Linux/Windows parity for all tooling and tests.
