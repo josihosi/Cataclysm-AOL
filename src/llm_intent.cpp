@@ -896,21 +896,15 @@ std::vector<inventory_item_entry> collect_inventory_entries( npc &listener, size
 }
 
 std::string build_look_around_prompt( const std::string &player_utterance,
-                                      const std::vector<std::string> &inventory,
                                       const std::vector<look_around_item_entry> &items )
 {
     std::ostringstream out;
     out << "<System>";
-    out << "Select up to three items from the list for the NPC to pick up.";
-    out << "To do this, return up to three item ids from the item list, comma-separated.";
-    out << "Use item ids from the list only.";
+    out << "Select up to three nearby items from the list for the NPC to pick up.";
+    out << "Return only up to three item ids from the <Items> list, comma-separated.";
+    out << "Do not return item names, explanations, or any items not listed in <Items>.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
-    out << "<Inventory>\n";
-    for( const std::string &entry : inventory ) {
-        out << "  <Item name=\"" << xml_escape( entry ) << "\"/>\n";
-    }
-    out << "</Inventory>\n";
     out << "<Items>\n";
     for( const look_around_item_entry &entry : items ) {
         out << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
@@ -2830,18 +2824,10 @@ class llm_intent_manager
         void enqueue_look_around_request( npc &listener, const std::string &player_utterance ) {
             static constexpr int look_max_tokens = 128;
             static constexpr size_t max_item_entries = 60;
-            static constexpr size_t max_inventory_entries = 60;
             std::vector<look_around_item_entry> items = collect_look_around_items( listener, 5,
                     max_item_entries );
             if( items.empty() ) {
                 return;
-            }
-            std::vector<inventory_item_entry> inventory_entries = collect_inventory_entries( listener,
-                    max_inventory_entries );
-            std::vector<std::string> inventory;
-            inventory.reserve( inventory_entries.size() );
-            for( const inventory_item_entry &entry : inventory_entries ) {
-                inventory.push_back( entry.name );
             }
             for( size_t i = 0; i < items.size(); ++i ) {
                 items[i].id = string_format( "item_%d", static_cast<int>( i + 1 ) );
@@ -2851,7 +2837,7 @@ class llm_intent_manager
             req.npc_id = listener.getID();
             req.npc_name = listener.get_name();
             req.snapshot = "{}";
-            req.prompt = build_look_around_prompt( player_utterance, inventory, items );
+            req.prompt = build_look_around_prompt( player_utterance, items );
             req.max_tokens = look_max_tokens;
             req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
             req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
