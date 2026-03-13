@@ -342,6 +342,7 @@ struct background_summary_entry {
 struct background_summary_cache {
     std::unordered_map<std::string, std::string> trait_to_topic;
     std::unordered_map<std::string, background_summary_entry> summary_by_topic;
+    std::unordered_map<std::string, background_summary_entry> summary_by_selector;
     bool loaded = false;
 };
 
@@ -368,6 +369,76 @@ std::string normalize_summary_line( std::string summary )
     summary.erase( std::remove( summary.begin(), summary.end(), '\r' ), summary.end() );
     std::replace( summary.begin(), summary.end(), '\n', ' ' );
     return trim_copy( summary );
+}
+
+void load_background_summary_text_dir( const cata_path &summary_root,
+                                       std::unordered_map<std::string, background_summary_entry> &out )
+{
+    const std::filesystem::path summary_dir = summary_root.get_unrelative_path();
+    std::error_code ec;
+    if( !std::filesystem::exists( summary_dir, ec ) ) {
+        return;
+    }
+
+    for( const std::filesystem::directory_entry &entry : std::filesystem::directory_iterator(
+             summary_dir,
+             ec ) ) {
+        if( ec ) {
+            break;
+        }
+        if( !entry.is_regular_file( ec ) ) {
+            continue;
+        }
+        if( entry.path().extension() != ".txt" ) {
+            continue;
+        }
+        const std::string filename = entry.path().filename().generic_u8string();
+        read_from_file_optional( summary_root / filename, [&]( std::istream & data ) {
+            std::string line;
+            while( std::getline( data, line ) ) {
+                line = trim_copy( line );
+                if( line.empty() || line[0] == '#' ) {
+                    continue;
+                }
+                std::vector<std::string> parts;
+                std::string current;
+                for( char c : line ) {
+                    if( c == '|' ) {
+                        parts.push_back( trim_copy( current ) );
+                        current.clear();
+                    } else {
+                        current.push_back( c );
+                    }
+                }
+                parts.push_back( trim_copy( current ) );
+                if( parts.size() < 3 ) {
+                    continue;
+                }
+                const std::string id = normalize_summary_line( parts[0] );
+                if( id.empty() || out.count( id ) > 0 ) {
+                    continue;
+                }
+                background_summary_entry entry_value;
+                entry_value.background = normalize_summary_line( parts[1] );
+                entry_value.expression = normalize_summary_line( parts[2] );
+                if( parts.size() > 3 ) {
+                    entry_value.source_tag = normalize_summary_line( parts[3] );
+                }
+                out[id] = entry_value;
+            }
+        } );
+    }
+}
+
+void add_summary_selector( std::vector<std::string> &out, const std::string &selector )
+{
+    const std::string normalized = normalize_summary_line( selector );
+    if( normalized.empty() ) {
+        return;
+    }
+    if( std::find( out.begin(), out.end(), normalized ) == out.end() ) {
+        out.push_back( normalized );
+    }
 }
 
 background_summary_cache &get_background_summaries()
@@ -410,58 +481,11 @@ background_summary_cache &get_background_summaries()
 
     const cata_path summary_root = PATH_INFO::datadir_path() / "json" / "npcs" / "Backgrounds" /
                                    "Summaries_short";
-    const fs::path summary_dir = summary_root.get_unrelative_path();
-    std::error_code ec;
-    if( !fs::exists( summary_dir, ec ) ) {
-        return cache;
-    }
+    load_background_summary_text_dir( summary_root, cache.summary_by_topic );
 
-    for( const fs::directory_entry &entry : fs::directory_iterator( summary_dir, ec ) ) {
-        if( ec ) {
-            break;
-        }
-        if( !entry.is_regular_file( ec ) ) {
-            continue;
-        }
-        if( entry.path().extension() != ".txt" ) {
-            continue;
-        }
-        const std::string filename = entry.path().filename().generic_u8string();
-        read_from_file_optional( summary_root / filename, [&]( std::istream & data ) {
-            std::string line;
-            while( std::getline( data, line ) ) {
-                line = trim_copy( line );
-                if( line.empty() || line[0] == '#' ) {
-                    continue;
-                }
-                std::vector<std::string> parts;
-                std::string current;
-                for( char c : line ) {
-                    if( c == '|' ) {
-                        parts.push_back( trim_copy( current ) );
-                        current.clear();
-                    } else {
-                        current.push_back( c );
-                    }
-                }
-                parts.push_back( trim_copy( current ) );
-                if( parts.size() < 3 ) {
-                    continue;
-                }
-                const std::string &id = parts[0];
-                if( cache.summary_by_topic.count( id ) > 0 ) {
-                    continue;
-                }
-                background_summary_entry entry_value;
-                entry_value.background = normalize_summary_line( parts[1] );
-                entry_value.expression = normalize_summary_line( parts[2] );
-                if( parts.size() > 3 ) {
-                    entry_value.source_tag = normalize_summary_line( parts[3] );
-                }
-                cache.summary_by_topic[id] = entry_value;
-            }
-        } );
-    }
+    const cata_path extra_summary_root = PATH_INFO::datadir_path() / "json" / "npcs" /
+                                         "Backgrounds" / "Summaries_extra";
+    load_background_summary_text_dir( extra_summary_root, cache.summary_by_selector );
 
     return cache;
 }
@@ -469,6 +493,25 @@ background_summary_cache &get_background_summaries()
 background_summary_entry get_background_summary_for( const npc &listener )
 {
     background_summary_cache &cache = get_background_summaries();
+
+    std::vector<std::string> selectors;
+    add_summary_selector( selectors, "name:" + listener.get_name() );
+    add_summary_selector( selectors, "topic:" + listener.chatbin.talk_friend );
+    add_summary_selector( selectors, "topic:" + listener.chatbin.talk_friend_guard );
+    add_summary_selector( selectors, "topic:" + listener.chatbin.first_topic );
+    add_summary_selector( selectors, "topic:" + listener.chatbin.talk_leader );
+    add_summary_selector( selectors, "topic:" + listener.chatbin.talk_stranger_friendly );
+    add_summary_selector( selectors, "topic:" + listener.chatbin.talk_stranger_neutral );
+    add_summary_selector( selectors, "topic:" + listener.chatbin.talk_stranger_wary );
+    add_summary_selector( selectors, "topic:" + listener.chatbin.talk_stranger_scared );
+    add_summary_selector( selectors, "topic:" + listener.chatbin.talk_stranger_aggressive );
+    for( const std::string &selector : selectors ) {
+        const auto it = cache.summary_by_selector.find( selector );
+        if( it != cache.summary_by_selector.end() ) {
+            return it->second;
+        }
+    }
+
     if( cache.trait_to_topic.empty() || cache.summary_by_topic.empty() ) {
         return {};
     }
