@@ -32,7 +32,7 @@ Yelling a sentence has also been changed to 'Say a sentence' with a range of aro
 
 ### What’s already in and working
 - Local runner is wired (stdin/stdout JSON), kept warm, and logs metrics; snapshots are compact and include speech + actions that get surfaced in-game when parsed.
-- Background summarizer runs at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; `your_profession` and `background_summary` are now injected into the snapshot.
+- Background summarizer can run at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; use `./just_build_macos.sh --with-summary --summary-model-dir /path/to/local/model` for local generation. `your_profession` and `background_summary` are injected into the snapshot.
 - Stable item addressing is live (item ids in prompts), and panic_on/panic_off use timed decay.
 - Debug logging captures snapshots, responses, and raw failures for prompt tuning; speech shows in-game on success.
 - Random calls are live: each ally uses an independent jittered timer and can fire a spontaneous call with no player utterance.
