@@ -1,1 +1,1 @@
-BGSS_PREPPER_1_STORY1|Paranoid, Distrustful, Superstitious, Defiant, Secretive|"I don’t trust you and you shouldn’t trust me, either."|prepper_1
+BGSS_PREPPER_1_STORY1|Paranoid, resourceful, cunning, distrustful, survivalist|"No one would just break into it."|local:ollama:mistral:latest:prepper_1

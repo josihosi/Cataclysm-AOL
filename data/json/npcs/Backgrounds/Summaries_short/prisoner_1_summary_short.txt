@@ -1,1 +1,1 @@
-BGSS_PRISONER_1_STORY1|Reckless, Jovial, Resilient, Guilty, Survivor|"I don't want to say anymore. It's all behind me, and I'd like to keep it that way."|prisoner_1
+BGSS_PRISONER_1_STORY1|Survivalist, resourceful, cautious, pragmatic, resilient|"I was in the wrong place at the wrong time. There was a big fight, I didn't stay clear of it, and me and a bunch of others got tossed in solitary while a few more landed in the infirmary. Some looked pretty bad, now I kinda wonder if any of them were our first <zombies>."|local:ollama:mistral:latest:prisoner_1

@@ -1,1 +1,1 @@
-BGSS_LEFT_FOR_DEAD_3_STORY1|Guilt-ridden, Confused, Traumatized, Self-reflective, Desperately Seeking Understanding|"I don't want to remember that."|left_for_dead_3
+BGSS_LEFT_FOR_DEAD_3_STORY1|Aggressive, Angry, Impulsive, Unpredictable, Violent|"I grabbed a bat and went outside planning to fuck shit up."|local:ollama:mistral:latest:left_for_dead_3

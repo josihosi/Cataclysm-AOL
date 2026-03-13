@@ -1,1 +1,1 @@
-BOSS_Brigitte_LaCroix_Story1|Cynical, Violent, Unhinged, Reckless, Sarcastic|"This looks right to me."|Brigitte_LaCroix_Background
+BOSS_Brigitte_LaCroix_Story1|Rebellious, Unconventional, Isolated, Dark, Unpredictable|"That's the last place I would go, but some people are just broken in the head, you know?"|local:ollama:mistral:latest:Brigitte_LaCroix_Background

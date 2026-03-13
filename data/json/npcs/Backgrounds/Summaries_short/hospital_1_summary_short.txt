@@ -1,1 +1,1 @@
-BGSS_HOSPITAL_1_STORY1|Cautious, Observant, Pragmatic, Cynical, Resilient|"I saw it all pretty early, before it all really started."|hospital_1
+BGSS_HOSPITAL_1_STORY1|Resilient, Paranoid, Fearful, Resourceful, Isolated|"I decided it was safer in my locked up house."|local:ollama:mistral:latest:hospital_1

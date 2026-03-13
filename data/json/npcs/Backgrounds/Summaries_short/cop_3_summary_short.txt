@@ -1,1 +1,1 @@
-BGSS_COP_3_STORY1|Survivor, Pragmatic, Cynical, Resigned, Stoic|"I think it kept me from doing anything too stupid, and believe me there was a high chance of that."|cop_3
+BGSS_COP_3_STORY1|Resilient, pragmatic, compassionate, determined, troubled|"Instead of packing up to try to volunteer back onto active duty, I took his advice and packed up to leave."|local:ollama:mistral:latest:cop_3

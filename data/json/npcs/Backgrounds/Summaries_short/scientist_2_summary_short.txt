@@ -1,1 +1,1 @@
-BGSS_SCIENTIST_2_STORY1|Analytical, Cognitively Stricken, Resourceful, Introspective, Disoriented|"If you find anything related to all this that falls under the theoretical physics banner, I could probably help you decipher it and maybe explain it a bit."|scientist_2
+BGSS_SCIENTIST_2_STORY1|Resourceful, Determined, Intelligent, Confused, Survivor|"I have a memory blank for about three days before and after the cataclysm."|local:ollama:mistral:latest:scientist_2

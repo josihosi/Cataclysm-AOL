@@ -162,7 +162,7 @@ def index_talk_topics(background_dir: str) -> Dict[str, Dict[str, Any]]:
     return index
 
 
-def build_prompt(dynamic_lines: List[str], responses: List[str]) -> str:
+def build_prompt(dynamic_lines: List[str], responses: List[str], strict: bool = False) -> str:
     sections: List[str] = []
     if dynamic_lines:
         sections.append("NPC lines:")
@@ -171,18 +171,37 @@ def build_prompt(dynamic_lines: List[str], responses: List[str]) -> str:
         sections.append("Player responses:")
         sections.extend([f"- {line}" for line in responses])
     story_text = "\n".join(sections).strip()
-    system_block = "\n".join(
-        [
-            "<System>",
-            "You must analyze the personality of this fictional character.",
-            "Return exactly two sections, separated by ' | '.",
-            "List 1: 5 distinct personality descriptors (single words), comma-separated.",
-            "List 2: Repeat a notable sentence that the character said.",
-            "Do not add labels or extra text.",
-            "Do not include <think> tags or reasoning.",
-            "</System>",
-        ]
-    )
+    if strict:
+        system_block = "\n".join(
+            [
+                "<System>",
+                "You must analyze the personality of this fictional character.",
+                "Return exactly one line in this exact format:",
+                "word1, word2, word3, word4, word5 | quoted sentence",
+                "Rules:",
+                "- The first 5 items must each be a single descriptive word.",
+                "- No numbering.",
+                "- No labels.",
+                "- No explanation.",
+                "- Keep contractions intact inside the quote.",
+                "- The quote must be copied from the NPC lines.",
+                "- Do not include <think> tags or reasoning.",
+                "</System>",
+            ]
+        )
+    else:
+        system_block = "\n".join(
+            [
+                "<System>",
+                "You must analyze the personality of this fictional character.",
+                "Return exactly two sections, separated by ' | '.",
+                "List 1: 5 distinct personality descriptors (single words), comma-separated.",
+                "List 2: Repeat a notable sentence that the character said.",
+                "Do not add labels or extra text.",
+                "Do not include <think> tags or reasoning.",
+                "</System>",
+            ]
+        )
     if story_text:
         return f"{story_text}\n\n{system_block}\nWORDS: "
     return f"{system_block}\nWORDS: "
@@ -251,6 +270,11 @@ def summarize_to_lines(text: str) -> Tuple[str, str]:
         left_items = [item.strip() for item in left.split(",") if item.strip()]
         if len(left_items) >= 5 and right.strip():
             return ", ".join(left_items[:5]), right.strip()
+    line_parts = [line.strip() for line in text.replace("\r", "").split("\n") if line.strip()]
+    if len(line_parts) >= 2:
+        left_items = [item.strip() for item in line_parts[0].split(",") if item.strip()]
+        if len(left_items) >= 5 and line_parts[1]:
+            return ", ".join(left_items[:5]), line_parts[1]
     words = words_from_output(text)
     if len(words) >= 10:
         background = ", ".join(words[:5])
@@ -262,14 +286,45 @@ def summarize_to_lines(text: str) -> Tuple[str, str]:
     return text.strip(), ""
 
 
+def looks_like_bad_summary(background: str, expression: str) -> bool:
+    bg_items = [item.strip() for item in background.split(",") if item.strip()]
+    if len(bg_items) < 5 or not expression.strip():
+        return True
+    weak_words = {
+        "i", "we", "you", "he", "she", "it", "they", "re", "ll", "ve", "d",
+        "still", "guess", "just", "like", "really", "very", "sort", "kind",
+    }
+    for item in bg_items[:5]:
+        lowered = item.lower()
+        if any(ch.isdigit() for ch in lowered):
+            return True
+        if lowered in weak_words:
+            return True
+        if len(lowered) < 3:
+            return True
+    if len(expression.split()) < 3:
+        return True
+    return False
+
+
 def is_valid_words(text: str) -> bool:
     if "WORDS:" in text:
         text = text.rsplit("WORDS:", 1)[-1].strip()
     if "|" in text:
         left, right = text.split("|", 1)
         left_items = [item.strip() for item in left.split(",") if item.strip()]
-        return len(left_items) >= 5 and bool(right.strip())
-    return len(words_from_output(text)) >= 10
+        if len(left_items) >= 5 and bool(right.strip()):
+            return not looks_like_bad_summary(", ".join(left_items[:5]), right.strip())
+        return False
+    line_parts = [line.strip() for line in text.replace("\r", "").split("\n") if line.strip()]
+    if len(line_parts) >= 2:
+        left_items = [item.strip() for item in line_parts[0].split(",") if item.strip()]
+        if len(left_items) >= 5 and bool(line_parts[1]):
+            return not looks_like_bad_summary(", ".join(left_items[:5]), line_parts[1])
+    words = words_from_output(text)
+    if len(words) >= 10:
+        return not looks_like_bad_summary(", ".join(words[:5]), ", ".join(words[5:10]))
+    return False
 
 
 def load_existing_entries(path: str) -> Dict[str, Dict[str, Any]]:
@@ -488,93 +543,100 @@ def main() -> int:
         prompt_responses: List[str] = []
         if args.include_responses:
             prompt_responses = info.get("file_responses", info["responses"])
-        prompt = build_prompt(prompt_lines, prompt_responses)
-        if args.debug_io:
-            print(f"Prompt for {topic_id}:\n{prompt}\n")
-        prompt_tokens = max(1, len(prompt.split()))
-        max_length = min(args.max_prompt_len, prompt_tokens + args.max_tokens)
+        prompt_modes = [False, True]
         attempts = max(1, args.retry_invalid + 1)
         summary = ""
         background_line = ""
         expression_line = ""
-        for attempt in range(attempts):
-            if backend == "openvino":
-                try:
-                    result = pipe.generate(
-                        prompt,
-                        max_length=max_length,
-                        do_sample=True,
-                        temperature=args.temperature,
-                        top_p=args.top_p,
-                        repetition_penalty=args.repetition_penalty,
-                    )
-                except TypeError:
-                    result = pipe.generate(
-                        prompt,
-                        max_length=max_length,
-                        do_sample=False,
-                    )
-                raw_text = "" if result is None else str(result)
-            else:
-                response = ollama_generate(
-                    args.ollama_url,
-                    args.ollama_model,
-                    prompt,
-                    args.max_tokens,
-                    args.temperature,
-                )
-                raw_text = str(response.get("response", ""))
+        for strict_prompt in prompt_modes:
+            prompt = build_prompt(prompt_lines, prompt_responses, strict=strict_prompt)
             if args.debug_io:
-                print(f"Raw output for {topic_id}:\n{raw_text}\n")
-            summary = ""
-            if "</think>" in raw_text:
-                summary = normalize_output(raw_text)
-            elif "WORDS:" in raw_text:
-                summary = normalize_output(raw_text.rsplit("WORDS:", 1)[-1])
-            elif "<think>" in raw_text and "</think>" not in raw_text:
-                stopwords = stopword_set()
-                quoted = quoted_words(raw_text)
-                phrase_words = words_from_phrase_list(raw_text)
-                selected: List[str] = []
-                for word in quoted + phrase_words:
-                    lowered = word.lower()
-                    if lowered in stopwords or len(lowered) < 3:
-                        continue
-                    if word not in selected:
-                        selected.append(word)
-                raw_lower = raw_text.lower()
-                expressions: List[str] = []
-                expressive_candidates = [
-                    "raw", "emotional", "reflective", "regretful", "vulnerable", "blunt",
-                    "casual", "weary", "nostalgic", "guilt-ridden", "introspective", "urgent",
-                    "trauma", "guarded", "broken",
-                ]
-                used = {word.lower() for word in selected}
-                for cand in expressive_candidates:
-                    if cand in raw_lower and cand not in used:
-                        expressions.append(cand)
-                        used.add(cand)
-                        if len(expressions) >= 5:
-                            break
-                if len(selected) < 5:
-                    selected.extend(keyword_fallback(raw_text, 5 - len(selected), used))
-                    used.update(word.lower() for word in selected)
-                if len(expressions) < 5:
-                    expressions.extend(keyword_fallback(raw_text, 5 - len(expressions), used))
-                if len(selected) >= 5 and len(expressions) >= 5:
-                    summary = " ".join(selected[:5] + expressions[:5])
+                mode_name = "strict" if strict_prompt else "default"
+                print(f"Prompt for {topic_id} ({mode_name}):\n{prompt}\n")
+            prompt_tokens = max(1, len(prompt.split()))
+            max_length = min(args.max_prompt_len, prompt_tokens + args.max_tokens)
+            for attempt in range(attempts):
+                if backend == "openvino":
+                    try:
+                        result = pipe.generate(
+                            prompt,
+                            max_length=max_length,
+                            do_sample=True,
+                            temperature=args.temperature,
+                            top_p=args.top_p,
+                            repetition_penalty=args.repetition_penalty,
+                        )
+                    except TypeError:
+                        result = pipe.generate(
+                            prompt,
+                            max_length=max_length,
+                            do_sample=False,
+                        )
+                    raw_text = "" if result is None else str(result)
                 else:
-                    if args.debug_invalid:
-                        print(f"Invalid summary output for {topic_id}: {raw_text!r}")
-                    if attempt + 1 < attempts:
-                        continue
-            if is_valid_words(summary):
-                background_line, expression_line = summarize_to_lines(summary)
+                    response = ollama_generate(
+                        args.ollama_url,
+                        args.ollama_model,
+                        prompt,
+                        args.max_tokens,
+                        args.temperature,
+                    )
+                    raw_text = str(response.get("response", ""))
+                if args.debug_io:
+                    print(f"Raw output for {topic_id}:\n{raw_text}\n")
+                summary = ""
+                if "</think>" in raw_text:
+                    summary = normalize_output(raw_text)
+                elif "WORDS:" in raw_text:
+                    summary = normalize_output(raw_text.rsplit("WORDS:", 1)[-1])
+                elif "<think>" in raw_text and "</think>" not in raw_text:
+                    stopwords = stopword_set()
+                    quoted = quoted_words(raw_text)
+                    phrase_words = words_from_phrase_list(raw_text)
+                    selected: List[str] = []
+                    for word in quoted + phrase_words:
+                        lowered = word.lower()
+                        if lowered in stopwords or len(lowered) < 3:
+                            continue
+                        if word not in selected:
+                            selected.append(word)
+                    raw_lower = raw_text.lower()
+                    expressions: List[str] = []
+                    expressive_candidates = [
+                        "raw", "emotional", "reflective", "regretful", "vulnerable", "blunt",
+                        "casual", "weary", "nostalgic", "guilt-ridden", "introspective", "urgent",
+                        "trauma", "guarded", "broken",
+                    ]
+                    used = {word.lower() for word in selected}
+                    for cand in expressive_candidates:
+                        if cand in raw_lower and cand not in used:
+                            expressions.append(cand)
+                            used.add(cand)
+                            if len(expressions) >= 5:
+                                break
+                    if len(selected) < 5:
+                        selected.extend(keyword_fallback(raw_text, 5 - len(selected), used))
+                        used.update(word.lower() for word in selected)
+                    if len(expressions) < 5:
+                        expressions.extend(keyword_fallback(raw_text, 5 - len(expressions), used))
+                    if len(selected) >= 5 and len(expressions) >= 5:
+                        summary = " ".join(selected[:5] + expressions[:5])
+                    else:
+                        if args.debug_invalid:
+                            print(f"Invalid summary output for {topic_id}: {raw_text!r}")
+                        if attempt + 1 < attempts:
+                            continue
+                else:
+                    summary = raw_text.strip()
+                if is_valid_words(summary):
+                    background_line, expression_line = summarize_to_lines(summary)
+                    break
+                if args.debug_invalid:
+                    print(f"Invalid summary output for {topic_id}: {raw_text!r}")
+                if attempt + 1 < attempts:
+                    continue
+            if background_line and expression_line:
                 break
-            if args.debug_invalid:
-                print(f"Invalid summary output for {topic_id}: {raw_text!r}")
-            if attempt + 1 < attempts:
-                continue
         if not background_line and not expression_line:
             print(f"Invalid summary for {topic_id}; skipping.")
             continue

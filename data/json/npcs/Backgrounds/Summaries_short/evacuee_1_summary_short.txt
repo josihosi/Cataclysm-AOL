@@ -1,1 +1,1 @@
-BGSS_EVACUEE_1_STORY1|Resilient, Cynical, Reckless, Observant, Resigned|"I thought I had those damned <zombies> figured out."|evacuee_1
+BGSS_EVACUEE_1_STORY1|Survivalist, Resourceful, Desperate, Brave, Complacent|"I started venturing towards the outskirts of town, picking off zombies here and there."|local:ollama:mistral:evacuee_1

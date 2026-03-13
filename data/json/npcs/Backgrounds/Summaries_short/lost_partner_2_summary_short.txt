@@ -1,1 +1,1 @@
-BGSS_LOST_PARTNER_2_STORY1|Cynical, Resigned, Observant, Pragmatic, Traumatized|"That was before someone switched them to kill everybody, back when it only killed trespassing humans."|lost_partner_2
+BGSS_LOST_PARTNER_2_STORY1|Resilient, resourceful, cynical, pragmatic, survivor|"I really did. It took me two days to make it across the city on foot"|local:ollama:mistral:latest:lost_partner_2

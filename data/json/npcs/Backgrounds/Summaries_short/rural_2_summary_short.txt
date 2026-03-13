@@ -1,1 +1,1 @@
-BGSS_RURAL_2_STORY1|Resilient, Prone to Outbursts, Resourceful, Loyal, Traumatized|I… I can't say it. You know.|rural_2
+BGSS_RURAL_2_STORY1|Resilient, resourceful, determined, independent, fearful|"I had to kill a cop-zombie first."|local:ollama:mistral:latest:rural_2

@@ -1,1 +1,1 @@
-BGSS_SCIENTIST_1_STORY1|Analytical, Pragmatic, Guilt-Ridden, Cynical, Resilient|I was studying protein-protein interactions in smooth muscle in mice, using NMR. Nothing even vaguely related to this stuff…|scientist_1
+BGSS_SCIENTIST_1_STORY1|Resourceful, Anxious, Empathetic, Pragmatic, Isolated|"I ran into the woods nearby with a few others."|local:ollama:mistral:latest:scientist_1

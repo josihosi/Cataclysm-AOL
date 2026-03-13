@@ -1,1 +1,1 @@
-BGSS_pizzaiolo_STORY1|Vengeful, Belligerent, Sadistic, Arrogant, Darkly Humorous|"And I got my revenge, thanks to a special someone."|bg_pizzaiolo
+BGSS_pizzaiolo_STORY1|Revenge-driven, aggressive, vindictive, traditional, bitter|"I got my revenge, thanks to a special someone."|local:ollama:mistral:latest:bg_pizzaiolo

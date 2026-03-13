@@ -1,1 +1,1 @@
-BGSS_PROFESSOR_1_STORY1|Cynical, Nostalgic, Analytical, Observant, Resilient|"I'm actually a chemistry professor at Harvard."|professor_1
+BGSS_PROFESSOR_1_STORY1|Intelligent, Pragmatic, Resilient, Scholarly, Fearful|"I was out at my cabin near Chatham, ostensibly working on the finishing touches for a paper, but mostly just sipping whisky and thanking my lucky stars for tenure."|local:ollama:mistral:latest:professor_1

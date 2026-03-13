@@ -1,1 +1,1 @@
-BGSS_SOLDIER_2_STORY1|Survival, Resilience, Dark Humor, Naivety, Trauma|I don't know how I survived. The thing rolled over, killed most of us right there.|soldier_2
+BGSS_SOLDIER_2_STORY1|Fearful, Adaptable, Survivor, Confused, Traumatized|"I didn't even see it, just saw this huge black-and-green spiny leg jam through the ceiling, through the el-tee."|local:ollama:mistral:latest:soldier_2

@@ -1,1 +1,1 @@
-BGSS_CYBORG_1_STORY1|Traumatized, Anxious, Confused, Desperate, Hysterical|"P-Please don't *Zzzt* leave me here!"|cyborg_1
+BGSS_CYBORG_1_STORY1|Fearful, Confused, Traumatized, Vulnerable, Desperate|"Please don't leave me here!"|local:ollama:mistral:cyborg_1

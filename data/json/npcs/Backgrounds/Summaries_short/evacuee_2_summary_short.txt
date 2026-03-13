@@ -1,1 +1,1 @@
-BGSS_EVACUEE_2_STORY1|Cynical, Traumatized, Desensitized, Paranoid, Resilient|"I don't think the whole 'Chinese attack' shit measures up. They were trying to cover something up."|evacuee_2
+BGSS_EVACUEE_2_STORY1|Survivalist, Authoritative, Impulsive, Paranoid, Vulnerable|"He took matters into his own hands and killed her."|local:ollama:mistral:evacuee_2

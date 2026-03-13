@@ -1,1 +1,1 @@
-BGSS_GUNG_HO_1_STORY1|Cynical, Detached, Pragmatic, Jaded, Resilient|"What difference does it make? Why waste brain cells on that?"|gung_ho_1
+BGSS_GUNG_HO_1_STORY1|Survivor, Pragmatic, Resilient, Determined, Brutal|"This is it. This is what I was made for."|local:ollama:mistral:latest:gung_ho_1

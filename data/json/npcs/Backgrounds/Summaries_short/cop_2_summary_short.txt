@@ -1,1 +1,1 @@
-BGSS_COP_2_STORY1|Traumatized, Guilt-ridden, Resilient, Desperate, Observant|I could hear everything.|cop_2
+BGSS_COP_2_STORY1|Resilient, Survivor, Fearful, Pragmatic, Traumatized|"I could hear everything."|local:ollama:mistral:latest:cop_2

@@ -1,1 +1,1 @@
-BGSS_DREAMER_STORY1|Anxious, Eccentric, Reflective, Superstitious, Haunted|"My boss' husband was visiting and he had a heart attack and I heard the next, the next day that he'd come back from the dead!"|dreamer
+BGSS_DREAMER_STORY1|Paranoid, Vulnerable, Dreamer, Creative, Anxious|"I still get weird dreams, but not of the future anymore."|local:ollama:mistral:dreamer

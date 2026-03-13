@@ -1,1 +1,1 @@
-BGSS_Lost_Pilot_1_STORY1|Traumatized, Distracted, Anxious, Detached, Fragmented|Where was I? I don't even know, what day do you think it all ended?|ex_pilot_1
+BGSS_Lost_Pilot_1_STORY1|Paranoid, Fearful, Vagabond, Traumatized, Desperate|"I ran into the cops setting up a roadblock. I drove off the road and it all gets fuzzy from there."|local:ollama:mistral:ex_pilot_1

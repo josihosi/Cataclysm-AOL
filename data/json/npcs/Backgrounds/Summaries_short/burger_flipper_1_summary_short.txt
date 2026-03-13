@@ -1,1 +1,1 @@
-BGSS_BURGER_FLIPPER_1_STORY1|Guilt, Trauma, Anxiety, Resilience, Desperation|I don't think I even told my mom I loved her, and I was pissed at my dad for some dumb shit that really doesn't matter.|burger_flipper_1
+BGSS_BURGER_FLIPPER_1_STORY1|Resilient, anxious, regretful, determined, mournful|"I haven't found them yet. Whenever I see a <zombie>, a little part of me is afraid it's going to be one of them."|local:ollama:mistral:latest:burger_flipper_1

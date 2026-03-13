@@ -1,1 +1,1 @@
-BGSS_NO_PAST_4_STORY1|Resilient, Cynical, Defiant, Observant, Wry|"Who I was is gone. All that stuff burned away in <the_cataclysm>."|no_past_4
+BGSS_NO_PAST_4_STORY1|Resilient, resourceful, survivor, determined, defensive|"Who I was is gone. Dead."|local:ollama:mistral:latest:no_past_4
