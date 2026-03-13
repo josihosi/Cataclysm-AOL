@@ -1,0 +1,1 @@
+BGSS_CODGER_STORY1|Adventurous, Loyal, Humorous, Resourceful, Narrative|"A gorram moose!  Livin' in the ol' ranger station!"|local:ollama:mistral:codger

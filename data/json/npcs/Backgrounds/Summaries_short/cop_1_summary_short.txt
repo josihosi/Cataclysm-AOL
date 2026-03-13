@@ -1,0 +1,1 @@
+BGSS_COP_1_STORY1|Fearful, Traumatized, Resilient, Guilt-ridden, Desperate|"I lost my nerve. I ran."|local:ollama:mistral:cop_1
