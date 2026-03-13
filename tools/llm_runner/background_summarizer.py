@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import re
+import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -33,6 +34,24 @@ def load_pipeline(model_dir: str, device: str, max_prompt_len: int):
             config,
             ENABLE_CPU_FALLBACK="NO",
         )
+
+
+def ollama_generate(ollama_url: str, model: str, prompt: str,
+                    max_tokens: int, temperature: float) -> Dict[str, Any]:
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": float(temperature),
+            "num_predict": int(max_tokens),
+        },
+    }
+    url = ollama_url.rstrip("/") + "/api/generate"
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=600) as resp:
+        return json.loads(resp.read().decode("utf-8"))
 
 
 def extract_traits_from_condition(cond: Dict[str, Any], out: List[str]) -> None:
@@ -289,10 +308,11 @@ def write_entries(path: str, entries: Dict[str, Dict[str, Any]]) -> None:
             )
 
 
-def build_local_source_tag(model_dir: str, source_base: str) -> str:
-    model_name = os.path.basename(os.path.normpath(model_dir)) if model_dir else "unknown-model"
-    safe_model_name = re.sub(r"[^A-Za-z0-9._-]+", "_", model_name).strip("_") or "unknown-model"
-    return f"local:{safe_model_name}:{source_base}"
+def build_local_source_tag(backend: str, model_ref: str, source_base: str) -> str:
+    model_name = os.path.basename(os.path.normpath(model_ref)) if model_ref else "unknown-model"
+    safe_backend = re.sub(r"[^A-Za-z0-9._-]+", "_", backend).strip("_") or "unknown-backend"
+    safe_model_name = re.sub(r"[^A-Za-z0-9._:-]+", "_", model_name).strip("_") or "unknown-model"
+    return f"local:{safe_backend}:{safe_model_name}:{source_base}"
 
 
 def parse_args() -> argparse.Namespace:
@@ -315,14 +335,29 @@ def parse_args() -> argparse.Namespace:
         help="Output directory for summaries.",
     )
     parser.add_argument(
+        "--backend",
+        default=os.environ.get("LLM_SUMMARY_BACKEND", "ollama"),
+        help="Summary backend to use (ollama or openvino).",
+    )
+    parser.add_argument(
         "--model-dir",
         default=os.environ.get("LLM_SUMMARY_MODEL_DIR", DEFAULT_MODEL_DIR),
-        help="Path to local LLM model directory.",
+        help="Path to local OpenVINO model directory.",
     )
     parser.add_argument(
         "--device",
         default=os.environ.get("LLM_SUMMARY_DEVICE", "NPU"),
         help="OpenVINO device to target.",
+    )
+    parser.add_argument(
+        "--ollama-url",
+        default=os.environ.get("LLM_SUMMARY_OLLAMA_URL", "http://127.0.0.1:11434"),
+        help="Local Ollama server URL.",
+    )
+    parser.add_argument(
+        "--ollama-model",
+        default=os.environ.get("LLM_SUMMARY_OLLAMA_MODEL", "mistral"),
+        help="Local Ollama model name.",
     )
     parser.add_argument(
         "--max-prompt-len",
@@ -390,14 +425,23 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    if not args.model_dir or not os.path.isdir(args.model_dir):
-        print(f"LLM summary model dir not found: {args.model_dir}. Aborting.")
+    backend = (args.backend or "ollama").strip().lower()
+    if backend not in {"ollama", "openvino"}:
+        print(f"Unsupported summary backend: {backend}. Aborting.")
         return 2
-    try:
-        import openvino_genai  # noqa: F401
-    except Exception as exc:
-        print(f"LLM summary dependency missing: {exc}. Aborting.")
-        return 2
+    if backend == "openvino":
+        if not args.model_dir or not os.path.isdir(args.model_dir):
+            print(f"LLM summary model dir not found: {args.model_dir}. Aborting.")
+            return 2
+        try:
+            import openvino_genai  # noqa: F401
+        except Exception as exc:
+            print(f"LLM summary dependency missing: {exc}. Aborting.")
+            return 2
+    else:
+        if not args.ollama_model.strip():
+            print("LLM summary Ollama model is required. Aborting.")
+            return 2
 
     try:
         os.makedirs(args.out_dir, exist_ok=True)
@@ -419,11 +463,13 @@ def main() -> int:
             return 0
     topic_index = index_talk_topics(args.data_dir)
 
-    try:
-        pipe = load_pipeline(args.model_dir, args.device, args.max_prompt_len)
-    except Exception as exc:
-        print(f"Failed to load LLM pipeline: {exc}. Aborting.")
-        return 2
+    pipe = None
+    if backend == "openvino":
+        try:
+            pipe = load_pipeline(args.model_dir, args.device, args.max_prompt_len)
+        except Exception as exc:
+            print(f"Failed to load LLM pipeline: {exc}. Aborting.")
+            return 2
 
     generated_any = False
     for topic_id in topics:
@@ -452,22 +498,32 @@ def main() -> int:
         background_line = ""
         expression_line = ""
         for attempt in range(attempts):
-            try:
-                result = pipe.generate(
+            if backend == "openvino":
+                try:
+                    result = pipe.generate(
+                        prompt,
+                        max_length=max_length,
+                        do_sample=True,
+                        temperature=args.temperature,
+                        top_p=args.top_p,
+                        repetition_penalty=args.repetition_penalty,
+                    )
+                except TypeError:
+                    result = pipe.generate(
+                        prompt,
+                        max_length=max_length,
+                        do_sample=False,
+                    )
+                raw_text = "" if result is None else str(result)
+            else:
+                response = ollama_generate(
+                    args.ollama_url,
+                    args.ollama_model,
                     prompt,
-                    max_length=max_length,
-                    do_sample=True,
-                    temperature=args.temperature,
-                    top_p=args.top_p,
-                    repetition_penalty=args.repetition_penalty,
+                    args.max_tokens,
+                    args.temperature,
                 )
-            except TypeError:
-                result = pipe.generate(
-                    prompt,
-                    max_length=max_length,
-                    do_sample=False,
-                )
-            raw_text = "" if result is None else str(result)
+                raw_text = str(response.get("response", ""))
             if args.debug_io:
                 print(f"Raw output for {topic_id}:\n{raw_text}\n")
             summary = ""
@@ -522,8 +578,10 @@ def main() -> int:
         if not background_line and not expression_line:
             print(f"Invalid summary for {topic_id}; skipping.")
             continue
+        model_ref = args.model_dir if backend == "openvino" else args.ollama_model
         source_tag = build_local_source_tag(
-            args.model_dir,
+            backend,
+            model_ref,
             re.sub(r"_\\d+$", "", source_base)
         )
         entry = {
