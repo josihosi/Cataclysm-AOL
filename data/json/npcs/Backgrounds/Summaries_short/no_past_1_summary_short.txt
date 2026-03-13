@@ -1,0 +1,1 @@
+BGSS_NO_PAST_1_STORY1|Survivalist, Resilient, Cynical, Traumatized, Pessimistic|"This is a new world, and yeah, it's pretty miserable. It's the one we've got though, so let's not dwell in the past when we should be making the best of what little we have left."|local:ollama:mistral:latest:no_past_1

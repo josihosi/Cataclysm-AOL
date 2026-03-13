@@ -1,0 +1,1 @@
+BGSS_LEFT_FOR_DEAD_1_STORY1|Survivor, Resourceful, Nervous, Paranoid, Desperate|"This might sound crazy, but we're dealing with the freaking walking dead, so I think I get a pass on that."|local:ollama:mistral:latest:left_for_dead_1

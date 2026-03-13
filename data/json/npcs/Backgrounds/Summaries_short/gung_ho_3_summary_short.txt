@@ -1,0 +1,1 @@
+BGSS_GUNG_HO_3_STORY1|Resilient, stubborn, independent, cautious, suspicious|"I didn't know what I was supposed to be running from, but I sure as shit didn't run."|local:ollama:mistral:latest:gung_ho_3

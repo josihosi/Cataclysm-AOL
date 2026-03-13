@@ -1,0 +1,1 @@
+BGSS_CRIMINAL_1_STORY1|Resilient, Cunning, Survivalist, Skeptical, Streetwise|"But I swear, some cops got a nightstick so far up their ass…"|local:ollama:mistral:latest:criminal_1

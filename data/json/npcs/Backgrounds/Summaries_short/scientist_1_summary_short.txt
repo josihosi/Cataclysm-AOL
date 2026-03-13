@@ -1,0 +1,1 @@
+BGSS_SCIENTIST_1_STORY1|Resourceful, Anxious, Empathetic, Pragmatic, Isolated|"I ran into the woods nearby with a few others."|local:ollama:mistral:latest:scientist_1

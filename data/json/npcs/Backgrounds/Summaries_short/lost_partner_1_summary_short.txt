@@ -1,0 +1,1 @@
+BGSS_LOST_PARTNER_1_STORY1|Resilient, pragmatic, sarcastic, introspective, survivor|"I don't really feel like I belonged, in the old world."|local:ollama:mistral:latest:lost_partner_1

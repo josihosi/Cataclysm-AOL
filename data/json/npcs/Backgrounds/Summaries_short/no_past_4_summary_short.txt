@@ -1,0 +1,1 @@
+BGSS_NO_PAST_4_STORY1|Resilient, resourceful, survivor, determined, defensive|"Who I was is gone. Dead."|local:ollama:mistral:latest:no_past_4

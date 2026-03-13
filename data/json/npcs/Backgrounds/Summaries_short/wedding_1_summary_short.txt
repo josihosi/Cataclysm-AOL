@@ -1,0 +1,1 @@
+BGSS_WEDDING_1_STORY1|Impulsive, naive, fearful, superstitious, self-preserving|"I swear I saw the sky rip open and monsters fly out, like something out of Independence Day."|local:ollama:mistral:latest:wedding_1

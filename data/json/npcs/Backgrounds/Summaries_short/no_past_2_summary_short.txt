@@ -1,0 +1,1 @@
+BGSS_NO_PAST_2_STORY1|Traumatized, Confused, Vague, Haunted, Forgetful|"I think something pretty bad must have happened to me."|local:ollama:mistral:no_past_2

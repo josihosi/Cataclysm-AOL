@@ -1,0 +1,1 @@
+BGSS_RELIGIOUS_1_STORY1|Faithful, resilient, hopeful, determined, devout|"I will keep the faith, and keep praying, and strike down the agents of Hell where I see them."|local:ollama:mistral:latest:religious_1

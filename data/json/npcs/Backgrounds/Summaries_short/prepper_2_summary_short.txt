@@ -1,0 +1,1 @@
+BGSS_PREPPER_2_STORY1|Survivalist, Paranoid, Resilient, Isolated, Fearful|"I still have nightmares about the way their bodies moved, like they broke the world just to be here."|local:ollama:mistral:latest:prepper_2

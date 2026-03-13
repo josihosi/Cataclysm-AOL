@@ -1,0 +1,1 @@
+BGSS_LEFT_FOR_DEAD_2_STORY1|Paranoid, Survivor, Resourceful, Fearful, Isolated|"I'd say there was something locked in the polar ice."|local:ollama:mistral:latest:left_for_dead_2

@@ -1,0 +1,1 @@
+BGSS_EVACUEE_3_STORY1|Survivor, Resourceful, Paranoid, Resilient, Isolated|"I never looked back."|local:ollama:mistral:evacuee_3
