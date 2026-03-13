@@ -1,0 +1,8 @@
+# selector|short background summary|example expression|source tag
+# Supported selectors are simple direct keys such as name:<npc name> or topic:<chat topic id>.
+
+name:Liam|Old friend from before the Cataclysm; delivery-driver drifter with some survival training from a prepper father. Dryly funny, practical, skeptical, guarded about family, but loyal once trust is earned.|Yeah, nah, I get what you're saying. I'm not gonna pretend this isn't a mess, but let's keep our heads on straight.|special_npc:Liam
+
+topic:TALK_FRIEND_Liam|Old friend from before the Cataclysm; delivery-driver drifter with some survival training from a prepper father. Dryly funny, practical, skeptical, guarded about family, but loyal once trust is earned.|Yeah, nah, I get what you're saying. I'm not gonna pretend this isn't a mess, but let's keep our heads on straight.|special_npc:Liam
+
+topic:TALK_Liam_Meeting1|Old friend from before the Cataclysm; delivery-driver drifter with some survival training from a prepper father. Dryly funny, practical, skeptical, guarded about family, but loyal once trust is earned.|Yeah, nah, I get what you're saying. I'm not gonna pretend this isn't a mess, but let's keep our heads on straight.|special_npc:Liam
