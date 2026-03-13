@@ -236,123 +236,21 @@ This is the main release blocker right now. Static comparison shows that `port/c
   - No side effects on malformed calls.
 
 ### 6) OpenClaw harness (debug-first, not full autonomy yet)
-- `Status`: [ ] curses/terminal proof [ ] adapter prototype [ ] popup/crash handling [ ] fixture saves [ ] eval metrics [ ] CI smoke tests
+- `Status`: [ ] technical design [ ] adapter prototype [ ] fixture saves [ ] eval metrics [ ] CI smoke tests
 - Purpose: use an agent loop to regression-test mechanics, catch gameplay breakage, and later support qualitative gameplay evaluation.
-- `Current repo reality`: no OpenClaw implementation exists yet; integrate as a separate adapter first.
-- `Important repo reality`: the codebase already supports a text-only curses build (`CURSES=ON`, `TILES=OFF`). That is the preferred first harness target because terminal output is far easier to scrape and reason about than tiled SDL output.
-- `Primary files to reuse`:
-  - `src/llm_intent.cpp` runner bridge and existing request/response logging.
-  - `tools/llm_runner/runner.py` for IPC model execution and trace behavior.
-  - `config/llm_intent.log` + `config/llm_intent_runner.log` as initial replay/debug artifacts.
-- `Harness shape`:
-  - Observation adapter: terminal/curses screen capture first; compact ASCII/frame features + key game counters.
-  - Action adapter: constrained key command set with cooldown/rate limits.
-  - Interruption adapter: explicit handlers for crashes, debug popups, yes/no prompts, `more` prompts, and load errors.
-  - Runner: step loop with full trace logs (`obs`, `action`, `reward`, `outcome`).
-- Start with scripted/debug scenarios before open-ended play.
-- Keep cargo/state handling shallow initially; focus on reproducible bug-finding runs.
-
-#### 6.1) Harness operating model
-- First target is **not** "play the whole game".
-- First target is: reliably launch the game, load a prepared save, navigate a bounded scenario, detect interruptions, and emit a useful verdict.
-- Three harness roles should be kept separate even if one agent performs all of them:
-  - `mechanical tester`: catches crashes, path failures, parser issues, and UI dead-ends.
-  - `scenario operator`: loads fixture saves, uses debug tools, and executes scripted probes.
-  - `design critic`: scores whether behavior is merely functional or actually fun/believable.
-- This separation matters because C-AOL success is not only correctness; it is also character, initiative, tension, and story value.
-
-#### 6.2) Perception and control plan
-- `Phase A: terminal-first`
-  - Build/run curses mode where practical.
-  - Capture terminal output per step/frame.
-  - Add a tiny screen classifier for stable states:
-    - main menu
-    - save picker
-    - overworld gameplay
-    - inventory/menu
-    - dialogue
-    - debug popup / crash / yes-no / more
-- `Phase B: menu macro layer`
-  - Support small reusable macros for known stable flows:
-    - load save slot A/B/C
-    - dismiss debug popup
-    - open map / inventory / faction / debug menu
-  - Macro layer should reduce token/model usage and keep the agent out of repetitive menu sludge.
-- `Phase C: bounded scenario loop`
-  - Load a fixture save.
-  - Execute a short script or prompted goal.
-  - Capture transcript/log/screen states.
-  - Score functional and qualitative outcomes.
-- `Fallback lane`
-  - If curses mode proves too lossy for specific screens, keep a second adapter path for tiles + OCR/screen parsing, but do not lead with that.
-
-#### 6.3) Fixture save matrix (v0)
-- Use prepared saves as reusable fixtures, not one giant sandbox save.
-- Prefer a small number of stable, named gold-standard saves plus micro-scenarios.
-
-##### Lane 1: Base AI fixture set
-- Requirement: base, billboard, several NPCs, supplies, and repeatable camp chores.
-- Suggested micro-scenarios:
-  - craft requested item
-  - fetch missing component
-  - bring/store item in a specific zone
-  - discuss mission / post to billboard
-  - refuse task for sensible reason
-- Main goal: reduce player menu load while testing initiative and task interpretation.
-
-##### Lane 2: Squad AI fixture set
-- Requirement: follower NPCs plus a nearby raid spot / town / hostile contact zone.
-- Suggested micro-scenarios:
-  - breach building
-  - hold doorway
-  - flank target
-  - regroup after separation
-  - retreat wounded ally
-- Main goal: test team behavior, positioning quality, memory, and non-clown tactical coordination.
-
-##### Lane 3: Bandit AI fixture set
-- Requirement: bandit presence or a preserved world state with nearby bandits.
-- Suggested micro-scenarios:
-  - scouting approach
-  - demand / threat encounter
-  - road ambush
-  - disengage and reposition
-- Main goal: create pressure and story, not just extra combat noise.
-- If live debug spawning is awkward, preserve a handcrafted world/save and treat it as a canonical fixture instead of regenerating it each run.
-
-#### 6.4) Evaluation model: working vs fun
-- Every harness run should record both functional and qualitative scores.
-- `Functional checks`:
-  - command understood Y/N
-  - requested action completed Y/N
-  - obvious tactical/pathing errors
-  - crash / popup / dead turn / stuck state
-  - reproducibility on replay
-- `Qualitative checks`:
-  - believability: did the NPC act like a person rather than a vending machine?
-  - initiative: did the system contribute something useful beyond parroting the prompt?
-  - obedience balance: too obedient / acceptable / too stubborn
-  - tactical quality: clever / adequate / clown show
-  - narrative interest: did this create tension, surprise, or memorable friction?
-- Candidate scorecard per run:
-  - `Worked?` Y/N
-  - `Major bugs?`
-  - `Tactical quality` 1-5
-  - `Character believability` 1-5
-  - `Initiative` 1-5
-  - `Obedience balance` too obedient / good / too stubborn
-  - `Narrative interest` 1-5
-  - `Notes`
-- This is required for comparing local models (for example Qwen-class locals) against stronger API models without collapsing into pure vibes.
-
-#### 6.5) Delivery order for harness v0
-- `HV0-A`: prove loadable curses-mode harness with screen capture and key injection.
-- `HV0-B`: add stable popup/debug/crash detection and log capture.
-- `HV0-C`: support loading 3 named fixture saves from the main menu.
-- `HV0-D`: add one scripted scenario each for Base AI and Squad AI.
-- `HV0-E`: add qualitative scorecard output and replay artifacts.
-- `HV0-F`: add Bandit fixture support once world-state setup is reliable.
-- Only after these gates should open-ended "let the agent play" experiments become a priority.
+- Detailed technical design now lives in `doc/OPENCLAW_HARNESS.md`.
+- The current codebase already makes this plausible:
+  - text-mode build support exists (`CURSES=ON`, `TILES=OFF`)
+  - an existing LLM runner bridge exists in `src/llm_intent.cpp` + `tools/llm_runner/runner.py`
+  - append-only debug logs already exist under the config dir
+  - `tests/test_main.cpp` already proves there is a reusable test bootstrap path for core game state
+- Direction summary:
+  - structured observation first, raw curses capture second
+  - semantic action grammar first, raw keypresses second
+  - prepared fixture saves instead of open-ended play
+  - both functional and qualitative evaluation are required
+- First target is still not "play the whole game".
+- First target is: reliably load a fixture save, run a bounded scenario, detect interruptions, and emit a useful verdict plus replay artifacts.
 
 ### 7) Pokemon-style lessons to reuse (for OpenClaw)
 - Most successful setups used:
