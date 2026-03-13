@@ -269,6 +269,12 @@ bool good_for_pickup( const item &it, npc &who, const tripoint_bub_ms &there )
            who.would_take_that( it, there );
 }
 
+bool good_for_llm_targeted_pickup( const item &it, npc &who, const tripoint_bub_ms &there )
+{
+    return who.can_take_that( it ) &&
+           who.would_take_that( it, there );
+}
+
 std::string normalize_item_label( const std::string &text )
 {
     std::string stripped = remove_color_tags( text );
@@ -1735,7 +1741,7 @@ bool npc::apply_llm_intent_item_targets()
                 if( normalize_item_label( it.tname( 1, false ) ) != target_name ) {
                     continue;
                 }
-                if( !::good_for_pickup( it, *this, p ) ) {
+                if( !::good_for_llm_targeted_pickup( it, *this, p ) ) {
                     continue;
                 }
                 const int dist = rl_dist( pos_bub(), p );
@@ -1758,7 +1764,7 @@ bool npc::apply_llm_intent_item_targets()
                 if( normalize_item_label( it.tname( 1, false ) ) != target_name ) {
                     continue;
                 }
-                if( !::good_for_pickup( it, *this, p ) ) {
+                if( !::good_for_llm_targeted_pickup( it, *this, p ) ) {
                     continue;
                 }
                 const int dist = rl_dist( pos_bub(), p );
@@ -4379,7 +4385,10 @@ void npc::pick_up_item()
     // Check: Is the item owned? Has the situation changed since we last moved? Am 'I' now
     // standing in front of the shopkeeper/player that I am about to steal from?
     if( wanted_item ) {
-        if( !::good_for_pickup( *wanted_item, *this, wanted_item_pos ) ) {
+        const bool still_pickup_ok = llm_targeted ?
+                                      ::good_for_llm_targeted_pickup( *wanted_item, *this, wanted_item_pos ) :
+                                      ::good_for_pickup( *wanted_item, *this, wanted_item_pos );
+        if( !still_pickup_ok ) {
             add_msg_debug( debugmode::DF_NPC_ITEMAI,
                            "%s canceling pickup - situation changed since they decided to take item", get_name() );
             fetching_item = false;
