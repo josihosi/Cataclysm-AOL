@@ -1,0 +1,1 @@
+BGSS_EVACUEE_2_STORY1|Survivalist, Authoritative, Impulsive, Paranoid, Vulnerable|"He took matters into his own hands and killed her."|local:ollama:mistral:evacuee_2

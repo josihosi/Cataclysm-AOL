@@ -1,0 +1,1 @@
+BGSS_HIGH_SCHOOL_1_STORY1|Fearful, Resourceful, Determined, Nervous, Resilient|"I'm a bit better at killing those things now, but I haven't made it home yet."|local:ollama:mistral:latest:high_school_1

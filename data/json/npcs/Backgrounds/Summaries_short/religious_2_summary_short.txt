@@ -1,0 +1,1 @@
+BGSS_RELIGIOUS_2_STORY1|Regretful, Fearful, Religious, Isolated, Pensive|"I wish I'd paid more attention in Sunday School."|local:ollama:mistral:latest:religious_2

@@ -1,0 +1,1 @@
+BGSS_EVACUEE_4_STORY1|Survivalist, Fearful, Resourceful, Paranoid, Cautious|"I ran until I felt like my lungs were going to jump right out of my mouth."|local:ollama:mistral:latest:evacuee_4

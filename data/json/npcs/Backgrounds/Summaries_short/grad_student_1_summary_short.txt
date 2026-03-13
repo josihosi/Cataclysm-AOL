@@ -1,0 +1,1 @@
+BGSS_GRAD_STUDENT_1_STORY1|Fearful, Resourceful, Introspective, Adaptable, Survivalist|"I wasn't certain if I should head back to Hanover, and try to get my belongings, or stay out where I was."|local:ollama:mistral:latest:grad_student_1

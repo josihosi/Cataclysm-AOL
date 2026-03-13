@@ -1,0 +1,1 @@
+BGSS_LAB_1_STORY1|Intelligent, curious, loyal, cautious, resourceful|"Something about the tone really got to me. I knew it was important."|local:ollama:mistral:latest:lab_1

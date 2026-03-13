@@ -1,0 +1,1 @@
+BGSS_RURAL_1_STORY1|Resilient, Cautious, Isolated, Fearful, Resourceful|"I don't know if I trust you quite like that, just giving away so many personal details all at once. Maybe later…"|local:ollama:mistral:latest:rural_1

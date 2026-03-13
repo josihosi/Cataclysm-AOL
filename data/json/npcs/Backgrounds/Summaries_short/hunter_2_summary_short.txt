@@ -1,0 +1,1 @@
+BGSS_HUNTER_2_STORY1|Fearful, resourceful, traumatized, survivalist, confused|"Something about it really shook us up"|local:ollama:mistral:latest:hunter_2

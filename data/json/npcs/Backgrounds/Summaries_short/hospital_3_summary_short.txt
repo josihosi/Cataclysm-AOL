@@ -1,0 +1,1 @@
+BGSS_HOSPITAL_3_STORY1|Resourceful, Fearful, Pragmatic, Introspective, Cautious|"I bundled myself up, grabbed a few snacks from the pathologist's desk, and crawled into one of those drawers to contemplate the end of the world."|local:ollama:mistral:latest:hospital_3

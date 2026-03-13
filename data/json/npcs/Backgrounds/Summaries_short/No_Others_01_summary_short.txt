@@ -1,0 +1,1 @@
+BOSS_No_Others_01_Story1|Lonely, isolated, melancholic, introspective, hopeful|"Until I met you, I thought I might be the only one left."|local:ollama:mistral:latest:No_Others_01

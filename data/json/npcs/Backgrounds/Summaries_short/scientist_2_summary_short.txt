@@ -1,0 +1,1 @@
+BGSS_SCIENTIST_2_STORY1|Resourceful, Determined, Intelligent, Confused, Survivor|"I have a memory blank for about three days before and after the cataclysm."|local:ollama:mistral:latest:scientist_2
