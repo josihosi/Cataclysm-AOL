@@ -7,16 +7,33 @@ WITH_SUMMARY=0
 ISOLATE_USERDIR=1
 RESET_USERDIR=0
 FAST_DEBUG=0
+SUMMARY_MODEL_DIR="${LLM_SUMMARY_MODEL_DIR:-}"
+SUMMARY_DEVICE="${LLM_SUMMARY_DEVICE:-}"
 
-for arg in "$@"; do
-  case "$arg" in
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --unclean) CLEAN=0 ;;
     --install-deps) INSTALL_DEPS=1 ;;
     --with-summary) WITH_SUMMARY=1 ;;
+    --summary-model-dir)
+      shift
+      SUMMARY_MODEL_DIR="${1:-}"
+      ;;
+    --summary-model-dir=*)
+      SUMMARY_MODEL_DIR="${1#*=}"
+      ;;
+    --summary-device)
+      shift
+      SUMMARY_DEVICE="${1:-}"
+      ;;
+    --summary-device=*)
+      SUMMARY_DEVICE="${1#*=}"
+      ;;
     --shared-userdir) ISOLATE_USERDIR=0 ;;
     --reset-userdir) RESET_USERDIR=1 ;;
     --fast|-f|--fast-debug) FAST_DEBUG=1 ;;
   esac
+  shift
 done
 
 if [[ "$FAST_DEBUG" == "1" ]]; then
@@ -25,7 +42,21 @@ fi
 
 LLM_BG_SUMMARY_PYTHON=false
 if [[ "$WITH_SUMMARY" == "1" ]]; then
+  if [[ -z "$SUMMARY_MODEL_DIR" ]]; then
+    echo "--with-summary requires a local summary model dir."
+    echo "Set LLM_SUMMARY_MODEL_DIR or pass --summary-model-dir /path/to/local/model"
+    exit 2
+  fi
+  if [[ ! -d "$SUMMARY_MODEL_DIR" ]]; then
+    echo "Local summary model dir not found: $SUMMARY_MODEL_DIR"
+    exit 2
+  fi
   LLM_BG_SUMMARY_PYTHON=python3
+  export LLM_SUMMARY_MODEL_DIR="$SUMMARY_MODEL_DIR"
+  if [[ -n "$SUMMARY_DEVICE" ]]; then
+    export LLM_SUMMARY_DEVICE="$SUMMARY_DEVICE"
+  fi
+  echo "Background summaries enabled with local model: $SUMMARY_MODEL_DIR"
 fi
 
 GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo detached)"
