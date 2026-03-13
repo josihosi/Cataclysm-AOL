@@ -207,6 +207,7 @@ struct runner_config {
 [[maybe_unused]] runner_config current_runner_config();
 [[maybe_unused]] std::string read_log_tail( const std::filesystem::path &path,
         std::streamoff max_bytes );
+std::string extract_csv_from_text( const std::string &text );
 
 std::string sanitize_text( std::string_view text )
 {
@@ -305,6 +306,9 @@ std::string join_action_tokens( const std::vector<std::string> &actions )
 
 std::string follower_mode_snapshot_token( const npc &listener )
 {
+    if( !listener.is_player_ally() ) {
+        return "independent";
+    }
     if( listener.is_guarding() || listener.get_attitude() == NPCATT_WAIT ) {
         return "guard/hold";
     }
@@ -1191,6 +1195,20 @@ std::string strip_speaker_prefix( const std::string &text )
     return trimmed;
 }
 
+std::string extract_ambient_speech( const std::string &text )
+{
+    std::string cleaned = extract_csv_from_text( text );
+    if( cleaned.empty() ) {
+        return {};
+    }
+    std::string speech = strip_speaker_prefix( extract_speech_field( cleaned ) );
+    const size_t newline = speech.find( '\n' );
+    if( newline != std::string::npos ) {
+        speech = trim_copy( speech.substr( 0, newline ) );
+    }
+    return strip_wrapping_quotes( speech );
+}
+
 bool extract_lenient_csv( const std::string &csv, std::string &speech,
                           std::vector<std::string> &actions )
 {
@@ -1806,6 +1824,24 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "</Example Output 7>\n"
                "</System>\n",
                snapshot, action_list_with_target );
+}
+
+std::string build_ambient_prompt( const std::string &npc_name,
+                                  const std::string &player_utterance,
+                                  const std::string &snapshot )
+{
+    return string_format(
+               "Situation:\n%s\n"
+               "<System>"
+               "You are %s, a human survivor NPC speaking directly to the player in a cataclysmic world."
+               "You are not using the follower command system right now."
+               "Reply in character using the snapshot, your background, your tone, your opinions of the player, and your recent memories."
+               "Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no CSV, no pipes, no tool calls, no menu syntax."
+               "Do not pretend to follow orders automatically if you are not allied."
+               "If you are unsure, answer briefly and naturally instead of inventing details."
+               "</System>\n"
+               "<PlayerUtterance>%s</PlayerUtterance>\n",
+               snapshot, sanitize_text( npc_name ), sanitize_text( player_utterance ) );
 }
 
 [[maybe_unused]] std::string request_to_json( const llm_intent_request &request )
@@ -2662,6 +2698,10 @@ class llm_intent_manager
             queue_primary_request( listener, player_utterance );
         }
 
+        void enqueue_ambient_request( npc &listener, const std::string &player_utterance ) {
+            queue_ambient_request( listener, player_utterance );
+        }
+
         void enqueue_requests_serial( const std::vector<npc *> &listeners,
                                       const std::string &player_utterance ) {
             if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
@@ -2713,6 +2753,42 @@ class llm_intent_manager
                 std::lock_guard<std::mutex> lock( mutex );
                 utterance_by_request[req.request_id] = player_utterance;
                 primary_request_ids.insert( req.request_id );
+                request_queue.push( std::move( req ) );
+            }
+            ensure_worker();
+            cv.notify_one();
+        }
+
+        void queue_ambient_request( npc &listener, const std::string &player_utterance ) {
+            if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                return;
+            }
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                if( pending_ambient_npcs.count( listener.getID() ) > 0 ) {
+                    return;
+                }
+                pending_ambient_npcs.insert( listener.getID() );
+            }
+            static constexpr int ambient_max_tokens = 256;
+            llm_intent_request req;
+            req.request_id = next_request_id();
+            req.npc_id = listener.getID();
+            req.npc_name = listener.get_name();
+            req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
+            req.prompt = build_ambient_prompt( req.npc_name, player_utterance, req.snapshot );
+            req.max_tokens = ambient_max_tokens;
+            req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
+            req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
+            req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
+            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                append_llm_intent_log( string_format( "ambient prompt %s (%s)\n%s\n\n",
+                                                      req.npc_name, req.request_id, req.prompt ) );
+            }
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                utterance_by_request[req.request_id] = player_utterance;
+                ambient_request_ids.insert( req.request_id );
                 request_queue.push( std::move( req ) );
             }
             ensure_worker();
@@ -3027,13 +3103,61 @@ class llm_intent_manager
                         continue;
                     }
                 }
+                bool is_ambient_response = false;
+                std::string player_utterance;
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    is_ambient_response = ambient_request_ids.count( resp.request_id ) > 0;
+                    auto it = utterance_by_request.find( resp.request_id );
+                    if( it != utterance_by_request.end() ) {
+                        player_utterance = it->second;
+                    }
+                }
+                if( is_ambient_response ) {
+                    std::string ambient_error;
+                    std::string ambient_speech;
+                    if( resp.ok ) {
+                        ambient_speech = extract_ambient_speech( resp.text );
+                        if( ambient_speech.empty() ) {
+                            ambient_error = "Ambient speech missing.";
+                        }
+                    } else {
+                        ambient_error = resp.error;
+                    }
+                    if( ambient_error.empty() ) {
+                        if( npc *target = g->find_npc( resp.npc_id ) ) {
+                            add_msg( _( "%s says: \"%s\"" ), resp.npc_name, ambient_speech );
+                            target->add_llm_intent_memory( player_utterance, ambient_speech, {} );
+                            broadcast_overheard_memory( *target, ambient_speech, {} );
+                        }
+                        if( debug_log ) {
+                            const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
+                            append_llm_intent_log( string_format( "ambient response %s (%s)\n%s\n\nsay %s (%s)\n%s\n\n",
+                                                                  resp.npc_name, resp.request_id, payload,
+                                                                  resp.npc_name, resp.request_id,
+                                                                  ambient_speech ) );
+                        }
+                    } else if( debug_log ) {
+                        const std::string &payload = resp.raw.empty() ? resp.text : resp.raw;
+                        append_llm_intent_log( string_format( "ambient failed %s (%s)\n%s\nraw:\n%s\n\n",
+                                                              resp.npc_name, resp.request_id,
+                                                              ambient_error, payload ) );
+                    }
+                    {
+                        std::lock_guard<std::mutex> lock( mutex );
+                        utterance_by_request.erase( resp.request_id );
+                        ambient_request_ids.erase( resp.request_id );
+                        pending_ambient_npcs.erase( resp.npc_id );
+                    }
+                    local.pop();
+                    continue;
+                }
                 std::string parse_error;
                 std::string action_error;
                 std::string speech;
                 std::vector<std::string> actions;
                 std::string attack_target;
                 std::string speak_text;
-                std::string player_utterance;
                 std::string say_log_line;
                 std::string say_failed_log_line;
                 {
@@ -3229,8 +3353,10 @@ class llm_intent_manager
         std::queue<llm_intent_response> response_queue;
         std::unordered_map<std::string, std::string> utterance_by_request;
         std::unordered_set<std::string> primary_request_ids;
+        std::unordered_set<std::string> ambient_request_ids;
         std::deque<pending_primary_request> pending_primary_requests;
         std::set<character_id> pending_primary_npcs;
+        std::set<character_id> pending_ambient_npcs;
         std::unordered_set<std::string> serial_primary_request_ids;
         std::unordered_map<std::string, look_around_context> look_around_requests;
         std::unordered_map<std::string, look_inventory_context> look_inventory_requests;
@@ -3339,6 +3465,11 @@ void enqueue_request( npc &listener, const std::string &player_utterance )
 void enqueue_request( const npc &listener, const std::string &player_utterance )
 {
     get_manager().enqueue_request( const_cast<npc &>( listener ), player_utterance );
+}
+
+void enqueue_ambient_request( npc &listener, const std::string &player_utterance )
+{
+    get_manager().enqueue_ambient_request( listener, player_utterance );
 }
 
 void enqueue_requests( const std::vector<npc *> &listeners,
