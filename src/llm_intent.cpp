@@ -83,6 +83,16 @@ std::mutex llm_intent_log_mutex;
 constexpr const char *llm_intent_log_filename = "llm_intent.log";
 constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
+std::filesystem::path central_llm_config_dir_path()
+{
+    return std::filesystem::path( PATH_INFO::base_path() ) / "config";
+}
+
+std::filesystem::path central_llm_log_path( const char *filename )
+{
+    return central_llm_config_dir_path() / filename;
+}
+
 void append_llm_intent_log( const std::string &payload )
 {
     if( payload.empty() ) {
@@ -114,8 +124,10 @@ void append_llm_intent_log( const std::string &payload )
         final_payload += "\n\n";
     }
     std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
-    assure_dir_exist( PATH_INFO::config_dir() );
-    const std::string log_path = PATH_INFO::config_dir() + llm_intent_log_filename;
+    const fs::path config_dir = central_llm_config_dir_path();
+    std::error_code mkdir_ec;
+    fs::create_directories( config_dir, mkdir_ec );
+    const fs::path log_path = central_llm_log_path( llm_intent_log_filename );
     std::error_code ec;
     if( fs::exists( log_path, ec ) ) {
         const std::uintmax_t size = fs::file_size( log_path, ec );
@@ -2055,9 +2067,9 @@ class llm_intent_runner_process
             fs::path python_path = resolve_path( config.python_path );
             fs::path runner_path = resolve_path( config.runner_path );
             fs::path model_dir = resolve_path( config.model_dir );
-            fs::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
-                                             "llm_intent_runner.log";
-            assure_dir_exist( PATH_INFO::config_dir() );
+            fs::path log_path = central_llm_log_path( "llm_intent_runner.log" );
+            std::error_code mkdir_ec;
+            fs::create_directories( central_llm_config_dir_path(), mkdir_ec );
 
             std::vector<std::string> args;
             args.push_back( python_path.string() );
@@ -2371,9 +2383,9 @@ class posix_runner_process
             fs::path python_path = resolve_path( config.python_path );
             fs::path runner_path = resolve_path( config.runner_path );
             fs::path model_dir = resolve_path( config.model_dir );
-            fs::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
-                                             "llm_intent_runner.log";
-            assure_dir_exist( PATH_INFO::config_dir() );
+            fs::path log_path = central_llm_log_path( "llm_intent_runner.log" );
+            std::error_code mkdir_ec;
+            fs::create_directories( central_llm_config_dir_path(), mkdir_ec );
 
             std::vector<std::string> args;
             args.push_back( python_path.string() );
