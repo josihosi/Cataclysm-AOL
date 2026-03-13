@@ -249,7 +249,7 @@ bool good_for_llm_targeted_pickup( const item &it, npc &who )
     item &weap = who.get_wielded_item() ? *who.get_wielded_item() : null_item_reference();
     if( ( !it.made_of_from_type( phase_id::LIQUID ) ) &&
         ( it.weight() <= weight_allowed ) &&
-        ( who.can_stash( it ) ||
+        ( who.can_stash( it ) || who.can_wear( it ).success() ||
           who.weapon_value( it ) > who.weapon_value( weap ) ) ) {
         good = true;
     }
@@ -4271,7 +4271,13 @@ void npc::pick_up_item()
         if( itval < worst_item_value ) {
             worst_item_value = itval;
         }
-        i_add( it );
+        bool worn = false;
+        if( llm_targeted && !can_stash( it ) && can_wear( it ).success() ) {
+            worn = wear_item( it, false ).has_value();
+        }
+        if( !worn ) {
+            i_add( it );
+        }
     }
 
     moves -= 100;
