@@ -6,7 +6,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 
-DEFAULT_MODEL_DIR = r"C:\Users\josef\openvino_models\qwen3-8b-int4-cw-ov"
+DEFAULT_MODEL_DIR = ""
 
 
 def strip_think_tags(text: str) -> str:
@@ -289,6 +289,12 @@ def write_entries(path: str, entries: Dict[str, Dict[str, Any]]) -> None:
             )
 
 
+def build_local_source_tag(model_dir: str, source_base: str) -> str:
+    model_name = os.path.basename(os.path.normpath(model_dir)) if model_dir else "unknown-model"
+    safe_model_name = re.sub(r"[^A-Za-z0-9._-]+", "_", model_name).strip("_") or "unknown-model"
+    return f"local:{safe_model_name}:{source_base}"
+
+
 def parse_args() -> argparse.Namespace:
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     parser = argparse.ArgumentParser(description="Generate short background summaries.")
@@ -385,19 +391,19 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if not args.model_dir or not os.path.isdir(args.model_dir):
-        print(f"LLM summary model dir not found: {args.model_dir}. Skipping.")
-        return 0
+        print(f"LLM summary model dir not found: {args.model_dir}. Aborting.")
+        return 2
     try:
         import openvino_genai  # noqa: F401
     except Exception as exc:
-        print(f"LLM summary dependency missing: {exc}. Skipping.")
-        return 0
+        print(f"LLM summary dependency missing: {exc}. Aborting.")
+        return 2
 
     try:
         os.makedirs(args.out_dir, exist_ok=True)
     except Exception as exc:
-        print(f"Failed to create summary dir: {exc}. Skipping.")
-        return 0
+        print(f"Failed to create summary dir: {exc}. Aborting.")
+        return 2
 
     trait_to_topic = build_trait_to_topic(args.toc_path)
     if not trait_to_topic:
@@ -416,8 +422,8 @@ def main() -> int:
     try:
         pipe = load_pipeline(args.model_dir, args.device, args.max_prompt_len)
     except Exception as exc:
-        print(f"Failed to load LLM pipeline: {exc}. Skipping.")
-        return 0
+        print(f"Failed to load LLM pipeline: {exc}. Aborting.")
+        return 2
 
     generated_any = False
     for topic_id in topics:
@@ -516,7 +522,10 @@ def main() -> int:
         if not background_line and not expression_line:
             print(f"Invalid summary for {topic_id}; skipping.")
             continue
-        source_tag = re.sub(r"_\\d+$", "", source_base)
+        source_tag = build_local_source_tag(
+            args.model_dir,
+            re.sub(r"_\\d+$", "", source_base)
+        )
         entry = {
             "id": topic_id,
             "your_background": background_line,

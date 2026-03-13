@@ -16,7 +16,8 @@ into `data/json/npcs/Backgrounds/Summaries_short/<source>_summary_short.txt`.
   one notable sentence.
 - Normalizes and validates the output, then writes:
   `topic_id|your_background|your_expression|source_tag`.
-  The `source_tag` is the JSON filename without a trailing `_#` suffix.
+  Generated summaries use an honest local provenance tag in the form
+  `local:<model_dir_name>:<source_base>`.
 
 ### Checks and safeguards
 - Skips topics that already exist in the output file unless `--force` is used.
@@ -27,14 +28,14 @@ into `data/json/npcs/Backgrounds/Summaries_short/<source>_summary_short.txt`.
 
 ### Build integration
 The Makefile defines a convenience target:
-- `llm-bg-summary-short` runs the script with the project-local Python
-  interpreter and writes into `data/json/npcs/Backgrounds/Summaries_short`.
-- The target is non-fatal (`|| true`) so missing models or deps do not break
-  normal builds.
+- `llm-bg-summary-short` writes into `data/json/npcs/Backgrounds/Summaries_short`.
+- Normal builds skip summary generation unless explicitly enabled.
+- `./just_build_macos.sh --with-summary --summary-model-dir /path/to/local/model`
+  enables local generation and now fails fast if the model dir is missing.
 
 Configuration knobs:
-- `LLM_SUMMARY_MODEL_DIR` (env) or `--model-dir` for the OpenVINO model.
-- `LLM_SUMMARY_DEVICE` (env) or `--device` for target device (default "NPU").
+- `LLM_SUMMARY_MODEL_DIR` (env) or `--model-dir` / `--summary-model-dir` for the OpenVINO model.
+- `LLM_SUMMARY_DEVICE` (env) or `--device` / `--summary-device` for target device (default "NPU").
 
 ## LLM Intent Actions (Behavior Notes)
 - `look_around` requests up to three nearby item names for pickup targeting.

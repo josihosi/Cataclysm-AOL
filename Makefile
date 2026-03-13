@@ -1003,7 +1003,7 @@ CHKJSON_SOURCES := $(wildcard src/chkjson/*.cpp) src/wcwidth.cpp src/json.cpp
 
 LLM_BG_SUMMARY_SCRIPT = tools/llm_runner/background_summarizer.py
 LLM_BG_SUMMARY_OUTDIR = data/json/npcs/Backgrounds/Summaries_short
-LLM_BG_SUMMARY_PYTHON ?= C:/Users/josef/openvino_models/openvino_env/Scripts/python.exe
+LLM_BG_SUMMARY_PYTHON ?= false
 CLANG_TIDY_PLUGIN_SOURCES := \
   $(wildcard tools/clang-tidy-plugin/*.cpp tools/clang-tidy-plugin/*/*.cpp)
 CLANG_TIDY_PLUGIN_HEADERS := \
@@ -1504,4 +1504,8 @@ compile_commands.txt:
 
 -include ${OBJS:.o=.d}
 llm-bg-summary-short:
-	@$(LLM_BG_SUMMARY_PYTHON) $(LLM_BG_SUMMARY_SCRIPT) --out-dir "$(LLM_BG_SUMMARY_OUTDIR)" || true
+	@if [ "$(LLM_BG_SUMMARY_PYTHON)" = "false" ]; then \
+		echo "Skipping local background summaries (enable with --with-summary and a local model dir)."; \
+	else \
+		$(LLM_BG_SUMMARY_PYTHON) $(LLM_BG_SUMMARY_SCRIPT) --out-dir "$(LLM_BG_SUMMARY_OUTDIR)"; \
+	fi
