@@ -7,14 +7,24 @@ WITH_SUMMARY=0
 ISOLATE_USERDIR=1
 RESET_USERDIR=0
 FAST_DEBUG=0
+SUMMARY_BACKEND="${LLM_SUMMARY_BACKEND:-}"
 SUMMARY_MODEL_DIR="${LLM_SUMMARY_MODEL_DIR:-}"
 SUMMARY_DEVICE="${LLM_SUMMARY_DEVICE:-}"
+SUMMARY_OLLAMA_URL="${LLM_SUMMARY_OLLAMA_URL:-}"
+SUMMARY_OLLAMA_MODEL="${LLM_SUMMARY_OLLAMA_MODEL:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --unclean) CLEAN=0 ;;
     --install-deps) INSTALL_DEPS=1 ;;
     --with-summary) WITH_SUMMARY=1 ;;
+    --summary-backend)
+      shift
+      SUMMARY_BACKEND="${1:-}"
+      ;;
+    --summary-backend=*)
+      SUMMARY_BACKEND="${1#*=}"
+      ;;
     --summary-model-dir)
       shift
       SUMMARY_MODEL_DIR="${1:-}"
@@ -29,6 +39,20 @@ while [[ $# -gt 0 ]]; do
     --summary-device=*)
       SUMMARY_DEVICE="${1#*=}"
       ;;
+    --summary-ollama-url)
+      shift
+      SUMMARY_OLLAMA_URL="${1:-}"
+      ;;
+    --summary-ollama-url=*)
+      SUMMARY_OLLAMA_URL="${1#*=}"
+      ;;
+    --summary-ollama-model)
+      shift
+      SUMMARY_OLLAMA_MODEL="${1:-}"
+      ;;
+    --summary-ollama-model=*)
+      SUMMARY_OLLAMA_MODEL="${1#*=}"
+      ;;
     --shared-userdir) ISOLATE_USERDIR=0 ;;
     --reset-userdir) RESET_USERDIR=1 ;;
     --fast|-f|--fast-debug) FAST_DEBUG=1 ;;
@@ -42,21 +66,7 @@ fi
 
 LLM_BG_SUMMARY_PYTHON=false
 if [[ "$WITH_SUMMARY" == "1" ]]; then
-  if [[ -z "$SUMMARY_MODEL_DIR" ]]; then
-    echo "--with-summary requires a local summary model dir."
-    echo "Set LLM_SUMMARY_MODEL_DIR or pass --summary-model-dir /path/to/local/model"
-    exit 2
-  fi
-  if [[ ! -d "$SUMMARY_MODEL_DIR" ]]; then
-    echo "Local summary model dir not found: $SUMMARY_MODEL_DIR"
-    exit 2
-  fi
   LLM_BG_SUMMARY_PYTHON=python3
-  export LLM_SUMMARY_MODEL_DIR="$SUMMARY_MODEL_DIR"
-  if [[ -n "$SUMMARY_DEVICE" ]]; then
-    export LLM_SUMMARY_DEVICE="$SUMMARY_DEVICE"
-  fi
-  echo "Background summaries enabled with local model: $SUMMARY_MODEL_DIR"
 fi
 
 GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo detached)"
@@ -98,6 +108,86 @@ fi
 if [[ "$RESET_USERDIR" == "1" && -n "$USERDIR_REL" ]]; then
   echo "Resetting userdir profile $USERDIR_REL"
   rm -rf "$USERDIR_REL"
+fi
+
+load_option_value() {
+  local options_path="$1"
+  local option_name="$2"
+  python3 - "$options_path" "$option_name" <<'PY'
+import json, sys
+path, key = sys.argv[1], sys.argv[2]
+try:
+    with open(path, 'r', encoding='utf-8') as handle:
+        data = json.load(handle)
+except Exception:
+    raise SystemExit(0)
+if isinstance(data, list):
+    for entry in data:
+        if isinstance(entry, dict) and entry.get('name') == key:
+            value = entry.get('value')
+            if isinstance(value, str):
+                print(value)
+            raise SystemExit(0)
+PY
+}
+
+if [[ "$WITH_SUMMARY" == "1" ]]; then
+  SUMMARY_OPTIONS_PATH=""
+  if [[ -n "$USERDIR_REL" && -f "${USERDIR_REL}config/options.json" ]]; then
+    SUMMARY_OPTIONS_PATH="${USERDIR_REL}config/options.json"
+  elif [[ -f "config/options.json" ]]; then
+    SUMMARY_OPTIONS_PATH="config/options.json"
+  fi
+
+  if [[ -n "$SUMMARY_OPTIONS_PATH" ]]; then
+    [[ -z "$SUMMARY_BACKEND" ]] && SUMMARY_BACKEND="$(load_option_value "$SUMMARY_OPTIONS_PATH" "LLM_SUMMARY_BACKEND")"
+    [[ -z "$SUMMARY_MODEL_DIR" ]] && SUMMARY_MODEL_DIR="$(load_option_value "$SUMMARY_OPTIONS_PATH" "LLM_SUMMARY_MODEL_DIR")"
+    [[ -z "$SUMMARY_OLLAMA_URL" ]] && SUMMARY_OLLAMA_URL="$(load_option_value "$SUMMARY_OPTIONS_PATH" "LLM_SUMMARY_OLLAMA_URL")"
+    [[ -z "$SUMMARY_OLLAMA_MODEL" ]] && SUMMARY_OLLAMA_MODEL="$(load_option_value "$SUMMARY_OPTIONS_PATH" "LLM_SUMMARY_OLLAMA_MODEL")"
+    [[ -z "$SUMMARY_OLLAMA_URL" ]] && SUMMARY_OLLAMA_URL="$(load_option_value "$SUMMARY_OPTIONS_PATH" "LLM_INTENT_OLLAMA_URL")"
+    [[ -z "$SUMMARY_OLLAMA_MODEL" ]] && SUMMARY_OLLAMA_MODEL="$(load_option_value "$SUMMARY_OPTIONS_PATH" "LLM_INTENT_OLLAMA_MODEL")"
+  fi
+
+  if [[ -z "$SUMMARY_BACKEND" ]]; then
+    SUMMARY_BACKEND="ollama"
+  fi
+
+  case "$SUMMARY_BACKEND" in
+    ollama)
+      [[ -z "$SUMMARY_OLLAMA_URL" ]] && SUMMARY_OLLAMA_URL="http://127.0.0.1:11434"
+      if [[ -z "$SUMMARY_OLLAMA_MODEL" ]]; then
+        echo "--with-summary with backend=ollama requires a local Ollama model name."
+        echo "Set LLM_SUMMARY_OLLAMA_MODEL, pass --summary-ollama-model, or configure it in the LLM options menu."
+        exit 2
+      fi
+      export LLM_SUMMARY_BACKEND="ollama"
+      export LLM_SUMMARY_OLLAMA_URL="$SUMMARY_OLLAMA_URL"
+      export LLM_SUMMARY_OLLAMA_MODEL="$SUMMARY_OLLAMA_MODEL"
+      echo "Background summaries enabled with local Ollama model: $SUMMARY_OLLAMA_MODEL @ $SUMMARY_OLLAMA_URL"
+      ;;
+    openvino)
+      if [[ -z "$SUMMARY_MODEL_DIR" ]]; then
+        echo "--with-summary with backend=openvino requires a local summary model dir."
+        echo "Set LLM_SUMMARY_MODEL_DIR, pass --summary-model-dir /path/to/local/model, or configure it in the LLM options menu."
+        exit 2
+      fi
+      if [[ ! -d "$SUMMARY_MODEL_DIR" ]]; then
+        echo "Local summary model dir not found: $SUMMARY_MODEL_DIR"
+        exit 2
+      fi
+      export LLM_SUMMARY_BACKEND="openvino"
+      export LLM_SUMMARY_MODEL_DIR="$SUMMARY_MODEL_DIR"
+      if [[ -n "$SUMMARY_DEVICE" ]]; then
+        export LLM_SUMMARY_DEVICE="$SUMMARY_DEVICE"
+      fi
+      echo "Background summaries enabled with local OpenVINO model: $SUMMARY_MODEL_DIR"
+      ;;
+    *)
+      echo "Unsupported summary backend: $SUMMARY_BACKEND"
+      echo "Use 'ollama' or 'openvino'."
+      exit 2
+      ;;
+  esac
 fi
 
 FONT_SEED=data/fontdata.json

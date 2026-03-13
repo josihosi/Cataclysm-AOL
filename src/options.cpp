@@ -2914,6 +2914,8 @@ void options_manager::add_options_llm()
 #endif
     const std::string default_ollama_url = "http://127.0.0.1:11434";
     const std::string default_ollama_model = "qwen2.5:3b";
+    const std::string default_summary_backend = "ollama";
+    const std::string default_summary_ollama_model = "mistral";
 
     add( "DEBUG_LLM_INTENT_LOG", "llm", to_translation( "Log LLM shouts" ),
          to_translation( "When enabled, log LLM prompts and responses to config/llm_intent.log." ),
@@ -3029,8 +3031,27 @@ void options_manager::add_options_llm()
 
     add_empty_line();
 
+    add( "LLM_SUMMARY_BACKEND", "llm", to_translation( "Summary backend" ),
+         to_translation( "Backend used for build-time background summaries.  Ollama is recommended for simple local summary generation." ),
+         {
+             { "ollama", to_translation( "Ollama" ) },
+             { "openvino", to_translation( "OpenVINO" ) },
+         },
+         default_summary_backend
+       );
+
+    add( "LLM_SUMMARY_OLLAMA_URL", "llm", to_translation( "Summary Ollama URL" ),
+         to_translation( "Local Ollama server URL used for background summaries." ),
+         default_ollama_url, 4096
+       );
+
+    add( "LLM_SUMMARY_OLLAMA_MODEL", "llm", to_translation( "Summary Ollama model" ),
+         to_translation( "Local Ollama model name used for background summaries." ),
+         default_summary_ollama_model, 4096
+       );
+
     add( "LLM_SUMMARY_MODEL_DIR", "llm", to_translation( "Summary model directory" ),
-         to_translation( "Path to the local model directory used for background summaries." ),
+         to_translation( "Path to the local OpenVINO model directory used for background summaries when Summary backend is OpenVINO." ),
          default_llm_summary_model, 4096
        );
 }
