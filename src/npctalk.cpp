@@ -147,6 +147,36 @@ static const zone_type_id zone_type_NPC_NO_INVESTIGATE( "NPC_NO_INVESTIGATE" );
 
 static std::map<std::string, json_talk_topic> json_talk_topics;
 
+static npc *select_llm_ambient_speech_target( const avatar &speaker, int hear_volume )
+{
+    if( g == nullptr ) {
+        return nullptr;
+    }
+    std::vector<npc *> candidates = g->get_npcs_if( [&]( const npc &guy ) {
+        if( guy.is_player_ally() || guy.is_hallucination() ) {
+            return false;
+        }
+        if( guy.get_attitude() == NPCATT_KILL || guy.get_attitude() == NPCATT_FLEE ||
+            guy.get_attitude() == NPCATT_FLEE_TEMP ) {
+            return false;
+        }
+        return guy.can_hear( speaker.pos_bub(), hear_volume );
+    } );
+    if( candidates.empty() ) {
+        return nullptr;
+    }
+    const tripoint_bub_ms speaker_pos = speaker.pos_bub();
+    std::sort( candidates.begin(), candidates.end(), [&]( const npc *lhs, const npc *rhs ) {
+        const int lhs_dist = rl_dist( speaker_pos, lhs->pos_bub() );
+        const int rhs_dist = rl_dist( speaker_pos, rhs->pos_bub() );
+        if( lhs_dist != rhs_dist ) {
+            return lhs_dist < rhs_dist;
+        }
+        return lhs->getID() < rhs->getID();
+    } );
+    return candidates.front();
+}
+
 using item_menu = std::function<item_location( const item_location_filter & )>;
 using item_menu_mul = std::function<drop_locations( const item_location_filter & )>;
 
@@ -1478,19 +1508,37 @@ void game::chat()
             std::vector<npc *> hearers = get_npcs_if( [&]( const npc & guy ) {
                 return guy.can_hear( u.pos_bub(), llm_hear_volume ) && guy.is_player_ally();
             } );
+            npc *ambient_target = select_llm_ambient_speech_target( u, llm_hear_volume );
+            const std::string utterance = !yell_msg.empty() ? yell_msg : message;
             if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
-                const std::string utterance = !yell_msg.empty() ? yell_msg : message;
                 llm_intent::enqueue_requests( hearers, utterance );
+                if( ambient_target != nullptr ) {
+                    llm_intent::log_event( string_format( "ambient target %s (%d) for utterance\n%s",
+                                           ambient_target->get_name(), ambient_target->getID().get_value(), utterance ) );
+                    llm_intent::enqueue_ambient_request( *ambient_target, utterance );
+                }
             }
-            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
-                if( hearers.empty() ) {
+            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) || get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                std::vector<std::string> heard_by;
+                heard_by.reserve( hearers.size() + ( ambient_target != nullptr ? 1 : 0 ) );
+                for( const npc *guy : hearers ) {
+                    heard_by.push_back( guy->get_name() + " [ally]" );
+                }
+                if( ambient_target != nullptr ) {
+                    heard_by.push_back( ambient_target->get_name() + " [ambient]" );
+                }
+                if( heard_by.empty() ) {
                     add_msg( _( "LLM intent test: player said sentence %s (no NPCs heard it)" ), message );
                 } else {
-                    std::string hearer_list = enumerate_as_string( hearers.begin(), hearers.end(),
-                    []( const npc * guy ) {
-                        return guy->get_name();
-                    } );
-                    add_msg( _( "LLM intent test: player said sentence %s (heard by %s)" ), message, hearer_list );
+                    std::string heard_by_text;
+                    for( size_t i = 0; i < heard_by.size(); ++i ) {
+                        if( i > 0 ) {
+                            heard_by_text += ", ";
+                        }
+                        heard_by_text += heard_by[i];
+                    }
+                    add_msg( _( "LLM intent test: player said sentence %s (heard by %s)" ), message,
+                             heard_by_text );
                 }
             }
         }
