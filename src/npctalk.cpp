@@ -1274,6 +1274,9 @@ void game::chat()
             };
             std::vector<npc *> hearers = get_npcs_if( hears_player );
             npc *ambient_target = select_llm_ambient_speech_target( u, llm_hear_volume );
+            if( ambient_target != nullptr ) {
+                hearers.clear();
+            }
             const std::string utterance = !yell_msg.empty() ? yell_msg : message;
             if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                 llm_intent::enqueue_requests( hearers, utterance );
