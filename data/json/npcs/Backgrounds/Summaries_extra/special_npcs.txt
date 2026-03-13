@@ -6,3 +6,33 @@ name:Liam|Old friend from before the Cataclysm; delivery-driver drifter with som
 topic:TALK_FRIEND_Liam|Old friend from before the Cataclysm; delivery-driver drifter with some survival training from a prepper father. Dryly funny, practical, skeptical, guarded about family, but loyal once trust is earned.|Yeah, nah, I get what you're saying. I'm not gonna pretend this isn't a mess, but let's keep our heads on straight.|special_npc:Liam
 
 topic:TALK_Liam_Meeting1|Old friend from before the Cataclysm; delivery-driver drifter with some survival training from a prepper father. Dryly funny, practical, skeptical, guarded about family, but loyal once trust is earned.|Yeah, nah, I get what you're saying. I'm not gonna pretend this isn't a mess, but let's keep our heads on straight.|special_npc:Liam
+
+name:Luo Meizhen|Brilliant, sarcastic mycology researcher with a weird sense of humor, a survivor's edge, and a habit of sounding half-amused even when life is absurd.|Right, because obviously the apocalypse wasn't enough, now we're doing this too. Fine. Go on.|special_npc:Luo
+
+topic:TALK_FRIEND_Luo|Brilliant, sarcastic mycology researcher with a weird sense of humor, a survivor's edge, and a habit of sounding half-amused even when life is absurd.|Right, because obviously the apocalypse wasn't enough, now we're doing this too. Fine. Go on.|special_npc:Luo
+
+topic:TALK_REFUGEE_BEGGAR_3|Brilliant, sarcastic mycology researcher with a weird sense of humor, a survivor's edge, and a habit of sounding half-amused even when life is absurd.|Right, because obviously the apocalypse wasn't enough, now we're doing this too. Fine. Go on.|special_npc:Luo
+
+name:Rubik|Exodii merchant cyborg; sharp, technical, mildly alien in worldview, practical, and more interested in useful exchange than sentimentality.|If you have a point, make it. If you have salvage, even better.|special_npc:Rubik
+
+topic:TALK_EXODII_MERCHANT|Exodii merchant cyborg; sharp, technical, mildly alien in worldview, practical, and more interested in useful exchange than sentimentality.|If you have a point, make it. If you have salvage, even better.|special_npc:Rubik
+
+name:Nine|Exodii weapons specialist; severe, disciplined, analytical, and hard to impress, with a cold professional focus on armament and competence.|Speak clearly. If this concerns weapons, then maybe we're not wasting each other's time.|special_npc:Nine
+
+topic:TALK_WEAPONMASTER_INTRO_1|Exodii weapons specialist; severe, disciplined, analytical, and hard to impress, with a cold professional focus on armament and competence.|Speak clearly. If this concerns weapons, then maybe we're not wasting each other's time.|special_npc:Nine
+
+name:Smokes|Overworked Free Merchant quartermaster and former firefighter; chatty, decent, responsible, and carrying more civic duty than he really wanted.|Yeah, all right, let's talk. Somebody around here has to keep the wheels from falling off.|special_npc:Smokes
+
+topic:TALK_FREE_MERCHANTS_MERCHANT|Overworked Free Merchant quartermaster and former firefighter; chatty, decent, responsible, and carrying more civic duty than he really wanted.|Yeah, all right, let's talk. Somebody around here has to keep the wheels from falling off.|special_npc:Smokes
+
+name:Mikhail Frolov|Weathered fisherman and family man trying to build a safe life out of the wreckage; plainspoken, patient, wary, and deeply anchored by family duty.|We endure. We work, we fish, we keep each other alive. That is enough for today.|special_npc:Mikhail_Frolov
+
+topic:TALK_lighthouse_man_1|Weathered fisherman and family man trying to build a safe life out of the wreckage; plainspoken, patient, wary, and deeply anchored by family duty.|We endure. We work, we fish, we keep each other alive. That is enough for today.|special_npc:Mikhail_Frolov
+
+name:Heather Frolova|Anxious but resilient mother trying to hold what remains of her family together; gentle, domestic, and cautious after too much fear.|Thank you. I'm trying to keep things together, one little piece at a time.|special_npc:Heather_Frolova
+
+topic:TALK_lighthouse_woman_1|Anxious but resilient mother trying to hold what remains of her family together; gentle, domestic, and cautious after too much fear.|Thank you. I'm trying to keep things together, one little piece at a time.|special_npc:Heather_Frolova
+
+name:Angelina Frolova|Young lighthouse survivor helping her family rebuild a sense of home; earnest, polite, and trying to be brave in a broken world.|I'm okay. Or… trying to be, anyway. We're making this place feel like home.|special_npc:Angelina_Frolova
+
+topic:TALK_lighthouse_girl_1|Young lighthouse survivor helping her family rebuild a sense of home; earnest, polite, and trying to be brave in a broken world.|I'm okay. Or… trying to be, anyway. We're making this place feel like home.|special_npc:Angelina_Frolova
