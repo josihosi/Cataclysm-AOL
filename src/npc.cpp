@@ -2339,7 +2339,7 @@ void npc::add_llm_intent_memory( const std::string &player_utterance,
     entry.npc_response = npc_response;
     entry.actions = actions;
     state.conversation_memory.push_back( std::move( entry ) );
-    static constexpr size_t max_entries = 2;
+    const size_t max_entries = actions.empty() ? 5 : 2;
     while( state.conversation_memory.size() > max_entries ) {
         state.conversation_memory.pop_front();
     }
@@ -2366,7 +2366,7 @@ void npc::add_llm_overheard_memory( const std::string &npc_name,
     entry.npc_response = npc_response;
     entry.actions = actions;
     state.overheard_memory.push_back( std::move( entry ) );
-    static constexpr size_t max_entries = 2;
+    const size_t max_entries = actions.empty() ? 4 : 2;
     while( state.overheard_memory.size() > max_entries ) {
         state.overheard_memory.pop_front();
     }
