@@ -251,6 +251,11 @@ def summarize_to_lines(text: str) -> Tuple[str, str]:
         left_items = [item.strip() for item in left.split(",") if item.strip()]
         if len(left_items) >= 5 and right.strip():
             return ", ".join(left_items[:5]), right.strip()
+    line_parts = [line.strip() for line in text.replace("\r", "").split("\n") if line.strip()]
+    if len(line_parts) >= 2:
+        left_items = [item.strip() for item in line_parts[0].split(",") if item.strip()]
+        if len(left_items) >= 5 and line_parts[1]:
+            return ", ".join(left_items[:5]), line_parts[1]
     words = words_from_output(text)
     if len(words) >= 10:
         background = ", ".join(words[:5])
@@ -269,6 +274,11 @@ def is_valid_words(text: str) -> bool:
         left, right = text.split("|", 1)
         left_items = [item.strip() for item in left.split(",") if item.strip()]
         return len(left_items) >= 5 and bool(right.strip())
+    line_parts = [line.strip() for line in text.replace("\r", "").split("\n") if line.strip()]
+    if len(line_parts) >= 2:
+        left_items = [item.strip() for item in line_parts[0].split(",") if item.strip()]
+        if len(left_items) >= 5 and bool(line_parts[1]):
+            return True
     return len(words_from_output(text)) >= 10
 
 
@@ -568,6 +578,8 @@ def main() -> int:
                         print(f"Invalid summary output for {topic_id}: {raw_text!r}")
                     if attempt + 1 < attempts:
                         continue
+            else:
+                summary = raw_text.strip()
             if is_valid_words(summary):
                 background_line, expression_line = summarize_to_lines(summary)
                 break
