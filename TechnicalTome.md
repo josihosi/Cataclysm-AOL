@@ -34,8 +34,11 @@ The Makefile defines a convenience target:
   enables local generation and now fails fast if the model dir is missing.
 
 Configuration knobs:
+- `LLM_SUMMARY_BACKEND` (env) or `--backend` / `--summary-backend` (`ollama` or `openvino`).
+- `LLM_SUMMARY_OLLAMA_URL` + `LLM_SUMMARY_OLLAMA_MODEL` for local Ollama summaries.
 - `LLM_SUMMARY_MODEL_DIR` (env) or `--model-dir` / `--summary-model-dir` for the OpenVINO model.
 - `LLM_SUMMARY_DEVICE` (env) or `--device` / `--summary-device` for target device (default "NPU").
+- On macOS builds, `just_build_macos.sh --with-summary` also reads the branch profile's `config/options.json` (LLM menu settings) so the in-game summary backend/model options can drive future summary builds.
 
 ## LLM Intent Actions (Behavior Notes)
 - `look_around` requests up to three nearby item names for pickup targeting.
