@@ -1415,16 +1415,20 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
     for( int dy = -radius; dy <= radius; ++dy ) {
         for( int dx = -radius; dx <= radius; ++dx ) {
             const tripoint_bub_ms p( center.x() + dx, center.y() + dy, center.z() );
-            char glyph = '-';
+            char glyph = ' ';
             if( p == center ) {
                 glyph = '|';
             } else if( !here.inbounds( p ) ) {
-                glyph = '6';
+                glyph = ' ';
+            } else if( !listener.sees( here, p ) ) {
+                glyph = ' ';
             } else {
                 const int cost = here.move_cost( p );
                 const int scaled_cost = cost * 50;
                 if( Creature *critter = get_creature_tracker().creature_at( p ) ) {
-                    if( critter->is_avatar() && player_letter_active ) {
+                    if( !listener.sees( here, *critter ) ) {
+                        glyph = cost <= 0 ? '6' : ( scaled_cost > 100 ? '0' : '-' );
+                    } else if( critter->is_avatar() && player_letter_active ) {
                         auto found = letter_map.find( critter );
                         if( found == letter_map.end() ) {
                             const char base_letter = 'a';
@@ -1461,6 +1465,8 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
                     glyph = '6';
                 } else if( scaled_cost > 100 ) {
                     glyph = '0';
+                } else {
+                    glyph = '-';
                 }
             }
             out_map.push_back( glyph );
@@ -1575,7 +1581,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         if( bg_line.rfind( "bg_", 0 ) == 0 ) {
             bg_line.erase( 0, 3 );
         }
-        out << "your_background: " << bg_line << "\n";
+        out << "your_background_info: " << bg_line << "\n";
     }
     if( !background_summary.background.empty() ) {
         out << "your_tone: " << background_summary.background << "\n";
