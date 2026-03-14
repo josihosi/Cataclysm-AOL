@@ -85,6 +85,16 @@ std::mutex llm_intent_log_mutex;
 constexpr const char *llm_intent_log_filename = "llm_intent.log";
 constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
+std::filesystem::path central_llm_config_dir_path()
+{
+    return std::filesystem::path( PATH_INFO::base_path() ) / "config";
+}
+
+std::filesystem::path central_llm_log_path( const char *filename )
+{
+    return central_llm_config_dir_path() / filename;
+}
+
 void append_llm_intent_log( const std::string &payload )
 {
     if( payload.empty() ) {
@@ -116,9 +126,10 @@ void append_llm_intent_log( const std::string &payload )
         final_payload += "\n\n";
     }
     std::lock_guard<std::mutex> lock( llm_intent_log_mutex );
-    assure_dir_exist( PATH_INFO::config_dir() );
-    const std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
-                                           llm_intent_log_filename;
+    const std::filesystem::path config_dir = central_llm_config_dir_path();
+    std::error_code mkdir_ec;
+    std::filesystem::create_directories( config_dir, mkdir_ec );
+    const std::filesystem::path log_path = central_llm_log_path( llm_intent_log_filename );
     std::error_code ec;
     if( std::filesystem::exists( log_path, ec ) ) {
         const std::uintmax_t size = std::filesystem::file_size( log_path, ec );
@@ -935,21 +946,15 @@ std::vector<inventory_item_entry> collect_inventory_entries( npc &listener, size
 }
 
 std::string build_look_around_prompt( const std::string &player_utterance,
-                                      const std::vector<std::string> &inventory,
                                       const std::vector<look_around_item_entry> &items )
 {
     std::ostringstream out;
     out << "<System>";
-    out << "Select up to three items from the list for the NPC to pick up.";
-    out << "To do this, return up to three item ids from the item list, comma-separated.";
-    out << "Use item ids from the list only.";
+    out << "Select up to three nearby items from the list for the NPC to pick up.";
+    out << "Return only up to three item ids from the <Items> list, comma-separated.";
+    out << "Do not return item names, explanations, or any items not listed in <Items>.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
-    out << "<Inventory>\n";
-    for( const std::string &entry : inventory ) {
-        out << "  <Item name=\"" << xml_escape( entry ) << "\"/>\n";
-    }
-    out << "</Inventory>\n";
     out << "<Items>\n";
     for( const look_around_item_entry &entry : items ) {
         out << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
@@ -2143,9 +2148,9 @@ class llm_intent_runner_process
             std::filesystem::path python_path = resolve_path( config.python_path );
             std::filesystem::path runner_path = resolve_path( config.runner_path );
             std::filesystem::path model_dir = resolve_path( config.model_dir );
-            std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
-                                             "llm_intent_runner.log";
-            assure_dir_exist( PATH_INFO::config_dir() );
+            std::filesystem::path log_path = central_llm_log_path( "llm_intent_runner.log" );
+            std::error_code mkdir_ec;
+            std::filesystem::create_directories( central_llm_config_dir_path(), mkdir_ec );
 
             std::vector<std::string> args;
             args.push_back( python_path.string() );
@@ -2459,9 +2464,9 @@ class posix_runner_process
             std::filesystem::path python_path = resolve_path( config.python_path );
             std::filesystem::path runner_path = resolve_path( config.runner_path );
             std::filesystem::path model_dir = resolve_path( config.model_dir );
-            std::filesystem::path log_path = PATH_INFO::config_dir_path().get_unrelative_path() /
-                                             "llm_intent_runner.log";
-            assure_dir_exist( PATH_INFO::config_dir() );
+            std::filesystem::path log_path = central_llm_log_path( "llm_intent_runner.log" );
+            std::error_code mkdir_ec;
+            std::filesystem::create_directories( central_llm_config_dir_path(), mkdir_ec );
 
             std::vector<std::string> args;
             args.push_back( python_path.string() );
@@ -2946,18 +2951,10 @@ class llm_intent_manager
         void enqueue_look_around_request( npc &listener, const std::string &player_utterance ) {
             static constexpr int look_max_tokens = 128;
             static constexpr size_t max_item_entries = 60;
-            static constexpr size_t max_inventory_entries = 60;
             std::vector<look_around_item_entry> items = collect_look_around_items( listener, 5,
                     max_item_entries );
             if( items.empty() ) {
                 return;
-            }
-            std::vector<inventory_item_entry> inventory_entries = collect_inventory_entries( listener,
-                    max_inventory_entries );
-            std::vector<std::string> inventory;
-            inventory.reserve( inventory_entries.size() );
-            for( const inventory_item_entry &entry : inventory_entries ) {
-                inventory.push_back( entry.name );
             }
             for( size_t i = 0; i < items.size(); ++i ) {
                 items[i].id = string_format( "item_%d", static_cast<int>( i + 1 ) );
@@ -2967,7 +2964,7 @@ class llm_intent_manager
             req.npc_id = listener.getID();
             req.npc_name = listener.get_name();
             req.snapshot = "{}";
-            req.prompt = build_look_around_prompt( player_utterance, inventory, items );
+            req.prompt = build_look_around_prompt( player_utterance, items );
             req.max_tokens = look_max_tokens;
             req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
             req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
