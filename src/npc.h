@@ -1380,6 +1380,7 @@ class npc : public Character
             std::string target_hint;
             int target_attacks_remaining = 0;
             int target_turns_remaining = 0;
+            int target_loss_grace_turns_remaining = 0;
             int panic_forced_turns_remaining = 0;
             int calm_turns_remaining = 0;
             int calm_start_panic = 0;
