@@ -49,6 +49,7 @@
 #include "item_group.h"
 #include "itype.h"
 #include "iuse.h"
+#include "llm_intent.h"
 #include "iuse_actor.h"
 #include "magic.h"
 #include "map.h"
@@ -2572,6 +2573,17 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
     state.active_turn = calendar::before_time_starts;
     state.last_applied_turn = calendar::before_time_starts;
     state.request_id = request_id;
+    auto legend_it = state.legend_targets_by_request.find( request_id );
+    if( legend_it != state.legend_targets_by_request.end() ) {
+        state.legend_targets = std::move( legend_it->second );
+        state.legend_targets_by_request.erase( legend_it );
+    } else {
+        state.legend_targets.clear();
+    }
+    llm_intent::log_event( string_format( "attack debug set actions %s (%s): actions=%d target_hint='%s' legend_size=%d pending_legend_maps=%d",
+                                          get_name(), request_id, static_cast<int>( state.queue.size() ),
+                                          target_hint, static_cast<int>( state.legend_targets.size() ),
+                                          static_cast<int>( state.legend_targets_by_request.size() ) ) );
     state.target_hint = target_hint;
     if( !state.target_hint.empty() ) {
         state.target_attacks_remaining = 4;
@@ -2600,6 +2612,7 @@ void npc::clear_llm_intent_actions()
     state.calm_turns_remaining = 0;
     state.calm_start_panic = 0;
     state.legend_targets.clear();
+    state.legend_targets_by_request.clear();
     state.move_arrival_state = llm_intent_action::none;
     state.hold_position_active = false;
     goto_to_this_pos = std::nullopt;
@@ -2621,10 +2634,18 @@ void npc::set_llm_intent_move_target( const std::optional<tripoint_abs_ms> &targ
     }
 }
 
-void npc::set_llm_intent_legend_map( std::map<char, weak_ptr_fast<Creature>> legend ) const
+void npc::set_llm_intent_legend_map( const std::string &request_id,
+                                     std::map<char, weak_ptr_fast<Creature>> legend ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
-    state.legend_targets = std::move( legend );
+    llm_intent::log_event( string_format( "attack debug store legend %s (%s): size=%d",
+                                          get_name(), request_id,
+                                          static_cast<int>( legend.size() ) ) );
+    if( request_id.empty() ) {
+        state.legend_targets = std::move( legend );
+        return;
+    }
+    state.legend_targets_by_request[request_id] = std::move( legend );
 }
 
 void npc::set_llm_intent_item_targets( const std::vector<std::string> &targets ) const

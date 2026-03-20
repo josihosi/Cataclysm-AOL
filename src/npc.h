@@ -1388,6 +1388,7 @@ class npc : public Character
             int calm_turns_remaining = 0;
             int calm_start_panic = 0;
             std::map<char, weak_ptr_fast<Creature>> legend_targets;
+            std::map<std::string, std::map<char, weak_ptr_fast<Creature>>> legend_targets_by_request;
             llm_intent_action move_arrival_state = llm_intent_action::none;
             bool hold_position_active = false;
             std::deque<std::string> look_around_targets;
@@ -1404,7 +1405,8 @@ class npc : public Character
 
         std::map<npc_need, npc_need_goal_cache> goal_cache;
     public:
-        void set_llm_intent_legend_map( std::map<char, weak_ptr_fast<Creature>> legend ) const;
+        void set_llm_intent_legend_map( const std::string &request_id,
+                                        std::map<char, weak_ptr_fast<Creature>> legend ) const;
         const std::shared_ptr<npc_attack> &get_current_attack() const {
             return ai_cache.current_attack;
         }
