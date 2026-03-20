@@ -589,7 +589,8 @@ void npc::apply_llm_intent_target()
         const item_location weapon = get_wielded_item();
         const bool npc_ranged = weapon && weapon->is_gun();
         if( best->is_monster() ) {
-            ai_cache.danger = evaluate_monster( static_cast<const monster &>( *best ), best_dist );
+            ai_cache.danger = std::max( evaluate_monster( static_cast<const monster &>( *best ), best_dist ),
+                                        NPC_DANGER_VERY_LOW );
         } else if( best->is_npc() || best->is_avatar() ) {
             ai_cache.danger = std::max( evaluate_character( static_cast<const Character &>( *best ), npc_ranged,
                                         true ),
@@ -1797,41 +1798,68 @@ void npc::move()
                    get_name(), target_name, ai_cache.danger, *confident_range_cache );
 
     llm_intent_state &state = llm_intent_state_for( *this );
+    const bool llm_attack_override = state.target_attacks_remaining > 0 &&
+                                     state.target_turns_remaining > 0 &&
+                                     !state.target_hint.empty();
     auto attempt_llm_forced_attack = [&]() -> bool {
-        if( state.target_attacks_remaining <= 0 || state.target_hint.empty() ) {
+        if( state.target_attacks_remaining <= 0 || state.target_turns_remaining <= 0 ||
+            state.target_hint.empty() ) {
+            state.target_loss_grace_turns_remaining = 0;
             return false;
         }
-        if( Creature *forced_target = current_target() ) {
-            npc_action forced = method_of_attack();
-            if( forced == npc_do_attack ) {
+        Creature *forced_target = current_target();
+        if( forced_target == nullptr ) {
+            if( state.target_loss_grace_turns_remaining > 0 ) {
+                state.target_loss_grace_turns_remaining -= 1;
                 if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
-                    add_msg( _( "LLM intent forced immediate attack" ) );
+                    add_msg( _( "LLM intent target lost; grace %d" ),
+                             state.target_loss_grace_turns_remaining );
                 }
-                execute_action( forced );
+                execute_action( npc_pause );
                 return true;
             }
-            const item_location current_weapon = get_wielded_item();
-            if( current_weapon && current_weapon->is_gun() ) {
-                const int dist = rl_dist( pos_bub(), forced_target->pos_bub() );
-                const int conf = confident_shoot_range( *current_weapon, recoil_total() );
-                if( dist <= conf ) {
-                    execute_action( npc_aim );
-                    if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
-                        add_msg( _( "LLM intent aiming at %s" ), forced_target->disp_name() );
-                    }
-                    return true;
-                }
+            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+                add_msg( _( "LLM intent target '%s' lost; reverting" ), state.target_hint );
             }
+            state.target_hint.clear();
+            state.target_attacks_remaining = 0;
+            state.target_turns_remaining = 0;
+            state.target_loss_grace_turns_remaining = 0;
+            return false;
+        }
+
+        state.target_loss_grace_turns_remaining = 3;
+        npc_action forced = method_of_attack();
+        if( forced == npc_do_attack ) {
+            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+                add_msg( _( "LLM intent forced immediate attack" ) );
+            }
+            execute_action( forced );
+            return true;
+        }
+
+        const item_location forced_weapon = get_wielded_item();
+        if( forced_weapon && forced_weapon->is_gun() ) {
+            const int dist = rl_dist( pos_bub(), forced_target->pos_bub() );
+            const int conf = confident_shoot_range( *forced_weapon, recoil_total() );
+            if( dist <= conf ) {
+                execute_action( npc_aim );
+                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+                    add_msg( _( "LLM intent aiming at %s" ), forced_target->disp_name() );
+                }
+                return true;
+            }
+        }
+
+        if( !has_flag( json_flag_CANNOT_MOVE ) ) {
             update_path( forced_target->pos_bub() );
             move_to_next();
             if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                 add_msg( _( "LLM intent advancing toward %s" ), forced_target->disp_name() );
             }
             return true;
-        } else if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
-            add_msg( _( "LLM intent had no target to attack" ) );
         }
-        return false;
+        return true;
     };
     if( get_option<bool>( "LLM_INTENT_ENABLE" ) &&
         state.active != llm_intent_action::none &&
@@ -1860,7 +1888,6 @@ void npc::move()
     if( get_option<bool>( "LLM_INTENT_ENABLE" ) && attempt_llm_forced_attack() ) {
         return;
     }
-
     Character &player_character = get_player_character();
     //faction opinion determines if it should consider you hostile
     if( !is_enemy() && guaranteed_hostile() && sees( here, player_character ) ) {
@@ -1988,10 +2015,10 @@ void npc::move()
         path.clear();
     }
 
-    if( action == npc_undecided && is_walking_with() && rules.has_flag( ally_rule::follow_close ) &&
+    if( action == npc_undecided && !llm_attack_override && is_walking_with() &&
+        rules.has_flag( ally_rule::follow_close ) &&
         rl_dist( pos_bub(), player_character.pos_bub() ) > follow_distance() &&
-        !( player_character.in_vehicle &&
-           in_vehicle ) && !has_flag( json_flag_CANNOT_MOVE ) ) {
+        !( player_character.in_vehicle && in_vehicle ) && !has_flag( json_flag_CANNOT_MOVE ) ) {
         action = npc_follow_player;
     }
 
