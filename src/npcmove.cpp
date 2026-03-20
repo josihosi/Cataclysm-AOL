@@ -1816,7 +1816,7 @@ void npc::move()
 
     llm_intent_state &state = llm_intent_state_for( *this );
     const bool llm_item_safe = ai_cache.danger <= 0 && target == nullptr &&
-                               !sees_dangerous_field( pos_bub() ) &&
+                               !sees_dangerous_field( pos() ) &&
                                !has_effect( effect_npc_fire_bad );
     if( get_option<bool>( "LLM_INTENT_ENABLE" ) && llm_item_safe && !fetching_item &&
         !state.look_around_targets.empty() ) {
@@ -1878,7 +1878,7 @@ void npc::move()
             }
         }
 
-        if( !has_flag( json_flag_CANNOT_MOVE ) ) {
+        {
             update_path( forced_target->pos() );
             move_to_next();
             if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
@@ -2035,7 +2035,7 @@ void npc::move()
         }
     }
 
-    if( action == npc_undecided && goto_to_this_pos && !has_flag( json_flag_CANNOT_MOVE ) ) {
+    if( action == npc_undecided && goto_to_this_pos  ) {
         action = npc_goto_to_this_pos;
     }
 
@@ -2050,7 +2050,7 @@ void npc::move()
     if( action == npc_undecided && !llm_attack_override && !llm_item_override && is_walking_with() &&
         rules.has_flag( ally_rule::follow_close ) &&
         rl_dist( pos(), player_character.pos() ) > follow_distance() &&
-        !( player_character.in_vehicle && in_vehicle ) && !has_flag( json_flag_CANNOT_MOVE ) ) {
+        !( player_character.in_vehicle && in_vehicle )  ) {
         action = npc_follow_player;
     }
 
@@ -2187,7 +2187,7 @@ void npc::execute_action( npc_action action )
     map &here = get_map();
     switch( action ) {
         case npc_do_attack: {
-            if( has_flag( json_flag_CANNOT_ATTACK ) ) {
+            if( false ) {
                 move_pause();
                 break;
             }
@@ -2532,10 +2532,10 @@ void npc::execute_action( npc_action action )
             break;
 
         case npc_goto_to_this_pos: {
-            update_path( here.get_bub( *goto_to_this_pos ) );
+            update_path( here.getlocal( *goto_to_this_pos ) );
             move_to_next();
 
-            if( pos_abs() == *goto_to_this_pos ) {
+            if( here.getglobal( pos() ) == *goto_to_this_pos ) {
                 llm_intent_state &state = llm_intent_state_for( *this );
                 const llm_intent_action arrival_state = state.move_arrival_state;
                 goto_to_this_pos = std::nullopt;
@@ -4287,8 +4287,7 @@ void npc::pick_up_item()
     if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() && !llm_targeted ) {
         add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); Canceling on player's request", get_name() );
         fetching_item = false;
-        wanted_item = {};
-        log_look_around_pickup( "canceled by ally rule" );
+                log_look_around_pickup( "canceled by ally rule" );
         moves -= 1;
         return;
     }
@@ -4302,8 +4301,7 @@ void npc::pick_up_item()
           !here.is_harvestable( wanted_item_pos ) && sees( wanted_item_pos ) ) ||
         ( is_player_ally() && g->check_zone( zone_type_NO_NPC_PICKUP, wanted_item_pos ) ) ) {
         fetching_item = false;
-        wanted_item = {};
-        log_look_around_pickup( "canceled (no items or zone)" );
+                log_look_around_pickup( "canceled (no items or zone)" );
         move_pause();
         add_msg_debug( debugmode::DF_NPC, "Canceling pickup - no items or new zone" );
         return;
@@ -4325,8 +4323,7 @@ void npc::pick_up_item()
     } else if( dist_to_pickup > 1 && path.empty() ) {
         add_msg_debug( debugmode::DF_NPC, "Can't find path" );
         fetching_item = false;
-        wanted_item = {};
-        log_look_around_pickup( "canceled (no path)" );
+                log_look_around_pickup( "canceled (no path)" );
         move_pause();
         return;
     }
@@ -4356,14 +4353,12 @@ void npc::pick_up_item()
         if( here.is_harvestable( wanted_item_pos ) ) {
             here.examine( *this, wanted_item_pos );
             fetching_item = false;
-            wanted_item = {};
-            log_look_around_pickup( "harvested (no items picked)" );
+                        log_look_around_pickup( "harvested (no items picked)" );
             return;
         }
         if( llm_targeted ) {
             fetching_item = false;
-            wanted_item = {};
-            move_pause();
+                        move_pause();
             log_look_around_pickup( "picked up 0 item(s), canceling" );
             return;
         }
@@ -4404,8 +4399,7 @@ void npc::pick_up_item()
     if( llm_targeted && !picked_up.empty() ) {
         const std::string continued_target = state.look_around_active_target;
         fetching_item = false;
-        wanted_item = {};
-        state.look_around_targets.push_front( continued_target );
+                state.look_around_targets.push_front( continued_target );
         if( apply_llm_intent_item_targets() ) {
             log_look_around_pickup( string_format( "picked up %d item(s), continuing",
                                                    static_cast<int>( picked_up.size() ) ), false );
@@ -4416,8 +4410,7 @@ void npc::pick_up_item()
     log_look_around_pickup( string_format( "picked up %d item(s)",
                                            static_cast<int>( picked_up.size() ) ) );
     fetching_item = false;
-    wanted_item = {};
-}
+    }
 
 template <typename T, typename F>
 std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter,
@@ -6068,3 +6061,4 @@ void npc::set_movement_mode( const move_mode_id &new_mode )
 {
     move_mode = new_mode;
 }
+

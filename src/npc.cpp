@@ -1755,7 +1755,7 @@ void npc::say( const std::string &line, const sounds::sound_t spriority ) const
 
 int npc::indoor_voice() const
 {
-    const map &here = get_map();
+    static const efftype_id effect_sleep( "sleep" );
 
     const int max_volume = get_shout_volume();
     const int min_volume = 1;
@@ -1763,16 +1763,14 @@ int npc::indoor_voice() const
     // Keep ordinary speech in roughly the 8-10 tile range instead of the old 6-tile whisper.
     int wanted_volume = 8;
     Character &player = get_player_character();
-    const int distance_to_player = rl_dist( pos_abs(), player.pos_abs() );
+    const int distance_to_player = rl_dist( pos(), player.pos() );
     if( is_following() || is_ally( player ) ) {
         wanted_volume = std::max( wanted_volume, distance_to_player + 2 );
-    } else if( is_enemy() && sees( here, player.pos_bub( here ) ) ) {
+    } else if( is_enemy() && sees( player ) ) {
         // Battle cry! Bandits have no concept of indoor voice, even when not threatened.
         wanted_volume = max_volume;
     }
-    // Possible fallthrough: neutral or unaware enemy NPCs talk at default wanted_volume
 
-    // Don't wake up friends when using our indoor voice
     for( const auto &bunk_buddy : get_cached_friends() ) {
         Character *char_buddy = nullptr;
         if( auto buddy = bunk_buddy.lock() ) {
@@ -1782,9 +1780,8 @@ int npc::indoor_voice() const
             continue;
         }
         if( char_buddy->has_effect( effect_sleep ) ) {
-            int distance_to_sleeper = rl_dist( pos_bub(), char_buddy->pos_bub() );
+            const int distance_to_sleeper = rl_dist( pos(), char_buddy->pos() );
             if( wanted_volume >= distance_to_sleeper ) {
-                // Speak just quietly enough to not disturb anyone
                 wanted_volume = distance_to_sleeper - 1;
             }
         }

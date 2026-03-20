@@ -83,12 +83,12 @@ std::mutex llm_intent_log_mutex;
 constexpr const char *llm_intent_log_filename = "llm_intent.log";
 constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
-std::filesystem::path central_llm_config_dir_path()
+fs::path central_llm_config_dir_path()
 {
-    return std::filesystem::path( PATH_INFO::base_path() ) / "config";
+    return fs::path( PATH_INFO::base_path() ) / "config";
 }
 
-std::filesystem::path central_llm_log_path( const char *filename )
+fs::path central_llm_log_path( const char *filename )
 {
     return central_llm_config_dir_path() / filename;
 }
@@ -133,7 +133,7 @@ void append_llm_intent_log( const std::string &payload )
         const std::uintmax_t size = fs::file_size( log_path, ec );
         if( !ec && size >= static_cast<std::uintmax_t>( llm_intent_log_rotate_bytes ) ) {
             for( int i = 1; i <= 9999; ++i ) {
-                const std::string rotated = log_path + "." + std::to_string( i );
+                const std::string rotated = log_path.string() + "." + std::to_string( i );
                 if( !fs::exists( rotated, ec ) ) {
                     fs::rename( log_path, rotated, ec );
                     break;
@@ -386,15 +386,13 @@ std::string normalize_summary_line( std::string summary )
 void load_background_summary_text_dir( const cata_path &summary_root,
                                        std::unordered_map<std::string, background_summary_entry> &out )
 {
-    const std::filesystem::path summary_dir = summary_root.get_unrelative_path();
+    const fs::path summary_dir = fs::path( summary_root.get_unrelative_path().string() );
     std::error_code ec;
-    if( !std::filesystem::exists( summary_dir, ec ) ) {
+    if( !fs::exists( summary_dir, ec ) ) {
         return;
     }
 
-    for( const std::filesystem::directory_entry &entry : std::filesystem::directory_iterator(
-             summary_dir,
-             ec ) ) {
+    for( const fs::directory_entry &entry : fs::directory_iterator( summary_dir, ec ) ) {
         if( ec ) {
             break;
         }
@@ -1455,10 +1453,12 @@ float threat_score_for( npc &listener, const Creature &critter, int distance )
 
 int threat_level_for_snapshot( npc &listener, const Creature &critter )
 {
+    static constexpr double llm_monster_threat_max = 150.0;
+    static constexpr double llm_character_threat_max = 250.0;
     const int distance = rl_dist( listener.pos_bub(), critter.pos_bub() );
     const double threat = threat_score_for( listener, critter, distance );
-    const double max_threat = critter.as_monster() ? static_cast<double>( NPC_MONSTER_DANGER_MAX ) :
-                              static_cast<double>( NPC_CHARACTER_DANGER_MAX );
+    const double max_threat = critter.as_monster() ? llm_monster_threat_max :
+                              llm_character_threat_max;
     if( max_threat <= 0.0 ) {
         return 0;
     }
@@ -1525,13 +1525,13 @@ map_snapshot build_ascii_map_snapshot( npc &listener, const std::string &request
                 glyph = '|';
             } else if( !here.inbounds( p ) ) {
                 glyph = ' ';
-            } else if( !listener.sees( here, p ) ) {
+            } else if( !listener.sees( p ) ) {
                 glyph = ' ';
             } else {
                 const int cost = here.move_cost( p );
                 const int scaled_cost = cost * 50;
                 if( Creature *critter = get_creature_tracker().creature_at( p ) ) {
-                    if( !listener.sees( here, *critter ) ) {
+                    if( !listener.sees( *critter ) ) {
                         glyph = cost <= 0 ? '6' : ( scaled_cost > 100 ? '0' : '-' );
                     } else if( critter->is_avatar() && player_letter_active ) {
                         auto found = letter_map.find( critter );
@@ -2914,7 +2914,7 @@ class llm_intent_manager
             {
                 std::lock_guard<std::mutex> lock( mutex );
                 utterance_by_request[req.request_id] = player_utterance;
-                snapshot_origin_by_request[req.request_id] = listener.pos_abs();
+                snapshot_origin_by_request[req.request_id] = get_map().getglobal( listener.pos() );
                 primary_request_ids.insert( req.request_id );
                 request_queue.push( std::move( req ) );
             }
@@ -3002,7 +3002,7 @@ class llm_intent_manager
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     utterance_by_request[req.request_id] = pending.player_utterance;
-                    snapshot_origin_by_request[req.request_id] = listener->pos_abs();
+                    snapshot_origin_by_request[req.request_id] = get_map().getglobal( listener->pos() );
                     primary_request_ids.insert( req.request_id );
                     pending_primary_npcs.insert( req.npc_id );
                     serial_primary_request_ids.insert( req.request_id );
@@ -3418,7 +3418,7 @@ class llm_intent_manager
                                 target->set_llm_intent_actions( intent_actions, resp.request_id, attack_target );
                                 if( !move_coords.empty() ) {
                                     if( !snapshot_origin ) {
-                                        snapshot_origin = target->pos_abs();
+                                        snapshot_origin = get_map().getglobal( target->pos() );
                                         llm_intent::log_event( string_format( "move target %s (%s): snapshot origin missing, falling back to current pos (%d,%d,%d)",
                                                                               target->get_name(), resp.request_id,
                                                                               snapshot_origin->x(), snapshot_origin->y(), snapshot_origin->z() ) );
