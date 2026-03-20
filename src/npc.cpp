@@ -2280,11 +2280,13 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
     state.request_id = request_id;
     state.target_hint = target_hint;
     if( !state.target_hint.empty() ) {
-        state.target_attacks_remaining = 2;
-        state.target_turns_remaining = 25;
+        state.target_attacks_remaining = 4;
+        state.target_turns_remaining = 30;
+        state.target_loss_grace_turns_remaining = 3;
     } else {
         state.target_attacks_remaining = 0;
         state.target_turns_remaining = 0;
+        state.target_loss_grace_turns_remaining = 0;
     }
 }
 
@@ -2299,6 +2301,7 @@ void npc::clear_llm_intent_actions() const
     state.target_hint.clear();
     state.target_attacks_remaining = 0;
     state.target_turns_remaining = 0;
+    state.target_loss_grace_turns_remaining = 0;
     state.panic_forced_turns_remaining = 0;
     state.calm_turns_remaining = 0;
     state.calm_start_panic = 0;
