@@ -2600,7 +2600,7 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
     }
 }
 
-void npc::clear_llm_intent_actions() const
+void npc::clear_llm_intent_actions()
 {
     llm_intent_state &state = llm_intent_state_for( *this );
     state.queue.clear();
@@ -2616,8 +2616,25 @@ void npc::clear_llm_intent_actions() const
     state.calm_turns_remaining = 0;
     state.calm_start_panic = 0;
     state.legend_targets.clear();
+    state.move_arrival_state = llm_intent_action::none;
+    state.hold_position_active = false;
+    goto_to_this_pos = std::nullopt;
     state.look_around_targets.clear();
     state.look_around_active_target.clear();
+}
+
+void npc::set_llm_intent_move_target( const std::optional<tripoint_abs_ms> &target,
+                                      llm_intent_action arrival_state )
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    goto_to_this_pos = target;
+    state.move_arrival_state = arrival_state;
+    if( target ) {
+        state.hold_position_active = false;
+        talk_function::stop_guard( *this );
+    } else {
+        state.hold_position_active = false;
+    }
 }
 
 void npc::set_llm_intent_legend_map( std::map<char, weak_ptr_fast<Creature>> legend ) const

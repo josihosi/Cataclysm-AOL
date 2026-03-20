@@ -562,6 +562,7 @@ const std::vector<std::string> &allowed_actions()
 {
     static const std::vector<std::string> actions = {
         "wait_here",
+        "hold_position",
         "follow_close",
         "follow_far",
         "equip_gun",
@@ -576,8 +577,20 @@ const std::vector<std::string> &allowed_actions()
     return actions;
 }
 
+bool is_move_action( const std::string &token )
+{
+    std::string lowered = trim_copy( token );
+    std::transform( lowered.begin(), lowered.end(), lowered.begin(), []( unsigned char c ) {
+        return static_cast<char>( std::tolower( c ) );
+    } );
+    return lowered.rfind( "move:", 0 ) == 0 || lowered.rfind( "move ", 0 ) == 0;
+}
+
 bool is_allowed_action( const std::string &token )
 {
+    if( is_move_action( token ) ) {
+        return true;
+    }
     for( const std::string &action : allowed_actions() ) {
         if( token == action ) {
             return true;
@@ -590,6 +603,9 @@ llm_intent_action intent_action_from_token( const std::string &token )
 {
     if( token == "wait_here" ) {
         return llm_intent_action::wait_here;
+    }
+    if( token == "hold_position" ) {
+        return llm_intent_action::hold_position;
     }
     if( token == "follow_close" ) {
         return llm_intent_action::follow_close;
@@ -618,13 +634,70 @@ llm_intent_action intent_action_from_token( const std::string &token )
     return llm_intent_action::none;
 }
 
+bool parse_move_field( const std::string &field, std::vector<std::string> &coords,
+                       std::string &terminal_state, std::string &error )
+{
+    coords.clear();
+    terminal_state.clear();
+    std::string lowered = trim_copy( field );
+    std::transform( lowered.begin(), lowered.end(), lowered.begin(), []( unsigned char c ) {
+        return static_cast<char>( std::tolower( c ) );
+    } );
+    if( lowered.rfind( "move:", 0 ) == 0 ) {
+        lowered = trim_copy( lowered.substr( 5 ) );
+    } else if( lowered.rfind( "move ", 0 ) == 0 ) {
+        lowered = trim_copy( lowered.substr( 4 ) );
+    } else {
+        error = "Move field is invalid.";
+        return false;
+    }
+    std::string body = lowered;
+    if( body.empty() ) {
+        error = "Move field is missing coordinates.";
+        return false;
+    }
+    std::istringstream iss( body );
+    std::vector<std::string> parts;
+    for( std::string token; iss >> token; ) {
+        parts.push_back( token );
+    }
+    if( parts.size() < 2 ) {
+        error = "Move field must include coordinates and terminal state.";
+        return false;
+    }
+    terminal_state = parts.back();
+    if( terminal_state != "wait_here" && terminal_state != "hold_position" ) {
+        error = "Move field terminal state is invalid.";
+        return false;
+    }
+    parts.pop_back();
+    if( parts.empty() || parts.size() > 15 ) {
+        error = "Move field must have 1-15 coordinates.";
+        return false;
+    }
+    static const std::set<std::string> valid_coords = { "n", "s", "e", "w", "ne", "nw", "se", "sw" };
+    for( const std::string &part : parts ) {
+        if( valid_coords.count( part ) == 0 ) {
+            error = "Move coordinate is invalid.";
+            return false;
+        }
+        coords.push_back( part );
+    }
+    return true;
+}
+
 bool parse_csv_payload( const std::string &csv, std::string &speech,
                         std::vector<std::string> &actions,
-                        std::string &attack_target, std::string &error )
+                        std::string &attack_target,
+                        std::vector<std::string> &move_coords,
+                        std::string &move_terminal_state,
+                        std::string &error )
 {
     actions.clear();
     speech.clear();
     attack_target.clear();
+    move_coords.clear();
+    move_terminal_state.clear();
     std::vector<std::string> fields;
     std::string current;
     for( char c : csv ) {
@@ -724,6 +797,21 @@ bool parse_csv_payload( const std::string &csv, std::string &speech,
         if( field.empty() ) {
             error = "CSV action token is invalid.";
             return false;
+        }
+        if( is_move_action( field ) ) {
+            if( !move_coords.empty() ) {
+                error = "CSV move field repeated.";
+                return false;
+            }
+            if( !parse_move_field( field, move_coords, move_terminal_state, error ) ) {
+                return false;
+            }
+            actions.push_back( trim_copy( field ) );
+            if( actions.size() > 3 ) {
+                error = "CSV has too many action tokens.";
+                return false;
+            }
+            continue;
         }
         std::string current_token;
         for( char c : field ) {
@@ -1836,6 +1924,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "Snapshot field your_follow_mode can be follow-close, follow-afar, or guard/hold.\n"
                "If your_follow_mode already matches player intent, prefer 'idle' over repeating it.\n"
                "'wait_here' to stay put, keep watch, wait, stand.\n"
+               "'hold_position' to wait here temporarily, holding that position and keep watch.\n"
                "'follow_close' to walk behind, follow close, come here.\n"
                "'follow_far' to follow from farther away, hang back, give me space.\n"
                "'equip_gun' to equip gun, rifle, thrower, get ready to shoot.\n"
@@ -1845,6 +1934,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "'panic_off' if convincing, to stop fleeing and get your act together.\n"
                "'look_around' to pick-up, search, explore for items around you.\n"
                "'look_inventory' to look inside your inventory and wear/wield/activate items.\n"
+               "'move: <coordinate> <coordinate> ... <state>' to move step-by-step on your snapshot map. Use N, S, E, W, NE, NW, SE and SW and chain 4 to 15 coordinates. After the coordinates you must also include either 'wait_here' or 'hold_position' to set state.\n"
                "'attack=<target>' to attack a target with the letter from your map.\n"
                "'idle' if none of the above.\n"
                "</Explanation allowed actions>\n"
@@ -1873,6 +1963,9 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "<Example Output 7>"
                "Nope, not doing that!|panic_on"
                "</Example Output 7>\n"
+               "<Example Output 8>"
+               "Moving down and holding there.|move: S S S S S hold_position|equip_gun"
+               "</Example Output 8>\n"
                "</System>\n",
                snapshot, action_list_with_target );
 }
@@ -2803,6 +2896,7 @@ class llm_intent_manager
             {
                 std::lock_guard<std::mutex> lock( mutex );
                 utterance_by_request[req.request_id] = player_utterance;
+                snapshot_origin_by_request[req.request_id] = listener.pos_abs();
                 primary_request_ids.insert( req.request_id );
                 request_queue.push( std::move( req ) );
             }
@@ -3189,6 +3283,7 @@ class llm_intent_manager
                     {
                         std::lock_guard<std::mutex> lock( mutex );
                         utterance_by_request.erase( resp.request_id );
+                        snapshot_origin_by_request.erase( resp.request_id );
                         ambient_request_ids.erase( resp.request_id );
                         pending_ambient_npcs.erase( resp.npc_id );
                     }
@@ -3200,6 +3295,9 @@ class llm_intent_manager
                 std::string speech;
                 std::vector<std::string> actions;
                 std::string attack_target;
+                std::vector<std::string> move_coords;
+                std::string move_terminal_state;
+                std::optional<tripoint_abs_ms> snapshot_origin;
                 std::string speak_text;
                 std::string say_log_line;
                 std::string say_failed_log_line;
@@ -3208,6 +3306,10 @@ class llm_intent_manager
                     auto it = utterance_by_request.find( resp.request_id );
                     if( it != utterance_by_request.end() ) {
                         player_utterance = it->second;
+                    }
+                    auto origin_it = snapshot_origin_by_request.find( resp.request_id );
+                    if( origin_it != snapshot_origin_by_request.end() ) {
+                        snapshot_origin = origin_it->second;
                     }
                 }
                 if( resp.ok ) {
@@ -3229,9 +3331,11 @@ class llm_intent_manager
                     bool parsed = false;
                     std::string normalized = normalize_csv_separators( csv_text );
                     normalized = sanitize_llm_csv( normalized );
-                    parsed = parse_csv_payload( csv_text, speech, actions, attack_target, parse_error );
+                    parsed = parse_csv_payload( csv_text, speech, actions, attack_target,
+                                                move_coords, move_terminal_state, parse_error );
                     if( !parsed && normalized != csv_text ) {
-                        parsed = parse_csv_payload( normalized, speech, actions, attack_target, parse_error );
+                        parsed = parse_csv_payload( normalized, speech, actions, attack_target,
+                                                    move_coords, move_terminal_state, parse_error );
                     }
                     if( !parsed ) {
                         parse_error.clear();
@@ -3289,10 +3393,59 @@ class llm_intent_manager
                             intent_actions.push_back( action );
                         }
                     }
-                    if( !intent_actions.empty() || !attack_target.empty() ) {
+                    if( !intent_actions.empty() || !attack_target.empty() || !move_coords.empty() ) {
                         if( npc *target = g->find_npc( resp.npc_id ) ) {
                             if( target->is_player_ally() ) {
                                 target->set_llm_intent_actions( intent_actions, resp.request_id, attack_target );
+                                if( !move_coords.empty() && snapshot_origin ) {
+                                    std::vector<std::string> effective_coords = move_coords;
+                                    if( effective_coords.size() == 1 ) {
+                                        effective_coords.assign( 4, effective_coords.front() );
+                                    } else if( effective_coords.size() == 2 ) {
+                                        effective_coords = { effective_coords[0], effective_coords[0],
+                                                             effective_coords[1], effective_coords[1] };
+                                    }
+                                    int dx = 0;
+                                    int dy = 0;
+                                    for( const std::string &coord : effective_coords ) {
+                                        if( coord == "n" ) {
+                                            dy -= 1;
+                                        } else if( coord == "s" ) {
+                                            dy += 1;
+                                        } else if( coord == "e" ) {
+                                            dx += 1;
+                                        } else if( coord == "w" ) {
+                                            dx -= 1;
+                                        } else if( coord == "ne" ) {
+                                            dx += 1;
+                                            dy -= 1;
+                                        } else if( coord == "nw" ) {
+                                            dx -= 1;
+                                            dy -= 1;
+                                        } else if( coord == "se" ) {
+                                            dx += 1;
+                                            dy += 1;
+                                        } else if( coord == "sw" ) {
+                                            dx -= 1;
+                                            dy += 1;
+                                        }
+                                    }
+                                    const tripoint_abs_ms final_target( snapshot_origin->x() + dx,
+                                                                        snapshot_origin->y() + dy,
+                                                                        snapshot_origin->z() );
+                                    const llm_intent_action arrival_state = move_terminal_state == "hold_position" ?
+                                            llm_intent_action::hold_position : llm_intent_action::wait_here;
+                                    llm_intent::log_event( string_format( "move target %s (%s): raw=[%s] effective=[%s] origin=(%d,%d,%d) final=(%d,%d,%d) arrival=%s",
+                                                                          target->get_name(), resp.request_id,
+                                                                          string_join( move_coords, "," ),
+                                                                          string_join( effective_coords, "," ),
+                                                                          snapshot_origin->x(), snapshot_origin->y(), snapshot_origin->z(),
+                                                                          final_target.x(), final_target.y(), final_target.z(),
+                                                                          move_terminal_state ) );
+                                    target->set_llm_intent_move_target( final_target, arrival_state );
+                                } else {
+                                    target->set_llm_intent_move_target( std::nullopt, llm_intent_action::none );
+                                }
                             }
                         }
                     }
@@ -3376,6 +3529,7 @@ class llm_intent_manager
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     utterance_by_request.erase( resp.request_id );
+                    snapshot_origin_by_request.erase( resp.request_id );
                     is_primary_response = primary_request_ids.erase( resp.request_id ) > 0;
                     if( is_primary_response ) {
                         pending_primary_npcs.erase( resp.npc_id );
@@ -3395,6 +3549,7 @@ class llm_intent_manager
         std::queue<llm_intent_request> request_queue;
         std::queue<llm_intent_response> response_queue;
         std::unordered_map<std::string, std::string> utterance_by_request;
+        std::unordered_map<std::string, tripoint_abs_ms> snapshot_origin_by_request;
         std::unordered_set<std::string> primary_request_ids;
         std::unordered_set<std::string> ambient_request_ids;
         std::deque<pending_primary_request> pending_primary_requests;
