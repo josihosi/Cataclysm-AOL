@@ -760,6 +760,7 @@ enum class llm_intent_action : int {
     follow_close,
     follow_far,
     wait_here,
+    hold_position,
     equip_gun,
     equip_melee,
     equip_bow,
@@ -939,7 +940,9 @@ class npc : public Character
         void set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                      const std::string &request_id,
                                      const std::string &target_hint ) const;
-        void clear_llm_intent_actions() const;
+        void set_llm_intent_move_target( const std::optional<tripoint_abs_ms> &target,
+                                         llm_intent_action arrival_state );
+        void clear_llm_intent_actions();
         void set_llm_intent_item_targets( const std::vector<std::string> &targets ) const;
         bool has_llm_intent_actions() const;
         void add_llm_intent_memory( const std::string &player_utterance,
@@ -1385,6 +1388,8 @@ class npc : public Character
             int calm_turns_remaining = 0;
             int calm_start_panic = 0;
             std::map<char, weak_ptr_fast<Creature>> legend_targets;
+            llm_intent_action move_arrival_state = llm_intent_action::none;
+            bool hold_position_active = false;
             std::deque<std::string> look_around_targets;
             std::string look_around_active_target;
             std::deque<llm_intent_memory_entry> conversation_memory;

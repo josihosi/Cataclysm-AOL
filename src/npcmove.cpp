@@ -1454,22 +1454,38 @@ void npc::regen_ai_cache()
 void npc::execute_llm_intent_action( llm_intent_action action )
 {
     switch( action ) {
-        case llm_intent_action::wait_here:
+        case llm_intent_action::wait_here: {
+            llm_intent_state &state = llm_intent_state_for( *this );
+            state.hold_position_active = false;
             talk_function::assign_guard( *this );
             execute_action( npc_pause );
             break;
-        case llm_intent_action::follow_close:
+        }
+        case llm_intent_action::hold_position: {
+            llm_intent_state &state = llm_intent_state_for( *this );
+            state.hold_position_active = true;
+            talk_function::assign_guard( *this );
+            execute_action( npc_pause );
+            break;
+        }
+        case llm_intent_action::follow_close: {
+            llm_intent_state &state = llm_intent_state_for( *this );
+            state.hold_position_active = false;
             talk_function::stop_guard( *this );
             rules.set_flag( ally_rule::follow_close );
             rules.set_specific_override_state( ally_rule::follow_close, true );
             execute_action( npc_follow_player );
             break;
-        case llm_intent_action::follow_far:
+        }
+        case llm_intent_action::follow_far: {
+            llm_intent_state &state = llm_intent_state_for( *this );
+            state.hold_position_active = false;
             talk_function::stop_guard( *this );
             rules.clear_flag( ally_rule::follow_close );
             rules.set_specific_override_state( ally_rule::follow_close, false );
             execute_action( npc_follow_player );
             break;
+        }
         case llm_intent_action::equip_gun: {
             rules.set_flag( ally_rule::use_guns );
             rules.clear_flag( ally_rule::use_silent );
@@ -1509,6 +1525,9 @@ void npc::execute_llm_intent_action( llm_intent_action action )
             state.panic_forced_turns_remaining = 20;
             state.calm_turns_remaining = 0;
             state.calm_start_panic = 0;
+            state.hold_position_active = false;
+            state.move_arrival_state = llm_intent_action::none;
+            goto_to_this_pos = std::nullopt;
             add_effect( effect_npc_run_away, 1_turns );
             break;
         }
@@ -1949,6 +1968,13 @@ void npc::move()
         return;
     }
     Character &player_character = get_player_character();
+    if( state.hold_position_active && rl_dist( pos_bub(), player_character.pos_bub() ) > 15 ) {
+        state.hold_position_active = false;
+        talk_function::stop_guard( *this );
+        if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+            add_msg( _( "LLM hold_position released; resuming follow" ) );
+        }
+    }
     //faction opinion determines if it should consider you hostile
     if( !is_enemy() && guaranteed_hostile() && sees( here, player_character ) ) {
         if( is_player_ally() ) {
@@ -2063,8 +2089,10 @@ void npc::move()
         }
     }
 
-    if( action == npc_undecided && is_walking_with() && goto_to_this_pos &&
-        !has_flag( json_flag_CANNOT_MOVE ) ) {
+    if( action == npc_undecided && goto_to_this_pos && !has_flag( json_flag_CANNOT_MOVE ) ) {
+        llm_intent::log_event( string_format( "goto selected %s: current=(%d,%d,%d) target=(%d,%d,%d)",
+                                              get_name(), pos_abs().x(), pos_abs().y(), pos_abs().z(),
+                                              goto_to_this_pos->x(), goto_to_this_pos->y(), goto_to_this_pos->z() ) );
         action = npc_goto_to_this_pos;
     }
 
@@ -2567,11 +2595,24 @@ void npc::execute_action( npc_action action )
             break;
 
         case npc_goto_to_this_pos: {
+            llm_intent::log_event( string_format( "goto executing %s: current=(%d,%d,%d) target=(%d,%d,%d)",
+                                                  get_name(), pos_abs().x(), pos_abs().y(), pos_abs().z(),
+                                                  goto_to_this_pos->x(), goto_to_this_pos->y(), goto_to_this_pos->z() ) );
             update_path( here.get_bub( *goto_to_this_pos ) );
             move_to_next();
 
             if( pos_abs() == *goto_to_this_pos ) {
+                llm_intent_state &state = llm_intent_state_for( *this );
+                const llm_intent_action arrival_state = state.move_arrival_state;
+                llm_intent::log_event( string_format( "goto arrived %s: target=(%d,%d,%d) arrival_state=%d",
+                                                      get_name(), goto_to_this_pos->x(), goto_to_this_pos->y(),
+                                                      goto_to_this_pos->z(), static_cast<int>( arrival_state ) ) );
                 goto_to_this_pos = std::nullopt;
+                state.move_arrival_state = llm_intent_action::none;
+                if( arrival_state == llm_intent_action::wait_here ||
+                    arrival_state == llm_intent_action::hold_position ) {
+                    execute_llm_intent_action( arrival_state );
+                }
             }
             break;
         }
