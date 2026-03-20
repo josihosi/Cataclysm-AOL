@@ -41,7 +41,6 @@
 #include "item_group.h"
 #include "itype.h"
 #include "iuse.h"
-#include "llm_intent.h"
 #include "iuse_actor.h"
 #include "json.h"
 #include "magic.h"
@@ -1754,6 +1753,46 @@ void npc::say( const std::string &line, const sounds::sound_t spriority ) const
     }
 }
 
+int npc::indoor_voice() const
+{
+    const map &here = get_map();
+
+    const int max_volume = get_shout_volume();
+    const int min_volume = 1;
+    // Actual hearing distance is incredibly dependent on ambient noise and our noise propagation model is... rather binary.
+    // Keep ordinary speech in roughly the 8-10 tile range instead of the old 6-tile whisper.
+    int wanted_volume = 8;
+    Character &player = get_player_character();
+    const int distance_to_player = rl_dist( pos_abs(), player.pos_abs() );
+    if( is_following() || is_ally( player ) ) {
+        wanted_volume = std::max( wanted_volume, distance_to_player + 2 );
+    } else if( is_enemy() && sees( here, player.pos_bub( here ) ) ) {
+        // Battle cry! Bandits have no concept of indoor voice, even when not threatened.
+        wanted_volume = max_volume;
+    }
+    // Possible fallthrough: neutral or unaware enemy NPCs talk at default wanted_volume
+
+    // Don't wake up friends when using our indoor voice
+    for( const auto &bunk_buddy : get_cached_friends() ) {
+        Character *char_buddy = nullptr;
+        if( auto buddy = bunk_buddy.lock() ) {
+            char_buddy = dynamic_cast<Character *>( buddy.get() );
+        }
+        if( !char_buddy ) {
+            continue;
+        }
+        if( char_buddy->has_effect( effect_sleep ) ) {
+            int distance_to_sleeper = rl_dist( pos_bub(), char_buddy->pos_bub() );
+            if( wanted_volume >= distance_to_sleeper ) {
+                // Speak just quietly enough to not disturb anyone
+                wanted_volume = distance_to_sleeper - 1;
+            }
+        }
+    }
+
+    return std::clamp( wanted_volume, min_volume, max_volume );
+}
+
 bool npc::wants_to_sell( const item_location &it ) const
 {
     if( !it->is_owned_by( *this ) ) {
@@ -2286,10 +2325,6 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
     } else {
         state.legend_targets.clear();
     }
-    llm_intent::log_event( string_format( "attack debug set actions %s (%s): actions=%d target_hint='%s' legend_size=%d pending_legend_maps=%d",
-                                          get_name(), request_id, static_cast<int>( state.queue.size() ),
-                                          target_hint, static_cast<int>( state.legend_targets.size() ),
-                                          static_cast<int>( state.legend_targets_by_request.size() ) ) );
     state.target_hint = target_hint;
     if( !state.target_hint.empty() ) {
         state.target_attacks_remaining = 4;
@@ -2344,9 +2379,6 @@ void npc::set_llm_intent_legend_map( const std::string &request_id,
                                      std::map<char, weak_ptr_fast<Creature>> legend ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
-    llm_intent::log_event( string_format( "attack debug store legend %s (%s): size=%d",
-                                          get_name(), request_id,
-                                          static_cast<int>( legend.size() ) ) );
     if( request_id.empty() ) {
         state.legend_targets = std::move( legend );
         return;
