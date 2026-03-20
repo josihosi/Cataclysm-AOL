@@ -1561,14 +1561,16 @@ void npc::apply_llm_intent_target()
         if( legend_it != state.legend_targets.end() ) {
             if( Creature *candidate = legend_it->second.lock().get() ) {
                 const int dist = rl_dist( pos_bub(), candidate->pos_bub() );
-                if( &*candidate != this && dist <= MAX_VIEW_DISTANCE &&
-                    sees( here, *candidate ) ) {
+                const bool visible = &*candidate != this && dist <= MAX_VIEW_DISTANCE && sees( here, *candidate );
+                if( visible ) {
                     best = candidate;
                     best_match = 2;
                     best_dist = dist;
                     matched_legend = true;
                 }
+            } else {
             }
+        } else {
         }
     }
     if( !matched_legend ) {
@@ -1662,8 +1664,10 @@ void npc::apply_llm_intent_target()
             add_msg( _( "LLM intent target resolved to %s at dist %d" ),
                      best->disp_name(), best_dist );
         }
-    } else if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
-        add_msg( _( "LLM intent target '%s' not found" ), state.target_hint );
+    } else {
+        if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+            add_msg( _( "LLM intent target '%s' not found" ), state.target_hint );
+        }
     }
 
     state.target_turns_remaining -= 1;
@@ -2024,9 +2028,6 @@ void npc::move()
     }
 
     if( action == npc_undecided && goto_to_this_pos && !has_flag( json_flag_CANNOT_MOVE ) ) {
-        llm_intent::log_event( string_format( "goto selected %s: current=(%d,%d,%d) target=(%d,%d,%d)",
-                                              get_name(), pos_abs().x(), pos_abs().y(), pos_abs().z(),
-                                              goto_to_this_pos->x(), goto_to_this_pos->y(), goto_to_this_pos->z() ) );
         action = npc_goto_to_this_pos;
     }
 
@@ -2176,14 +2177,35 @@ void npc::execute_action( npc_action action )
     Character &player_character = get_player_character();
     map &here = get_map();
     switch( action ) {
-        case npc_do_attack:
-            ai_cache.current_attack->use( *this, ai_cache.current_attack_evaluation.target() );
+        case npc_do_attack: {
+            if( has_flag( json_flag_CANNOT_ATTACK ) ) {
+                move_pause();
+                break;
+            }
+            const tripoint_bub_ms eval_target = ai_cache.current_attack_evaluation.target();
+            const tripoint_bub_ms pos_before = pos_bub();
+            const item_location wielded = get_wielded_item();
+            const bool wielded_gun = wielded && wielded->is_gun();
+            const double recoil_before = recoil_total();
+            const int dist_before = rl_dist( pos_before, eval_target );
+            if( ai_cache.current_attack ) {
+                ai_cache.current_attack->use( *this, ai_cache.current_attack_evaluation.target() );
+            }
+            const tripoint_bub_ms pos_after = pos_bub();
+            const double recoil_after = recoil_total();
+            const int dist_after = rl_dist( pos_after, eval_target );
             ai_cache.current_attack.reset();
             ai_cache.current_attack_evaluation = npc_attack_rating{};
             {
                 llm_intent_state &state = llm_intent_state_for( *this );
                 if( state.target_attacks_remaining > 0 && !state.target_hint.empty() ) {
-                    state.target_attacks_remaining -= 1;
+                    const bool ranged_setup_only = wielded_gun && recoil_after < recoil_before;
+                    const bool melee_setup_only = !wielded_gun && dist_after < dist_before;
+                    const bool spent_attack = !( ranged_setup_only || melee_setup_only );
+                    if( spent_attack ) {
+                        state.target_attacks_remaining -= 1;
+                    } else {
+                    }
                     if( state.target_attacks_remaining <= 0 ) {
                         state.target_hint.clear();
                         state.target_turns_remaining = 0;
@@ -2191,6 +2213,7 @@ void npc::execute_action( npc_action action )
                 }
             }
             break;
+        }
         case npc_pause:
             move_pause();
             break;
@@ -2525,18 +2548,12 @@ void npc::execute_action( npc_action action )
             break;
 
         case npc_goto_to_this_pos: {
-            llm_intent::log_event( string_format( "goto executing %s: current=(%d,%d,%d) target=(%d,%d,%d)",
-                                                  get_name(), pos_abs().x(), pos_abs().y(), pos_abs().z(),
-                                                  goto_to_this_pos->x(), goto_to_this_pos->y(), goto_to_this_pos->z() ) );
             update_path( here.get_bub( *goto_to_this_pos ) );
             move_to_next();
 
             if( pos_abs() == *goto_to_this_pos ) {
                 llm_intent_state &state = llm_intent_state_for( *this );
                 const llm_intent_action arrival_state = state.move_arrival_state;
-                llm_intent::log_event( string_format( "goto arrived %s: target=(%d,%d,%d) arrival_state=%d",
-                                                      get_name(), goto_to_this_pos->x(), goto_to_this_pos->y(),
-                                                      goto_to_this_pos->z(), static_cast<int>( arrival_state ) ) );
                 goto_to_this_pos = std::nullopt;
                 state.move_arrival_state = llm_intent_action::none;
                 if( arrival_state == llm_intent_action::wait_here ||
