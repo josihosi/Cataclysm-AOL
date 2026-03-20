@@ -48,6 +48,9 @@ Configuration knobs:
 - Follow control now uses explicit action tokens: `follow_close` and `follow_far`.
 - Snapshot now includes `your_follow_mode` (`follow-close`, `follow-afar`, `guard/hold`)
   so prompt logic can prefer `idle` instead of repeating an already-matching mode.
+- The ASCII snapshot creature legend now includes a normalized perceived threat level
+  (`threat=x/10`) next to each visible creature name so the model can see when a
+  target is present but feels risky to engage.
 - Snapshot memory has two capped blocks per NPC:
   - `recent_conversation` (last two direct player->NPC interactions)
   - `overheard_allies` (last two nearby ally speech/action events with `npc_name`)

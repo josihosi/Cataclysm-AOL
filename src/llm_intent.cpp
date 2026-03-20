@@ -1456,6 +1456,26 @@ float threat_score_for( npc &listener, const Creature &critter, int distance )
     return 0.0f;
 }
 
+int threat_level_for_snapshot( npc &listener, const Creature &critter )
+{
+    const int distance = rl_dist( listener.pos_bub(), critter.pos_bub() );
+    const double threat = threat_score_for( listener, critter, distance );
+    const double max_threat = critter.as_monster() ? static_cast<double>( NPC_MONSTER_DANGER_MAX ) :
+                              static_cast<double>( NPC_CHARACTER_DANGER_MAX );
+    if( max_threat <= 0.0 ) {
+        return 0;
+    }
+    const double clamped = std::clamp( threat, 0.0, max_threat );
+    return static_cast<int>( std::round( ( clamped / max_threat ) * 10.0 ) );
+}
+
+std::string creature_legend_entry( npc &listener, const Creature &critter )
+{
+    const std::string name = critter.is_avatar() ? "player" :
+                             strip_leading_article( sanitize_text( critter.disp_name() ) );
+    return string_format( "%s threat=%d/10", name, threat_level_for_snapshot( listener, critter ) );
+}
+
 std::string build_snapshot_legend()
 {
     return string_format(
@@ -1484,7 +1504,7 @@ struct map_snapshot {
     std::string legend;
 };
 
-map_snapshot build_ascii_map_snapshot( npc &listener )
+map_snapshot build_ascii_map_snapshot( npc &listener, const std::string &request_id )
 {
     map &here = get_map();
     const tripoint_bub_ms player_pos = get_player_character().pos_bub();
@@ -1523,7 +1543,7 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
                             const char letter = cost > 100 ||
                                                 cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
                             letter_map.emplace( critter, letter );
-                            legend_entries.emplace_back( letter, "player" );
+                            legend_entries.emplace_back( letter, creature_legend_entry( listener, *critter ) );
                             legend_targets[letter] = g->shared_from( *critter );
                             glyph = letter;
                         } else {
@@ -1538,7 +1558,7 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
                                                     cost <= 0 ? static_cast<char>( std::toupper( base_letter ) ) : base_letter;
                                 letter_map.emplace( critter, letter );
                                 legend_entries.emplace_back( letter,
-                                                             strip_leading_article( sanitize_text( critter->disp_name() ) ) );
+                                                             creature_legend_entry( listener, *critter ) );
                                 legend_targets[letter] = g->shared_from( *critter );
                                 glyph = letter;
                                 ++next_letter;
@@ -1564,7 +1584,7 @@ map_snapshot build_ascii_map_snapshot( npc &listener )
     map_snapshot out;
     out.map = std::move( out_map );
     out.legend = build_map_legend( legend_entries );
-    listener.set_llm_intent_legend_map( std::move( legend_targets ) );
+    listener.set_llm_intent_legend_map( request_id, std::move( legend_targets ) );
     return out;
 }
 
@@ -1877,9 +1897,9 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     out << "]\n";
     out << "bandage_possible: " << ( bandage_possible ? "true" : "false" ) << "\n\n";
 
-    const map_snapshot map_data = build_ascii_map_snapshot( listener );
+    const map_snapshot map_data = build_ascii_map_snapshot( listener, request_id );
     out << "legend:\n" << build_snapshot_legend();
-    out << "map_legend:\n";
+    out << "creature legend with threat level:\n";
     if( map_data.legend.empty() ) {
         out << "(none)\n";
     } else {
@@ -1905,7 +1925,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
     if( !action_list_with_target.empty() ) {
         action_list_with_target += ", ";
     }
-    action_list_with_target += "attack=<target>";
+    action_list_with_target += "attack=<target>, move: <coordinate> <coordinate> ... <state>";
     return string_format(
                "Situation:\n%s\n"
                "<System>"
@@ -2985,6 +3005,7 @@ class llm_intent_manager
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     utterance_by_request[req.request_id] = pending.player_utterance;
+                    snapshot_origin_by_request[req.request_id] = listener->pos_abs();
                     primary_request_ids.insert( req.request_id );
                     pending_primary_npcs.insert( req.npc_id );
                     serial_primary_request_ids.insert( req.request_id );
@@ -3398,7 +3419,13 @@ class llm_intent_manager
                         if( npc *target = g->find_npc( resp.npc_id ) ) {
                             if( target->is_player_ally() ) {
                                 target->set_llm_intent_actions( intent_actions, resp.request_id, attack_target );
-                                if( !move_coords.empty() && snapshot_origin ) {
+                                if( !move_coords.empty() ) {
+                                    if( !snapshot_origin ) {
+                                        snapshot_origin = target->pos_abs();
+                                        llm_intent::log_event( string_format( "move target %s (%s): snapshot origin missing, falling back to current pos (%d,%d,%d)",
+                                                                              target->get_name(), resp.request_id,
+                                                                              snapshot_origin->x(), snapshot_origin->y(), snapshot_origin->z() ) );
+                                    }
                                     std::vector<std::string> effective_coords = move_coords;
                                     if( effective_coords.size() == 1 ) {
                                         effective_coords.assign( 4, effective_coords.front() );
