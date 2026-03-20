@@ -1542,11 +1542,6 @@ void npc::apply_llm_intent_target()
     };
 
     std::string target_hint = normalize_key( state.target_hint );
-    llm_intent::log_event( string_format( "attack debug resolve begin %s (%s): raw_hint='%s' normalized='%s' legend_size=%d target=%s danger=%.1f pos=(%d,%d,%d)",
-                                          get_name(), state.request_id, state.target_hint, target_hint,
-                                          static_cast<int>( state.legend_targets.size() ),
-                                          current_target() ? current_target()->disp_name() : "none",
-                                          ai_cache.danger, pos_abs().x(), pos_abs().y(), pos_abs().z() ) );
     if( target_hint.empty() ) {
         state.target_hint.clear();
         state.target_attacks_remaining = 0;
@@ -1571,13 +1566,8 @@ void npc::apply_llm_intent_target()
                     matched_legend = true;
                 }
             } else {
-                llm_intent::log_event( string_format( "attack debug legend candidate %s (%s): key=%c expired weak_ptr",
-                                                      get_name(), state.request_id, target_hint[0] ) );
             }
         } else {
-            llm_intent::log_event( string_format( "attack debug legend lookup miss %s (%s): key=%c legend_size=%d",
-                                                  get_name(), state.request_id, target_hint[0],
-                                                  static_cast<int>( state.legend_targets.size() ) ) );
         }
     }
     if( !matched_legend ) {
@@ -1644,8 +1634,6 @@ void npc::apply_llm_intent_target()
     }
 
     if( best != nullptr ) {
-        llm_intent::log_event( string_format( "attack debug resolve success %s (%s): target=%s match=%d dist=%d",
-                                              get_name(), state.request_id, best->disp_name(), best_match, best_dist ) );
         ai_cache.target = g->shared_from( *best );
         const bool already_hostile = std::any_of( ai_cache.hostile_guys.begin(),
         ai_cache.hostile_guys.end(), [&]( const weak_ptr_fast<Creature> &entry ) {
@@ -1671,11 +1659,6 @@ void npc::apply_llm_intent_target()
                      best->disp_name(), best_dist );
         }
     } else {
-        llm_intent::log_event( string_format( "attack debug resolve fail %s (%s): hint='%s' normalized='%s' legend_size=%d current_target=%s danger=%.1f",
-                                              get_name(), state.request_id, state.target_hint, target_hint,
-                                              static_cast<int>( state.legend_targets.size() ),
-                                              current_target() ? current_target()->disp_name() : "none",
-                                              ai_cache.danger ) );
         if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
             add_msg( _( "LLM intent target '%s' not found" ), state.target_hint );
         }
@@ -1832,6 +1815,16 @@ void npc::move()
                    get_name(), target_name, ai_cache.danger, *confident_range_cache );
 
     llm_intent_state &state = llm_intent_state_for( *this );
+    const bool llm_item_safe = ai_cache.danger <= 0 && target == nullptr &&
+                               !sees_dangerous_field( pos_bub() ) &&
+                               !has_effect( effect_npc_fire_bad );
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) && llm_item_safe && !fetching_item &&
+        !state.look_around_targets.empty() ) {
+        if( apply_llm_intent_item_targets() ) {
+            execute_action( npc_pickup );
+            return;
+        }
+    }
     const bool llm_attack_override = state.target_attacks_remaining > 0 &&
                                      state.target_turns_remaining > 0 &&
                                      !state.target_hint.empty();
@@ -1842,12 +1835,6 @@ void npc::move()
             return false;
         }
         Creature *forced_target = current_target();
-        llm_intent::log_event( string_format( "attack debug forced attack begin %s (%s): hint='%s' target=%s danger=%.1f attacks=%d turns=%d grace=%d weapon=%s",
-                                              get_name(), state.request_id, state.target_hint,
-                                              forced_target ? forced_target->disp_name() : "none",
-                                              ai_cache.danger, state.target_attacks_remaining,
-                                              state.target_turns_remaining, state.target_loss_grace_turns_remaining,
-                                              weapon ? weapon->tname() : "none" ) );
         if( forced_target == nullptr ) {
             if( state.target_loss_grace_turns_remaining > 0 ) {
                 state.target_loss_grace_turns_remaining -= 1;
@@ -1870,12 +1857,6 @@ void npc::move()
 
         state.target_loss_grace_turns_remaining = 3;
         npc_action forced = method_of_attack();
-        llm_intent::log_event( string_format( "attack debug forced attack mode %s (%s): target=%s chosen_action=%d can_attack=%s can_move=%s",
-                                              get_name(), state.request_id,
-                                              forced_target ? forced_target->disp_name() : "none",
-                                              static_cast<int>( forced ),
-                                              has_flag( json_flag_CANNOT_ATTACK ) ? "false" : "true",
-                                              has_flag( json_flag_CANNOT_MOVE ) ? "false" : "true" ) );
         if( forced == npc_do_attack ) {
             if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                 add_msg( _( "LLM intent forced immediate attack" ) );
@@ -1888,9 +1869,6 @@ void npc::move()
         if( forced_weapon && forced_weapon->is_gun() ) {
             const int dist = rl_dist( pos(), forced_target->pos() );
             const int conf = confident_shoot_range( *forced_weapon, recoil_total() );
-            llm_intent::log_event( string_format( "attack debug gun check %s (%s): weapon=%s dist=%d conf=%d recoil=%d",
-                                                  get_name(), state.request_id, forced_weapon->tname(),
-                                                  dist, conf, recoil_total() ) );
             if( dist <= conf ) {
                 execute_action( npc_aim );
                 if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
@@ -1922,7 +1900,12 @@ void npc::move()
             const bool allow_in_danger = state.active == llm_intent_action::equip_gun ||
                                          state.active == llm_intent_action::equip_melee ||
                                          state.active == llm_intent_action::equip_bow;
-            if( llm_safe || allow_in_danger ) {
+            const bool llm_item_pending = fetching_item || !state.look_around_targets.empty() ||
+                                          !state.look_around_active_target.empty();
+            const bool defer_follow_for_item = llm_item_pending &&
+                                               ( state.active == llm_intent_action::follow_close ||
+                                                 state.active == llm_intent_action::follow_far );
+            if( !defer_follow_for_item && ( llm_safe || allow_in_danger ) ) {
                 execute_llm_intent_action( state.active );
                 if( !state.queue.empty() ) {
                     state.queue.pop_front();
@@ -2062,7 +2045,9 @@ void npc::move()
         action = npc_follow_embarked;
     }
 
-    if( action == npc_undecided && !llm_attack_override && is_walking_with() &&
+    const bool llm_item_override = fetching_item || !state.look_around_targets.empty() ||
+                                   !state.look_around_active_target.empty();
+    if( action == npc_undecided && !llm_attack_override && !llm_item_override && is_walking_with() &&
         rules.has_flag( ally_rule::follow_close ) &&
         rl_dist( pos(), player_character.pos() ) > follow_distance() &&
         !( player_character.in_vehicle && in_vehicle ) && !has_flag( json_flag_CANNOT_MOVE ) ) {
@@ -2228,24 +2213,7 @@ void npc::execute_action( npc_action action )
                     const bool spent_attack = !( ranged_setup_only || melee_setup_only );
                     if( spent_attack ) {
                         state.target_attacks_remaining -= 1;
-                        llm_intent::log_event( "attack debug consume forced attack " + get_name() +
-                                               ": remaining=" +
-                                               std::to_string( state.target_attacks_remaining ) +
-                                               " wielded_gun=" + ( wielded_gun ? std::string( "true" ) : std::string( "false" ) ) +
-                                               " recoil_before=" + std::to_string( recoil_before ) +
-                                               " recoil_after=" + std::to_string( recoil_after ) +
-                                               " dist_before=" + std::to_string( dist_before ) +
-                                               " dist_after=" + std::to_string( dist_after ) );
                     } else {
-                        llm_intent::log_event( "attack debug preserve forced attack " + get_name() +
-                                               ": remaining=" +
-                                               std::to_string( state.target_attacks_remaining ) +
-                                               " ranged_setup_only=" + ( ranged_setup_only ? std::string( "true" ) : std::string( "false" ) ) +
-                                               " melee_setup_only=" + ( melee_setup_only ? std::string( "true" ) : std::string( "false" ) ) +
-                                               " recoil_before=" + std::to_string( recoil_before ) +
-                                               " recoil_after=" + std::to_string( recoil_after ) +
-                                               " dist_before=" + std::to_string( dist_before ) +
-                                               " dist_after=" + std::to_string( dist_after ) );
                     }
                     if( state.target_attacks_remaining <= 0 ) {
                         state.target_hint.clear();
@@ -4319,6 +4287,8 @@ void npc::pick_up_item()
     if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() && !llm_targeted ) {
         add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); Canceling on player's request", get_name() );
         fetching_item = false;
+        wanted_item = {};
+        log_look_around_pickup( "canceled by ally rule" );
         moves -= 1;
         return;
     }
@@ -4331,9 +4301,8 @@ void npc::pick_up_item()
     if( ( !here.has_items( wanted_item_pos ) && !has_cargo &&
           !here.is_harvestable( wanted_item_pos ) && sees( wanted_item_pos ) ) ||
         ( is_player_ally() && g->check_zone( zone_type_NO_NPC_PICKUP, wanted_item_pos ) ) ) {
-        // Items we wanted no longer exist and we can see it
-        // Or player who is leading us doesn't want us to pick it up
         fetching_item = false;
+        wanted_item = {};
         log_look_around_pickup( "canceled (no items or zone)" );
         move_pause();
         add_msg_debug( debugmode::DF_NPC, "Canceling pickup - no items or new zone" );
@@ -4351,25 +4320,23 @@ void npc::pick_up_item()
     if( dist_to_pickup > 1 && !path.empty() ) {
         add_msg_debug( debugmode::DF_NPC, "Moving; [%d, %d, %d] => [%d, %d, %d]",
                        posx(), posy(), posz(), path[0].x, path[0].y, path[0].z );
-
         move_to_next();
         return;
     } else if( dist_to_pickup > 1 && path.empty() ) {
         add_msg_debug( debugmode::DF_NPC, "Can't find path" );
-        // This can happen, always do something
         fetching_item = false;
+        wanted_item = {};
         log_look_around_pickup( "canceled (no path)" );
         move_pause();
         return;
     }
 
-    // We're adjacent to the item; grab it!
-
+    const std::string target_name = state.look_around_active_target;
     std::list<item> picked_up;
     if( llm_targeted ) {
         map_stack stack = here.i_at( wanted_item_pos );
         picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
-            return normalize_llm_item_label( it.tname( 1, false ) ) == state.look_around_active_target;
+            return normalize_llm_item_label( it.tname( 1, false ) ) == target_name;
         }, false );
     } else {
         picked_up = pick_up_item_map( wanted_item_pos );
@@ -4378,7 +4345,7 @@ void npc::pick_up_item()
         if( llm_targeted ) {
             vehicle_stack stack = vp->items();
             picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
-                return normalize_llm_item_label( it.tname( 1, false ) ) == state.look_around_active_target;
+                return normalize_llm_item_label( it.tname( 1, false ) ) == target_name;
             }, false );
         } else {
             picked_up = pick_up_item_vehicle( vp->vehicle(), vp->part_index() );
@@ -4386,18 +4353,23 @@ void npc::pick_up_item()
     }
 
     if( picked_up.empty() ) {
-        // Last chance: plant harvest
         if( here.is_harvestable( wanted_item_pos ) ) {
             here.examine( *this, wanted_item_pos );
-            // Note: we didn't actually pick up anything, just spawned items
-            // but we want the item picker to find new items
             fetching_item = false;
+            wanted_item = {};
             log_look_around_pickup( "harvested (no items picked)" );
             return;
         }
+        if( llm_targeted ) {
+            fetching_item = false;
+            wanted_item = {};
+            move_pause();
+            log_look_around_pickup( "picked up 0 item(s), canceling" );
+            return;
+        }
     }
+
     viewer &player_view = get_player_view();
-    // Describe the pickup to the player
     bool u_see = player_view.sees( *this ) || player_view.sees( wanted_item_pos );
     if( u_see ) {
         if( picked_up.size() == 1 ) {
@@ -4429,21 +4401,22 @@ void npc::pick_up_item()
     moves -= 100;
     has_new_items = true;
 
-    if( llm_targeted ) {
-        static const int look_radius = 5;
-        if( std::optional<tripoint> next_pos = find_llm_look_around_target_pos( *this,
-                state.look_around_active_target, look_radius ) ) {
-            wanted_item_pos = *next_pos;
-            fetching_item = true;
+    if( llm_targeted && !picked_up.empty() ) {
+        const std::string continued_target = state.look_around_active_target;
+        fetching_item = false;
+        wanted_item = {};
+        state.look_around_targets.push_front( continued_target );
+        if( apply_llm_intent_item_targets() ) {
             log_look_around_pickup( string_format( "picked up %d item(s), continuing",
                                                    static_cast<int>( picked_up.size() ) ), false );
             return;
         }
     }
 
-    fetching_item = false;
     log_look_around_pickup( string_format( "picked up %d item(s)",
                                            static_cast<int>( picked_up.size() ) ) );
+    fetching_item = false;
+    wanted_item = {};
 }
 
 template <typename T, typename F>
