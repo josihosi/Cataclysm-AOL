@@ -1820,6 +1820,16 @@ void npc::move()
                    get_name(), target_name, ai_cache.danger, *confident_range_cache );
 
     llm_intent_state &state = llm_intent_state_for( *this );
+    const bool llm_item_safe = ai_cache.danger <= 0 && target == nullptr &&
+                               !sees_dangerous_field( pos_bub() ) &&
+                               !has_effect( effect_npc_fire_bad );
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) && llm_item_safe && !fetching_item &&
+        !state.look_around_targets.empty() ) {
+        if( apply_llm_intent_item_targets() ) {
+            execute_action( npc_pickup );
+            return;
+        }
+    }
     const bool llm_attack_override = state.target_attacks_remaining > 0 &&
                                      state.target_turns_remaining > 0 &&
                                      !state.target_hint.empty();
@@ -1895,7 +1905,12 @@ void npc::move()
             const bool allow_in_danger = state.active == llm_intent_action::equip_gun ||
                                          state.active == llm_intent_action::equip_melee ||
                                          state.active == llm_intent_action::equip_bow;
-            if( llm_safe || allow_in_danger ) {
+            const bool llm_item_pending = fetching_item || !state.look_around_targets.empty() ||
+                                          !state.look_around_active_target.empty();
+            const bool defer_follow_for_item = llm_item_pending &&
+                                               ( state.active == llm_intent_action::follow_close ||
+                                                 state.active == llm_intent_action::follow_far );
+            if( !defer_follow_for_item && ( llm_safe || allow_in_danger ) ) {
                 execute_llm_intent_action( state.active );
                 if( !state.queue.empty() ) {
                     state.queue.pop_front();
@@ -2038,7 +2053,9 @@ void npc::move()
         path.clear();
     }
 
-    if( action == npc_undecided && !llm_attack_override && is_walking_with() &&
+    const bool llm_item_override = fetching_item || !state.look_around_targets.empty() ||
+                                   !state.look_around_active_target.empty();
+    if( action == npc_undecided && !llm_attack_override && !llm_item_override && is_walking_with() &&
         rules.has_flag( ally_rule::follow_close ) &&
         rl_dist( pos_bub(), player_character.pos_bub() ) > follow_distance() &&
         !( player_character.in_vehicle && in_vehicle ) && !has_flag( json_flag_CANNOT_MOVE ) ) {
@@ -4353,6 +4370,10 @@ template <typename T, typename F>
 std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter,
         bool require_wants );
 
+template <typename T, typename F>
+std::list<item> npc_pickup_from_stack_llm_targeted( npc &who, T &items, F filter,
+        const tripoint_bub_ms &where );
+
 template <typename T>
 std::list<item> npc_pickup_from_stack( npc &who, T &items );
 
@@ -4453,18 +4474,18 @@ void npc::pick_up_item()
     std::list<item> picked_up;
     if( llm_targeted ) {
         map_stack stack = here.i_at( wanted_item_pos );
-        picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
+        picked_up = npc_pickup_from_stack_llm_targeted( *this, stack, [&]( const item & it ) {
             return normalize_item_label( it.tname( 1, false ) ) == target_name;
-        }, false );
+        }, wanted_item_pos );
     } else {
         picked_up = pick_up_item_map( wanted_item_pos );
     }
     if( picked_up.empty() && has_cargo ) {
         if( llm_targeted ) {
             vehicle_stack stack = vp->items();
-            picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
+            picked_up = npc_pickup_from_stack_llm_targeted( *this, stack, [&]( const item & it ) {
                 return normalize_item_label( it.tname( 1, false ) ) == target_name;
-            }, false );
+            }, wanted_item_pos );
         } else {
             picked_up = pick_up_item_vehicle( vp->vehicle(), vp->part_index() );
         }
@@ -4479,6 +4500,13 @@ void npc::pick_up_item()
             fetching_item = false;
             wanted_item = {};
             log_look_around_pickup( "harvested (no items picked)" );
+            return;
+        }
+        if( llm_targeted ) {
+            fetching_item = false;
+            wanted_item = {};
+            move_pause();
+            log_look_around_pickup( "picked up 0 item(s), canceling" );
             return;
         }
     }
@@ -4515,7 +4543,7 @@ void npc::pick_up_item()
 
     has_new_items = true;
 
-    if( llm_targeted ) {
+    if( llm_targeted && !picked_up.empty() ) {
         const std::string continued_target = state.look_around_active_target;
         fetching_item = false;
         wanted_item = {};
@@ -4547,6 +4575,30 @@ std::list<item> npc_pickup_from_stack_filtered( npc &who, T &items, F filter,
             continue;
         }
         if( who.can_take_that( it ) && ( !require_wants || who.wants_take_that( it ) ) ) {
+            picked_up.push_back( it );
+            iter = items.erase( iter );
+        } else {
+            ++iter;
+        }
+    }
+
+    return picked_up;
+}
+
+template <typename T, typename F>
+std::list<item> npc_pickup_from_stack_llm_targeted( npc &who, T &items, F filter,
+        const tripoint_bub_ms &where )
+{
+    std::list<item> picked_up;
+
+    for( auto iter = items.begin(); iter != items.end(); ) {
+        const item &it = *iter;
+        if( !filter( it ) ) {
+            ++iter;
+            continue;
+        }
+        const bool can_take_or_wear = who.can_take_that( it ) || who.can_wear( it ).success();
+        if( can_take_or_wear && who.would_take_that( it, where ) ) {
             picked_up.push_back( it );
             iter = items.erase( iter );
         } else {
