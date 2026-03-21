@@ -1994,8 +1994,6 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "Print only Fields 1-4, separated by | ."
                "If you break this format, you have failed."
                "Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.\n"
-               "/no_think\n"
-               "Answer directly. No reasoning.\n"
                "<Example Output 1>"
                "Blow me.|idle"
                "</Example Output 1>\n"
@@ -2038,7 +2036,7 @@ std::string build_ambient_prompt( const std::string &npc_name,
                "Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no CSV, no pipes, no tool calls, no menu syntax."
                "If you are unsure, answer briefly and naturally instead of inventing details."
                "/no_think\n"
-               "Answer directly. No reasoning."
+               "Answer directly. No reasoning.\n"
                "</System>\n"
                "<PlayerUtterance>%s</PlayerUtterance>\n",
                snapshot, sanitize_text( npc_name ), sanitize_text( player_utterance ) );
