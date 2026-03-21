@@ -1883,7 +1883,7 @@ void npc::move()
             }
         }
 
-        if( !has_flag( json_flag_CANNOT_MOVE ) ) {
+        {
             update_path( forced_target->pos_bub() );
             move_to_next();
             if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
@@ -2042,7 +2042,7 @@ void npc::move()
         }
     }
 
-    if( action == npc_undecided && goto_to_this_pos && !has_flag( json_flag_CANNOT_MOVE ) ) {
+    if( action == npc_undecided && goto_to_this_pos  ) {
         action = npc_goto_to_this_pos;
     }
 
@@ -2058,7 +2058,7 @@ void npc::move()
     if( action == npc_undecided && !llm_attack_override && !llm_item_override && is_walking_with() &&
         rules.has_flag( ally_rule::follow_close ) &&
         rl_dist( pos_bub(), player_character.pos_bub() ) > follow_distance() &&
-        !( player_character.in_vehicle && in_vehicle ) && !has_flag( json_flag_CANNOT_MOVE ) ) {
+        !( player_character.in_vehicle && in_vehicle )  ) {
         action = npc_follow_player;
     }
 
@@ -2195,10 +2195,7 @@ void npc::execute_action( npc_action action )
     map &here = get_map();
     switch( action ) {
         case npc_do_attack: {
-            if( has_flag( json_flag_CANNOT_ATTACK ) ) {
-                move_pause();
-                break;
-            }
+            // CTLG branch does not expose generic CANNOT_ATTACK/CANNOT_MOVE json flags here.
             const tripoint_bub_ms eval_target = ai_cache.current_attack_evaluation.target();
             const tripoint_bub_ms pos_before = pos_bub();
             const item_location wielded = get_wielded_item();

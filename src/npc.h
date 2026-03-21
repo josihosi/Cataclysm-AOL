@@ -214,6 +214,7 @@ enum class llm_intent_action : int {
     follow_close,
     follow_far,
     wait_here,
+    hold_position,
     equip_gun,
     equip_melee,
     equip_bow,
@@ -781,19 +782,6 @@ enum talk_topic_enum {
 std::string convert_talk_topic( talk_topic_enum old_value );
 
 class npc_template;
-
-enum class llm_intent_action : int {
-    none = 0,
-    follow_close,
-    follow_far,
-    wait_here,
-    hold_position,
-    equip_gun,
-    equip_melee,
-    equip_bow,
-    panic_on,
-    panic_off
-};
 
 class npc : public Character
 {
