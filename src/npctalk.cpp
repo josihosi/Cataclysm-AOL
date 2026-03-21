@@ -140,15 +140,15 @@ static npc *select_llm_ambient_speech_target( const avatar &speaker, int hear_vo
             guy.get_attitude() == NPCATT_FLEE_TEMP ) {
             return false;
         }
-        return guy.can_hear( speaker.pos_bub(), hear_volume );
+        return guy.can_hear( speaker.pos(), hear_volume );
     } );
     if( candidates.empty() ) {
         return nullptr;
     }
-    const tripoint_bub_ms speaker_pos = speaker.pos_bub();
+    const tripoint speaker_pos = speaker.pos();
     std::sort( candidates.begin(), candidates.end(), [&]( const npc *lhs, const npc *rhs ) {
-        const int lhs_dist = rl_dist( speaker_pos, lhs->pos_bub() );
-        const int rhs_dist = rl_dist( speaker_pos, rhs->pos_bub() );
+        const int lhs_dist = rl_dist( speaker_pos, lhs->pos() );
+        const int rhs_dist = rl_dist( speaker_pos, rhs->pos() );
         if( lhs_dist != rhs_dist ) {
             return lhs_dist < rhs_dist;
         }
