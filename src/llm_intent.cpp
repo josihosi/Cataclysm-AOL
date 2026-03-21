@@ -919,12 +919,40 @@ std::string xml_escape( const std::string &text )
 
 std::string strip_think_output( const std::string &text )
 {
-    const std::string close_tag = "</think>";
-    const size_t close = text.rfind( close_tag );
-    if( close == std::string::npos ) {
-        return text;
+    for( size_t i = text.size(); i-- > 0; ) {
+        if( text[i] != '<' ) {
+            continue;
+        }
+        size_t j = i + 1;
+        while( j < text.size() && isspace( static_cast<unsigned char>( text[j] ) ) ) {
+            ++j;
+        }
+        if( j >= text.size() || text[j] != '/' ) {
+            continue;
+        }
+        ++j;
+        while( j < text.size() && isspace( static_cast<unsigned char>( text[j] ) ) ) {
+            ++j;
+        }
+        static constexpr char think_tag[] = "think";
+        size_t k = 0;
+        while( k < sizeof( think_tag ) - 1 && j + k < text.size() &&
+               tolower( static_cast<unsigned char>( text[j + k] ) ) == think_tag[k] ) {
+            ++k;
+        }
+        if( k != sizeof( think_tag ) - 1 ) {
+            continue;
+        }
+        j += k;
+        while( j < text.size() && isspace( static_cast<unsigned char>( text[j] ) ) ) {
+            ++j;
+        }
+        if( j >= text.size() || text[j] != '>' ) {
+            continue;
+        }
+        return trim_copy( text.substr( j + 1 ) );
     }
-    return trim_copy( text.substr( close + close_tag.size() ) );
+    return text;
 }
 
 std::string strip_xml_tags( const std::string &text )
