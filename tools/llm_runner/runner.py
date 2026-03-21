@@ -428,6 +428,23 @@ def ollama_generate(ollama_url: str, model: str, prompt: str, max_tokens: int, t
         return json.loads(resp.read().decode("utf-8"))
 
 
+def ollama_unload(ollama_url: str, model: str, log_fp: Optional[TextIO]) -> None:
+    payload = {
+        "model": model,
+        "keep_alive": 0,
+        "stream": False,
+    }
+    url = ollama_url.rstrip("/") + "/api/generate"
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode("utf-8", "replace")
+            log_line(log_fp, f"ollama unload response: {body[:400]}")
+    except Exception as exc:
+        log_line(log_fp, f"ollama unload exception: {exc}")
+
+
 def run_ollama_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
     model = (args.ollama_model or "").strip()
     if not model:
@@ -661,6 +678,7 @@ def run_ollama_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
 
         request_id = request.get("request_id", "unknown")
         if request.get("command") == "shutdown":
+            ollama_unload(args.ollama_url, model, log_fp)
             write_response({"request_id": request_id, "ok": True, "shutdown": True})
             return 0
 
@@ -730,6 +748,7 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
 
         request_id = request.get("request_id", "unknown")
         if request.get("command") == "shutdown":
+            ollama_unload(args.ollama_url, model, log_fp)
             write_response({"request_id": request_id, "ok": True, "shutdown": True})
             return 0
 
