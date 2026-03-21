@@ -1,0 +1,406 @@
+diff --git a/src/llm_intent.cpp b/src/llm_intent.cpp
+index 8058424c21..15904e678d 100644
+--- a/src/llm_intent.cpp
++++ b/src/llm_intent.cpp
+@@ -170,6 +170,8 @@ struct runner_config {
+     std::string api_key_env;
+     std::string api_provider;
+     std::string api_model;
++    std::string ollama_url;
++    std::string ollama_model;
+     int max_tokens = 0;
+     int max_prompt_len = 0;
+     bool force_npu = false;
+@@ -184,6 +186,8 @@ struct runner_config {
+                api_key_env == other.api_key_env &&
+                api_provider == other.api_provider &&
+                api_model == other.api_model &&
++               ollama_url == other.ollama_url &&
++               ollama_model == other.ollama_model &&
+                max_tokens == other.max_tokens &&
+                max_prompt_len == other.max_prompt_len &&
+                force_npu == other.force_npu;
+@@ -1887,20 +1891,71 @@ bool should_attempt_parse( const std::string &line )
+     return p;
+ }
+ 
++[[maybe_unused]] std::string resolve_python_from_venv_or_exe( const std::string &path )
++{
++    std::filesystem::path p = resolve_path( path );
++    if( p.empty() ) {
++        return path;
++    }
++    if( std::filesystem::is_directory( p ) ) {
++#if defined(_WIN32)
++        std::filesystem::path candidate = p / "Scripts" / "python.exe";
++        if( std::filesystem::exists( candidate ) ) {
++            return candidate.string();
++        }
++#else
++        for( const char *name : { "python3", "python" } ) {
++            std::filesystem::path candidate = p / "bin" / name;
++            if( std::filesystem::exists( candidate ) ) {
++                return candidate.string();
++            }
++        }
++#endif
++    }
++    return p.string();
++}
++
+ [[maybe_unused]] runner_config current_runner_config()
+ {
+     static constexpr int default_max_tokens = 20000;
+     static constexpr int default_max_prompt_len = 4096;
+     runner_config cfg;
+-    cfg.python_path = get_option<std::string>( "LLM_INTENT_PYTHON" );
++    cfg.backend = get_option<std::string>( "LLM_INTENT_BACKEND" );
+     cfg.runner_path = "tools/llm_runner/runner.py";
+     cfg.model_dir = get_option<std::string>( "LLM_INTENT_MODEL_DIR" );
+-    cfg.backend = get_option<std::string>( "LLM_INTENT_BACKEND" );
+     cfg.device = get_option<std::string>( "LLM_INTENT_DEVICE" );
+-    cfg.use_api = get_option<bool>( "LLM_INTENT_USE_API" );
++    cfg.use_api = cfg.backend == "api" || get_option<bool>( "LLM_INTENT_USE_API" );
+     cfg.api_key_env = get_option<std::string>( "LLM_INTENT_API_KEY_ENV" );
+     cfg.api_provider = get_option<std::string>( "LLM_INTENT_API_PROVIDER" );
+     cfg.api_model = get_option<std::string>( "LLM_INTENT_API_MODEL" );
++    cfg.ollama_url = get_option<std::string>( "LLM_INTENT_OLLAMA_URL" );
++    cfg.ollama_model = get_option<std::string>( "LLM_INTENT_OLLAMA_MODEL" );
++
++    const std::string configured_python = resolve_python_from_venv_or_exe(
++                                           get_option<std::string>( "LLM_INTENT_PYTHON" ) );
++    if( !configured_python.empty() ) {
++        cfg.python_path = configured_python;
++    } else if( cfg.backend == "api" ) {
++        const std::string api_venv = resolve_python_from_venv_or_exe( "/Users/josefhorvath/ollama/api_env311" );
++        if( !api_venv.empty() && std::filesystem::exists( api_venv ) ) {
++            cfg.python_path = api_venv;
++        } else {
++#if defined(_WIN32)
++            cfg.python_path = "python";
++#else
++            cfg.python_path = "/usr/bin/python3";
++#endif
++        }
++    } else if( cfg.backend == "ollama" ) {
++#if defined(_WIN32)
++        cfg.python_path = "python";
++#else
++        cfg.python_path = "/usr/bin/python3";
++#endif
++    } else {
++        cfg.python_path = configured_python;
++    }
++
+     cfg.max_tokens = default_max_tokens;
+     cfg.max_prompt_len = get_option<int>( "LLM_INTENT_MAX_PROMPT_LEN" );
+     if( cfg.max_prompt_len <= 0 ) {
+@@ -1991,10 +2046,9 @@ class llm_intent_runner_process
+ 
+         bool start( const runner_config &config, std::string &error ) {
+             const std::string backend = lower_copy( config.backend );
+-            const bool api_configured = !config.api_provider.empty() && !config.api_model.empty();
+             const bool use_api_mode = config.use_api || backend == "api";
+-            const bool auto_backend = backend == "auto";
+-            const bool needs_model = !use_api_mode && !( auto_backend && api_configured );
++            const bool use_ollama_mode = backend == "ollama";
++            const bool needs_model = !use_api_mode && !use_ollama_mode;
+ 
+             if( config.python_path.empty() || config.runner_path.empty() ||
+                 ( config.model_dir.empty() && needs_model ) ) {
+@@ -2028,6 +2082,13 @@ class llm_intent_runner_process
+                 }
+                 args.push_back( "--max-tokens" );
+                 args.push_back( std::to_string( config.max_tokens ) );
++            } else if( use_ollama_mode ) {
++                args.push_back( "--ollama-url" );
++                args.push_back( config.ollama_url.empty() ? "http://127.0.0.1:11434" : config.ollama_url );
++                args.push_back( "--ollama-model" );
++                args.push_back( config.ollama_model );
++                args.push_back( "--max-tokens" );
++                args.push_back( std::to_string( config.max_tokens ) );
+             } else if( !config.model_dir.empty() ) {
+                 std::filesystem::path cache_dir = model_dir / ".ov_cache";
+                 args.push_back( "--model-dir" );
+@@ -2044,16 +2105,6 @@ class llm_intent_runner_process
+                     args.push_back( "--force-npu" );
+                 }
+             }
+-            if( !use_api_mode && auto_backend && api_configured ) {
+-                args.push_back( "--api-provider" );
+-                args.push_back( config.api_provider );
+-                args.push_back( "--api-model" );
+-                args.push_back( config.api_model );
+-                if( !config.api_key_env.empty() ) {
+-                    args.push_back( "--api-key-env" );
+-                    args.push_back( config.api_key_env );
+-                }
+-            }
+             args.push_back( "--log-file" );
+             args.push_back( log_path.string() );
+ 
+@@ -2311,10 +2362,9 @@ class posix_runner_process
+ 
+         bool start( const runner_config &config, std::string &error ) {
+             const std::string backend = lower_copy( config.backend );
+-            const bool api_configured = !config.api_provider.empty() && !config.api_model.empty();
+             const bool use_api_mode = config.use_api || backend == "api";
+-            const bool auto_backend = backend == "auto";
+-            const bool needs_model = !use_api_mode && !( auto_backend && api_configured );
++            const bool use_ollama_mode = backend == "ollama";
++            const bool needs_model = !use_api_mode && !use_ollama_mode;
+ 
+             if( config.python_path.empty() || config.runner_path.empty() ||
+                 ( config.model_dir.empty() && needs_model ) ) {
+@@ -2348,6 +2398,13 @@ class posix_runner_process
+                 }
+                 args.push_back( "--max-tokens" );
+                 args.push_back( std::to_string( config.max_tokens ) );
++            } else if( use_ollama_mode ) {
++                args.push_back( "--ollama-url" );
++                args.push_back( config.ollama_url.empty() ? "http://127.0.0.1:11434" : config.ollama_url );
++                args.push_back( "--ollama-model" );
++                args.push_back( config.ollama_model );
++                args.push_back( "--max-tokens" );
++                args.push_back( std::to_string( config.max_tokens ) );
+             } else if( !config.model_dir.empty() ) {
+                 std::filesystem::path cache_dir = model_dir / ".ov_cache";
+                 args.push_back( "--model-dir" );
+@@ -2364,16 +2421,6 @@ class posix_runner_process
+                     args.push_back( "--force-npu" );
+                 }
+             }
+-            if( !use_api_mode && auto_backend && api_configured ) {
+-                args.push_back( "--api-provider" );
+-                args.push_back( config.api_provider );
+-                args.push_back( "--api-model" );
+-                args.push_back( config.api_model );
+-                if( !config.api_key_env.empty() ) {
+-                    args.push_back( "--api-key-env" );
+-                    args.push_back( config.api_key_env );
+-                }
+-            }
+             args.push_back( "--log-file" );
+             args.push_back( log_path.string() );
+ 
+diff --git a/tools/llm_runner/runner.py b/tools/llm_runner/runner.py
+index 059c1be5df..d5190df3e4 100644
+--- a/tools/llm_runner/runner.py
++++ b/tools/llm_runner/runner.py
+@@ -5,6 +5,8 @@ import os
+ import sys
+ import time
+ import traceback
++import urllib.request
++import urllib.error
+ from typing import Any, Dict, Optional, TextIO, Tuple
+ 
+ TEMPERATURE = 0.6
+@@ -32,9 +34,9 @@ def parse_args() -> argparse.Namespace:
+     )
+     parser.add_argument(
+         "--backend",
+-        default="auto",
+-        choices=["auto", "openvino", "api"],
+-        help="Backend selection: auto, openvino, or api.",
++        default="openvino",
++        choices=["openvino", "api", "ollama"],
++        help="Backend selection: openvino, api, or ollama.",
+     )
+     parser.add_argument("--model-dir", help="Path to model directory.")
+     parser.add_argument("--device", default="AUTO", help="Target device (default: AUTO).")
+@@ -85,6 +87,16 @@ def parse_args() -> argparse.Namespace:
+         default="",
+         help="Environment variable name that stores the API key.",
+     )
++    parser.add_argument(
++        "--ollama-url",
++        default="http://127.0.0.1:11434",
++        help="Base URL for local Ollama server.",
++    )
++    parser.add_argument(
++        "--ollama-model",
++        default="",
++        help="Model tag to use with Ollama.",
++    )
+     parser.add_argument(
+         "--self-test",
+         action="store_true",
+@@ -386,6 +398,54 @@ def run_openvino_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -
+         return 1
+ 
+ 
++def ollama_generate(ollama_url: str, model: str, prompt: str, max_tokens: int, temperature: float) -> Dict[str, Any]:
++    payload = {
++        "model": model,
++        "prompt": prompt,
++        "stream": False,
++        "options": {
++            "temperature": float(temperature),
++            "num_predict": int(max_tokens),
++        },
++    }
++    url = ollama_url.rstrip("/") + "/api/generate"
++    data = json.dumps(payload).encode("utf-8")
++    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
++    with urllib.request.urlopen(req, timeout=600) as resp:
++        return json.loads(resp.read().decode("utf-8"))
++
++
++def run_ollama_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
++    model = (args.ollama_model or "").strip()
++    if not model:
++        print("Ollama model is required for Ollama self-test.", file=sys.stderr)
++        return 1
++    try:
++        response = ollama_generate(args.ollama_url, model, args.self_test_prompt, min(args.max_tokens, 16), 0.2)
++        text = strip_think_tags(sanitize_text(response.get("response", "")))
++        if not text.strip():
++            print("self-test failed: empty Ollama response", file=sys.stderr)
++            return 1
++        print("self-test ok")
++        return 0
++    except Exception as exc:
++        log_line(log_fp, f"ollama self-test exception: {exc}")
++        log_line(log_fp, traceback.format_exc())
++        print(f"self-test failed: {exc}", file=sys.stderr)
++        return 1
++
++
++def apply_provider_api_key_env(provider: str, api_key: str) -> None:
++    provider_key = (provider or "").strip().lower()
++    if not api_key:
++        return
++    if provider_key == "openrouter":
++        os.environ["OPENROUTER_API_KEY"] = api_key
++        os.environ.setdefault("OPENAI_API_KEY", api_key)
++    elif provider_key == "openai":
++        os.environ["OPENAI_API_KEY"] = api_key
++
++
+ def run_api_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
+     try:
+         from any_llm import completion
+@@ -407,6 +467,8 @@ def run_api_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int
+             print(f"API key env var not set: {args.api_key_env}", file=sys.stderr)
+             return 1
+ 
++    apply_provider_api_key_env(provider, api_key)
++
+     try:
+         response = completion(
+             model=model,
+@@ -435,34 +497,22 @@ def main() -> int:
+         log_line(log_fp, "dry-run ok")
+         print("dry-run ok")
+         return 0
+-    backend = (args.backend or "auto").strip().lower()
++    backend = (args.backend or "openvino").strip().lower()
+     if args.use_api:
+         backend = "api"
+ 
+-    api_configured = bool((args.api_provider or "").strip() and (args.api_model or "").strip())
+-    openvino_available = False
+-    if backend in ("auto", "openvino"):
+-        openvino_available = try_import_openvino_genai(log_fp) is not None
+-
+-    if backend == "auto":
+-        if args.model_dir and openvino_available:
+-            backend = "openvino"
+-        elif api_configured:
+-            backend = "api"
+-        elif not args.model_dir:
+-            print("Missing --model-dir for OpenVINO mode. Set [LLM] model directory or enable API.", file=sys.stderr)
+-            return 1
+-        else:
+-            print("OpenVINO GenAI not available. Install OpenVINO or enable API mode.", file=sys.stderr)
+-            return 1
+-
+     if backend == "api":
+         if args.self_test:
+             return run_api_self_test(args, log_fp)
+         return run_api_mode(args, log_fp)
+ 
++    if backend == "ollama":
++        if args.self_test:
++            return run_ollama_self_test(args, log_fp)
++        return run_ollama_mode(args, log_fp)
++
+     if not args.model_dir:
+-        print("Missing --model-dir for local runner mode.", file=sys.stderr)
++        print("Missing --model-dir for OpenVINO mode.", file=sys.stderr)
+         return 1
+     if args.self_test:
+         return run_openvino_self_test(args, log_fp)
+@@ -549,6 +599,63 @@ def extract_completion_text(response: Any) -> str:
+     return str(response)
+ 
+ 
++def run_ollama_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
++    model = (args.ollama_model or "").strip()
++    if not model:
++        print("Ollama model is required for Ollama mode.", file=sys.stderr)
++        return 1
++
++    for line in sys.stdin:
++        line = line.strip()
++        if not line:
++            continue
++        try:
++            request = read_request(line)
++        except Exception as exc:
++            log_line(log_fp, f"invalid request: {exc}")
++            write_response({"request_id": "unknown", "ok": False, "error": str(exc)})
++            continue
++
++        request_id = request.get("request_id", "unknown")
++        if request.get("command") == "shutdown":
++            write_response({"request_id": request_id, "ok": True, "shutdown": True})
++            return 0
++
++        prompt = request.get("prompt")
++        if not isinstance(prompt, str) or not prompt.strip():
++            write_response({"request_id": request_id, "ok": False, "error": "Missing prompt"})
++            continue
++
++        max_tokens = request.get("max_tokens")
++        if not isinstance(max_tokens, int) or max_tokens <= 0:
++            max_tokens = 128
++        temperature = request.get("temperature")
++        if not isinstance(temperature, (int, float)) or temperature <= 0:
++            temperature = TEMPERATURE
++
++        start_time = time.perf_counter()
++        try:
++            response = ollama_generate(args.ollama_url, model, prompt, max_tokens, temperature)
++            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
++            text = strip_think_tags(sanitize_text(response.get("response", "")))
++            payload = {"request_id": request_id, "ok": True, "text": text}
++            payload["metrics"] = {
++                "gen_time_ms": elapsed_ms,
++                "max_new_tokens": max_tokens,
++                "use_api": False,
++                "backend": "ollama",
++                "prompt_eval_count": response.get("prompt_eval_count"),
++                "eval_count": response.get("eval_count"),
++                "eval_duration": response.get("eval_duration"),
++            }
++            write_response(payload)
++        except Exception as exc:
++            log_line(log_fp, f"ollama request exception: {exc}")
++            log_line(log_fp, traceback.format_exc())
++            write_response({"request_id": request_id, "ok": False, "error": str(exc)})
++    return 0
++
++
+ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
+     try:
+         from any_llm import completion
+@@ -593,6 +700,7 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
+             max_tokens = None
+ 
+         start_time = time.perf_counter()
++        apply_provider_api_key_env(provider, api_key)
+         try:
+             completion_kwargs: Dict[str, Any] = {
+                 "model": model,
