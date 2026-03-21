@@ -1286,7 +1286,7 @@ void game::chat()
                     llm_intent::enqueue_ambient_request( *ambient_target, utterance );
                 }
             }
-            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) || get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                 std::vector<std::string> heard_by;
                 heard_by.reserve( hearers.size() + ( ambient_target != nullptr ? 1 : 0 ) );
                 for( const npc *guy : hearers ) {
