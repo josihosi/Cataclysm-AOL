@@ -1726,13 +1726,6 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         out << "your_profession: " << profession << "\n";
     }
     const background_summary_entry background_summary = get_background_summary_for( listener );
-    if( !background_summary.source_tag.empty() ) {
-        std::string bg_line = background_summary.source_tag;
-        if( bg_line.rfind( "bg_", 0 ) == 0 ) {
-            bg_line.erase( 0, 3 );
-        }
-        out << "your_background_info: " << bg_line << "\n";
-    }
     if( !background_summary.background.empty() ) {
         out << "your_tone: " << background_summary.background << "\n";
     }
@@ -1984,7 +1977,8 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "%s\n"
                "<Explanation allowed actions>\n"
                "Snapshot field your_follow_mode can be follow-close, follow-afar, or guard/hold.\n"
-               "If your_follow_mode already matches player intent, prefer 'idle' over repeating it.\n"
+               "If the player directly asks you to wait, stay, hold, guard, or stop, use 'wait_here' or 'hold_position' instead of follow actions.\n"
+               "Only use 'idle' when no action change is needed. Do not use 'idle' as a substitute for wait/hold commands.\n"
                "'wait_here' to stay put, keep watch, wait, stand.\n"
                "'hold_position' to wait here temporarily, holding that position and keep watch.\n"
                "'follow_close' to walk behind, follow close, come here.\n"
