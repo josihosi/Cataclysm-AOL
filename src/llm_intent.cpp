@@ -1844,7 +1844,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
 
     item_location wielded = listener.get_wielded_item();
 
-    out << "inventory: ";
+    out << "wielded: ";
     if( wielded ) {
         const item &weapon = *wielded;
         out << "wielded=\"" << sanitize_text( weapon.tname() ) << "\"";
@@ -1986,7 +1986,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "'equip_bow' to use bow, crossbow, stealth.\n"
                "'panic_on' to start running, get out of here.\n"
                "'panic_off' if convincing, to stop fleeing and get your act together.\n"
-               "'look_around' to pick-up, search, explore for items around you.\n"
+               "'look_around' to view your surroundings and pick-up, grab, search, explore for items around you.\n"
                "'look_inventory' to look inside your inventory and wear/wield/activate items.\n"
                "'move: <coordinate> <coordinate> ... <state>' to move step-by-step on your snapshot map. Use N, S, E, W, NE, NW, SE and SW and chain 4 to 15 coordinates. After the coordinates you must also include either 'wait_here' or 'hold_position' to set state.\n"
                "'attack=<target>' to attack a target with the letter from your map.\n"
