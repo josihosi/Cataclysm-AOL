@@ -912,12 +912,23 @@ std::string xml_escape( const std::string &text )
     return out;
 }
 
+std::string strip_think_output( const std::string &text )
+{
+    const std::string close_tag = "</think>";
+    const size_t close = text.rfind( close_tag );
+    if( close == std::string::npos ) {
+        return text;
+    }
+    return trim_copy( text.substr( close + close_tag.size() ) );
+}
+
 std::string strip_xml_tags( const std::string &text )
 {
+    const std::string stripped = strip_think_output( text );
     std::string out;
-    out.reserve( text.size() );
+    out.reserve( stripped.size() );
     bool in_tag = false;
-    for( char c : text ) {
+    for( char c : stripped ) {
         if( c == '<' ) {
             in_tag = true;
             continue;
@@ -1036,6 +1047,7 @@ std::string build_look_around_prompt( const std::string &player_utterance,
     out << "Select up to three nearby items from the list for the NPC to pick up.";
     out << "Return only up to three item ids from the <Items> list, comma-separated.";
     out << "Do not return item names, explanations, or any items not listed in <Items>.";
+    out << "\n/no_think\nAnswer directly. No reasoning.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
     out << "<Items>\n";
@@ -1064,6 +1076,7 @@ std::string build_look_inventory_prompt( const std::string &player_utterance,
     out << "Section labels are case-insensitive.";
     out << "Use item ids from the list only.";
     out << "If you need both wear and act, repeat the same id in both sections.";
+    out << "\n/no_think\nAnswer directly. No reasoning.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
     out << "<Inventory>\n";
@@ -1396,7 +1409,8 @@ bool extract_lenient_csv( const std::string &csv, std::string &speech,
 
 std::string extract_csv_from_text( const std::string &text )
 {
-    std::istringstream lines( text );
+    const std::string stripped = strip_think_output( text );
+    std::istringstream lines( stripped );
     std::string cleaned;
     std::string line;
     while( std::getline( lines, line ) ) {
@@ -1960,6 +1974,8 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "Print only Fields 1-4, separated by | ."
                "If you break this format, you have failed."
                "Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.\n"
+               "/no_think\n"
+               "Answer directly. No reasoning.\n"
                "<Example Output 1>"
                "Blow me.|idle"
                "</Example Output 1>\n"
@@ -2001,6 +2017,8 @@ std::string build_ambient_prompt( const std::string &npc_name,
                "Reply deeply in character, informed by the snapshot: your background, your tone, your opinions of the player, and your recent memories."
                "Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no CSV, no pipes, no tool calls, no menu syntax."
                "If you are unsure, answer briefly and naturally instead of inventing details."
+               "/no_think\n"
+               "Answer directly. No reasoning."
                "</System>\n"
                "<PlayerUtterance>%s</PlayerUtterance>\n",
                snapshot, sanitize_text( npc_name ), sanitize_text( player_utterance ) );
