@@ -1719,9 +1719,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     }
     out << "your_name: " << sanitize_text( listener.get_name() ) << "\n";
     const std::string profession = sanitize_text( listener.custom_profession );
-    if( !profession.empty() ) {
-        out << "your_profession: " << profession << "\n";
-    }
+    out << "your_profession: " << ( profession.empty() ? "no_past" : profession ) << "\n";
     const background_summary_entry background_summary = get_background_summary_for( listener );
     if( !background_summary.background.empty() ) {
         out << "your_tone: " << background_summary.background << "\n";
