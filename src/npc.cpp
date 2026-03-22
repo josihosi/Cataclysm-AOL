@@ -2628,7 +2628,7 @@ void npc::clear_llm_intent_actions()
     state.hold_position_active = false;
     goto_to_this_pos = std::nullopt;
     state.look_around_targets.clear();
-    state.look_around_active_target.clear();
+    state.look_around_active_target = npc::llm_item_target{};
 }
 
 void npc::set_llm_intent_move_target( const std::optional<tripoint_abs_ms> &target,
@@ -2656,13 +2656,13 @@ void npc::set_llm_intent_legend_map( const std::string &request_id,
     state.legend_targets_by_request[request_id] = std::move( legend );
 }
 
-void npc::set_llm_intent_item_targets( const std::vector<std::string> &targets ) const
+void npc::set_llm_intent_item_targets( const std::vector<llm_item_target> &targets ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
     state.look_around_targets.clear();
-    state.look_around_active_target.clear();
-    for( const std::string &target : targets ) {
-        if( !target.empty() ) {
+    state.look_around_active_target = npc::llm_item_target{};
+    for( const llm_item_target &target : targets ) {
+        if( !target.name.empty() ) {
             state.look_around_targets.push_back( target );
         }
     }
