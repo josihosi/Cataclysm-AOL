@@ -1072,9 +1072,10 @@ std::string build_look_around_prompt( const std::string &player_utterance,
 {
     std::ostringstream out;
     out << "<System>";
-    out << "Select up to three nearby items from the list for the NPC to pick up.";
+    out << "Select up to three nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.";
+    out << "Prioritize items that best match the player's request, including named objects like a backpack, knife, or other visible item.";
     out << "Return only up to three item ids from the <Items> list, comma-separated.";
-    out << "Do not return item names, explanations, or any items not listed in <Items>.";
+    out << "Do not return item names, explanations, or any items not listed in <Items>. Return an empty line if nothing visible fits the request.";
     out << "\n/no_think\nAnswer directly. No reasoning.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
