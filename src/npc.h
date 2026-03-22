@@ -963,13 +963,17 @@ class npc : public Character
             std::string npc_response;
             std::vector<std::string> actions;
         };
+        struct llm_item_target {
+            std::string name;
+            int quantity = -1;
+        };
         void set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                      const std::string &request_id,
                                      const std::string &target_hint ) const;
         void set_llm_intent_move_target( const std::optional<tripoint_abs_ms> &target,
                                          llm_intent_action arrival_state );
         void clear_llm_intent_actions();
-        void set_llm_intent_item_targets( const std::vector<std::string> &targets ) const;
+        void set_llm_intent_item_targets( const std::vector<llm_item_target> &targets ) const;
         bool has_llm_intent_actions() const;
         void add_llm_intent_memory( const std::string &player_utterance,
                                     const std::string &npc_response,
@@ -1420,8 +1424,8 @@ class npc : public Character
             std::map<std::string, std::map<char, weak_ptr_fast<Creature>>> legend_targets_by_request;
             llm_intent_action move_arrival_state = llm_intent_action::none;
             bool hold_position_active = false;
-            std::deque<std::string> look_around_targets;
-            std::string look_around_active_target;
+            std::deque<llm_item_target> look_around_targets;
+            llm_item_target look_around_active_target;
             std::deque<llm_intent_memory_entry> conversation_memory;
             std::deque<llm_overheard_memory_entry> overheard_memory;
             time_point random_call_next_turn = calendar::before_time_starts;

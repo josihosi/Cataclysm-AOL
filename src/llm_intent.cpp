@@ -60,6 +60,7 @@
 #include "type_id.h"
 #include "value_ptr.h"
 #include "vehicle.h"
+#include "vehicle_selector.h"
 #include "visitable.h"
 
 #if defined(_WIN32)
@@ -870,6 +871,11 @@ struct look_around_item_entry {
     int min_distance = 0;
 };
 
+struct look_around_selection {
+    std::string name;
+    int quantity = -1;
+};
+
 struct inventory_item_entry {
     std::string id;
     std::string name;
@@ -972,29 +978,32 @@ std::string strip_xml_tags( const std::string &text )
     return out;
 }
 
-std::vector<look_around_item_entry> collect_look_around_items( npc &listener, int radius,
-        size_t max_entries )
+template<typename F>
+void for_each_visible_look_around_item( npc &listener, int radius, const F &cb )
 {
     map &here = get_map();
-    std::unordered_map<std::string, look_around_item_entry> entries_by_name;
+    const auto visit_node = [&]( const tripoint_bub_ms & p, const int dist,
+    const item_location & base_loc, item & top, const auto & ) -> void {
+        top.visit_items( [&]( item * node, item * ) {
+            if( node == nullptr ) {
+                return VisitResponse::NEXT;
+            }
+            if( node->is_corpse() ) {
+                return VisitResponse::NEXT;
+            }
+            item_location loc = node == &top ? base_loc : item_location( base_loc, node );
+            cb( p, dist, loc, *node );
+            return VisitResponse::NEXT;
+        } );
+    };
 
-    for( const tripoint &p : closest_points_first( listener.pos(), radius ) ) {
-        if( !here.sees_some_items( p, listener ) || !listener.sees( p ) ) {
+    for( const tripoint_bub_ms &p : closest_points_first( listener.pos_bub(), radius ) ) {
+        if( !here.sees_some_items( p, listener ) || !listener.sees( here, p ) ) {
             continue;
         }
-        const int dist = rl_dist( listener.pos(), p );
-        for( const item &it : here.i_at( p ) ) {
-            const std::string name = normalize_item_label( it.tname( 1, false ) );
-            if( name.empty() ) {
-                continue;
-            }
-            look_around_item_entry &entry = entries_by_name[name];
-            if( entry.name.empty() ) {
-                entry.name = name;
-                entry.min_distance = dist;
-            }
-            entry.quantity += it.count();
-            entry.min_distance = std::min( entry.min_distance, dist );
+        const int dist = rl_dist( listener.pos_bub(), p );
+        for( item &it : here.i_at( p ) ) {
+            visit_node( p, dist, item_location( map_cursor{ p }, &it ), it, visit_node );
         }
         const optional_vpart_position vp = here.veh_at( p );
         if( !vp ) {
@@ -1004,20 +1013,32 @@ std::vector<look_around_item_entry> collect_look_around_items( npc &listener, in
         if( !cargo || cargo->has_feature( "LOCKED" ) ) {
             continue;
         }
-        for( const item &it : cargo->items() ) {
-            const std::string name = normalize_item_label( it.tname( 1, false ) );
-            if( name.empty() ) {
-                continue;
-            }
-            look_around_item_entry &entry = entries_by_name[name];
-            if( entry.name.empty() ) {
-                entry.name = name;
-                entry.min_distance = dist;
-            }
-            entry.quantity += it.count();
-            entry.min_distance = std::min( entry.min_distance, dist );
+        for( item &it : cargo->items() ) {
+            visit_node( p, dist,
+                        item_location( vehicle_cursor{ cargo->vehicle(), static_cast<ptrdiff_t>( cargo->part_index() ) }, &it ),
+                        it, visit_node );
         }
     }
+}
+
+std::vector<look_around_item_entry> collect_look_around_items( npc &listener, int radius,
+        size_t max_entries )
+{
+    std::unordered_map<std::string, look_around_item_entry> entries_by_name;
+    for_each_visible_look_around_item( listener, radius,
+    [&]( const tripoint_bub_ms &, const int dist, const item_location &, const item & it ) {
+        const std::string name = normalize_item_label( it.tname( 1, false ) );
+        if( name.empty() ) {
+            return;
+        }
+        look_around_item_entry &entry = entries_by_name[name];
+        if( entry.name.empty() ) {
+            entry.name = name;
+            entry.min_distance = dist;
+        }
+        entry.quantity += it.count();
+        entry.min_distance = std::min( entry.min_distance, dist );
+    } );
 
     std::vector<look_around_item_entry> entries;
     entries.reserve( entries_by_name.size() );
@@ -1074,8 +1095,9 @@ std::string build_look_around_prompt( const std::string &player_utterance,
     out << "<System>";
     out << "Select up to three nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.";
     out << "Prioritize items that best match the player's request, including named objects like a backpack, knife, or other visible item.";
-    out << "Return only up to three item ids from the <Items> list, comma-separated.";
-    out << "Do not return item names, explanations, or any items not listed in <Items>. Return an empty line if nothing visible fits the request.";
+    out << "Items may be on the ground, in containers, in corpses, or in nearby vehicle cargo; treat them all as visible nearby choices.";
+    out << "Return only up to three item ids from the <Items> list, comma-separated. Each id may optionally use :a for all or :N for a quantity, for example item_2:a or item_4:5.";
+    out << "If quantity is omitted, it defaults to :a (all visible matching items). Do not return item names, explanations, or any items not listed in <Items>. Return an empty line if nothing visible fits the request.";
     out << "\n/no_think\nAnswer directly. No reasoning.";
     out << "</System>\n";
     out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
@@ -1145,7 +1167,7 @@ std::string normalize_csv_separators( const std::string &csv )
     return out;
 }
 
-std::vector<std::string> parse_look_around_response( const std::string &text,
+std::vector<look_around_selection> parse_look_around_response( const std::string &text,
         const std::unordered_map<std::string, std::string> &allowed )
 {
     std::string cleaned = trim_copy( strip_xml_tags( text ) );
@@ -1153,7 +1175,7 @@ std::vector<std::string> parse_look_around_response( const std::string &text,
         return {};
     }
     std::replace( cleaned.begin(), cleaned.end(), '\n', ',' );
-    std::vector<std::string> results;
+    std::vector<look_around_selection> results;
     size_t start = 0;
     while( start < cleaned.size() ) {
         size_t end = cleaned.find( ',', start );
@@ -1165,17 +1187,35 @@ std::vector<std::string> parse_look_around_response( const std::string &text,
         if( token.empty() ) {
             continue;
         }
+        std::string qty_token;
+        size_t colon = token.find( ':' );
+        if( colon != std::string::npos ) {
+            qty_token = trim_copy( token.substr( colon + 1 ) );
+            token = trim_copy( token.substr( 0, colon ) );
+        }
         std::string lowered = lower_copy( token );
         auto it = allowed.find( lowered );
         if( it == allowed.end() ) {
             continue;
         }
+        int quantity = -1;
+        if( !qty_token.empty() ) {
+            const std::string qty_lower = lower_copy( qty_token );
+            if( qty_lower != "a" ) {
+                quantity = std::max( 1, atoi( qty_lower.c_str() ) );
+            }
+        }
         const std::string &normalized = it->second;
-        if( std::find( results.begin(), results.end(), normalized ) == results.end() ) {
-            results.push_back( normalized );
+        auto existing = std::find_if( results.begin(), results.end(), [&]( const look_around_selection &sel ) {
+            return sel.name == normalized;
+        } );
+        if( existing == results.end() ) {
+            results.push_back( look_around_selection{ normalized, quantity } );
             if( results.size() >= 3 ) {
                 break;
             }
+        } else {
+            existing->quantity = quantity;
         }
     }
     return results;
@@ -3154,7 +3194,7 @@ class llm_intent_manager
                 id_to_name.emplace( entry.id, entry.name );
                 name_to_id.emplace( entry.name, entry.id );
             }
-            std::vector<std::string> selected;
+            std::vector<look_around_selection> selected;
             if( resp.ok ) {
                 selected = parse_look_around_response( resp.text, allowed );
             }
@@ -3164,7 +3204,8 @@ class llm_intent_manager
                                                       context.npc_name, resp.request_id, payload ) );
                 if( !selected.empty() ) {
                     std::string joined;
-                    for( const std::string &name : selected ) {
+                    for( const look_around_selection &sel : selected ) {
+                        const std::string &name = sel.name;
                         const auto id_it = name_to_id.find( name );
                         if( !joined.empty() ) {
                             joined += ", ";
@@ -3172,7 +3213,7 @@ class llm_intent_manager
                         if( id_it == name_to_id.end() ) {
                             joined += name;
                         } else {
-                            joined += id_it->second + ": " + name;
+                            joined += id_it->second + ( sel.quantity < 0 ? ":a: " : string_format(":%d: ", sel.quantity ) ) + name;
                         }
                     }
                     append_llm_intent_log( string_format( "look_around selected %s (%s): %s\n\n",
@@ -3181,7 +3222,12 @@ class llm_intent_manager
             }
             if( npc *target = g->find_npc( context.npc_id ) ) {
                 if( target->is_player_ally() ) {
-                    target->set_llm_intent_item_targets( selected );
+                    std::vector<npc::llm_item_target> targets;
+                    targets.reserve( selected.size() );
+                    for( const look_around_selection &sel : selected ) {
+                        targets.push_back( npc::llm_item_target{ sel.name, sel.quantity } );
+                    }
+                    target->set_llm_intent_item_targets( targets );
                 }
             }
         }
