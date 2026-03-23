@@ -2035,6 +2035,8 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
                "Print only Fields 1-4, separated by | ."
                "If you break this format, you have failed."
                "Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.\n"
+               "/no_think\n"
+               "Answer directly. No reasoning.\n"
                "<Example Output 1>"
                "Blow me.|idle"
                "</Example Output 1>\n"
