@@ -167,6 +167,7 @@ __pycache__
 .obsidian
 
 # OSX
+*.dSYM/
 Cataclysm.app
 build-data/osx/AppIcon.icns
 Cataclysm.dmg
