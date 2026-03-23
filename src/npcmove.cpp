@@ -1743,71 +1743,12 @@ bool npc::apply_llm_intent_item_targets()
         return true;
     }
 
-    map &here = get_map();
-    static constexpr int look_radius = 5;
+    static const int look_radius = 5;
     while( !state.look_around_targets.empty() ) {
         const llm_item_target target = state.look_around_targets.front();
-        item_location best_item;
-        tripoint_bub_ms best_pos = tripoint_bub_ms::invalid;
-        int best_dist = 0;
-        bool found = false;
-
-        const auto consider = [&]( const tripoint_bub_ms & p, item_location loc, item & node ) {
-            if( normalize_item_label( node.tname( 1, false ) ) != target.name ) {
-                return;
-            }
-            if( !::good_for_llm_targeted_pickup( node, *this, p ) ) {
-                return;
-            }
-            const int dist = rl_dist( pos_bub(), p );
-            if( !found || dist < best_dist ) {
-                best_item = std::move( loc );
-                best_pos = p;
-                best_dist = dist;
-                found = true;
-            }
-        };
-
-        for( const tripoint_bub_ms &p : closest_points_first( pos_bub(), look_radius ) ) {
-            if( is_player_ally() && g->check_zone( zone_type_NO_NPC_PICKUP, p ) ) {
-                continue;
-            }
-            if( !here.sees_some_items( p, *this ) || !sees( here, p ) ) {
-                continue;
-            }
-            for( item &it : here.i_at( p ) ) {
-                item_location base_loc{ map_cursor{ tripoint_bub_ms( p ) }, &it };
-                it.visit_items( [&]( item * node, item * ) {
-                    if( node == nullptr || node->is_corpse() ) {
-                        return VisitResponse::NEXT;
-                    }
-                    consider( p, node == &it ? base_loc : item_location( base_loc, node ), *node );
-                    return VisitResponse::NEXT;
-                } );
-            }
-            const optional_vpart_position vp = here.veh_at( p );
-            if( !vp ) {
-                continue;
-            }
-            const std::optional<vpart_reference> cargo = vp.cargo();
-            if( !cargo || cargo->has_feature( "LOCKED" ) ) {
-                continue;
-            }
-            for( item &it : cargo->items() ) {
-                item_location base_loc{ vehicle_cursor{ cargo->vehicle(), static_cast<ptrdiff_t>( cargo->part_index() ) }, &it };
-                it.visit_items( [&]( item * node, item * ) {
-                    if( node == nullptr || node->is_corpse() ) {
-                        return VisitResponse::NEXT;
-                    }
-                    consider( p, node == &it ? base_loc : item_location( base_loc, node ), *node );
-                    return VisitResponse::NEXT;
-                } );
-            }
-        }
-
-        if( found && best_pos != tripoint_bub_ms::invalid ) {
-            wanted_item_pos = best_pos;
-            wanted_item = best_item;
+        if( std::optional<tripoint> best_pos = find_llm_look_around_target_pos( *this, target.name,
+                look_radius ) ) {
+            wanted_item_pos = *best_pos;
             fetching_item = true;
             state.look_around_active_target = target;
             state.look_around_targets.pop_front();
@@ -4346,9 +4287,8 @@ void npc::pick_up_item()
     if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() && !llm_targeted ) {
         add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); Canceling on player's request", get_name() );
         fetching_item = false;
-        wanted_item = {};
         log_look_around_pickup( "canceled by ally rule" );
-        mod_moves( -1 );
+        moves -= 1;
         return;
     }
 
@@ -4358,122 +4298,74 @@ void npc::pick_up_item()
     const bool has_cargo = vp && !vp->has_feature( "LOCKED" );
 
     if( ( !here.has_items( wanted_item_pos ) && !has_cargo &&
-          !here.is_harvestable( wanted_item_pos ) && sees( here, wanted_item_pos ) ) ||
+          !here.is_harvestable( wanted_item_pos ) && sees( wanted_item_pos ) ) ||
         ( is_player_ally() && g->check_zone( zone_type_NO_NPC_PICKUP, wanted_item_pos ) ) ) {
-        // Items we wanted no longer exist and we can see it
-        // Or player who is leading us doesn't want us to pick it up
         fetching_item = false;
-        wanted_item = {};
+        log_look_around_pickup( "canceled (no items or zone)" );
         move_pause();
         add_msg_debug( debugmode::DF_NPC, "Canceling pickup - no items or new zone" );
-        log_look_around_pickup( "canceled (no items or zone)" );
         return;
     }
 
-    // Check: Is the item owned? Has the situation changed since we last moved? Am 'I' now
-    // standing in front of the shopkeeper/player that I am about to steal from?
-    if( wanted_item ) {
-        const bool still_pickup_ok = llm_targeted ?
-                                      ::good_for_llm_targeted_pickup( *wanted_item, *this, wanted_item_pos ) :
-                                      ::good_for_pickup( *wanted_item, *this, wanted_item_pos );
-        if( !still_pickup_ok ) {
-            add_msg_debug( debugmode::DF_NPC_ITEMAI,
-                           "%s canceling pickup - situation changed since they decided to take item", get_name() );
-            fetching_item = false;
-            wanted_item = {};
-            move_pause();
-            log_look_around_pickup( "canceled (situation changed)" );
-            return;
-        }
-    }
-
-    add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); [%s] => [%s]",
+    add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); [ % d, % d, % d] => [ % d, % d, % d]",
                    get_name(),
-                   pos_bub().to_string_writable(), wanted_item_pos.to_string_writable() );
-    if( const std::optional<tripoint_bub_ms> dest = nearest_passable( wanted_item_pos, pos_bub() ) ) {
+                   posx(), posy(), posz(), wanted_item_pos.x, wanted_item_pos.y, wanted_item_pos.z );
+    if( const std::optional<tripoint> dest = nearest_passable( wanted_item_pos, pos() ) ) {
         update_path( *dest );
     }
 
-    const int dist_to_pickup = rl_dist( pos_bub(), wanted_item_pos );
+    const int dist_to_pickup = rl_dist( pos(), wanted_item_pos );
     if( dist_to_pickup > 1 && !path.empty() ) {
-        add_msg_debug( debugmode::DF_NPC, "Moving; [%s] => [%s]",
-                       pos_bub().to_string_writable(), path[0].to_string_writable() );
-
+        add_msg_debug( debugmode::DF_NPC, "Moving; [%d, %d, %d] => [%d, %d, %d]",
+                       posx(), posy(), posz(), path[0].x, path[0].y, path[0].z );
         move_to_next();
         return;
     } else if( dist_to_pickup > 1 && path.empty() ) {
         add_msg_debug( debugmode::DF_NPC, "Can't find path" );
-        // This can happen, always do something
         fetching_item = false;
-        wanted_item = {};
         log_look_around_pickup( "canceled (no path)" );
         move_pause();
         return;
     }
 
-    // We're adjacent to the item; grab it!
-
     const std::string target_name = state.look_around_active_target.name;
-    int target_quantity = state.look_around_active_target.quantity;
     std::list<item> picked_up;
     if( llm_targeted ) {
-        const int qty = target_quantity > 0 ? target_quantity : -1;
-        mod_moves( -wanted_item.obtain_cost( *this, qty ) );
-        wanted_item.on_contents_changed();
-        item moved = wanted_item->split( qty );
-        if( moved.is_null() ) {
-            moved = *wanted_item;
-            wanted_item.remove_item();
-        }
-        bool stored = false;
-        bool worn = false;
-        bool wielded = false;
-        if( can_stash( moved ) ) {
-            stored = try_add( moved, nullptr, nullptr, false ) != item_location::nowhere;
-        }
-        if( !stored && can_wear( moved ).success() ) {
-            worn = wear_item( moved, false ).has_value();
-        }
-        if( !stored && !worn && can_wield( moved ).success() ) {
-            wielded = wield( moved );
-        }
-        if( !stored && !worn && !wielded ) {
-            i_add( moved, true, nullptr, nullptr, true, false );
-        }
-        if( stored || worn || wielded || !moved.is_null() ) {
-            picked_up.push_back( moved );
-        }
+        map_stack stack = here.i_at( wanted_item_pos );
+        picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
+            return normalize_llm_item_label( it.tname( 1, false ) ) == target_name;
+        }, false );
     } else {
         picked_up = pick_up_item_map( wanted_item_pos );
     }
     if( picked_up.empty() && has_cargo ) {
-        if( !llm_targeted ) {
+        if( llm_targeted ) {
+            vehicle_stack stack = vp->items();
+            picked_up = npc_pickup_from_stack_filtered( *this, stack, [&]( const item & it ) {
+                return normalize_llm_item_label( it.tname( 1, false ) ) == target_name;
+            }, false );
+        } else {
             picked_up = pick_up_item_vehicle( vp->vehicle(), vp->part_index() );
         }
     }
 
     if( picked_up.empty() ) {
-        // Last chance: plant harvest
         if( here.is_harvestable( wanted_item_pos ) ) {
             here.examine( *this, wanted_item_pos );
-            // Note: we didn't actually pick up anything, just spawned items
-            // but we want the item picker to find new items
             fetching_item = false;
-            wanted_item = {};
             log_look_around_pickup( "harvested (no items picked)" );
             return;
         }
         if( llm_targeted ) {
             fetching_item = false;
-            wanted_item = {};
             move_pause();
             log_look_around_pickup( "picked up 0 item(s), canceling" );
             return;
         }
     }
+
     viewer &player_view = get_player_view();
-    // Describe the pickup to the player
-    bool u_see = player_view.sees( here, *this ) || player_view.sees( here, wanted_item_pos );
+    bool u_see = player_view.sees( *this ) || player_view.sees( wanted_item_pos );
     if( u_see ) {
         if( picked_up.size() == 1 ) {
             add_msg( _( "%1$s picks up a %2$s." ), get_name(), picked_up.front().tname() );
@@ -4492,29 +4384,22 @@ void npc::pick_up_item()
         if( itval < worst_item_value ) {
             worst_item_value = itval;
         }
-        if( !llm_targeted ) {
+        bool worn = false;
+        if( llm_targeted && !can_stash( it ) && can_wear( it ).success() ) {
+            worn = wear_item( it, false ).has_value();
+        }
+        if( !worn ) {
             i_add( it );
-            mod_moves( -get_speed() );
         }
     }
 
+    moves -= 100;
     has_new_items = true;
 
     if( llm_targeted && !picked_up.empty() ) {
         const npc::llm_item_target continued_target = state.look_around_active_target;
         fetching_item = false;
-        wanted_item = {};
-        npc::llm_item_target next_target = continued_target;
-        if( next_target.quantity > 0 ) {
-            int picked_count = 0;
-            for( const item &it : picked_up ) {
-                picked_count += std::max( 1, it.count() );
-            }
-            next_target.quantity -= picked_count;
-        }
-        if( next_target.quantity != 0 ) {
-            state.look_around_targets.push_front( next_target );
-        }
+        state.look_around_targets.push_front( continued_target );
         if( apply_llm_intent_item_targets() ) {
             log_look_around_pickup( string_format( "picked up %d item(s), continuing",
                                                    static_cast<int>( picked_up.size() ) ), false );
@@ -4524,9 +4409,7 @@ void npc::pick_up_item()
 
     log_look_around_pickup( string_format( "picked up %d item(s)",
                                            static_cast<int>( picked_up.size() ) ) );
-
     fetching_item = false;
-    wanted_item = {};
 }
 
 template <typename T, typename F>

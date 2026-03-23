@@ -998,12 +998,12 @@ void for_each_visible_look_around_item( npc &listener, int radius, const F &cb )
     };
 
     for( const tripoint_bub_ms &p : closest_points_first( listener.pos_bub(), radius ) ) {
-        if( !here.sees_some_items( p, listener ) || !listener.sees( here, p ) ) {
+        if( !here.sees_some_items( p.raw(), listener ) || !listener.sees( p ) ) {
             continue;
         }
         const int dist = rl_dist( listener.pos_bub(), p );
         for( item &it : here.i_at( p ) ) {
-            visit_node( p, dist, item_location( map_cursor{ p }, &it ), it, visit_node );
+            visit_node( p, dist, item_location( map_cursor{ p.raw() }, &it ), it, visit_node );
         }
         const optional_vpart_position vp = here.veh_at( p );
         if( !vp ) {
