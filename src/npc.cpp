@@ -218,6 +218,7 @@ npc::npc()
     last_updated = calendar::turn;
     last_player_seen_pos = std::nullopt;
     last_seen_player_turn = 999;
+    wanted_item = item_location::nowhere;
     wanted_item_pos = tripoint_min;
     guard_pos = std::nullopt;
     goal = tripoint_abs_omt( tripoint_min );
@@ -2953,6 +2954,7 @@ void npc::reboot()
     path.clear();
     last_player_seen_pos = std::nullopt;
     last_seen_player_turn = 999;
+    wanted_item = item_location::nowhere;
     wanted_item_pos = tripoint_min;
     guard_pos = std::nullopt;
     goal = no_goal_point;
