@@ -210,6 +210,63 @@ static npc *select_llm_ambient_speech_target( const avatar &speaker, int hear_vo
     return candidates.front();
 }
 
+static npc *select_llm_out_of_hearing_follower( const avatar &speaker, int hear_volume,
+        bool yelled_reply )
+{
+    if( g == nullptr ) {
+        return nullptr;
+    }
+    static constexpr int out_of_hearing_margin = 5;
+    std::vector<npc *> candidates = g->get_npcs_if( [&]( const npc &guy ) {
+        const int reply_volume = yelled_reply ? guy.get_shout_volume() : guy.indoor_voice();
+        return guy.is_player_ally() &&
+               !guy.is_hallucination() &&
+               !guy.can_hear( speaker.pos_bub(), hear_volume ) &&
+               guy.can_hear( speaker.pos_bub(), hear_volume + out_of_hearing_margin ) &&
+               speaker.can_hear( guy.pos_bub(), reply_volume );
+    } );
+    if( candidates.empty() ) {
+        return nullptr;
+    }
+    const tripoint_bub_ms speaker_pos = speaker.pos_bub();
+    std::sort( candidates.begin(), candidates.end(), [&]( const npc *lhs, const npc *rhs ) {
+        const int lhs_dist = rl_dist( speaker_pos, lhs->pos_bub() );
+        const int rhs_dist = rl_dist( speaker_pos, rhs->pos_bub() );
+        if( lhs_dist != rhs_dist ) {
+            return lhs_dist < rhs_dist;
+        }
+        return lhs->getID() < rhs->getID();
+    } );
+    return candidates.front();
+}
+
+enum class sentence_speech_mode {
+    whisper,
+    normal,
+    yell,
+};
+
+static std::string next_llm_out_of_hearing_bark( bool yelled = false )
+{
+    static const std::array<const char *, 5> barks = {{
+            translate_marker( "What?" ),
+            translate_marker( "Eh?" ),
+            translate_marker( "Say that again." ),
+            translate_marker( "Didn't catch that." ),
+            translate_marker( "Too far. Speak up." )
+        }};
+    static size_t bark_index = 0;
+    const char *raw = barks[bark_index % barks.size()];
+    bark_index++;
+    std::string bark = _( raw );
+    if( yelled ) {
+        std::transform( bark.begin(), bark.end(), bark.begin(), []( unsigned char c ) {
+            return static_cast<char>( std::toupper( c ) );
+        } );
+    }
+    return bark;
+}
+
 using item_menu = std::function<item_location( const item_location_filter & )>;
 using item_menu_mul = std::function<drop_locations( const item_location_filter & )>;
 
@@ -685,6 +742,8 @@ enum npc_chat_menu {
     NPC_CHAT_EMOTE,
     NPC_CHAT_START_SEMINAR,
     NPC_CHAT_SENTENCE,
+    NPC_CHAT_SENTENCE_WHISPER,
+    NPC_CHAT_SENTENCE_YELL,
     NPC_CHAT_GUARD,
     NPC_CHAT_MOVE_TO_POS,
     NPC_CHAT_FOLLOW,
@@ -1154,6 +1213,8 @@ void game::chat()
 
     nmenu.addentry( NPC_CHAT_YELL, true, 'a', _( "Yell" ) );
     nmenu.addentry( NPC_CHAT_SENTENCE, true, 'b', _( "Say a sentence" ) );
+    nmenu.addentry( NPC_CHAT_SENTENCE_WHISPER, true, 'h', _( "Whisper a sentence" ) );
+    nmenu.addentry( NPC_CHAT_SENTENCE_YELL, true, 'y', _( "Yell a sentence" ) );
     nmenu.addentry( NPC_CHAT_EMOTE, true, 'E', _( "Emote" ) );
     if( !animal_vehicles.empty() ) {
         nmenu.addentry( NPC_CHAT_ANIMAL_VEHICLE_FOLLOW, true, 'F',
@@ -1203,6 +1264,7 @@ void game::chat()
     std::string emote_msg;
     bool is_order = true;
     bool is_sentence_say = false;
+    sentence_speech_mode sentence_mode = sentence_speech_mode::normal;
     nmenu.query();
 
     if( nmenu.ret < 0 ) {
@@ -1234,6 +1296,37 @@ void game::chat()
             yell_msg = popup.text();
             is_order = false;
             is_sentence_say = true;
+            sentence_mode = sentence_speech_mode::normal;
+            break;
+        }
+        case NPC_CHAT_SENTENCE_WHISPER: {
+            std::string popupdesc = _( "Enter a sentence to whisper" );
+            string_input_popup popup;
+            popup.title( _( "Whisper a sentence" ) )
+            .width( 64 )
+            .description( popupdesc )
+            .identifier( "sentence_whisper" )
+            .max_length( 128 )
+            .query();
+            yell_msg = popup.text();
+            is_order = false;
+            is_sentence_say = true;
+            sentence_mode = sentence_speech_mode::whisper;
+            break;
+        }
+        case NPC_CHAT_SENTENCE_YELL: {
+            std::string popupdesc = _( "Enter a sentence to yell" );
+            string_input_popup popup;
+            popup.title( _( "Yell a sentence" ) )
+            .width( 64 )
+            .description( popupdesc )
+            .identifier( "sentence_yell" )
+            .max_length( 128 )
+            .query();
+            yell_msg = popup.text();
+            is_order = false;
+            is_sentence_say = true;
+            sentence_mode = sentence_speech_mode::yell;
             break;
         }
         case NPC_CHAT_EMOTE: {
@@ -1513,59 +1606,103 @@ void game::chat()
     }
     if( !message.empty() ) {
         if( is_sentence_say ) {
-            add_msg( _( "You say %s" ), message );
-            const int say_volume = std::max( 2, volume / 2 );
-            sounds::sound( u.pos_bub(), say_volume, sounds::sound_t::speech,
-                           string_format( _( "%s saying %s" ), u.disp_name(), message ),
+            int speech_volume = std::max( 2, volume / 2 );
+            std::string speech_verb = _( "say" );
+            std::string sound_verb = _( "saying" );
+            bool allow_out_of_hearing_bark = false;
+            bool bark_is_yelled = false;
+            int llm_hear_volume = speech_volume;
+
+            switch( sentence_mode ) {
+                case sentence_speech_mode::whisper:
+                    speech_volume = 3;
+                    speech_verb = _( "whisper" );
+                    sound_verb = _( "whispering" );
+                    llm_hear_volume = 3;
+                    allow_out_of_hearing_bark = false;
+                    bark_is_yelled = false;
+                    break;
+                case sentence_speech_mode::normal:
+                    speech_volume = std::max( 2, volume / 2 );
+                    speech_verb = _( "say" );
+                    sound_verb = _( "saying" );
+                    llm_hear_volume = std::max( speech_volume, 12 );
+                    allow_out_of_hearing_bark = true;
+                    bark_is_yelled = false;
+                    break;
+                case sentence_speech_mode::yell:
+                    speech_volume = volume;
+                    speech_verb = _( "yell" );
+                    sound_verb = _( "yelling" );
+                    llm_hear_volume = volume;
+                    allow_out_of_hearing_bark = true;
+                    bark_is_yelled = true;
+                    break;
+            }
+
+            add_msg( string_format( _( "You %s %%s" ), speech_verb ), message );
+            sounds::sound( u.pos_bub(), speech_volume, sounds::sound_t::speech,
+                           string_format( _( "%s %s %s" ), u.disp_name(), sound_verb, message ),
                            false );
-        } else {
-            add_msg( _( "You yell %s" ), message );
-            u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
-        }
-        if( is_sentence_say &&
-            ( get_option<bool>( "LLM_INTENT_ENABLE" ) || get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) ) {
-            static constexpr int llm_intent_min_hear_radius = 12;
-            const int say_volume = std::max( 2, volume / 2 );
-            const int llm_hear_volume = std::max( say_volume, llm_intent_min_hear_radius );
+
             std::vector<npc *> hearers = get_npcs_if( [&]( const npc & guy ) {
                 return guy.can_hear( u.pos_bub(), llm_hear_volume ) && guy.is_player_ally();
             } );
-            npc *ambient_target = select_llm_ambient_speech_target( u, llm_hear_volume );
-            if( ambient_target != nullptr ) {
-                hearers.clear();
-            }
-            const std::string utterance = !yell_msg.empty() ? yell_msg : message;
-            if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
-                llm_intent::enqueue_requests( hearers, utterance );
-                if( ambient_target != nullptr ) {
-                    llm_intent::log_event( string_format( "ambient target %s (%d) for utterance\n%s",
-                                           ambient_target->get_name(), ambient_target->getID().get_value(), utterance ) );
-                    llm_intent::enqueue_ambient_request( *ambient_target, utterance );
+            if( allow_out_of_hearing_bark ) {
+                npc *out_of_hearing_follower = select_llm_out_of_hearing_follower( u, llm_hear_volume,
+                                              bark_is_yelled );
+                if( out_of_hearing_follower != nullptr ) {
+                    out_of_hearing_follower->say( next_llm_out_of_hearing_bark( bark_is_yelled ),
+                                                  bark_is_yelled ? sounds::sound_t::alert : sounds::sound_t::speech );
                 }
             }
-            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
-                std::vector<std::string> heard_by;
-                heard_by.reserve( hearers.size() + ( ambient_target != nullptr ? 1 : 0 ) );
-                for( const npc *guy : hearers ) {
-                    heard_by.push_back( guy->get_name() + " [ally]" );
-                }
+
+            const bool llm_or_debug = get_option<bool>( "LLM_INTENT_ENABLE" ) ||
+                                      get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ||
+                                      get_option<bool>( "DEBUG_LLM_INTENT" );
+            if( llm_or_debug ) {
+                npc *ambient_target = select_llm_ambient_speech_target( u, llm_hear_volume );
                 if( ambient_target != nullptr ) {
-                    heard_by.push_back( ambient_target->get_name() + " [ambient]" );
+                    hearers.clear();
                 }
-                if( heard_by.empty() ) {
-                    add_msg( _( "LLM intent test: player said sentence %s (no NPCs heard it)" ), message );
-                } else {
-                    std::string heard_by_text;
-                    for( size_t i = 0; i < heard_by.size(); ++i ) {
-                        if( i > 0 ) {
-                            heard_by_text += ", ";
-                        }
-                        heard_by_text += heard_by[i];
+                const std::string utterance = !yell_msg.empty() ? yell_msg : message;
+                if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                    llm_intent::enqueue_requests( hearers, utterance );
+                    if( ambient_target != nullptr ) {
+                        llm_intent::log_event( string_format( "ambient target %s (%d) for utterance\n%s",
+                                               ambient_target->get_name(), ambient_target->getID().get_value(), utterance ) );
+                        llm_intent::enqueue_ambient_request( *ambient_target, utterance );
                     }
-                    add_msg( _( "LLM intent test: player said sentence %s (heard by %s)" ), message,
-                             heard_by_text );
+                }
+                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) || get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                    const char *mode_name = sentence_mode == sentence_speech_mode::whisper ? "whispered" :
+                                            sentence_mode == sentence_speech_mode::yell ? "yelled" : "said";
+                    std::vector<std::string> heard_by;
+                    heard_by.reserve( hearers.size() + ( ambient_target != nullptr ? 1 : 0 ) );
+                    for( const npc *guy : hearers ) {
+                        heard_by.push_back( guy->get_name() + " [ally]" );
+                    }
+                    if( ambient_target != nullptr ) {
+                        heard_by.push_back( ambient_target->get_name() + " [ambient]" );
+                    }
+                    if( heard_by.empty() ) {
+                        add_msg( "LLM intent test: player %s sentence %s (no NPCs heard it)", mode_name, message );
+                    } else {
+                        std::string heard_by_text;
+                        for( size_t i = 0; i < heard_by.size(); ++i ) {
+                            if( i > 0 ) {
+                                heard_by_text += ", ";
+                            }
+                            heard_by_text += heard_by[i];
+                        }
+                        add_msg( "LLM intent test: player %s sentence %s (heard by %s)", mode_name, message,
+                                 heard_by_text );
+                    }
                 }
             }
+        } else {
+            add_msg( _( "You yell %s" ), message );
+            u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
         }
     }
     if( !emote_msg.empty() ) {
