@@ -217,6 +217,48 @@ static npc *select_llm_ambient_speech_target( const avatar &speaker, int hear_vo
     return candidates.front();
 }
 
+static npc *select_llm_out_of_hearing_follower( const avatar &speaker, int hear_volume )
+{
+    if( g == nullptr ) {
+        return nullptr;
+    }
+    static constexpr int out_of_hearing_margin = 5;
+    std::vector<npc *> candidates = g->get_npcs_if( [&]( const npc &guy ) {
+        return guy.is_player_ally() &&
+               !guy.is_hallucination() &&
+               !guy.can_hear( speaker.pos_bub(), hear_volume ) &&
+               guy.can_hear( speaker.pos_bub(), hear_volume + out_of_hearing_margin );
+    } );
+    if( candidates.empty() ) {
+        return nullptr;
+    }
+    const tripoint_bub_ms speaker_pos = speaker.pos_bub();
+    std::sort( candidates.begin(), candidates.end(), [&]( const npc *lhs, const npc *rhs ) {
+        const int lhs_dist = rl_dist( speaker_pos, lhs->pos_bub() );
+        const int rhs_dist = rl_dist( speaker_pos, rhs->pos_bub() );
+        if( lhs_dist != rhs_dist ) {
+            return lhs_dist < rhs_dist;
+        }
+        return lhs->getID() < rhs->getID();
+    } );
+    return candidates.front();
+}
+
+static std::string next_llm_out_of_hearing_bark()
+{
+    static const std::array<const char *, 5> barks = {{
+            translate_marker( "What?" ),
+            translate_marker( "Eh?" ),
+            translate_marker( "Say that again." ),
+            translate_marker( "Didn't catch that." ),
+            translate_marker( "Too far. Speak up." )
+        }};
+    static size_t bark_index = 0;
+    const char *raw = barks[bark_index % barks.size()];
+    bark_index++;
+    return _( raw );
+}
+
 using item_menu = std::function<item_location( const item_location_filter & )>;
 using item_menu_mul = std::function<drop_locations( const item_location_filter & )>;
 
@@ -1554,49 +1596,57 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
             add_msg( _( "You yell %s" ), message );
             u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
         }
-        if( is_sentence_say &&
-            ( get_option<bool>( "LLM_INTENT_ENABLE" ) || get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ||
-              get_option<bool>( "DEBUG_LLM_INTENT" ) ) ) {
+        if( is_sentence_say ) {
             static constexpr int llm_intent_min_hear_radius = 12;
             const int say_volume = std::max( 2, volume / 2 );
             const int llm_hear_volume = std::max( say_volume, llm_intent_min_hear_radius );
             std::vector<npc *> hearers = get_npcs_if( [&]( const npc & guy ) {
                 return guy.can_hear( u.pos_bub(), llm_hear_volume ) && guy.is_player_ally();
             } );
-            npc *ambient_target = select_llm_ambient_speech_target( u, llm_hear_volume );
-            if( ambient_target != nullptr ) {
-                hearers.clear();
+            npc *out_of_hearing_follower = select_llm_out_of_hearing_follower( u, llm_hear_volume );
+            if( out_of_hearing_follower != nullptr ) {
+                out_of_hearing_follower->say( next_llm_out_of_hearing_bark() );
             }
-            const std::string utterance = !yell_msg.empty() ? yell_msg : message;
-            if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
-                llm_intent::enqueue_requests( hearers, utterance );
+
+            const bool llm_or_debug = get_option<bool>( "LLM_INTENT_ENABLE" ) ||
+                                      get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ||
+                                      get_option<bool>( "DEBUG_LLM_INTENT" );
+            if( llm_or_debug ) {
+                npc *ambient_target = select_llm_ambient_speech_target( u, llm_hear_volume );
                 if( ambient_target != nullptr ) {
-                    llm_intent::log_event( string_format( "ambient target %s (%d) for utterance\n%s",
-                                           ambient_target->get_name(), ambient_target->getID().get_value(), utterance ) );
-                    llm_intent::enqueue_ambient_request( *ambient_target, utterance );
+                    hearers.clear();
                 }
-            }
-            if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) || get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
-                std::vector<std::string> heard_by;
-                heard_by.reserve( hearers.size() + ( ambient_target != nullptr ? 1 : 0 ) );
-                for( const npc *guy : hearers ) {
-                    heard_by.push_back( guy->get_name() + " [ally]" );
-                }
-                if( ambient_target != nullptr ) {
-                    heard_by.push_back( ambient_target->get_name() + " [ambient]" );
-                }
-                if( heard_by.empty() ) {
-                    add_msg( "LLM intent test: player said sentence %s (no NPCs heard it)", message );
-                } else {
-                    std::string heard_by_text;
-                    for( size_t i = 0; i < heard_by.size(); ++i ) {
-                        if( i > 0 ) {
-                            heard_by_text += ", ";
-                        }
-                        heard_by_text += heard_by[i];
+                const std::string utterance = !yell_msg.empty() ? yell_msg : message;
+                if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                    llm_intent::enqueue_requests( hearers, utterance );
+                    if( ambient_target != nullptr ) {
+                        llm_intent::log_event( string_format( "ambient target %s (%d) for utterance\n%s",
+                                               ambient_target->get_name(), ambient_target->getID().get_value(), utterance ) );
+                        llm_intent::enqueue_ambient_request( *ambient_target, utterance );
                     }
-                    add_msg( "LLM intent test: player said sentence %s (heard by %s)", message,
-                             heard_by_text );
+                }
+                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) || get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                    std::vector<std::string> heard_by;
+                    heard_by.reserve( hearers.size() + ( ambient_target != nullptr ? 1 : 0 ) );
+                    for( const npc *guy : hearers ) {
+                        heard_by.push_back( guy->get_name() + " [ally]" );
+                    }
+                    if( ambient_target != nullptr ) {
+                        heard_by.push_back( ambient_target->get_name() + " [ambient]" );
+                    }
+                    if( heard_by.empty() ) {
+                        add_msg( "LLM intent test: player said sentence %s (no NPCs heard it)", message );
+                    } else {
+                        std::string heard_by_text;
+                        for( size_t i = 0; i < heard_by.size(); ++i ) {
+                            if( i > 0 ) {
+                                heard_by_text += ", ";
+                            }
+                            heard_by_text += heard_by[i];
+                        }
+                        add_msg( "LLM intent test: player said sentence %s (heard by %s)", message,
+                                 heard_by_text );
+                    }
                 }
             }
         }
