@@ -253,7 +253,7 @@ enum class sentence_speech_mode {
     yell,
 };
 
-static std::string next_llm_out_of_hearing_bark()
+static std::string next_llm_out_of_hearing_bark( bool yelled = false )
 {
     static const std::array<const char *, 5> barks = {{
             translate_marker( "What?" ),
@@ -265,7 +265,13 @@ static std::string next_llm_out_of_hearing_bark()
     static size_t bark_index = 0;
     const char *raw = barks[bark_index % barks.size()];
     bark_index++;
-    return _( raw );
+    std::string bark = _( raw );
+    if( yelled ) {
+        std::transform( bark.begin(), bark.end(), bark.begin(), []( unsigned char c ) {
+            return static_cast<char>( std::toupper( c ) );
+        } );
+    }
+    return bark;
 }
 
 using item_menu = std::function<item_location( const item_location_filter & )>;
@@ -1674,7 +1680,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                 npc *out_of_hearing_follower = select_llm_out_of_hearing_follower( u, llm_hear_volume,
                                               bark_is_yelled );
                 if( out_of_hearing_follower != nullptr ) {
-                    out_of_hearing_follower->say( next_llm_out_of_hearing_bark(),
+                    out_of_hearing_follower->say( next_llm_out_of_hearing_bark( bark_is_yelled ),
                                                   bark_is_yelled ? sounds::sound_t::alert : sounds::sound_t::speech );
                 }
             }
