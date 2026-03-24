@@ -217,17 +217,20 @@ static npc *select_llm_ambient_speech_target( const avatar &speaker, int hear_vo
     return candidates.front();
 }
 
-static npc *select_llm_out_of_hearing_follower( const avatar &speaker, int hear_volume )
+static npc *select_llm_out_of_hearing_follower( const avatar &speaker, int hear_volume,
+        bool yelled_reply )
 {
     if( g == nullptr ) {
         return nullptr;
     }
     static constexpr int out_of_hearing_margin = 5;
     std::vector<npc *> candidates = g->get_npcs_if( [&]( const npc &guy ) {
+        const int reply_volume = yelled_reply ? guy.get_shout_volume() : guy.indoor_voice();
         return guy.is_player_ally() &&
                !guy.is_hallucination() &&
                !guy.can_hear( speaker.pos_bub(), hear_volume ) &&
-               guy.can_hear( speaker.pos_bub(), hear_volume + out_of_hearing_margin );
+               guy.can_hear( speaker.pos_bub(), hear_volume + out_of_hearing_margin ) &&
+               speaker.can_hear( guy.pos_bub(), reply_volume );
     } );
     if( candidates.empty() ) {
         return nullptr;
@@ -1629,6 +1632,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
             std::string speech_verb = _( "say" );
             std::string sound_verb = _( "saying" );
             bool allow_out_of_hearing_bark = false;
+            bool bark_is_yelled = false;
             int llm_hear_volume = speech_volume;
 
             switch( sentence_mode ) {
@@ -1638,6 +1642,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                     sound_verb = _( "whispering" );
                     llm_hear_volume = 3;
                     allow_out_of_hearing_bark = false;
+                    bark_is_yelled = false;
                     break;
                 case sentence_speech_mode::normal:
                     speech_volume = std::max( 2, volume / 2 );
@@ -1645,13 +1650,15 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                     sound_verb = _( "saying" );
                     llm_hear_volume = std::max( speech_volume, 12 );
                     allow_out_of_hearing_bark = true;
+                    bark_is_yelled = false;
                     break;
                 case sentence_speech_mode::yell:
                     speech_volume = volume;
                     speech_verb = _( "yell" );
                     sound_verb = _( "yelling" );
                     llm_hear_volume = volume;
-                    allow_out_of_hearing_bark = false;
+                    allow_out_of_hearing_bark = true;
+                    bark_is_yelled = true;
                     break;
             }
 
@@ -1664,9 +1671,11 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                 return guy.can_hear( u.pos_bub(), llm_hear_volume ) && guy.is_player_ally();
             } );
             if( allow_out_of_hearing_bark ) {
-                npc *out_of_hearing_follower = select_llm_out_of_hearing_follower( u, llm_hear_volume );
+                npc *out_of_hearing_follower = select_llm_out_of_hearing_follower( u, llm_hear_volume,
+                                              bark_is_yelled );
                 if( out_of_hearing_follower != nullptr ) {
-                    out_of_hearing_follower->say( next_llm_out_of_hearing_bark() );
+                    out_of_hearing_follower->say( next_llm_out_of_hearing_bark(),
+                                                  bark_is_yelled ? sounds::sound_t::alert : sounds::sound_t::speech );
                 }
             }
 
