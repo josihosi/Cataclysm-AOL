@@ -61,6 +61,21 @@ Configuration knobs:
   each ally NPC keeps an independent jittered timer (`base +/- base/6`) and can
   trigger a spontaneous LLM request with no player utterance.
 
+## March 2026 Port Refresh (Completed)
+- All four `port/*` branches passed in-game validation after the late-March port sweep.
+- The main action prompt regained `/no_think` at the intended location (end of the main `<System>` block) across the active port branches.
+- `look_around` targeted pickup was stabilized across ports:
+  - `0.I` received follow-handoff hardening so item pickup can temporarily override queued `follow_close` / `follow_far` actions.
+  - `0.H` received a branch-native backport of exact targeted pickup plus the same follow-handoff protection.
+  - All `port/*` branches now allow targeted pickup of wieldable items instead of only stashable/wearable ones.
+- Speech/control additions were ported across the active release branches:
+  - follower bark when just outside normal hearing range,
+  - `whisper` / `say` / `yell` sentence variants,
+  - lowercase hotkeys for the sentence variants,
+  - yelled bark-back with all-caps bark text,
+  - UI debug messages no longer appear when only log-debug is enabled.
+- `0.H` now uses real profession fallback for `your_profession` instead of defaulting to `no_past` whenever `custom_profession` is empty.
+
 ## Porting/Release Strategy (Current Plan)
 - Problem statement: full branch merges from AOL `master` into very different upstreams
   (especially CTLG) produce massive recurring conflict sets and are not sustainable
