@@ -253,6 +253,7 @@ bool good_for_llm_targeted_pickup( const item &it, npc &who )
     if( ( !it.made_of_from_type( phase_id::LIQUID ) ) &&
         ( it.weight() <= weight_allowed ) &&
         ( who.can_stash( it ) || who.can_wear( it ).success() ||
+          who.can_wield( it ).success() ||
           who.weapon_value( it ) > who.weapon_value( weap ) ) ) {
         good = true;
     }
