@@ -2389,6 +2389,21 @@ void npc::set_llm_intent_item_targets( const std::vector<llm_item_target> &targe
     llm_intent_state &state = llm_intent_state_for( *this );
     state.look_around_targets.clear();
     state.look_around_active_target = npc::llm_item_target{};
+
+    std::deque<llm_intent_action> filtered_queue;
+    for( llm_intent_action action : state.queue ) {
+        if( action != llm_intent_action::follow_close && action != llm_intent_action::follow_far ) {
+            filtered_queue.push_back( action );
+        }
+    }
+    state.queue = std::move( filtered_queue );
+    if( state.active == llm_intent_action::follow_close ||
+        state.active == llm_intent_action::follow_far ) {
+        state.active = llm_intent_action::none;
+        state.active_turn = calendar::before_time_starts;
+        state.last_applied_turn = calendar::before_time_starts;
+    }
+
     for( const llm_item_target &target : targets ) {
         if( !target.name.empty() ) {
             state.look_around_targets.push_back( target );
