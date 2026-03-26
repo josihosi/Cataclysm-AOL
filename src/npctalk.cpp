@@ -1687,7 +1687,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
 
             const bool llm_or_debug = get_option<bool>( "LLM_INTENT_ENABLE" ) ||
                                       get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ||
-                                      get_option<bool>( "DEBUG_LLM_INTENT" );
+                                      get_option<bool>( "DEBUG_LLM_INTENT_LOG" );
             if( llm_or_debug ) {
                 npc *ambient_target = select_llm_ambient_speech_target( u, llm_hear_volume );
                 if( ambient_target != nullptr ) {
@@ -1702,7 +1702,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                         llm_intent::enqueue_ambient_request( *ambient_target, utterance );
                     }
                 }
-                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) || get_option<bool>( "DEBUG_LLM_INTENT" ) ) {
+                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) || get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
                     const char *mode_name = sentence_mode == sentence_speech_mode::whisper ? "whispered" :
                                             sentence_mode == sentence_speech_mode::yell ? "yelled" : "said";
                     std::vector<std::string> heard_by;
