@@ -259,8 +259,10 @@ bool good_for_pickup( const item &it, npc &who, const tripoint_bub_ms &there )
 
 bool good_for_llm_targeted_pickup( const item &it, npc &who, const tripoint_bub_ms &there )
 {
-    const bool can_carry_or_wear = who.can_take_that( it ) || who.can_wear( it ).success();
-    return can_carry_or_wear &&
+    const bool can_carry_wear_or_wield = who.can_take_that( it ) ||
+                                         who.can_wear( it ).success() ||
+                                         who.can_wield( it ).success();
+    return can_carry_wear_or_wield &&
            who.would_take_that( it, there );
 }
 
@@ -4580,8 +4582,10 @@ std::list<item> npc_pickup_from_stack_llm_targeted( npc &who, T &items, F filter
             ++iter;
             continue;
         }
-        const bool can_take_or_wear = who.can_take_that( it ) || who.can_wear( it ).success();
-        if( can_take_or_wear && who.would_take_that( it, where ) ) {
+        const bool can_take_wear_or_wield = who.can_take_that( it ) ||
+                                            who.can_wear( it ).success() ||
+                                            who.can_wield( it ).success();
+        if( can_take_wear_or_wield && who.would_take_that( it, where ) ) {
             picked_up.push_back( it );
             iter = items.erase( iter );
         } else {
