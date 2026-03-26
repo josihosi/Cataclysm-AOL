@@ -1702,7 +1702,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                         llm_intent::enqueue_ambient_request( *ambient_target, utterance );
                     }
                 }
-                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) || get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                     const char *mode_name = sentence_mode == sentence_speech_mode::whisper ? "whispered" :
                                             sentence_mode == sentence_speech_mode::yell ? "yelled" : "said";
                     std::vector<std::string> heard_by;
