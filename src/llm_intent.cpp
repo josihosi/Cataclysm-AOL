@@ -55,6 +55,7 @@
 #include "output.h"
 #include "path_info.h"
 #include "point.h"
+#include "profession.h"
 #include "string_formatter.h"
 #include "translations.h"
 #include "type_id.h"
@@ -1759,7 +1760,11 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
         out << "\n";
     }
     out << "your_name: " << sanitize_text( listener.get_name() ) << "\n";
-    const std::string profession = sanitize_text( listener.custom_profession );
+    const std::string custom_profession = sanitize_text( listener.custom_profession );
+    const std::string base_profession = listener.prof != nullptr ?
+                                        sanitize_text( listener.prof->gender_appropriate_name( listener.male ) ) :
+                                        std::string();
+    const std::string profession = !custom_profession.empty() ? custom_profession : base_profession;
     out << "your_profession: " << ( profession.empty() ? "no_past" : profession ) << "\n";
     const background_summary_entry background_summary = get_background_summary_for( listener );
     if( !background_summary.background.empty() ) {
