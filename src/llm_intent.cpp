@@ -1038,7 +1038,7 @@ std::vector<look_around_item_entry> collect_look_around_items( npc &listener, in
             entry.min_distance = dist;
         }
         entry.quantity += it.count();
-        entry.min_distance = std::min( entry.min_distance, dist );
+        entry.min_distance = ( std::min )( entry.min_distance, dist );
     } );
 
     std::vector<look_around_item_entry> entries;
@@ -1203,7 +1203,7 @@ std::vector<look_around_selection> parse_look_around_response( const std::string
         if( !qty_token.empty() ) {
             const std::string qty_lower = lower_copy( qty_token );
             if( qty_lower != "a" ) {
-                quantity = std::max( 1, atoi( qty_lower.c_str() ) );
+                quantity = ( std::max )( 1, atoi( qty_lower.c_str() ) );
             }
         }
         const std::string &normalized = it->second;
@@ -1362,7 +1362,7 @@ void apply_look_inventory_actions( npc &listener,
             continue;
         }
         item_location loc( listener, it->second );
-        const int count = it->second->count_by_charges() ? std::max( 1, it->second->charges ) : 1;
+        const int count = it->second->count_by_charges() ? ( std::max )( 1, it->second->charges ) : 1;
         drop_locations items;
         items.emplace_back( loc, count );
         listener.drop( items, listener.pos(), false );
@@ -1707,7 +1707,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     if( memory.empty() && overheard.empty() ) {
         out << "(none)\n\n";
     } else {
-        const size_t line_count = std::max( memory.size(), overheard.size() );
+        const size_t line_count = ( std::max )( memory.size(), overheard.size() );
         for( size_t i = 0; i < line_count; ++i ) {
             out << "-";
             bool has_hours = false;
