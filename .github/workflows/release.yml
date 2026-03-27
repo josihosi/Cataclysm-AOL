@@ -13,6 +13,8 @@ on:
       - port/ctlg-master
     paths:
       - '.github/workflows/release.yml'
+      - '.github/workflows/build-translations.yml'
+      - '.github/workflows/compose-tilesets.yml'
       - 'build-scripts/generate-release-notes.js'
   workflow_dispatch:
     inputs:
