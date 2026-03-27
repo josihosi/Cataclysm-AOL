@@ -1297,9 +1297,9 @@ build-data/osx/AppIcon.icns: build-data/osx/AppIcon.iconset
 	iconutil -c icns $<
 
 ifdef OSXCROSS
-app: appclean version $(APPTARGET) $(ZZIP_BIN)
+app: appclean version $(APPTARGET) $(ZZIP_BIN) $(JSON_FORMATTER_BIN)
 else
-app: appclean version build-data/osx/AppIcon.icns $(APPTARGET) $(ZZIP_BIN)
+app: appclean version build-data/osx/AppIcon.icns $(APPTARGET) $(ZZIP_BIN) $(JSON_FORMATTER_BIN)
 endif
 	mkdir -p $(APPTARGETDIR)/Contents
 	cp build-data/osx/Info.plist $(APPTARGETDIR)/Contents/
@@ -1309,6 +1309,17 @@ endif
 	cp $(APPTARGET) $(APPRESOURCESDIR)/
 	cp $(ZZIP_BIN) $(APPRESOURCESDIR)/
 	cp build-data/osx/AppIcon.icns $(APPRESOURCESDIR)/
+	cp $(JSON_FORMATTER_BIN) $(APPRESOURCESDIR)/
+	cp README.md $(APPRESOURCESDIR)/
+	cp Plan.md $(APPRESOURCESDIR)/
+	cp TechnicalTome.md $(APPRESOURCESDIR)/
+	cp Agents.md $(APPRESOURCESDIR)/
+	cp VERSION.txt $(APPRESOURCESDIR)/
+	cp LICENSE.txt $(APPRESOURCESDIR)/
+	cp LICENSE-OFL-Terminus-Font.txt $(APPRESOURCESDIR)/
+	cp -R doc $(APPRESOURCESDIR)/
+	mkdir -p $(APPRESOURCESDIR)/tools
+	cp -R tools/llm_runner $(APPRESOURCESDIR)/tools/
 	mkdir -p $(APPDATADIR)
 	cp data/fontdata.json $(APPDATADIR)
 	cp -R data/core $(APPDATADIR)
