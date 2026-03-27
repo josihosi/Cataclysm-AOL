@@ -344,10 +344,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload release asset
-        run: |
-          gh release upload '${{ needs.release.outputs.tag_name }}' \
-            '${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}' \
-            --clobber
+        run: gh release upload '${{ needs.release.outputs.tag_name }}' '${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}' --clobber
 
   checksums:
     name: Publish SHA256SUMS
