@@ -4,7 +4,11 @@ if (Test-path bindist) {
 
 mkdir bindist
 cp cataclysm-tlg-tiles.exe bindist/cataclysm-tlg-tiles.exe
-cp cataclysm-tlg-tiles.stripped.pdb bindist/cataclysm-tlg-tiles.pdb
+if (Test-Path cataclysm-tlg-tiles.stripped.pdb) {
+  cp cataclysm-tlg-tiles.stripped.pdb bindist/cataclysm-tlg-tiles.pdb
+} elseif (Test-Path cataclysm-tlg-tiles.pdb) {
+  cp cataclysm-tlg-tiles.pdb bindist/cataclysm-tlg-tiles.pdb
+}
 cp tools/format/json_formatter.exe bindist/json_formatter.exe
 cp zzip.exe bindist/zzip.exe
 
