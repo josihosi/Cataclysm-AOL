@@ -353,7 +353,7 @@ jobs:
         shell: pwsh
         run: |
           $target = 'msvc-full-features\Cataclysm-vcpkg-static.sln'
-          $args = @('-m', '-p:Configuration=Release', '-p:Platform=${{ matrix.arch }}', '-target:Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static;zzip', $target)
+          $args = @('-m', '-p:Configuration=Release', '-p:Platform=${{ matrix.arch }}', '-target:Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static', $target)
           for( $attempt = 1; $attempt -le 2; $attempt++ ) {
             Write-Host "Windows build attempt $attempt/2"
             & msbuild @args
