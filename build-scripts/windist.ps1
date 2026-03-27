@@ -11,8 +11,10 @@ cp zzip.exe bindist/zzip.exe
 mkdir bindist/lang
 cp -r lang/mo bindist/lang
 
-$extras = "data", "doc", "gfx", "LICENSE.txt", "LICENSE-OFL-Terminus-Font.txt", "README.md", "VERSION.txt"
+$extras = "data", "doc", "gfx", "LICENSE.txt", "LICENSE-OFL-Terminus-Font.txt", "README.md", "Plan.md", "TechnicalTome.md", "Agents.md", "VERSION.txt"
 ForEach ($extra in $extras) {
 	cp -r $extra bindist
 }
+mkdir bindist/tools
+cp -r tools/llm_runner bindist/tools
 Compress-Archive -Force -Path bindist/* -DestinationPath "cataclysm-tlg-1.0.zip"

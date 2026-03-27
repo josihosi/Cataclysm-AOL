@@ -11,11 +11,6 @@ on:
       - port/cdda-0.H
       - port/cdda-0.I
       - port/ctlg-master
-    paths:
-      - '.github/workflows/release.yml'
-      - '.github/workflows/build-translations.yml'
-      - '.github/workflows/compose-tilesets.yml'
-      - 'build-scripts/generate-release-notes.js'
   workflow_dispatch:
     inputs:
       target_branch:
@@ -47,6 +42,8 @@ jobs:
       release_name: ${{ steps.metadata.outputs.release_name }}
       asset_prefix: ${{ steps.metadata.outputs.asset_prefix }}
       release_tag_prefix: ${{ steps.metadata.outputs.release_tag_prefix }}
+      source_tar: ${{ steps.metadata.outputs.source_tar }}
+      source_zip: ${{ steps.metadata.outputs.source_zip }}
     steps:
       - name: Get build timestamp
         id: get-timestamp
@@ -83,6 +80,25 @@ jobs:
               ;;
           esac
 
+          case "$branch" in
+            port/cdda-master)
+              source_tar="cataclysmdda-0.J.tar.gz"
+              source_zip="cataclysmdda-0.J.zip"
+              ;;
+            port/cdda-0.H)
+              source_tar="cataclysmdda-0.H.tar.gz"
+              source_zip="cataclysmdda-0.H.zip"
+              ;;
+            port/cdda-0.I)
+              source_tar="cataclysmdda-0.I.tar.gz"
+              source_zip="cataclysmdda-0.I.zip"
+              ;;
+            port/ctlg-master)
+              source_tar="cataclysm-tlg-1.0.tar.gz"
+              source_zip="cataclysm-tlg-1.0.zip"
+              ;;
+          esac
+
           tag_name="caol-${branch_key}-${BUILD_TIME}"
           release_name="Cataclysm: Arsenic and Old Lace ${branch_display} ${BUILD_TIME}"
           asset_prefix="caol_${branch_key}_${BUILD_TIME}"
@@ -96,6 +112,8 @@ jobs:
             echo "release_name=$release_name"
             echo "asset_prefix=$asset_prefix"
             echo "release_tag_prefix=$release_tag_prefix"
+            echo "source_tar=$source_tar"
+            echo "source_zip=$source_zip"
           } >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -244,6 +262,13 @@ jobs:
             gettext
             make
 
+      - name: Cache vcpkg installed packages (windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: msvc-full-features/vcpkg_installed
+          key: release-vcpkg-installed-${{ hashFiles('msvc-full-features/vcpkg.json', '.github/vcpkg_triplets/x64-windows-static.cmake') }}-1b6e030cf096faf4f82d7b7025de8b2abee3e3df
+
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux' && matrix.android == 'none'
         run: |
@@ -317,7 +342,7 @@ jobs:
         if: runner.os == 'Linux' && matrix.android == 'none'
         run: |
           make COMPILER=clang++-18 -j$((`nproc`+0)) TILES=${{ matrix.tiles }} SOUND=${{ matrix.sound }} RELEASE=1 LOCALIZE=1 LANGUAGES=all BACKTRACE=1 LIBBACKTRACE=${{ matrix.libbacktrace }} WARN_STALE_DATA=1 PCH=0 bindist
-          mv cataclysmdda-0.J.tar.gz ${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}
+          mv '${{ needs.release.outputs.source_tar }}' ${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}
 
       - name: Build CDDA (windows msvc)
         if: runner.os == 'Windows'
@@ -325,10 +350,45 @@ jobs:
           BACKTRACE: 1
           CDDA_RELEASE_BUILD: 1
           VCPKG_OVERLAY_TRIPLETS: ${{ github.workspace }}\.github\vcpkg_triplets
+        shell: pwsh
         run: |
-          msbuild -m -p:Configuration=Release -p:Platform=${{ matrix.arch }} "-target:Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static;zzip" msvc-full-features\Cataclysm-vcpkg-static.sln
+          $target = 'msvc-full-features\Cataclysm-vcpkg-static.sln'
+          $args = @('-m', '-p:Configuration=Release', '-p:Platform=${{ matrix.arch }}', '-target:Cataclysm-vcpkg-static;JsonFormatter-vcpkg-static;zzip', $target)
+          for( $attempt = 1; $attempt -le 2; $attempt++ ) {
+            Write-Host "Windows build attempt $attempt/2"
+            & msbuild @args
+            if( $LASTEXITCODE -eq 0 ) {
+              break
+            }
+            if( $attempt -eq 2 ) {
+              exit $LASTEXITCODE
+            }
+            Write-Host 'msbuild failed; retrying once after a short backoff in case vcpkg download flaked out.'
+            Start-Sleep -Seconds 20
+          }
           .\build-scripts\windist.ps1
-          mv cataclysmdda-0.J.zip ${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}
+          Move-Item cataclysmdda-0.J.zip ${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}
+
+      - name: Dump vcpkg logs if Windows build failed
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host '=== vcpkg_installed tree ==='
+          if( Test-Path 'msvc-full-features\vcpkg_installed' ) {
+            Get-ChildItem 'msvc-full-features\vcpkg_installed' -Recurse
+          }
+          Write-Host '=== vcpkg buildtrees logs ==='
+          $buildtrees = Join-Path '${{ runner.workspace }}' 'b\vcpkg\buildtrees'
+          if( Test-Path $buildtrees ) {
+            Get-ChildItem $buildtrees | ForEach-Object {
+              Get-ChildItem $_.FullName -Filter *.log | ForEach-Object {
+                Write-Host '========================================'
+                Write-Host $_.FullName
+                Write-Host '========================================'
+                Get-Content $_.FullName
+              }
+            }
+          }
 
       - name: Build CDDA (osx)
         if: runner.os == 'macOS'
