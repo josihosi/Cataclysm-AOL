@@ -1,14 +1,24 @@
 name: Build translations
 on:
   workflow_dispatch:
+    inputs:
+      target_ref:
+        description: Git ref to use for local repo checkout
+        required: false
+        default: master
+        type: string
   workflow_call:
+    inputs:
+      target_ref:
+        required: false
+        type: string
+        default: master
     secrets:
       TX_TOKEN:
         required: true
 
 jobs:
   build-translations:
-
     runs-on: ubuntu-22.04
     steps:
       - name: Install gettext
@@ -21,7 +31,7 @@ jobs:
       - name: Checkout local repo
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
-          ref: master
+          ref: ${{ inputs.target_ref }}
           sparse-checkout: |
             .tx
             tools
