@@ -1,24 +1,20 @@
 # Cataclysm: Arsenic and Old Lace
 
-This is a fork of [CDDA](https://github.com/CleverRaven/Cataclysm-DDA), where I implemented LLMs to facilitate organic responsiveness in Cataclysm.
-This is something I would like to see in games in general, so I'm creating it here:
+This is a fork of [CDDA](https://github.com/CleverRaven/Cataclysm-DDA) and [Cataclysm-TLG](https://github.com/Cataclysm-TLG/Cataclysm-TLG), where I implemented LLMs to facilitate organic responsiveness in Cataclysm.
+Huge thanks to the original creators and maintainers, enabling me to do this project!
+This is something I would like to see in games in general, so I'm creating it here, in my favourite game.
 
 ![AOL Screenshot](doc/AOL-Screenshot.png)
 
-[Video](https://youtu.be/HfishtPzvhA), so you know its real.
+[Video](https://youtu.be/HfishtPzvhA), so you know this repo is real.
 
-This project also ports behavior onto [Cataclysm-TLG](https://github.com/Cataclysm-TLG/Cataclysm-TLG) targets.
-Huge thanks to the CTLG maintainers and contributors, just like the gratitude owed to original CDDA contributors.
-
-Compatibility note: release branches under `port/*` are AOL behavior ports onto different upstream bases (`cdda-master`, `0.H`, `0.I`, `ctlg-master`). Gameplay and data can differ slightly per target because of upstream divergence.
-
-Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and up to three actions.
-The game sends an NPC-centric snapshot to the runner together with your utterance.
-Random LLM calls can also be enabled under [LLM] with `Random call (turns)` (0 disables it, 1-500 enables periodic spontaneous check-ins).
+Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which computes an answer and up to three actions, defined by preset action tokens.
+The game sends an NPC-centric snapshot (see below) to the runner together with your utterance. Random triggering is also included (but honestly not recommended right now).
 The following actions can be initiated by the toolcall right now:
 - follow_close
 - follow_far
 - wait_here
+- hold_position (more like a tactical 'guard this door until we move' thing)
 - equip_gun
 - equip_melee
 - equip_bow
@@ -27,35 +23,37 @@ The following actions can be initiated by the toolcall right now:
 - panic_on (20 turns)
 - panic_off (diminishing over 30 turns)
 - attack=[target]
+- move -> N E S W NE etc.
 
-Yelling a sentence has also been changed to 'Say a sentence' with a range of around 8 tiles, depending on the weather etc.
+Yell a sentence hotkey combination (C + b) has been replaced by say a sentence.
+Yell a sentence and whisper a sentence has been added to that menu under different hotkeys. So theres like a range of ways to talk to NPCs in freeform text right now.
 
-### What’s already in and working
-- Local runner is wired (stdin/stdout JSON), kept warm, and logs metrics; snapshots are compact and include speech + actions that get surfaced in-game when parsed.
-- Background summarizer can run at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; local generation supports either Ollama or OpenVINO. On macOS, `./just_build_macos.sh --with-summary` can read the current branch profile's LLM menu summary settings, or you can pass explicit flags like `--summary-backend ollama --summary-ollama-model mistral`. `your_profession` and `background_summary` are injected into the snapshot.
-- Stable item addressing is live (item ids in prompts), and panic_on/panic_off use timed decay.
-- Debug logging captures snapshots, responses, and raw failures for prompt tuning; speech shows in-game on success.
-- Random calls are live: each ally uses an independent jittered timer and can fire a spontaneous call with no player utterance.
+### Background summaries
+Added to the snapshot is an NPC background summary, including descriptive words, as well as key expressions from that NPCs background story. So they are all quite different now.
+
+### Ambient NPC interactions
+Random NPCs will now also respond to your utterances (they also get a snappshot), but theres no actions at the current moment.
 
 ### Roadmap
 
 I plan on adding the following features, somewhere in the future:
 
-- More LLM actions (minimap-move, throw grenades, ... ?)
-- Base AI (seperate snapshot and actions)
-- Smarter random trigger logic (context-weighted instead of only timer+jitter)
+- More LLM actions (Context based trigger, ambient NPC stuff, idk really just a whole lot maybe)
+- Basecamp AI (seperate snapshot and actions, like crafting stuff mostly)
 - Finetuned model for optimal performance.
-- Complete NPC conversation overhaul? Replace the branched conversations with freetext and toolcalls in convos (ie. [trade],[quest],etc).
+- Complete NPC conversation overhaul! Replace the branched conversations with freetext and toolcalls in convos (ie. [trade],[quest],etc).
 
-### LLM runner background
-The LLM call is initiated by shouting (C + b) in-game next to an NPC that is following you.
-It collects a game snapshot and sends it to the LLM, usually together with your utterance (or empty for spontaneous random check-ins).
+### Snapshot background
+
+The LLM call is initiated by saying a sentence (C + b) in-game next to an NPC that is following you.
+It collects a game snapshot and sends it to the LLM, together with your utterance.
 The LLM is supposed to create an answer, as well as 1-3 actions.
 Since LLMs are slow (for me compute time is 10-20s atm) the runner is async and does not block normal NPC AI.
 It calculates and injects a message and actions on the first possible turn.
 Therefore, any used model has to balance intelligence and speed.
 
 Heres an example snapshot. As you can see, a lot of information is conveyed to the LLM in a dense format.
+(this snapshot is actually not 100% up to date, theres vision now and some action tokens are missing but you get the gist.)
 
 ```sh
 prompt Willy Norwood (req_2)
@@ -175,7 +173,6 @@ Ain’t gonna argue, sugar—my leg’s half-ripped but I can still hoof it. Let
 ```
 
 ## Files added in this fork so far
-
 - src/llm_intent.cpp
 - src/llm_intent.h
 - tools/llm_runner/background_summarizer.py
@@ -188,9 +185,22 @@ Ain’t gonna argue, sugar—my leg’s half-ripped but I can still hoof it. Let
 
 ## Installation
 
+### Which branch should I use?
+
+Choose the branch that matches the Cataclysm line you actually want to run:
+
+- **`master` / `dev` / `port/cdda-master`** — the mainline C-AOL branch, based on the current CDDA master port baseline. If you are unsure, start here.
+- **`port/cdda-0.I`** — the C-AOL port for the CDDA 0.I line.
+- **`port/cdda-0.H`** — the C-AOL port for the CDDA 0.H line.
+- **`port/ctlg-master`** — the C-AOL port for Cataclysm: There Is Still Hope / CTLG master.
+
+All active `port/*` branches went through the same late-March 2026 validation pass, but they remain separate compatibility targets. Pick the branch that matches your upstream base rather than mixing saves or expectations across branches.
+
 If you want a no-source install, grab a release build from GitHub:
 https://github.com/josihosi/Cataclysm-AOL/releases
 Windows builds are `.zip`, Linux builds are `.tar.gz`, and macOS builds are `.dmg`.
+I ported the game onto CDDA master, CDDA 0.H, CDDA 0.I and CTLG master, three versions each.
+Very bad decision, but it got done.
 Unpack, run the game, and then follow the LLM runner setup below.
 
 If you want to build from source, follow the steps below.
@@ -206,7 +216,7 @@ However, I am working hard to optimize this fork for local LLM use.
 
 All following commands etc. are written for Powershell in Windows. Linux people will figure it out :)
 
-### Git repo cloning
+### Git repo cloning (skip if you grab a release)
 
 First you need to do a shallow clone of this Git repo. Do this in the place you wanna install the game.
 
@@ -217,7 +227,6 @@ In order to build this, you will need to install MYSYS2 (see [COMPILING-MSYS.md]
 All the other classic ways of compiling should work too ([COMPILING.md](doc/c++/COMPILING.md)), but for MYSYS2 you can run .\build_and_run.cmd --unclean in PS to start the game.
 
 ### LLM runner (Python + OpenVINO GenAI)
-
 This fork uses a local Python runner to generate NPC intents.
 Tested on Windows with Intel Core Ultra 7 155H + NPU, using:
 [OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov](https://huggingface.co/OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov)
@@ -298,18 +307,20 @@ We also have the following build guides:
 
 Thank you so much to all the contributors to CDDA!
 https://github.com/CleverRaven/Cataclysm-DDA
-
-If you want to contribute, and are comfortable to sharing a bit of private information, you can easily!
-When playing the fork, enable LLM logging in the [LLM] menu and send me /config/llm_intent.log, after you've tried it out.
-I can use the snapshots to train/distill an LLM, to make it snappy and more accurate.
-Needs at least 5k snapshots, apparently.
-So, send it to innovation@dabubu.at, or don't :)
-
-Alternatively, if you want to request additional LLM functions, just contact me somehow.
+Also CTLG
+https://github.com/Cataclysm-TLG/Cataclysm-TLG
+You all made the best game ever.
 
 Also, this entire fork was vibe-coded using [Codex CLI](https://developers.openai.com/codex/cli). Thanks to the folks at OpenAI.
+A huge chunk of work was also done with [Openclaw](https://github.com/openclaw/openclaw), so big thanks to those contributors. Danke Steini, ur Leiwand.
 
-If I forgot to thank somebody, please just tell me.
+If you want to contribute to this project, you can do so easily!
+When playing the fork, enable LLM logging in the [LLM] menu and send me <Game>/config/llm_intent.log.
+These are the snapshots that the game generated during your playthrough.
+I can use these snapshots to train/distill a specialized LLM, to make it snappy and more accurate.
+You can send them to me via <innovation@dabubu.at>.
+
+Alternatively, if you want to request additional LLM functions. Feature requests are always welcome.
 
 #### Is there a tutorial?
 
