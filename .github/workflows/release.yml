@@ -367,7 +367,7 @@ jobs:
             Start-Sleep -Seconds 20
           }
           .\build-scripts\windist.ps1
-          Move-Item cataclysmdda-0.J.zip ${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}
+          Move-Item '${{ needs.release.outputs.source_zip }}' '${{ needs.release.outputs.asset_prefix }}_${{ matrix.release_os }}.${{ matrix.ext }}'
 
       - name: Dump vcpkg logs if Windows build failed
         if: failure() && runner.os == 'Windows'
