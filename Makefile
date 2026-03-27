@@ -608,12 +608,19 @@ endif
 ifeq ($(NATIVE), osx)
   DEFINES += -DMACOSX
   CXXFLAGS += -mmacosx-version-min=10.15
+  CFLAGS += -mmacosx-version-min=10.15
   LDFLAGS += -mmacosx-version-min=10.15 -framework CoreFoundation -Wl,-headerpad_max_install_names
   # doesn't use GNU ar
   THIN_AR=0
   ifeq ($(UNIVERSAL_BINARY), 1)
-    CXXFLAGS += -arch x86_64 -arch arm64
+    CXXFLAGS += -arch x86_64 -mcx16 -arch arm64
+    CFLAGS += -arch x86_64 -mcx16 -arch arm64
     LDFLAGS += -arch x86_64 -arch arm64
+  else
+    ifneq ($(findstring x86-64,$(shell $(CXX) -v 2>&1 | grep Target: | awk '{print $2}')),)
+      CXXFLAGS += -mcx16
+      CFLAGS += -mcx16
+    endif
   endif
   ifdef FRAMEWORK
     ifeq ($(FRAMEWORKSDIR),)
