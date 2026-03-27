@@ -1,5 +1,12 @@
 # C-AOL Release Roadmap
 
+## Next Logical Step After Release
+- Build a thin CAOL/NPC action contract layer around existing CDDA actions instead of trying to discover every edge case only through live gameplay.
+- Start with a focused primitive surface: pickup first, then move / equip / attack / interact.
+- For each primitive, add clearer result states, explicit failure reasons, and stronger observability so failures stop looking like silent NPC weirdness.
+- Add a small harness with scenario tests around those primitives, especially pickup edge cases, instead of relying only on manual playtesting.
+- Add short NPC refusal utterances for failed/blocked commands so the player gets immediate feedback (`No room.`, `Can't reach it.`, `Not now.`, etc.).
+
 ## Remaining Work
 - README polish and release-note cleanup.
 - Release discussion / final packaging sanity check after README edits.
