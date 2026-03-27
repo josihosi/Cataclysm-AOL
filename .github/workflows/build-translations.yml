@@ -36,6 +36,7 @@ jobs:
             .tx
             tools
             lang
+            src
           fetch-depth: 1
           persist-credentials: false
 
