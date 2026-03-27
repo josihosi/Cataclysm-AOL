@@ -1,17 +1,15 @@
 {
-    "name": "ctlg-vcpkg-dependencies",
-    "version-string": "1.0",
-    "dependencies": [
-        "sdl2",
-        {
-          "name": "sdl2-image",
-          "features": [ "libjpeg-turbo" ]
-        },
-        {
-          "name": "sdl2-mixer",
-          "features": [ "libflac", "mpg123", "libmodplug" ]
-        },
-        "sdl2-ttf",
-        "pdcurses"
-    ]
+  "name": "ctlg-vcpkg-dependencies",
+  "version-string": "1.0",
+  "dependencies": [
+    { "name": "sdl2" },
+    { "name": "sdl2-image", "features": [ "libjpeg-turbo" ] },
+    { "name": "sdl2-mixer", "features": [ "libflac", "mpg123", "wavpack" ],
+      "default-features": false
+    },
+    "libvorbis",
+    "sdl2-ttf",
+    { "name": "pdcurses", "platform": "windows" }
+  ],
+  "builtin-baseline": "1b6e030cf096faf4f82d7b7025de8b2abee3e3df"
 }
