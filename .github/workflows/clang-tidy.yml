@@ -137,7 +137,11 @@ jobs:
       with:
         name: cata-analyzer-plugin
         path: build/tools/clang-tidy-plugin/
-    - name: determine changed files
+    - name: determine changed files (push)
+      if: ${{ github.event_name == 'push' }}
+      run: |
+        git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | tee files_changed
+    - name: determine changed files (pull_request)
       if: ${{ github.event_name == 'pull_request' }}
       uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       with:
