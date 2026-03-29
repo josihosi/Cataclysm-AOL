@@ -196,24 +196,6 @@ jobs:
           PY2
 
 
-      - name: Normalize UltimateCataclysm layering for older parsers
-        if: ${{ matrix.name == 'UltimateCataclysm' }}
-        run: |
-          python3 - <<'PY2'
-          import json
-          from pathlib import Path
-          layering = Path('${{ github.workspace }}') / 'gfx' / '${{ matrix.name }}' / 'layering.json'
-          if layering.exists():
-              data = json.loads(layering.read_text())
-              changed = False
-              for variant in data.get('variants', []):
-                  context = variant.get('context')
-                  if isinstance(context, list) and len(context) == 1 and isinstance(context[0], str):
-                      variant['context'] = context[0]
-                      changed = True
-              if changed:
-                  layering.write_text(json.dumps(data, indent=2) + '\n')
-          PY2
       - name: Store artifact
         if: ${{ !(inputs.target_ref == 'port/ctlg-master' && matrix.skip_on_ctlg) }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
