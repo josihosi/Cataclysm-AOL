@@ -68,6 +68,7 @@ Start with the actions that currently matter most:
 - `attack=<target>` behavior
 
 These are the most useful first targets because they combine gameplay importance with many failure modes.
+The status/failure-reason layer should be designed to port across the active `port/*` branches, even if some branch-specific adaptation is needed during landing.
 
 ### Proposed design shape
 Use a small shared lifecycle, plus action-specific reason codes.

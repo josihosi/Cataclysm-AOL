@@ -38,6 +38,9 @@ These are the right first targets because they combine:
 - many real failure modes,
 - and direct value for later smoke testing.
 
+The status/failure-reason layer should be designed to land across the active `port/*` branches.
+That does not mean every branch will accept the exact same patch with zero adjustment, because upstream divergence is real and annoying, but portability is a design goal rather than an afterthought.
+
 ---
 
 ## Core design principles
@@ -545,9 +548,13 @@ Instead of asserting on fuzzy visible behavior, it can assert on things like:
 
 That is why this status work should land before the bigger harness work.
 
-The first harness work is currently intended for the `master` branch flow.
-It should not be assumed, by default, to be something every `port/*` branch needs immediately.
+The future harness work should still begin with the `master` branch flow.
+That harness should not be assumed, by default, to be something every `port/*` branch needs immediately.
 If parts of it later prove portable and worthwhile, that can be evaluated on purpose instead of by habit.
+
+That branch policy is different from the status layer policy:
+- **status/failure-reason work** should be designed for all active `port/*` branches,
+- **harness work** should start on `master` and only spread when it earns the extra maintenance cost.
 
 ---
 
