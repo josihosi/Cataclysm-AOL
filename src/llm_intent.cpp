@@ -94,7 +94,7 @@ constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
 std::filesystem::path central_llm_config_dir_path()
 {
-    return std::filesystem::u8path( PATH_INFO::base_path() ) / "config";
+    return PATH_INFO::base_path().get_unrelative_path() / "config";
 }
 
 std::filesystem::path central_llm_log_path( const char *filename )
