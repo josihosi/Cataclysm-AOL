@@ -165,42 +165,10 @@ jobs:
           [ -f "$SOURCE/layering.json" ] && mv -v "$SOURCE/layering.json" "$DEST/" || echo "No layering.json for ${{ matrix.name }}"
 
 
-      - name: Normalize UltimateCataclysm layering for 0.H legacy parser
+      - name: Restore 0.H legacy UltimateCataclysm layering
         if: ${{ matrix.name == 'UltimateCataclysm' }}
         run: |
-          python3 - <<'PY2'
-          import json
-          from pathlib import Path
-          layering = Path('${{ github.workspace }}') / 'gfx' / '${{ matrix.name }}' / 'layering.json'
-          if layering.exists():
-              data = json.loads(layering.read_text())
-              out = []
-              for variant in data.get('variants', []):
-                  context = variant.get('context')
-                  # 0.H cannot use the newer flag-array context style like ["WALL"]
-                  if isinstance(context, list):
-                      continue
-                  fixed = dict(variant)
-                  items = []
-                  for entry in fixed.get('item_variants', []):
-                      e = dict(entry)
-                      if 'sprite' not in e and 'item' in e:
-                          e['sprite'] = [{ 'id': e['item'], 'weight': 1 }]
-                      items.append(e)
-                  if 'item_variants' in fixed:
-                      fixed['item_variants'] = items
-                  fields = []
-                  for entry in fixed.get('field_variants', []):
-                      e = dict(entry)
-                      if 'sprite' not in e and 'field' in e:
-                          e['sprite'] = [{ 'id': e['field'], 'weight': 1 }]
-                      fields.append(e)
-                  if 'field_variants' in fixed:
-                      fixed['field_variants'] = fields
-                  out.append(fixed)
-              data['variants'] = out
-              layering.write_text(json.dumps(data, indent=2) + '\n')
-          PY2
+          git show HEAD:gfx/UltimateCataclysm/layering.json > "${{ github.workspace }}/gfx/${{ matrix.name }}/layering.json"
       - name: Store artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
