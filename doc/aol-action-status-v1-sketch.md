@@ -2,6 +2,7 @@
 
 This document is the implementation sketch for the first real pass of action status management in Cataclysm: Arsenic and Old Lace.
 It is not the broad roadmap. That lives in [`../Plan.md`](../Plan.md).
+The file-level implementation sequence lives in [`aol-action-status-v1-patch-plan.md`](aol-action-status-v1-patch-plan.md).
 This file answers the narrower question:
 
 **What should the code actually look like if we want intent-driven actions to report clear status, clear failure reasons, terse player-facing refusals, and useful developer-facing debug output?**

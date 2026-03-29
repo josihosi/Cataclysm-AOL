@@ -60,6 +60,7 @@ Introduce a small common contract for intent-driven actions so each action can r
 - and what developers should see in logs/debug output.
 
 Implementation sketch: [`doc/aol-action-status-v1-sketch.md`](doc/aol-action-status-v1-sketch.md)
+Patch plan: [`doc/aol-action-status-v1-patch-plan.md`](doc/aol-action-status-v1-patch-plan.md)
 
 ### Scope for v1
 Start with the actions that currently matter most:
