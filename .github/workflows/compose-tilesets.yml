@@ -131,7 +131,6 @@ jobs:
             tileset_src_checkout: ""
 
     name: Compose tileset
-    if: ${{ !(inputs.target_ref == 'port/ctlg-master' && matrix.skip_on_ctlg) }}
     runs-on: ubuntu-latest
     steps:
       - name: Restore tools into workspace from cache
@@ -148,7 +147,12 @@ jobs:
           packages: python3 python3-pip libvips42
       - run: pip install pyvips
 
+      - name: Skip duplicate built-in CTLG tileset
+        if: ${{ inputs.target_ref == 'port/ctlg-master' && matrix.skip_on_ctlg }}
+        run: echo "Skipping ${{ matrix.name }} because CTLG already ships that tileset under a built-in directory."
+
       - name: Clone tileset repo
+        if: ${{ !(inputs.target_ref == 'port/ctlg-master' && matrix.skip_on_ctlg) }}
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           repository: ${{ matrix.tileset_repo }}
@@ -159,6 +163,7 @@ jobs:
           persist-credentials: false
 
       - name: Build ${{ matrix.name }}
+        if: ${{ !(inputs.target_ref == 'port/ctlg-master' && matrix.skip_on_ctlg) }}
         run: |
           export SOURCE="${{github.workspace}}/build-tilesets/${{ matrix.tileset_dir }}"
           export DEST="${{github.workspace}}/gfx/${{ matrix.name }}"
@@ -191,6 +196,7 @@ jobs:
           PY2
 
       - name: Store artifact
+        if: ${{ !(inputs.target_ref == 'port/ctlg-master' && matrix.skip_on_ctlg) }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: "tileset-${{ matrix.name }}"
