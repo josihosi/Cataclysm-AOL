@@ -81,16 +81,19 @@ jobs:
             tileset_dir: gfx/MShockXotto+
             compose_args: --use-all
             tileset_src_checkout: "gfx"
+            ctlg_strip_flagpole: true
           - name: NeoDays
             tileset_repo: I-am-Erk/CDDA-Tilesets
             tileset_dir: gfx/NeoDays
             compose_args: --use-all
             tileset_src_checkout: "gfx"
+            skip_on_ctlg: true
           - name: Retrodays
             tileset_repo: I-am-Erk/CDDA-Tilesets
             tileset_dir: gfx/Retrodays
             compose_args: --use-all
             tileset_src_checkout: "gfx"
+            skip_on_ctlg: true
           - name: GiantDays
             tileset_repo: I-am-Erk/CDDA-Tilesets
             tileset_dir: gfx/GiantDays
@@ -128,6 +131,7 @@ jobs:
             tileset_src_checkout: ""
 
     name: Compose tileset
+    if: ${{ !(inputs.target_ref == 'port/ctlg-master' && matrix.skip_on_ctlg) }}
     runs-on: ubuntu-latest
     steps:
       - name: Restore tools into workspace from cache
@@ -163,6 +167,28 @@ jobs:
           mv -v "$SOURCE/tileset.txt" "$DEST/"
           [ -f "$SOURCE/fallback.png"  ] && mv -v "$SOURCE/fallback.png" "$DEST/" || echo "No fallback.png for ${{ matrix.name }}"
           [ -f "$SOURCE/layering.json" ] && mv -v "$SOURCE/layering.json" "$DEST/" || echo "No layering.json for ${{ matrix.name }}"
+
+      - name: Clean CTLG-only tileset warnings
+        if: ${{ inputs.target_ref == 'port/ctlg-master' && matrix.ctlg_strip_flagpole }}
+        run: |
+          python3 - <<'PY2'
+          import json
+          from pathlib import Path
+          base = Path('${{ github.workspace }}') / 'gfx' / '${{ matrix.name }}'
+          layering = base / 'layering.json'
+          if layering.exists():
+              data = json.loads(layering.read_text())
+              data['variants'] = [v for v in data.get('variants', []) if v.get('context') != 'f_indoor_flagpole_wooden']
+              layering.write_text(json.dumps(data, indent=2) + '\n')
+          tile_config = base / 'tile_config.json'
+          if tile_config.exists():
+              data = json.loads(tile_config.read_text())
+              tiles = data.get('tiles-new', [])
+              for entry in tiles:
+                  if isinstance(entry, dict) and isinstance(entry.get('tiles'), list):
+                      entry['tiles'] = [t for t in entry['tiles'] if not (isinstance(t, dict) and t.get('id') == 'f_indoor_flagpole_wooden')]
+              tile_config.write_text(json.dumps(data, indent=2) + '\n')
+          PY2
 
       - name: Store artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
