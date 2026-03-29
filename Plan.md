@@ -59,6 +59,8 @@ Introduce a small common contract for intent-driven actions so each action can r
 - what the NPC should say about it,
 - and what developers should see in logs/debug output.
 
+Implementation sketch: [`doc/aol-action-status-v1-sketch.md`](doc/aol-action-status-v1-sketch.md)
+
 ### Scope for v1
 Start with the actions that currently matter most:
 - `look_around` pickup behavior
@@ -198,6 +200,7 @@ That is valuable work, but it is exactly the kind of repetitive nonsense a harne
 - Encode branch-specific menu differences instead of pretending they do not exist.
 - Capture evidence when tests fail.
 - Grow toward richer setup only after basic smoke tests are reliable.
+- Build the first harness path for `master`; do not assume it is automatically a `port/*` concern.
 
 ### Practical v1 scope
 #### 1. Branch-aware startup profiles
