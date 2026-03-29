@@ -2,10 +2,24 @@ name: IWYU (include-what-you-use)
 on:
   push:
     branches:
+    - dev
     - master
+    paths:
+    - 'src/**'
+    - 'tests/**'
+    - 'tools/iwyu/**'
+    - '**/CMakeLists.txt'
+    - '.github/workflows/iwyu.yml'
   pull_request:
     branches:
+    - dev
     - master
+    paths:
+    - 'src/**'
+    - 'tests/**'
+    - 'tools/iwyu/**'
+    - '**/CMakeLists.txt'
+    - '.github/workflows/iwyu.yml'
     types: [opened, reopened, synchronize, ready_for_review]
 
 # We only care about the latest revision of a PR, so cancel all previous instances.

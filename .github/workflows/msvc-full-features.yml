@@ -3,6 +3,7 @@ name: Cataclysm Windows build
 on:
   push:
     branches:
+    - dev
     - master
     paths-ignore:
     - 'android/**'
@@ -15,8 +16,11 @@ on:
     - 'tools/**'
     - '!tools/format/**'
     - 'utilities/**'
+    - '*.md'
+    - '**/*.md'
   pull_request:
     branches:
+    - dev
     - master
     paths-ignore:
     - 'android/**'
@@ -29,6 +33,8 @@ on:
     - 'tools/**'
     - '!tools/format/**'
     - 'utilities/**'
+    - '*.md'
+    - '**/*.md'
     types: [opened, reopened, synchronize, ready_for_review]
 
 # We only care about the latest revision of a PR, so cancel previous instances.

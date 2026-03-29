@@ -13,10 +13,27 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ master, 0.8-branch, 0.9-branch, 0.A-branch, 0.B-branch, 0.C-branch, 0.D-branch, 0.E-branch, gh-pages ]
+    branches: [ dev, master ]
+    paths:
+      - '**/*.c'
+      - '**/*.cpp'
+      - '**/*.h'
+      - '**/*.hpp'
+      - '**/CMakeLists.txt'
+      - '**/*.cmake'
+      - 'build-scripts/**'
+      - '.github/workflows/codeql-analysis.yml'
   pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ master ]
+    branches: [ dev, master ]
+    paths:
+      - '**/*.c'
+      - '**/*.cpp'
+      - '**/*.h'
+      - '**/*.hpp'
+      - '**/CMakeLists.txt'
+      - '**/*.cmake'
+      - 'build-scripts/**'
+      - '.github/workflows/codeql-analysis.yml'
   schedule:
     - cron: '31 12 * * 6'
 
@@ -45,7 +62,7 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action@b8d3b6e8af63cde30bdc382c0bc28114f4346c88 # v2
+      uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -69,4 +86,4 @@ jobs:
        make RELEASE=1 TESTS=0
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action@b8d3b6e8af63cde30bdc382c0bc28114f4346c88 # v2
+      uses: github/codeql-action/analyze@v4

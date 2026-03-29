@@ -3,11 +3,39 @@ name: Clang-tidy 18
 on:
   push:
     branches:
+    - dev
     - master
+    paths:
+    - '**/*.cpp'
+    - '**/*.h'
+    - '**/*.c'
+    - '**/CMakeLists.txt'
+    - '**/Makefile'
+    - '**/*.hpp'
+    - '**/*.cmake'
+    - 'build-scripts/clang-tidy-build.sh'
+    - 'build-scripts/clang-tidy-run.sh'
+    - 'build-scripts/clang-tidy-wrapper.sh'
+    - 'build-scripts/get_affected_files.py'
+    - '.github/workflows/clang-tidy.yml'
 
   pull_request:
     branches:
+    - dev
     - master
+    paths:
+    - '**/*.cpp'
+    - '**/*.h'
+    - '**/*.c'
+    - '**/CMakeLists.txt'
+    - '**/Makefile'
+    - '**/*.hpp'
+    - '**/*.cmake'
+    - 'build-scripts/clang-tidy-build.sh'
+    - 'build-scripts/clang-tidy-run.sh'
+    - 'build-scripts/clang-tidy-wrapper.sh'
+    - 'build-scripts/get_affected_files.py'
+    - '.github/workflows/clang-tidy.yml'
     types: [opened, reopened, synchronize, ready_for_review]
 
 # We only care about the latest revision of a PR, so cancel all previous instances.
