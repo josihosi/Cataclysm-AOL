@@ -2,23 +2,28 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
-#include <cstdint>
-#include <condition_variable>
 #include <cctype>
+#include <chrono>
 #include <cmath>
+#include <condition_variable>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <deque>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <iomanip>
+#include <initializer_list>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <queue>
-#include <set>
 #include <ratio>
+#include <set>
 #include <sstream>
-#include <cstdlib>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -27,36 +32,34 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <exception>
-#include <iomanip>
 
-#include "cata_path.h"
 #include "calendar.h"
+#include "cata_path.h"
+#include "cata_utility.h"
 #include "character.h"
 #include "character_id.h"
-#include "cata_utility.h"
-#include "ammo.h"
 #include "coordinates.h"
 #include "creature.h"
 #include "creature_tracker.h"
-#include "flexbuffer_json.h"
-#include "filesystem.h"
-#include "itype.h"
+#include "dialogue_chatbin.h"
 #include "effect.h"
+#include "flexbuffer_json.h"
 #include "game.h"
 #include "item.h"
 #include "item_location.h"
-#include "line.h"
+#include "itype.h"
 #include "json.h"
 #include "map.h"
-#include "messages.h"
+#include "map_selector.h"
 #include "memory_fast.h"
-#include "npc_opinion.h"
+#include "messages.h"
 #include "npc.h"
+#include "npc_opinion.h"
 #include "options.h"
 #include "output.h"
 #include "path_info.h"
 #include "point.h"
+#include "ret_val.h"
 #include "string_formatter.h"
 #include "translations.h"
 #include "type_id.h"
@@ -64,13 +67,16 @@
 #include "vehicle.h"
 #include "vehicle_selector.h"
 #include "visitable.h"
+#include "vpart_position.h"
 
 #if defined(_WIN32)
-#include <windows.h>
+#if 1 // HACK: Hack to prevent reordering of #include "platform_win.h" by IWYU
+#include "platform_win.h"
+#endif
 #else
 #include <cerrno>
-#include <fcntl.h>
 #include <csignal>
+#include <fcntl.h>
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -88,12 +94,12 @@ constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
 std::filesystem::path central_llm_config_dir_path()
 {
-    return std::filesystem::path( PATH_INFO::base_path() ) / "config";
+    return std::filesystem::u8path( PATH_INFO::base_path() ) / "config";
 }
 
 std::filesystem::path central_llm_log_path( const char *filename )
 {
-    return central_llm_config_dir_path() / filename;
+    return central_llm_config_dir_path() / std::filesystem::u8path( filename );
 }
 
 void append_llm_intent_log( const std::string &payload )
@@ -137,7 +143,7 @@ void append_llm_intent_log( const std::string &payload )
         if( !ec && size >= static_cast<std::uintmax_t>( llm_intent_log_rotate_bytes ) ) {
             for( int i = 1; i <= 9999; ++i ) {
                 std::filesystem::path rotated = log_path;
-                rotated += "." + std::to_string( i );
+                rotated += std::filesystem::u8path( "." + std::to_string( i ) );
                 if( !std::filesystem::exists( rotated, ec ) ) {
                     std::filesystem::rename( log_path, rotated, ec );
                     break;
@@ -234,7 +240,7 @@ std::string strip_leading_article( const std::string &text )
     return text;
 }
 
-std::string trim_copy( const std::string &text )
+std::string trim_copy( std::string_view text )
 {
     size_t start = 0;
     while( start < text.size() &&
@@ -246,7 +252,7 @@ std::string trim_copy( const std::string &text )
            std::isspace( static_cast<unsigned char>( text[end - 1] ) ) ) {
         --end;
     }
-    return text.substr( start, end - start );
+    return std::string( text.substr( start, end - start ) );
 }
 
 std::string normalize_item_label( std::string_view text )
@@ -405,7 +411,7 @@ void load_background_summary_text_dir( const cata_path &summary_root,
         if( !entry.is_regular_file( ec ) ) {
             continue;
         }
-        if( entry.path().extension() != ".txt" ) {
+        if( entry.path().extension() != std::filesystem::u8path( ".txt" ) ) {
             continue;
         }
         const std::string filename = entry.path().filename().generic_u8string();
@@ -546,7 +552,7 @@ background_summary_entry get_background_summary_for( const npc &listener )
     return {};
 }
 
-bool is_action_token( const std::string &token )
+bool is_action_token( std::string_view token )
 {
     if( token.empty() ) {
         return false;
@@ -687,7 +693,7 @@ bool parse_move_field( const std::string &field, std::vector<std::string> &coord
     return true;
 }
 
-bool parse_csv_payload( const std::string &csv, std::string &speech,
+bool parse_csv_payload( std::string_view csv, std::string &speech,
                         std::vector<std::string> &actions,
                         std::string &attack_target,
                         std::vector<std::string> &move_coords,
@@ -834,7 +840,7 @@ bool parse_csv_payload( const std::string &csv, std::string &speech,
         }
     }
     if( actions.empty() && !attack_target.empty() ) {
-        actions.push_back( "idle" );
+        actions.emplace_back( "idle" );
     }
     if( actions.empty() ) {
         error = "CSV must include at least one action field.";
@@ -894,7 +900,7 @@ struct look_inventory_selection {
     std::vector<std::string> drop;
 };
 
-std::string xml_escape( const std::string &text )
+std::string xml_escape( std::string_view text )
 {
     std::string out;
     out.reserve( text.size() );
@@ -940,13 +946,13 @@ std::string strip_think_output( const std::string &text )
         while( j < text.size() && isspace( static_cast<unsigned char>( text[j] ) ) ) {
             ++j;
         }
-        static constexpr char think_tag[] = "think";
+        static constexpr std::string_view think_tag = "think";
         size_t k = 0;
-        while( k < sizeof( think_tag ) - 1 && j + k < text.size() &&
+        while( k < think_tag.size() && j + k < text.size() &&
                tolower( static_cast<unsigned char>( text[j + k] ) ) == think_tag[k] ) {
             ++k;
         }
-        if( k != sizeof( think_tag ) - 1 ) {
+        if( k != think_tag.size() ) {
             continue;
         }
         j += k;
