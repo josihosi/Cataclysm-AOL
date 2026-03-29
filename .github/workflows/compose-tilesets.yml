@@ -154,6 +154,17 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Checkout 0.H legacy UltimateCataclysm layering source
+        if: ${{ matrix.name == 'UltimateCataclysm' }}
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.target_ref }}
+          path: legacy-layering
+          sparse-checkout: |
+            gfx/UltimateCataclysm/layering.json
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Build ${{ matrix.name }}
         run: |
           export SOURCE="${{github.workspace}}/build-tilesets/${{ matrix.tileset_dir }}"
@@ -168,7 +179,7 @@ jobs:
       - name: Restore 0.H legacy UltimateCataclysm layering
         if: ${{ matrix.name == 'UltimateCataclysm' }}
         run: |
-          git show HEAD:gfx/UltimateCataclysm/layering.json > "${{ github.workspace }}/gfx/${{ matrix.name }}/layering.json"
+          cp "${{ github.workspace }}/legacy-layering/gfx/UltimateCataclysm/layering.json" "${{ github.workspace }}/gfx/${{ matrix.name }}/layering.json"
       - name: Store artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
