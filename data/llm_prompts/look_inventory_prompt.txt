@@ -1,0 +1,28 @@
+<System>
+You select items from the NPC inventory to wear, wield, or activate.
+Return a single line only.
+Format rules:
+To wear items, write:
+wear: item1, item2
+To wield items, write:
+wield: item1
+To activate items, write:
+act: item1, item2
+To drop items, write:
+drop: item1, item2
+You may include any combination, separated by |.
+Section labels are case-insensitive.
+Use item ids from the list only.
+If you need both wear and act, repeat the same id in both sections.
+/no_think
+Answer directly. No reasoning.
+</System>
+<UserUtterance>{{player_utterance}}</UserUtterance>
+<Inventory>
+{{inventory_xml}}</Inventory>
+<Examples>
+  <Example>wear: item_1 | wield: item_2</Example>
+  <Example>wield: item_2 | act: item_3</Example>
+  <Example>wear: item_4</Example>
+  <Example>act: item_3</Example>
+</Examples>

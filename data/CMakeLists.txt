@@ -10,7 +10,8 @@ set(CATACLYSM_DATA_DIRS
         core
         screenshots
         xdg
-        help)
+        help
+        llm_prompts)
 
 if (SOUND)
     list(APPEND CATACLYSM_DATA_DIRS sound)

@@ -43,6 +43,7 @@
 #include "creature_tracker.h"
 #include "dialogue_chatbin.h"
 #include "effect.h"
+#include "filesystem.h"
 #include "flexbuffer_json.h"
 #include "game.h"
 #include "item.h"
@@ -156,6 +157,99 @@ void append_llm_intent_log( const std::string &payload )
         return;
     }
     out << final_payload;
+}
+
+constexpr const char *llm_prompt_dirname = "llm_prompts";
+constexpr const char *npc_action_prompt_filename = "npc_action_prompt.txt";
+constexpr const char *npc_ambient_prompt_filename = "npc_ambient_prompt.txt";
+constexpr const char *look_around_prompt_filename = "look_around_prompt.txt";
+constexpr const char *look_inventory_prompt_filename = "look_inventory_prompt.txt";
+constexpr const char *llm_prompt_readme_filename = "README.txt";
+
+std::filesystem::path llm_prompt_override_dir_path()
+{
+    return ( PATH_INFO::config_dir_path() / llm_prompt_dirname ).get_unrelative_path();
+}
+
+std::filesystem::path bundled_llm_prompt_dir_path()
+{
+    return ( PATH_INFO::datadir_path() / llm_prompt_dirname ).get_unrelative_path();
+}
+
+void replace_all_in_place( std::string &text, const std::string &from, const std::string &to )
+{
+    if( from.empty() ) {
+        return;
+    }
+    size_t pos = 0;
+    while( ( pos = text.find( from, pos ) ) != std::string::npos ) {
+        text.replace( pos, from.size(), to );
+        pos += to.size();
+    }
+}
+
+std::string render_prompt_template( std::string templ,
+                                    const std::initializer_list<std::pair<std::string, std::string>> &replacements )
+{
+    for( const std::pair<std::string, std::string> &entry : replacements ) {
+        replace_all_in_place( templ, entry.first, entry.second );
+    }
+    return templ;
+}
+
+bool prompt_template_has_required_tokens( const std::string &templ,
+        const std::initializer_list<std::string_view> &required_tokens )
+{
+    if( templ.find_first_not_of( " \t\r\n" ) == std::string::npos ) {
+        return false;
+    }
+    for( const std::string_view token : required_tokens ) {
+        if( templ.find( token ) == std::string::npos ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void seed_llm_prompt_override_files()
+{
+    const std::filesystem::path override_dir = llm_prompt_override_dir_path();
+    if( !assure_dir_exist( override_dir ) ) {
+        return;
+    }
+
+    const std::filesystem::path bundled_dir = bundled_llm_prompt_dir_path();
+    for( const char *filename : { npc_action_prompt_filename, npc_ambient_prompt_filename,
+                                  look_around_prompt_filename, look_inventory_prompt_filename,
+                                  llm_prompt_readme_filename } ) {
+        const std::filesystem::path source = bundled_dir / filename;
+        const std::filesystem::path dest = override_dir / filename;
+        if( file_exist( source ) && !file_exist( dest ) ) {
+            copy_file( source.string(), dest.string() );
+        }
+    }
+}
+
+std::string load_llm_prompt_template( const char *filename, std::string_view fallback_template,
+                                      const std::initializer_list<std::string_view> &required_tokens )
+{
+    static std::once_flag seed_once;
+    std::call_once( seed_once, []() {
+        seed_llm_prompt_override_files();
+    } );
+
+    for( const std::filesystem::path &path : { llm_prompt_override_dir_path() / filename,
+                                               bundled_llm_prompt_dir_path() / filename } ) {
+        if( !file_exist( path ) ) {
+            continue;
+        }
+        const std::string templ = read_entire_file( path );
+        if( prompt_template_has_required_tokens( templ, required_tokens ) ) {
+            return templ;
+        }
+    }
+
+    return std::string( fallback_template );
 }
 
 struct llm_intent_request {
@@ -1099,61 +1193,77 @@ std::vector<inventory_item_entry> collect_inventory_entries( npc &listener, size
     return entries;
 }
 
+std::string default_look_around_prompt_template()
+{
+    return R"(<System>Select up to three nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.Prioritize items that best match the player's request, including named objects like a backpack, knife, or other visible item.Items may be on the ground, in containers, in corpses, or in nearby vehicle cargo; treat them all as visible nearby choices.Return only up to three item ids from the <Items> list, comma-separated. Each id may optionally use :a for all or :N for a quantity, for example item_2:a or item_4:5.If quantity is omitted, it defaults to :a (all visible matching items). Do not return item names, explanations, or any items not listed in <Items>. Return an empty line if nothing visible fits the request.
+/no_think
+Answer directly. No reasoning.</System>
+<UserUtterance>{{player_utterance}}</UserUtterance>
+<Items>
+{{items_xml}}</Items>
+)";
+}
+
+std::string default_look_inventory_prompt_template()
+{
+    return R"(<System>You select items from the NPC inventory to wear, wield, or activate.Return a single line only.Format rules:To wear items, write:
+wear: item1, item2
+To wield items, write:
+wield: item1
+To activate items, write:
+act: item1, item2
+To drop items, write:
+drop: item1, item2
+You may include any combination, separated by |.Section labels are case-insensitive.Use item ids from the list only.If you need both wear and act, repeat the same id in both sections.
+/no_think
+Answer directly. No reasoning.</System>
+<UserUtterance>{{player_utterance}}</UserUtterance>
+<Inventory>
+{{inventory_xml}}</Inventory>
+<Examples>
+  <Example>wear: item_1 | wield: item_2</Example>
+  <Example>wield: item_2 | act: item_3</Example>
+  <Example>wear: item_4</Example>
+  <Example>act: item_3</Example>
+</Examples>
+)";
+}
+
 std::string build_look_around_prompt( const std::string &player_utterance,
                                       const std::vector<look_around_item_entry> &items )
 {
-    std::ostringstream out;
-    out << "<System>";
-    out << "Select up to three nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.";
-    out << "Prioritize items that best match the player's request, including named objects like a backpack, knife, or other visible item.";
-    out << "Items may be on the ground, in containers, in corpses, or in nearby vehicle cargo; treat them all as visible nearby choices.";
-    out << "Return only up to three item ids from the <Items> list, comma-separated. Each id may optionally use :a for all or :N for a quantity, for example item_2:a or item_4:5.";
-    out << "If quantity is omitted, it defaults to :a (all visible matching items). Do not return item names, explanations, or any items not listed in <Items>. Return an empty line if nothing visible fits the request.";
-    out << "\n/no_think\nAnswer directly. No reasoning.";
-    out << "</System>\n";
-    out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
-    out << "<Items>\n";
+    std::ostringstream items_xml;
     for( const look_around_item_entry &entry : items ) {
-        out << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
-            << xml_escape( entry.name ) << "\" qty=\""
-            << entry.quantity << "\"/>\n";
+        items_xml << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
+                  << xml_escape( entry.name ) << "\" qty=\""
+                  << entry.quantity << "\"/>\n";
     }
-    out << "</Items>\n";
-    return out.str();
+    const std::string templ = load_llm_prompt_template( look_around_prompt_filename,
+                              default_look_around_prompt_template(),
+    { "{{player_utterance}}", "{{items_xml}}" } );
+    return render_prompt_template( templ,
+    {
+        { "{{player_utterance}}", xml_escape( player_utterance ) },
+        { "{{items_xml}}", items_xml.str() }
+    } );
 }
 
 std::string build_look_inventory_prompt( const std::string &player_utterance,
         const std::vector<inventory_item_entry> &inventory )
 {
-    std::ostringstream out;
-    out << "<System>";
-    out << "You select items from the NPC inventory to wear, wield, or activate.";
-    out << "Return a single line only.";
-    out << "Format rules:";
-    out << "To wear items, write:\nwear: item1, item2\n";
-    out << "To wield items, write:\nwield: item1\n";
-    out << "To activate items, write:\nact: item1, item2\n";
-    out << "To drop items, write:\ndrop: item1, item2\n";
-    out << "You may include any combination, separated by |.";
-    out << "Section labels are case-insensitive.";
-    out << "Use item ids from the list only.";
-    out << "If you need both wear and act, repeat the same id in both sections.";
-    out << "\n/no_think\nAnswer directly. No reasoning.";
-    out << "</System>\n";
-    out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
-    out << "<Inventory>\n";
+    std::ostringstream inventory_xml;
     for( const inventory_item_entry &entry : inventory ) {
-        out << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
-            << xml_escape( entry.name ) << "\"/>\n";
+        inventory_xml << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
+                      << xml_escape( entry.name ) << "\"/>\n";
     }
-    out << "</Inventory>\n";
-    out << "<Examples>\n";
-    out << "  <Example>wear: item_1 | wield: item_2</Example>\n";
-    out << "  <Example>wield: item_2 | act: item_3</Example>\n";
-    out << "  <Example>wear: item_4</Example>\n";
-    out << "  <Example>act: item_3</Example>\n";
-    out << "</Examples>\n";
-    return out.str();
+    const std::string templ = load_llm_prompt_template( look_inventory_prompt_filename,
+                              default_look_inventory_prompt_template(),
+    { "{{player_utterance}}", "{{inventory_xml}}" } );
+    return render_prompt_template( templ,
+    {
+        { "{{player_utterance}}", xml_escape( player_utterance ) },
+        { "{{inventory_xml}}", inventory_xml.str() }
+    } );
 }
 
 std::string normalize_csv_separators( const std::string &csv )
@@ -1989,11 +2099,63 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     return out.str();
 }
 
+std::string default_npc_action_prompt_template()
+{
+    return R"(Situation:
+{{snapshot}}
+<System>You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die.Return a single line only, with correct syntax, to be parsed by the game.This line has two to four fields separated by ‘|’ :
+<Field 1>The first field is an answer to player_utterance.If player_utterance_present is false, this is a spontaneous check-in with no direct player input.You have decided to team up with the player for now, and must answer as the NPC.Stick to your role, with your emotions and opinions.</Field 1>
+<Fields 2-4>Write 1-3 of the following allowed actions exactly:
+{{action_list_with_target}}
+<Explanation allowed actions>
+Snapshot field your_follow_mode can be follow-close, follow-afar, or guard/hold.
+If the player directly asks you to wait, stay, hold, guard, or stop, use 'wait_here' or 'hold_position' instead of follow actions.
+Only use 'idle' when no action change is needed. Do not use 'idle' as a substitute for wait/hold commands.
+'wait_here' to stay put, wait here, stand by, and remain with no special tactical position. Use this for ordinary requests to wait or stay.
+'hold_position' to hold this exact spot tactically: a doorway, corner, choke point, post, or guarded position. Use this only for explicit hold-this-position / keep-watch / stakeout style orders, not ordinary waiting.
+'follow_close' to walk behind, follow close, come here.
+'follow_far' to follow from farther away, hang back, give me space.
+'equip_gun' to equip gun, rifle, thrower, get ready to shoot.
+'equip_melee' to equip melee, get ready to bash, cut, kick, stab.
+'equip_bow' to use bow, crossbow, stealth.
+'panic_on' to start running, get out of here.
+'panic_off' if convincing, to stop fleeing and get your act together.
+'look_around' to view your surroundings and pick-up, grab, search, explore for items around you.
+'look_inventory' to look inside your inventory and wear/wield/activate items.
+'move: <coordinate> <coordinate> ... <state>' to move step-by-step on your snapshot map. Use N, S, E, W, NE, NW, SE and SW and chain 4 to 15 coordinates. After the coordinates you must also include either 'wait_here' or 'hold_position' to set state.
+'attack=<target>' to attack a target with the letter from your map.
+'idle' if none of the above.
+</Explanation allowed actions>
+</Fields 2-4>
+Print only Fields 1-4, separated by | .If you break this format, you have failed.Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.
+<Example Output 1>Blow me.|idle</Example Output 1>
+<Example Output 2>Lets put those fucks in the ground.|equip_melee|attack=zombie</Example Output 2>
+<Example Output 3>Providing cover!|wait_here|equip_gun</Example Output 3>
+<Example Output 4>Lets get some dinner!|equip_gun|attack=chicken</Example Output 4>
+<Example Output 5>Don't worry, I'm ready to kick some teeth in.|equip_melee</Example Output 5>
+<Example Output 6>Locked and loaded.|equip_gun</Example Output 6>
+<Example Output 7>Nope, not doing that!|panic_on</Example Output 7>
+<Example Output 8>Moving down and holding there.|move: S S S S S hold_position|equip_gun</Example Output 8>
+/no_think
+Answer directly. No reasoning.
+</System>
+)";
+}
+
+std::string default_npc_ambient_prompt_template()
+{
+    return R"(Situation:
+{{snapshot}}
+<System>You are {{npc_name}}, a human survivor NPC speaking to another person in a cataclysmic world.You are not allies, and eyeing them.Even if they seem nice, you never know these days. Everybody does things to survive.Reply deeply in character, informed by the snapshot: your background, your tone, your opinions of the player, and your recent memories.Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no CSV, no pipes, no tool calls, no menu syntax.If you are unsure, answer briefly and naturally instead of inventing details./no_think
+Answer directly. No reasoning.
+</System>
+<PlayerUtterance>{{player_utterance}}</PlayerUtterance>
+)";
+}
+
 std::string build_prompt( const std::string &npc_name, const std::string &player_utterance,
                           const std::string &snapshot )
 {
-    ( void )npc_name;
-    ( void )player_utterance;
     std::string action_list;
     for( const std::string &action : allowed_actions() ) {
         if( !action_list.empty() ) {
@@ -2006,92 +2168,31 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
         action_list_with_target += ", ";
     }
     action_list_with_target += "attack=<target>, move: <coordinate> <coordinate> ... <state>";
-    return string_format(
-               "Situation:\n%s\n"
-               "<System>"
-               "You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die."
-               "Return a single line only, with correct syntax, to be parsed by the game."
-               "This line has two to four fields separated by ‘|’ :\n"
-               "<Field 1>"
-               "The first field is an answer to player_utterance."
-               "If player_utterance_present is false, this is a spontaneous check-in with no direct player input."
-               "You have decided to team up with the player for now, and must answer as the NPC."
-               "Stick to your role, with your emotions and opinions."
-               "</Field 1>\n"
-               "<Fields 2-4>"
-               "Write 1-3 of the following allowed actions exactly:"
-               "%s\n"
-               "<Explanation allowed actions>\n"
-               "Snapshot field your_follow_mode can be follow-close, follow-afar, or guard/hold.\n"
-               "If the player directly asks you to wait, stay, hold, guard, or stop, use 'wait_here' or 'hold_position' instead of follow actions.\n"
-               "Only use 'idle' when no action change is needed. Do not use 'idle' as a substitute for wait/hold commands.\n"
-               "'wait_here' to stay put, wait here, stand by, and remain with no special tactical position. Use this for ordinary requests to wait or stay.\n"
-               "'hold_position' to hold this exact spot tactically: a doorway, corner, choke point, post, or guarded position. Use this only for explicit hold-this-position / keep-watch / stakeout style orders, not ordinary waiting.\n"
-               "'follow_close' to walk behind, follow close, come here.\n"
-               "'follow_far' to follow from farther away, hang back, give me space.\n"
-               "'equip_gun' to equip gun, rifle, thrower, get ready to shoot.\n"
-               "'equip_melee' to equip melee, get ready to bash, cut, kick, stab.\n"
-               "'equip_bow' to use bow, crossbow, stealth.\n"
-               "'panic_on' to start running, get out of here.\n"
-               "'panic_off' if convincing, to stop fleeing and get your act together.\n"
-               "'look_around' to view your surroundings and pick-up, grab, search, explore for items around you.\n"
-               "'look_inventory' to look inside your inventory and wear/wield/activate items.\n"
-               "'move: <coordinate> <coordinate> ... <state>' to move step-by-step on your snapshot map. Use N, S, E, W, NE, NW, SE and SW and chain 4 to 15 coordinates. After the coordinates you must also include either 'wait_here' or 'hold_position' to set state.\n"
-               "'attack=<target>' to attack a target with the letter from your map.\n"
-               "'idle' if none of the above.\n"
-               "</Explanation allowed actions>\n"
-               "</Fields 2-4>\n"
-               "Print only Fields 1-4, separated by | ."
-               "If you break this format, you have failed."
-               "Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.\n"
-               "<Example Output 1>"
-               "Blow me.|idle"
-               "</Example Output 1>\n"
-               "<Example Output 2>"
-               "Lets put those fucks in the ground.|equip_melee|attack=zombie"
-               "</Example Output 2>\n"
-               "<Example Output 3>"
-               "Providing cover!|wait_here|equip_gun"
-               "</Example Output 3>\n"
-               "<Example Output 4>"
-               "Lets get some dinner!|equip_gun|attack=chicken"
-               "</Example Output 4>\n"
-               "<Example Output 5>"
-               "Don't worry, I'm ready to kick some teeth in.|equip_melee"
-               "</Example Output 5>\n"
-               "<Example Output 6>"
-               "Locked and loaded.|equip_gun"
-               "</Example Output 6>\n"
-               "<Example Output 7>"
-               "Nope, not doing that!|panic_on"
-               "</Example Output 7>\n"
-               "<Example Output 8>"
-               "Moving down and holding there.|move: S S S S S hold_position|equip_gun"
-               "</Example Output 8>\n"
-               "/no_think\n"
-               "Answer directly. No reasoning.\n"
-               "</System>\n",
-               snapshot, action_list_with_target );
+    const std::string templ = load_llm_prompt_template( npc_action_prompt_filename,
+                              default_npc_action_prompt_template(),
+    { "{{snapshot}}", "{{action_list_with_target}}" } );
+    return render_prompt_template( templ,
+    {
+        { "{{snapshot}}", snapshot },
+        { "{{action_list_with_target}}", action_list_with_target },
+        { "{{npc_name}}", sanitize_text( npc_name ) },
+        { "{{player_utterance}}", sanitize_text( player_utterance ) }
+    } );
 }
 
 std::string build_ambient_prompt( const std::string &npc_name,
                                   const std::string &player_utterance,
                                   const std::string &snapshot )
 {
-    return string_format(
-               "Situation:\n%s\n"
-               "<System>"
-               "You are %s, a human survivor NPC speaking to another person in a cataclysmic world."
-               "You are not allies, and eyeing them."
-               "Even if they seem nice, you never know these days. Everybody does things to survive."
-               "Reply deeply in character, informed by the snapshot: your background, your tone, your opinions of the player, and your recent memories."
-               "Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no CSV, no pipes, no tool calls, no menu syntax."
-               "If you are unsure, answer briefly and naturally instead of inventing details."
-               "/no_think\n"
-               "Answer directly. No reasoning.\n"
-               "</System>\n"
-               "<PlayerUtterance>%s</PlayerUtterance>\n",
-               snapshot, sanitize_text( npc_name ), sanitize_text( player_utterance ) );
+    const std::string templ = load_llm_prompt_template( npc_ambient_prompt_filename,
+                              default_npc_ambient_prompt_template(),
+    { "{{snapshot}}", "{{npc_name}}", "{{player_utterance}}" } );
+    return render_prompt_template( templ,
+    {
+        { "{{snapshot}}", snapshot },
+        { "{{npc_name}}", sanitize_text( npc_name ) },
+        { "{{player_utterance}}", sanitize_text( player_utterance ) }
+    } );
 }
 
 [[maybe_unused]] std::string request_to_json( const llm_intent_request &request )
