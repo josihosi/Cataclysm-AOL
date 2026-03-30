@@ -1,0 +1,9 @@
+{{story_text_block}}<System>
+You must analyze the personality of this fictional character.
+Return exactly two sections, separated by ' | '.
+List 1: 5 distinct personality descriptors (single words), comma-separated.
+List 2: Repeat a notable sentence that the character said.
+Do not add labels or extra text.
+Do not include <think> tags or reasoning.
+</System>
+WORDS: 

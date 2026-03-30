@@ -3,11 +3,104 @@ import argparse
 import json
 import os
 import re
+import shutil
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
 
 DEFAULT_MODEL_DIR = ""
+PROMPT_DIRNAME = "llm_prompts"
+DEFAULT_SUMMARIZER_PROMPT_FILENAME = "background_summarizer_prompt.txt"
+STRICT_SUMMARIZER_PROMPT_FILENAME = "background_summarizer_strict_prompt.txt"
+
+
+def read_text(path: str) -> str:
+    with open(path, "r", encoding="utf-8", errors="replace") as handle:
+        return handle.read()
+
+
+def repo_root() -> str:
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def prompt_override_dir() -> str:
+    return os.path.join(repo_root(), "config", PROMPT_DIRNAME)
+
+
+def bundled_prompt_dir() -> str:
+    return os.path.join(repo_root(), "data", PROMPT_DIRNAME)
+
+
+def render_prompt_template(template: str, replacements: Dict[str, str]) -> str:
+    rendered = template
+    for key, value in replacements.items():
+        rendered = rendered.replace(key, value)
+    return rendered
+
+
+def has_required_tokens(template: str, required_tokens: List[str]) -> bool:
+    if not template.strip():
+        return False
+    return all(token in template for token in required_tokens)
+
+
+def seed_prompt_override_file(filename: str) -> None:
+    os.makedirs(prompt_override_dir(), exist_ok=True)
+    source = os.path.join(bundled_prompt_dir(), filename)
+    dest = os.path.join(prompt_override_dir(), filename)
+    if os.path.exists(source) and not os.path.exists(dest):
+        shutil.copyfile(source, dest)
+
+
+def load_prompt_template(filename: str, fallback_template: str, required_tokens: List[str]) -> str:
+    try:
+        seed_prompt_override_file(filename)
+    except Exception:
+        pass
+    for path in (
+        os.path.join(prompt_override_dir(), filename),
+        os.path.join(bundled_prompt_dir(), filename),
+    ):
+        if not os.path.exists(path):
+            continue
+        try:
+            template = read_text(path)
+        except Exception:
+            continue
+        if has_required_tokens(template, required_tokens):
+            return template
+    return fallback_template
+
+
+def default_summarizer_prompt_template(strict: bool = False) -> str:
+    if strict:
+        return (
+            "{{story_text_block}}<System>\n"
+            "You must analyze the personality of this fictional character.\n"
+            "Return exactly one line in this exact format:\n"
+            "word1, word2, word3, word4, word5 | quoted sentence\n"
+            "Rules:\n"
+            "- The first 5 items must each be a single descriptive word.\n"
+            "- No numbering.\n"
+            "- No labels.\n"
+            "- No explanation.\n"
+            "- Keep contractions intact inside the quote.\n"
+            "- The quote must be copied from the NPC lines.\n"
+            "- Do not include <think> tags or reasoning.\n"
+            "</System>\n"
+            "WORDS: "
+        )
+    return (
+        "{{story_text_block}}<System>\n"
+        "You must analyze the personality of this fictional character.\n"
+        "Return exactly two sections, separated by ' | '.\n"
+        "List 1: 5 distinct personality descriptors (single words), comma-separated.\n"
+        "List 2: Repeat a notable sentence that the character said.\n"
+        "Do not add labels or extra text.\n"
+        "Do not include <think> tags or reasoning.\n"
+        "</System>\n"
+        "WORDS: "
+    )
 
 
 def strip_think_tags(text: str) -> str:
@@ -171,40 +264,14 @@ def build_prompt(dynamic_lines: List[str], responses: List[str], strict: bool = 
         sections.append("Player responses:")
         sections.extend([f"- {line}" for line in responses])
     story_text = "\n".join(sections).strip()
-    if strict:
-        system_block = "\n".join(
-            [
-                "<System>",
-                "You must analyze the personality of this fictional character.",
-                "Return exactly one line in this exact format:",
-                "word1, word2, word3, word4, word5 | quoted sentence",
-                "Rules:",
-                "- The first 5 items must each be a single descriptive word.",
-                "- No numbering.",
-                "- No labels.",
-                "- No explanation.",
-                "- Keep contractions intact inside the quote.",
-                "- The quote must be copied from the NPC lines.",
-                "- Do not include <think> tags or reasoning.",
-                "</System>",
-            ]
-        )
-    else:
-        system_block = "\n".join(
-            [
-                "<System>",
-                "You must analyze the personality of this fictional character.",
-                "Return exactly two sections, separated by ' | '.",
-                "List 1: 5 distinct personality descriptors (single words), comma-separated.",
-                "List 2: Repeat a notable sentence that the character said.",
-                "Do not add labels or extra text.",
-                "Do not include <think> tags or reasoning.",
-                "</System>",
-            ]
-        )
-    if story_text:
-        return f"{story_text}\n\n{system_block}\nWORDS: "
-    return f"{system_block}\nWORDS: "
+    story_text_block = f"{story_text}\n\n" if story_text else ""
+    filename = STRICT_SUMMARIZER_PROMPT_FILENAME if strict else DEFAULT_SUMMARIZER_PROMPT_FILENAME
+    template = load_prompt_template(
+        filename,
+        default_summarizer_prompt_template(strict=strict),
+        ["{{story_text_block}}"],
+    )
+    return render_prompt_template(template, {"{{story_text_block}}": story_text_block})
 
 
 def normalize_output(text: str) -> str:

@@ -1,0 +1,14 @@
+{{story_text_block}}<System>
+You must analyze the personality of this fictional character.
+Return exactly one line in this exact format:
+word1, word2, word3, word4, word5 | quoted sentence
+Rules:
+- The first 5 items must each be a single descriptive word.
+- No numbering.
+- No labels.
+- No explanation.
+- Keep contractions intact inside the quote.
+- The quote must be copied from the NPC lines.
+- Do not include <think> tags or reasoning.
+</System>
+WORDS: 
