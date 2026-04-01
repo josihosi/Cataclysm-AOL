@@ -1,0 +1,4 @@
+action_status npc="Marlene Pike" kind="attack_target" phase="requested" reason="" request="req_attack_1" target_hint="zombie dog" target="zombie dog" facts=""
+action_status npc="Marlene Pike" kind="attack_target" phase="precheck" reason="" request="req_attack_1" target_hint="zombie dog" target="zombie dog" facts="resolved_target=zombie dog; dist=4; matched_legend=false"
+action_status npc="Marlene Pike" kind="attack_target" phase="waiting" reason="attack.reacquire_grace" request="req_attack_1" target_hint="zombie dog" target="zombie dog" facts="grace=2"
+action_status npc="Marlene Pike" kind="attack_target" phase="blocked" reason="attack.target_missing" request="req_attack_1" target_hint="zombie dog" target="zombie dog" facts=""

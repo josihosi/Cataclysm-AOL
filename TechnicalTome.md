@@ -123,6 +123,10 @@ Run the named-NPC smoke harness without invoking the model:
 Run the named-NPC smoke harness through the normal runner pipe:
 - `python3 tools/llm_runner/npc_harness.py --scenario tools/llm_runner/scenarios/rubik_trade.json --backend ollama --ollama-model mistral`
 
+Check structured action-status output from `llm_intent.log`:
+- `python3 tools/llm_runner/action_status_check.py --log-file config/llm_intent.log --npc "Marlene Pike" --kind attack_target --terminal-phase blocked --terminal-reason attack.target_missing`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_attack_target_missing.txt --expect-file tools/llm_runner/fixtures/action_status_attack_target_missing.expect.json --json`
+
 The smoke harness intentionally tests three layers together:
 - selector resolution (manual vs generated precedence)
 - snapshot/prompt assembly for one named NPC
