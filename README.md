@@ -1,61 +1,243 @@
 # Cataclysm: Arsenic and Old Lace
 
-This is a fork of [CDDA](https://github.com/CleverRaven/Cataclysm-DDA), where I implemented LLMs to facilitate organic responsiveness in Cataclysm.
-This is something I would like to see in games in general, so I'm creating it here:
+Cataclysm: Arsenic and Old Lace (C-AOL) is a fork of [Cataclysm: Dark Days Ahead](https://github.com/CleverRaven/Cataclysm-DDA) and [Cataclysm-TLG](https://github.com/Cataclysm-TLG/Cataclysm-TLG) that adds an LLM-driven NPC intent runner. The goal is simple: let NPCs answer you in free text, react with more personality, and take a small set of meaningful actions without turning the whole game into a chatbot tech demo.
+
+Huge thanks to the CDDA and CTLG maintainers and contributors. They built the game this fork stands on.
 
 ![AOL Screenshot](doc/AOL-Screenshot.png)
 
-[Video](https://youtu.be/HfishtPzvhA), so you know its real.
+[Video](https://youtu.be/HfishtPzvhA), so you know the repo is real.
 
-This project also ports behavior onto [Cataclysm-TLG](https://github.com/Cataclysm-TLG/Cataclysm-TLG) targets.
-Huge thanks to the CTLG maintainers and contributors, just like the gratitude owed to original CDDA contributors.
+## What this fork already does
 
-Compatibility note: release branches under `port/*` are AOL behavior ports onto different upstream bases (`cdda-master`, `0.H`, `0.I`, `ctlg-master`). Gameplay and data can differ slightly per target because of upstream divergence.
+- Lets you talk to follower NPCs in free text.
+- Sends an NPC-centric snapshot to a local or API-backed runner.
+- Turns the model output into in-game speech plus up to three action tokens.
+- Supports follower actions such as `follow_close`, `follow_far`, `wait_here`, `hold_position`, `equip_gun`, `equip_melee`, `equip_bow`, `look_around`, `look_inventory`, `panic_on`, `panic_off`, `attack=<target>`, and short directional move chains.
+- Supports optional random/spontaneous NPC calls.
+- Lets ambient NPCs answer too, even when they are not the directly commanded follower.
 
-Yelling (C + b) next to a follower NPC activates a local, asynchronous LLM toolcall, which thinks of an answer and up to three actions.
-The game sends an NPC-centric snapshot to the runner together with your utterance.
-Random LLM calls can also be enabled under [LLM] with `Random call (turns)` (0 disables it, 1-500 enables periodic spontaneous check-ins).
-The following actions can be initiated by the toolcall right now:
-- follow_close
-- follow_far
-- wait_here
-- equip_gun
-- equip_melee
-- equip_bow
-- look_around -> pick up
-- look_inventory -> wear/activate/wield/drop
-- panic_on (20 turns)
-- panic_off (diminishing over 30 turns)
-- attack=[target]
+## Releases first
 
-Yelling a sentence has also been changed to 'Say a sentence' with a range of around 8 tiles, depending on the weather etc.
+If you just want to **play the fork**, start with the GitHub releases instead of cloning the repo:
 
-### What’s already in and working
-- Local runner is wired (stdin/stdout JSON), kept warm, and logs metrics; snapshots are compact and include speech + actions that get surfaced in-game when parsed.
-- Background summarizer can run at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; local generation supports either Ollama or OpenVINO. It also supports a registry-driven named-NPC pass that now writes generated selectors into `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.json`, while the runtime still accepts legacy `.txt` summary files for compatibility. On macOS, `./just_build_macos.sh --with-summary` can read the current branch profile's LLM menu summary settings, or you can pass explicit flags like `--summary-backend ollama --summary-ollama-model mistral`. `your_profession`, `your_tone`, and `your_example_expression` are injected into the snapshot.
-- Stable item addressing is live (item ids in prompts), and panic_on/panic_off use timed decay.
-- Debug logging captures snapshots, responses, and raw failures for prompt tuning; speech shows in-game on success.
-- Random calls are live: each ally uses an independent jittered timer and can fire a spontaneous call with no player utterance.
+<https://github.com/josihosi/Cataclysm-AOL/releases>
 
-### Roadmap
+Release artifacts are built for the port branches:
 
-I plan on adding the following features, somewhere in the future:
+- **`port/cdda-master`** — AOL on current CDDA master
+- **`port/cdda-0.I`** — AOL on CDDA 0.I
+- **`port/cdda-0.H`** — AOL on CDDA 0.H
+- **`port/ctlg-master`** — AOL on CTLG master
 
-- More LLM actions (minimap-move, throw grenades, ... ?)
-- Base AI (seperate snapshot and actions)
-- Smarter random trigger logic (context-weighted instead of only timer+jitter)
-- Finetuned model for optimal performance.
-- Complete NPC conversation overhaul? Replace the branched conversations with freetext and toolcalls in convos (ie. [trade],[quest],etc).
+Formats:
+- **Windows** → `.zip`
+- **Linux** → `.tar.gz`
+- **macOS** → `.dmg`
 
-### LLM runner background
-The LLM call is initiated by shouting (C + b) in-game next to an NPC that is following you.
-It collects a game snapshot and sends it to the LLM, usually together with your utterance (or empty for spontaneous random check-ins).
-The LLM is supposed to create an answer, as well as 1-3 actions.
-Since LLMs are slow (for me compute time is 10-20s atm) the runner is async and does not block normal NPC AI.
-It calculates and injects a message and actions on the first possible turn.
-Therefore, any used model has to balance intelligence and speed.
+Pick the release that matches the upstream line you actually want to play. Do not mix expectations or saves across branches just because they all have AOL features on top.
 
-Heres an example snapshot. As you can see, a lot of information is conveyed to the LLM in a dense format.
+## Source branches
+
+If you are building from source or contributing, the branch roles are:
+
+- **`master`** — main source branch
+- **`dev`** — ongoing development branch
+- **`port/*`** — compatibility/release branches for specific upstream targets
+
+If you only want the latest normal source state, start from `master`. If you want the specific release-target branches, use the matching `port/*` branch.
+
+## LLM runner overview
+
+The game talks to `tools/llm_runner/runner.py`. You configure it in the in-game **[LLM]** options menu.
+
+The important options are:
+
+- **Enable LLM intent runner**
+- **LLM backend** (`ollama`, `api`, or `openvino`)
+- **OpenVINO venv path** — despite the name, this is effectively the Python path the game uses to launch `runner.py`
+- **Ollama URL / model**
+- **API key env var / API model**
+- **OpenVINO model path / device**
+
+Current backend choices:
+
+- **Ollama** — recommended local path for most people
+- **API via any-llm** — easiest way to get good responses quickly
+- **OpenVINO** — advanced local path, especially relevant for Intel/NPU setups
+
+Important: even for **API** or **Ollama**, the game still needs a valid Python executable/venv path so it can launch `tools/llm_runner/runner.py`. In the options menu that field is currently labeled **OpenVINO venv path**, which is a bit misleading but still the right place to point at your Python.
+
+## Installation / setup
+
+### 1. Easiest path: play a release
+
+1. Download a release from the page above.
+2. Unpack it.
+3. Start the game once.
+4. Open the in-game **[LLM]** options.
+5. Pick a backend and fill in the matching settings.
+
+That is the normal path. Cloning the repo is only for source builds or development.
+
+### 2. Choose an LLM backend
+
+#### Option A — API via any-llm (easiest overall)
+
+This is the quickest way to get the fork working if you already have an API key.
+
+Example setup in a Python venv:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install "any-llm-sdk[openai]"
+setx CATA_API_KEY "your_key_here"
+```
+
+Then set these in the in-game **[LLM]** menu:
+
+- **LLM backend** → `api`
+- **OpenVINO venv path** → your Python executable or the venv you installed `any-llm` into
+- **API key env var** → `CATA_API_KEY`
+- **API model name** → e.g. `gpt-4.1-mini`
+
+Notes:
+- `CATA_API_KEY` is the default env-var name used by the game options.
+- `any-llm` supports multiple providers. If you are not using OpenAI, install the matching extra and set the provider/model accordingly.
+
+#### Option B — Ollama (recommended local path)
+
+If you want a local setup without the OpenVINO-specific baggage, Ollama is the easiest local backend.
+
+1. Install Ollama.
+2. Pull a model you actually want to run.
+3. Point the game at that model in the **[LLM]** menu.
+
+Example:
+
+```powershell
+ollama pull mistral
+```
+
+Then set these in the game:
+
+- **LLM backend** → `ollama`
+- **OpenVINO venv path** → a normal Python 3 executable or venv
+- **Ollama URL** → usually `http://127.0.0.1:11434`
+- **Ollama model name** → e.g. `mistral`
+
+A normal Python 3 install is enough for the runner here; you do not need the OpenVINO stack just to use Ollama.
+
+#### Option C — OpenVINO (advanced local path)
+
+This path is mainly for local Intel/OpenVINO setups and is the most fiddly one.
+
+Example venv install matching the tested setup:
+
+```powershell
+python -m venv C:\path\to\openvino_env
+C:\path\to\openvino_env\Scripts\activate
+pip install nncf==2.18.0 onnx==1.18.0 optimum-intel==1.25.2 transformers==4.51.3
+pip install openvino==2025.4 openvino-tokenizers==2025.4 openvino-genai==2025.4
+```
+
+Then set these in the game:
+
+- **LLM backend** → `openvino`
+- **OpenVINO venv path** → path to the venv or directly to the Python executable
+- **OpenVINO model path** → path to the local model directory
+- **OpenVINO device** → usually `AUTO`, unless you know you want `CPU`, `GPU`, or `NPU`
+
+This fork was heavily tested on an Intel Core Ultra machine, but OpenVINO is not the only supported path anymore.
+
+### 3. Runner self-test
+
+You can sanity-check the runner before launching the game.
+
+#### API
+
+```powershell
+python tools\llm_runner\runner.py --self-test --backend api --api-provider openai --api-model gpt-4.1-mini --api-key-env CATA_API_KEY
+```
+
+#### Ollama
+
+```powershell
+python tools\llm_runner\runner.py --self-test --backend ollama --ollama-url http://127.0.0.1:11434 --ollama-model mistral
+```
+
+#### OpenVINO
+
+```powershell
+python tools\llm_runner\runner.py --self-test --backend openvino --model-dir "C:\path\to\ov_model" --device AUTO
+```
+
+If the self-test works but the game does not, the next thing to check is usually the in-game **[LLM]** option values rather than the runner itself.
+
+## Building from source
+
+Only do this if you want the source tree, want to build the game yourself, or want to work on the fork.
+
+### Clone the repo
+
+```powershell
+git clone https://github.com/josihosi/Cataclysm-AOL.git
+cd Cataclysm-AOL
+```
+
+If you want a specific branch:
+
+```powershell
+git checkout master
+# or: git checkout dev
+# or: git checkout port/cdda-master
+```
+
+### Build shortcuts in this repo
+
+The repo includes some convenience scripts:
+
+- **Windows build+run** → `build_and_run.cmd`
+- **Windows build only** → `just_build.cmd`
+- **Linux build+run** → `build_and_run_linux.cmd`
+- **Linux build only** → `just_build_linux.cmd`
+- **macOS build+run** → `build_and_run_macos.sh`
+- **macOS build only** → `just_build_macos.sh`
+
+Examples:
+
+```powershell
+.\build_and_run.cmd --unclean
+.\just_build.cmd --unclean
+```
+
+```bash
+./build_and_run_macos.sh --unclean
+./just_build_macos.sh --unclean
+```
+
+For fuller platform docs, still read the upstream compile docs too:
+
+- [COMPILING.md](doc/c++/COMPILING.md)
+- [COMPILING-MSYS.md](doc/c++/COMPILING-MSYS.md)
+- [COMPILING-VS-VCPKG.md](doc/c++/COMPILING-VS-VCPKG.md)
+- [COMPILER_SUPPORT.md](doc/c++/COMPILER_SUPPORT.md)
+
+## Background summaries
+
+NPC background summaries are short generated text files that get injected into the snapshot so the model has a compact sense of who that NPC is supposed to be. The build-time helper for this is `tools/llm_runner/background_summarizer.py`, which writes the generated files into `data/json/npcs/Backgrounds/Summaries_short`.
+
+This also ties neatly into modding: you can ship your own summaries with content, and the game can also load extra selector-based overrides from `data/json/npcs/Backgrounds/Summaries_extra`. So the summary system is not just flavor text for the base fork; it is also a small extension point for NPC personality modding.
+
+If you want to generate summaries during build scripts, some helpers support `--with-summary`. The macOS helper also lets you choose whether summary generation uses `ollama` or `openvino`.
+
+## Snapshot example
+
+The runner gets a compact NPC-centric prompt snapshot plus your utterance, then returns a single-line response with speech and actions.
+
+<details>
+<summary>Example snapshot / response</summary>
 
 ```sh
 prompt Willy Norwood (req_2)
@@ -135,370 +317,32 @@ c----------------------------------------
 -----------------------------------------
 -----------------------------------------
 
-<System>You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die.Return a single line only, with correct syntax, to be parsed by the game.This line has two to four fields separated by ‘|’ :
-<Field 1>The first field is an answer to player_utterance.You have decided to team up with the player for now, and must answer as the NPC.Stick to your role, with your emotions and opinions.Use a dry tone, with swear words, fit for a zombie apocalypse.</Field 1>
-<Fields 2-4>Write 1-3 of the following allowed actions exactly:wait_here, hold_position, follow_close, follow_far, equip_gun, equip_melee, equip_bow, panic_on, panic_off, look_around, look_inventory, idle, attack=<target>, move: <coordinate> <coordinate> ... <state>
-<Explanation allowed actions>
-'wait_here' to stay put, keep watch, wait, stand.
-'hold_position' to wait here temporarily, holding that position and keep watch.
-'follow_close' to walk behind, follow close, come here.
-'follow_far' to follow from farther away, hang back, give me space.
-'equip_gun' to equip gun, rifle, thrower, get ready to shoot.
-'equip_melee' to equip melee, get ready to bash, cut, kick, stab.
-'equip_bow' to use bow, crossbow, stealth.
-'panic_on' to start running, get out of here.
-'panic_off' if convincing, to stop fleeing and get your act together.
-'look_around' to pick-up, search, explore for items around you.
-'look_inventory' to look inside your inventory and wear/wield/activate items.
-'move: <coordinate> <coordinate> ... <state>' to move step-by-step on your snapshot map. Use N, S, E, W, NE, NW, SE and SW and chain 4 to 15 coordinates. After the coordinates you must also include either 'wait_here' or 'hold_position' to set state.
-'attack=<target>' to attack a target with the letter from your map.
-'idle' if none of the above.
-</Explanation allowed actions>
-</Fields 2-4>
-Print only Fields 1-4, separated by | .If you break this format, you have failed.Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.
-<Example Output 1>Blow me.|idle</Example Output 1>
-<Example Output 2>Lets put those fucks in the ground.|equip_melee|attack=zombie</Example Output 2>
-<Example Output 3>Providing cover!|wait_here|equip_gun</Example Output 3>
-<Example Output 4>Lets get some dinner!|equip_gun|attack=chicken</Example Output 4>
-<Example Output 5>Don't worry, I'm ready to kick some teeth in.|equip_melee</Example Output 5>
-<Example Output 6>Locked and loaded.|equip_gun</Example Output 6>
-<Example Output 7>Nope, not doing that!|panic_on</Example Output 7>
-<Example Output 8>Moving down and holding there.|move: S S S S S hold_position|equip_gun</Example Output 8>
-</System>
-
-
 response Willy Norwood (req_2)
-{"request_id": "req_2", "ok": true, "text": "Ain\u2019t gonna argue, sugar\u2014my leg\u2019s half-ripped but I can still hoof it. Let\u2019s light a fire under our asses!|follow_close|equip_melee", "metrics": {"gen_time_ms": 2357.415599981323, "max_new_tokens": 20000, "use_api": true}}
-
-say Willy Norwood (req_2)
-Ain’t gonna argue, sugar—my leg’s half-ripped but I can still hoof it. Let’s light a fire under our asses!
+{"request_id": "req_2", "ok": true, "text": "Ain’t gonna argue, sugar—my leg’s half-ripped but I can still hoof it. Let’s light a fire under our asses!|follow_close|equip_melee", "metrics": {"gen_time_ms": 2357.415599981323, "max_new_tokens": 20000, "use_api": true}}
 ```
 
-## Files added in this fork so far
+</details>
 
-- src/llm_intent.cpp
-- src/llm_intent.h
-- tools/llm_runner/background_summarizer.py
-- tools/llm_runner/prompt_playground.py
-- tools/llm_runner/runner.py
-- Generated logs (not tracked): config/llm_intent.log
-- Plan.md
-- build_and_run.cmd
-- just_build.cmd
+## Contributing
 
-## Installation
+If you want to contribute, bug reports and real play logs are useful.
 
-If you want a no-source install, grab a release build from GitHub:
-https://github.com/josihosi/Cataclysm-AOL/releases
-Windows builds are `.zip`, Linux builds are `.tar.gz`, and macOS builds are `.dmg`.
-Unpack, run the game, and then follow the LLM runner setup below.
+When playing the fork, you can enable LLM logging in the **[LLM]** menu and send `config/llm_intent.log`. Those logs contain the snapshots and runner results that help tune prompts, action handling, and future model work.
 
-If you want to build from source, follow the steps below.
-Additionally, the LLMs will require you to set up a Python venv, and download a model.
-There is also a new in-game option section [LLM] which helps you pointing the game into the right directions.
-The following Readme will explain all of these steps.
-Furthermore, depending on your hardware, small changes to the python runner may be useful, as this one is focussing on NPU use.
-I paid for it so i might as well use it >:|
-That means that the following setup instructions will most likely work on your machine, but if you have a nice PC you could probably do better.
+You can also request new LLM actions or report behavior that is flaky, unclear, or silently failing. Those are often the most valuable bugs because they usually point at weak NPC action contracts rather than just bad model phrasing.
 
-There is also an option to plug in an API key, to make setup easier.
-However, I am working hard to optimize this fork for local LLM use.
+Thanks as well to the people behind [Codex CLI](https://developers.openai.com/codex/cli) and [OpenClaw](https://github.com/openclaw/openclaw), both of which were used heavily while building this fork.
 
-All following commands etc. are written for Powershell in Windows. Linux people will figure it out :)
+## FAQ
 
-### Git repo cloning
+### Is there a tutorial?
 
-First you need to do a shallow clone of this Git repo. Do this in the place you wanna install the game.
+Yes. You can find the tutorial in the **Special** menu at the main menu, though it may lag behind the fork.
 
-```sh
-git clone --depth=1 https://github.com/josihosi/Cataclysm-AOL.git
-```
-In order to build this, you will need to install MYSYS2 (see [COMPILING-MSYS.md](doc/c++/COMPILING-MSYS.md)).
-All the other classic ways of compiling should work too ([COMPILING.md](doc/c++/COMPILING.md)), but for MYSYS2 you can run .\build_and_run.cmd --unclean in PS to start the game.
+### How can I change the key bindings?
 
-### LLM runner (Python + OpenVINO GenAI)
+Press `?`, then `1`, to see the command list. Press `+` to add a key binding.
 
-This fork uses a local Python runner to generate NPC intents.
-Tested on Windows with Intel Core Ultra 7 155H + NPU, using:
-[OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov](https://huggingface.co/OpenVINO/Mistral-7B-Instruct-v0.3-int4-cw-ov)
+### How can I start a new world?
 
-If you do not have an NPU, you can still use CPU or GPU (set in LLM options).
-Your mileage may vary, depending on what LLM you are using.
-In in-game options under [LLM], the LLM directory can be changed.
-
-### Python packages
-Create a venv and install the packages below (pinning matches the tested setup):
-
-```sh
-python -m venv C:\Users\josef\openvino_models\openvino_env
-C:\Users\josef\openvino_models\openvino_env\Scripts\activate
-pip install nncf==2.18.0 onnx==1.18.0 optimum-intel==1.25.2 transformers==4.51.3
-pip install openvino==2025.4 openvino-tokenizers==2025.4 openvino-genai==2025.4
-
-Install any-llm with the povider(s) you want:
-pip install "any-llm-sdk[provider,provider or l]" 
-```
-
-Note: This install is construed for Intel NPU use. For you, a slightly different venv may be more uh better.
-If you have a GPU (you lucky bastard) you might be able to get a lot more mileage out of this than me.
-If you wanna go Ollama, some functions in the python script may stop running, but then just copy paste it into a Chatbot, explain the situation, and ask for a diff.
-The hard part is compatible for all LLMs, this is just a matter of changing a couple lines of code, if you wanna change the pipeline to your needs.
-
-In in-game options under [LLM], the game can be pointed towards the venv directory.
-tools/llm_runner/prompt_playground.py can be used for debugging your LLM pipeline, if you changed the venv etc.
-
-### API call alternative
-Disclaimer: I am fully committed to optimizing this fork for local LLMs. 
-However, to make trying this fork more accessible, I added in an option to use API calls instead.
-
-Save your API key as global variable:
-
-```sh
-setx CATACLYSM_API_KEY "your_key"
-
-Install any-llm with the povider(s) you want (yoy may have already done this in a previous step):
-<your_venv>\Scripts\python.exe -m pip install "any-llm-sdk[provider,provider or l]"
-```
-
-In-game [LLM] options allow you to point the game at your global API key variable.
-
-Admittedly, API calls will give you faster and better responses on most machines. On mine for sure.
-That's why I would like to fine tune a model for this.
-
-### Runner self-test
-You can sanity-check the runner from your venv before launching the game.
-
-OpenVINO (local):
-```sh
-# Windows
-C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\runner.py --self-test --backend openvino --model-dir "C:\path\to\ov_model" --device AUTO
-
-# Linux
-python3 tools/llm_runner/runner.py --self-test --backend openvino --model-dir "/path/to/ov_model" --device AUTO
-```
-
-API (via any-llm/OpenAI, may cost money):
-```sh
-# Windows or Linux
-python tools\llm_runner\runner.py --self-test --backend api --api-provider "openai" --api-model "gpt-4.1-mini" --api-key-env "CATA_API_KEY"
-```
-
-### Named NPC smoke harness
-If you want something more realistic than `--self-test` but lighter than booting the game, use:
-
-- `tools/llm_runner/npc_harness.py`
-
-It does four things in one pass:
-1. resolves the NPC's summary using the same selector order and generated/manual precedence as the game
-2. builds a small game-shaped snapshot
-3. sends the request through the normal `runner.py` stdin/stdout JSON pipe
-4. validates the returned pipe-separated action line with game-like parsing rules, including the lenient fallback
-
-Example deterministic summary-resolution checks:
-
-```sh
-python3 tools/llm_runner/npc_harness.py \
-  --scenario tools/llm_runner/scenarios/rubik_trade.json \
-  --resolve-only --json
-
-python3 tools/llm_runner/npc_harness.py \
-  --scenario tools/llm_runner/scenarios/aleesha_refugee.json \
-  --resolve-only --json
-```
-
-Example live smoke test through Ollama:
-
-```sh
-python3 tools/llm_runner/npc_harness.py \
-  --scenario tools/llm_runner/scenarios/rubik_trade.json \
-  --backend ollama \
-  --ollama-model mistral
-```
-
-This is still a smoke test, not a full integration test, but it is much better than shrugging and hoping the first in-game conversation tells you the truth.
-
-## Named NPC summary tiers (for modders)
-There are now two intended lanes for NPC personality summaries:
-
-- **Tier 1: manual** — important NPCs whose voice should be curated by hand.
-- **Tier 2: auto** — named NPCs that can be summarized well enough by the local summarizer.
-
-The generated tier exists so you do not need to hand-author every named side character. The manual tier exists so major characters do not all sound like they were processed by the same tired machine on a Tuesday.
-
-### Files and precedence
-Core data now uses the following files:
-
-- `data/json/npcs/Backgrounds/summary_registry.json`
-  - declarative list of named NPC entries
-  - each entry picks a `tier`, one or more `selectors`, and (for auto tier) `source_files`
-- `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.json`
-  - generated output for auto-tier named NPCs
-- `data/json/npcs/Backgrounds/Summaries_extra/special_npcs.txt`
-  - current hand-written overrides for major NPCs
-  - `.json` files are also supported now and are the preferred format going forward
-
-At runtime, `generated_*` summary files are loaded first and manual files in the same folder are loaded after them. Both `.json` and legacy `.txt` files are supported, and when the same selector exists in both, the later manual entry wins. That means **manual summaries override generated ones when they share the same selector**.
-
-The game also looks for `npcs/Backgrounds/Summaries_short` and `npcs/Backgrounds/Summaries_extra` inside active mods, so a mod can ship its own generated or manual named-NPC summaries without patching core files.
-
-### Registry format
-The registry is a JSON object with a shared `path_root`, one `generated_output`, and an `entries` array.
-
-```json
-{
-  "version": 1,
-  "path_root": "../..",
-  "generated_output": "npcs/Backgrounds/Summaries_extra/generated_named_npcs.json",
-  "entries": [
-    {
-      "id": "aleesha_seward",
-      "tier": "auto",
-      "selectors": [
-        "name:Aleesha Seward",
-        "topic:TALK_REFUGEE_Aleesha_1"
-      ],
-      "source_files": [
-        "npcs/refugee_center/surface_refugees/NPC_Aleesha_Seward.json"
-      ]
-    },
-    {
-      "id": "rubik",
-      "tier": "manual",
-      "selectors": [
-        "name:Rubik",
-        "topic:TALK_EXODII_MERCHANT"
-      ],
-      "notes": "Curated by hand."
-    }
-  ]
-}
-```
-
-Rules:
-- `selectors` are the runtime match keys. Use the same `name:` / `topic:` forms the game already understands.
-- `source_files` are required for `tier: "auto"` and optional for `tier: "manual"`.
-- `path_root` is resolved relative to the registry file and is used as the base for `source_files` and `generated_output`.
-
-### Runtime summary-entry JSON format
-Phase 2 adds a proper runtime JSON format for summaries. The loader still accepts legacy `.txt` files, but new content should prefer JSON.
-
-A summary bundle can be a single object, an array, or an object with an `entries` array. Each entry may target one or more named selectors and/or one or more background-topic ids.
-
-```json
-{
-  "type": "npc_personality_summary_bundle",
-  "version": 1,
-  "entries": [
-    {
-      "type": "npc_personality_summary",
-      "selector": "name:Rubik",
-      "your_background": "precise, dry, sardonic, transactional, observant",
-      "your_expression": "State your business.",
-      "source_tag": "special_npc:Rubik"
-    },
-    {
-      "type": "npc_personality_summary",
-      "topics": ["BGSS_COP_1_STORY1"],
-      "your_background": "fearful, traumatized, resilient, guilt-ridden, desperate",
-      "your_expression": "I lost my nerve. I ran.",
-      "source_tag": "local:example:cop_1"
-    }
-  ]
-}
-```
-
-Supported entry keys:
-- `selector` or `selectors`
-- `topic` or `topics`
-- `your_background` (or legacy-friendly `background`)
-- `your_expression` (or legacy-friendly `expression`)
-- `source_tag`
-
-### Running the named-NPC summarizer
-Dry-run the registry first:
-
-```sh
-python3 tools/llm_runner/background_summarizer.py \
-  --registry data/json/npcs/Backgrounds/summary_registry.json \
-  --registry-tier auto \
-  --dry-run
-```
-
-Generate auto-tier named NPC summaries with Ollama:
-
-```sh
-python3 tools/llm_runner/background_summarizer.py \
-  --registry data/json/npcs/Backgrounds/summary_registry.json \
-  --registry-tier auto \
-  --backend ollama \
-  --ollama-model mistral \
-  --include-responses \
-  --retry-invalid 2
-```
-
-Generate a single entry while iterating on it:
-
-```sh
-python3 tools/llm_runner/background_summarizer.py \
-  --registry data/json/npcs/Backgrounds/summary_registry.json \
-  --registry-tier auto \
-  --only-entry aleesha_seward \
-  --backend ollama \
-  --ollama-model mistral
-```
-
-### Mod layout
-For a mod, mirror the same structure under the mod's JSON root:
-
-- `npcs/Backgrounds/summary_registry.json`
-- `npcs/Backgrounds/Summaries_extra/generated_named_npcs.json`
-- `npcs/Backgrounds/Summaries_extra/my_special_npcs.json`
-  - legacy `.txt` files still work, but JSON is the preferred path now
-
-A practical pattern is:
-1. put important NPCs in `tier: "manual"`
-2. put secondary named NPCs in `tier: "auto"`
-3. run the summarizer for the auto tier
-4. add hand-written JSON overrides only where the generated result is not good enough
-
-That way the mod stays easy to extend: add an entry, point it at the dialogue files, regenerate, done.
-
-## Compile
-This section is from the original CDDA repo, as it applies to this fork as well.
-
-Please read [COMPILING.md](doc/c++/COMPILING.md) - it covers general information and more specific recipes for Linux, OS X, Windows and BSD. See [COMPILER_SUPPORT.md](doc/c++/COMPILER_SUPPORT.md) for details on which compilers we support. And you can always dig for more information in [doc/](https://github.com/CleverRaven/Cataclysm-DDA/tree/master/doc).
-
-We also have the following build guides:
-* Building on Windows with `MSYS2` at [COMPILING-MSYS.md](doc/c++/COMPILING-MSYS.md)
-- For MSYS2 building, you may use 'build_and_run.cmd --unclean'
-* Building on Windows with `vcpkg` at [COMPILING-VS-VCPKG.md](doc/c++/COMPILING-VS-VCPKG.md)
-* Building with `cmake` at [COMPILING-CMAKE.md](doc/c++/COMPILING-CMAKE.md)  (*unofficial guide*)
-
-# Contribute
-
-Thank you so much to all the contributors to CDDA!
-https://github.com/CleverRaven/Cataclysm-DDA
-
-If you want to contribute, and are comfortable to sharing a bit of private information, you can easily!
-When playing the fork, enable LLM logging in the [LLM] menu and send me /config/llm_intent.log, after you've tried it out.
-I can use the snapshots to train/distill an LLM, to make it snappy and more accurate.
-Needs at least 5k snapshots, apparently.
-So, send it to innovation@dabubu.at, or don't :)
-
-Alternatively, if you want to request additional LLM functions, just contact me somehow.
-
-Also, this entire fork was vibe-coded using [Codex CLI](https://developers.openai.com/codex/cli). Thanks to the folks at OpenAI.
-
-If I forgot to thank somebody, please just tell me.
-
-#### Is there a tutorial?
-
-Yes, you can find the tutorial in the **Special** menu at the main menu (be aware that due to many code changes the tutorial may not function). You can also access documentation in-game via the `?` key.
-
-#### How can I change the key bindings?
-
-Press the `?` key, followed by the `1` key to see the full list of key commands. Press the `+` key to add a key binding, select which action with the corresponding letter key `a-w`, and then the key you wish to assign to that action.
-
-#### How can I start a new world?
-
-**World** on the main menu will generate a fresh world for you. Select **Create World**.
+Choose **World** on the main menu, then **Create World**.
