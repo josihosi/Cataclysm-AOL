@@ -520,13 +520,71 @@ void load_background_trait_to_topic( const cata_path &toc_path,
     } );
 }
 
-int summary_file_priority( const std::filesystem::path &path )
+enum class background_summary_text_target : int {
+    topic,
+    selector
+};
+
+int summary_file_generation_priority( const std::filesystem::path &path )
 {
     const std::string filename = path.filename().generic_u8string();
     if( filename.rfind( "generated_", 0 ) == 0 ) {
         return 0;
     }
     return 1;
+}
+
+int summary_file_format_priority( const std::filesystem::path &path )
+{
+    if( path.extension() == std::filesystem::u8path( ".txt" ) ) {
+        return 0;
+    }
+    if( path.extension() == std::filesystem::u8path( ".json" ) ) {
+        return 1;
+    }
+    return 2;
+}
+
+void add_summary_id( std::vector<std::string> &out, const std::string &selector )
+{
+    const std::string normalized = normalize_summary_line( selector );
+    if( normalized.empty() ) {
+        return;
+    }
+    if( std::find( out.begin(), out.end(), normalized ) == out.end() ) {
+        out.push_back( normalized );
+    }
+}
+
+void add_summary_ids_from_json( const JsonObject &jo, const std::string &single_key,
+                                const std::string &multi_key, std::vector<std::string> &out )
+{
+    if( jo.has_string( single_key ) ) {
+        add_summary_id( out, jo.get_string( single_key ) );
+    }
+    if( jo.has_array( multi_key ) ) {
+        for( const JsonValue entry : jo.get_array( multi_key ) ) {
+            if( entry.test_string() ) {
+                add_summary_id( out, entry.get_string() );
+            }
+        }
+    }
+}
+
+void insert_background_summary_entry( std::unordered_map<std::string, background_summary_entry> &out,
+                                      const std::vector<std::string> &ids,
+                                      const background_summary_entry &entry_value,
+                                      bool overwrite_existing )
+{
+    for( const std::string &id : ids ) {
+        if( id.empty() ) {
+            continue;
+        }
+        if( !overwrite_existing && out.count( id ) > 0 ) {
+            continue;
+        }
+        out[id] = entry_value;
+    }
 }
 
 void load_background_summary_text_file( const cata_path &summary_path,
@@ -558,23 +616,97 @@ void load_background_summary_text_file( const cata_path &summary_path,
             if( id.empty() ) {
                 continue;
             }
-            if( !overwrite_existing && out.count( id ) > 0 ) {
-                continue;
-            }
             background_summary_entry entry_value;
             entry_value.background = normalize_summary_line( parts[1] );
             entry_value.expression = normalize_summary_line( parts[2] );
             if( parts.size() > 3 ) {
                 entry_value.source_tag = normalize_summary_line( parts[3] );
             }
-            out[id] = entry_value;
+            insert_background_summary_entry( out, { id }, entry_value, overwrite_existing );
         }
     } );
 }
 
-void load_background_summary_text_dir( const cata_path &summary_root,
-                                       std::unordered_map<std::string, background_summary_entry> &out,
-                                       bool overwrite_existing )
+void load_background_summary_json_entry( const JsonObject &jo,
+        std::unordered_map<std::string, background_summary_entry> &summary_by_topic,
+        std::unordered_map<std::string, background_summary_entry> &summary_by_selector,
+        bool overwrite_existing )
+{
+    jo.allow_omitted_members();
+    const std::string type = jo.get_string( "type", "npc_personality_summary" );
+    if( !type.empty() && type != "npc_personality_summary" ) {
+        return;
+    }
+
+    background_summary_entry entry_value;
+    if( jo.has_string( "your_background" ) ) {
+        entry_value.background = normalize_summary_line( jo.get_string( "your_background" ) );
+    } else if( jo.has_string( "background" ) ) {
+        entry_value.background = normalize_summary_line( jo.get_string( "background" ) );
+    }
+    if( jo.has_string( "your_expression" ) ) {
+        entry_value.expression = normalize_summary_line( jo.get_string( "your_expression" ) );
+    } else if( jo.has_string( "expression" ) ) {
+        entry_value.expression = normalize_summary_line( jo.get_string( "expression" ) );
+    }
+    if( jo.has_string( "source_tag" ) ) {
+        entry_value.source_tag = normalize_summary_line( jo.get_string( "source_tag" ) );
+    }
+    if( entry_value.background.empty() || entry_value.expression.empty() ) {
+        return;
+    }
+
+    std::vector<std::string> topic_ids;
+    std::vector<std::string> selector_ids;
+    add_summary_ids_from_json( jo, "topic", "topics", topic_ids );
+    add_summary_ids_from_json( jo, "selector", "selectors", selector_ids );
+    if( topic_ids.empty() && selector_ids.empty() && jo.has_string( "id" ) ) {
+        add_summary_id( topic_ids, jo.get_string( "id" ) );
+    }
+
+    insert_background_summary_entry( summary_by_topic, topic_ids, entry_value, overwrite_existing );
+    insert_background_summary_entry( summary_by_selector, selector_ids, entry_value, overwrite_existing );
+}
+
+void load_background_summary_json_file( const cata_path &summary_path,
+                                        std::unordered_map<std::string, background_summary_entry> &summary_by_topic,
+                                        std::unordered_map<std::string, background_summary_entry> &summary_by_selector,
+                                        bool overwrite_existing )
+{
+    read_from_file_optional_json( summary_path, [&]( const JsonValue & root ) {
+        if( root.test_array() ) {
+            for( const JsonValue entry : root.get_array() ) {
+                if( entry.test_object() ) {
+                    load_background_summary_json_entry( entry.get_object(), summary_by_topic,
+                                                        summary_by_selector, overwrite_existing );
+                }
+            }
+            return;
+        }
+        if( !root.test_object() ) {
+            return;
+        }
+        JsonObject jo = root.get_object();
+        jo.allow_omitted_members();
+        if( jo.has_array( "entries" ) ) {
+            for( const JsonValue entry : jo.get_array( "entries" ) ) {
+                if( entry.test_object() ) {
+                    load_background_summary_json_entry( entry.get_object(), summary_by_topic,
+                                                        summary_by_selector, overwrite_existing );
+                }
+            }
+            return;
+        }
+        load_background_summary_json_entry( jo, summary_by_topic, summary_by_selector,
+                                            overwrite_existing );
+    } );
+}
+
+void load_background_summary_dir( const cata_path &summary_root,
+                                  background_summary_text_target text_target,
+                                  std::unordered_map<std::string, background_summary_entry> &summary_by_topic,
+                                  std::unordered_map<std::string, background_summary_entry> &summary_by_selector,
+                                  bool overwrite_existing )
 {
     const std::filesystem::path summary_dir = summary_root.get_unrelative_path();
     std::error_code ec;
@@ -592,25 +724,46 @@ void load_background_summary_text_dir( const cata_path &summary_root,
         if( !entry.is_regular_file( ec ) ) {
             continue;
         }
-        if( entry.path().extension() != std::filesystem::u8path( ".txt" ) ) {
+        const std::filesystem::path extension = entry.path().extension();
+        if( extension != std::filesystem::u8path( ".txt" ) &&
+            extension != std::filesystem::u8path( ".json" ) ) {
             continue;
         }
         files.push_back( entry.path().filename() );
     }
 
-    std::sort( files.begin(), files.end(), []( const std::filesystem::path & lhs,
-    const std::filesystem::path & rhs ) {
-        const int lhs_priority = summary_file_priority( lhs );
-        const int rhs_priority = summary_file_priority( rhs );
-        if( lhs_priority != rhs_priority ) {
-            return lhs_priority < rhs_priority;
+    std::sort( files.begin(), files.end(), []( const std::filesystem::path &lhs,
+    const std::filesystem::path &rhs ) {
+        const int lhs_generation = summary_file_generation_priority( lhs );
+        const int rhs_generation = summary_file_generation_priority( rhs );
+        if( lhs_generation != rhs_generation ) {
+            return lhs_generation < rhs_generation;
+        }
+        const std::string lhs_stem = lhs.stem().generic_u8string();
+        const std::string rhs_stem = rhs.stem().generic_u8string();
+        if( lhs_stem != rhs_stem ) {
+            return lhs_stem < rhs_stem;
+        }
+        const int lhs_format = summary_file_format_priority( lhs );
+        const int rhs_format = summary_file_format_priority( rhs );
+        if( lhs_format != rhs_format ) {
+            return lhs_format < rhs_format;
         }
         return lhs.generic_u8string() < rhs.generic_u8string();
     } );
 
     for( const std::filesystem::path &filename : files ) {
-        load_background_summary_text_file( summary_root / filename.generic_u8string(), out,
-                                           overwrite_existing );
+        const cata_path full_path = summary_root / filename.generic_u8string();
+        if( filename.extension() == std::filesystem::u8path( ".json" ) ) {
+            load_background_summary_json_file( full_path, summary_by_topic, summary_by_selector,
+                                               overwrite_existing );
+            continue;
+        }
+        if( text_target == background_summary_text_target::topic ) {
+            load_background_summary_text_file( full_path, summary_by_topic, overwrite_existing );
+        } else {
+            load_background_summary_text_file( full_path, summary_by_selector, overwrite_existing );
+        }
     }
 }
 
@@ -641,13 +794,7 @@ std::vector<std::string> background_summary_root_keys( const std::vector<cata_pa
 
 void add_summary_selector( std::vector<std::string> &out, const std::string &selector )
 {
-    const std::string normalized = normalize_summary_line( selector );
-    if( normalized.empty() ) {
-        return;
-    }
-    if( std::find( out.begin(), out.end(), normalized ) == out.end() ) {
-        out.push_back( normalized );
-    }
+    add_summary_id( out, selector );
 }
 
 background_summary_cache &get_background_summaries()
@@ -666,10 +813,12 @@ background_summary_cache &get_background_summaries()
     for( const cata_path &root : roots ) {
         load_background_trait_to_topic( root / "npcs" / "Backgrounds" /
                                         "backgrounds_table_of_contents.json", cache.trait_to_topic );
-        load_background_summary_text_dir( root / "npcs" / "Backgrounds" / "Summaries_short",
-                                          cache.summary_by_topic, true );
-        load_background_summary_text_dir( root / "npcs" / "Backgrounds" / "Summaries_extra",
-                                          cache.summary_by_selector, true );
+        load_background_summary_dir( root / "npcs" / "Backgrounds" / "Summaries_short",
+                                     background_summary_text_target::topic,
+                                     cache.summary_by_topic, cache.summary_by_selector, true );
+        load_background_summary_dir( root / "npcs" / "Backgrounds" / "Summaries_extra",
+                                     background_summary_text_target::selector,
+                                     cache.summary_by_topic, cache.summary_by_selector, true );
     }
 
     return cache;
@@ -2215,7 +2364,7 @@ std::string default_npc_ambient_prompt_template()
 {
     return R"(Situation:
 {{snapshot}}
-<System>You are {{npc_name}}, a human survivor NPC speaking to another person in a cataclysmic world.You are not allies, and eyeing them.Even if they seem nice, you never know these days. Everybody does things to survive.Reply deeply in character, informed by the snapshot: your background, your tone, your opinions of the player, and your recent memories.Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no CSV, no pipes, no tool calls, no menu syntax.If you are unsure, answer briefly and naturally instead of inventing details./no_think
+<System>You are {{npc_name}}, a human survivor NPC speaking to another person in a cataclysmic world.You are not allies, and eyeing them.Even if they seem nice, you never know these days. Everybody does things to survive.Reply deeply in character, informed by the snapshot: your background, your tone, your opinions of the player, and your recent memories.Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no pipe-separated action line, no tool calls, no menu syntax.If you are unsure, answer briefly and naturally instead of inventing details./no_think
 Answer directly. No reasoning.
 </System>
 <PlayerUtterance>{{player_utterance}}</PlayerUtterance>

@@ -1,0 +1,132 @@
+{
+  "type": "npc_personality_summary_bundle",
+  "version": 1,
+  "entries": [
+    {
+      "type": "npc_personality_summary",
+      "your_background": "youthful, resilient, sarcastic, observant, pragmatic",
+      "your_expression": "I'm old enough to work and get merch for my rations.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:aleesha_seward",
+      "selector": "name:Aleesha Seward"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "flirtatious, theatrical, lonely, playful, self-dramatizing",
+      "your_expression": "Nobody wants to be with a slutty guy from Brooklyn, but Alonso the mysterious is another story.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:alonso_lautrec",
+      "selector": "name:Alonso Lautrec"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "melancholic, resilient, introspective, pragmatic, weary",
+      "your_expression": "I was a carpenter. I like to keep my hands busy, especially when I am stressed.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:boris_borichenko",
+      "selector": "name:Boris Borichenko"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "lonely, resilient, pragmatic, weary, hopeful",
+      "your_expression": "We may be unfit, but we aren't worthless.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:brandon_garder",
+      "selector": "name:Brandon Garder"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "defiant, sarcastic, paranoid, eccentric, resilient",
+      "your_expression": "I'm building a house out of cardboard. The sandman doesn't want me to, but I told him to go fuck himself.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:dino_dave",
+      "selector": "name:Dino Dave"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "grieving, gentle, stoic, protective, exhausted",
+      "your_expression": "It's so damn quiet here without him.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:garry_villeneuve",
+      "selector": "name:Garry Villeneuve"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "lonely, fearful, pragmatic, resigned, weary",
+      "your_expression": "I'm sorry, I can't help you.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:reena_sandhu",
+      "selector": "name:Reena Sandhu"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "observant, resilient, wry, pragmatic, melancholic",
+      "your_expression": "I was there through some of the absolute worst of it, to this day I can't tell you how I made it out.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:uyen_tran",
+      "selector": "name:Uyen Tran"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "lonely, resilient, pragmatic, cautious, resourceful",
+      "your_expression": "I live here. Too mutant to join the cool kids club, but not mutant enough to kill on sight.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:yusuke_taylor",
+      "selector": "name:Yusuke Taylor"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "youthful, resilient, sarcastic, observant, pragmatic",
+      "your_expression": "I'm old enough to work and get merch for my rations.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:aleesha_seward",
+      "selector": "topic:TALK_REFUGEE_Aleesha_1"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "flirtatious, theatrical, lonely, playful, self-dramatizing",
+      "your_expression": "Nobody wants to be with a slutty guy from Brooklyn, but Alonso the mysterious is another story.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:alonso_lautrec",
+      "selector": "topic:TALK_REFUGEE_Alonso_1"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "lonely, fearful, pragmatic, resigned, weary",
+      "your_expression": "I'm sorry, I can't help you.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:reena_sandhu",
+      "selector": "topic:TALK_REFUGEE_BEGGAR_1"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "defiant, sarcastic, paranoid, eccentric, resilient",
+      "your_expression": "I'm building a house out of cardboard. The sandman doesn't want me to, but I told him to go fuck himself.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:dino_dave",
+      "selector": "topic:TALK_REFUGEE_BEGGAR_2"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "lonely, resilient, pragmatic, weary, hopeful",
+      "your_expression": "We may be unfit, but we aren't worthless.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:brandon_garder",
+      "selector": "topic:TALK_REFUGEE_BEGGAR_4"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "lonely, resilient, pragmatic, cautious, resourceful",
+      "your_expression": "I live here. Too mutant to join the cool kids club, but not mutant enough to kill on sight.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:yusuke_taylor",
+      "selector": "topic:TALK_REFUGEE_BEGGAR_5"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "melancholic, resilient, introspective, pragmatic, weary",
+      "your_expression": "I was a carpenter. I like to keep my hands busy, especially when I am stressed.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:boris_borichenko",
+      "selector": "topic:TALK_REFUGEE_Boris_1"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "grieving, gentle, stoic, protective, exhausted",
+      "your_expression": "It's so damn quiet here without him.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:garry_villeneuve",
+      "selector": "topic:TALK_REFUGEE_Garry_1"
+    },
+    {
+      "type": "npc_personality_summary",
+      "your_background": "observant, resilient, wry, pragmatic, melancholic",
+      "your_expression": "I was there through some of the absolute worst of it, to this day I can't tell you how I made it out.",
+      "source_tag": "local:ollama:nemotron-4b:latest:registry:uyen_tran",
+      "selector": "topic:TALK_REFUGEE_Uyen_1"
+    }
+  ]
+}
