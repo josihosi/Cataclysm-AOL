@@ -1823,8 +1823,12 @@ bool npc::apply_llm_intent_item_targets()
             fetching_item = true;
             state.look_around_active_target = target;
             state.look_around_targets.pop_front();
+            begin_llm_action( llm_action_kind::look_around_pickup, target.name, target.name,
+                              here.get_abs( best_pos ) );
             return true;
         }
+        begin_llm_action( llm_action_kind::look_around_pickup, target.name, target.name );
+        finish_llm_action( llm_action_phase::blocked, "pickup.item_missing" );
         state.look_around_targets.pop_front();
     }
 
@@ -4470,6 +4474,18 @@ void npc::pick_up_item()
         }
     };
 
+    if( llm_targeted ) {
+        if( !has_active_llm_action_status() ) {
+            begin_llm_action( llm_action_kind::look_around_pickup,
+                              state.look_around_active_target.name,
+                              state.look_around_active_target.name );
+        }
+        update_llm_action_phase( llm_action_phase::precheck, "",
+        {
+            string_format( "target_pos=%s", wanted_item_pos.to_string_writable() )
+        } );
+    }
+
     if( !rules.has_flag( ally_rule::allow_pick_up ) && is_player_ally() && !llm_targeted ) {
         add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); Canceling on player's request", get_name() );
         fetching_item = false;
@@ -4484,15 +4500,21 @@ void npc::pick_up_item()
                 VPFLAG_CARGO, false );
     const bool has_cargo = vp && !vp->has_feature( "LOCKED" );
 
-    if( ( !here.has_items( wanted_item_pos ) && !has_cargo &&
-          !here.is_harvestable( wanted_item_pos ) && sees( here, wanted_item_pos ) ) ||
-        ( is_player_ally() && g->check_zone( zone_type_NO_NPC_PICKUP, wanted_item_pos ) ) ) {
+    const bool no_items_visible_now = !here.has_items( wanted_item_pos ) && !has_cargo &&
+                                      !here.is_harvestable( wanted_item_pos ) && sees( here, wanted_item_pos );
+    const bool zone_forbidden_now = is_player_ally() && g->check_zone( zone_type_NO_NPC_PICKUP,
+                                     wanted_item_pos );
+    if( no_items_visible_now || zone_forbidden_now ) {
         // Items we wanted no longer exist and we can see it
         // Or player who is leading us doesn't want us to pick it up
         fetching_item = false;
         wanted_item = {};
         move_pause();
         add_msg_debug( debugmode::DF_NPC, "Canceling pickup - no items or new zone" );
+        if( llm_targeted ) {
+            finish_llm_action( llm_action_phase::blocked,
+                               zone_forbidden_now ? "pickup.zone_forbidden" : "pickup.item_missing" );
+        }
         log_look_around_pickup( "canceled (no items or zone)" );
         return;
     }
@@ -4509,6 +4531,9 @@ void npc::pick_up_item()
             fetching_item = false;
             wanted_item = {};
             move_pause();
+            if( llm_targeted ) {
+                finish_llm_action( llm_action_phase::blocked, "pickup.situation_changed" );
+            }
             log_look_around_pickup( "canceled (situation changed)" );
             return;
         }
@@ -4525,6 +4550,13 @@ void npc::pick_up_item()
     if( dist_to_pickup > 1 && !path.empty() ) {
         add_msg_debug( debugmode::DF_NPC, "Moving; [%s] => [%s]",
                        pos_bub().to_string_writable(), path[0].to_string_writable() );
+        if( llm_targeted ) {
+            update_llm_action_phase( llm_action_phase::waiting, "",
+            {
+                string_format( "dist=%d", dist_to_pickup ),
+                string_format( "target_pos=%s", wanted_item_pos.to_string_writable() )
+            } );
+        }
 
         move_to_next();
         return;
@@ -4533,6 +4565,9 @@ void npc::pick_up_item()
         // This can happen, always do something
         fetching_item = false;
         wanted_item = {};
+        if( llm_targeted ) {
+            finish_llm_action( llm_action_phase::blocked, "pickup.no_path" );
+        }
         log_look_around_pickup( "canceled (no path)" );
         move_pause();
         return;
@@ -4542,6 +4577,13 @@ void npc::pick_up_item()
 
     const std::string target_name = state.look_around_active_target.name;
     int target_quantity = state.look_around_active_target.quantity;
+    if( llm_targeted ) {
+        std::vector<std::string> exec_facts;
+        if( target_quantity > 0 ) {
+            exec_facts.push_back( string_format( "wanted_quantity=%d", target_quantity ) );
+        }
+        update_llm_action_phase( llm_action_phase::executing, "", std::move( exec_facts ) );
+    }
     std::list<item> picked_up;
     if( llm_targeted ) {
         const int qty = target_quantity > 0 ? target_quantity : -1;
@@ -4587,6 +4629,12 @@ void npc::pick_up_item()
             // but we want the item picker to find new items
             fetching_item = false;
             wanted_item = {};
+            if( llm_targeted ) {
+                finish_llm_action( llm_action_phase::completed, "",
+                {
+                    "harvested=true"
+                } );
+            }
             log_look_around_pickup( "harvested (no items picked)" );
             return;
         }
@@ -4594,6 +4642,7 @@ void npc::pick_up_item()
             fetching_item = false;
             wanted_item = {};
             move_pause();
+            finish_llm_action( llm_action_phase::failed, "pickup.obtain_failed" );
             log_look_around_pickup( "picked up 0 item(s), canceling" );
             return;
         }
@@ -4643,12 +4692,23 @@ void npc::pick_up_item()
             state.look_around_targets.push_front( next_target );
         }
         if( apply_llm_intent_item_targets() ) {
+            finish_llm_action( llm_action_phase::completed, "",
+            {
+                string_format( "picked_up=%d", static_cast<int>( picked_up.size() ) ),
+                "continuing=true"
+            } );
             log_look_around_pickup( string_format( "picked up %d item(s), continuing",
                                                    static_cast<int>( picked_up.size() ) ), false );
             return;
         }
     }
 
+    if( llm_targeted ) {
+        finish_llm_action( llm_action_phase::completed, "",
+        {
+            string_format( "picked_up=%d", static_cast<int>( picked_up.size() ) )
+        } );
+    }
     log_look_around_pickup( string_format( "picked up %d item(s)",
                                            static_cast<int>( picked_up.size() ) ) );
 
