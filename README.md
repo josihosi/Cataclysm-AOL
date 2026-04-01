@@ -283,6 +283,40 @@ API (via any-llm/OpenAI, may cost money):
 python tools\llm_runner\runner.py --self-test --backend api --api-provider "openai" --api-model "gpt-4.1-mini" --api-key-env "CATA_API_KEY"
 ```
 
+### Named NPC smoke harness
+If you want something more realistic than `--self-test` but lighter than booting the game, use:
+
+- `tools/llm_runner/npc_harness.py`
+
+It does four things in one pass:
+1. resolves the NPC's summary using the same selector order and generated/manual precedence as the game
+2. builds a small game-shaped snapshot
+3. sends the request through the normal `runner.py` stdin/stdout JSON pipe
+4. validates the returned action line with game-like CSV parsing rules, including the lenient fallback
+
+Example deterministic summary-resolution checks:
+
+```sh
+python3 tools/llm_runner/npc_harness.py \
+  --scenario tools/llm_runner/scenarios/rubik_trade.json \
+  --resolve-only --json
+
+python3 tools/llm_runner/npc_harness.py \
+  --scenario tools/llm_runner/scenarios/aleesha_refugee.json \
+  --resolve-only --json
+```
+
+Example live smoke test through Ollama:
+
+```sh
+python3 tools/llm_runner/npc_harness.py \
+  --scenario tools/llm_runner/scenarios/rubik_trade.json \
+  --backend ollama \
+  --ollama-model mistral
+```
+
+This is still a smoke test, not a full integration test, but it is much better than shrugging and hoping the first in-game conversation tells you the truth.
+
 ## Named NPC summary tiers (for modders)
 There are now two intended lanes for NPC personality summaries:
 

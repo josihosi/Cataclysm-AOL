@@ -99,6 +99,17 @@ Generate a single named NPC:
 Regenerate the auto tier:
 - `python3 tools/llm_runner/background_summarizer.py --registry data/json/npcs/Backgrounds/summary_registry.json --registry-tier auto --backend ollama --ollama-model mistral --include-responses --retry-invalid 2`
 
+Run the named-NPC smoke harness without invoking the model:
+- `python3 tools/llm_runner/npc_harness.py --scenario tools/llm_runner/scenarios/rubik_trade.json --resolve-only --json`
+
+Run the named-NPC smoke harness through the normal runner pipe:
+- `python3 tools/llm_runner/npc_harness.py --scenario tools/llm_runner/scenarios/rubik_trade.json --backend ollama --ollama-model mistral`
+
+The smoke harness intentionally tests three layers together:
+- selector resolution (manual vs generated precedence)
+- snapshot/prompt assembly for one named NPC
+- runner I/O + response parsing using game-like CSV validation
+
 ## LLM Intent Actions (Behavior Notes)
 - `look_around` requests up to three nearby item names for pickup targeting.
 - `look_inventory` supports `wear`, `wield`, `act`, and `drop` sections.
