@@ -39,8 +39,22 @@ These are the things worth human eyes, because they are annoying to automate fir
 - [ ] Decide where harness branch profiles live (`data` file vs script table).
 - [ ] Pick artifact layout for screenshots + logs.
 - [ ] Add one command to run a deterministic status-check fixture locally.
-- [ ] Add one command to run a branch startup smoke test locally.
+- [x] Add one command to run a branch startup smoke test locally.
 - [ ] Consider menu/window visibility tooling for harness authoring.
+- [ ] Capture the current `master` / `Sandy Creek` save as the first harness-owned gameplay fixture.
+- [ ] Add an in-game smoke path for `Sandy Creek` using Ricky Broughton as the first talk target.
+- [ ] Add an in-game smoke path for `C+b` utterance entry + submit and verify that logs / action output still look sane.
+- [ ] Add a debug-menu helper path for spawning Rubik (`}`, `s`, `p`, `O`) once startup-to-gameplay is stable enough.
+
+## Immediate in-game smoke ideas from the current save
+- [ ] `C`, `t` → talk to nearby NPC Ricky Broughton.
+- [ ] In Ricky's chat window, press `a`, then `a` again when the quest-first variant is present, to open the ruleset window and confirm normal chat UI still works.
+- [ ] `C`, `b` → enter a player utterance, submit it, and confirm we still reach the expected conversation/log path.
+- [ ] Figure out the minimum reliable precondition checks for those tests:
+  - is Ricky nearby?
+  - is the correct chat window focused?
+  - do we need to scrape visible chat text before sending follow-up keys?
+- [ ] Decide whether chat-window contents should be read via screenshot/OCR or via a more direct observable signal.
 
 ## CI / repo hygiene
 - [ ] Watch current `dev` CI after `content: format summary registry json`.

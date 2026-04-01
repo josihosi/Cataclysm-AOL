@@ -517,6 +517,18 @@ Notes:
 - the first profile config lives at `tools/openclaw_harness/profiles/master.json`
 - `port/*` branch variations are expected later via per-profile config rather than one giant hardcoded key script
 
+## Next in-game smoke candidates (current `master` / `Sandy Creek` save)
+The first live gameplay smoke ideas discovered after startup success are:
+- `C`, `t` to talk to Ricky Broughton
+- `a`, `a` inside the quest-first chat window variant to reach the ruleset window
+- `C`, `b` to enter a player utterance and submit it
+- later, debug-menu path `}`, `s`, `p`, `O` to spawn Rubik for a more curated named-NPC test
+
+These are not fully scripted yet. The next harness work should determine the minimum reliable observables around them:
+- is the intended NPC actually nearby?
+- can we confirm the chat window contents/state before pressing follow-up keys?
+- should we scrape window contents via screenshot/OCR or settle for log-based confirmation first?
+
 ### HV0-B: frame schema + state classifier
 - implement frame object,
 - implement stable mode classification,
