@@ -128,6 +128,9 @@ Check structured action-status output from `llm_intent.log`:
 - `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_attack_target_missing.txt --expect-file tools/llm_runner/fixtures/action_status_attack_target_missing.expect.json --json`
 - `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_pickup_item_missing.txt --expect-file tools/llm_runner/fixtures/action_status_pickup_item_missing.expect.json --json`
 - `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_inventory_cannot_wield.txt --expect-file tools/llm_runner/fixtures/action_status_inventory_cannot_wield.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_attack_morale_or_panic_block.txt --expect-file tools/llm_runner/fixtures/action_status_attack_morale_or_panic_block.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_pickup_panic_override.txt --expect-file tools/llm_runner/fixtures/action_status_pickup_panic_override.expect.json --json`
+- `python3 tools/llm_runner/run_action_status_fixtures.py`
 
 The checker also supports `phase_sequence` expectations so a fixture can assert on ordered lifecycle progression, not just whether a phase appeared somewhere eventually.
 

@@ -1,0 +1,3 @@
+action_status npc="Marlene Pike" kind="attack_target" phase="requested" reason="" request="req_attack_panic_1" target_hint="zombie brute" target="zombie brute" facts=""
+action_status npc="Marlene Pike" kind="attack_target" phase="precheck" reason="" request="req_attack_panic_1" target_hint="zombie brute" target="zombie brute" facts="resolved_target=zombie brute; dist=5"
+action_status npc="Marlene Pike" kind="attack_target" phase="blocked" reason="attack.morale_or_panic_block" request="req_attack_panic_1" target_hint="zombie brute" target="zombie brute" facts="panic=8; morale=-35"

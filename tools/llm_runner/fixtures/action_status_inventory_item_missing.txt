@@ -1,0 +1,3 @@
+action_status npc="Rubik" kind="look_inventory" phase="requested" reason="" request="req_inventory_missing_1" target_hint="id:medkit_01" target="first aid kit" facts=""
+action_status npc="Rubik" kind="look_inventory" phase="precheck" reason="" request="req_inventory_missing_1" target_hint="id:medkit_01" target="first aid kit" facts=""
+action_status npc="Rubik" kind="look_inventory" phase="blocked" reason="inventory.item_missing" request="req_inventory_missing_1" target_hint="id:medkit_01" target="first aid kit" facts=""

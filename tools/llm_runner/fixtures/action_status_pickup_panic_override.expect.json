@@ -1,0 +1,11 @@
+{
+  "npc": "Marlene Pike",
+  "kind": "look_around_pickup",
+  "request": "req_pickup_panic_1",
+  "min_events": 3,
+  "phase_any": ["requested", "precheck", "blocked"],
+  "phase_sequence": ["requested", "precheck", "blocked"],
+  "reason_any": ["pickup.panic_override"],
+  "terminal_phase": "blocked",
+  "terminal_reason": "pickup.panic_override"
+}
