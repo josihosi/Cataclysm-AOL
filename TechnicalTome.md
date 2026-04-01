@@ -1,30 +1,97 @@
 # Technical Tome
 
 ## Background Summarizer (tools/llm_runner/background_summarizer.py)
-The summarizer pre-generates short NPC background summaries for talk topics in
-`data/json/npcs/Backgrounds/*.json` and writes one pipe-delimited line per topic
-into `data/json/npcs/Backgrounds/Summaries_short/<source>_summary_short.txt`.
+The summarizer now has **two modes**:
 
-### What it does
+1. **Background topic mode**
+   - pre-generates short summaries for trait/background talk topics in
+     `data/json/npcs/Backgrounds/*.json`
+   - writes one pipe-delimited line per topic into
+     `data/json/npcs/Backgrounds/Summaries_short/<source>_summary_short.txt`
+2. **Named NPC registry mode**
+   - reads a declarative registry from
+     `data/json/npcs/Backgrounds/summary_registry.json` (or another file passed
+     via `--registry`)
+   - generates summaries for `tier: auto` named NPCs by reading the listed
+     `source_files`
+   - writes selector-based output into
+     `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.json`
+
+### What the background-topic mode does
 - Builds a trait-to-topic map by reading
   `data/json/npcs/Backgrounds/backgrounds_table_of_contents.json` and extracting
   `npc_has_trait` conditions (including nested `and`/`or` blocks).
 - Indexes all `talk_topic` entries under `data/json/npcs/Backgrounds/`, collecting
   `dynamic_line` text and (optionally) response `text`.
-- Sends the story text to a local OpenVINO LLM with a strict prompt:
-  "return two sections separated by ' | '", five comma-separated traits, and
-  one notable sentence.
+- Sends the story text to a local LLM with a strict prompt requesting five
+  descriptors and one notable quote.
 - Normalizes and validates the output, then writes:
   `topic_id|your_background|your_expression|source_tag`.
-  Generated summaries use an honest local provenance tag in the form
-  `local:<model_dir_name>:<source_base>`.
+
+### What the named-NPC registry mode does
+- Loads a registry object with:
+  - `path_root`
+  - `generated_output`
+  - `entries[]`
+- Each registry entry carries:
+  - `id`
+  - `tier` (`manual` or `auto`)
+  - `selectors[]` (`name:...`, `topic:...`, etc.)
+  - `source_files[]` for `auto`
+- Aggregates `talk_topic` lines from the listed `source_files`.
+- Runs the same summarizer prompt over that aggregated text.
+- Writes either legacy pipe-delimited `.txt` entries or the preferred JSON bundle
+  format depending on the target file extension in `generated_output`.
+- Uses provenance tags in the form:
+  `local:<backend>:<model>:registry:<entry_id>`
+
+### Runtime summary JSON schema
+Phase 2 introduces a proper runtime summary-entry JSON format. The loader accepts:
+- a single `npc_personality_summary` object
+- an array of summary objects
+- or a bundle object with `type: "npc_personality_summary_bundle"` and `entries[]`
+
+Each summary entry may provide:
+- `selector` or `selectors` for named-NPC matching
+- `topic` or `topics` for background-topic matching
+- `your_background` / `background`
+- `your_expression` / `expression`
+- `source_tag`
+
+This means a mod can now ship one JSON bundle containing both named overrides and
+trait/topic summaries instead of relying entirely on line-based text files.
+
+### Tier intent
+- **Tier 1 / manual**
+  - important NPCs with authorial voice
+  - can live in hand-maintained `Summaries_extra/*.json` files (preferred) or legacy `.txt` files
+  - can still be listed in the registry as documentation / triage
+- **Tier 2 / auto**
+  - named NPCs good enough for generated summaries
+  - live in `generated_named_npcs.json` by default now
+  - can be regenerated from the registry
+
+### Runtime loading and override rules
+Runtime summary loading in `src/llm_intent.cpp` now:
+- reloads when the active summary roots change (core data vs active mods)
+- merges core + active mod + world custom-mod roots
+- loads both `.json` and legacy `.txt` summary files
+- prefers the newer JSON format when the same stem exists in both formats
+- still loads `generated_*` files before later manual files in each summary folder
+- therefore allows manual files to override generated selectors cleanly
+- accepts JSON summary entries addressed by `selector` / `selectors` and/or `topic` / `topics`
+- also loads `Summaries_short` / `Summaries_extra` from active mods so modded
+  summary packs participate in the same mechanism
 
 ### Checks and safeguards
-- Skips topics that already exist in the output file unless `--force` is used.
-- If the model fails to load or output cannot be validated, it logs and skips
-  without failing the build.
-- Tries multiple times when output is invalid (via `--retry-invalid`).
-- Sanitizes and extracts output even when the model returns `<think>` content.
+- Background-topic mode skips topics that already exist unless `--force` is used.
+- Registry mode can dry-run with `--dry-run` to validate source paths and count
+  extracted NPC lines without calling the model.
+- `--only-entry` lets you regenerate one named NPC at a time.
+- If the model fails to load or output cannot be validated, the script logs and
+  skips without failing the whole pass.
+- It retries invalid output via `--retry-invalid`.
+- It sanitizes and extracts output even when the model returns `<think>` content.
 
 ### Build integration
 The Makefile defines a convenience target:
@@ -39,6 +106,27 @@ Configuration knobs:
 - `LLM_SUMMARY_MODEL_DIR` (env) or `--model-dir` / `--summary-model-dir` for the OpenVINO model.
 - `LLM_SUMMARY_DEVICE` (env) or `--device` / `--summary-device` for target device (default "NPU").
 - On macOS builds, `just_build_macos.sh --with-summary` also reads the branch profile's `config/options.json` (LLM menu settings) so the in-game summary backend/model options can drive future summary builds.
+
+### Useful commands
+Dry-run named-NPC generation:
+- `python3 tools/llm_runner/background_summarizer.py --registry data/json/npcs/Backgrounds/summary_registry.json --registry-tier auto --dry-run`
+
+Generate a single named NPC:
+- `python3 tools/llm_runner/background_summarizer.py --registry data/json/npcs/Backgrounds/summary_registry.json --registry-tier auto --only-entry reena_sandhu --backend ollama --ollama-model mistral`
+
+Regenerate the auto tier:
+- `python3 tools/llm_runner/background_summarizer.py --registry data/json/npcs/Backgrounds/summary_registry.json --registry-tier auto --backend ollama --ollama-model mistral --include-responses --retry-invalid 2`
+
+Run the named-NPC smoke harness without invoking the model:
+- `python3 tools/llm_runner/npc_harness.py --scenario tools/llm_runner/scenarios/rubik_trade.json --resolve-only --json`
+
+Run the named-NPC smoke harness through the normal runner pipe:
+- `python3 tools/llm_runner/npc_harness.py --scenario tools/llm_runner/scenarios/rubik_trade.json --backend ollama --ollama-model mistral`
+
+The smoke harness intentionally tests three layers together:
+- selector resolution (manual vs generated precedence)
+- snapshot/prompt assembly for one named NPC
+- runner I/O + response parsing using game-like pipe-separated action-line validation
 
 ## LLM Intent Actions (Behavior Notes)
 - `look_around` requests up to three nearby item names for pickup targeting.

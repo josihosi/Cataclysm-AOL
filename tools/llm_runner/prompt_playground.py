@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import queue
+import shutil
 import subprocess
 import sys
 import threading
@@ -12,6 +13,8 @@ from typing import Dict, Optional
 
 ALLOWED_ACTIONS = ["wait_here", "follow_close", "follow_far", "equip_gun", "equip_melee", "equip_bow", "attack=<target>", "idle"]
 DEFAULT_MODEL_DIR = r"C:\Users\josef\openvino_models\Phi-3.5-mini-instruct-int4-cw-ov"
+PROMPT_DIRNAME = "llm_prompts"
+PROMPT_PLAYGROUND_PROMPT_FILENAME = "prompt_playground_prompt.txt"
 # Other local models (leave commented to keep a single active model).
 # r"C:\Users\josef\openvino_models\Mistral-7B-Instruct-v0.3-int4-cw-ov",
 # r"C:\Users\josef\openvino_models\DeepSeek-R1-Distill-Qwen-1.5B-int4-cw-ov",
@@ -158,6 +161,48 @@ def repo_root() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
+def prompt_override_dir() -> str:
+    return os.path.join(repo_root(), "config", PROMPT_DIRNAME)
+
+
+def bundled_prompt_dir() -> str:
+    return os.path.join(repo_root(), "data", PROMPT_DIRNAME)
+
+
+def has_required_tokens(template: str, required_tokens) -> bool:
+    if not template.strip():
+        return False
+    return all(token in template for token in required_tokens)
+
+
+def seed_prompt_override_file(filename: str) -> None:
+    os.makedirs(prompt_override_dir(), exist_ok=True)
+    source = os.path.join(bundled_prompt_dir(), filename)
+    dest = os.path.join(prompt_override_dir(), filename)
+    if os.path.exists(source) and not os.path.exists(dest):
+        shutil.copyfile(source, dest)
+
+
+def load_prompt_template(filename: str, fallback_template: str, required_tokens) -> str:
+    try:
+        seed_prompt_override_file(filename)
+    except Exception:
+        pass
+    for path in (
+        os.path.join(prompt_override_dir(), filename),
+        os.path.join(bundled_prompt_dir(), filename),
+    ):
+        if not os.path.exists(path):
+            continue
+        try:
+            template = read_text(path)
+        except Exception:
+            continue
+        if has_required_tokens(template, required_tokens):
+            return template
+    return fallback_template
+
+
 def load_options(path: str) -> Dict[str, str]:
     if not path or not os.path.exists(path):
         return {}
@@ -210,6 +255,12 @@ def resolve_default_paths(options: Dict[str, str], root: str) -> Dict[str, str]:
 
 
 def build_prompt(snapshot: str, system_prompt: str) -> str:
+    if "{{snapshot}}" in system_prompt or "{{action_list}}" in system_prompt:
+        return (
+            system_prompt
+            .replace("{{snapshot}}", snapshot)
+            .replace("{{action_list}}", ", ".join(ALLOWED_ACTIONS))
+        )
     return f"Situation:\n{snapshot}\n{system_prompt}"
 
 
@@ -420,7 +471,11 @@ def main() -> int:
     elif args.prompt_path:
         system_prompt = read_text(args.prompt_path)
     else:
-        system_prompt = DEFAULT_SYSTEM_PROMPT
+        system_prompt = load_prompt_template(
+            PROMPT_PLAYGROUND_PROMPT_FILENAME,
+            DEFAULT_SYSTEM_PROMPT,
+            ["{{snapshot}}", "{{action_list}}"],
+        )
 
     root = repo_root()
     options = load_options(args.options_path)

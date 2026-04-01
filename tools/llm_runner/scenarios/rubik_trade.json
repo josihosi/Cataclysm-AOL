@@ -1,0 +1,48 @@
+{
+  "player_name": "Test Survivor",
+  "player_utterance": "Rubik, what do you have for sale today?",
+  "npc_name": "Rubik",
+  "chatbin": {
+    "talk_friend": "",
+    "talk_friend_guard": "",
+    "first_topic": "TALK_EXODII_MERCHANT",
+    "talk_leader": "",
+    "talk_stranger_friendly": "",
+    "talk_stranger_neutral": "",
+    "talk_stranger_wary": "",
+    "talk_stranger_scared": ""
+  },
+  "state": {
+    "follow_mode": "follow-close",
+    "morale": 6,
+    "hunger": 0,
+    "thirst": 0,
+    "pain": 0,
+    "stamina": 9,
+    "sleepiness": 0,
+    "hp_percent": 100,
+    "danger_assessment": 1,
+    "panic": 0,
+    "confidence": 7,
+    "aggression": 1,
+    "bravery": 6,
+    "collector": 8,
+    "altruism": 2,
+    "trust": 5,
+    "intimidation": 1,
+    "respect": 7,
+    "anger": 0
+  },
+  "world": {
+    "threats": "(none)",
+    "friendlies": "player",
+    "inventory": "wielded=\"integrated toolset\"",
+    "weapons": "[none listed]",
+    "bandage_possible": "false",
+    "map": "-----\n--a--\n--|--\n-----\n-----"
+  },
+  "expectations": {
+    "selector_equals": "name:Rubik",
+    "source_tag_contains": "special_npc:Rubik"
+  }
+}

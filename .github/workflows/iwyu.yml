@@ -2,10 +2,24 @@ name: IWYU (include-what-you-use)
 on:
   push:
     branches:
+    - dev
     - master
+    paths:
+    - 'src/**'
+    - 'tests/**'
+    - 'tools/iwyu/**'
+    - '**/CMakeLists.txt'
+    - '.github/workflows/iwyu.yml'
   pull_request:
     branches:
+    - dev
     - master
+    paths:
+    - 'src/**'
+    - 'tests/**'
+    - 'tools/iwyu/**'
+    - '**/CMakeLists.txt'
+    - '.github/workflows/iwyu.yml'
     types: [opened, reopened, synchronize, ready_for_review]
 
 # We only care about the latest revision of a PR, so cancel all previous instances.
@@ -81,7 +95,12 @@ jobs:
       run: |
         echo "IWYU_SRC_DIR=${PWD}/include-what-you-use-src">> "$GITHUB_OUTPUT"
         echo "IWYU_BIN_DIR=${PWD}/iwyu-build/bin">> "$GITHUB_OUTPUT"
-    - name: determine changed files
+    - name: determine changed files (push)
+      if: ${{ github.event_name == 'push' }}
+      working-directory: Cataclysm-DDA
+      run: |
+        git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | tee files_changed
+    - name: determine changed files (pull_request)
       if: ${{ github.event_name == 'pull_request' }}
       uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       with:

@@ -1,0 +1,261 @@
+{
+  "version": 1,
+  "path_root": "../..",
+  "generated_output": "npcs/Backgrounds/Summaries_extra/generated_named_npcs.json",
+  "entries": [
+    {
+      "id": "aleesha_seward",
+      "tier": "auto",
+      "selectors": [
+        "name:Aleesha Seward",
+        "topic:TALK_REFUGEE_Aleesha_1"
+      ],
+      "source_files": [
+        "npcs/refugee_center/surface_refugees/NPC_Aleesha_Seward.json"
+      ],
+      "notes": "Refugee-center surface refugee seed for generated named summaries."
+    },
+    {
+      "id": "alonso_lautrec",
+      "tier": "auto",
+      "selectors": [
+        "name:Alonso Lautrec",
+        "topic:TALK_REFUGEE_Alonso_1"
+      ],
+      "source_files": [
+        "npcs/refugee_center/surface_refugees/NPC_Alonso_Lautrec.json"
+      ],
+      "notes": "Refugee-center surface refugee seed for generated named summaries."
+    },
+    {
+      "id": "angelina_frolova",
+      "tier": "manual",
+      "selectors": [
+        "name:Angelina Frolova",
+        "topic:TALK_lighthouse_girl_1"
+      ],
+      "notes": "Existing curated override for Angelina_Frolova."
+    },
+    {
+      "id": "boris_borichenko",
+      "tier": "auto",
+      "selectors": [
+        "name:Boris Borichenko",
+        "topic:TALK_REFUGEE_Boris_1"
+      ],
+      "source_files": [
+        "npcs/refugee_center/surface_refugees/NPC_Boris_Borichenko.json"
+      ],
+      "notes": "Refugee-center surface refugee seed for generated named summaries."
+    },
+    {
+      "id": "brandon_garder",
+      "tier": "auto",
+      "selectors": [
+        "name:Brandon Garder",
+        "topic:TALK_REFUGEE_BEGGAR_4"
+      ],
+      "source_files": [
+        "npcs/refugee_center/beggars/BEGGAR_4_Brandon_Garder.json"
+      ],
+      "notes": "Named refugee-center beggar; good fit for auto tier."
+    },
+    {
+      "id": "cranberry_foster",
+      "tier": "manual",
+      "selectors": [
+        "name:Cranberry Foster",
+        "topic:TALK_ROBOFAC_MERC_1"
+      ],
+      "notes": "Existing curated override for Cranberry_Foster."
+    },
+    {
+      "id": "dino_dave",
+      "tier": "auto",
+      "selectors": [
+        "name:Dino Dave",
+        "topic:TALK_REFUGEE_BEGGAR_2"
+      ],
+      "source_files": [
+        "npcs/refugee_center/beggars/BEGGAR_2_Dino_Dave.json"
+      ],
+      "notes": "Named refugee-center beggar; good fit for auto tier."
+    },
+    {
+      "id": "doc_stevens",
+      "tier": "manual",
+      "selectors": [
+        "name:Doc.  Stevens",
+        "topic:TALK_ANCILLA_DOCTOR"
+      ],
+      "notes": "Existing curated override for Doc_Stevens."
+    },
+    {
+      "id": "garry_villeneuve",
+      "tier": "auto",
+      "selectors": [
+        "name:Garry Villeneuve",
+        "topic:TALK_REFUGEE_Garry_1"
+      ],
+      "source_files": [
+        "npcs/refugee_center/surface_refugees/NPC_Garry_Villeneuve.json"
+      ],
+      "notes": "Refugee-center surface refugee seed for generated named summaries."
+    },
+    {
+      "id": "heather_frolova",
+      "tier": "manual",
+      "selectors": [
+        "name:Heather Frolova",
+        "topic:TALK_lighthouse_woman_1"
+      ],
+      "notes": "Existing curated override for Heather_Frolova."
+    },
+    {
+      "id": "jenny_forcette",
+      "tier": "manual",
+      "selectors": [
+        "name:Jenny Forcette",
+        "topic:TALK_REFUGEE_JENNY_1"
+      ],
+      "notes": "Existing curated override for Jenny_Forcette."
+    },
+    {
+      "id": "liam",
+      "tier": "manual",
+      "selectors": [
+        "name:Liam",
+        "topic:TALK_FRIEND_Liam",
+        "topic:TALK_Liam_Meeting1"
+      ],
+      "notes": "Existing curated override for Liam."
+    },
+    {
+      "id": "luliya",
+      "tier": "manual",
+      "selectors": [
+        "name:Luliya",
+        "topic:TALK_LULIYA"
+      ],
+      "notes": "Existing curated override for Luliya."
+    },
+    {
+      "id": "luo",
+      "tier": "manual",
+      "selectors": [
+        "name:Luo Meizhen",
+        "topic:TALK_FRIEND_Luo",
+        "topic:TALK_REFUGEE_BEGGAR_3"
+      ],
+      "notes": "Existing curated override for Luo."
+    },
+    {
+      "id": "mikhail_frolov",
+      "tier": "manual",
+      "selectors": [
+        "name:Mikhail Frolov",
+        "topic:TALK_lighthouse_man_1"
+      ],
+      "notes": "Existing curated override for Mikhail_Frolov."
+    },
+    {
+      "id": "nine",
+      "tier": "manual",
+      "selectors": [
+        "name:Nine",
+        "topic:TALK_WEAPONMASTER_INTRO_1"
+      ],
+      "notes": "Existing curated override for Nine."
+    },
+    {
+      "id": "pat",
+      "tier": "manual",
+      "selectors": [
+        "name:Pat",
+        "topic:TALK_ROBOFAC_MERC_PAT"
+      ],
+      "notes": "Existing curated override for Pat."
+    },
+    {
+      "id": "reena_sandhu",
+      "tier": "auto",
+      "selectors": [
+        "name:Reena Sandhu",
+        "topic:TALK_REFUGEE_BEGGAR_1"
+      ],
+      "source_files": [
+        "npcs/refugee_center/beggars/BEGGAR_1_Reena_Sandhu.json"
+      ],
+      "notes": "Named refugee-center beggar; good fit for auto tier."
+    },
+    {
+      "id": "rubik",
+      "tier": "manual",
+      "selectors": [
+        "name:Rubik",
+        "topic:TALK_EXODII_MERCHANT"
+      ],
+      "notes": "Existing curated override for Rubik."
+    },
+    {
+      "id": "smokes",
+      "tier": "manual",
+      "selectors": [
+        "name:Smokes",
+        "topic:TALK_FREE_MERCHANTS_MERCHANT"
+      ],
+      "notes": "Existing curated override for Smokes."
+    },
+    {
+      "id": "steven_gould",
+      "tier": "manual",
+      "selectors": [
+        "name:Steven Gould",
+        "topic:TALK_ROBOFAC_MERC_MONSTER_CORPSE_1"
+      ],
+      "notes": "Existing curated override for Steven_Gould."
+    },
+    {
+      "id": "the_intercom",
+      "tier": "manual",
+      "selectors": [
+        "name:the intercom",
+        "topic:TALK_ROBOFAC_INTERCOM"
+      ],
+      "notes": "Existing curated override for the_intercom."
+    },
+    {
+      "id": "u_rourke",
+      "tier": "manual",
+      "selectors": [
+        "name:U. Rourke",
+        "topic:TALK_HUB_SECURITY"
+      ],
+      "notes": "Existing curated override for U_Rourke."
+    },
+    {
+      "id": "uyen_tran",
+      "tier": "auto",
+      "selectors": [
+        "name:Uyen Tran",
+        "topic:TALK_REFUGEE_Uyen_1"
+      ],
+      "source_files": [
+        "npcs/refugee_center/surface_refugees/NPC_Uyen_Tran.json"
+      ],
+      "notes": "Refugee-center surface refugee seed for generated named summaries."
+    },
+    {
+      "id": "yusuke_taylor",
+      "tier": "auto",
+      "selectors": [
+        "name:Yusuke Taylor",
+        "topic:TALK_REFUGEE_BEGGAR_5"
+      ],
+      "source_files": [
+        "npcs/refugee_center/beggars/BEGGAR_5_Yusuke_Taylor.json"
+      ],
+      "notes": "Named refugee-center beggar; good fit for auto tier."
+    }
+  ]
+}

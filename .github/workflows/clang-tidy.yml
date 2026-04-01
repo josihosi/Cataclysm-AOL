@@ -3,11 +3,39 @@ name: Clang-tidy 18
 on:
   push:
     branches:
+    - dev
     - master
+    paths:
+    - '**/*.cpp'
+    - '**/*.h'
+    - '**/*.c'
+    - '**/CMakeLists.txt'
+    - '**/Makefile'
+    - '**/*.hpp'
+    - '**/*.cmake'
+    - 'build-scripts/clang-tidy-build.sh'
+    - 'build-scripts/clang-tidy-run.sh'
+    - 'build-scripts/clang-tidy-wrapper.sh'
+    - 'build-scripts/get_affected_files.py'
+    - '.github/workflows/clang-tidy.yml'
 
   pull_request:
     branches:
+    - dev
     - master
+    paths:
+    - '**/*.cpp'
+    - '**/*.h'
+    - '**/*.c'
+    - '**/CMakeLists.txt'
+    - '**/Makefile'
+    - '**/*.hpp'
+    - '**/*.cmake'
+    - 'build-scripts/clang-tidy-build.sh'
+    - 'build-scripts/clang-tidy-run.sh'
+    - 'build-scripts/clang-tidy-wrapper.sh'
+    - 'build-scripts/get_affected_files.py'
+    - '.github/workflows/clang-tidy.yml'
     types: [opened, reopened, synchronize, ready_for_review]
 
 # We only care about the latest revision of a PR, so cancel all previous instances.
@@ -109,7 +137,11 @@ jobs:
       with:
         name: cata-analyzer-plugin
         path: build/tools/clang-tidy-plugin/
-    - name: determine changed files
+    - name: determine changed files (push)
+      if: ${{ github.event_name == 'push' }}
+      run: |
+        git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | tee files_changed
+    - name: determine changed files (pull_request)
       if: ${{ github.event_name == 'pull_request' }}
       uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       with:

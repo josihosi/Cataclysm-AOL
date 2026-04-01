@@ -2,23 +2,28 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
-#include <cstdint>
-#include <condition_variable>
 #include <cctype>
+#include <chrono>
 #include <cmath>
+#include <condition_variable>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <deque>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <iomanip>
+#include <initializer_list>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <queue>
-#include <set>
 #include <ratio>
+#include <set>
 #include <sstream>
-#include <cstdlib>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -27,36 +32,36 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <exception>
-#include <iomanip>
 
-#include "cata_path.h"
 #include "calendar.h"
+#include "cata_path.h"
+#include "cata_utility.h"
 #include "character.h"
 #include "character_id.h"
-#include "cata_utility.h"
-#include "ammo.h"
 #include "coordinates.h"
 #include "creature.h"
 #include "creature_tracker.h"
-#include "flexbuffer_json.h"
-#include "filesystem.h"
-#include "itype.h"
+#include "dialogue_chatbin.h"
 #include "effect.h"
+#include "filesystem.h"
+#include "flexbuffer_json.h"
 #include "game.h"
 #include "item.h"
 #include "item_location.h"
-#include "line.h"
+#include "itype.h"
 #include "json.h"
 #include "map.h"
-#include "messages.h"
+#include "map_selector.h"
 #include "memory_fast.h"
-#include "npc_opinion.h"
+#include "messages.h"
+#include "mod_manager.h"
 #include "npc.h"
+#include "npc_opinion.h"
 #include "options.h"
 #include "output.h"
 #include "path_info.h"
 #include "point.h"
+#include "ret_val.h"
 #include "string_formatter.h"
 #include "translations.h"
 #include "type_id.h"
@@ -64,13 +69,17 @@
 #include "vehicle.h"
 #include "vehicle_selector.h"
 #include "visitable.h"
+#include "worldfactory.h"
+#include "vpart_position.h"
 
 #if defined(_WIN32)
-#include <windows.h>
+#if 1 // HACK: Hack to prevent reordering of #include "platform_win.h" by IWYU
+#include "platform_win.h"
+#endif
 #else
 #include <cerrno>
-#include <fcntl.h>
 #include <csignal>
+#include <fcntl.h>
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -88,12 +97,12 @@ constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
 std::filesystem::path central_llm_config_dir_path()
 {
-    return std::filesystem::path( PATH_INFO::base_path() ) / "config";
+    return PATH_INFO::base_path().get_unrelative_path() / "config";
 }
 
 std::filesystem::path central_llm_log_path( const char *filename )
 {
-    return central_llm_config_dir_path() / filename;
+    return central_llm_config_dir_path() / std::filesystem::u8path( filename );
 }
 
 void append_llm_intent_log( const std::string &payload )
@@ -137,7 +146,7 @@ void append_llm_intent_log( const std::string &payload )
         if( !ec && size >= static_cast<std::uintmax_t>( llm_intent_log_rotate_bytes ) ) {
             for( int i = 1; i <= 9999; ++i ) {
                 std::filesystem::path rotated = log_path;
-                rotated += "." + std::to_string( i );
+                rotated += std::filesystem::u8path( "." + std::to_string( i ) );
                 if( !std::filesystem::exists( rotated, ec ) ) {
                     std::filesystem::rename( log_path, rotated, ec );
                     break;
@@ -150,6 +159,99 @@ void append_llm_intent_log( const std::string &payload )
         return;
     }
     out << final_payload;
+}
+
+constexpr const char *llm_prompt_dirname = "llm_prompts";
+constexpr const char *npc_action_prompt_filename = "npc_action_prompt.txt";
+constexpr const char *npc_ambient_prompt_filename = "npc_ambient_prompt.txt";
+constexpr const char *look_around_prompt_filename = "look_around_prompt.txt";
+constexpr const char *look_inventory_prompt_filename = "look_inventory_prompt.txt";
+constexpr const char *llm_prompt_readme_filename = "README.txt";
+
+std::filesystem::path llm_prompt_override_dir_path()
+{
+    return ( PATH_INFO::config_dir_path() / llm_prompt_dirname ).get_unrelative_path();
+}
+
+std::filesystem::path bundled_llm_prompt_dir_path()
+{
+    return ( PATH_INFO::datadir_path() / llm_prompt_dirname ).get_unrelative_path();
+}
+
+void replace_all_in_place( std::string &text, const std::string &from, const std::string &to )
+{
+    if( from.empty() ) {
+        return;
+    }
+    size_t pos = 0;
+    while( ( pos = text.find( from, pos ) ) != std::string::npos ) {
+        text.replace( pos, from.size(), to );
+        pos += to.size();
+    }
+}
+
+std::string render_prompt_template( std::string templ,
+                                    const std::initializer_list<std::pair<std::string, std::string>> &replacements )
+{
+    for( const std::pair<std::string, std::string> &entry : replacements ) {
+        replace_all_in_place( templ, entry.first, entry.second );
+    }
+    return templ;
+}
+
+bool prompt_template_has_required_tokens( const std::string &templ,
+        const std::initializer_list<std::string_view> &required_tokens )
+{
+    if( templ.find_first_not_of( " \t\r\n" ) == std::string::npos ) {
+        return false;
+    }
+    for( const std::string_view token : required_tokens ) {
+        if( templ.find( token ) == std::string::npos ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void seed_llm_prompt_override_files()
+{
+    const std::filesystem::path override_dir = llm_prompt_override_dir_path();
+    if( !assure_dir_exist( override_dir ) ) {
+        return;
+    }
+
+    const std::filesystem::path bundled_dir = bundled_llm_prompt_dir_path();
+    for( const char *filename : { npc_action_prompt_filename, npc_ambient_prompt_filename,
+                                  look_around_prompt_filename, look_inventory_prompt_filename,
+                                  llm_prompt_readme_filename } ) {
+        const std::filesystem::path source = bundled_dir / filename;
+        const std::filesystem::path dest = override_dir / filename;
+        if( file_exist( source ) && !file_exist( dest ) ) {
+            copy_file( source.string(), dest.string() );
+        }
+    }
+}
+
+std::string load_llm_prompt_template( const char *filename, std::string_view fallback_template,
+                                      const std::initializer_list<std::string_view> &required_tokens )
+{
+    static std::once_flag seed_once;
+    std::call_once( seed_once, []() {
+        seed_llm_prompt_override_files();
+    } );
+
+    for( const std::filesystem::path &path : { llm_prompt_override_dir_path() / filename,
+                                               bundled_llm_prompt_dir_path() / filename } ) {
+        if( !file_exist( path ) ) {
+            continue;
+        }
+        const std::string templ = read_entire_file( path );
+        if( prompt_template_has_required_tokens( templ, required_tokens ) ) {
+            return templ;
+        }
+    }
+
+    return std::string( fallback_template );
 }
 
 struct llm_intent_request {
@@ -234,7 +336,7 @@ std::string strip_leading_article( const std::string &text )
     return text;
 }
 
-std::string trim_copy( const std::string &text )
+std::string trim_copy( std::string_view text )
 {
     size_t start = 0;
     while( start < text.size() &&
@@ -246,7 +348,7 @@ std::string trim_copy( const std::string &text )
            std::isspace( static_cast<unsigned char>( text[end - 1] ) ) ) {
         --end;
     }
-    return text.substr( start, end - start );
+    return std::string( text.substr( start, end - start ) );
 }
 
 std::string normalize_item_label( std::string_view text )
@@ -359,6 +461,7 @@ struct background_summary_cache {
     std::unordered_map<std::string, std::string> trait_to_topic;
     std::unordered_map<std::string, background_summary_entry> summary_by_topic;
     std::unordered_map<std::string, background_summary_entry> summary_by_selector;
+    std::vector<std::string> loaded_root_keys;
     bool loaded = false;
 };
 
@@ -387,86 +490,9 @@ std::string normalize_summary_line( std::string summary )
     return trim_copy( summary );
 }
 
-void load_background_summary_text_dir( const cata_path &summary_root,
-                                       std::unordered_map<std::string, background_summary_entry> &out )
+void load_background_trait_to_topic( const cata_path &toc_path,
+                                     std::unordered_map<std::string, std::string> &out )
 {
-    const std::filesystem::path summary_dir = summary_root.get_unrelative_path();
-    std::error_code ec;
-    if( !std::filesystem::exists( summary_dir, ec ) ) {
-        return;
-    }
-
-    for( const std::filesystem::directory_entry &entry : std::filesystem::directory_iterator(
-             summary_dir,
-             ec ) ) {
-        if( ec ) {
-            break;
-        }
-        if( !entry.is_regular_file( ec ) ) {
-            continue;
-        }
-        if( entry.path().extension() != ".txt" ) {
-            continue;
-        }
-        const std::string filename = entry.path().filename().generic_u8string();
-        read_from_file_optional( summary_root / filename, [&]( std::istream & data ) {
-            std::string line;
-            while( std::getline( data, line ) ) {
-                line = trim_copy( line );
-                if( line.empty() || line[0] == '#' ) {
-                    continue;
-                }
-                std::vector<std::string> parts;
-                std::string current;
-                for( char c : line ) {
-                    if( c == '|' ) {
-                        parts.push_back( trim_copy( current ) );
-                        current.clear();
-                    } else {
-                        current.push_back( c );
-                    }
-                }
-                parts.push_back( trim_copy( current ) );
-                if( parts.size() < 3 ) {
-                    continue;
-                }
-                const std::string id = normalize_summary_line( parts[0] );
-                if( id.empty() || out.count( id ) > 0 ) {
-                    continue;
-                }
-                background_summary_entry entry_value;
-                entry_value.background = normalize_summary_line( parts[1] );
-                entry_value.expression = normalize_summary_line( parts[2] );
-                if( parts.size() > 3 ) {
-                    entry_value.source_tag = normalize_summary_line( parts[3] );
-                }
-                out[id] = entry_value;
-            }
-        } );
-    }
-}
-
-void add_summary_selector( std::vector<std::string> &out, const std::string &selector )
-{
-    const std::string normalized = normalize_summary_line( selector );
-    if( normalized.empty() ) {
-        return;
-    }
-    if( std::find( out.begin(), out.end(), normalized ) == out.end() ) {
-        out.push_back( normalized );
-    }
-}
-
-background_summary_cache &get_background_summaries()
-{
-    static background_summary_cache cache;
-    if( cache.loaded ) {
-        return cache;
-    }
-    cache.loaded = true;
-
-    const cata_path toc_path = PATH_INFO::datadir_path() / "json" / "npcs" / "Backgrounds" /
-                               "backgrounds_table_of_contents.json";
     read_from_file_optional_json( toc_path, [&]( const JsonArray & root ) {
         for( const JsonObject entry : root ) {
             entry.allow_omitted_members();
@@ -487,21 +513,313 @@ background_summary_cache &get_background_summaries()
                 std::vector<std::string> traits;
                 gather_traits_from_condition( cond, traits );
                 for( const std::string &trait : traits ) {
-                    if( cache.trait_to_topic.count( trait ) == 0 ) {
-                        cache.trait_to_topic[trait] = topic;
-                    }
+                    out[trait] = topic;
                 }
             }
         }
     } );
+}
 
-    const cata_path summary_root = PATH_INFO::datadir_path() / "json" / "npcs" / "Backgrounds" /
-                                   "Summaries_short";
-    load_background_summary_text_dir( summary_root, cache.summary_by_topic );
+enum class background_summary_text_target : int {
+    topic,
+    selector
+};
 
-    const cata_path extra_summary_root = PATH_INFO::datadir_path() / "json" / "npcs" /
-                                         "Backgrounds" / "Summaries_extra";
-    load_background_summary_text_dir( extra_summary_root, cache.summary_by_selector );
+int summary_file_generation_priority( const std::filesystem::path &path )
+{
+    const std::string filename = path.filename().generic_u8string();
+    if( filename.rfind( "generated_", 0 ) == 0 ) {
+        return 0;
+    }
+    return 1;
+}
+
+int summary_file_format_priority( const std::filesystem::path &path )
+{
+    if( path.extension() == std::filesystem::u8path( ".txt" ) ) {
+        return 0;
+    }
+    if( path.extension() == std::filesystem::u8path( ".json" ) ) {
+        return 1;
+    }
+    return 2;
+}
+
+void add_summary_id( std::vector<std::string> &out, const std::string &selector )
+{
+    const std::string normalized = normalize_summary_line( selector );
+    if( normalized.empty() ) {
+        return;
+    }
+    if( std::find( out.begin(), out.end(), normalized ) == out.end() ) {
+        out.push_back( normalized );
+    }
+}
+
+void add_summary_ids_from_json( const JsonObject &jo, const std::string &single_key,
+                                const std::string &multi_key, std::vector<std::string> &out )
+{
+    if( jo.has_string( single_key ) ) {
+        add_summary_id( out, jo.get_string( single_key ) );
+    }
+    if( jo.has_array( multi_key ) ) {
+        for( const JsonValue entry : jo.get_array( multi_key ) ) {
+            if( entry.test_string() ) {
+                add_summary_id( out, entry.get_string() );
+            }
+        }
+    }
+}
+
+void insert_background_summary_entry( std::unordered_map<std::string, background_summary_entry> &out,
+                                      const std::vector<std::string> &ids,
+                                      const background_summary_entry &entry_value,
+                                      bool overwrite_existing )
+{
+    for( const std::string &id : ids ) {
+        if( id.empty() ) {
+            continue;
+        }
+        if( !overwrite_existing && out.count( id ) > 0 ) {
+            continue;
+        }
+        out[id] = entry_value;
+    }
+}
+
+void load_background_summary_text_file( const cata_path &summary_path,
+                                        std::unordered_map<std::string, background_summary_entry> &out,
+                                        bool overwrite_existing )
+{
+    read_from_file_optional( summary_path, [&]( std::istream & data ) {
+        std::string line;
+        while( std::getline( data, line ) ) {
+            line = trim_copy( line );
+            if( line.empty() || line[0] == '#' ) {
+                continue;
+            }
+            std::vector<std::string> parts;
+            std::string current;
+            for( char c : line ) {
+                if( c == '|' ) {
+                    parts.push_back( trim_copy( current ) );
+                    current.clear();
+                } else {
+                    current.push_back( c );
+                }
+            }
+            parts.push_back( trim_copy( current ) );
+            if( parts.size() < 3 ) {
+                continue;
+            }
+            const std::string id = normalize_summary_line( parts[0] );
+            if( id.empty() ) {
+                continue;
+            }
+            background_summary_entry entry_value;
+            entry_value.background = normalize_summary_line( parts[1] );
+            entry_value.expression = normalize_summary_line( parts[2] );
+            if( parts.size() > 3 ) {
+                entry_value.source_tag = normalize_summary_line( parts[3] );
+            }
+            insert_background_summary_entry( out, { id }, entry_value, overwrite_existing );
+        }
+    } );
+}
+
+void load_background_summary_json_entry( const JsonObject &jo,
+        std::unordered_map<std::string, background_summary_entry> &summary_by_topic,
+        std::unordered_map<std::string, background_summary_entry> &summary_by_selector,
+        bool overwrite_existing )
+{
+    jo.allow_omitted_members();
+    const std::string type = jo.get_string( "type", "npc_personality_summary" );
+    if( !type.empty() && type != "npc_personality_summary" ) {
+        return;
+    }
+
+    background_summary_entry entry_value;
+    if( jo.has_string( "your_background" ) ) {
+        entry_value.background = normalize_summary_line( jo.get_string( "your_background" ) );
+    } else if( jo.has_string( "background" ) ) {
+        entry_value.background = normalize_summary_line( jo.get_string( "background" ) );
+    }
+    if( jo.has_string( "your_expression" ) ) {
+        entry_value.expression = normalize_summary_line( jo.get_string( "your_expression" ) );
+    } else if( jo.has_string( "expression" ) ) {
+        entry_value.expression = normalize_summary_line( jo.get_string( "expression" ) );
+    }
+    if( jo.has_string( "source_tag" ) ) {
+        entry_value.source_tag = normalize_summary_line( jo.get_string( "source_tag" ) );
+    }
+    if( entry_value.background.empty() || entry_value.expression.empty() ) {
+        return;
+    }
+
+    std::vector<std::string> topic_ids;
+    std::vector<std::string> selector_ids;
+    add_summary_ids_from_json( jo, "topic", "topics", topic_ids );
+    add_summary_ids_from_json( jo, "selector", "selectors", selector_ids );
+    if( topic_ids.empty() && selector_ids.empty() && jo.has_string( "id" ) ) {
+        add_summary_id( topic_ids, jo.get_string( "id" ) );
+    }
+
+    insert_background_summary_entry( summary_by_topic, topic_ids, entry_value, overwrite_existing );
+    insert_background_summary_entry( summary_by_selector, selector_ids, entry_value, overwrite_existing );
+}
+
+void load_background_summary_json_file( const cata_path &summary_path,
+                                        std::unordered_map<std::string, background_summary_entry> &summary_by_topic,
+                                        std::unordered_map<std::string, background_summary_entry> &summary_by_selector,
+                                        bool overwrite_existing )
+{
+    read_from_file_optional_json( summary_path, [&]( const JsonValue & root ) {
+        if( root.test_array() ) {
+            for( const JsonValue entry : root.get_array() ) {
+                if( entry.test_object() ) {
+                    load_background_summary_json_entry( entry.get_object(), summary_by_topic,
+                                                        summary_by_selector, overwrite_existing );
+                }
+            }
+            return;
+        }
+        if( !root.test_object() ) {
+            return;
+        }
+        JsonObject jo = root.get_object();
+        jo.allow_omitted_members();
+        if( jo.has_array( "entries" ) ) {
+            for( const JsonValue entry : jo.get_array( "entries" ) ) {
+                if( entry.test_object() ) {
+                    load_background_summary_json_entry( entry.get_object(), summary_by_topic,
+                                                        summary_by_selector, overwrite_existing );
+                }
+            }
+            return;
+        }
+        load_background_summary_json_entry( jo, summary_by_topic, summary_by_selector,
+                                            overwrite_existing );
+    } );
+}
+
+void load_background_summary_dir( const cata_path &summary_root,
+                                  background_summary_text_target text_target,
+                                  std::unordered_map<std::string, background_summary_entry> &summary_by_topic,
+                                  std::unordered_map<std::string, background_summary_entry> &summary_by_selector,
+                                  bool overwrite_existing )
+{
+    const std::filesystem::path summary_dir = summary_root.get_unrelative_path();
+    std::error_code ec;
+    if( !std::filesystem::exists( summary_dir, ec ) ) {
+        return;
+    }
+
+    std::vector<std::filesystem::path> files;
+    for( const std::filesystem::directory_entry &entry : std::filesystem::directory_iterator(
+             summary_dir,
+             ec ) ) {
+        if( ec ) {
+            break;
+        }
+        if( !entry.is_regular_file( ec ) ) {
+            continue;
+        }
+        const std::filesystem::path extension = entry.path().extension();
+        if( extension != std::filesystem::u8path( ".txt" ) &&
+            extension != std::filesystem::u8path( ".json" ) ) {
+            continue;
+        }
+        files.push_back( entry.path().filename() );
+    }
+
+    std::sort( files.begin(), files.end(), []( const std::filesystem::path &lhs,
+    const std::filesystem::path &rhs ) {
+        const int lhs_generation = summary_file_generation_priority( lhs );
+        const int rhs_generation = summary_file_generation_priority( rhs );
+        if( lhs_generation != rhs_generation ) {
+            return lhs_generation < rhs_generation;
+        }
+        const std::string lhs_stem = lhs.stem().generic_u8string();
+        const std::string rhs_stem = rhs.stem().generic_u8string();
+        if( lhs_stem != rhs_stem ) {
+            return lhs_stem < rhs_stem;
+        }
+        const int lhs_format = summary_file_format_priority( lhs );
+        const int rhs_format = summary_file_format_priority( rhs );
+        if( lhs_format != rhs_format ) {
+            return lhs_format < rhs_format;
+        }
+        return lhs.generic_u8string() < rhs.generic_u8string();
+    } );
+
+    for( const std::filesystem::path &filename : files ) {
+        const cata_path full_path = summary_root / filename.generic_u8string();
+        if( filename.extension() == std::filesystem::u8path( ".json" ) ) {
+            load_background_summary_json_file( full_path, summary_by_topic, summary_by_selector,
+                                               overwrite_existing );
+            continue;
+        }
+        if( text_target == background_summary_text_target::topic ) {
+            load_background_summary_text_file( full_path, summary_by_topic, overwrite_existing );
+        } else {
+            load_background_summary_text_file( full_path, summary_by_selector, overwrite_existing );
+        }
+    }
+}
+
+std::vector<cata_path> background_summary_data_roots()
+{
+    std::vector<cata_path> roots;
+    roots.emplace_back( PATH_INFO::datadir_path() / "json" );
+    if( world_generator && world_generator->active_world ) {
+        for( const mod_id &mod : world_generator->active_world->active_mod_order ) {
+            if( mod.is_valid() ) {
+                roots.emplace_back( mod->path );
+            }
+        }
+        roots.emplace_back( PATH_INFO::world_base_save_path() / "mods" );
+    }
+    return roots;
+}
+
+std::vector<std::string> background_summary_root_keys( const std::vector<cata_path> &roots )
+{
+    std::vector<std::string> keys;
+    keys.reserve( roots.size() );
+    for( const cata_path &root : roots ) {
+        keys.push_back( root.get_unrelative_path().generic_u8string() );
+    }
+    return keys;
+}
+
+void add_summary_selector( std::vector<std::string> &out, const std::string &selector )
+{
+    add_summary_id( out, selector );
+}
+
+background_summary_cache &get_background_summaries()
+{
+    static background_summary_cache cache;
+    const std::vector<cata_path> roots = background_summary_data_roots();
+    const std::vector<std::string> root_keys = background_summary_root_keys( roots );
+    if( cache.loaded && cache.loaded_root_keys == root_keys ) {
+        return cache;
+    }
+
+    cache = background_summary_cache();
+    cache.loaded = true;
+    cache.loaded_root_keys = root_keys;
+
+    for( const cata_path &root : roots ) {
+        load_background_trait_to_topic( root / "npcs" / "Backgrounds" /
+                                        "backgrounds_table_of_contents.json", cache.trait_to_topic );
+        load_background_summary_dir( root / "npcs" / "Backgrounds" / "Summaries_short",
+                                     background_summary_text_target::topic,
+                                     cache.summary_by_topic, cache.summary_by_selector, true );
+        load_background_summary_dir( root / "npcs" / "Backgrounds" / "Summaries_extra",
+                                     background_summary_text_target::selector,
+                                     cache.summary_by_topic, cache.summary_by_selector, true );
+    }
 
     return cache;
 }
@@ -546,7 +864,7 @@ background_summary_entry get_background_summary_for( const npc &listener )
     return {};
 }
 
-bool is_action_token( const std::string &token )
+bool is_action_token( std::string_view token )
 {
     if( token.empty() ) {
         return false;
@@ -687,7 +1005,14 @@ bool parse_move_field( const std::string &field, std::vector<std::string> &coord
     return true;
 }
 
-bool parse_csv_payload( const std::string &csv, std::string &speech,
+void normalize_wait_here_hold_position_pair( std::vector<std::string> &actions )
+{
+    if( actions.size() == 2 && actions[0] == "wait_here" && actions[1] == "hold_position" ) {
+        actions.erase( actions.begin() + 1 );
+    }
+}
+
+bool parse_csv_payload( std::string_view csv, std::string &speech,
                         std::vector<std::string> &actions,
                         std::string &attack_target,
                         std::vector<std::string> &move_coords,
@@ -834,8 +1159,9 @@ bool parse_csv_payload( const std::string &csv, std::string &speech,
         }
     }
     if( actions.empty() && !attack_target.empty() ) {
-        actions.push_back( "idle" );
+        actions.emplace_back( "idle" );
     }
+    normalize_wait_here_hold_position_pair( actions );
     if( actions.empty() ) {
         error = "CSV must include at least one action field.";
         return false;
@@ -894,7 +1220,7 @@ struct look_inventory_selection {
     std::vector<std::string> drop;
 };
 
-std::string xml_escape( const std::string &text )
+std::string xml_escape( std::string_view text )
 {
     std::string out;
     out.reserve( text.size() );
@@ -940,13 +1266,13 @@ std::string strip_think_output( const std::string &text )
         while( j < text.size() && isspace( static_cast<unsigned char>( text[j] ) ) ) {
             ++j;
         }
-        static constexpr char think_tag[] = "think";
+        static constexpr std::string_view think_tag = "think";
         size_t k = 0;
-        while( k < sizeof( think_tag ) - 1 && j + k < text.size() &&
+        while( k < think_tag.size() && j + k < text.size() &&
                tolower( static_cast<unsigned char>( text[j + k] ) ) == think_tag[k] ) {
             ++k;
         }
-        if( k != sizeof( think_tag ) - 1 ) {
+        if( k != think_tag.size() ) {
             continue;
         }
         j += k;
@@ -1093,61 +1419,77 @@ std::vector<inventory_item_entry> collect_inventory_entries( npc &listener, size
     return entries;
 }
 
+std::string default_look_around_prompt_template()
+{
+    return R"(<System>Select up to three nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.Prioritize items that best match the player's request, including named objects like a backpack, knife, or other visible item.Items may be on the ground, in containers, in corpses, or in nearby vehicle cargo; treat them all as visible nearby choices.Return only up to three item ids from the <Items> list, comma-separated. Each id may optionally use :a for all or :N for a quantity, for example item_2:a or item_4:5.If quantity is omitted, it defaults to :a (all visible matching items). Do not return item names, explanations, or any items not listed in <Items>. Return an empty line if nothing visible fits the request.
+/no_think
+Answer directly. No reasoning.</System>
+<UserUtterance>{{player_utterance}}</UserUtterance>
+<Items>
+{{items_xml}}</Items>
+)";
+}
+
+std::string default_look_inventory_prompt_template()
+{
+    return R"(<System>You select items from the NPC inventory to wear, wield, or activate.Return a single line only.Format rules:To wear items, write:
+wear: item1, item2
+To wield items, write:
+wield: item1
+To activate items, write:
+act: item1, item2
+To drop items, write:
+drop: item1, item2
+You may include any combination, separated by |.Section labels are case-insensitive.Use item ids from the list only.If you need both wear and act, repeat the same id in both sections.
+/no_think
+Answer directly. No reasoning.</System>
+<UserUtterance>{{player_utterance}}</UserUtterance>
+<Inventory>
+{{inventory_xml}}</Inventory>
+<Examples>
+  <Example>wear: item_1 | wield: item_2</Example>
+  <Example>wield: item_2 | act: item_3</Example>
+  <Example>wear: item_4</Example>
+  <Example>act: item_3</Example>
+</Examples>
+)";
+}
+
 std::string build_look_around_prompt( const std::string &player_utterance,
                                       const std::vector<look_around_item_entry> &items )
 {
-    std::ostringstream out;
-    out << "<System>";
-    out << "Select up to three nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.";
-    out << "Prioritize items that best match the player's request, including named objects like a backpack, knife, or other visible item.";
-    out << "Items may be on the ground, in containers, in corpses, or in nearby vehicle cargo; treat them all as visible nearby choices.";
-    out << "Return only up to three item ids from the <Items> list, comma-separated. Each id may optionally use :a for all or :N for a quantity, for example item_2:a or item_4:5.";
-    out << "If quantity is omitted, it defaults to :a (all visible matching items). Do not return item names, explanations, or any items not listed in <Items>. Return an empty line if nothing visible fits the request.";
-    out << "\n/no_think\nAnswer directly. No reasoning.";
-    out << "</System>\n";
-    out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
-    out << "<Items>\n";
+    std::ostringstream items_xml;
     for( const look_around_item_entry &entry : items ) {
-        out << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
-            << xml_escape( entry.name ) << "\" qty=\""
-            << entry.quantity << "\"/>\n";
+        items_xml << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
+                  << xml_escape( entry.name ) << "\" qty=\""
+                  << entry.quantity << "\"/>\n";
     }
-    out << "</Items>\n";
-    return out.str();
+    const std::string templ = load_llm_prompt_template( look_around_prompt_filename,
+                              default_look_around_prompt_template(),
+    { "{{player_utterance}}", "{{items_xml}}" } );
+    return render_prompt_template( templ,
+    {
+        { "{{player_utterance}}", xml_escape( player_utterance ) },
+        { "{{items_xml}}", items_xml.str() }
+    } );
 }
 
 std::string build_look_inventory_prompt( const std::string &player_utterance,
         const std::vector<inventory_item_entry> &inventory )
 {
-    std::ostringstream out;
-    out << "<System>";
-    out << "You select items from the NPC inventory to wear, wield, or activate.";
-    out << "Return a single line only.";
-    out << "Format rules:";
-    out << "To wear items, write:\nwear: item1, item2\n";
-    out << "To wield items, write:\nwield: item1\n";
-    out << "To activate items, write:\nact: item1, item2\n";
-    out << "To drop items, write:\ndrop: item1, item2\n";
-    out << "You may include any combination, separated by |.";
-    out << "Section labels are case-insensitive.";
-    out << "Use item ids from the list only.";
-    out << "If you need both wear and act, repeat the same id in both sections.";
-    out << "\n/no_think\nAnswer directly. No reasoning.";
-    out << "</System>\n";
-    out << "<UserUtterance>" << xml_escape( player_utterance ) << "</UserUtterance>\n";
-    out << "<Inventory>\n";
+    std::ostringstream inventory_xml;
     for( const inventory_item_entry &entry : inventory ) {
-        out << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
-            << xml_escape( entry.name ) << "\"/>\n";
+        inventory_xml << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
+                      << xml_escape( entry.name ) << "\"/>\n";
     }
-    out << "</Inventory>\n";
-    out << "<Examples>\n";
-    out << "  <Example>wear: item_1 | wield: item_2</Example>\n";
-    out << "  <Example>wield: item_2 | act: item_3</Example>\n";
-    out << "  <Example>wear: item_4</Example>\n";
-    out << "  <Example>act: item_3</Example>\n";
-    out << "</Examples>\n";
-    return out.str();
+    const std::string templ = load_llm_prompt_template( look_inventory_prompt_filename,
+                              default_look_inventory_prompt_template(),
+    { "{{player_utterance}}", "{{inventory_xml}}" } );
+    return render_prompt_template( templ,
+    {
+        { "{{player_utterance}}", xml_escape( player_utterance ) },
+        { "{{inventory_xml}}", inventory_xml.str() }
+    } );
 }
 
 std::string normalize_csv_separators( const std::string &csv )
@@ -1472,6 +1814,7 @@ bool extract_lenient_csv( const std::string &csv, std::string &speech,
             const bool right_ok = end >= lowered.size() || is_boundary( lowered[end] );
             if( left_ok && right_ok ) {
                 actions.push_back( action );
+                normalize_wait_here_hold_position_pair( actions );
                 return true;
             }
             start = lowered.find( action, end );
@@ -1983,11 +2326,63 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     return out.str();
 }
 
+std::string default_npc_action_prompt_template()
+{
+    return R"(Situation:
+{{snapshot}}
+<System>You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die.Return a single line only, with correct syntax, to be parsed by the game.This line has two to four fields separated by ‘|’ :
+<Field 1>The first field is an answer to player_utterance.If player_utterance_present is false, this is a spontaneous check-in with no direct player input.You have decided to team up with the player for now, and must answer as the NPC.Stick to your role, with your emotions and opinions.</Field 1>
+<Fields 2-4>Write 1-3 of the following allowed actions exactly:
+{{action_list_with_target}}
+<Explanation allowed actions>
+Snapshot field your_follow_mode can be follow-close, follow-afar, or guard/hold.
+If the player directly asks you to wait, stay, hold, guard, or stop, use 'wait_here' or 'hold_position' instead of follow actions.
+Only use 'idle' when no action change is needed. Do not use 'idle' as a substitute for wait/hold commands.
+'wait_here' to stay put, wait here, stand by, and remain with no special tactical position. Use this for ordinary requests to wait or stay.
+'hold_position' to hold this exact spot tactically: a doorway, corner, choke point, post, or guarded position. Use this only for explicit hold-this-position / keep-watch / stakeout style orders, not ordinary waiting.
+'follow_close' to walk behind, follow close, come here.
+'follow_far' to follow from farther away, hang back, give me space.
+'equip_gun' to equip gun, rifle, thrower, get ready to shoot.
+'equip_melee' to equip melee, get ready to bash, cut, kick, stab.
+'equip_bow' to use bow, crossbow, stealth.
+'panic_on' to start running, get out of here.
+'panic_off' if convincing, to stop fleeing and get your act together.
+'look_around' to view your surroundings and pick-up, grab, search, explore for items around you.
+'look_inventory' to look inside your inventory and wear/wield/activate items.
+'move: <coordinate> <coordinate> ... <state>' to move step-by-step on your snapshot map. Use N, S, E, W, NE, NW, SE and SW and chain 4 to 15 coordinates. After the coordinates you must also include either 'wait_here' or 'hold_position' to set state.
+'attack=<target>' to attack a target with the letter from your map.
+'idle' if none of the above.
+</Explanation allowed actions>
+</Fields 2-4>
+Print only Fields 1-4, separated by | .If you break this format, you have failed.Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.
+<Example Output 1>Blow me.|idle</Example Output 1>
+<Example Output 2>Lets put those fucks in the ground.|equip_melee|attack=zombie</Example Output 2>
+<Example Output 3>Providing cover!|wait_here|equip_gun</Example Output 3>
+<Example Output 4>Lets get some dinner!|equip_gun|attack=chicken</Example Output 4>
+<Example Output 5>Don't worry, I'm ready to kick some teeth in.|equip_melee</Example Output 5>
+<Example Output 6>Locked and loaded.|equip_gun</Example Output 6>
+<Example Output 7>Nope, not doing that!|panic_on</Example Output 7>
+<Example Output 8>Moving down and holding there.|move: S S S S S hold_position|equip_gun</Example Output 8>
+/no_think
+Answer directly. No reasoning.
+</System>
+)";
+}
+
+std::string default_npc_ambient_prompt_template()
+{
+    return R"(Situation:
+{{snapshot}}
+<System>You are {{npc_name}}, a human survivor NPC speaking to another person in a cataclysmic world.You are not allies, and eyeing them.Even if they seem nice, you never know these days. Everybody does things to survive.Reply deeply in character, informed by the snapshot: your background, your tone, your opinions of the player, and your recent memories.Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no pipe-separated action line, no tool calls, no menu syntax.If you are unsure, answer briefly and naturally instead of inventing details./no_think
+Answer directly. No reasoning.
+</System>
+<PlayerUtterance>{{player_utterance}}</PlayerUtterance>
+)";
+}
+
 std::string build_prompt( const std::string &npc_name, const std::string &player_utterance,
                           const std::string &snapshot )
 {
-    ( void )npc_name;
-    ( void )player_utterance;
     std::string action_list;
     for( const std::string &action : allowed_actions() ) {
         if( !action_list.empty() ) {
@@ -2000,92 +2395,31 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
         action_list_with_target += ", ";
     }
     action_list_with_target += "attack=<target>, move: <coordinate> <coordinate> ... <state>";
-    return string_format(
-               "Situation:\n%s\n"
-               "<System>"
-               "You are controlling a human survivor NPC in a cataclysmic world, exhausted, armed, and trying not to die."
-               "Return a single line only, with correct syntax, to be parsed by the game."
-               "This line has two to four fields separated by ‘|’ :\n"
-               "<Field 1>"
-               "The first field is an answer to player_utterance."
-               "If player_utterance_present is false, this is a spontaneous check-in with no direct player input."
-               "You have decided to team up with the player for now, and must answer as the NPC."
-               "Stick to your role, with your emotions and opinions."
-               "</Field 1>\n"
-               "<Fields 2-4>"
-               "Write 1-3 of the following allowed actions exactly:"
-               "%s\n"
-               "<Explanation allowed actions>\n"
-               "Snapshot field your_follow_mode can be follow-close, follow-afar, or guard/hold.\n"
-               "If the player directly asks you to wait, stay, hold, guard, or stop, use 'wait_here' or 'hold_position' instead of follow actions.\n"
-               "Only use 'idle' when no action change is needed. Do not use 'idle' as a substitute for wait/hold commands.\n"
-               "'wait_here' to stay put, wait here, stand by, and remain with no special tactical position. Use this for ordinary requests to wait or stay.\n"
-               "'hold_position' to hold this exact spot tactically: a doorway, corner, choke point, post, or guarded position. Use this only for explicit hold-this-position / keep-watch / stakeout style orders, not ordinary waiting.\n"
-               "'follow_close' to walk behind, follow close, come here.\n"
-               "'follow_far' to follow from farther away, hang back, give me space.\n"
-               "'equip_gun' to equip gun, rifle, thrower, get ready to shoot.\n"
-               "'equip_melee' to equip melee, get ready to bash, cut, kick, stab.\n"
-               "'equip_bow' to use bow, crossbow, stealth.\n"
-               "'panic_on' to start running, get out of here.\n"
-               "'panic_off' if convincing, to stop fleeing and get your act together.\n"
-               "'look_around' to view your surroundings and pick-up, grab, search, explore for items around you.\n"
-               "'look_inventory' to look inside your inventory and wear/wield/activate items.\n"
-               "'move: <coordinate> <coordinate> ... <state>' to move step-by-step on your snapshot map. Use N, S, E, W, NE, NW, SE and SW and chain 4 to 15 coordinates. After the coordinates you must also include either 'wait_here' or 'hold_position' to set state.\n"
-               "'attack=<target>' to attack a target with the letter from your map.\n"
-               "'idle' if none of the above.\n"
-               "</Explanation allowed actions>\n"
-               "</Fields 2-4>\n"
-               "Print only Fields 1-4, separated by | ."
-               "If you break this format, you have failed."
-               "Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.\n"
-               "<Example Output 1>"
-               "Blow me.|idle"
-               "</Example Output 1>\n"
-               "<Example Output 2>"
-               "Lets put those fucks in the ground.|equip_melee|attack=zombie"
-               "</Example Output 2>\n"
-               "<Example Output 3>"
-               "Providing cover!|wait_here|equip_gun"
-               "</Example Output 3>\n"
-               "<Example Output 4>"
-               "Lets get some dinner!|equip_gun|attack=chicken"
-               "</Example Output 4>\n"
-               "<Example Output 5>"
-               "Don't worry, I'm ready to kick some teeth in.|equip_melee"
-               "</Example Output 5>\n"
-               "<Example Output 6>"
-               "Locked and loaded.|equip_gun"
-               "</Example Output 6>\n"
-               "<Example Output 7>"
-               "Nope, not doing that!|panic_on"
-               "</Example Output 7>\n"
-               "<Example Output 8>"
-               "Moving down and holding there.|move: S S S S S hold_position|equip_gun"
-               "</Example Output 8>\n"
-               "/no_think\n"
-               "Answer directly. No reasoning.\n"
-               "</System>\n",
-               snapshot, action_list_with_target );
+    const std::string templ = load_llm_prompt_template( npc_action_prompt_filename,
+                              default_npc_action_prompt_template(),
+    { "{{snapshot}}", "{{action_list_with_target}}" } );
+    return render_prompt_template( templ,
+    {
+        { "{{snapshot}}", snapshot },
+        { "{{action_list_with_target}}", action_list_with_target },
+        { "{{npc_name}}", sanitize_text( npc_name ) },
+        { "{{player_utterance}}", sanitize_text( player_utterance ) }
+    } );
 }
 
 std::string build_ambient_prompt( const std::string &npc_name,
                                   const std::string &player_utterance,
                                   const std::string &snapshot )
 {
-    return string_format(
-               "Situation:\n%s\n"
-               "<System>"
-               "You are %s, a human survivor NPC speaking to another person in a cataclysmic world."
-               "You are not allies, and eyeing them."
-               "Even if they seem nice, you never know these days. Everybody does things to survive."
-               "Reply deeply in character, informed by the snapshot: your background, your tone, your opinions of the player, and your recent memories."
-               "Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no CSV, no pipes, no tool calls, no menu syntax."
-               "If you are unsure, answer briefly and naturally instead of inventing details."
-               "/no_think\n"
-               "Answer directly. No reasoning.\n"
-               "</System>\n"
-               "<PlayerUtterance>%s</PlayerUtterance>\n",
-               snapshot, sanitize_text( npc_name ), sanitize_text( player_utterance ) );
+    const std::string templ = load_llm_prompt_template( npc_ambient_prompt_filename,
+                              default_npc_ambient_prompt_template(),
+    { "{{snapshot}}", "{{npc_name}}", "{{player_utterance}}" } );
+    return render_prompt_template( templ,
+    {
+        { "{{snapshot}}", snapshot },
+        { "{{npc_name}}", sanitize_text( npc_name ) },
+        { "{{player_utterance}}", sanitize_text( player_utterance ) }
+    } );
 }
 
 [[maybe_unused]] std::string request_to_json( const llm_intent_request &request )
