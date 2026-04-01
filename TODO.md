@@ -44,6 +44,8 @@ These are the things worth human eyes, because they are annoying to automate fir
 - [ ] Capture the current `master` / `Sandy Creek` save as the first harness-owned gameplay fixture.
 - [ ] Add an in-game smoke path for `Sandy Creek` using Ricky Broughton as the first talk target.
 - [ ] Add an in-game smoke path for `C+b` utterance entry + submit and verify that logs / action output still look sane.
+- [ ] Add a field probe for `Ricky, kill the cow.` and verify attack engagement from message-log/screenshot evidence.
+- [ ] Add a field probe for `Ricky, pick up the gun and axe on the ground.` and verify partial/complete pickup behavior from message-log/screenshot evidence.
 - [ ] Add a debug-menu helper path for spawning Rubik (`}`, `s`, `p`, `O`) once startup-to-gameplay is stable enough.
 
 ## Immediate in-game smoke ideas from the current save

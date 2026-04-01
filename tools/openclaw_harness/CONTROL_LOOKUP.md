@@ -42,6 +42,28 @@ Instead assume:
 - `llm_intent.log` for who actually got the prompt/response
 - startup harness run artifacts under `.userdata/<profile>/harness_runs/...`
 - screenshots where UI state matters more than logs
+- for live in-game probes, `peekaboo see` is currently more useful than plain `peekaboo image`; the raw `see` command may time out on element detection, but it still leaves behind a readable screenshot path in its debug logs
+
+## Practical live-probe recipe (current best cheap method)
+1. focus the game window
+2. send the command / utterance
+3. pass turns with `Tab`
+4. immediately read:
+   - last ~40 lines of `llm_intent.log` if new lines appeared
+   - and the visible in-game message log from a fresh screenshot if the intent log stayed quiet or looked ambiguous
+
+This is crude, but much less error-prone than grepping the whole log and inventing a narrative afterward.
+
+## Empirical probe notes from the current `Sandy Creek` field setup
+- Probe: `Ricky, kill the cow.`
+  - on-screen result: Ricky engaged the cow; log/screenshot evidence showed attack attempts and misses, plus waiting turns
+  - no visible outright refusal
+  - cow still alive after the sampled turns
+- Probe: `Ricky, pick up the gun and axe on the ground.`
+  - on-screen result: Ricky eventually picked up the bullpup shotgun
+  - axe did not clearly show as picked up in the visible sampled log
+  - socks still appeared present on the ground
+  - there may be an initial refusal/delay before pickup behavior actually starts
 
 ## Suggested harness posture
 - use this lookup table as a **starting point**
