@@ -985,6 +985,8 @@ class npc : public Character
                                 std::vector<std::string> debug_facts = {} ) const;
         void clear_llm_action_status() const;
         bool has_active_llm_action_status() const;
+        void emit_llm_action_status( llm_action_status &status ) const;
+        static std::string llm_action_bark_for_reason( const std::string &reason_code );
         void set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                      const std::string &request_id,
                                      const std::string &target_hint ) const;
