@@ -32,7 +32,7 @@ Yelling a sentence has also been changed to 'Say a sentence' with a range of aro
 
 ### What’s already in and working
 - Local runner is wired (stdin/stdout JSON), kept warm, and logs metrics; snapshots are compact and include speech + actions that get surfaced in-game when parsed.
-- Background summarizer can run at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; local generation supports either Ollama or OpenVINO. On macOS, `./just_build_macos.sh --with-summary` can read the current branch profile's LLM menu summary settings, or you can pass explicit flags like `--summary-backend ollama --summary-ollama-model mistral`. `your_profession` and `background_summary` are injected into the snapshot.
+- Background summarizer can run at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; local generation supports either Ollama or OpenVINO. It also supports a registry-driven named-NPC pass that writes generated selectors into `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt`, while hand-written files in the same folder still override the generated tier. On macOS, `./just_build_macos.sh --with-summary` can read the current branch profile's LLM menu summary settings, or you can pass explicit flags like `--summary-backend ollama --summary-ollama-model mistral`. `your_profession` and `background_summary` are injected into the snapshot.
 - Stable item addressing is live (item ids in prompts), and panic_on/panic_off use timed decay.
 - Debug logging captures snapshots, responses, and raw failures for prompt tuning; speech shows in-game on success.
 - Random calls are live: each ally uses an independent jittered timer and can fire a spontaneous call with no player utterance.
@@ -282,6 +282,115 @@ API (via any-llm/OpenAI, may cost money):
 # Windows or Linux
 python tools\llm_runner\runner.py --self-test --backend api --api-provider "openai" --api-model "gpt-4.1-mini" --api-key-env "CATA_API_KEY"
 ```
+
+## Named NPC summary tiers (for modders)
+There are now two intended lanes for NPC personality summaries:
+
+- **Tier 1: manual** — important NPCs whose voice should be curated by hand.
+- **Tier 2: auto** — named NPCs that can be summarized well enough by the local summarizer.
+
+The generated tier exists so you do not need to hand-author every named side character. The manual tier exists so major characters do not all sound like they were processed by the same tired machine on a Tuesday.
+
+### Files and precedence
+Core data now uses the following files:
+
+- `data/json/npcs/Backgrounds/summary_registry.json`
+  - declarative list of named NPC entries
+  - each entry picks a `tier`, one or more `selectors`, and (for auto tier) `source_files`
+- `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt`
+  - generated output for auto-tier named NPCs
+- `data/json/npcs/Backgrounds/Summaries_extra/special_npcs.txt`
+  - hand-written overrides for major NPCs
+
+At runtime, `generated_*.txt` files are loaded first and manual `.txt` files in the same folder are loaded after them. That means **manual summaries override generated ones when they share the same selector**.
+
+The game also looks for `npcs/Backgrounds/Summaries_short` and `npcs/Backgrounds/Summaries_extra` inside active mods, so a mod can ship its own generated or manual named-NPC summaries without patching core files.
+
+### Registry format
+The registry is a JSON object with a shared `path_root`, one `generated_output`, and an `entries` array.
+
+```json
+{
+  "version": 1,
+  "path_root": "../..",
+  "generated_output": "npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt",
+  "entries": [
+    {
+      "id": "aleesha_seward",
+      "tier": "auto",
+      "selectors": [
+        "name:Aleesha Seward",
+        "topic:TALK_REFUGEE_Aleesha_1"
+      ],
+      "source_files": [
+        "npcs/refugee_center/surface_refugees/NPC_Aleesha_Seward.json"
+      ]
+    },
+    {
+      "id": "rubik",
+      "tier": "manual",
+      "selectors": [
+        "name:Rubik",
+        "topic:TALK_EXODII_MERCHANT"
+      ],
+      "notes": "Curated by hand."
+    }
+  ]
+}
+```
+
+Rules:
+- `selectors` are the runtime match keys. Use the same `name:` / `topic:` forms the game already understands.
+- `source_files` are required for `tier: "auto"` and optional for `tier: "manual"`.
+- `path_root` is resolved relative to the registry file and is used as the base for `source_files` and `generated_output`.
+
+### Running the named-NPC summarizer
+Dry-run the registry first:
+
+```sh
+python3 tools/llm_runner/background_summarizer.py \
+  --registry data/json/npcs/Backgrounds/summary_registry.json \
+  --registry-tier auto \
+  --dry-run
+```
+
+Generate auto-tier named NPC summaries with Ollama:
+
+```sh
+python3 tools/llm_runner/background_summarizer.py \
+  --registry data/json/npcs/Backgrounds/summary_registry.json \
+  --registry-tier auto \
+  --backend ollama \
+  --ollama-model mistral \
+  --include-responses \
+  --retry-invalid 2
+```
+
+Generate a single entry while iterating on it:
+
+```sh
+python3 tools/llm_runner/background_summarizer.py \
+  --registry data/json/npcs/Backgrounds/summary_registry.json \
+  --registry-tier auto \
+  --only-entry aleesha_seward \
+  --backend ollama \
+  --ollama-model mistral
+```
+
+### Mod layout
+For a mod, mirror the same structure under the mod's JSON root:
+
+- `npcs/Backgrounds/summary_registry.json`
+- `npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt`
+- `npcs/Backgrounds/Summaries_extra/my_special_npcs.txt`
+
+A practical pattern is:
+1. put important NPCs in `tier: "manual"`
+2. put secondary named NPCs in `tier: "auto"`
+3. run the summarizer for the auto tier
+4. add hand-written `.txt` overrides only where the generated result is not good enough
+
+That way the mod stays easy to extend: add an entry, point it at the dialogue files, regenerate, done.
 
 ## Compile
 This section is from the original CDDA repo, as it applies to this fork as well.
