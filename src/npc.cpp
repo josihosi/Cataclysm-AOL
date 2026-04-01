@@ -396,8 +396,7 @@ void npc::update_llm_action_phase( llm_action_phase phase,
         return;
     }
     const bool changed = state.active_status.phase != phase ||
-                         ( !reason_code.empty() && state.active_status.reason_code != reason_code ) ||
-                         ( !debug_facts.empty() && state.active_status.debug_facts != debug_facts );
+                         ( !reason_code.empty() && state.active_status.reason_code != reason_code );
     state.active_status.phase = phase;
     if( !reason_code.empty() ) {
         state.active_status.reason_code = reason_code;

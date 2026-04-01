@@ -4539,6 +4539,24 @@ void npc::pick_up_item()
         }
     }
 
+    if( llm_targeted && wanted_item ) {
+        const bool can_store = can_take_that( *wanted_item );
+        const bool can_wear_item = can_wear( *wanted_item ).success();
+        const bool can_wield_item = can_wield( *wanted_item ).success();
+        if( !can_store && !can_wear_item && !can_wield_item ) {
+            const units::mass weight_allowed = weight_capacity() - weight_carried();
+            const bool too_heavy = !wanted_item->made_of_from_type( phase_id::LIQUID ) &&
+                                   wanted_item->weight() > weight_allowed;
+            fetching_item = false;
+            wanted_item = {};
+            move_pause();
+            finish_llm_action( llm_action_phase::blocked,
+                               too_heavy ? "pickup.too_heavy" : "pickup.no_inventory_space" );
+            log_look_around_pickup( too_heavy ? "canceled (too heavy)" : "canceled (no inventory space)" );
+            return;
+        }
+    }
+
     add_msg_debug( debugmode::DF_NPC, "%s::pick_up_item(); [%s] => [%s]",
                    get_name(),
                    pos_bub().to_string_writable(), wanted_item_pos.to_string_writable() );
