@@ -60,6 +60,9 @@ class ResolvedSummary:
     selected_selector: Optional[str]
     entry: Optional[SummaryEntry]
     attempted_selectors: List[str]
+    resolution_kind: str = "none"
+    matched_trait: Optional[str] = None
+    matched_topic: Optional[str] = None
 
 
 DEFAULT_SCENARIO = {
@@ -216,13 +219,59 @@ def default_summary_roots() -> List[Path]:
     return [repo_root() / "data" / "json"]
 
 
-def load_all_summaries(summary_roots: Iterable[Path]) -> Tuple[Dict[str, SummaryEntry], Dict[str, SummaryEntry]]:
+def gather_traits_from_condition(condition: object, out: List[str]) -> None:
+    if not isinstance(condition, dict):
+        return
+    trait = condition.get("npc_has_trait")
+    if isinstance(trait, str) and trait.strip():
+        out.append(trait.strip())
+    for key in ("and", "or"):
+        value = condition.get(key)
+        if isinstance(value, list):
+            for entry in value:
+                gather_traits_from_condition(entry, out)
+
+
+def load_trait_to_topic(summary_roots: Iterable[Path]) -> Dict[str, str]:
+    mapping: Dict[str, str] = {}
+    for root in summary_roots:
+        toc_path = root / "npcs" / "Backgrounds" / "backgrounds_table_of_contents.json"
+        if not toc_path.exists():
+            continue
+        try:
+            data = json.loads(read_text(toc_path))
+        except Exception:
+            continue
+        if not isinstance(data, list):
+            continue
+        for entry in data:
+            if not isinstance(entry, dict) or entry.get("type") != "talk_topic":
+                continue
+            responses = entry.get("responses")
+            if not isinstance(responses, list):
+                continue
+            for response in responses:
+                if not isinstance(response, dict):
+                    continue
+                topic = response.get("topic")
+                condition = response.get("condition")
+                if not isinstance(topic, str) or not isinstance(condition, dict):
+                    continue
+                traits: List[str] = []
+                gather_traits_from_condition(condition, traits)
+                for trait in traits:
+                    mapping[trait] = topic
+    return mapping
+
+
+def load_all_summaries(summary_roots: Iterable[Path]) -> Tuple[Dict[str, SummaryEntry], Dict[str, SummaryEntry], Dict[str, str]]:
     by_topic: Dict[str, SummaryEntry] = {}
     by_selector: Dict[str, SummaryEntry] = {}
     for root in summary_roots:
         by_topic.update(load_summary_dir(root / "npcs" / "Backgrounds" / "Summaries_short"))
         by_selector.update(load_summary_dir(root / "npcs" / "Backgrounds" / "Summaries_extra"))
-    return by_topic, by_selector
+    trait_to_topic = load_trait_to_topic(summary_roots)
+    return by_topic, by_selector, trait_to_topic
 
 
 def scenario_selectors(scenario: Dict[str, object]) -> List[str]:
@@ -248,6 +297,7 @@ def scenario_selectors(scenario: Dict[str, object]) -> List[str]:
         "talk_stranger_neutral",
         "talk_stranger_wary",
         "talk_stranger_scared",
+        "talk_stranger_aggressive",
     ):
         topic = str(chatbin.get(key, "")).strip()
         if topic:
@@ -258,16 +308,26 @@ def scenario_selectors(scenario: Dict[str, object]) -> List[str]:
 
 
 def resolve_summary(scenario: Dict[str, object], summary_roots: Iterable[Path]) -> ResolvedSummary:
-    by_topic, by_selector = load_all_summaries(summary_roots)
+    by_topic, by_selector, trait_to_topic = load_all_summaries(summary_roots)
     selectors = scenario_selectors(scenario)
     for selector in selectors:
         if selector in by_selector:
-            return ResolvedSummary(selector, by_selector[selector], selectors)
-    # very light fallback: if no named selector matched, try profession/background-like topic keys if explicitly given
+            return ResolvedSummary(selector, by_selector[selector], selectors, resolution_kind="selector")
     for selector in selectors:
         topic = selector.removeprefix("topic:")
         if topic in by_topic:
-            return ResolvedSummary(selector, by_topic[topic], selectors)
+            return ResolvedSummary(selector, by_topic[topic], selectors, resolution_kind="topic")
+    for trait in scenario.get("mutations", []) or []:
+        trait_name = str(trait).strip()
+        if not trait_name:
+            continue
+        topic = trait_to_topic.get(trait_name)
+        if not topic:
+            continue
+        entry = by_topic.get(topic)
+        if not entry:
+            continue
+        return ResolvedSummary(f"trait:{trait_name}", entry, selectors, resolution_kind="trait", matched_trait=trait_name, matched_topic=topic)
     return ResolvedSummary(None, None, selectors)
 
 
@@ -277,6 +337,8 @@ def build_snapshot(scenario: Dict[str, object], resolved: ResolvedSummary, reque
     npc_name = str(scenario.get("npc_name", "Unknown NPC"))
     player_name = str(scenario.get("player_name", "Test Survivor"))
     player_utterance = str(scenario.get("player_utterance", "Hello."))
+    profession = str(scenario.get("profession", "no_past")).strip() or "no_past"
+    mutations = [str(item).strip() for item in (scenario.get("mutations", []) or []) if str(item).strip()]
     background = resolved.entry.background if resolved.entry else ""
     expression = resolved.entry.expression if resolved.entry else ""
     lines = [
@@ -287,11 +349,14 @@ def build_snapshot(scenario: Dict[str, object], resolved: ResolvedSummary, reque
         f"player utterance present: {'true' if player_utterance.strip() else 'false'}",
         "",
         f"your_name: {npc_name}",
+        f"your_profession: {profession}",
     ]
     if background:
         lines.append(f"your_tone: {background}")
     if expression:
         lines.append(f"your_example_expression: {expression}")
+    if mutations:
+        lines.append(f"your_background_traits: [{', '.join(mutations)}]")
     inventory_value = world.get("inventory", 'wielded="none"')
     weapons_value = world.get("weapons", "[none]")
     bandage_value = world.get("bandage_possible", "false")
@@ -598,9 +663,15 @@ def main() -> int:
     result: Dict[str, object] = {
         "scenario": args.scenario,
         "npc_name": scenario.get("npc_name", ""),
+        "profession": scenario.get("profession", ""),
+        "mutations": scenario.get("mutations", []),
         "attempted_selectors": resolved.attempted_selectors,
         "selected_selector": resolved.selected_selector,
+        "resolution_kind": resolved.resolution_kind,
+        "matched_trait": resolved.matched_trait,
+        "matched_topic": resolved.matched_topic,
         "summary": None,
+        "snapshot_fields": None,
         "expectations_ok": True,
         "response": None,
         "csv_validation": None,
@@ -641,6 +712,12 @@ def main() -> int:
 
     request_id = f"harness_{int(time.time())}"
     snapshot = build_snapshot(scenario, resolved, request_id)
+    result["snapshot_fields"] = {
+        "your_profession": str(scenario.get("profession", "no_past")).strip() or "no_past",
+        "your_tone": resolved.entry.background if resolved.entry else "",
+        "your_example_expression": resolved.entry.expression if resolved.entry else "",
+        "your_background_traits": [str(item).strip() for item in (scenario.get("mutations", []) or []) if str(item).strip()],
+    }
     prompt_template = load_prompt_template(
         NPC_ACTION_PROMPT_FILENAME,
         default_prompt_template(),
