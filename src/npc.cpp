@@ -493,11 +493,17 @@ std::string npc::llm_action_bark_for_reason( const std::string &reason_code )
     if( reason_code == "attack.target_not_visible" ) {
         return _( "Can't see the target." );
     }
+    if( reason_code == "attack.target_missing" ) {
+        return _( "Lost the target." );
+    }
     if( reason_code == "attack.no_clear_shot" ) {
         return _( "No clear shot." );
     }
     if( reason_code == "attack.no_viable_attack" ) {
         return _( "Can't make that attack." );
+    }
+    if( reason_code == "attack.cannot_move" ) {
+        return _( "Can't get there." );
     }
     return std::string();
 }

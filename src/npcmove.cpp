@@ -1608,10 +1608,16 @@ void npc::apply_llm_intent_target()
 
     std::string target_hint = normalize_key( state.target_hint );
     if( target_hint.empty() ) {
+        if( state.active_status.kind == llm_action_kind::attack_target ) {
+            finish_llm_action( llm_action_phase::blocked, "attack.target_invalid" );
+        }
         state.target_hint.clear();
         state.target_attacks_remaining = 0;
         state.target_turns_remaining = 0;
         return;
+    }
+    if( state.active_status.kind != llm_action_kind::attack_target ) {
+        begin_llm_action( llm_action_kind::attack_target, state.target_hint, state.target_hint );
     }
 
     Creature *best = nullptr;
@@ -1723,6 +1729,12 @@ void npc::apply_llm_intent_target()
         } else {
             ai_cache.danger = NPC_DANGER_VERY_LOW;
         }
+        update_llm_action_phase( llm_action_phase::precheck, "",
+        {
+            string_format( "resolved_target=%s", best->disp_name() ),
+            string_format( "dist=%d", best_dist ),
+            matched_legend ? "matched_legend=true" : "matched_legend=false"
+        } );
         if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
             add_msg( _( "LLM intent target resolved to %s at dist %d" ),
                      best->disp_name(), best_dist );
@@ -1735,6 +1747,9 @@ void npc::apply_llm_intent_target()
 
     state.target_turns_remaining -= 1;
     if( state.target_turns_remaining <= 0 ) {
+        if( state.active_status.kind == llm_action_kind::attack_target ) {
+            finish_llm_action( llm_action_phase::cancelled, "attack.expired" );
+        }
         state.target_hint.clear();
         state.target_attacks_remaining = 0;
         state.target_turns_remaining = 0;
@@ -1915,6 +1930,10 @@ void npc::move()
         if( forced_target == nullptr ) {
             if( state.target_loss_grace_turns_remaining > 0 ) {
                 state.target_loss_grace_turns_remaining -= 1;
+                update_llm_action_phase( llm_action_phase::waiting, "attack.reacquire_grace",
+                {
+                    string_format( "grace=%d", state.target_loss_grace_turns_remaining )
+                } );
                 if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                     add_msg( _( "LLM intent target lost; grace %d" ),
                              state.target_loss_grace_turns_remaining );
@@ -1922,6 +1941,7 @@ void npc::move()
                 execute_action( npc_pause );
                 return true;
             }
+            finish_llm_action( llm_action_phase::blocked, "attack.target_missing" );
             if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                 add_msg( _( "LLM intent target '%s' lost; reverting" ), state.target_hint );
             }
@@ -1947,6 +1967,11 @@ void npc::move()
             const int dist = rl_dist( pos_bub(), forced_target->pos_bub() );
             const int conf = confident_shoot_range( *forced_weapon, recoil_total() );
             if( dist <= conf ) {
+                update_llm_action_phase( llm_action_phase::waiting, "attack.aiming",
+                {
+                    string_format( "dist=%d", dist ),
+                    string_format( "confident_range=%d", conf )
+                } );
                 execute_action( npc_aim );
                 if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
                     add_msg( _( "LLM intent aiming at %s" ), forced_target->disp_name() );
@@ -1956,6 +1981,11 @@ void npc::move()
         }
 
         if( !has_flag( json_flag_CANNOT_MOVE ) ) {
+            update_llm_action_phase( llm_action_phase::waiting, "attack.advancing",
+            {
+                string_format( "target=%s", forced_target->disp_name() ),
+                string_format( "dist=%d", rl_dist( pos_bub(), forced_target->pos_bub() ) )
+            } );
             update_path( forced_target->pos_bub() );
             move_to_next();
             if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
@@ -1963,6 +1993,8 @@ void npc::move()
             }
             return true;
         }
+        finish_llm_action( llm_action_phase::blocked, "attack.cannot_move" );
+        execute_action( npc_pause );
         return true;
     };
     if( get_option<bool>( "LLM_INTENT_ENABLE" ) &&
@@ -2273,6 +2305,11 @@ void npc::execute_action( npc_action action )
     switch( action ) {
         case npc_do_attack: {
             if( has_flag( json_flag_CANNOT_ATTACK ) ) {
+                llm_intent_state &state = llm_intent_state_for( *this );
+                if( state.target_attacks_remaining > 0 && !state.target_hint.empty() &&
+                    state.active_status.kind == llm_action_kind::attack_target ) {
+                    finish_llm_action( llm_action_phase::blocked, "attack.cannot_attack" );
+                }
                 move_pause();
                 break;
             }
@@ -2282,6 +2319,16 @@ void npc::execute_action( npc_action action )
             const bool wielded_gun = wielded && wielded->is_gun();
             const double recoil_before = recoil_total();
             const int dist_before = rl_dist( pos_before, eval_target );
+            {
+                llm_intent_state &state = llm_intent_state_for( *this );
+                if( state.target_attacks_remaining > 0 && !state.target_hint.empty() &&
+                    state.active_status.kind == llm_action_kind::attack_target ) {
+                    update_llm_action_phase( llm_action_phase::executing, "",
+                    {
+                        string_format( "dist=%d", dist_before )
+                    } );
+                }
+            }
             if( ai_cache.current_attack ) {
                 ai_cache.current_attack->use( *this, ai_cache.current_attack_evaluation.target() );
             } else {
@@ -2293,17 +2340,25 @@ void npc::execute_action( npc_action action )
             ai_cache.current_attack_evaluation = npc_attack_rating{};
             {
                 llm_intent_state &state = llm_intent_state_for( *this );
-                if( state.target_attacks_remaining > 0 && !state.target_hint.empty() ) {
+                if( state.target_attacks_remaining > 0 && !state.target_hint.empty() &&
+                    state.active_status.kind == llm_action_kind::attack_target ) {
                     const bool ranged_setup_only = wielded_gun && recoil_after < recoil_before;
                     const bool melee_setup_only = !wielded_gun && dist_after < dist_before;
                     const bool spent_attack = !( ranged_setup_only || melee_setup_only );
                     if( spent_attack ) {
                         state.target_attacks_remaining -= 1;
+                        finish_llm_action( llm_action_phase::completed, "",
+                        {
+                            string_format( "remaining_attacks=%d", state.target_attacks_remaining )
+                        } );
                     } else {
+                        update_llm_action_phase( llm_action_phase::waiting,
+                                                 wielded_gun ? "attack.aiming" : "attack.advancing" );
                     }
                     if( state.target_attacks_remaining <= 0 ) {
                         state.target_hint.clear();
                         state.target_turns_remaining = 0;
+                        state.target_loss_grace_turns_remaining = 0;
                     }
                 }
             }
@@ -2730,6 +2785,11 @@ npc_action npc::method_of_attack()
     if( potential && *potential > 0 ) {
         return npc_do_attack;
     } else {
+        llm_intent_state &state = llm_intent_state_for( *this );
+        if( state.target_attacks_remaining > 0 && state.target_turns_remaining > 0 &&
+            !state.target_hint.empty() && state.active_status.kind == llm_action_kind::attack_target ) {
+            update_llm_action_phase( llm_action_phase::precheck, "attack.no_viable_attack" );
+        }
         add_msg_debug( debugmode::debug_filter::DF_NPC, "%s can't figure out what to do", disp_name() );
         return npc_undecided;
     }
