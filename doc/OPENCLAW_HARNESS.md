@@ -529,6 +529,12 @@ These are not fully scripted yet. The next harness work should determine the min
 - can we confirm the chat window contents/state before pressing follow-up keys?
 - should we scrape window contents via screenshot/OCR or settle for log-based confirmation first?
 
+### Empirical note from current live probes
+A live `C+b` probe in the current save did work, but the utterance routed to **Ricky Broughton**, not Rubik. So recipient selection should be treated as state-dependent and confirmed from `llm_intent.log`, not assumed from rough folk rules about ambient-vs-follower priority.
+
+A small harness-oriented control lookup now lives at:
+- `tools/openclaw_harness/CONTROL_LOOKUP.md`
+
 ### HV0-B: frame schema + state classifier
 - implement frame object,
 - implement stable mode classification,

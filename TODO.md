@@ -54,7 +54,9 @@ These are the things worth human eyes, because they are annoying to automate fir
   - is Ricky nearby?
   - is the correct chat window focused?
   - do we need to scrape visible chat text before sending follow-up keys?
+  - for `C+b`, which NPC actually receives the utterance in mixed ambient/follower situations?
 - [ ] Decide whether chat-window contents should be read via screenshot/OCR or via a more direct observable signal.
+- [ ] Keep `tools/openclaw_harness/CONTROL_LOOKUP.md` updated as more pragmatic automation key paths are discovered.
 
 ## CI / repo hygiene
 - [ ] Watch current `dev` CI after `content: format summary registry json`.
