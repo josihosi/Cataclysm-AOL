@@ -488,6 +488,35 @@ Do **not** let ambiguity silently degrade into random keypress nonsense.
 - create replay/run manifest output,
 - validate config-dir artifact writing.
 
+### Current startup-harness slice on `dev`
+There is now a first macOS-oriented startup harness script at:
+- `tools/openclaw_harness/startup_harness.py`
+
+Current scope:
+- branch-aware profile/userdir resolution
+- existing world/save detection
+- fixture save capture/install/list helpers
+- launch game with the correct `--userdir`
+- autoload a world with saves via `--world` when possible
+- otherwise drive the minimal `New Game -> Play Now! (default scenario)` path
+- copy `debug.log` deltas into the run artifact directory and attempt popup dismissal with `return`
+- detect failure via process exit or startup timeout
+- detect success via `config/lastworld.json` updating with a world + character
+
+Example dry-run plan:
+- `python3 tools/openclaw_harness/startup_harness.py plan --profile master`
+- `python3 tools/openclaw_harness/startup_harness.py start --profile master --dry-run`
+
+Example fixture operations:
+- `python3 tools/openclaw_harness/startup_harness.py list-fixtures --profile master`
+- `python3 tools/openclaw_harness/startup_harness.py capture-fixture base_alpha --profile master --overwrite`
+- `python3 tools/openclaw_harness/startup_harness.py install-fixture base_alpha --profile master --replace`
+
+Notes:
+- non-dry-run startup currently requires Peekaboo permissions for Screen Recording and Accessibility
+- the first profile config lives at `tools/openclaw_harness/profiles/master.json`
+- `port/*` branch variations are expected later via per-profile config rather than one giant hardcoded key script
+
 ### HV0-B: frame schema + state classifier
 - implement frame object,
 - implement stable mode classification,
