@@ -112,7 +112,7 @@ def load_profile_config(profile: str) -> Dict[str, Any]:
         "profile_name": profile,
         "startup": {
             "play_now_default_sequence": ["n", "d"],
-            "dismiss_popup_key": "return",
+            "debug_popup_ignore_text": "i",
             "initial_wait_seconds": 2.5,
             "post_input_wait_seconds": 1.0,
             "poll_seconds": 2.0,
@@ -260,6 +260,13 @@ def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> N
     subprocess.run(cmd, check=True, capture_output=True, text=True)
 
 
+def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
+    if not text:
+        return
+    cmd = ["peekaboo", "type", text, "--pid", str(pid), "--delay", str(delay_ms), "--profile", "linear"]
+    subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+
 def copy_file_if_exists(src: Path, dst: Path) -> None:
     if src.exists():
         ensure_dir(dst.parent)
@@ -296,6 +303,29 @@ def capture_screenshot(pid: int, run_dir: Path, label: str) -> None:
         "stderr": proc.stderr,
     }
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def kill_existing_game_processes() -> List[int]:
+    proc = subprocess.run(["pgrep", "-f", "cataclysm-(tiles|tlg-tiles)"], capture_output=True, text=True, check=False)
+    pids: List[int] = []
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            pid = int(line)
+        except ValueError:
+            continue
+        if pid == os.getpid():
+            continue
+        pids.append(pid)
+    for pid in pids:
+        subprocess.run(["kill", str(pid)], check=False, capture_output=True, text=True)
+    if pids:
+        time.sleep(1.0)
+        for pid in pids:
+            subprocess.run(["kill", "-9", str(pid)], check=False, capture_output=True, text=True)
+    return pids
 
 
 def launch_game(profile: str, target_world: str, run_dir: Path) -> subprocess.Popen[str]:
@@ -428,6 +458,7 @@ def run_startup(args: argparse.Namespace) -> int:
         return 0
 
     require_peekaboo_permissions()
+    killed_pids = kill_existing_game_processes()
     ensure_dir(config_dir_for_profile(profile))
     debug_log = config_dir_for_profile(profile) / "debug.log"
     lastworld = config_dir_for_profile(profile) / "lastworld.json"
@@ -435,7 +466,11 @@ def run_startup(args: argparse.Namespace) -> int:
     baseline_mtime = lastworld.stat().st_mtime if lastworld.exists() else 0.0
     copy_file_if_exists(lastworld, run_dir / "lastworld.before.json")
     proc = launch_game(profile, plan.target_world, run_dir)
-    write_json(run_dir / "process.json", {"pid": proc.pid, "command": [plan.executable, "--userdir", f".userdata/{profile}/"] + (["--world", plan.target_world] if plan.target_world else [])})
+    write_json(run_dir / "process.json", {
+        "pid": proc.pid,
+        "command": [plan.executable, "--userdir", f".userdata/{profile}/"] + (["--world", plan.target_world] if plan.target_world else []),
+        "killed_previous_pids": killed_pids,
+    })
 
     startup_cfg = config["startup"]
     time.sleep(float(startup_cfg["initial_wait_seconds"]))
@@ -446,7 +481,7 @@ def run_startup(args: argparse.Namespace) -> int:
 
     poll_seconds = float(startup_cfg["poll_seconds"])
     timeout_seconds = float(startup_cfg["timeout_seconds"])
-    dismiss_key = str(startup_cfg["dismiss_popup_key"])
+    debug_popup_ignore_text = str(startup_cfg["debug_popup_ignore_text"])
     max_popup_dismissals = int(startup_cfg["max_popup_dismissals"])
     dismissals = 0
     deadline = time.monotonic() + timeout_seconds
@@ -473,6 +508,8 @@ def run_startup(args: argparse.Namespace) -> int:
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             print(json.dumps({
                 "ok": True,
+                "ok_with_debug_popups": dismissals > 0,
+                "debug_popups_recorded": dismissals,
                 "strategy": plan.strategy,
                 "lastworld": data,
                 "run_dir": str(run_dir),
@@ -482,8 +519,9 @@ def run_startup(args: argparse.Namespace) -> int:
         new_debug_size = capture_debug_delta(profile, debug_size, run_dir, dismissals + 1)
         if new_debug_size > debug_size and dismissals < max_popup_dismissals:
             debug_size = new_debug_size
+            capture_screenshot(proc.pid, run_dir, f"debug_popup_{dismissals + 1:02d}")
             peekaboo_focus_pid(proc.pid)
-            peekaboo_press_sequence(proc.pid, [dismiss_key])
+            peekaboo_type_text(proc.pid, debug_popup_ignore_text)
             dismissals += 1
         time.sleep(poll_seconds)
 

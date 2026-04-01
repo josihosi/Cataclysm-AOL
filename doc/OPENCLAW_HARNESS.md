@@ -499,7 +499,7 @@ Current scope:
 - launch game with the correct `--userdir`
 - autoload a world with saves via `--world` when possible
 - otherwise drive the minimal `New Game -> Play Now! (default scenario)` path
-- copy `debug.log` deltas into the run artifact directory and attempt popup dismissal with `return`
+- copy `debug.log` deltas into the run artifact directory, capture popup screenshots, and attempt popup ignore with `i`
 - detect failure via process exit or startup timeout
 - detect success via `config/lastworld.json` updating with a world + character
 

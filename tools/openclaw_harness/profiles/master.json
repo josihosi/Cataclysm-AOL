@@ -2,7 +2,7 @@
   "profile_name": "master",
   "startup": {
     "play_now_default_sequence": ["n", "d"],
-    "dismiss_popup_key": "return",
+    "debug_popup_ignore_text": "i",
     "initial_wait_seconds": 2.5,
     "post_input_wait_seconds": 1.0,
     "poll_seconds": 2.0,
