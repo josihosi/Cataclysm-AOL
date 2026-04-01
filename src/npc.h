@@ -937,10 +937,54 @@ class npc : public Character
             std::string npc_response;
             std::vector<std::string> actions;
         };
+        enum class llm_action_kind : int {
+            none = 0,
+            look_around_pickup,
+            look_inventory,
+            attack_target,
+        };
+        enum class llm_action_phase : int {
+            none = 0,
+            requested,
+            precheck,
+            executing,
+            waiting,
+            completed,
+            blocked,
+            failed,
+            cancelled,
+        };
         struct llm_item_target {
             std::string name;
             int quantity = -1;
         };
+        struct llm_action_status {
+            llm_action_kind kind = llm_action_kind::none;
+            llm_action_phase phase = llm_action_phase::none;
+            std::string request_id;
+            int serial = 0;
+            std::string target_hint;
+            std::string target_name;
+            tripoint_abs_ms target_pos = tripoint_abs_ms::invalid;
+            std::string reason_code;
+            bool bark_sent = false;
+            time_point started_turn = calendar::before_time_starts;
+            time_point updated_turn = calendar::before_time_starts;
+            int attempts = 0;
+            std::vector<std::string> debug_facts;
+        };
+        void begin_llm_action( llm_action_kind kind,
+                               const std::string &target_hint = "",
+                               const std::string &target_name = "",
+                               const std::optional<tripoint_abs_ms> &target_pos = std::nullopt ) const;
+        void update_llm_action_phase( llm_action_phase phase,
+                                      const std::string &reason_code = "",
+                                      std::vector<std::string> debug_facts = {} ) const;
+        void finish_llm_action( llm_action_phase terminal_phase,
+                                const std::string &reason_code = "",
+                                std::vector<std::string> debug_facts = {} ) const;
+        void clear_llm_action_status() const;
+        bool has_active_llm_action_status() const;
         void set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                      const std::string &request_id,
                                      const std::string &target_hint ) const;
@@ -1397,6 +1441,9 @@ class npc : public Character
             bool hold_position_active = false;
             std::deque<llm_item_target> look_around_targets;
             llm_item_target look_around_active_target;
+            llm_action_status active_status;
+            std::deque<llm_action_status> recent_statuses;
+            int next_action_serial = 1;
             std::deque<llm_intent_memory_entry> conversation_memory;
             std::deque<llm_overheard_memory_entry> overheard_memory;
             time_point random_call_next_turn = calendar::before_time_starts;

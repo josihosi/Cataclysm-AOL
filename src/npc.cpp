@@ -266,6 +266,29 @@ std::map<character_id, npc::llm_intent_state> &npc::llm_intent_state_map()
     return state_map;
 }
 
+namespace
+{
+constexpr size_t max_recent_llm_action_statuses = 8;
+
+bool is_terminal_llm_action_phase( npc::llm_action_phase phase )
+{
+    switch( phase ) {
+        case npc::llm_action_phase::completed:
+        case npc::llm_action_phase::blocked:
+        case npc::llm_action_phase::failed:
+        case npc::llm_action_phase::cancelled:
+            return true;
+        case npc::llm_action_phase::none:
+        case npc::llm_action_phase::requested:
+        case npc::llm_action_phase::precheck:
+        case npc::llm_action_phase::executing:
+        case npc::llm_action_phase::waiting:
+            return false;
+    }
+    return false;
+}
+} // namespace
+
 npc::llm_intent_state &npc::llm_intent_state_for( const npc &guy )
 {
     static llm_intent_state invalid_state;
@@ -273,6 +296,98 @@ npc::llm_intent_state &npc::llm_intent_state_for( const npc &guy )
         return invalid_state;
     }
     return llm_intent_state_map()[guy.getID()];
+}
+
+void npc::begin_llm_action( llm_action_kind kind,
+                            const std::string &target_hint,
+                            const std::string &target_name,
+                            const std::optional<tripoint_abs_ms> &target_pos ) const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.active_status.kind != llm_action_kind::none ) {
+        if( !is_terminal_llm_action_phase( state.active_status.phase ) ) {
+            state.active_status.phase = llm_action_phase::cancelled;
+            if( state.active_status.reason_code.empty() ) {
+                state.active_status.reason_code = "intent.superseded";
+            }
+        }
+        state.active_status.updated_turn = calendar::turn;
+        state.recent_statuses.push_back( state.active_status );
+        while( state.recent_statuses.size() > max_recent_llm_action_statuses ) {
+            state.recent_statuses.pop_front();
+        }
+    }
+
+    state.active_status = llm_action_status{};
+    if( kind == llm_action_kind::none ) {
+        return;
+    }
+    state.active_status.kind = kind;
+    state.active_status.phase = llm_action_phase::requested;
+    state.active_status.request_id = state.request_id;
+    state.active_status.serial = state.next_action_serial++;
+    state.active_status.target_hint = target_hint;
+    state.active_status.target_name = target_name;
+    state.active_status.target_pos = target_pos ? *target_pos : tripoint_abs_ms::invalid;
+    state.active_status.started_turn = calendar::turn;
+    state.active_status.updated_turn = calendar::turn;
+}
+
+void npc::update_llm_action_phase( llm_action_phase phase,
+                                   const std::string &reason_code,
+                                   std::vector<std::string> debug_facts ) const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.active_status.kind == llm_action_kind::none || phase == llm_action_phase::none ) {
+        return;
+    }
+    state.active_status.phase = phase;
+    if( !reason_code.empty() ) {
+        state.active_status.reason_code = reason_code;
+    }
+    state.active_status.updated_turn = calendar::turn;
+    if( !debug_facts.empty() ) {
+        state.active_status.debug_facts = std::move( debug_facts );
+    }
+    ++state.active_status.attempts;
+}
+
+void npc::finish_llm_action( llm_action_phase terminal_phase,
+                             const std::string &reason_code,
+                             std::vector<std::string> debug_facts ) const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.active_status.kind == llm_action_kind::none ||
+        !is_terminal_llm_action_phase( terminal_phase ) ) {
+        return;
+    }
+    state.active_status.phase = terminal_phase;
+    if( !reason_code.empty() ) {
+        state.active_status.reason_code = reason_code;
+    }
+    state.active_status.updated_turn = calendar::turn;
+    if( !debug_facts.empty() ) {
+        state.active_status.debug_facts = std::move( debug_facts );
+    }
+    state.recent_statuses.push_back( state.active_status );
+    while( state.recent_statuses.size() > max_recent_llm_action_statuses ) {
+        state.recent_statuses.pop_front();
+    }
+    state.active_status = llm_action_status{};
+}
+
+void npc::clear_llm_action_status() const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    state.active_status = llm_action_status{};
+    state.recent_statuses.clear();
+    state.next_action_serial = 1;
+}
+
+bool npc::has_active_llm_action_status() const
+{
+    const llm_intent_state &state = llm_intent_state_for( *this );
+    return state.active_status.kind != llm_action_kind::none;
 }
 
 standard_npc::standard_npc( const std::string &name, const tripoint_bub_ms &pos,
@@ -2561,6 +2676,9 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                   const std::string &request_id,
                                   const std::string &target_hint ) const
 {
+    if( has_active_llm_action_status() ) {
+        finish_llm_action( llm_action_phase::cancelled, "intent.superseded" );
+    }
     llm_intent_state &state = llm_intent_state_for( *this );
     state.queue.clear();
     for( llm_intent_action action : actions ) {
@@ -2593,6 +2711,9 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
 
 void npc::clear_llm_intent_actions()
 {
+    if( has_active_llm_action_status() ) {
+        finish_llm_action( llm_action_phase::cancelled, "intent.cleared" );
+    }
     llm_intent_state &state = llm_intent_state_for( *this );
     state.queue.clear();
     state.active = llm_intent_action::none;
@@ -2643,6 +2764,10 @@ void npc::set_llm_intent_legend_map( const std::string &request_id,
 void npc::set_llm_intent_item_targets( const std::vector<llm_item_target> &targets ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.active_status.kind == llm_action_kind::look_around_pickup &&
+        !is_terminal_llm_action_phase( state.active_status.phase ) ) {
+        finish_llm_action( llm_action_phase::cancelled, "intent.targets_reset" );
+    }
     state.look_around_targets.clear();
     state.look_around_active_target = npc::llm_item_target{};
     for( const llm_item_target &target : targets ) {
