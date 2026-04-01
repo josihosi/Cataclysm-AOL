@@ -1005,6 +1005,13 @@ bool parse_move_field( const std::string &field, std::vector<std::string> &coord
     return true;
 }
 
+void normalize_wait_here_hold_position_pair( std::vector<std::string> &actions )
+{
+    if( actions.size() == 2 && actions[0] == "wait_here" && actions[1] == "hold_position" ) {
+        actions.erase( actions.begin() + 1 );
+    }
+}
+
 bool parse_csv_payload( std::string_view csv, std::string &speech,
                         std::vector<std::string> &actions,
                         std::string &attack_target,
@@ -1154,6 +1161,7 @@ bool parse_csv_payload( std::string_view csv, std::string &speech,
     if( actions.empty() && !attack_target.empty() ) {
         actions.emplace_back( "idle" );
     }
+    normalize_wait_here_hold_position_pair( actions );
     if( actions.empty() ) {
         error = "CSV must include at least one action field.";
         return false;
@@ -1806,6 +1814,7 @@ bool extract_lenient_csv( const std::string &csv, std::string &speech,
             const bool right_ok = end >= lowered.size() || is_boundary( lowered[end] );
             if( left_ok && right_ok ) {
                 actions.push_back( action );
+                normalize_wait_here_hold_position_pair( actions );
                 return true;
             }
             start = lowered.find( action, end );
