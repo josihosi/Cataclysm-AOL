@@ -1640,79 +1640,96 @@ look_inventory_selection parse_look_inventory_response( const std::string &text,
 }
 
 void apply_look_inventory_actions( npc &listener,
+                                   const std::string &request_id,
                                    const std::unordered_map<std::string, item *> &inventory,
                                    const std::unordered_map<std::string, std::string> &id_to_name,
                                    const look_inventory_selection &selection )
 {
-    auto log_action = [&]( const std::string & action, const std::string & item_name,
-    const std::string & result ) {
+    auto item_label = [&]( const std::string &item_name ) {
         const auto name_it = id_to_name.find( item_name );
-        const std::string label = name_it == id_to_name.end()
-                                  ? item_name
-                                  : item_name + ": " + name_it->second;
-        llm_intent::log_event( string_format( "look_inventory %s %s (%s): %s",
-                                              action,
-                                              listener.get_name(),
-                                              label,
-                                              result ) );
+        return name_it == id_to_name.end() ? item_name : name_it->second;
+    };
+
+    auto begin_inventory_action = [&]( const std::string &item_name ) {
+        listener.begin_llm_action( npc::llm_action_kind::look_inventory,
+                                   item_name,
+                                   item_label( item_name ),
+                                   std::nullopt,
+                                   request_id );
+        listener.update_llm_action_phase( npc::llm_action_phase::precheck );
     };
 
     for( const std::string &name : selection.wear ) {
+        begin_inventory_action( name );
         auto it = inventory.find( name );
         if( it == inventory.end() ) {
-            log_action( "wear", name, "not found" );
+            listener.finish_llm_action( npc::llm_action_phase::blocked, "inventory.item_missing" );
             continue;
         }
         if( !listener.can_wear( *it->second ).success() ) {
-            log_action( "wear", name, "cannot wear" );
+            listener.finish_llm_action( npc::llm_action_phase::blocked, "inventory.cannot_wear" );
             continue;
         }
+        listener.update_llm_action_phase( npc::llm_action_phase::executing );
         if( listener.wear_item( *it->second, false ).has_value() ) {
-            log_action( "wear", name, "ok" );
+            listener.finish_llm_action( npc::llm_action_phase::completed );
         } else {
-            log_action( "wear", name, "failed" );
+            listener.finish_llm_action( npc::llm_action_phase::failed, "inventory.wear_failed" );
         }
     }
 
     for( const std::string &name : selection.wield ) {
+        begin_inventory_action( name );
         auto it = inventory.find( name );
         if( it == inventory.end() ) {
-            log_action( "wield", name, "not found" );
+            listener.finish_llm_action( npc::llm_action_phase::blocked, "inventory.item_missing" );
             continue;
         }
         if( !listener.can_wield( *it->second ).success() ) {
-            log_action( "wield", name, "cannot wield" );
+            listener.finish_llm_action( npc::llm_action_phase::blocked, "inventory.cannot_wield" );
             continue;
         }
+        listener.update_llm_action_phase( npc::llm_action_phase::executing );
         if( listener.wield( *it->second ) ) {
-            log_action( "wield", name, "ok" );
+            listener.finish_llm_action( npc::llm_action_phase::completed );
         } else {
-            log_action( "wield", name, "failed" );
+            listener.finish_llm_action( npc::llm_action_phase::failed, "inventory.wield_failed" );
         }
     }
 
     for( const std::string &name : selection.act ) {
+        begin_inventory_action( name );
         auto it = inventory.find( name );
         if( it == inventory.end() ) {
-            log_action( "act", name, "not found" );
+            listener.finish_llm_action( npc::llm_action_phase::blocked, "inventory.item_missing" );
             continue;
         }
+        listener.update_llm_action_phase( npc::llm_action_phase::executing );
         listener.activate_item( *it->second );
-        log_action( "act", name, "attempted" );
+        listener.finish_llm_action( npc::llm_action_phase::completed, "",
+        {
+            "activation_attempted=true"
+        } );
     }
 
     for( const std::string &name : selection.drop ) {
+        begin_inventory_action( name );
         auto it = inventory.find( name );
         if( it == inventory.end() ) {
-            log_action( "drop", name, "not found" );
+            listener.finish_llm_action( npc::llm_action_phase::blocked, "inventory.item_missing" );
             continue;
         }
         item_location loc( listener, it->second );
         const int count = it->second->count_by_charges() ? std::max( 1, it->second->charges ) : 1;
         drop_locations items;
         items.emplace_back( loc, count );
+        listener.update_llm_action_phase( npc::llm_action_phase::executing );
         listener.drop( items, listener.pos_bub(), false );
-        log_action( "drop", name, "attempted" );
+        listener.finish_llm_action( npc::llm_action_phase::completed, "",
+        {
+            string_format( "drop_count=%d", count ),
+            "drop_attempted=true"
+        } );
     }
 }
 
@@ -3635,7 +3652,7 @@ class llm_intent_manager
             }
             if( npc *target = g->find_npc( context.npc_id ) ) {
                 if( target->is_player_ally() ) {
-                    apply_look_inventory_actions( *target, inventory, id_to_name, selection );
+                    apply_look_inventory_actions( *target, resp.request_id, inventory, id_to_name, selection );
                 }
             }
         }

@@ -354,7 +354,8 @@ npc::llm_intent_state &npc::llm_intent_state_for( const npc &guy )
 void npc::begin_llm_action( llm_action_kind kind,
                             const std::string &target_hint,
                             const std::string &target_name,
-                            const std::optional<tripoint_abs_ms> &target_pos ) const
+                            const std::optional<tripoint_abs_ms> &target_pos,
+                            const std::string &request_id_override ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
     if( state.active_status.kind != llm_action_kind::none ) {
@@ -377,7 +378,7 @@ void npc::begin_llm_action( llm_action_kind kind,
     }
     state.active_status.kind = kind;
     state.active_status.phase = llm_action_phase::requested;
-    state.active_status.request_id = state.request_id;
+    state.active_status.request_id = request_id_override.empty() ? state.request_id : request_id_override;
     state.active_status.serial = state.next_action_serial++;
     state.active_status.target_hint = target_hint;
     state.active_status.target_name = target_name;

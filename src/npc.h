@@ -976,7 +976,8 @@ class npc : public Character
         void begin_llm_action( llm_action_kind kind,
                                const std::string &target_hint = "",
                                const std::string &target_name = "",
-                               const std::optional<tripoint_abs_ms> &target_pos = std::nullopt ) const;
+                               const std::optional<tripoint_abs_ms> &target_pos = std::nullopt,
+                               const std::string &request_id_override = "" ) const;
         void update_llm_action_phase( llm_action_phase phase,
                                       const std::string &reason_code = "",
                                       std::vector<std::string> debug_facts = {} ) const;
