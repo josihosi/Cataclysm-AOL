@@ -8,11 +8,12 @@ _Practical next steps after the v1 action-status pass._
 - [ ] Add 1-3 deterministic action-status fixtures beyond the first attack-target-missing example.
 - [ ] Cover at least one pickup blocked case (`pickup.no_path` or `pickup.item_missing`).
 - [ ] Cover at least one inventory blocked case (`inventory.item_missing` or `inventory.cannot_wield`).
-- [ ] Decide whether `action_status_check.py` should also support ordered phase assertions.
+- [ ] Add ordered phase assertions to `action_status_check.py` so fixtures can verify more than just set membership.
 - [ ] Document the intended stable reason-code vocabulary for v1 so tests do not chase moving strings forever.
 
 ### 2. Build the smallest useful harness path
 - [ ] Create a branch-aware startup profile for `master` first.
+- [ ] Add harness-owned fixture save install/capture management.
 - [ ] Launch the game automatically.
 - [ ] Reach menu readiness reliably.
 - [ ] Load a known save without manual keystrokes.

@@ -47,6 +47,7 @@ EXPECTED_KEYS = {
     "target_hint",
     "min_events",
     "phase_any",
+    "phase_sequence",
     "reason_any",
     "terminal_phase",
     "terminal_reason",
@@ -128,6 +129,8 @@ def normalize_expectations(args: argparse.Namespace) -> Dict[str, object]:
         expectations["min_events"] = args.min_events
     if args.phase_any:
         expectations["phase_any"] = list(args.phase_any)
+    if args.phase_sequence:
+        expectations["phase_sequence"] = list(args.phase_sequence)
     if args.reason_any:
         expectations["reason_any"] = list(args.reason_any)
     return expectations
@@ -154,6 +157,22 @@ def evaluate_events(events: List[ActionStatusEvent], expectations: Dict[str, obj
             if str(wanted) not in phases:
                 result["ok"] = False
                 result["errors"].append(f"missing expected phase: {wanted}")
+
+    phase_sequence = expectations.get("phase_sequence")
+    if isinstance(phase_sequence, list) and phase_sequence:
+        actual_phases = [event.phase for event in events]
+        cursor = 0
+        for wanted in phase_sequence:
+            wanted_str = str(wanted)
+            while cursor < len(actual_phases) and actual_phases[cursor] != wanted_str:
+                cursor += 1
+            if cursor >= len(actual_phases):
+                result["ok"] = False
+                result["errors"].append(
+                    f"missing expected phase sequence element: {wanted_str} in order {phase_sequence}"
+                )
+                break
+            cursor += 1
 
     reason_any = expectations.get("reason_any")
     if isinstance(reason_any, list):
@@ -191,6 +210,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--target-hint", default="", help="Substring that must appear in target_hint.")
     parser.add_argument("--min-events", type=int, default=None, help="Require at least this many matched events.")
     parser.add_argument("--phase-any", action="append", default=[], help="Require that at least one matched event has this phase. Repeatable.")
+    parser.add_argument("--phase-sequence", action="append", default=[], help="Require these phases to appear in order across matched events. Repeatable.")
     parser.add_argument("--reason-any", action="append", default=[], help="Require that at least one matched event has this reason. Repeatable.")
     parser.add_argument("--terminal-phase", default="", help="Require this terminal phase on the last matched event.")
     parser.add_argument("--terminal-reason", default="", help="Require this terminal reason on the last matched event.")

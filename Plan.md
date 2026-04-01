@@ -205,7 +205,16 @@ That is valuable work, but it is exactly the kind of repetitive nonsense a harne
 - Build the first harness path for `master`; do not assume it is automatically a `port/*` concern.
 
 ### Practical v1 scope
-#### 1. Branch-aware startup profiles
+#### 1. Deterministic checks before broader harness work
+Before building a larger interactive harness, add a few deterministic checks against the new action-status output.
+That means:
+- fixture status logs
+- checker assertions on phase/reason outcomes
+- and a small stable vocabulary for the first useful blocked/success cases
+
+This is the cheap confidence layer that should come before more expensive menu automation.
+
+#### 2. Branch-aware startup profiles
 The harness should know how to do basic startup tasks for each target branch/profile, such as:
 - launch executable
 - wait for menu readiness
@@ -216,7 +225,17 @@ The harness should know how to do basic startup tasks for each target branch/pro
 This must not depend on Josef supplying keystrokes every single time.
 Store branch/profile-specific startup sequences in data/config so they can be adjusted when menus differ.
 
-#### 2. Deterministic scripted smoke tests
+#### 3. Harness-owned fixture save management
+Fixture save handling should be part of the harness, not a separate side ritual.
+The harness should be able to:
+- install a named fixture save into the correct branch/profile save directory
+- load that fixture save as part of startup
+- capture/update a fixture save from the active profile when a good debug save has been prepared manually
+- keep fixture saves branch-aware instead of pretending one save is automatically valid across every profile
+
+The branch/profile save split already exists in the local build flow, so the missing work is turning that into an explicit harness subsystem.
+
+#### 4. Deterministic scripted smoke tests
 Use prepared saves and repeatable command scripts for checks like:
 - game launches successfully
 - save loads successfully
@@ -224,7 +243,7 @@ Use prepared saves and repeatable command scripts for checks like:
 - NPC receives command opportunity
 - target action either succeeds or returns an expected blocked reason
 
-#### 3. Artifact capture
+#### 5. Artifact capture
 On failure, capture enough evidence to debug quickly:
 - screenshot(s)
 - harness log
@@ -341,12 +360,15 @@ These need answers during implementation, not necessarily all up front.
 - Extend the same model to `attack=<target>`.
 
 ### Third
-- Build the smallest useful branch-aware harness that can launch the game and load a known save without Josef hand-holding the keystrokes.
+- Add 2-4 deterministic action-status fixtures/checks so the new reason-code layer is already testable before broader automation lands.
 
 ### Fourth
-- Add 1-3 real smoke scenarios that assert on the new action result layer.
+- Build the smallest useful branch-aware harness that can launch the game, install/load a fixture save, and reach a known playable state without Josef hand-holding the keystrokes.
 
 ### Fifth
+- Add 1-3 real smoke scenarios that assert on the new action result layer.
+
+### Sixth
 - Expand curated summaries in parallel where useful.
 
 ---
