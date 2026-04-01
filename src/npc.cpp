@@ -466,6 +466,9 @@ std::string npc::llm_action_bark_for_reason( const std::string &reason_code )
     if( reason_code == "pickup.hostile_threat_nearby" ) {
         return _( "Not while we're under threat." );
     }
+    if( reason_code == "pickup.panic_override" ) {
+        return _( "Nope, not doing that." );
+    }
     if( reason_code == "pickup.item_missing" ) {
         return _( "It's gone." );
     }
@@ -490,6 +493,12 @@ std::string npc::llm_action_bark_for_reason( const std::string &reason_code )
     if( reason_code == "inventory.cannot_activate" ) {
         return _( "Can't use that." );
     }
+    if( reason_code == "inventory.wear_failed" ) {
+        return _( "Wouldn't go on." );
+    }
+    if( reason_code == "inventory.wield_failed" ) {
+        return _( "Wouldn't stay in hand." );
+    }
     if( reason_code == "attack.target_not_visible" ) {
         return _( "Can't see the target." );
     }
@@ -502,8 +511,20 @@ std::string npc::llm_action_bark_for_reason( const std::string &reason_code )
     if( reason_code == "attack.no_viable_attack" ) {
         return _( "Can't make that attack." );
     }
+    if( reason_code == "attack.morale_or_panic_block" ) {
+        return _( "Nope, not doing that." );
+    }
+    if( reason_code == "attack.target_invalid" ) {
+        return _( "That target makes no sense." );
+    }
+    if( reason_code == "attack.cannot_attack" ) {
+        return _( "Can't fight like this." );
+    }
     if( reason_code == "attack.cannot_move" ) {
         return _( "Can't get there." );
+    }
+    if( reason_code == "pickup.obtain_failed" ) {
+        return _( "Couldn't get it." );
     }
     return std::string();
 }

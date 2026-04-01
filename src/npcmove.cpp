@@ -1910,9 +1910,23 @@ void npc::move()
     const bool llm_item_safe = ai_cache.danger <= 0 && target == nullptr &&
                                !sees_dangerous_field( pos_bub() ) &&
                                !has_effect( effect_npc_fire_bad );
-    if( get_option<bool>( "LLM_INTENT_ENABLE" ) && llm_item_safe && !fetching_item &&
-        !state.look_around_targets.empty() ) {
-        if( apply_llm_intent_item_targets() ) {
+    if( get_option<bool>( "LLM_INTENT_ENABLE" ) && !fetching_item && !state.look_around_targets.empty() ) {
+        if( !llm_item_safe ) {
+            const bool panic_block = attitude == NPCATT_FLEE || attitude == NPCATT_FLEE_TEMP ||
+                                     has_effect( effect_npc_flee_player ) ||
+                                     has_effect( effect_npc_run_away ) ||
+                                     state.panic_forced_turns_remaining > 0;
+            const llm_item_target blocked_target = state.look_around_targets.front();
+            begin_llm_action( llm_action_kind::look_around_pickup,
+                              blocked_target.name,
+                              blocked_target.name );
+            finish_llm_action( llm_action_phase::blocked,
+                               panic_block ? "pickup.panic_override" : "pickup.hostile_threat_nearby",
+                               panic_block ? std::vector<std::string>{ string_format( "panic=%d", mem_combat.panic ) }
+                                           : std::vector<std::string>{} );
+            state.look_around_targets.clear();
+            state.look_around_active_target = llm_item_target{};
+        } else if( apply_llm_intent_item_targets() ) {
             execute_action( npc_pickup );
             return;
         }
@@ -1925,6 +1939,22 @@ void npc::move()
             state.target_hint.empty() ) {
             state.target_loss_grace_turns_remaining = 0;
             return false;
+        }
+        const bool panic_block = attitude == NPCATT_FLEE || attitude == NPCATT_FLEE_TEMP ||
+                                 has_effect( effect_npc_flee_player ) ||
+                                 has_effect( effect_npc_run_away ) ||
+                                 state.panic_forced_turns_remaining > 0;
+        if( panic_block ) {
+            finish_llm_action( llm_action_phase::blocked, "attack.morale_or_panic_block",
+            {
+                string_format( "panic=%d", mem_combat.panic )
+            } );
+            state.target_hint.clear();
+            state.target_attacks_remaining = 0;
+            state.target_turns_remaining = 0;
+            state.target_loss_grace_turns_remaining = 0;
+            execute_action( npc_pause );
+            return true;
         }
         Creature *forced_target = current_target();
         if( forced_target == nullptr ) {
