@@ -8,6 +8,7 @@ _Practical next steps after the v1 action-status pass._
 - [ ] Add 1-3 deterministic action-status fixtures beyond the first attack-target-missing example.
 - [ ] Cover at least one pickup blocked case (`pickup.no_path` or `pickup.item_missing`).
 - [ ] Cover at least one inventory blocked case (`inventory.item_missing` or `inventory.cannot_wield`).
+- [ ] Add panic/morale override coverage so pickup and attack do not look mysteriously flaky when panic supersedes intent.
 - [ ] Add ordered phase assertions to `action_status_check.py` so fixtures can verify more than just set membership.
 - [ ] Document the intended stable reason-code vocabulary for v1 so tests do not chase moving strings forever.
 

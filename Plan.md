@@ -98,6 +98,7 @@ Examples:
 - `item_missing`
 - `hostile_threat_nearby`
 - `grabbed_or_panic`
+- `panic_override`
 - `path_blocked`
 - `pickup_rules_disallow`
 
@@ -150,6 +151,8 @@ Examples:
 Examples:
 - `pickup blocked: no_inventory_space item="steel jerrycan" volume_left=0 weight_margin=1`
 - `attack blocked: friendly_fire_risk target="zombie dog" ally_in_line=true`
+- `pickup blocked: panic_override item="steel jerrycan" panic=6`
+- `attack blocked: morale_or_panic_block target="zombie dog" panic=8`
 
 This should go to logs first.
 Optional UI surfacing can come later if useful.
