@@ -58,7 +58,9 @@ These are the things worth human eyes, because they are annoying to automate fir
   - do we need to scrape visible chat text before sending follow-up keys?
   - for `C+b`, which NPC actually receives the utterance in mixed ambient/follower situations?
 - [ ] Decide whether chat-window contents should be read via screenshot/OCR or via a more direct observable signal.
+- [ ] Investigate whether we can detect in-game menu/dialog/gameplay state more directly than screenshots (or at least with a stronger observable than blind keying).
 - [ ] Keep `tools/openclaw_harness/CONTROL_LOOKUP.md` updated as more pragmatic automation key paths are discovered.
+- [ ] Audit raw keybind vs typed-character semantics for harness input so gameplay keys do not misfire into things like throw mode.
 
 ## CI / repo hygiene
 - [ ] Watch current `dev` CI after `content: format summary registry json`.

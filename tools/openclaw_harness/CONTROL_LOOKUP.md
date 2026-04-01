@@ -6,6 +6,7 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 - These are **pragmatic automation notes**, not authoritative game documentation.
 - Context matters. The same key may do something slightly different depending on UI state, quest prompts, nearby NPCs, or branch-specific menu differences.
 - Prefer **observables + logs** over blind faith. If possible, confirm the resulting state from `llm_intent.log`, screenshots, or another artifact.
+- Beware raw keybind semantics: gameplay `t` is throw, so accidental hotkey mismatches can produce surreal results like trying to throw boxer shorts at a cow. Typed characters and raw keybinds are not always interchangeable for harness work.
 
 ## Startup / main menu
 

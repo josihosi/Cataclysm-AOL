@@ -530,10 +530,15 @@ These are not fully scripted yet. The next harness work should determine the min
 - should we scrape window contents via screenshot/OCR or settle for log-based confirmation first?
 
 ### Empirical note from current live probes
-A live `C+b` probe in the current save did work, but the utterance routed to **Ricky Broughton**, not Rubik. So recipient selection should be treated as state-dependent and confirmed from `llm_intent.log`, not assumed from rough folk rules about ambient-vs-follower priority.
+A live `C+b` probe in the current save did work, but recipient resolution and visible behavior are state-sensitive enough that they should be confirmed from fresh artifacts, not folklore. One practical lesson: gameplay raw keybinds matter — a wrong input path can land in throw mode instead of the intended interaction flow.
 
 A small harness-oriented control lookup now lives at:
 - `tools/openclaw_harness/CONTROL_LOOKUP.md`
+
+A tiny log helper now also lives at:
+- `tools/openclaw_harness/log_probe.py`
+
+Use it to mark/read `llm_intent.log` by **byte size checkpoint** instead of the flakier line-count trick.
 
 ### HV0-B: frame schema + state classifier
 - implement frame object,
