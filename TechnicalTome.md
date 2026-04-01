@@ -15,7 +15,7 @@ The summarizer now has **two modes**:
    - generates summaries for `tier: auto` named NPCs by reading the listed
      `source_files`
    - writes selector-based output into
-     `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt`
+     `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.json`
 
 ### What the background-topic mode does
 - Builds a trait-to-topic map by reading
@@ -40,28 +40,46 @@ The summarizer now has **two modes**:
   - `source_files[]` for `auto`
 - Aggregates `talk_topic` lines from the listed `source_files`.
 - Runs the same summarizer prompt over that aggregated text.
-- Writes one line per selector in the form:
-  `selector|your_background|your_expression|source_tag`
+- Writes either legacy pipe-delimited `.txt` entries or the preferred JSON bundle
+  format depending on the target file extension in `generated_output`.
 - Uses provenance tags in the form:
   `local:<backend>:<model>:registry:<entry_id>`
+
+### Runtime summary JSON schema
+Phase 2 introduces a proper runtime summary-entry JSON format. The loader accepts:
+- a single `npc_personality_summary` object
+- an array of summary objects
+- or a bundle object with `type: "npc_personality_summary_bundle"` and `entries[]`
+
+Each summary entry may provide:
+- `selector` or `selectors` for named-NPC matching
+- `topic` or `topics` for background-topic matching
+- `your_background` / `background`
+- `your_expression` / `expression`
+- `source_tag`
+
+This means a mod can now ship one JSON bundle containing both named overrides and
+trait/topic summaries instead of relying entirely on line-based text files.
 
 ### Tier intent
 - **Tier 1 / manual**
   - important NPCs with authorial voice
-  - live in hand-maintained `Summaries_extra/*.txt` files
+  - can live in hand-maintained `Summaries_extra/*.json` files (preferred) or legacy `.txt` files
   - can still be listed in the registry as documentation / triage
 - **Tier 2 / auto**
   - named NPCs good enough for generated summaries
-  - live in `generated_named_npcs.txt`
+  - live in `generated_named_npcs.json` by default now
   - can be regenerated from the registry
 
 ### Runtime loading and override rules
 Runtime summary loading in `src/llm_intent.cpp` now:
 - reloads when the active summary roots change (core data vs active mods)
 - merges core + active mod + world custom-mod roots
-- loads `generated_*.txt` files before other `.txt` files in each
-  `Summaries_extra` folder
+- loads both `.json` and legacy `.txt` summary files
+- prefers the newer JSON format when the same stem exists in both formats
+- still loads `generated_*` files before later manual files in each summary folder
 - therefore allows manual files to override generated selectors cleanly
+- accepts JSON summary entries addressed by `selector` / `selectors` and/or `topic` / `topics`
 - also loads `Summaries_short` / `Summaries_extra` from active mods so modded
   summary packs participate in the same mechanism
 
@@ -108,7 +126,7 @@ Run the named-NPC smoke harness through the normal runner pipe:
 The smoke harness intentionally tests three layers together:
 - selector resolution (manual vs generated precedence)
 - snapshot/prompt assembly for one named NPC
-- runner I/O + response parsing using game-like CSV validation
+- runner I/O + response parsing using game-like pipe-separated action-line validation
 
 ## LLM Intent Actions (Behavior Notes)
 - `look_around` requests up to three nearby item names for pickup targeting.

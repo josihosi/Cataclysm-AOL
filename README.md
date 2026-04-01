@@ -32,7 +32,7 @@ Yelling a sentence has also been changed to 'Say a sentence' with a range of aro
 
 ### What’s already in and working
 - Local runner is wired (stdin/stdout JSON), kept warm, and logs metrics; snapshots are compact and include speech + actions that get surfaced in-game when parsed.
-- Background summarizer can run at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; local generation supports either Ollama or OpenVINO. It also supports a registry-driven named-NPC pass that writes generated selectors into `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt`, while hand-written files in the same folder still override the generated tier. On macOS, `./just_build_macos.sh --with-summary` can read the current branch profile's LLM menu summary settings, or you can pass explicit flags like `--summary-backend ollama --summary-ollama-model mistral`. `your_profession` and `background_summary` are injected into the snapshot.
+- Background summarizer can run at build time and writes per-story summaries under `data/json/npcs/Backgrounds/Summaries_short`; local generation supports either Ollama or OpenVINO. It also supports a registry-driven named-NPC pass that now writes generated selectors into `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.json`, while the runtime still accepts legacy `.txt` summary files for compatibility. On macOS, `./just_build_macos.sh --with-summary` can read the current branch profile's LLM menu summary settings, or you can pass explicit flags like `--summary-backend ollama --summary-ollama-model mistral`. `your_profession`, `your_tone`, and `your_example_expression` are injected into the snapshot.
 - Stable item addressing is live (item ids in prompts), and panic_on/panic_off use timed decay.
 - Debug logging captures snapshots, responses, and raw failures for prompt tuning; speech shows in-game on success.
 - Random calls are live: each ally uses an independent jittered timer and can fire a spontaneous call with no player utterance.
@@ -292,7 +292,7 @@ It does four things in one pass:
 1. resolves the NPC's summary using the same selector order and generated/manual precedence as the game
 2. builds a small game-shaped snapshot
 3. sends the request through the normal `runner.py` stdin/stdout JSON pipe
-4. validates the returned action line with game-like CSV parsing rules, including the lenient fallback
+4. validates the returned pipe-separated action line with game-like parsing rules, including the lenient fallback
 
 Example deterministic summary-resolution checks:
 
@@ -331,12 +331,13 @@ Core data now uses the following files:
 - `data/json/npcs/Backgrounds/summary_registry.json`
   - declarative list of named NPC entries
   - each entry picks a `tier`, one or more `selectors`, and (for auto tier) `source_files`
-- `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt`
+- `data/json/npcs/Backgrounds/Summaries_extra/generated_named_npcs.json`
   - generated output for auto-tier named NPCs
 - `data/json/npcs/Backgrounds/Summaries_extra/special_npcs.txt`
-  - hand-written overrides for major NPCs
+  - current hand-written overrides for major NPCs
+  - `.json` files are also supported now and are the preferred format going forward
 
-At runtime, `generated_*.txt` files are loaded first and manual `.txt` files in the same folder are loaded after them. That means **manual summaries override generated ones when they share the same selector**.
+At runtime, `generated_*` summary files are loaded first and manual files in the same folder are loaded after them. Both `.json` and legacy `.txt` files are supported, and when the same selector exists in both, the later manual entry wins. That means **manual summaries override generated ones when they share the same selector**.
 
 The game also looks for `npcs/Backgrounds/Summaries_short` and `npcs/Backgrounds/Summaries_extra` inside active mods, so a mod can ship its own generated or manual named-NPC summaries without patching core files.
 
@@ -347,7 +348,7 @@ The registry is a JSON object with a shared `path_root`, one `generated_output`,
 {
   "version": 1,
   "path_root": "../..",
-  "generated_output": "npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt",
+  "generated_output": "npcs/Backgrounds/Summaries_extra/generated_named_npcs.json",
   "entries": [
     {
       "id": "aleesha_seward",
@@ -377,6 +378,41 @@ Rules:
 - `selectors` are the runtime match keys. Use the same `name:` / `topic:` forms the game already understands.
 - `source_files` are required for `tier: "auto"` and optional for `tier: "manual"`.
 - `path_root` is resolved relative to the registry file and is used as the base for `source_files` and `generated_output`.
+
+### Runtime summary-entry JSON format
+Phase 2 adds a proper runtime JSON format for summaries. The loader still accepts legacy `.txt` files, but new content should prefer JSON.
+
+A summary bundle can be a single object, an array, or an object with an `entries` array. Each entry may target one or more named selectors and/or one or more background-topic ids.
+
+```json
+{
+  "type": "npc_personality_summary_bundle",
+  "version": 1,
+  "entries": [
+    {
+      "type": "npc_personality_summary",
+      "selector": "name:Rubik",
+      "your_background": "precise, dry, sardonic, transactional, observant",
+      "your_expression": "State your business.",
+      "source_tag": "special_npc:Rubik"
+    },
+    {
+      "type": "npc_personality_summary",
+      "topics": ["BGSS_COP_1_STORY1"],
+      "your_background": "fearful, traumatized, resilient, guilt-ridden, desperate",
+      "your_expression": "I lost my nerve. I ran.",
+      "source_tag": "local:example:cop_1"
+    }
+  ]
+}
+```
+
+Supported entry keys:
+- `selector` or `selectors`
+- `topic` or `topics`
+- `your_background` (or legacy-friendly `background`)
+- `your_expression` (or legacy-friendly `expression`)
+- `source_tag`
 
 ### Running the named-NPC summarizer
 Dry-run the registry first:
@@ -415,14 +451,15 @@ python3 tools/llm_runner/background_summarizer.py \
 For a mod, mirror the same structure under the mod's JSON root:
 
 - `npcs/Backgrounds/summary_registry.json`
-- `npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt`
-- `npcs/Backgrounds/Summaries_extra/my_special_npcs.txt`
+- `npcs/Backgrounds/Summaries_extra/generated_named_npcs.json`
+- `npcs/Backgrounds/Summaries_extra/my_special_npcs.json`
+  - legacy `.txt` files still work, but JSON is the preferred path now
 
 A practical pattern is:
 1. put important NPCs in `tier: "manual"`
 2. put secondary named NPCs in `tier: "auto"`
 3. run the summarizer for the auto tier
-4. add hand-written `.txt` overrides only where the generated result is not good enough
+4. add hand-written JSON overrides only where the generated result is not good enough
 
 That way the mod stays easy to extend: add an entry, point it at the dialogue files, regenerate, done.
 

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "path_root": "../..",
-  "generated_output": "npcs/Backgrounds/Summaries_extra/generated_named_npcs.txt",
+  "generated_output": "npcs/Backgrounds/Summaries_extra/generated_named_npcs.json",
   "entries": [
     {
       "id": "aleesha_seward",

@@ -394,11 +394,61 @@ def is_valid_words(text: str) -> bool:
     return False
 
 
+def entry_ids_from_json_record(record: Dict[str, Any]) -> List[str]:
+    ids: List[str] = []
+    for key in ("selector", "topic", "id"):
+        value = record.get(key)
+        if isinstance(value, str):
+            normalized = normalize_selector(value)
+            if normalized and normalized not in ids:
+                ids.append(normalized)
+    for key in ("selectors", "topics"):
+        value = record.get(key)
+        if not isinstance(value, list):
+            continue
+        for item in value:
+            if not isinstance(item, str):
+                continue
+            normalized = normalize_selector(item)
+            if normalized and normalized not in ids:
+                ids.append(normalized)
+    return ids
+
+
+def load_json_summary_records(path: str) -> List[Dict[str, Any]]:
+    with open(path, "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    if isinstance(data, dict) and isinstance(data.get("entries"), list):
+        raw_records = data.get("entries", [])
+    elif isinstance(data, list):
+        raw_records = data
+    elif isinstance(data, dict):
+        raw_records = [data]
+    else:
+        return []
+    return [record for record in raw_records if isinstance(record, dict)]
+
+
 def load_existing_entries(path: str) -> Dict[str, Dict[str, Any]]:
     if not os.path.exists(path):
         return {}
     entries: Dict[str, Dict[str, Any]] = {}
     try:
+        if path.lower().endswith(".json"):
+            for record in load_json_summary_records(path):
+                background = normalize_selector(str(record.get("your_background", record.get("background", ""))))
+                expression = normalize_selector(str(record.get("your_expression", record.get("expression", ""))))
+                source_tag = normalize_selector(str(record.get("source_tag", "")))
+                if not background or not expression:
+                    continue
+                for entry_id in entry_ids_from_json_record(record):
+                    entries[entry_id] = {
+                        "id": entry_id,
+                        "your_background": background,
+                        "your_expression": expression,
+                        "source_tag": source_tag,
+                    }
+            return entries
         with open(path, "r", encoding="utf-8") as handle:
             for raw in handle:
                 line = raw.strip()
@@ -420,9 +470,35 @@ def load_existing_entries(path: str) -> Dict[str, Dict[str, Any]]:
     return entries
 
 
+def entry_to_json_record(entry: Dict[str, Any]) -> Dict[str, Any]:
+    entry_id = str(entry.get("id", "")).strip()
+    record: Dict[str, Any] = {
+        "type": "npc_personality_summary",
+        "your_background": str(entry.get("your_background", "")).strip(),
+        "your_expression": str(entry.get("your_expression", "")).strip(),
+    }
+    source_tag = str(entry.get("source_tag", "")).strip()
+    if source_tag:
+        record["source_tag"] = source_tag
+    if entry_id.startswith("name:") or entry_id.startswith("topic:"):
+        record["selector"] = entry_id
+    else:
+        record["topic"] = entry_id
+    return record
+
+
 def write_entries(path: str, entries: Dict[str, Dict[str, Any]]) -> None:
     ordered = [entries[key] for key in sorted(entries.keys())]
     with open(path, "w", encoding="utf-8") as handle:
+        if path.lower().endswith(".json"):
+            bundle = {
+                "type": "npc_personality_summary_bundle",
+                "version": 1,
+                "entries": [entry_to_json_record(entry) for entry in ordered],
+            }
+            json.dump(bundle, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+            return
         for entry in ordered:
             handle.write(
                 f"{entry['id']}|{entry.get('your_background', '')}|"
@@ -470,7 +546,7 @@ def load_summary_registry(path: str) -> Dict[str, Any]:
         path_root,
         str(data.get(
             "generated_output",
-            os.path.join("npcs", "Backgrounds", "Summaries_extra", "generated_named_npcs.txt"),
+            os.path.join("npcs", "Backgrounds", "Summaries_extra", "generated_named_npcs.json"),
         )),
     )
 

@@ -6,7 +6,7 @@ What this does:
 - builds a small but game-shaped snapshot for a named NPC
 - renders the normal npc_action_prompt template
 - sends one request through tools/llm_runner/runner.py over stdin/stdout JSON
-- validates the returned CSV-like action payload with the same broad rules as the game
+- validates the returned pipe-separated action line with the same broad rules as the game
 
 It is intentionally lightweight: useful for repeatable smoke tests without booting the game.
 """
@@ -178,7 +178,7 @@ def render_prompt(template: str, snapshot: str) -> str:
     return template.replace("{{snapshot}}", snapshot).replace("{{action_list_with_target}}", action_list)
 
 
-def parse_summary_file(path: Path) -> Dict[str, SummaryEntry]:
+def parse_summary_text_file(path: Path) -> Dict[str, SummaryEntry]:
     out: Dict[str, SummaryEntry] = {}
     for raw_line in read_text(path).splitlines():
         line = raw_line.strip()
@@ -200,18 +200,79 @@ def parse_summary_file(path: Path) -> Dict[str, SummaryEntry]:
     return out
 
 
-def summary_file_priority(path: Path) -> Tuple[int, str]:
-    name = path.name
-    return (0 if name.startswith("generated_") else 1, name)
+def summary_ids_from_json_record(record: Dict[str, object]) -> List[str]:
+    ids: List[str] = []
+    for key in ("selector", "topic", "id"):
+        value = record.get(key)
+        if isinstance(value, str):
+            normalized = normalize_line(value)
+            if normalized and normalized not in ids:
+                ids.append(normalized)
+    for key in ("selectors", "topics"):
+        value = record.get(key)
+        if not isinstance(value, list):
+            continue
+        for item in value:
+            if not isinstance(item, str):
+                continue
+            normalized = normalize_line(item)
+            if normalized and normalized not in ids:
+                ids.append(normalized)
+    return ids
+
+
+def parse_summary_json_file(path: Path) -> Dict[str, SummaryEntry]:
+    out: Dict[str, SummaryEntry] = {}
+    try:
+        data = json.loads(read_text(path))
+    except Exception:
+        return out
+    if isinstance(data, dict) and isinstance(data.get("entries"), list):
+        records = data.get("entries", [])
+    elif isinstance(data, list):
+        records = data
+    elif isinstance(data, dict):
+        records = [data]
+    else:
+        return out
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        background = normalize_line(str(record.get("your_background", record.get("background", ""))))
+        expression = normalize_line(str(record.get("your_expression", record.get("expression", ""))))
+        source_tag = normalize_line(str(record.get("source_tag", "")))
+        if not background or not expression:
+            continue
+        for selector in summary_ids_from_json_record(record):
+            out[selector] = SummaryEntry(
+                selector=selector,
+                background=background,
+                expression=expression,
+                source_tag=source_tag,
+                file_path=str(path),
+            )
+    return out
+
+
+def summary_file_priority(path: Path) -> Tuple[int, str, int, str]:
+    generation_priority = 0 if path.name.startswith("generated_") else 1
+    format_priority = 0 if path.suffix == ".txt" else 1 if path.suffix == ".json" else 2
+    return (generation_priority, path.stem, format_priority, path.name)
 
 
 def load_summary_dir(summary_dir: Path) -> Dict[str, SummaryEntry]:
     resolved: Dict[str, SummaryEntry] = {}
     if not summary_dir.exists():
         return resolved
-    files = sorted([path for path in summary_dir.iterdir() if path.is_file() and path.suffix == ".txt"], key=summary_file_priority)
+    files = sorted(
+        [path for path in summary_dir.iterdir() if path.is_file() and path.suffix in {".txt", ".json"}],
+        key=summary_file_priority,
+    )
     for path in files:
-        resolved.update(parse_summary_file(path))
+        if path.suffix == ".json":
+            resolved.update(parse_summary_json_file(path))
+        else:
+            resolved.update(parse_summary_text_file(path))
     return resolved
 
 
@@ -674,7 +735,7 @@ def main() -> int:
         "snapshot_fields": None,
         "expectations_ok": True,
         "response": None,
-        "csv_validation": None,
+        "action_line_validation": None,
     }
 
     if resolved.entry:
@@ -744,7 +805,7 @@ def main() -> int:
     result["response"] = response
     csv_text = str(response.get("text", "")) if isinstance(response, dict) else ""
     validation = validate_response_like_game(csv_text)
-    result["csv_validation"] = validation
+    result["action_line_validation"] = validation
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
@@ -752,12 +813,12 @@ def main() -> int:
         print(f"Source tag: {resolved.entry.source_tag}")
         print(f"Runner ok: {response.get('ok', False)}")
         print(f"Runner text: {csv_text}")
-        print(f"CSV valid: {validation.get('ok', False)} ({validation.get('mode', 'strict')})")
+        print(f"Action line valid: {validation.get('ok', False)} ({validation.get('mode', 'strict')})")
         parsed_actions = validation.get("parsed_actions", []) or []
         if parsed_actions:
             print(f"Parsed actions: {', '.join(parsed_actions)}")
         if validation.get("error"):
-            print(f"CSV note: {validation.get('error')}")
+            print(f"Action line note: {validation.get('error')}")
     return 0 if result.get("expectations_ok") and bool(validation.get("ok", False)) and bool(response.get("ok", False)) else 1
 
 
