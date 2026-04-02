@@ -159,4 +159,53 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
     }
     overmap_buffer.clear_camps( this_omt.xy() );
 }
+TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
+{
+    using basecamp_ai::parse_heard_camp_approval_query;
+    using basecamp_ai::parse_heard_camp_cancel_query;
+    using basecamp_ai::parse_heard_camp_craft_order;
+    using basecamp_ai::parse_heard_camp_status_query;
+
+    SECTION( "craft orders parse quantity words and direct object" ) {
+        const std::optional<basecamp_ai::parsed_camp_craft_order> parsed =
+            parse_heard_camp_craft_order( "please craft me five bandages" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->count == 5 );
+        CHECK( parsed->item_query == "bandages" );
+    }
+
+    SECTION( "approval commands parse explicit request numbers" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_approval_query( "approve request #12 please" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->has_request_id );
+        CHECK( parsed->request_id == 12 );
+        CHECK_FALSE( parsed->all_requests );
+    }
+
+    SECTION( "approval commands can target all ready work orders" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_approval_query( "launch all ready work orders" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->all_requests );
+        CHECK_FALSE( parsed->has_request_id );
+    }
+
+    SECTION( "status queries can ask for the whole board" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_status_query( "what's on the board" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->all_requests );
+        CHECK_FALSE( parsed->has_request_id );
+    }
+
+    SECTION( "cancel commands keep the work-order subject" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_cancel_query( "cancel the work order for long string please" );
+        REQUIRE( parsed.has_value() );
+        CHECK_FALSE( parsed->has_request_id );
+        CHECK( parsed->query == "long string" );
+    }
+}
+
 // TODO: Tests for: Check calorie display at various activity levels, camp crafting works as expected (consumes inputs, returns outputs+byproducts, costs calories)

@@ -172,6 +172,28 @@ struct camp_llm_request {
     std::vector<camp_llm_note> notes;
 };
 
+namespace basecamp_ai
+{
+
+struct parsed_camp_craft_order {
+    std::string item_query;
+    int count = 1;
+};
+
+struct parsed_camp_request_reference {
+    std::string query;
+    int request_id = 0;
+    bool has_request_id = false;
+    bool all_requests = false;
+};
+
+std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance );
+std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance );
+std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance );
+std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std::string_view utterance );
+
+} // namespace basecamp_ai
+
 class basecamp_map
 {
         friend basecamp;

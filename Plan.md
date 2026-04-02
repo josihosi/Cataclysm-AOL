@@ -1,461 +1,232 @@
 # C-AOL Plan
 
 ## What this document is for
-This is the working roadmap for the next meaningful stretch of Cataclysm: Arsenic and Old Lace.
-It should answer four questions clearly:
+This is the working roadmap for the **next** meaningful stretch of Cataclysm: Arsenic and Old Lace.
+It should stay practical:
 
-1. What just got done?
-2. What should happen next?
-3. What problems are we actually trying to solve?
-4. What can wait until later without causing drama?
+1. What is already done enough to stop pretending it is still "next"?
+2. What are we actively doing now?
+3. What should happen after that?
+4. What ideas are real, but explicitly **not now**?
 
-This is not meant to be a vague dream board. It is the practical plan for the next iteration.
+This file is not a trophy shelf and not a wish-list landfill.
+If something is done, move it out of the active plan.
+If something is not happening now, park it clearly instead of letting it haunt chat.
 
 ---
 
 ## Current project state
 
-### Recently completed
-- Release branches were validated and shipped across the current target set.
-- Core branch flow was cleaned up around `dev`, `master`, and the `port/*` targets.
-- Background-summary coverage was improved, including curated summaries for several important named NPCs.
-- CI was cleaned up so `dev` can be used as the real iteration branch instead of a decorative side alley.
+### Done enough to remove from the active plan
+These items are no longer the immediate roadmap:
+
+- `dev` is the active iteration branch again.
+- Release-branch flow was cleaned up around `dev`, `master`, and the `port/*` targets.
+- The startup harness can build, launch, and load a known save without Josef hand-driving every menu.
+- The Basecamp LLM / request-board v1 slice landed on `dev`:
+  - request data model
+  - bulletin-board scratchpad UI
+  - spoken camp craft order intake
+  - request approval / retry / cancel / status controls
+  - request-number references
+  - worker reassignment / retry handling
+  - tool reclaiming from hoarded camp stock
+  - save/load persistence for board state
+- Startup harness log handling was cleaned up enough to ignore the known inherited `attack_vector` startup noise and to evaluate filtered **per-run debug deltas** instead of dragging cumulative old junk into every new run.
+
+These are now baseline reality, not the current milestone.
 
 ### Current branch policy
 - Do active iteration on `dev`.
-- When `dev` is in good shape and checks are meaningful, promote `dev` to `master`.
+- Promote `dev` to `master` when the current slice is stable and verified.
 - Use `master` as the source branch for orchestrated propagation to `port/*`.
 
-This is the current intended workflow and should stay the default unless reality proves otherwise again.
+That remains the default until reality humiliates it again.
 
 ---
 
 ## Immediate strategic priority
 
-## Build a proper action-status / failure-reason layer before building a larger automation harness
+## Harden Basecamp AI v1 so it stays working
 
-This should happen first.
+The Basecamp request-board slice exists now.
+That changes the priority.
+The biggest risk is no longer "can we build this at all?".
+It is now:
+- silent regressions,
+- weak feedback when camp staff interprets orders,
+- and future edits breaking the board/speech path because nothing pins behavior down.
 
-Why:
-- Right now, many NPC action failures still collapse into "it didn’t happen".
-- That is bad for gameplay feedback.
-- It is bad for debugging.
-- It is also bad for automation, because a harness cannot reliably assert on vague behavior.
-
-A test harness without clearer action status would still help, but it would mostly automate confusion faster.
-A thin status/observability layer gives the project leverage in three places at once:
-- player-facing feedback,
-- developer debugging,
-- automated testing.
+So the next pass should be a **small hardening pass**, not a giant new feature binge.
 
 ---
 
-## Milestone 1: Action status management and observability
+## Milestone 1: Basecamp AI hardening pass
 
 ### Goal
-Introduce a small common contract for intent-driven actions so each action can report:
-- what broad phase it is in,
-- why it was blocked or failed,
-- what the NPC should say about it,
-- and what developers should see in logs/debug output.
+Make the new Basecamp board / speech layer feel finished enough to trust:
+- covered by targeted tests,
+- a little more alive in speech,
+- and easier to understand when something is queued, blocked, or launched.
 
-Implementation sketch: [`doc/aol-action-status-v1-sketch.md`](doc/aol-action-status-v1-sketch.md)
-Patch plan: [`doc/aol-action-status-v1-patch-plan.md`](doc/aol-action-status-v1-patch-plan.md)
+### Active scope
+This is what we are doing now.
 
-### Scope for v1
-Start with the actions that currently matter most:
-- `look_around` pickup behavior
-- `look_inventory` behavior
-- `attack=<target>` behavior
+#### 1. Add regression coverage for spoken-board parsing and request flow
+Targeted tests should cover the highest-value inputs first:
+- craft requests
+- cancel requests
+- approve / launch requests
+- status queries
+- request-number references
+- "all ready work orders" style commands
 
-These are the most useful first targets because they combine gameplay importance with many failure modes.
-The status/failure-reason layer should be designed to port across the active `port/*` branches, even if some branch-specific adaptation is needed during landing.
+The goal is not a perfect universal test matrix.
+The goal is to stop the obvious speech/board grammar from quietly rotting.
 
-### Proposed design shape
-Use a small shared lifecycle, plus action-specific reason codes.
+#### 2. Add short practical barks for the spoken board workflow
+Camp staff should give short useful spoken feedback for:
+- request heard and pinned
+- request blocked
+- request launched
+- request cancelled
+- board empty / board summary
+- ambiguous or missing request references
 
-#### Shared lifecycle states
-- `requested` — action was selected or queued
-- `precheck` — fast validation before committing
-- `executing` — action is actively in progress
-- `waiting` — action is temporarily paused but may resume
-- `completed` — action succeeded
-- `blocked` — action could not proceed because a known condition was not met
-- `failed` — action hit an unexpected or invalid execution outcome
-- `cancelled` — action was superseded, interrupted, or invalidated by context change
+Keep these short and functional.
+This is not a radio drama.
 
-The shared lifecycle should stay small.
-Do not turn it into a ministry of sixteen nearly identical states.
-
-#### Reason-code model
-Each action should expose its own concrete reason codes under the shared lifecycle.
-Examples:
-
-**Pickup / `look_around`**
-- `no_inventory_space`
-- `too_heavy`
-- `cannot_reach_item`
-- `item_missing`
-- `hostile_threat_nearby`
-- `grabbed_or_panic`
-- `panic_override`
-- `path_blocked`
-- `pickup_rules_disallow`
-
-**Inventory / `look_inventory`**
-- `requested_item_missing`
-- `cannot_wear`
-- `cannot_wield`
-- `cannot_activate`
-- `inventory_conflict`
-- `unsafe_to_manage_inventory`
-- `item_already_equipped`
-
-**Attack / `attack=<target>`**
-- `target_not_visible`
-- `target_out_of_range`
-- `friendly_fire_risk`
-- `no_viable_weapon`
-- `path_to_target_invalid`
-- `target_no_longer_valid`
-- `morale_or_panic_block`
-
-The important distinction:
-- **state** says what broad situation the action is in
-- **reason code** says exactly why it is blocked or failed
-
-### Player-facing utterances
-Blocked/failed actions should have short, preset utterances so the player is not left guessing.
-These should be brief and robust, not over-authored drama.
-
-Examples:
-- `no_inventory_space` -> "No room for that."
-- `hostile_threat_nearby` -> "Not while that thing's on us."
-- `requested_item_missing` -> "Don't have it."
-- `friendly_fire_risk` -> "No clear shot."
-
-These utterances should be:
-- short,
-- reusable,
-- easy to map from reason codes,
-- and easy to tune later.
-
-### Debug-facing observability
-The developer-facing layer should expose more detail than the player utterance.
-Examples:
-- lifecycle state
-- reason code
-- action target / item name / target id
-- relevant local facts when cheap to compute
-
-Examples:
-- `pickup blocked: no_inventory_space item="steel jerrycan" volume_left=0 weight_margin=1`
-- `attack blocked: friendly_fire_risk target="zombie dog" ally_in_line=true`
-- `pickup blocked: panic_override item="steel jerrycan" panic=6`
-- `attack blocked: morale_or_panic_block target="zombie dog" panic=8`
-
-This should go to logs first.
-Optional UI surfacing can come later if useful.
-
-### Design constraints
-- Keep the common action contract thin.
-- Do not try to solve every action in one pass.
-- Prefer visible, debuggable failure states over silent fallback behavior.
-- Separate player bark text from debug detail.
-- Prefer explicit known blocks over generic failure whenever possible.
-
-### Likely first concrete tasks
-- Define a lightweight action-status/result structure.
-- Thread it through the `look_around` pickup path.
-- Add reason-code-to-utterance mapping for pickup.
-- Add debug log output for pickup outcome transitions.
-- Extend the same pattern to `look_inventory`.
-- Extend the same pattern to `attack=<target>`.
-
-### Non-goals for v1
-- A complete universal AI planner.
-- Perfect handling of every action in the game.
-- A giant generalized behavior-tree refactor.
-- Rich UI tooling before the status vocabulary is stable.
-
----
-
-## Milestone 2: Developer harness for repeatable smoke testing
-
-### Goal
-Build a practical test harness that can perform repeatable in-game smoke tests without Josef manually driving every keystroke.
-
-The first version does **not** need to autonomously play the game in a broad sense.
-It needs to reduce repetitive branch validation and make scenario testing less annoying.
-
-### Why this matters
-Current release/testing work still depends too much on manual navigation:
-- launching the right build,
-- getting through menus,
-- loading a save,
-- entering a scenario,
-- issuing a few test commands,
-- checking the visible result.
-
-That is valuable work, but it is exactly the kind of repetitive nonsense a harness should absorb.
-
-### Harness principles
-- Start deterministic.
-- Prefer prepared saves and scripted scenarios.
-- Encode branch-specific menu differences instead of pretending they do not exist.
-- Capture evidence when tests fail.
-- Grow toward richer setup only after basic smoke tests are reliable.
-- Build the first harness path for `master`; do not assume it is automatically a `port/*` concern.
-
-### Practical v1 scope
-#### 1. Deterministic checks before broader harness work
-Before building a larger interactive harness, add a few deterministic checks against the new action-status output.
-That means:
-- fixture status logs
-- checker assertions on phase/reason outcomes
-- and a small stable vocabulary for the first useful blocked/success cases
-
-This is the cheap confidence layer that should come before more expensive menu automation.
-
-#### 2. Branch-aware startup profiles
-The harness should know how to do basic startup tasks for each target branch/profile, such as:
-- launch executable
-- wait for menu readiness
-- navigate to load screen
-- load a known save
-- enter gameplay
-
-This must not depend on Josef supplying keystrokes every single time.
-Store branch/profile-specific startup sequences in data/config so they can be adjusted when menus differ.
-
-#### 3. Harness-owned fixture save management
-Fixture save handling should be part of the harness, not a separate side ritual.
-The harness should be able to:
-- install a named fixture save into the correct branch/profile save directory
-- load that fixture save as part of startup
-- capture/update a fixture save from the active profile when a good debug save has been prepared manually
-- keep fixture saves branch-aware instead of pretending one save is automatically valid across every profile
-
-The branch/profile save split already exists in the local build flow, so the missing work is turning that into an explicit harness subsystem.
-
-#### 4. Deterministic scripted smoke tests
-Use prepared saves and repeatable command scripts for checks like:
-- game launches successfully
+#### 3. Tighten the finish-line verification loop
+The working finish line for this slice remains:
+- implemented on `dev`
+- compiles
+- game launches
 - save loads successfully
-- player can enter world and issue speech/action prompts
-- NPC receives command opportunity
-- target action either succeeds or returns an expected blocked reason
+- no crash
+- no Basecamp-specific debug/pop-up nonsense from this feature path
 
-#### 5. Artifact capture
-On failure, capture enough evidence to debug quickly:
-- screenshot(s)
-- harness log
-- branch/profile used
-- test step where failure occurred
-- if possible, relevant game debug/log output
+The harness should remain strict enough to catch real problems without treating inherited upstream startup noise like divine punishment.
 
-### Strongly desired capability
-Being able to **see** the game window or menu state during harness development would help enormously.
-For authoring and debugging the harness, visual inspection is far more useful than blind keystroke playback.
-
-That means the long-term harness should ideally support some combination of:
-- window screenshots,
-- OCR or menu-state recognition,
-- or a direct view/control loop via desktop automation.
-
-This is not strictly required for the first automation pass, but it is highly desirable and worth planning around.
-
-### Planned harness growth path
-#### Phase 1: Menu/load automation
-- Launch game
-- Load known save
-- Reach playable state
-- Record success/failure cleanly
-
-#### Phase 2: Basic smoke scenarios
-- Issue a command
-- Observe whether expected action state/result appears
-- Assert on simple outcomes
-
-#### Phase 3: Debug-menu scenario setup
-- Start game
-- open debug menu
-- spawn items/NPCs/hostiles as needed
-- run narrow action tests without depending entirely on handcrafted saves
-
-#### Phase 4: Broader scenario library
-- branch validation suite
-- action regression suite
-- release smoke suite
-- targeted bug-repro scripts
-
-### Relationship to Milestone 1
-The harness becomes much more useful once actions return structured outcomes.
-Examples:
-- bad: "NPC did something weird"
-- good: `blocked: hostile_threat_nearby`
-- better: `blocked: hostile_threat_nearby`, bark shown, debug facts logged
-
-That is why status management should come first.
+### Practical success criteria for this milestone
+This hardening pass is successful if:
+- the main spoken board commands have regression coverage,
+- the camp gives short readable feedback instead of only third-person bookkeeping,
+- the latest `dev` build still compiles,
+- the game launches and loads the known save,
+- and the remaining harness noise is generic startup clutter rather than fresh Basecamp breakage.
 
 ---
 
-## Milestone 3: Continue curated summary coverage, but as side work
+## Milestone 2: Basecamp AI quality-of-life pass
 
-This remains worthwhile, just not the main architectural milestone.
+This is the next logical stretch **after** the hardening pass, not now.
 
-### Why keep doing it
-- It directly improves NPC flavor and context quality.
-- It is relatively low-risk compared to code/system work.
-- It is easy to chip away at between heavier programming tasks.
+### Goal
+Make the board faster to read and less annoying to operate.
 
-### Suggested focus
-Continue curated summaries for important named NPCs and other high-visibility content clusters.
-A likely next high-value pass is the refugee-center cast, following the recent Hub/Robofac-related coverage.
+### Candidate scope
+- sort active requests ahead of archived ones
+- clearer one-line status labels
+- clearer blocker summaries
+- clearer ETA display
+- clearer assigned-worker display
+- better grouping for active / blocked / archived requests
+- bulk actions that stay sane:
+  - clear completed
+  - approve all ready
+  - retry blocked
 
-### Important limitation
-Summary/content polish should not displace the deeper work on action clarity and automation.
-It is seasoning, not structural timber.
-
----
-
-## Milestone 4: Basecamp LLM tool and bulletin-board scratchpad
-
-Once the action-status layer and first harness slice are genuinely useful, the next major systems milestone should be an **LLM-assisted Basecamp request tool**.
-
-Detailed patch plan: [`doc/basecamp-llm-v1-patch-plan.md`](doc/basecamp-llm-v1-patch-plan.md)
-
-### Problem to solve
-Basecamp already has real worker logic, camp storage, recipe checks, and bulletin-board-style control flow.
-What it does not have is a good way to translate natural player requests like:
-- `make 40 bandages`
-- `craft me a shotgun if the camp can manage it`
-- `scrap that bandage plan`
-
-into:
-- a visible camp work request,
-- a sensible recipe choice,
-- a deterministic feasibility check,
-- and a trackable job on the bulletin board.
-
-### Intended shape
-The right split here is:
-- **LLM** for utterance parsing, bounded recipe choice among prepared candidates, and personality-flavored board notes
-- **deterministic code** for recipe availability, books, skills, tools, ingredients, food-state facts, worker selection, recursive subcraft planning, mission launch, and request state transitions
-
-### Why the bulletin board matters
-This feature should not be an invisible background planner.
-The camp bulletin board should gain a scratchpad / work-order submenu that shows:
-- active requests
-- blocked reasons
-- assigned worker
-- recursive substeps
-- approval state
-- completion/cancellation state
-
-The player should be able to inspect and manually remove/cancel entries there, while later also being able to cancel by utterance.
-
-### Important design facts
-A Basecamp craft request can be constrained by:
-- worker skill
-- recipe availability
-- books in camp area
-- tools in camp area
-- ingredients in camp area
-- food runway / camp mood
-- worker availability
-- tool hoarding by Basecamp-assigned NPCs
-
-The last two are especially important because multiple camp workers may exist and they often selfishly sit on tools the camp planner should really be able to use.
-
-### Current design direction
-For v1:
-- Basecamp-assigned NPC hearing should override ordinary follower-hearing for camp-work intents.
-- Recipe choice should **not** be first-string-match; it should be selected from a deterministic candidate set.
-- Food should affect note tone / grumpiness rather than hard-blocking normal work by default.
-- Recursive subcraft planning with a depth of 2 is already valuable enough to justify inclusion.
-- Camp tool auto-drop should deposit required tools into a tool zone if one exists, otherwise camp center, otherwise worker feet.
-
-### Suggested landing order
-- request data model
-- scratchpad UI on the bulletin board
-- Basecamp hearing hook
-- deterministic candidate recipe gathering
-- bounded LLM recipe chooser
-- deterministic planner / worker assignment
-- mission launch integration
-- tool auto-drop pooling
-- recursive subcraft depth 2
-- reactive utterances + speech cancellation
-
-This is large enough to deserve its own patch plan, but concrete enough now that implementation can start once current action/harness work is in a good resting state.
+This is boring UI glue, which is exactly why it matters.
 
 ---
 
-## Release/testing direction after the next milestone
+## Milestone 3: Better spoken disambiguation and camp-side queries
 
-Once the status layer and first harness slice exist, the release loop should look more like this:
+Useful, but explicitly **after** the hardening and QoL passes.
 
-1. Iterate on `dev`.
-2. Run meaningful checks and smoke scenarios there.
-3. Use harness-assisted validation instead of mostly manual repetition.
-4. Promote `dev` to `master` when stable.
-5. Use the orchestrator flow to propagate to `port/*`.
-6. Run target-specific smoke checks with branch-aware harness profiles.
+### Goal
+Make spoken Basecamp control less brittle and more helpful when the player is vague.
 
-That should reduce both manual burden and the number of mysteries during release prep.
+### Candidate scope
+- disambiguation when multiple recipes or work orders match
+- richer quantity parsing
+- follow-ups like:
+  - "make 5 more"
+  - "cancel request 12"
+  - "status on 7"
+- camp capability queries such as:
+  - "what can we make?"
+  - "what is blocked?"
+  - "who is free?"
+  - "what is queued?"
 
----
-
-## Open design questions
-These need answers during implementation, not necessarily all up front.
-
-### For action status management
-- How much detail should be logged by default versus behind debug toggles?
-- Should blocked-action utterances be fully generic, partially character-flavored, or branch on NPC tone/personality later?
-- Which failure states should retry automatically, and which should hard-stop immediately?
-- How should queued multi-step actions expose intermediate state without becoming noisy?
-
-### For the harness
-- What desktop/view/control method is most robust across the current development environment?
-- How should branch-specific menu differences be represented: data files, script tables, or code-level profiles?
-- Which release smoke tests deliver the best confidence per minute spent?
-- How much of the harness should live inside the repo versus external automation glue?
+This is where the board starts feeling like a foreman tool instead of just a smarter clipboard.
 
 ---
 
-## Recommended next implementation order
+## Milestone 4: Deeper feasibility / planning summaries
+
+Also real, also not now.
+
+### Goal
+Expose why a request is or is not startable without making the player perform archaeology.
+
+### Candidate scope
+Per-request summaries for:
+- missing tools
+- missing ingredients
+- liquid storage blockers
+- estimated work time
+- likely best worker
+- subcraft / recursive planning hints
+
+This would be valuable, but it is also where complexity starts breeding in dark corners.
+Do this only once the current board behavior is stable and well-covered.
+
+---
+
+## Not-now parking lot
+
+These are legitimate ideas that should **not** displace the current hardening pass.
+
+### Action-status / failure-reason layer
+Still worthwhile as a broader architecture direction, especially for:
+- `look_around`
+- `look_inventory`
+- `attack=<target>`
+
+But it is not the current stretch.
+The Basecamp board is already real and needs stabilization first.
+
+### Broader automation harness growth
+Also worthwhile, especially for:
+- richer smoke scenarios
+- fixture-save management
+- debug-menu scenario setup
+- broader release validation
+
+But the first harness slice already exists and is good enough for the current Basecamp finish-line work.
+Do not let harness ambition eat the whole schedule again.
+
+### Curated summary coverage / content polish
+Nice side work, not the structural priority.
+Flavor can continue opportunistically, but it should not crowd out code hardening.
+
+---
+
+## Recommended implementation order
 
 ### First
-- Define the status/result contract.
-- Apply it to pickup.
-- Add utterance mapping and debug output for pickup.
+- Add targeted regression tests for spoken Basecamp request parsing and board references.
 
 ### Second
-- Extend the same model to `look_inventory`.
-- Extend the same model to `attack=<target>`.
+- Add short useful barks for the spoken board workflow.
 
 ### Third
-- Add 2-4 deterministic action-status fixtures/checks so the new reason-code layer is already testable before broader automation lands.
+- Re-run compile + startup/load verification on `dev` and confirm the feature path stays clean.
 
 ### Fourth
-- Build the smallest useful branch-aware harness that can launch the game, install/load a fixture save, and reach a known playable state without Josef hand-holding the keystrokes.
+- If that pass is stable, move to board QoL improvements from Milestone 2.
 
-### Fifth
-- Add 1-3 real smoke scenarios that assert on the new action result layer.
-
-### Sixth
-- Expand curated summaries in parallel where useful.
-
----
-
-## Practical success criteria
-
-This stretch is successful if all of the following become true:
-- Failed actions no longer feel like silent nonsense.
-- The player gets short, understandable refusal/blocked feedback.
-- Developers can see why an action failed without guesswork.
-- At least one branch-aware harness path can launch the game and load a save automatically.
-- At least a few key action scenarios can be tested repeatably.
-
-If those are true, the next round of development gets faster, safer, and much less irritating.
+That is enough work already.
+There is no need to turn one successful half-day into a full municipal bureaucracy.
