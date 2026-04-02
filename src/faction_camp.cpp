@@ -2003,6 +2003,8 @@ struct parsed_camp_craft_order {
 
 struct parsed_camp_request_reference {
     std::string query;
+    int request_id = 0;
+    bool has_request_id = false;
     bool all_requests = false;
 };
 
@@ -2103,6 +2105,46 @@ static void strip_camp_request_board_reference( std::string &text )
     strip_camp_request_articles( text );
 }
 
+static std::optional<int> parse_camp_request_id_reference( std::string text )
+{
+    while( consume_camp_request_prefix( text, "number " ) ||
+           consume_camp_request_prefix( text, "id " ) ) {
+    }
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+    if( !std::all_of( text.begin(), text.end(), []( const char ch ) {
+        return std::isdigit( static_cast<unsigned char>( ch ) );
+    } ) ) {
+        return std::nullopt;
+    }
+    return std::stoi( text );
+}
+
+static parsed_camp_request_reference finalize_camp_request_reference( std::string text,
+        bool allow_all_requests )
+{
+    strip_camp_request_board_reference( text );
+    strip_camp_request_suffix( text, " please" );
+
+    parsed_camp_request_reference result;
+    if( allow_all_requests && ( text == "all" || text == "them" || text == "everything" ||
+                                text == "all of them" || text == "all work orders" ||
+                                text == "all requests" || text == "all jobs" ||
+                                text == "all ready work orders" ) ) {
+        result.all_requests = true;
+        return result;
+    }
+
+    if( const std::optional<int> request_id = parse_camp_request_id_reference( text ) ) {
+        result.request_id = *request_id;
+        result.has_request_id = true;
+    } else {
+        result.query = text;
+    }
+    return result;
+}
+
 static std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance )
 {
     std::string text = normalize_camp_request_text( utterance );
@@ -2165,7 +2207,7 @@ static std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std:
     return parsed_camp_craft_order{ text, count };
 }
 
-static std::optional<std::string> parse_heard_camp_cancel_query( std::string_view utterance )
+static std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance )
 {
     std::string text = normalize_camp_request_text( utterance );
     if( text.empty() ) {
@@ -2193,23 +2235,11 @@ static std::optional<std::string> parse_heard_camp_cancel_query( std::string_vie
         return std::nullopt;
     }
 
-    while( consume_camp_request_prefix( text, "that " ) ||
-           consume_camp_request_prefix( text, "the " ) ) {
+    parsed_camp_request_reference result = finalize_camp_request_reference( text, false );
+    if( !result.has_request_id && result.query.empty() ) {
+        return std::nullopt;
     }
-    while( consume_camp_request_prefix( text, "plan for " ) ||
-           consume_camp_request_prefix( text, "work order for " ) ||
-           consume_camp_request_prefix( text, "order for " ) ||
-           consume_camp_request_prefix( text, "request for " ) ||
-           consume_camp_request_prefix( text, "job for " ) ||
-           consume_camp_request_prefix( text, "plan " ) ||
-           consume_camp_request_prefix( text, "work order " ) ||
-           consume_camp_request_prefix( text, "order " ) ||
-           consume_camp_request_prefix( text, "request " ) ||
-           consume_camp_request_prefix( text, "job " ) ) {
-    }
-    strip_camp_request_articles( text );
-    strip_camp_request_suffix( text, " please" );
-    return text.empty() ? std::nullopt : std::optional<std::string>( text );
+    return result;
 }
 
 static std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance )
@@ -2242,19 +2272,11 @@ static std::optional<parsed_camp_request_reference> parse_heard_camp_approval_qu
         return std::nullopt;
     }
 
-    strip_camp_request_board_reference( text );
-    strip_camp_request_suffix( text, " please" );
-
-    if( text == "all" || text == "them" || text == "everything" ||
-        text == "all of them" || text == "all work orders" ||
-        text == "all requests" || text == "all jobs" ||
-        text == "all ready work orders" ) {
-        return parsed_camp_request_reference{ "", true };
-    }
-    if( text.empty() ) {
+    parsed_camp_request_reference result = finalize_camp_request_reference( text, true );
+    if( !result.all_requests && !result.has_request_id && result.query.empty() ) {
         return std::nullopt;
     }
-    return parsed_camp_request_reference{ text, false };
+    return result;
 }
 
 static std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std::string_view utterance )
@@ -2282,7 +2304,9 @@ static std::optional<parsed_camp_request_reference> parse_heard_camp_status_quer
              std::string_view( "what requests do we have" ),
              std::string_view( "do we have any work orders" ) } ) {
         if( text == exact ) {
-            return parsed_camp_request_reference{ "", true };
+            parsed_camp_request_reference result;
+            result.all_requests = true;
+            return result;
         }
     }
 
@@ -2303,12 +2327,11 @@ static std::optional<parsed_camp_request_reference> parse_heard_camp_status_quer
         return std::nullopt;
     }
 
-    strip_camp_request_board_reference( text );
-    strip_camp_request_suffix( text, " please" );
-    if( text.empty() ) {
-        return parsed_camp_request_reference{ "", true };
+    parsed_camp_request_reference result = finalize_camp_request_reference( text, false );
+    if( !result.has_request_id && result.query.empty() ) {
+        result.all_requests = true;
     }
-    return parsed_camp_request_reference{ text, false };
+    return result;
 }
 
 static int score_camp_request_text_match( std::string_view candidate, std::string_view query )
@@ -2420,21 +2443,51 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return false;
     }
 
-    const auto find_best_request = [&]( std::string_view query,
-    const std::function<bool( const camp_llm_request & )> &predicate ) -> std::pair<camp_llm_request *, int> {
-        camp_llm_request *best_request = nullptr;
-        int best_score = 0;
+    struct camp_request_lookup_result {
+        camp_llm_request *request = nullptr;
+        int score = 0;
+        std::vector<std::string> ambiguous_matches;
+    };
+
+    const auto find_best_request = [&]( const parsed_camp_request_reference &reference,
+    const std::function<bool( const camp_llm_request & )> &predicate ) -> camp_request_lookup_result {
+        camp_request_lookup_result result;
+        if( reference.has_request_id ) {
+            camp_llm_request *request = find_camp_request( reference.request_id );
+            if( request != nullptr && predicate( *request ) ) {
+                result.request = request;
+                result.score = 1000;
+            }
+            return result;
+        }
+        if( reference.query.empty() ) {
+            return result;
+        }
+
         for( camp_llm_request &request : camp_requests ) {
             if( !predicate( request ) ) {
                 continue;
             }
-            const int score = score_camp_board_request_match( request, query );
-            if( score > best_score ) {
-                best_score = score;
-                best_request = &request;
+            const int score = score_camp_board_request_match( request, reference.query );
+            if( score > result.score ) {
+                result.score = score;
+                result.request = &request;
+                result.ambiguous_matches = { camp_request_summary( request ) };
+            } else if( score == result.score && score >= 650 ) {
+                result.ambiguous_matches.push_back( camp_request_summary( request ) );
             }
         }
-        return { best_request, best_score };
+
+        if( result.score < 650 ) {
+            result.request = nullptr;
+            result.score = 0;
+            result.ambiguous_matches.clear();
+        } else if( result.ambiguous_matches.size() > 1 ) {
+            result.request = nullptr;
+        } else {
+            result.ambiguous_matches.clear();
+        }
+        return result;
     };
 
     if( const std::optional<parsed_camp_request_reference> status_query =
@@ -2465,13 +2518,20 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             return true;
         }
 
-        const auto [best_request, best_score] = find_best_request( status_query->query,
+        const camp_request_lookup_result lookup = find_best_request( *status_query,
         []( const camp_llm_request & ) {
             return true;
         } );
-        if( best_request != nullptr && best_score >= 650 ) {
+        if( lookup.request != nullptr ) {
             add_msg( _( "%1$s checks the board: %2$s." ), listener.disp_name(),
-                     camp_request_spoken_status( *best_request ) );
+                     camp_request_spoken_status( *lookup.request ) );
+        } else if( !lookup.ambiguous_matches.empty() ) {
+            add_msg( _( "%1$s checks the board, but \"%2$s\" matches more than one work order: %3$s." ),
+                     listener.disp_name(), status_query->query,
+                     camp_request_subject_list( lookup.ambiguous_matches ) );
+        } else if( status_query->has_request_id ) {
+            add_msg( _( "%1$s checks the board, but there is no work order #%2$d." ),
+                     listener.disp_name(), status_query->request_id );
         } else {
             add_msg( _( "%1$s checks the board, but nothing matches \"%2$s\"." ),
                      listener.disp_name(), status_query->query );
@@ -2479,12 +2539,14 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return true;
     }
 
-    if( const std::optional<std::string> cancel_query = parse_heard_camp_cancel_query( utterance ) ) {
-        const auto [best_request, best_score] = find_best_request( *cancel_query,
+    if( const std::optional<parsed_camp_request_reference> cancel_query =
+            parse_heard_camp_cancel_query( utterance ) ) {
+        const camp_request_lookup_result lookup = find_best_request( *cancel_query,
         []( const camp_llm_request &request ) {
             return request.status != "completed" && request.status != "cancelled";
         } );
-        if( best_request != nullptr && best_score >= 650 ) {
+        if( lookup.request != nullptr ) {
+            camp_llm_request *best_request = lookup.request;
             if( best_request->status == "in_progress" ) {
                 emergency_recall( best_request->active_mission_id );
                 add_msg( _( "%1$s pulls the plug on the work order for %2$s." ),
@@ -2500,9 +2562,16 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                 add_msg( _( "%1$s crosses the work order for %2$s off the board." ),
                          listener.disp_name(), best_request->chosen_recipe_name );
             }
+        } else if( !lookup.ambiguous_matches.empty() ) {
+            add_msg( _( "%1$s checks the board, but \"%2$s\" matches more than one live work order: %3$s." ),
+                     listener.disp_name(), cancel_query->query,
+                     camp_request_subject_list( lookup.ambiguous_matches ) );
+        } else if( cancel_query->has_request_id ) {
+            add_msg( _( "%1$s checks the board, but there is no live work order #%2$d." ),
+                     listener.disp_name(), cancel_query->request_id );
         } else {
             add_msg( _( "%1$s checks the board, but there is no live work order for %2$s." ),
-                     listener.disp_name(), *cancel_query );
+                     listener.disp_name(), cancel_query->query );
         }
         return true;
     }
@@ -2556,15 +2625,25 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             return true;
         }
 
-        auto [best_request, best_score] = find_best_request( approval_query->query,
+        camp_request_lookup_result lookup = find_best_request( *approval_query,
         []( const camp_llm_request &request ) {
             return request.status != "completed" && request.status != "cancelled";
         } );
-        if( best_request == nullptr || best_score < 650 ) {
-            add_msg( _( "%1$s checks the board, but nothing matches \"%2$s\"." ),
-                     listener.disp_name(), approval_query->query );
+        if( lookup.request == nullptr ) {
+            if( !lookup.ambiguous_matches.empty() ) {
+                add_msg( _( "%1$s checks the board, but \"%2$s\" matches more than one work order: %3$s." ),
+                         listener.disp_name(), approval_query->query,
+                         camp_request_subject_list( lookup.ambiguous_matches ) );
+            } else if( approval_query->has_request_id ) {
+                add_msg( _( "%1$s checks the board, but there is no work order #%2$d." ),
+                         listener.disp_name(), approval_query->request_id );
+            } else {
+                add_msg( _( "%1$s checks the board, but nothing matches \"%2$s\"." ),
+                         listener.disp_name(), approval_query->query );
+            }
             return true;
         }
+        camp_llm_request *best_request = lookup.request;
         if( best_request->status == "in_progress" ) {
             add_msg( _( "%1$s taps the board: %2$s is already underway." ),
                      listener.disp_name(), camp_request_subject( *best_request ) );
