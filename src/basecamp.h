@@ -160,6 +160,7 @@ struct camp_llm_request {
     recipe_id chosen_recipe_id;
     std::string chosen_recipe_name;
     std::string status = "heard";
+    std::string approval_state = "not_needed";
     mission_id active_mission_id;
     character_id heard_by_npc_id;
     character_id assigned_worker_npc_id;
@@ -423,6 +424,9 @@ class basecamp
         void start_crafting( const mission_id &miss_id );
         int add_crafting_request( const recipe &making, int batch_size, const mission_id &miss_id,
                                   const npc &worker, const std::string &source_utterance = "" );
+        int queue_crafting_request( const recipe &making, int batch_size, const npc &worker,
+                                    const std::string &source_utterance = "" );
+        bool approve_crafting_request( int request_id );
         bool complete_crafting_request( const mission_id &miss_id, const npc &worker,
                                         const std::string &note_text = "" );
         bool cancel_crafting_request( const mission_id &miss_id, const npc &worker,

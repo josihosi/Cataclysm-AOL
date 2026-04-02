@@ -4457,6 +4457,7 @@ static void serialize( const camp_llm_request &value, JsonOut &jsout )
     jsout.member( "chosen_recipe_id", value.chosen_recipe_id );
     jsout.member( "chosen_recipe_name", value.chosen_recipe_name );
     jsout.member( "status", value.status );
+    jsout.member( "approval_state", value.approval_state );
     jsout.member( "active_mission_id", value.active_mission_id );
     jsout.member( "heard_by_npc_id", value.heard_by_npc_id );
     jsout.member( "assigned_worker_npc_id", value.assigned_worker_npc_id );
@@ -4480,6 +4481,7 @@ static void deserialize( camp_llm_request &value, const JsonObject &jo )
     jo.read( "chosen_recipe_id", value.chosen_recipe_id );
     jo.read( "chosen_recipe_name", value.chosen_recipe_name );
     jo.read( "status", value.status );
+    jo.read( "approval_state", value.approval_state );
     jo.read( "active_mission_id", value.active_mission_id );
     jo.read( "heard_by_npc_id", value.heard_by_npc_id );
     jo.read( "assigned_worker_npc_id", value.assigned_worker_npc_id );
