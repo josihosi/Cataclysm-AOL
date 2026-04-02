@@ -47,82 +47,138 @@ That remains the default until reality humiliates it again.
 
 ## Immediate strategic priority
 
-## Harden Basecamp AI v1 so it stays working
+## Design Basecamp AI v2 as a hybrid camp-brain layer
 
-The Basecamp request-board slice exists now.
-That changes the priority.
-The biggest risk is no longer "can we build this at all?".
+Basecamp request-board v1 is real now.
+That means the next interesting problem is no longer "can camp hear a craft request at all?".
 It is now:
-- silent regressions,
-- weak feedback when camp staff interprets orders,
-- and future edits breaking the board/speech path because nothing pins behavior down.
+- how to keep the deterministic board/action spine,
+- while giving camp replies actual personality and social texture,
+- and extending the same pattern toward build / mission / broader camp-management actions.
 
-So the next pass should be a **small hardening pass**, not a giant new feature binge.
-
----
-
-## Milestone 1: Basecamp AI hardening pass
-
-### Goal
-Make the new Basecamp board / speech layer feel finished enough to trust:
-- covered by targeted tests,
-- a little more alive in speech,
-- and easier to understand when something is queued, blocked, or launched.
-
-### Active scope
-This is what we are doing now.
-
-#### 1. Add regression coverage for spoken-board parsing and request flow
-Targeted tests should cover the highest-value inputs first:
-- craft requests
-- cancel requests
-- approve / launch requests
-- status queries
-- request-number references
-- "all ready work orders" style commands
-
-The goal is not a perfect universal test matrix.
-The goal is to stop the obvious speech/board grammar from quietly rotting.
-
-#### 2. Add short practical barks for the spoken board workflow
-Camp staff should give short useful spoken feedback for:
-- request heard and pinned
-- request blocked
-- request launched
-- request cancelled
-- board empty / board summary
-- ambiguous or missing request references
-
-Keep these short and functional.
-This is not a radio drama.
-
-#### 3. Tighten the finish-line verification loop
-The working finish line for this slice remains:
-- implemented on `dev`
-- compiles
-- game launches
-- save loads successfully
-- no crash
-- no Basecamp-specific debug/pop-up nonsense from this feature path
-
-The harness should remain strict enough to catch real problems without treating inherited upstream startup noise like divine punishment.
-
-### Practical success criteria for this milestone
-This hardening pass is successful if:
-- the main spoken board commands have regression coverage,
-- the camp gives short readable feedback instead of only third-person bookkeeping,
-- the latest `dev` build still compiles,
-- the game launches and loads the known save,
-- and the remaining harness noise is generic startup clutter rather than fresh Basecamp breakage.
+So the next pass should not be a blind rewrite.
+It should be a **hybrid v2 design pass**: deterministic action resolution underneath, personality-rich LLM reply + constrained action-token choice on top.
 
 ---
 
-## Milestone 2: Basecamp AI quality-of-life pass
-
-This is the next logical stretch **after** the hardening pass, not now.
+## Milestone 1: Basecamp AI v1 stabilization (done enough)
 
 ### Goal
-Make the board faster to read and less annoying to operate.
+Make the deterministic Basecamp request-board slice stable enough to trust and reuse.
+
+### Landed in this pass
+- regression coverage for spoken-board parsing and request references
+- short spoken board barks instead of only dry bookkeeping text
+- harness verification that builds, launches, and loads the known save
+- harness filtering for inherited startup-noise lines so the checks focus on real regressions
+
+### Why this milestone matters
+This is the spine that v2 will stand on.
+If the deterministic queue / board / retry / approval flow is not stable, any LLM layer on top will just become expensive confusion.
+
+---
+
+## Milestone 2: Basecamp AI v2 interface sketch
+
+This is the current active design problem.
+
+### Goal
+Define the hybrid interface between:
+- the deterministic Basecamp resolver, and
+- the personality-rich LLM reply/action layer.
+
+### Target shape
+When the player says something at camp:
+1. choose the relevant camp NPC voice
+2. build a compact follower-style social snapshot
+3. include ranked deterministic action candidates
+4. let the LLM return:
+   - one spoken reply
+   - one constrained action token
+5. apply that action token through deterministic code
+
+### Constraints
+- no minimap
+- no raw inventory dump
+- no giant recipe dump
+- no XML circus if simple `key: value` lines are enough
+- keep the snapshot close in style to the existing follower-NPC snapshot
+- keep the prompt close in style to the existing follower-NPC prompt
+
+### Candidate action-token shape
+For the first craft-oriented version, the model should only choose from a narrow legal menu such as:
+- `craft_go:candidate_n`
+- `craft_wait:candidate_n`
+- `status:request_n`
+- `status_all`
+- `approve:request_n`
+- `cancel:request_n`
+- `clarify`
+- `idle`
+
+The deterministic layer should prepare the legal tokens; the model should not invent its own.
+
+### Candidate snapshot shape
+The snapshot should stay lean and reuse proven follower-style fields where possible:
+- player name / utterance / utterance present
+- `your_name`
+- `your_profession`
+- `your_tone`
+- `your_example_expression`
+- `your_recent_memories`
+- `your_state[0-10]`
+- `your_emotions[0-10]`
+- `your_personality[0-10]`
+- `your_opinion_of_player[0-10]`
+- compact camp context lines
+- ranked craft / board candidates
+- allowed action list
+
+### Matching policy for craft candidates
+The deterministic matcher should hand the model only a small ranked set:
+- top 5 candidates max
+- phrase-aware scoring, not just bag-of-words matching
+- longer specific phrase matches should beat generic noun matches
+- example: `boiled bandages` should rank above plain `bandages` when both are valid
+
+### Why this milestone matters
+This is the bridge between:
+- useful deterministic camp automation, and
+- the "alive" social feeling Josef actually wants from camp NPCs.
+
+---
+
+## Milestone 3: Broaden Basecamp action tokens beyond crafting
+
+Useful next, but only after the v2 interface is nailed down.
+
+### Goal
+Extend the same constrained-token pattern from craft requests to broader camp management.
+
+### Candidate scope
+- build / construction requests
+- board-side request queries and follow-ups
+- local mission dispatch
+- camp capability questions such as:
+  - "what can we make?"
+  - "what is blocked?"
+  - "who is free?"
+  - "what is queued?"
+- richer disambiguation and follow-ups like:
+  - "make 5 more"
+  - "cancel request 12"
+  - "status on 7"
+
+This is where Basecamp starts becoming a real camp foreman interface rather than just a craft clipboard.
+
+---
+
+## Milestone 4: Board QoL and deeper feasibility summaries
+
+Also real, also not first.
+
+### Goal
+Make the board easier to read and explain why a request is or is not startable.
 
 ### Candidate scope
 - sort active requests ahead of archived ones
@@ -135,53 +191,15 @@ Make the board faster to read and less annoying to operate.
   - clear completed
   - approve all ready
   - retry blocked
+- per-request feasibility summaries for:
+  - missing tools
+  - missing ingredients
+  - liquid storage blockers
+  - estimated work time
+  - likely best worker
+  - subcraft / recursive planning hints
 
-This is boring UI glue, which is exactly why it matters.
-
----
-
-## Milestone 3: Better spoken disambiguation and camp-side queries
-
-Useful, but explicitly **after** the hardening and QoL passes.
-
-### Goal
-Make spoken Basecamp control less brittle and more helpful when the player is vague.
-
-### Candidate scope
-- disambiguation when multiple recipes or work orders match
-- richer quantity parsing
-- follow-ups like:
-  - "make 5 more"
-  - "cancel request 12"
-  - "status on 7"
-- camp capability queries such as:
-  - "what can we make?"
-  - "what is blocked?"
-  - "who is free?"
-  - "what is queued?"
-
-This is where the board starts feeling like a foreman tool instead of just a smarter clipboard.
-
----
-
-## Milestone 4: Deeper feasibility / planning summaries
-
-Also real, also not now.
-
-### Goal
-Expose why a request is or is not startable without making the player perform archaeology.
-
-### Candidate scope
-Per-request summaries for:
-- missing tools
-- missing ingredients
-- liquid storage blockers
-- estimated work time
-- likely best worker
-- subcraft / recursive planning hints
-
-This would be valuable, but it is also where complexity starts breeding in dark corners.
-Do this only once the current board behavior is stable and well-covered.
+This is valuable glue, but it should follow the v2 interface design instead of happening in parallel confusion.
 
 ---
 
@@ -217,16 +235,24 @@ Flavor can continue opportunistically, but it should not crowd out code hardenin
 ## Recommended implementation order
 
 ### First
-- Add targeted regression tests for spoken Basecamp request parsing and board references.
+- Lock the follower-style Basecamp v2 snapshot field list.
+- Lock the matching prompt format.
+- Lock the first constrained action-token grammar.
 
 ### Second
-- Add short useful barks for the spoken board workflow.
+- Implement the deterministic candidate-prep layer for v2:
+  - top-5 craft candidates
+  - phrase-aware ranking
+  - legal action-token generation
 
 ### Third
-- Re-run compile + startup/load verification on `dev` and confirm the feature path stays clean.
+- Let the LLM choose between reply + constrained action token, while deterministic code still executes the actual result.
 
 ### Fourth
-- If that pass is stable, move to board QoL improvements from Milestone 2.
+- Expand the same pattern to build / mission / broader board actions.
+
+### Fifth
+- Improve board QoL and deeper feasibility summaries once the interface stops moving.
 
 That is enough work already.
-There is no need to turn one successful half-day into a full municipal bureaucracy.
+There is still no need to turn one successful half-day into a full municipal bureaucracy.
