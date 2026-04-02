@@ -26,6 +26,7 @@
 #include "action.h"
 #include "auto_pickup.h"
 #include "avatar.h"
+#include "basecamp.h"
 #include "bionics.h"
 #include "bodypart.h"
 #include "calendar.h"
@@ -1696,6 +1697,44 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                 }
                 const std::string utterance = !yell_msg.empty() ? yell_msg : message;
                 if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                    struct camp_hearer_group {
+                        tripoint_abs_omt camp_omt;
+                        basecamp *camp = nullptr;
+                        std::vector<npc *> hearers;
+                    };
+
+                    std::vector<camp_hearer_group> camp_groups;
+                    std::vector<npc *> llm_hearers;
+                    llm_hearers.reserve( hearers.size() );
+                    for( npc *guy : hearers ) {
+                        if( guy == nullptr || !guy->assigned_camp ) {
+                            llm_hearers.push_back( guy );
+                            continue;
+                        }
+                        std::optional<basecamp *> camp = overmap_buffer.find_camp( guy->assigned_camp->xy() );
+                        if( !camp || *camp == nullptr ) {
+                            llm_hearers.push_back( guy );
+                            continue;
+                        }
+                        auto it = std::find_if( camp_groups.begin(), camp_groups.end(), [&]( const camp_hearer_group & group ) {
+                            return group.camp_omt == *guy->assigned_camp;
+                        } );
+                        if( it == camp_groups.end() ) {
+                            camp_groups.push_back( { *guy->assigned_camp, *camp, { guy } } );
+                        } else {
+                            it->hearers.push_back( guy );
+                        }
+                    }
+
+                    for( camp_hearer_group &group : camp_groups ) {
+                        if( group.camp != nullptr && !group.hearers.empty() &&
+                            group.camp->handle_heard_camp_request( *group.hearers.front(), utterance ) ) {
+                            continue;
+                        }
+                        llm_hearers.insert( llm_hearers.end(), group.hearers.begin(), group.hearers.end() );
+                    }
+
+                    hearers = std::move( llm_hearers );
                     llm_intent::enqueue_requests( hearers, utterance );
                     if( ambient_target != nullptr ) {
                         llm_intent::log_event( string_format( "ambient target %s (%d) for utterance\n%s",

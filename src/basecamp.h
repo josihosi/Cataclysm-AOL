@@ -423,9 +423,14 @@ class basecamp
         // determine what to make, batch size, who to assign to making it, etc.
         void start_crafting( const mission_id &miss_id );
         int add_crafting_request( const recipe &making, int batch_size, const mission_id &miss_id,
-                                  const npc &worker, const std::string &source_utterance = "" );
+                                  const npc &worker, const std::string &source_utterance = "",
+                                  const std::string &requested_item_query = "",
+                                  const character_id &heard_by_npc_id = character_id() );
         int queue_crafting_request( const recipe &making, int batch_size, const npc &worker,
-                                    const std::string &source_utterance = "" );
+                                    const std::string &source_utterance = "",
+                                    const std::string &requested_item_query = "",
+                                    const character_id &heard_by_npc_id = character_id() );
+        bool handle_heard_camp_request( npc &listener, const std::string &utterance );
         bool approve_crafting_request( int request_id );
         bool complete_crafting_request( const mission_id &miss_id, const npc &worker,
                                         const std::string &note_text = "" );
