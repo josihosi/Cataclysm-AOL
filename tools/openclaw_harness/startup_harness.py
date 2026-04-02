@@ -33,6 +33,7 @@ IGNORABLE_DEBUG_LOG_PATTERNS: List[Pattern[str]] = [
     re.compile(
         r"src/mod_tracker\.h:\d+: Tried check if 'vector_null' had a duplicate, but type 'attack_vector' does not track object sources"
     ),
+    re.compile( r"\d{2}:\d{2}:\d{2}\.\d{3} WARNING : .* pack load time:: .*" ),
 ]
 
 
