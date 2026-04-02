@@ -319,6 +319,79 @@ It is seasoning, not structural timber.
 
 ---
 
+## Milestone 4: Basecamp LLM tool and bulletin-board scratchpad
+
+Once the action-status layer and first harness slice are genuinely useful, the next major systems milestone should be an **LLM-assisted Basecamp request tool**.
+
+Detailed patch plan: [`doc/basecamp-llm-v1-patch-plan.md`](doc/basecamp-llm-v1-patch-plan.md)
+
+### Problem to solve
+Basecamp already has real worker logic, camp storage, recipe checks, and bulletin-board-style control flow.
+What it does not have is a good way to translate natural player requests like:
+- `make 40 bandages`
+- `craft me a shotgun if the camp can manage it`
+- `scrap that bandage plan`
+
+into:
+- a visible camp work request,
+- a sensible recipe choice,
+- a deterministic feasibility check,
+- and a trackable job on the bulletin board.
+
+### Intended shape
+The right split here is:
+- **LLM** for utterance parsing, bounded recipe choice among prepared candidates, and personality-flavored board notes
+- **deterministic code** for recipe availability, books, skills, tools, ingredients, food-state facts, worker selection, recursive subcraft planning, mission launch, and request state transitions
+
+### Why the bulletin board matters
+This feature should not be an invisible background planner.
+The camp bulletin board should gain a scratchpad / work-order submenu that shows:
+- active requests
+- blocked reasons
+- assigned worker
+- recursive substeps
+- approval state
+- completion/cancellation state
+
+The player should be able to inspect and manually remove/cancel entries there, while later also being able to cancel by utterance.
+
+### Important design facts
+A Basecamp craft request can be constrained by:
+- worker skill
+- recipe availability
+- books in camp area
+- tools in camp area
+- ingredients in camp area
+- food runway / camp mood
+- worker availability
+- tool hoarding by Basecamp-assigned NPCs
+
+The last two are especially important because multiple camp workers may exist and they often selfishly sit on tools the camp planner should really be able to use.
+
+### Current design direction
+For v1:
+- Basecamp-assigned NPC hearing should override ordinary follower-hearing for camp-work intents.
+- Recipe choice should **not** be first-string-match; it should be selected from a deterministic candidate set.
+- Food should affect note tone / grumpiness rather than hard-blocking normal work by default.
+- Recursive subcraft planning with a depth of 2 is already valuable enough to justify inclusion.
+- Camp tool auto-drop should deposit required tools into a tool zone if one exists, otherwise camp center, otherwise worker feet.
+
+### Suggested landing order
+- request data model
+- scratchpad UI on the bulletin board
+- Basecamp hearing hook
+- deterministic candidate recipe gathering
+- bounded LLM recipe chooser
+- deterministic planner / worker assignment
+- mission launch integration
+- tool auto-drop pooling
+- recursive subcraft depth 2
+- reactive utterances + speech cancellation
+
+This is large enough to deserve its own patch plan, but concrete enough now that implementation can start once current action/harness work is in a good resting state.
+
+---
+
 ## Release/testing direction after the next milestone
 
 Once the status layer and first harness slice exist, the release loop should look more like this:
