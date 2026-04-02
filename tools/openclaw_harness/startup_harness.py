@@ -26,7 +26,14 @@ import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Pattern, Tuple
+
+
+IGNORABLE_DEBUG_LOG_PATTERNS: List[Pattern[str]] = [
+    re.compile(
+        r"src/mod_tracker\.h:\d+: Tried check if 'vector_null' had a duplicate, but type 'attack_vector' does not track object sources"
+    ),
+]
 
 
 @dataclass
@@ -273,6 +280,28 @@ def copy_file_if_exists(src: Path, dst: Path) -> None:
         shutil.copy2(src, dst)
 
 
+def filter_debug_log_text(text: str) -> str:
+    filtered_lines = []
+    for line in text.splitlines(keepends=True):
+        if any(pattern.search(line) for pattern in IGNORABLE_DEBUG_LOG_PATTERNS):
+            continue
+        filtered_lines.append(line)
+    return "".join(filtered_lines)
+
+
+def copy_filtered_debug_log_delta_if_exists(src: Path, start_size: int, dst: Path) -> None:
+    if not src.exists():
+        return
+    size = src.stat().st_size
+    if size <= start_size:
+        return
+    ensure_dir(dst.parent)
+    with src.open("r", encoding="utf-8", errors="replace") as fh:
+        fh.seek(start_size)
+        data = fh.read()
+    dst.write_text(filter_debug_log_text(data), encoding="utf-8")
+
+
 def capture_debug_delta(profile: str, start_size: int, run_dir: Path, serial: int) -> int:
     debug_log = config_dir_for_profile(profile) / "debug.log"
     if not debug_log.exists():
@@ -284,7 +313,7 @@ def capture_debug_delta(profile: str, start_size: int, run_dir: Path, serial: in
         fh.seek(start_size)
         data = fh.read()
     out = run_dir / f"debug_delta_{serial:02d}.log"
-    out.write_text(data, encoding="utf-8")
+    out.write_text(filter_debug_log_text(data), encoding="utf-8")
     return size
 
 
@@ -491,7 +520,7 @@ def run_startup(args: argparse.Namespace) -> int:
         code = proc.poll()
         if code is not None:
             capture_screenshot(proc.pid, run_dir, "failure_process_exit")
-            copy_file_if_exists(debug_log, run_dir / "debug.final.log")
+            copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             print(json.dumps({
                 "ok": False,
@@ -504,7 +533,7 @@ def run_startup(args: argparse.Namespace) -> int:
         ok, data = success_from_lastworld(profile, baseline_mtime, expected_world)
         if ok:
             capture_screenshot(proc.pid, run_dir, "success")
-            copy_file_if_exists(debug_log, run_dir / "debug.final.log")
+            copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             print(json.dumps({
                 "ok": True,
@@ -526,7 +555,7 @@ def run_startup(args: argparse.Namespace) -> int:
         time.sleep(poll_seconds)
 
     capture_screenshot(proc.pid, run_dir, "failure_timeout")
-    copy_file_if_exists(debug_log, run_dir / "debug.final.log")
+    copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
     copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
     print(json.dumps({
         "ok": False,
