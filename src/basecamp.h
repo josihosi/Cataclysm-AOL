@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "calendar.h"
+#include "character_id.h"
 #include "coordinates.h"
 #include "craft_command.h"
 #include "game_constants.h"
@@ -142,6 +143,32 @@ struct expansion_salt_water_pipe {
     point_rel_omt expansion;
     point_rel_omt connection_direction;
     std::vector<expansion_salt_water_pipe_segment> segments;
+};
+
+struct camp_llm_note {
+    std::string kind;
+    std::string text;
+    time_point created_turn = calendar::turn_zero;
+};
+
+struct camp_llm_request {
+    int request_id = 0;
+    std::string request_kind = "craft_request";
+    std::string source_utterance;
+    std::string requested_item_query;
+    int requested_count = 0;
+    recipe_id chosen_recipe_id;
+    std::string chosen_recipe_name;
+    std::string status = "heard";
+    mission_id active_mission_id;
+    character_id heard_by_npc_id;
+    character_id assigned_worker_npc_id;
+    std::string assigned_worker_name;
+    time_point created_turn = calendar::turn_zero;
+    time_point updated_turn = calendar::turn_zero;
+    time_point eta_turn = calendar::turn_zero;
+    std::vector<std::string> blockers;
+    std::vector<camp_llm_note> notes;
 };
 
 class basecamp_map
@@ -390,9 +417,17 @@ class basecamp
         void start_menial_labor();
         void worker_assignment_ui();
         void job_assignment_ui();
+        void camp_request_ui();
         // Assembles a dummy NPC with all available recipes and uses player input on the regular crafting GUI to
         // determine what to make, batch size, who to assign to making it, etc.
         void start_crafting( const mission_id &miss_id );
+        int add_crafting_request( const recipe &making, int batch_size, const mission_id &miss_id,
+                                  const npc &worker, const std::string &source_utterance = "" );
+        bool complete_crafting_request( const mission_id &miss_id, const npc &worker,
+                                        const std::string &note_text = "" );
+        bool cancel_crafting_request( const mission_id &miss_id, const npc &worker,
+                                      const std::string &note_text = "" );
+        bool clear_camp_request( int request_id );
 
         /// Called when a companion is sent to cut logs
         void start_cut_logs( const mission_id &miss_id, float exertion_level );
@@ -493,6 +528,12 @@ class basecamp
     private:
         friend class basecamp_action_components;
 
+        camp_llm_request *find_camp_request( int request_id );
+        camp_llm_request *find_active_crafting_request( const mission_id &miss_id,
+                const character_id &worker_id );
+        void add_camp_request_note( camp_llm_request &request, const std::string &kind,
+                                    const std::string &text );
+
         // Which faction owns this camp?
         mutable faction_id owner = faction_id::NULL_ID();
         // Returns the actual faction object which owns this camp
@@ -518,6 +559,8 @@ class basecamp
         std::set<itype_id> fuel_types; // NOLINT(cata-serialize)
         std::vector<basecamp_fuel> fuels; // NOLINT(cata-serialize)
         std::vector<basecamp_resource> resources; // NOLINT(cata-serialize)
+        std::vector<camp_llm_request> camp_requests;
+        int next_camp_request_id = 1;
         std::vector<std::vector<ui_mission_id>> temp_ui_mission_keys;   // NOLINT(cata-serialize)
         inventory _inv; // NOLINT(cata-serialize)
         bool by_radio = false; // NOLINT(cata-serialize)
