@@ -346,23 +346,3 @@ Press `?`, then `1`, to see the command list. Press `+` to add a key binding.
 ### How can I start a new world?
 
 Choose **World** on the main menu, then **Create World**.
-
-## Basecamp request-board reference commits
-
-For the first deterministic Basecamp request-board / spoken-camp-control slice, the main reference commits on `dev` are:
-
-- `ddd0b8fdad` — Add camp request board scaffolding
-- `3d0575715e` — Add board approval flow for camp craft requests
-- `1f534b2f87` — basecamp: batch-report work order launch results
-- `70bb56a9ce` — Teach camp crafts to reclaim hoarded tools
-- `8c7b502910` — Basecamp requests retry with alternate crafters
-- `8d8a51fd62` — Handle spoken camp craft orders via request board
-- `f38e5d0c06` — Add spoken camp request board controls
-- `9ff5455588` — Basecamp board speech supports request numbers
-- `d9362c8087` — Harden basecamp request board speech handling
-
-Supporting harness/debug-validation cleanup from the same pass:
-
-- `a53cf4be0d` — harness: filter benign attack_vector startup noise
-- `b7c84cb9c8` — harness: ignore pack load timing noise
-- `985128da47` — Capture dev basecamp testing baseline

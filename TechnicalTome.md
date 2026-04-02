@@ -302,3 +302,29 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
   - then clear intent and continue with local deterministic AI.
 - If planner is unavailable or parse fails:
   - keep gameplay stable by using non-LLM defaults.
+
+## Basecamp Request-Board Reference Commits
+
+For the first deterministic Basecamp request-board / spoken-camp-control slice on `dev`, the main reference commits are:
+
+- `ddd0b8fdad` — Add camp request board scaffolding
+- `3d0575715e` — Add board approval flow for camp craft requests
+- `1f534b2f87` — basecamp: batch-report work order launch results
+- `70bb56a9ce` — Teach camp crafts to reclaim hoarded tools
+- `8c7b502910` — Basecamp requests retry with alternate crafters
+- `8d8a51fd62` — Handle spoken camp craft orders via request board
+- `f38e5d0c06` — Add spoken camp request board controls
+- `9ff5455588` — Basecamp board speech supports request numbers
+- `d9362c8087` — Harden basecamp request board speech handling
+
+Supporting harness/debug-validation cleanup from the same pass:
+
+- `a53cf4be0d` — harness: filter benign attack_vector startup noise
+- `b7c84cb9c8` — harness: ignore pack load timing noise
+- `985128da47` — Capture dev basecamp testing baseline
+
+Upstream portability note:
+- A scratch squash/transplant check onto `upstream/master` showed the deterministic slice is mostly portable, but not yet a clean public patch.
+- The meaningful manual merge seam was `src/npctalk.cpp`.
+- A fork-local `Plan.md` docs conflict was irrelevant noise and not part of the code story.
+- Treat this section as reference archaeology, not as proof of an upstream-ready public patch.
