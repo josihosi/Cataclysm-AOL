@@ -1621,6 +1621,19 @@ static std::string camp_request_summary( const camp_llm_request &request )
     return summary;
 }
 
+static std::string camp_request_spoken_status( const camp_llm_request &request )
+{
+    std::string spoken = camp_request_summary( request );
+    if( request.status == "blocked" && !request.blockers.empty() ) {
+        spoken += string_format( _( " — blocker: %s" ), request.blockers.front() );
+    } else if( request.status == "in_progress" && request.eta_turn > calendar::turn ) {
+        spoken += string_format( _( " — ETA %s" ), to_string( request.eta_turn - calendar::turn ) );
+    } else if( request.status == "awaiting_approval" && request.approval_state == "waiting_player" ) {
+        spoken += _( " — waiting on your approval" );
+    }
+    return spoken;
+}
+
 static std::string camp_request_details( const camp_llm_request &request )
 {
     std::string details = string_format( _( "Request #%1$d\n"
@@ -1988,6 +2001,11 @@ struct parsed_camp_craft_order {
     int count = 1;
 };
 
+struct parsed_camp_request_reference {
+    std::string query;
+    bool all_requests = false;
+};
+
 static std::string normalize_camp_request_text( std::string_view text )
 {
     std::string out;
@@ -2057,6 +2075,34 @@ static int parse_camp_count_word( std::string_view token )
     return it == word_numbers.end() ? 0 : it->second;
 }
 
+static void strip_camp_request_polite_prefixes( std::string &text )
+{
+    while( consume_camp_request_prefix( text, "please " ) ||
+           consume_camp_request_prefix( text, "hey " ) ||
+           consume_camp_request_prefix( text, "ok " ) ||
+           consume_camp_request_prefix( text, "okay " ) ) {
+    }
+}
+
+static void strip_camp_request_board_reference( std::string &text )
+{
+    while( consume_camp_request_prefix( text, "that " ) ||
+           consume_camp_request_prefix( text, "the " ) ) {
+    }
+    while( consume_camp_request_prefix( text, "plan for " ) ||
+           consume_camp_request_prefix( text, "work order for " ) ||
+           consume_camp_request_prefix( text, "order for " ) ||
+           consume_camp_request_prefix( text, "request for " ) ||
+           consume_camp_request_prefix( text, "job for " ) ||
+           consume_camp_request_prefix( text, "plan " ) ||
+           consume_camp_request_prefix( text, "work order " ) ||
+           consume_camp_request_prefix( text, "order " ) ||
+           consume_camp_request_prefix( text, "request " ) ||
+           consume_camp_request_prefix( text, "job " ) ) {
+    }
+    strip_camp_request_articles( text );
+}
+
 static std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance )
 {
     std::string text = normalize_camp_request_text( utterance );
@@ -2064,11 +2110,7 @@ static std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std:
         return std::nullopt;
     }
 
-    while( consume_camp_request_prefix( text, "please " ) ||
-           consume_camp_request_prefix( text, "hey " ) ||
-           consume_camp_request_prefix( text, "ok " ) ||
-           consume_camp_request_prefix( text, "okay " ) ) {
-    }
+    strip_camp_request_polite_prefixes( text );
 
     bool matched_prefix = false;
     for( const std::string_view prefix : {
@@ -2168,6 +2210,105 @@ static std::optional<std::string> parse_heard_camp_cancel_query( std::string_vie
     strip_camp_request_articles( text );
     strip_camp_request_suffix( text, " please" );
     return text.empty() ? std::nullopt : std::optional<std::string>( text );
+}
+
+static std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance )
+{
+    std::string text = normalize_camp_request_text( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_polite_prefixes( text );
+
+    bool matched_prefix = false;
+    for( const std::string_view prefix : {
+             std::string_view( "approve " ), std::string_view( "launch " ),
+             std::string_view( "retry " ), std::string_view( "resume " ),
+             std::string_view( "kick off " ), std::string_view( "go ahead with " ),
+             std::string_view( "go ahead on " ), std::string_view( "can you approve " ),
+             std::string_view( "could you approve " ), std::string_view( "would you approve " ),
+             std::string_view( "will you approve " ), std::string_view( "can you launch " ),
+             std::string_view( "could you launch " ), std::string_view( "would you launch " ),
+             std::string_view( "will you launch " ), std::string_view( "can you retry " ),
+             std::string_view( "could you retry " ), std::string_view( "would you retry " ),
+             std::string_view( "will you retry " ) } ) {
+        if( consume_camp_request_prefix( text, prefix ) ) {
+            matched_prefix = true;
+            break;
+        }
+    }
+    if( !matched_prefix ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_board_reference( text );
+    strip_camp_request_suffix( text, " please" );
+
+    if( text == "all" || text == "them" || text == "everything" ||
+        text == "all of them" || text == "all work orders" ||
+        text == "all requests" || text == "all jobs" ||
+        text == "all ready work orders" ) {
+        return parsed_camp_request_reference{ "", true };
+    }
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+    return parsed_camp_request_reference{ text, false };
+}
+
+static std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std::string_view utterance )
+{
+    std::string text = normalize_camp_request_text( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_polite_prefixes( text );
+
+    for( const std::string_view exact : {
+             std::string_view( "what s on the board" ),
+             std::string_view( "what is on the board" ),
+             std::string_view( "what s on the request board" ),
+             std::string_view( "what is on the request board" ),
+             std::string_view( "show the board" ),
+             std::string_view( "show me the board" ),
+             std::string_view( "check the board" ),
+             std::string_view( "read the board" ),
+             std::string_view( "board status" ),
+             std::string_view( "camp board status" ),
+             std::string_view( "any work orders" ),
+             std::string_view( "any requests" ),
+             std::string_view( "what requests do we have" ),
+             std::string_view( "do we have any work orders" ) } ) {
+        if( text == exact ) {
+            return parsed_camp_request_reference{ "", true };
+        }
+    }
+
+    bool matched_prefix = false;
+    for( const std::string_view prefix : {
+             std::string_view( "status of " ), std::string_view( "status for " ),
+             std::string_view( "what s the status of " ),
+             std::string_view( "what is the status of " ),
+             std::string_view( "show me the status of " ),
+             std::string_view( "show the status of " ),
+             std::string_view( "read off the status of " ) } ) {
+        if( consume_camp_request_prefix( text, prefix ) ) {
+            matched_prefix = true;
+            break;
+        }
+    }
+    if( !matched_prefix ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_board_reference( text );
+    strip_camp_request_suffix( text, " please" );
+    if( text.empty() ) {
+        return parsed_camp_request_reference{ "", true };
+    }
+    return parsed_camp_request_reference{ text, false };
 }
 
 static int score_camp_request_text_match( std::string_view candidate, std::string_view query )
@@ -2279,19 +2420,70 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return false;
     }
 
-    if( const std::optional<std::string> cancel_query = parse_heard_camp_cancel_query( utterance ) ) {
+    const auto find_best_request = [&]( std::string_view query,
+    const std::function<bool( const camp_llm_request & )> &predicate ) -> std::pair<camp_llm_request *, int> {
         camp_llm_request *best_request = nullptr;
         int best_score = 0;
         for( camp_llm_request &request : camp_requests ) {
-            if( request.status == "completed" || request.status == "cancelled" ) {
+            if( !predicate( request ) ) {
                 continue;
             }
-            const int score = score_camp_board_request_match( request, *cancel_query );
+            const int score = score_camp_board_request_match( request, query );
             if( score > best_score ) {
                 best_score = score;
                 best_request = &request;
             }
         }
+        return { best_request, best_score };
+    };
+
+    if( const std::optional<parsed_camp_request_reference> status_query =
+            parse_heard_camp_status_query( utterance ) ) {
+        if( camp_requests.empty() ) {
+            add_msg( _( "%s checks the board.  Empty." ), listener.disp_name() );
+            return true;
+        }
+        if( status_query->all_requests ) {
+            std::vector<std::string> active_subjects;
+            active_subjects.reserve( camp_requests.size() );
+            int archived_requests = 0;
+            for( const camp_llm_request &request : camp_requests ) {
+                if( request.status == "completed" || request.status == "cancelled" ) {
+                    archived_requests++;
+                } else {
+                    active_subjects.push_back( camp_request_subject( request ) );
+                }
+            }
+            if( active_subjects.empty() ) {
+                add_msg( _( "%1$s checks the board: nothing active, %2$d archived." ),
+                         listener.disp_name(), archived_requests );
+            } else {
+                add_msg( _( "%1$s checks the board: %2$d active, %3$d archived — %4$s." ),
+                         listener.disp_name(), static_cast<int>( active_subjects.size() ), archived_requests,
+                         camp_request_subject_list( active_subjects ) );
+            }
+            return true;
+        }
+
+        const auto [best_request, best_score] = find_best_request( status_query->query,
+        []( const camp_llm_request & ) {
+            return true;
+        } );
+        if( best_request != nullptr && best_score >= 650 ) {
+            add_msg( _( "%1$s checks the board: %2$s." ), listener.disp_name(),
+                     camp_request_spoken_status( *best_request ) );
+        } else {
+            add_msg( _( "%1$s checks the board, but nothing matches \"%2$s\"." ),
+                     listener.disp_name(), status_query->query );
+        }
+        return true;
+    }
+
+    if( const std::optional<std::string> cancel_query = parse_heard_camp_cancel_query( utterance ) ) {
+        const auto [best_request, best_score] = find_best_request( *cancel_query,
+        []( const camp_llm_request &request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
         if( best_request != nullptr && best_score >= 650 ) {
             if( best_request->status == "in_progress" ) {
                 emergency_recall( best_request->active_mission_id );
@@ -2308,8 +2500,99 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                 add_msg( _( "%1$s crosses the work order for %2$s off the board." ),
                          listener.disp_name(), best_request->chosen_recipe_name );
             }
+        } else {
+            add_msg( _( "%1$s checks the board, but there is no live work order for %2$s." ),
+                     listener.disp_name(), *cancel_query );
+        }
+        return true;
+    }
+
+    if( const std::optional<parsed_camp_request_reference> approval_query =
+            parse_heard_camp_approval_query( utterance ) ) {
+        if( approval_query->all_requests ) {
+            std::vector<int> launch_ids;
+            launch_ids.reserve( camp_requests.size() );
+            for( const camp_llm_request &request : camp_requests ) {
+                if( request.status == "awaiting_approval" || request.status == "blocked" ) {
+                    launch_ids.push_back( request.request_id );
+                }
+            }
+            if( launch_ids.empty() ) {
+                add_msg( _( "%s checks the board, but nothing is waiting to launch." ),
+                         listener.disp_name() );
+                return true;
+            }
+
+            std::vector<std::string> started_requests;
+            std::vector<std::string> blocked_requests;
+            std::vector<std::string> pinned_requests;
+            started_requests.reserve( launch_ids.size() );
+            blocked_requests.reserve( launch_ids.size() );
+            pinned_requests.reserve( launch_ids.size() );
+
+            for( const int launch_id : launch_ids ) {
+                camp_llm_request *request = find_camp_request( launch_id );
+                if( request == nullptr ) {
+                    continue;
+                }
+                const std::string subject = camp_request_subject( *request );
+                approve_crafting_request( launch_id );
+                request = find_camp_request( launch_id );
+                if( request == nullptr ) {
+                    continue;
+                }
+                if( request->status == "in_progress" ) {
+                    started_requests.push_back( subject );
+                } else if( request->status == "blocked" ) {
+                    blocked_requests.push_back( subject );
+                } else {
+                    pinned_requests.push_back( subject );
+                }
+            }
+
+            add_msg( _( "%1$s works through the board: started %2$d, blocked %3$d, still pinned %4$d." ),
+                     listener.disp_name(), static_cast<int>( started_requests.size() ),
+                     static_cast<int>( blocked_requests.size() ), static_cast<int>( pinned_requests.size() ) );
             return true;
         }
+
+        auto [best_request, best_score] = find_best_request( approval_query->query,
+        []( const camp_llm_request &request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        if( best_request == nullptr || best_score < 650 ) {
+            add_msg( _( "%1$s checks the board, but nothing matches \"%2$s\"." ),
+                     listener.disp_name(), approval_query->query );
+            return true;
+        }
+        if( best_request->status == "in_progress" ) {
+            add_msg( _( "%1$s taps the board: %2$s is already underway." ),
+                     listener.disp_name(), camp_request_subject( *best_request ) );
+            return true;
+        }
+
+        const int request_id = best_request->request_id;
+        const std::string subject = camp_request_subject( *best_request );
+        approve_crafting_request( request_id );
+        best_request = find_camp_request( request_id );
+        if( best_request == nullptr ) {
+            return true;
+        }
+
+        if( best_request->status == "in_progress" ) {
+            add_msg( _( "%1$s sends %2$s off to handle %3$s." ), listener.disp_name(),
+                     best_request->assigned_worker_name, subject );
+        } else if( best_request->status == "blocked" ) {
+            const std::string blocker = best_request->blockers.empty() ?
+                                        std::string( _( "the job still cannot start" ) ) :
+                                        best_request->blockers.front();
+            add_msg( _( "%1$s rechecks %2$s, but it is still blocked: %3$s." ),
+                     listener.disp_name(), subject, blocker );
+        } else {
+            add_msg( _( "%1$s leaves %2$s pinned on the board for now." ),
+                     listener.disp_name(), subject );
+        }
+        return true;
     }
 
     const std::optional<parsed_camp_craft_order> parsed = parse_heard_camp_craft_order( utterance );
