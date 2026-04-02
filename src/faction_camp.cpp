@@ -1728,6 +1728,120 @@ void basecamp::add_camp_request_note( camp_llm_request &request, const std::stri
     request.notes.push_back( camp_llm_note{ kind, text, calendar::turn } );
 }
 
+std::vector<std::string> basecamp::release_crafting_tools( const recipe &making,
+        const mapgen_arguments &args, int batch_size )
+{
+    map &target_map = get_camp_map();
+    form_storage_zones( target_map, bb_pos );
+    form_crafting_inventory( target_map );
+
+    const auto filter = is_crafting_component;
+    avatar &player_character = get_avatar();
+    const requirement_data *req = nullptr;
+    if( making.is_blueprint() ) {
+        const std::unordered_map<mapgen_arguments, build_reqs> &reqs_map =
+            making.blueprint_build_reqs().reqs_by_parameters;
+        auto req_it = reqs_map.find( args );
+        if( req_it == reqs_map.end() ) {
+            return {};
+        }
+        req = &req_it->second.consolidated_reqs;
+    } else {
+        req = making.deduped_requirements().select_alternative( player_character, _inv, filter, batch_size );
+    }
+    if( req == nullptr ) {
+        return {};
+    }
+
+    const auto drop_abs_pos = get_dumping_spot().raw() == tripoint::zero ? bb_pos : get_dumping_spot();
+    const tripoint_bub_ms drop_pos = target_map.get_bub( drop_abs_pos );
+    std::vector<std::string> released_notes;
+    bool released_any = false;
+
+    while( true ) {
+        std::set<itype_id> missing_tools;
+        for( const std::vector<tool_comp> &alternatives : req->get_tools() ) {
+            const bool satisfied = std::any_of( alternatives.begin(), alternatives.end(),
+            [&]( const tool_comp & tool ) {
+                return tool.has( _inv, filter, batch_size );
+            } );
+            if( satisfied ) {
+                continue;
+            }
+            for( const tool_comp &tool : alternatives ) {
+                if( !tool.type.is_empty() ) {
+                    missing_tools.insert( tool.type );
+                }
+            }
+        }
+
+        std::vector<quality_requirement> missing_qualities;
+        for( const std::vector<quality_requirement> &alternatives : req->get_qualities() ) {
+            const bool satisfied = std::any_of( alternatives.begin(), alternatives.end(),
+            [&]( const quality_requirement & quality ) {
+                return quality.has( _inv, filter, batch_size );
+            } );
+            if( !satisfied ) {
+                missing_qualities.insert( missing_qualities.end(), alternatives.begin(), alternatives.end() );
+            }
+        }
+
+        if( missing_tools.empty() && missing_qualities.empty() ) {
+            break;
+        }
+
+        bool released_this_round = false;
+        validate_assignees();
+        for( const npc_ptr &guy : assigned_npcs ) {
+            if( guy == nullptr || guy->has_companion_mission() ) {
+                continue;
+            }
+
+            auto matches_missing_tool = [&]( const item & candidate ) {
+                if( missing_tools.find( candidate.typeId() ) != missing_tools.end() ) {
+                    return true;
+                }
+                if( !candidate.is_tool() && !candidate.is_container() ) {
+                    return false;
+                }
+                return std::any_of( missing_qualities.begin(), missing_qualities.end(),
+                [&]( const quality_requirement & quality ) {
+                    return candidate.get_quality( quality.type ) >= quality.level;
+                } );
+            };
+
+            std::vector<item *> carried = guy->inv_dump();
+            auto carried_it = std::find_if( carried.begin(), carried.end(), [&]( item * candidate ) {
+                return candidate != nullptr && matches_missing_tool( *candidate );
+            } );
+            if( carried_it == carried.end() ) {
+                continue;
+            }
+
+            item released = guy->remove_item( **carried_it );
+            const std::string released_name = released.tname();
+            target_map.add_item_or_charges( drop_pos, std::move( released ) );
+            released_notes.push_back( string_format( _( "%1$s turned over %2$s to camp stock." ),
+                                                     guy->disp_name(), released_name ) );
+            released_any = true;
+            released_this_round = true;
+            form_crafting_inventory( target_map );
+            break;
+        }
+
+        if( !released_this_round ) {
+            break;
+        }
+    }
+
+    if( released_any ) {
+        target_map.save();
+        form_crafting_inventory( target_map );
+    }
+
+    return released_notes;
+}
+
 int basecamp::add_crafting_request( const recipe &making, int batch_size, const mission_id &miss_id,
                                     const npc &worker, const std::string &source_utterance )
 {
@@ -1820,8 +1934,8 @@ bool basecamp::approve_crafting_request( int request_id )
     const recipe &making = *request->chosen_recipe_id;
     const int batch_size = std::max( request->requested_count, 1 );
     validate_sort_points();
-    form_crafting_inventory( get_camp_map() );
     form_storage_zones( get_camp_map(), bb_pos );
+    form_crafting_inventory( get_camp_map() );
 
     if( making.result()->phase != phase_id::SOLID && get_liquid_dumping_spot().empty() ) {
         std::string query_msg = string_format(
@@ -1838,8 +1952,21 @@ bool basecamp::approve_crafting_request( int request_id )
     }
 
     mapgen_arguments arg;
-    basecamp_action_components components( making, arg, batch_size, *this );
-    if( !components.choose_components() ) {
+    std::unique_ptr<basecamp_action_components> components =
+        std::make_unique<basecamp_action_components>( making, arg, batch_size, *this );
+    bool have_components = components->choose_components();
+    std::vector<std::string> released_tool_notes;
+    if( !have_components ) {
+        released_tool_notes = release_crafting_tools( making, arg, batch_size );
+        if( !released_tool_notes.empty() ) {
+            components = std::make_unique<basecamp_action_components>( making, arg, batch_size, *this );
+            have_components = components->choose_components();
+        }
+    }
+    for( const std::string &note : released_tool_notes ) {
+        add_camp_request_note( *request, "plan", note );
+    }
+    if( !have_components ) {
         request->status = "blocked";
         if( request->blockers.empty() ) {
             request->blockers = { _( "Camp storage could not supply the needed ingredients or tools." ) };
@@ -1883,8 +2010,8 @@ bool basecamp::approve_crafting_request( int request_id )
         return false;
     }
 
-    components.consume_components();
-    item_components used = components.consumed_components();
+    components->consume_components();
+    item_components used = components->consumed_components();
     for( const item &results : making.create_results( batch_size, &used ) ) {
         comp->companion_mission_inv.add_item( results );
     }
@@ -3904,8 +4031,8 @@ void basecamp::start_crafting( const mission_id &miss_id )
     dummy.add_effect( effect_HACK_camp_vision_for_npc, 1_turns, true );
 
     validate_sort_points();
+    form_storage_zones( get_camp_map(), bb_pos );
     form_crafting_inventory( get_camp_map() );
-
 
     std::pair<Character *, const recipe *> crafter_recipe_pair = select_crafter_and_crafting_recipe(
                 num_to_make, recipe_id(), &dummy, "", true, &_inv );
@@ -3982,9 +4109,23 @@ void basecamp::start_crafting( const mission_id &miss_id )
     }
 
     mapgen_arguments arg;  //  Created with a default value.
-    basecamp_action_components components( *making, arg, num_to_make, *this );
-    if( !components.choose_components() ) {
+    std::unique_ptr<basecamp_action_components> components =
+        std::make_unique<basecamp_action_components>( *making, arg, num_to_make, *this );
+    bool have_components = components->choose_components();
+    std::vector<std::string> released_tool_notes;
+    if( !have_components ) {
+        released_tool_notes = release_crafting_tools( *making, arg, num_to_make );
+        if( !released_tool_notes.empty() ) {
+            components = std::make_unique<basecamp_action_components>( *making, arg, num_to_make, *this );
+            have_components = components->choose_components();
+        }
+    }
+    if( !have_components ) {
         return;
+    }
+
+    for( const std::string &note : released_tool_notes ) {
+        add_msg( m_info, "%s", note );
     }
 
     time_duration work_days = base_camps::to_workdays( making->batch_duration( *guy_to_send,
@@ -4013,8 +4154,8 @@ void basecamp::start_crafting( const mission_id &miss_id )
                                   _( "begins to work…" ), false, {}, making->required_skills, making->exertion_level(),
                                   0_hours, guy_to_send );
     if( comp != nullptr ) {
-        components.consume_components();
-        item_components used = components.consumed_components();
+        components->consume_components();
+        item_components used = components->consumed_components();
         for( const item &results : making->create_results( num_to_make, &used ) ) {
             comp->companion_mission_inv.add_item( results );
         }

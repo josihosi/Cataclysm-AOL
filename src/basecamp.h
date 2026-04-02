@@ -537,6 +537,8 @@ class basecamp
                 const character_id &worker_id );
         void add_camp_request_note( camp_llm_request &request, const std::string &kind,
                                     const std::string &text );
+        std::vector<std::string> release_crafting_tools( const recipe &making,
+                const mapgen_arguments &args, int batch_size );
 
         // Which faction owns this camp?
         mutable faction_id owner = faction_id::NULL_ID();
