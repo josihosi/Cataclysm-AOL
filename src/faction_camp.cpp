@@ -1728,6 +1728,143 @@ void basecamp::add_camp_request_note( camp_llm_request &request, const std::stri
     request.notes.push_back( camp_llm_note{ kind, text, calendar::turn } );
 }
 
+bool basecamp::can_assign_crafting_worker( const npc &worker, const recipe &making,
+        bool require_available, std::string *reason ) const
+{
+    const auto fail = [&]( const std::string & msg ) {
+        if( reason != nullptr ) {
+            *reason = msg;
+        }
+        return false;
+    };
+
+    if( require_available && worker.has_companion_mission() ) {
+        return fail( _( "is already working on something else" ) );
+    }
+    if( !making.skill_used.is_null() &&
+        worker.get_skill_level( making.skill_used ) < making.get_difficulty( worker ) ) {
+        return fail( _( "lacks necessary skills" ) );
+    }
+    if( !making.character_has_required_proficiencies( worker ) ) {
+        return fail( _( "lacks necessary proficiencies" ) );
+    }
+
+    if( reason != nullptr ) {
+        reason->clear();
+    }
+    return true;
+}
+
+npc_ptr basecamp::resolve_crafting_worker( const recipe &making, int batch_size,
+        const character_id &preferred_worker_id, const std::string &preferred_worker_name,
+        std::string *resolution_note, std::vector<std::string> *blockers )
+{
+    if( resolution_note != nullptr ) {
+        resolution_note->clear();
+    }
+    if( blockers != nullptr ) {
+        blockers->clear();
+    }
+
+    validate_assignees();
+
+    struct worker_candidate {
+        npc_ptr worker;
+        time_duration duration;
+        bool preferred = false;
+    };
+
+    std::vector<worker_candidate> candidates;
+    std::vector<std::string> rejection_reasons;
+    bool preferred_seen = false;
+    bool preferred_eligible = false;
+    std::string preferred_name = preferred_worker_name;
+
+    const auto append_reason = [&]( const std::string & reason ) {
+        if( reason.empty() ) {
+            return;
+        }
+        if( std::find( rejection_reasons.begin(), rejection_reasons.end(), reason ) == rejection_reasons.end() ) {
+            rejection_reasons.push_back( reason );
+        }
+    };
+
+    for( const npc_ptr &guy : assigned_npcs ) {
+        if( guy == nullptr ) {
+            continue;
+        }
+
+        const bool preferred = preferred_worker_id.is_valid() && guy->getID() == preferred_worker_id;
+        if( preferred ) {
+            preferred_seen = true;
+            preferred_name = guy->disp_name();
+        }
+
+        std::string reason;
+        if( !can_assign_crafting_worker( *guy, making, true, &reason ) ) {
+            append_reason( string_format( _( "%1$s %2$s." ), guy->disp_name(), reason ) );
+            continue;
+        }
+
+        candidates.push_back( { guy, base_camps::to_workdays( making.batch_duration( *guy, batch_size ) ), preferred } );
+        preferred_eligible = preferred_eligible || preferred;
+    }
+
+    if( candidates.empty() ) {
+        if( preferred_worker_id.is_valid() && !preferred_seen ) {
+            if( preferred_name.empty() ) {
+                append_reason( _( "Assigned worker is no longer stationed at this camp." ) );
+            } else {
+                append_reason( string_format( _( "%s is no longer stationed at this camp." ), preferred_name ) );
+            }
+        }
+        if( rejection_reasons.empty() ) {
+            rejection_reasons.push_back( _( "No stationed worker can take this recipe right now." ) );
+        }
+        if( blockers != nullptr ) {
+            *blockers = rejection_reasons;
+        }
+        return nullptr;
+    }
+
+    if( preferred_eligible ) {
+        auto preferred_it = std::find_if( candidates.begin(), candidates.end(), []( const worker_candidate & candidate ) {
+            return candidate.preferred;
+        } );
+        if( preferred_it != candidates.end() ) {
+            return preferred_it->worker;
+        }
+    }
+
+    auto best_it = std::min_element( candidates.begin(), candidates.end(), []( const worker_candidate & lhs,
+    const worker_candidate & rhs ) {
+        if( lhs.duration != rhs.duration ) {
+            return lhs.duration < rhs.duration;
+        }
+        return lhs.worker->disp_name() < rhs.worker->disp_name();
+    } );
+
+    if( best_it == candidates.end() ) {
+        return nullptr;
+    }
+
+    if( preferred_worker_id.is_valid() && resolution_note != nullptr ) {
+        if( !preferred_seen ) {
+            if( preferred_name.empty() ) {
+                *resolution_note = string_format( _( "%s took over the work order." ), best_it->worker->disp_name() );
+            } else {
+                *resolution_note = string_format( _( "%1$s was gone, so %2$s took over the work order." ),
+                                                  preferred_name, best_it->worker->disp_name() );
+            }
+        } else if( !preferred_name.empty() ) {
+            *resolution_note = string_format( _( "%1$s could not take the order, so %2$s picked it up instead." ),
+                                              preferred_name, best_it->worker->disp_name() );
+        }
+    }
+
+    return best_it->worker;
+}
+
 std::vector<std::string> basecamp::release_crafting_tools( const recipe &making,
         const mapgen_arguments &args, int batch_size )
 {
@@ -1907,32 +2044,34 @@ bool basecamp::approve_crafting_request( int request_id )
         return false;
     }
 
-    validate_assignees();
-    auto worker_it = std::find_if( assigned_npcs.begin(), assigned_npcs.end(), [&]( const npc_ptr & guy ) {
-        return guy && guy->getID() == request->assigned_worker_npc_id;
-    } );
-    npc_ptr guy_to_send = worker_it == assigned_npcs.end() ? nullptr : *worker_it;
+    const recipe &making = *request->chosen_recipe_id;
+    const int batch_size = std::max( request->requested_count, 1 );
+
+    std::string worker_resolution_note;
+    std::vector<std::string> worker_blockers;
+    npc_ptr guy_to_send = resolve_crafting_worker( making, batch_size,
+                          request->assigned_worker_npc_id, request->assigned_worker_name,
+                          &worker_resolution_note, &worker_blockers );
     if( guy_to_send == nullptr ) {
         request->status = "blocked";
-        request->blockers = { _( "Assigned worker is no longer stationed at this camp." ) };
-        add_camp_request_note( *request, "blocked",
-                               _( "The assigned worker wandered off the roster, so the order stays pinned for now." ) );
-        return false;
-    }
-    if( guy_to_send->has_companion_mission() ) {
-        request->status = "blocked";
-        request->blockers = { string_format( _( "%s is already working on something else." ),
-                                             guy_to_send->disp_name() ) };
-        add_camp_request_note( *request, "blocked",
-                               string_format( _( "%s is still busy, so this order stays on the board." ),
-                                              guy_to_send->disp_name() ) );
+        request->blockers = !worker_blockers.empty() ? worker_blockers :
+                            std::vector<std::string>{ _( "No stationed worker can take this recipe right now." ) };
+        if( !request->assigned_worker_name.empty() ) {
+            add_camp_request_note( *request, "blocked",
+                                   string_format( _( "%s could not take the order and nobody else was ready, so it stays pinned." ),
+                                                  request->assigned_worker_name ) );
+        } else {
+            add_camp_request_note( *request, "blocked",
+                                   _( "Nobody at camp could take that order right now, so it stays pinned." ) );
+        }
         return false;
     }
 
     request->status = "awaiting_approval";
     request->blockers.clear();
-    const recipe &making = *request->chosen_recipe_id;
-    const int batch_size = std::max( request->requested_count, 1 );
+    if( !worker_resolution_note.empty() ) {
+        add_camp_request_note( *request, "plan", worker_resolution_note );
+    }
     validate_sort_points();
     form_storage_zones( get_camp_map(), bb_pos );
     form_crafting_inventory( get_camp_map() );
@@ -4057,38 +4196,64 @@ void basecamp::start_crafting( const mission_id &miss_id )
         }
     }
 
+    struct crafting_worker_choice {
+        npc_ptr worker;
+        bool can_be_picked = false;
+        time_duration duration = 0_turns;
+        std::string detail;
+    };
+
+    std::vector<crafting_worker_choice> worker_choices;
+    worker_choices.reserve( assigned_npcs.size() );
+    for( const npc_ptr &guy : assigned_npcs ) {
+        if( guy == nullptr ) {
+            continue;
+        }
+
+        std::string refusal_reason;
+        const bool can_be_picked = can_assign_crafting_worker( *guy, *making, true, &refusal_reason );
+        crafting_worker_choice choice;
+        choice.worker = guy;
+        choice.can_be_picked = can_be_picked;
+        if( can_be_picked ) {
+            choice.duration = base_camps::to_workdays( making->batch_duration( *guy, num_to_make ) );
+            choice.detail = to_string( choice.duration );
+        } else {
+            choice.detail = string_format( "<color_red>%s</color>", refusal_reason );
+        }
+        worker_choices.push_back( std::move( choice ) );
+    }
+
+    std::sort( worker_choices.begin(), worker_choices.end(), []( const crafting_worker_choice & lhs,
+    const crafting_worker_choice & rhs ) {
+        if( lhs.can_be_picked != rhs.can_be_picked ) {
+            return lhs.can_be_picked > rhs.can_be_picked;
+        }
+        if( lhs.can_be_picked && lhs.duration != rhs.duration ) {
+            return lhs.duration < rhs.duration;
+        }
+        return lhs.worker->disp_name() < rhs.worker->disp_name();
+    } );
+
+    if( worker_choices.empty() ) {
+        return;
+    }
+
     uilist choose_crafter;
     choose_crafter.title = _( "Choose a companion to craft" );
     int i = 0;
-    for( const npc_ptr &guy : assigned_npcs ) {
-        if( guy.get() ) {
-            bool has_skills = making->skill_used.is_null() ||
-                              guy->get_skill_level( making->skill_used ) >= making->get_difficulty( *guy );
-            bool has_profs = making->character_has_required_proficiencies( *guy );
-            bool is_available_for_work = !guy->has_companion_mission();
-            bool can_be_picked = has_skills && has_profs && is_available_for_work;
-            std::string refusal_reason;
-            if( !has_skills ) {
-                refusal_reason = _( "lacks necessary skills" );
-            } else if( !has_profs ) {
-                refusal_reason = _( "lacks necessary proficiencies" );
-            } else if( !is_available_for_work ) {
-                refusal_reason = _( "already working on something else" );
-            }
-            // FIXME: Isn't there a smarter way to do this??
-            std::string refuse_string = string_format( "<color_red>%s</color>", refusal_reason );
-            choose_crafter.addentry_col( i, can_be_picked, input_event(), guy->disp_name(), refuse_string );
-            i++;
-        }
+    for( const crafting_worker_choice &choice : worker_choices ) {
+        choose_crafter.addentry_col( i++, choice.can_be_picked, input_event(),
+                                     choice.worker->disp_name(), choice.detail );
     }
 
     choose_crafter.query();
 
-    if( choose_crafter.ret < 0 || static_cast<size_t>( choose_crafter.ret ) >= assigned_npcs.size() ) {
+    if( choose_crafter.ret < 0 || static_cast<size_t>( choose_crafter.ret ) >= worker_choices.size() ) {
         return; // player aborted selection
     }
 
-    npc_ptr guy_to_send = assigned_npcs[choose_crafter.ret];
+    npc_ptr guy_to_send = worker_choices[choose_crafter.ret].worker;
 
     uilist handling_menu;
     handling_menu.title = _( "Craft order handling" );

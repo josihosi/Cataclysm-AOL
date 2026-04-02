@@ -537,6 +537,14 @@ class basecamp
                 const character_id &worker_id );
         void add_camp_request_note( camp_llm_request &request, const std::string &kind,
                                     const std::string &text );
+        bool can_assign_crafting_worker( const npc &worker, const recipe &making,
+                                         bool require_available,
+                                         std::string *reason = nullptr ) const;
+        npc_ptr resolve_crafting_worker( const recipe &making, int batch_size,
+                                         const character_id &preferred_worker_id = character_id(),
+                                         const std::string &preferred_worker_name = "",
+                                         std::string *resolution_note = nullptr,
+                                         std::vector<std::string> *blockers = nullptr );
         std::vector<std::string> release_crafting_tools( const recipe &making,
                 const mapgen_arguments &args, int batch_size );
 
