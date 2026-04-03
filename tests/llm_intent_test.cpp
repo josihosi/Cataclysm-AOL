@@ -80,6 +80,7 @@ TEST_CASE( "llm_intent_snapshot_includes_attitude_and_lettered_targets", "[llm_i
     const std::string snapshot = llm_intent::build_snapshot_for_test( listener, "Hold there.", "req-snapshot" );
 
     CHECK( snapshot.find( "creature legend with attitude and threat level:" ) != std::string::npos );
+    CHECK( snapshot.find( "map axes: +x east/right, -x west/left, +y north/up, -y south/down" ) != std::string::npos );
     CHECK( snapshot.find( "a ... player friendly threat=" ) != std::string::npos );
     CHECK( snapshot.find( "Neutral NPC" ) != std::string::npos );
     CHECK( snapshot.find( "neutral threat=" ) != std::string::npos );

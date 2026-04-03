@@ -2441,6 +2441,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
     } else {
         out << map_data.legend << "\n";
     }
+    out << "map axes: +x east/right, -x west/left, +y north/up, -y south/down\n";
     out << "map:\n" << map_data.map;
     return out.str();
 }
