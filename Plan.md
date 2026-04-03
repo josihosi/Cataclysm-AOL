@@ -49,6 +49,34 @@ That remains the default until reality humiliates it again.
 
 ## Design Basecamp AI v2 as a hybrid camp-brain layer
 
+### Active execution split (current reality)
+The work is now split into three coordinated tracks instead of one blurry blob:
+
+1. **Upstreamable deterministic PR slice first**
+   - target: mergeable with upstream `cdda-master`
+   - no LLM dependency in the PR package
+   - focus on deterministic camp-command infrastructure such as:
+     - exact-word `craft` routing
+     - deterministic craft/job request handling
+     - deterministic parsing / movement grammar improvements that stand on their own
+     - tests
+2. **Movement-system improvements**
+   - especially the structured movement grammar needed for later overmap-targeted camp jobs
+   - prefer simple, explicit coordinates/deltas where that is clearer than chained direction spam
+3. **Richer Basecamp AI on `dev`**
+   - build the fuller hybrid camp-brain layer after the deterministic spine is solid
+   - keep the LLM-enhanced path on `dev` until the deterministic upstreamable slice is separated cleanly
+
+### Upstream social constraint
+CDDA contributors are not generally enthusiastic about AI-generated code, which is a reasonable thing to dislike.
+So any upstream-facing package should be kept:
+- deterministic
+- small in scope
+- readable and reviewable
+- suitable for human cleanup / humanization before submission
+
+Do not bundle the LLM layer into the upstream package just because it exists locally.
+
 Basecamp request-board v1 is real now.
 That means the next interesting problem is no longer "can camp hear a craft request at all?".
 It is now:
