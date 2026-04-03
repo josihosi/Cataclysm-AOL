@@ -1613,12 +1613,7 @@ static std::string camp_request_kind_label( const camp_llm_request &request )
 
 static std::string camp_request_subject( const camp_llm_request &request )
 {
-    const std::string item_name = !request.chosen_recipe_name.empty() ? request.chosen_recipe_name :
-                                  request.requested_item_query;
-    if( request.requested_count > 0 ) {
-        return string_format( _( "%1$d × %2$s" ), request.requested_count, item_name );
-    }
-    return item_name;
+    return basecamp_ai::camp_request_subject_for_display( request );
 }
 
 static std::string camp_request_subject_list( const std::vector<std::string> &subjects );
@@ -2337,6 +2332,19 @@ static basecamp_ai::parsed_camp_request_reference finalize_camp_request_referenc
 
 namespace basecamp_ai
 {
+
+std::string camp_request_subject_for_display( const camp_llm_request &request )
+{
+    const std::string item_name = !request.requested_item_query.empty() ? request.requested_item_query :
+                                  request.chosen_recipe_name;
+    if( item_name.empty() ) {
+        return _( "crafting request" );
+    }
+    if( request.requested_count > 0 ) {
+        return string_format( _( "%1$d × %2$s" ), request.requested_count, item_name );
+    }
+    return item_name;
+}
 
 std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance )
 {

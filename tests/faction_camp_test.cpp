@@ -163,6 +163,7 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
 }
 TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
+    using basecamp_ai::camp_request_subject_for_display;
     using basecamp_ai::collect_ready_camp_request_ids;
     using basecamp_ai::match_camp_craft_query;
     using basecamp_ai::match_camp_request_reference;
@@ -405,6 +406,31 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( match.request_id == 8 );
         CHECK( match.score >= 650 );
         CHECK( match.ambiguous_matches.empty() );
+    }
+
+    SECTION( "request display subject prefers the heard query over the resolved recipe" ) {
+        const camp_llm_request request{
+            .requested_item_query = "bandages",
+            .requested_count = 5,
+            .chosen_recipe_name = "sterile bandage"
+        };
+
+        CHECK( camp_request_subject_for_display( request ) == "5 × bandages" );
+    }
+
+    SECTION( "request display subject falls back to the resolved recipe when needed" ) {
+        const camp_llm_request request{
+            .requested_count = 2,
+            .chosen_recipe_name = "boiled makeshift bandage"
+        };
+
+        CHECK( camp_request_subject_for_display( request ) == "2 × boiled makeshift bandage" );
+    }
+
+    SECTION( "request display subject falls back to a generic label when empty" ) {
+        const camp_llm_request request;
+
+        CHECK( camp_request_subject_for_display( request ) == "crafting request" );
     }
 
     SECTION( "craft recall matching prefers the assigned worker id over the name" ) {
