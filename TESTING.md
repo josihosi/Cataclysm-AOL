@@ -53,6 +53,16 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 ### Spoken camp craft smoke packet (Josef)
 Use a camp with a bulletin board and at least one NPC who can plausibly craft.  Try these in normal play, not in a sterile lab if avoidable.
 
+Current narrow live-bed target when available:
+- `dev` / `Sandy Creek`
+- 2 waiting camp NPCs
+- enough stock for makeshift bandages
+- not enough stock for plain bandages or boiled bandages
+- specifically verify on current HEAD:
+  - `craft boiled` still clarifies instead of guessing
+  - `craft 5 bandages` no longer crashes
+  - board/details surface the resolved recipe and blocker state clearly enough to understand what happened
+
 1. `craft knife`
    - expected: spoken craft path triggers and produces a board request / launch / blocker response
    - suspicious: gets ignored, routed as unrelated dialogue, or picks something that is not a knife
