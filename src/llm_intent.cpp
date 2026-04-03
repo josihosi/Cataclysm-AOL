@@ -974,6 +974,12 @@ bool parse_signed_move_delta( const std::string &token, int &value )
     return true;
 }
 
+tripoint_abs_ms resolve_move_target_from_origin( const tripoint_abs_ms &origin,
+        const point &delta )
+{
+    return tripoint_abs_ms( origin.x() + delta.x, origin.y() - delta.y, origin.z() );
+}
+
 bool parse_move_field( const std::string &field, int &dx, int &dy,
                        std::string &terminal_state, std::string &error )
 {
@@ -3960,9 +3966,8 @@ class llm_intent_manager
                                     }
                                     const int dx = move_delta->x;
                                     const int dy = move_delta->y;
-                                    const tripoint_abs_ms final_target( snapshot_origin->x() + dx,
-                                                                        snapshot_origin->y() - dy,
-                                                                        snapshot_origin->z() );
+                                    const tripoint_abs_ms final_target = resolve_move_target_from_origin(
+                                                                            *snapshot_origin, *move_delta );
                                     const llm_intent_action arrival_state = move_terminal_state == "hold_position" ?
                                             llm_intent_action::hold_position : llm_intent_action::wait_here;
                                     llm_intent::log_event( string_format( "move target %s (%s): delta=(%d,%d) origin=(%d,%d,%d) final=(%d,%d,%d) arrival=%s",
@@ -4275,5 +4280,11 @@ bool parse_move_field_for_test( const std::string &field, point &delta,
     const bool ok = parse_move_field( field, dx, dy, terminal_state, error );
     delta = point( dx, dy );
     return ok;
+}
+
+tripoint_abs_ms resolve_move_target_for_test( const tripoint_abs_ms &origin,
+        const point &delta )
+{
+    return resolve_move_target_from_origin( origin, delta );
 }
 } // namespace llm_intent

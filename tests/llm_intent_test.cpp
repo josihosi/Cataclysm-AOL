@@ -27,6 +27,8 @@ std::string build_action_prompt_for_test( const std::string &npc_name,
 bool parse_move_field_for_test( const std::string &field, point &delta,
                                 std::string &terminal_state,
                                 std::string &error );
+tripoint_abs_ms resolve_move_target_for_test( const tripoint_abs_ms &origin,
+        const point &delta );
 } // namespace llm_intent
 
 static const faction_id faction_your_followers( "your_followers" );
@@ -121,9 +123,23 @@ TEST_CASE( "llm_intent_can_parse_delta_move_fields", "[llm_intent]" )
     CHECK( delta == point( -1, 3 ) );
     CHECK( terminal_state == "wait_here" );
 
+    CHECK( llm_intent::parse_move_field_for_test( "move: E E N hold_position", delta,
+           terminal_state, error ) );
+    CHECK( delta == point( 2, 1 ) );
+    CHECK( terminal_state == "hold_position" );
+
     CHECK_FALSE( llm_intent::parse_move_field_for_test( "move=4 east hold_position", delta,
                  terminal_state, error ) );
     CHECK_FALSE( error.empty() );
+}
+
+TEST_CASE( "llm_intent_resolves_move_deltas_to_snapshot_targets", "[llm_intent]" )
+{
+    const tripoint_abs_ms origin( 100, 200, 7 );
+    CHECK( llm_intent::resolve_move_target_for_test( origin, point( 4, -2 ) ) ==
+           tripoint_abs_ms( 104, 202, 7 ) );
+    CHECK( llm_intent::resolve_move_target_for_test( origin, point( -1, 3 ) ) ==
+           tripoint_abs_ms( 99, 197, 7 ) );
 }
 
 TEST_CASE( "llm_intent_can_resolve_lettered_neutral_targets", "[llm_intent]" )
