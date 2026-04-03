@@ -163,6 +163,7 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
 }
 TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
+    using basecamp_ai::collect_ready_camp_request_ids;
     using basecamp_ai::parse_heard_camp_approval_query;
     using basecamp_ai::parse_heard_camp_cancel_query;
     using basecamp_ai::parse_heard_camp_craft_order;
@@ -210,6 +211,33 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         REQUIRE( parsed.has_value() );
         CHECK( parsed->all_requests );
         CHECK_FALSE( parsed->has_request_id );
+    }
+
+    SECTION( "approval commands accept ready-request synonyms" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> requests =
+            parse_heard_camp_approval_query( "approve all ready requests" );
+        REQUIRE( requests.has_value() );
+        CHECK( requests->all_requests );
+        CHECK_FALSE( requests->has_request_id );
+
+        const std::optional<basecamp_ai::parsed_camp_request_reference> jobs =
+            parse_heard_camp_approval_query( "launch all ready jobs" );
+        REQUIRE( jobs.has_value() );
+        CHECK( jobs->all_requests );
+        CHECK_FALSE( jobs->has_request_id );
+    }
+
+    SECTION( "ready-request collector excludes blocked and archived entries" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 2, .status = "awaiting_approval" },
+            camp_llm_request{ .request_id = 4, .status = "blocked" },
+            camp_llm_request{ .request_id = 5, .status = "in_progress" },
+            camp_llm_request{ .request_id = 7, .status = "awaiting_approval" },
+            camp_llm_request{ .request_id = 9, .status = "completed" },
+            camp_llm_request{ .request_id = 11, .status = "cancelled" }
+        };
+
+        CHECK( collect_ready_camp_request_ids( requests ) == std::vector<int> { 2, 7 } );
     }
 
     SECTION( "status queries can ask for the whole board" ) {
