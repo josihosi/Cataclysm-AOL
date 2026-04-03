@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <cerrno>
 #include <deque>
 #include <exception>
 #include <filesystem>
@@ -16,6 +17,7 @@
 #include <functional>
 #include <iomanip>
 #include <initializer_list>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -902,7 +904,8 @@ bool is_move_action( const std::string &token )
     std::transform( lowered.begin(), lowered.end(), lowered.begin(), []( unsigned char c ) {
         return static_cast<char>( std::tolower( c ) );
     } );
-    return lowered.rfind( "move:", 0 ) == 0 || lowered.rfind( "move ", 0 ) == 0;
+    return lowered.rfind( "move=", 0 ) == 0 || lowered.rfind( "move:", 0 ) == 0 ||
+           lowered.rfind( "move ", 0 ) == 0;
 }
 
 bool is_allowed_action( const std::string &token )
@@ -953,15 +956,69 @@ llm_intent_action intent_action_from_token( const std::string &token )
     return llm_intent_action::none;
 }
 
-bool parse_move_field( const std::string &field, std::vector<std::string> &coords,
+bool parse_signed_move_delta( const std::string &token, int &value )
+{
+    if( token.empty() ) {
+        return false;
+    }
+    char *end = nullptr;
+    errno = 0;
+    const long parsed = std::strtol( token.c_str(), &end, 10 );
+    if( errno != 0 || end == token.c_str() || *end != '\0' ) {
+        return false;
+    }
+    if( parsed < std::numeric_limits<int>::min() || parsed > std::numeric_limits<int>::max() ) {
+        return false;
+    }
+    value = static_cast<int>( parsed );
+    return true;
+}
+
+bool parse_move_field( const std::string &field, int &dx, int &dy,
                        std::string &terminal_state, std::string &error )
 {
-    coords.clear();
+    dx = 0;
+    dy = 0;
     terminal_state.clear();
     std::string lowered = trim_copy( field );
     std::transform( lowered.begin(), lowered.end(), lowered.begin(), []( unsigned char c ) {
         return static_cast<char>( std::tolower( c ) );
     } );
+
+    if( lowered.rfind( "move=", 0 ) == 0 ) {
+        lowered = trim_copy( lowered.substr( 5 ) );
+        if( lowered.empty() ) {
+            error = "Move field is missing coordinates.";
+            return false;
+        }
+        std::istringstream iss( lowered );
+        std::vector<std::string> parts;
+        for( std::string token; iss >> token; ) {
+            parts.push_back( token );
+        }
+        if( parts.size() != 2 ) {
+            error = "Move field must include one delta and terminal state.";
+            return false;
+        }
+        terminal_state = parts.back();
+        if( terminal_state != "wait_here" && terminal_state != "hold_position" ) {
+            error = "Move field terminal state is invalid.";
+            return false;
+        }
+        const size_t comma = parts.front().find( ',' );
+        if( comma == std::string::npos || parts.front().find( ',', comma + 1 ) != std::string::npos ) {
+            error = "Move field delta is invalid.";
+            return false;
+        }
+        const std::string dx_token = trim_copy( parts.front().substr( 0, comma ) );
+        const std::string dy_token = trim_copy( parts.front().substr( comma + 1 ) );
+        if( !parse_signed_move_delta( dx_token, dx ) || !parse_signed_move_delta( dy_token, dy ) ) {
+            error = "Move field delta is invalid.";
+            return false;
+        }
+        return true;
+    }
+
     if( lowered.rfind( "move:", 0 ) == 0 ) {
         lowered = trim_copy( lowered.substr( 5 ) );
     } else if( lowered.rfind( "move ", 0 ) == 0 ) {
@@ -1000,7 +1057,27 @@ bool parse_move_field( const std::string &field, std::vector<std::string> &coord
             error = "Move coordinate is invalid.";
             return false;
         }
-        coords.push_back( part );
+        if( part == "n" ) {
+            dy += 1;
+        } else if( part == "s" ) {
+            dy -= 1;
+        } else if( part == "e" ) {
+            dx += 1;
+        } else if( part == "w" ) {
+            dx -= 1;
+        } else if( part == "ne" ) {
+            dx += 1;
+            dy += 1;
+        } else if( part == "nw" ) {
+            dx -= 1;
+            dy += 1;
+        } else if( part == "se" ) {
+            dx += 1;
+            dy -= 1;
+        } else if( part == "sw" ) {
+            dx -= 1;
+            dy -= 1;
+        }
     }
     return true;
 }
@@ -1015,14 +1092,14 @@ void normalize_wait_here_hold_position_pair( std::vector<std::string> &actions )
 bool parse_csv_payload( std::string_view csv, std::string &speech,
                         std::vector<std::string> &actions,
                         std::string &attack_target,
-                        std::vector<std::string> &move_coords,
+                        std::optional<point> &move_delta,
                         std::string &move_terminal_state,
                         std::string &error )
 {
     actions.clear();
     speech.clear();
     attack_target.clear();
-    move_coords.clear();
+    move_delta.reset();
     move_terminal_state.clear();
     std::vector<std::string> fields;
     std::string current;
@@ -1125,13 +1202,16 @@ bool parse_csv_payload( std::string_view csv, std::string &speech,
             return false;
         }
         if( is_move_action( field ) ) {
-            if( !move_coords.empty() ) {
+            if( move_delta.has_value() ) {
                 error = "CSV move field repeated.";
                 return false;
             }
-            if( !parse_move_field( field, move_coords, move_terminal_state, error ) ) {
+            int move_dx = 0;
+            int move_dy = 0;
+            if( !parse_move_field( field, move_dx, move_dy, move_terminal_state, error ) ) {
                 return false;
             }
+            move_delta = point( move_dx, move_dy );
             actions.push_back( trim_copy( field ) );
             if( actions.size() > 3 ) {
                 error = "CSV has too many action tokens.";
@@ -2382,7 +2462,7 @@ Only use 'idle' when no action change is needed. Do not use 'idle' as a substitu
 'panic_off' if convincing, to stop fleeing and get your act together.
 'look_around' to view your surroundings and pick-up, grab, search, explore for items around you.
 'look_inventory' to look inside your inventory and wear/wield/activate items.
-'move: <coordinate> <coordinate> ... <state>' to move step-by-step on your snapshot map. Use N, S, E, W, NE, NW, SE and SW and chain 4 to 15 coordinates. After the coordinates you must also include either 'wait_here' or 'hold_position' to set state.
+'move=<dx>,<dy> <state>' to move to a relative destination offset on your snapshot map. Positive x is east/right, negative x is west/left, positive y is north/up, and negative y is south/down. Always include either 'wait_here' or 'hold_position' after the delta.
 'attack=<target>' to attack a target with the letter from your map. Any creature with a map letter is a valid explicit target handle, including the player, friendlies, neutrals, and hostiles.
 'idle' if none of the above.
 </Explanation allowed actions>
@@ -2395,7 +2475,7 @@ Print only Fields 1-4, separated by | .If you break this format, you have failed
 <Example Output 5>Don't worry, I'm ready to kick some teeth in.|equip_melee</Example Output 5>
 <Example Output 6>Locked and loaded.|equip_gun</Example Output 6>
 <Example Output 7>Nope, not doing that!|panic_on</Example Output 7>
-<Example Output 8>Moving down and holding there.|move: S S S S S hold_position|equip_gun</Example Output 8>
+<Example Output 8>Moving down and holding there.|move=0,-5 hold_position|equip_gun</Example Output 8>
 /no_think
 Answer directly. No reasoning.
 </System>
@@ -2427,7 +2507,7 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
     if( !action_list_with_target.empty() ) {
         action_list_with_target += ", ";
     }
-    action_list_with_target += "attack=<target>, move: <coordinate> <coordinate> ... <state>";
+    action_list_with_target += "attack=<target>, move=<dx>,<dy> <state>";
     const std::string templ = load_llm_prompt_template( npc_action_prompt_filename,
                               default_npc_action_prompt_template(),
     { "{{snapshot}}", "{{action_list_with_target}}" } );
@@ -3769,7 +3849,7 @@ class llm_intent_manager
                 std::string speech;
                 std::vector<std::string> actions;
                 std::string attack_target;
-                std::vector<std::string> move_coords;
+                std::optional<point> move_delta;
                 std::string move_terminal_state;
                 std::optional<tripoint_abs_ms> snapshot_origin;
                 std::string speak_text;
@@ -3806,10 +3886,10 @@ class llm_intent_manager
                     std::string normalized = normalize_csv_separators( csv_text );
                     normalized = sanitize_llm_csv( normalized );
                     parsed = parse_csv_payload( csv_text, speech, actions, attack_target,
-                                                move_coords, move_terminal_state, parse_error );
+                                                move_delta, move_terminal_state, parse_error );
                     if( !parsed && normalized != csv_text ) {
                         parsed = parse_csv_payload( normalized, speech, actions, attack_target,
-                                                    move_coords, move_terminal_state, parse_error );
+                                                    move_delta, move_terminal_state, parse_error );
                     }
                     if( !parsed ) {
                         parse_error.clear();
@@ -3867,58 +3947,27 @@ class llm_intent_manager
                             intent_actions.push_back( action );
                         }
                     }
-                    if( !intent_actions.empty() || !attack_target.empty() || !move_coords.empty() ) {
+                    if( !intent_actions.empty() || !attack_target.empty() || move_delta.has_value() ) {
                         if( npc *target = g->find_npc( resp.npc_id ) ) {
                             if( target->is_player_ally() ) {
                                 target->set_llm_intent_actions( intent_actions, resp.request_id, attack_target );
-                                if( !move_coords.empty() ) {
+                                if( move_delta.has_value() ) {
                                     if( !snapshot_origin ) {
                                         snapshot_origin = target->pos_abs();
                                         llm_intent::log_event( string_format( "move target %s (%s): snapshot origin missing, falling back to current pos (%d,%d,%d)",
                                                                               target->get_name(), resp.request_id,
                                                                               snapshot_origin->x(), snapshot_origin->y(), snapshot_origin->z() ) );
                                     }
-                                    std::vector<std::string> effective_coords = move_coords;
-                                    if( effective_coords.size() == 1 ) {
-                                        effective_coords.assign( 4, effective_coords.front() );
-                                    } else if( effective_coords.size() == 2 ) {
-                                        effective_coords = { effective_coords[0], effective_coords[0],
-                                                             effective_coords[1], effective_coords[1] };
-                                    }
-                                    int dx = 0;
-                                    int dy = 0;
-                                    for( const std::string &coord : effective_coords ) {
-                                        if( coord == "n" ) {
-                                            dy -= 1;
-                                        } else if( coord == "s" ) {
-                                            dy += 1;
-                                        } else if( coord == "e" ) {
-                                            dx += 1;
-                                        } else if( coord == "w" ) {
-                                            dx -= 1;
-                                        } else if( coord == "ne" ) {
-                                            dx += 1;
-                                            dy -= 1;
-                                        } else if( coord == "nw" ) {
-                                            dx -= 1;
-                                            dy -= 1;
-                                        } else if( coord == "se" ) {
-                                            dx += 1;
-                                            dy += 1;
-                                        } else if( coord == "sw" ) {
-                                            dx -= 1;
-                                            dy += 1;
-                                        }
-                                    }
+                                    const int dx = move_delta->x;
+                                    const int dy = move_delta->y;
                                     const tripoint_abs_ms final_target( snapshot_origin->x() + dx,
-                                                                        snapshot_origin->y() + dy,
+                                                                        snapshot_origin->y() - dy,
                                                                         snapshot_origin->z() );
                                     const llm_intent_action arrival_state = move_terminal_state == "hold_position" ?
                                             llm_intent_action::hold_position : llm_intent_action::wait_here;
-                                    llm_intent::log_event( string_format( "move target %s (%s): raw=[%s] effective=[%s] origin=(%d,%d,%d) final=(%d,%d,%d) arrival=%s",
+                                    llm_intent::log_event( string_format( "move target %s (%s): delta=(%d,%d) origin=(%d,%d,%d) final=(%d,%d,%d) arrival=%s",
                                                                           target->get_name(), resp.request_id,
-                                                                          string_join( move_coords, "," ),
-                                                                          string_join( effective_coords, "," ),
+                                                                          dx, dy,
                                                                           snapshot_origin->x(), snapshot_origin->y(), snapshot_origin->z(),
                                                                           final_target.x(), final_target.y(), final_target.z(),
                                                                           move_terminal_state ) );
@@ -4215,5 +4264,16 @@ std::string build_action_prompt_for_test( const std::string &npc_name,
         const std::string &snapshot )
 {
     return build_prompt( npc_name, player_utterance, snapshot );
+}
+
+bool parse_move_field_for_test( const std::string &field, point &delta,
+                                std::string &terminal_state,
+                                std::string &error )
+{
+    int dx = 0;
+    int dy = 0;
+    const bool ok = parse_move_field( field, dx, dy, terminal_state, error );
+    delta = point( dx, dy );
+    return ok;
 }
 } // namespace llm_intent
