@@ -3,15 +3,15 @@
 _Current actionable queue. Keep this aligned with `Plan.md`, not with last week’s ghost stories._
 
 ## GREEN now — upstreamable deterministic PR slice
-- [ ] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
-- [ ] Keep deterministic quantity parsing intact (numeric quantities plus the current small number-word support) while tightening the trigger boundary.
+- [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
+- [x] Keep deterministic quantity parsing intact (numeric quantities plus the current small number-word support) while tightening the trigger boundary.
 - [ ] Reuse one deterministic craft resolver for both spoken craft intake and the later structured `craft=<query>` action token path.
 - [ ] Add tests for:
-  - `craft knife` → craft path triggers
-  - `witchcraft` → does **not** trigger craft path
-  - ambiguous craft query → reports ambiguity instead of guessing
-  - blocked craft query → reports blocker / missing requirement state
-  - ordered multi-word phrases beat generic noun fallbacks
+  - [x] `craft knife` → craft path triggers
+  - [x] `witchcraft` → does **not** trigger craft path
+  - [x] ambiguous craft query → reports ambiguity instead of guessing
+  - [ ] blocked craft query → reports blocker / missing requirement state
+  - [x] ordered multi-word phrases beat generic noun fallbacks
 - [ ] Prepare the small PR-friendly explanation/packaging pass once the code/test slice is stable.
 
 ## GREEN now — movement system improvements
@@ -41,7 +41,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last week�
 
 ## Josef manual testing pending / upcoming
 - [ ] Later live-check the follower snapshot legend change in-game (`friendly` / `neutral` / `hostile` + threat) and confirm live follower behavior interprets the new target wording correctly.
-- [ ] Once the exact-word `craft` router lands, hand Josef a concise manual test packet for spoken camp crafting behavior.
+- [x] Once the exact-word `craft` router lands, hand Josef a concise manual test packet for spoken camp crafting behavior.
 - [ ] After the next Basecamp slice, preserve good in-game settings/state if the current `dev` profile becomes the preferred testing baseline again.
 
 ## DISCUSS before implementation

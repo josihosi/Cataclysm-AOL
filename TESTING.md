@@ -18,11 +18,13 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 ## Current agent-side checks
 
 ### Deterministic upstreamable PR slice
-- [ ] Exact-word `craft` trigger tests exist and pass.
-- [ ] `witchcraft` / substring false-positive regression test exists and pass.
+- [x] Exact-word `craft` trigger tests exist and pass.
+- [x] `witchcraft` / substring false-positive regression test exists and pass.
 - [ ] Craft ambiguity / blocker / quantity parsing tests exist and pass.
-- [ ] Touched code compiles cleanly.
-- [ ] Small PR package is explainable without dragging LLM design into the story.
+  - exact-word trigger, quantity parsing, ordered multi-word preference, and ambiguity coverage are in place
+  - blocked craft query coverage still needs a deterministic test
+- [x] Touched code compiles cleanly.
+- [x] Small PR package is explainable without dragging LLM design into the story.
 
 ### Movement-system work
 - [ ] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
@@ -46,11 +48,30 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 - [ ] Live-check the follower snapshot legend change in-game:
   - target legend shows attitude (`friendly` / `neutral` / `hostile`) plus threat
   - lettered-target wording still feels sensible in real use
-- [ ] When the exact-word `craft` slice lands, try representative spoken camp craft commands and note:
-  - does the intended craft trigger reliably?
-  - do obvious false positives stay dead?
-  - does the resulting board/job behavior feel natural enough to keep?
+- [ ] Run the spoken camp craft smoke packet below and note anything stupid.
 - [ ] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
+
+### Spoken camp craft smoke packet (Josef)
+Use a camp with a bulletin board and at least one NPC who can plausibly craft.  Try these in normal play, not in a sterile lab if avoidable.
+
+1. `craft knife`
+   - expected: spoken craft path triggers and produces a board request / launch / blocker response
+   - suspicious: gets ignored, routed as unrelated dialogue, or picks something that is not a knife
+2. `craft five bandages`
+   - expected: quantity survives, and the request reflects 5 rather than silently collapsing to 1
+   - suspicious: quantity is dropped or bark text disagrees with the board entry
+3. `witchcraft knife`
+   - expected: **no** craft routing, no new board request, no substring false positive
+   - suspicious: any craft/job gets queued from this
+4. `craft boiled`
+   - expected: camp asks for a clearer target instead of guessing among multiple "boiled ..." recipes
+   - suspicious: silently chooses one recipe anyway
+5. `craft boiled bandages`
+   - expected: specific phrase beats the generic `bandages` fallback and resolves to boiled makeshift bandages
+   - suspicious: plain bandages get chosen instead
+6. If a request lands blocked, read the bark + board entry
+   - expected: failure explains itself well enough to recover
+   - suspicious: vague "cannot start" wording with no actionable reason
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
