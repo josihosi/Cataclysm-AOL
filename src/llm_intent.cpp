@@ -4203,4 +4203,17 @@ void log_event( const std::string &message )
 {
     append_llm_intent_log( message + "\n" );
 }
+
+std::string build_snapshot_for_test( npc &listener, const std::string &player_utterance,
+                                     const std::string &request_id )
+{
+    return build_snapshot_json( listener, player_utterance, request_id );
+}
+
+std::string build_action_prompt_for_test( const std::string &npc_name,
+        const std::string &player_utterance,
+        const std::string &snapshot )
+{
+    return build_prompt( npc_name, player_utterance, snapshot );
+}
 } // namespace llm_intent
