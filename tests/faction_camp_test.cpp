@@ -166,6 +166,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::collect_ready_camp_request_ids;
     using basecamp_ai::parse_heard_camp_approval_query;
     using basecamp_ai::parse_heard_camp_cancel_query;
+    using basecamp_ai::parse_heard_camp_clear_query;
     using basecamp_ai::parse_heard_camp_craft_order;
     using basecamp_ai::parse_heard_camp_status_query;
     using basecamp_ai::parse_relative_omt_delta;
@@ -248,6 +249,31 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( parsed->has_request_id );
     }
 
+    SECTION( "clear commands can target archived paperwork in bulk" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_clear_query( "clear archived requests" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->all_requests );
+        CHECK_FALSE( parsed->has_request_id );
+    }
+
+    SECTION( "clear commands keep the archived work-order subject" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_clear_query( "clear the work order for long string please" );
+        REQUIRE( parsed.has_value() );
+        CHECK_FALSE( parsed->has_request_id );
+        CHECK( parsed->query == "long string" );
+    }
+
+    SECTION( "clear commands parse explicit request numbers" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_clear_query( "clear request #12 please" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->has_request_id );
+        CHECK( parsed->request_id == 12 );
+        CHECK_FALSE( parsed->all_requests );
+    }
+
     SECTION( "cancel commands keep the work-order subject" ) {
         const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
             parse_heard_camp_cancel_query( "cancel the work order for long string please" );
@@ -306,6 +332,25 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         []( const std::string & summary ) {
             return summary.find( "#4" ) != std::string::npos;
         } ) );
+    }
+
+    SECTION( "request matcher can target archived work orders for clear commands" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 3, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "awaiting_approval", .assigned_worker_name = "Alice" },
+            camp_llm_request{ .request_id = 4, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "cancelled", .assigned_worker_name = "Bob" },
+            camp_llm_request{ .request_id = 5, .requested_item_query = "knife", .chosen_recipe_name = "knife", .status = "completed", .assigned_worker_name = "Cara" }
+        };
+        basecamp_ai::parsed_camp_request_reference reference;
+        reference.query = "bob bandages";
+
+        const basecamp_ai::camp_request_match_result match = match_camp_request_reference( requests,
+                reference, []( const camp_llm_request & request ) {
+            return request.status == "completed" || request.status == "cancelled";
+        } );
+        CHECK( match.found );
+        CHECK( match.request_id == 4 );
+        CHECK( match.score > 1000 );
+        CHECK( match.ambiguous_matches.empty() );
     }
 
     SECTION( "request matcher can disambiguate duplicate work orders by worker name" ) {

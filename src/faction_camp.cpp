@@ -1676,6 +1676,17 @@ static std::string camp_request_cancel_bark( const camp_llm_request &request )
     return string_format( _( "Fine.  Request #%d is off the board." ), request.request_id );
 }
 
+static std::string camp_request_clear_bark( const camp_llm_request &request )
+{
+    return string_format( _( "Filed away request #%d." ), request.request_id );
+}
+
+static std::string camp_request_not_archived_bark( const camp_llm_request &request )
+{
+    return string_format( _( "Request #%1$d is still %2$s.  Cancel it or let it finish first." ),
+                          request.request_id, camp_request_status_label( request ) );
+}
+
 static std::string camp_request_ambiguous_bark( std::string_view query,
         const std::vector<std::string> &matches )
 {
@@ -2349,6 +2360,57 @@ std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string
     return basecamp_ai::parsed_camp_craft_order{ text, count };
 }
 
+std::optional<parsed_camp_request_reference> parse_heard_camp_clear_query( std::string_view utterance )
+{
+    std::string text = normalize_camp_request_text( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_polite_prefixes( text );
+
+    bool matched_prefix = false;
+    for( const std::string_view prefix : {
+             std::string_view( "clear " ), std::string_view( "erase " ),
+             std::string_view( "remove " ), std::string_view( "clean up " ),
+             std::string_view( "can you clear " ), std::string_view( "could you clear " ),
+             std::string_view( "would you clear " ), std::string_view( "will you clear " ),
+             std::string_view( "can you erase " ), std::string_view( "could you erase " ),
+             std::string_view( "would you erase " ), std::string_view( "will you erase " ),
+             std::string_view( "can you remove " ), std::string_view( "could you remove " ),
+             std::string_view( "would you remove " ), std::string_view( "will you remove " ) } ) {
+        if( consume_camp_request_prefix( text, prefix ) ) {
+            matched_prefix = true;
+            break;
+        }
+    }
+    if( !matched_prefix ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_suffix( text, " please" );
+
+    std::string archive_target = text;
+    strip_camp_request_articles( archive_target );
+    if( archive_target == "archived requests" || archive_target == "archived work orders" ||
+        archive_target == "archived jobs" || archive_target == "completed requests" ||
+        archive_target == "completed work orders" || archive_target == "completed jobs" ||
+        archive_target == "cancelled requests" || archive_target == "cancelled work orders" ||
+        archive_target == "cancelled jobs" || archive_target == "old paperwork" ||
+        archive_target == "archived paperwork" || archive_target == "completed paperwork" ||
+        archive_target == "cancelled paperwork" || archive_target == "paperwork" ) {
+        basecamp_ai::parsed_camp_request_reference result;
+        result.all_requests = true;
+        return result;
+    }
+
+    basecamp_ai::parsed_camp_request_reference result = finalize_camp_request_reference( text, false );
+    if( !result.has_request_id && result.query.empty() ) {
+        return std::nullopt;
+    }
+    return result;
+}
+
 std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance )
 {
     std::string text = normalize_camp_request_text( utterance );
@@ -2874,6 +2936,73 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                                            status_query->request_id ) );
         } else {
             add_camp_request_bark( listener, camp_request_not_found_bark( status_query->query ) );
+        }
+        return true;
+    }
+
+    if( const std::optional<basecamp_ai::parsed_camp_request_reference> clear_query =
+            basecamp_ai::parse_heard_camp_clear_query( utterance ) ) {
+        if( clear_query->all_requests ) {
+            const size_t before = camp_requests.size();
+            camp_requests.erase( std::remove_if( camp_requests.begin(), camp_requests.end(),
+            []( const camp_llm_request &request ) {
+                return request.status == "completed" || request.status == "cancelled";
+            } ), camp_requests.end() );
+            const int cleared = static_cast<int>( before - camp_requests.size() );
+            if( cleared > 0 ) {
+                add_camp_request_bark( listener,
+                                       string_format( _( "Filed away %d archived requests." ), cleared ) );
+            } else {
+                add_camp_request_bark( listener, _( "No archived paperwork to clear." ) );
+            }
+            return true;
+        }
+
+        const basecamp_ai::camp_request_match_result archived_lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *clear_query,
+        []( const camp_llm_request &request ) {
+            return request.status == "completed" || request.status == "cancelled";
+        } );
+        if( archived_lookup.found ) {
+            camp_llm_request *request = find_camp_request( archived_lookup.request_id );
+            if( request != nullptr ) {
+                const std::string bark = camp_request_clear_bark( *request );
+                clear_camp_request( request->request_id );
+                add_camp_request_bark( listener, bark );
+            }
+            return true;
+        }
+        if( !archived_lookup.ambiguous_matches.empty() ) {
+            add_camp_request_bark( listener,
+                                   camp_request_ambiguous_bark( clear_query->query, archived_lookup.ambiguous_matches ) );
+            return true;
+        }
+
+        if( clear_query->has_request_id ) {
+            if( camp_llm_request *request = find_camp_request( clear_query->request_id ) ) {
+                add_camp_request_bark( listener, camp_request_not_archived_bark( *request ) );
+            } else {
+                add_camp_request_bark( listener,
+                                       string_format( _( "No work order #%d on the board." ),
+                                               clear_query->request_id ) );
+            }
+            return true;
+        }
+
+        const basecamp_ai::camp_request_match_result live_lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *clear_query,
+        []( const camp_llm_request &request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        if( live_lookup.found ) {
+            if( camp_llm_request *request = find_camp_request( live_lookup.request_id ) ) {
+                add_camp_request_bark( listener, camp_request_not_archived_bark( *request ) );
+            }
+        } else if( !live_lookup.ambiguous_matches.empty() ) {
+            add_camp_request_bark( listener,
+                                   camp_request_ambiguous_bark( clear_query->query, live_lookup.ambiguous_matches ) );
+        } else {
+            add_camp_request_bark( listener, camp_request_not_found_bark( clear_query->query ) );
         }
         return true;
     }
