@@ -2550,8 +2550,19 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( st
         return std::nullopt;
     }
 
+    std::string batch_target = text;
+    strip_camp_request_suffix( batch_target, " please" );
+    strip_camp_request_articles( batch_target );
+    if( batch_target == "all blocked work orders" || batch_target == "all blocked orders" ||
+        batch_target == "all blocked requests" || batch_target == "all blocked jobs" ) {
+        basecamp_ai::parsed_camp_request_reference result;
+        result.all_blocked_requests = true;
+        return result;
+    }
+
     basecamp_ai::parsed_camp_request_reference result = finalize_camp_request_reference( text, true );
-    if( !result.all_requests && !result.has_request_id && result.query.empty() ) {
+    if( !result.all_requests && !result.all_blocked_requests && !result.has_request_id &&
+        result.query.empty() ) {
         return std::nullopt;
     }
     return result;
@@ -2622,6 +2633,18 @@ std::vector<int> collect_ready_camp_request_ids( const std::vector<camp_llm_requ
         }
     }
     return ready_ids;
+}
+
+std::vector<int> collect_blocked_camp_request_ids( const std::vector<camp_llm_request> &requests )
+{
+    std::vector<int> blocked_ids;
+    blocked_ids.reserve( requests.size() );
+    for( const camp_llm_request &request : requests ) {
+        if( request.status == "blocked" ) {
+            blocked_ids.push_back( request.request_id );
+        }
+    }
+    return blocked_ids;
 }
 
 bool matches_assigned_camp_request_worker( const camp_llm_request &request,
@@ -3162,10 +3185,16 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
 
     if( const std::optional<basecamp_ai::parsed_camp_request_reference> approval_query =
             basecamp_ai::parse_heard_camp_approval_query( utterance ) ) {
-        if( approval_query->all_requests ) {
-            const std::vector<int> launch_ids = basecamp_ai::collect_ready_camp_request_ids( camp_requests );
+        if( approval_query->all_requests || approval_query->all_blocked_requests ) {
+            const bool retrying_blocked = approval_query->all_blocked_requests;
+            const std::vector<int> launch_ids = retrying_blocked ?
+                                                basecamp_ai::collect_blocked_camp_request_ids( camp_requests ) :
+                                                basecamp_ai::collect_ready_camp_request_ids( camp_requests );
             if( launch_ids.empty() ) {
-                add_camp_request_bark( listener, _( "Nothing on the board is ready to launch." ) );
+                add_camp_request_bark( listener,
+                                       retrying_blocked ?
+                                       _( "Nothing on the board is blocked for a retry." ) :
+                                       _( "Nothing on the board is ready to launch." ) );
                 return true;
             }
 
@@ -3197,6 +3226,11 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             }
 
             add_camp_request_bark( listener,
+                                   retrying_blocked ?
+                                   string_format( _( "Retried the blocked pile: started %1$d, still blocked %2$d, pinned %3$d." ),
+                                           static_cast<int>( started_requests.size() ),
+                                           static_cast<int>( blocked_requests.size() ),
+                                           static_cast<int>( pinned_requests.size() ) ) :
                                    string_format( _( "Worked through the board: started %1$d, blocked %2$d, still pinned %3$d." ),
                                            static_cast<int>( started_requests.size() ),
                                            static_cast<int>( blocked_requests.size() ),

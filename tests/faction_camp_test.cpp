@@ -164,6 +164,7 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
 TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
     using basecamp_ai::camp_request_subject_for_display;
+    using basecamp_ai::collect_blocked_camp_request_ids;
     using basecamp_ai::collect_ready_camp_request_ids;
     using basecamp_ai::match_camp_craft_query;
     using basecamp_ai::match_camp_request_reference;
@@ -221,12 +222,30 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
             parse_heard_camp_approval_query( "approve all ready requests" );
         REQUIRE( requests.has_value() );
         CHECK( requests->all_requests );
+        CHECK_FALSE( requests->all_blocked_requests );
         CHECK_FALSE( requests->has_request_id );
 
         const std::optional<basecamp_ai::parsed_camp_request_reference> jobs =
             parse_heard_camp_approval_query( "launch all ready jobs" );
         REQUIRE( jobs.has_value() );
         CHECK( jobs->all_requests );
+        CHECK_FALSE( jobs->all_blocked_requests );
+        CHECK_FALSE( jobs->has_request_id );
+    }
+
+    SECTION( "approval commands can target all blocked work orders for retry" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> requests =
+            parse_heard_camp_approval_query( "retry all blocked requests" );
+        REQUIRE( requests.has_value() );
+        CHECK_FALSE( requests->all_requests );
+        CHECK( requests->all_blocked_requests );
+        CHECK_FALSE( requests->has_request_id );
+
+        const std::optional<basecamp_ai::parsed_camp_request_reference> jobs =
+            parse_heard_camp_approval_query( "resume all blocked jobs" );
+        REQUIRE( jobs.has_value() );
+        CHECK_FALSE( jobs->all_requests );
+        CHECK( jobs->all_blocked_requests );
         CHECK_FALSE( jobs->has_request_id );
     }
 
@@ -241,6 +260,19 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         };
 
         CHECK( collect_ready_camp_request_ids( requests ) == std::vector<int> { 2, 7 } );
+    }
+
+    SECTION( "blocked-request collector excludes ready live work and archives" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 2, .status = "awaiting_approval" },
+            camp_llm_request{ .request_id = 4, .status = "blocked" },
+            camp_llm_request{ .request_id = 5, .status = "in_progress" },
+            camp_llm_request{ .request_id = 7, .status = "blocked" },
+            camp_llm_request{ .request_id = 9, .status = "completed" },
+            camp_llm_request{ .request_id = 11, .status = "cancelled" }
+        };
+
+        CHECK( collect_blocked_camp_request_ids( requests ) == std::vector<int> { 4, 7 } );
     }
 
     SECTION( "status queries can ask for the whole board" ) {
