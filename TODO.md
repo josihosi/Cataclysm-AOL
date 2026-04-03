@@ -34,9 +34,9 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 - [ ] Externalize Basecamp prompt/snapshot text into prompt files once the deterministic craft router and token grammar are stable enough to stop moving every ten minutes.
 
 ## Agent testing / automation
-- [ ] Compile touched objects/binaries after each meaningful slice.
-- [ ] Run startup harness / launch / save-load checks on `dev` after meaningful Basecamp changes.
-- [ ] Keep filtered debug-log deltas clean enough to isolate new regressions.
+- [x] Compile touched objects/binaries after each meaningful slice.
+- [x] Run startup harness / launch / save-load checks on `dev` after meaningful Basecamp changes.
+- [x] Keep filtered debug-log deltas clean enough to isolate new regressions.
 - [ ] Revisit full `tests/cata_test` linking on this Mac when broader deterministic test coverage needs an end-to-end run; current local framework/library link trouble should be treated as environment work, not as a reason to skip logic tests.
 
 ## Josef manual testing pending / upcoming

@@ -32,11 +32,11 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 - [ ] Malformed movement falls back safely.
 
 ### Basecamp work on `dev`
-- [ ] Relevant deterministic tests exist for the new routing/token layer.
-- [ ] `dev` build compiles.
-- [ ] Game launches.
-- [ ] Known save loads successfully.
-- [ ] No new debug-log regressions were introduced by the slice.
+- [x] Relevant deterministic tests exist for the new routing/token layer.
+- [x] `dev` build compiles.
+- [x] Game launches.
+- [x] Known save loads successfully.
+- [x] No new debug-log regressions were introduced by the slice.
 
 ---
 
@@ -84,11 +84,11 @@ Use a camp with a bulletin board and at least one NPC who can plausibly craft.  
 ### Upstream deterministic PR slice
 Do not call this ready just because the diff exists.
 It is ready when:
-- [ ] code compiles
-- [ ] relevant deterministic tests pass
-- [ ] no LLM dependency is required
-- [ ] game launches successfully with the PR slice in place
-- [ ] save/world load succeeds with the PR slice in place
+- [x] code compiles
+- [x] relevant deterministic tests pass
+- [x] no LLM dependency is required
+- [x] game launches successfully with the PR slice in place
+- [x] save/world load succeeds with the PR slice in place
 - [ ] the actual deterministic feature gets a small manual smoke/play test
 - [ ] scope is small and reviewable
 - [ ] PR description matches the code honestly
@@ -96,11 +96,11 @@ It is ready when:
 
 ### Basecamp work on `dev`
 The actual finish line remains:
-- [ ] implemented on `dev`
-- [ ] compiles
-- [ ] game launches
-- [ ] save loads successfully
-- [ ] zero new debug messages / zero crashes
+- [x] implemented on `dev`
+- [x] compiles
+- [x] game launches
+- [x] save loads successfully
+- [x] zero new debug messages / zero crashes
 - [ ] Josef gameplay pass completed
 - [ ] tweak round completed if needed
 
