@@ -267,6 +267,53 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
 - For each topic, `dialogue::dynamic_line()` calls `json_talk_topic::get_dynamic_line()` and `dialogue::gen_responses()` calls `json_talk_topic::gen_responses()` to build visible player responses from JSON, filtering by dialogue conditions and attaching effects/trials.
 - The response's effect sets the next topic; the loop continues until `TALK_DONE`, with `TALK_NONE` popping the stack. This is the central hook if we ever want to intercept or rewrite dialogue selection globally.
 
+## Project Execution Workflow (Current)
+
+### Status language
+Use one shared status vocabulary across `Plan.md`, `TODO.md`, and `TESTING.md`:
+- `DISCUSS` — not specified enough yet; do not implement autonomously.
+- `GREEN` — structure agreed; implementation can proceed autonomously.
+- `AGENT TESTING` — Schani should run deterministic checks / compile / startup-load verification.
+- `JOSEF TESTING` — human gameplay/feel validation is pending.
+- `TWEAK` — known fixup round from testing.
+- `DONE` — only after the agreed finish line, not when a patch merely exists.
+
+### Autonomous work-loop rule
+The cron/autonomous loop should:
+- continue only `GREEN` work,
+- stop and ask when only `DISCUSS` work remains,
+- prepare deterministic tests whenever behavior is supposed to be deterministic,
+- ping Josef on meaningful progress, blockers, or ready-for-testing states.
+
+Narrow recon subagents are fine for `GREEN` work.
+Do not use subagents to invent architecture for `DISCUSS` work.
+
+## Basecamp Command Architecture (Current Direction)
+- Prefer **deterministic first-pass recognition** whenever the player is expressing a clear structured intent.
+- Use richer LLM/snapshot handling only when the problem is genuinely interpretive, ambiguous, or open-ended.
+
+### Deterministic-first rule
+Current intended examples:
+- `craft ...`
+- later board/job references such as `delete_job=<id>` and `job=<id>`
+- other obvious structured camp commands as they become real
+
+The key architectural rule is:
+1. deterministic recognizer extracts/normalizes intent first,
+2. deterministic code resolves legal candidates / blockers / action tokens,
+3. only then should a richer snapshot/LLM layer add interpretation or personality on top.
+
+Do not force the model to rediscover deterministic facts we already know how to compute cheaply.
+
+### Basecamp-specific note
+For the upstreamable deterministic slice, the spoken craft path should stay fully deterministic and human-reviewable.
+The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is stable and cleanly separable.
+
+### Follower-NPC caveat
+Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.
+Follower command parsing can become more deterministic over time, but followers must still be able to remain reluctant, weird, characteristic, defiant, or hostile.
+That topic stays design-sensitive and should not be treated as settled just because Basecamp command routing is becoming more structured.
+
 ## Hierarchical LLM Control (Planned, Compute-Lean)
 - Design goal: keep high strategic agency while minimizing LLM calls by using deterministic execution for most behavior.
 
@@ -280,14 +327,35 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
   - Existing AI executes pathing, combat, inventory, and local reactions.
   - LLM is only escalated on context gates.
 
-### Overmap movement contract
-- Planned minimal parser contract for overmap planner output:
-  - `Stay`
-  - `Move <dir>`
-  - `Move <dir> <dir>`
-  - `Move <dir> <dir> <dir>`
-- Allowed directions: `N NE E SE S SW W NW`.
-- Any malformed output resolves to `Stay` (no side effects).
+### Movement contract
+#### Local tactical follower movement
+- Replace only the **LLM-facing coordinate expression**, not the underlying movement system.
+- Current intended replacement:
+  - old shape: `move: E E E E hold_position`
+  - new shape: `move=<dx>,<dy> <state>`
+- Example outputs:
+  - `move=4,0 hold_position`
+  - `move=0,4 wait_here`
+  - `move=-2,1 hold_position`
+- Keep the existing post-move state suffixes exactly:
+  - `wait_here`
+  - `hold_position`
+- Keep deterministic pathing / target-tile resolution intact.
+- In other words: the model should express a destination offset, while deterministic code still performs route selection and execution.
+- Any malformed output should fail safely rather than producing side effects.
+
+#### Overmap movement / planner output
+- Use the same relative signed-delta idea for overmap-targeted planning/job selection.
+- Current intended shape:
+  - `stay`
+  - `move_omt dx=<signed_int> dy=<signed_int>`
+- Coordinate meaning:
+  - positive `x` = east / right
+  - negative `x` = west / left
+  - positive `y` = north / up
+  - negative `y` = south / down
+- Update prompt/snapshot explanation accordingly; lightweight axis/grid hints may help if the model needs better offset orientation.
+- Any malformed output resolves to `stay` (no side effects).
 
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:

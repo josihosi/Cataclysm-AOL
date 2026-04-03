@@ -1,29 +1,40 @@
 # C-AOL Plan
 
 ## What this document is for
-This is the working roadmap for the **next** meaningful stretch of Cataclysm: Arsenic and Old Lace.
+This is the working roadmap for the **next meaningful stretch** of Cataclysm: Arsenic and Old Lace.
 It should stay practical:
 
-1. What is already done enough to stop pretending it is still "next"?
-2. What are we actively doing now?
-3. What should happen after that?
-4. What ideas are real, but explicitly **not now**?
+1. What is already done enough to stop pretending it is still “next”?
+2. What is green for implementation right now?
+3. What still needs discussion before anyone freelances architecture?
+4. What is parked on purpose so it does not haunt chat?
 
-This file is not a trophy shelf and not a wish-list landfill.
+This file is not a trophy shelf and not a landfill.
 If something is done, move it out of the active plan.
-If something is not happening now, park it clearly instead of letting it haunt chat.
+If something is not active, park it clearly.
+If something needs discussion, label it that way instead of letting the cron goblin guess.
 
 ---
 
-## Current project state
+## Operating status labels
+Use these labels consistently across planning/testing notes.
 
-### Done enough to remove from the active plan
-These items are no longer the immediate roadmap:
+- **DISCUSS** — not specified enough yet; do not implement autonomously.
+- **GREEN** — structure agreed; implementation can proceed autonomously.
+- **AGENT TESTING** — code exists; Schani should run deterministic tests / compile / launch-load checks.
+- **JOSEF TESTING** — human gameplay/feel checks are needed.
+- **TWEAK** — known follow-up pass from testing feedback.
+- **DONE** — crossed off only after the agreed finish line, not when the diff merely exists.
 
-- `dev` is the active iteration branch again.
+---
+
+## Current project state baseline
+These are baseline realities, not the current milestone:
+
+- `dev` is the active iteration branch.
 - Release-branch flow was cleaned up around `dev`, `master`, and the `port/*` targets.
 - The startup harness can build, launch, and load a known save without Josef hand-driving every menu.
-- The Basecamp LLM / request-board v1 slice landed on `dev`:
+- The deterministic Basecamp request-board / spoken-camp-control v1 slice landed on `dev`:
   - request data model
   - bulletin-board scratchpad UI
   - spoken camp craft order intake
@@ -32,11 +43,16 @@ These items are no longer the immediate roadmap:
   - worker reassignment / retry handling
   - tool reclaiming from hoarded camp stock
   - save/load persistence for board state
-- Startup harness log handling was cleaned up enough to ignore the known inherited `attack_vector` startup noise and to evaluate filtered **per-run debug deltas** instead of dragging cumulative old junk into every new run.
+- Recent follow-up hardening already landed:
+  - map-lettered follower snapshot targets are now explicitly addressable as attack handles
+  - deterministic camp craft routing was tightened so ordered phrase matches beat generic noun fallbacks
+  - first deterministic `llm_intent` snapshot/prompt tests exist
 
-These are now baseline reality, not the current milestone.
+These matter because the next stretch is building **on top of an existing deterministic spine**, not inventing camp control from zero again.
 
-### Current branch policy
+---
+
+## Current branch policy
 - Do active iteration on `dev`.
 - Promote `dev` to `master` when the current slice is stable and verified.
 - Use `master` as the source branch for orchestrated propagation to `port/*`.
@@ -45,242 +61,162 @@ That remains the default until reality humiliates it again.
 
 ---
 
-## Immediate strategic priority
+## Active status board
 
-## Design Basecamp AI v2 as a hybrid camp-brain layer
+### 1. Basecamp AI completion on `dev`
+**Status:** GREEN
 
-### Active execution split (current reality)
-The work is now split into three coordinated tracks instead of one blurry blob:
+This has been discussed deeply enough to proceed through completion.
+The overall structure is considered clear enough for autonomous work.
 
-1. **Upstreamable deterministic PR slice first**
-   - target: mergeable with upstream `cdda-master`
-   - no LLM dependency in the PR package
-   - focus on deterministic camp-command infrastructure such as:
-     - exact-word `craft` routing
-     - deterministic craft/job request handling
-     - deterministic parsing / movement grammar improvements that stand on their own
-     - tests
-2. **Movement-system improvements**
-   - especially the structured movement grammar needed for later overmap-targeted camp jobs
-   - prefer simple, explicit coordinates/deltas where that is clearer than chained direction spam
-3. **Richer Basecamp AI on `dev`**
-   - build the fuller hybrid camp-brain layer after the deterministic spine is solid
-   - keep the LLM-enhanced path on `dev` until the deterministic upstreamable slice is separated cleanly
+#### Current intended flow
+1. implement the agreed deterministic states / routing / contracts
+2. add deterministic tests
+3. compile
+4. launch the game / load a save / inspect debug output
+5. hand Josef a concrete manual test packet
+6. do one tweak round after human testing
+7. cross it off only after signoff
 
-### Upstream social constraint
+#### Current direction
+- deterministic first-pass recognition for obviously structured camp commands
+- deterministic execution remains the legal/action spine
+- richer Basecamp AI on `dev` can sit on top of that spine instead of replacing it
+- eventually externalize prompt/snapshot text where that helps modding and iteration
+
+---
+
+### 2. Upstreamable deterministic PR package
+**Status:** GREEN
+
+This is the public-facing slice that should be kept small, sober, and mergeable with upstream `cdda-master`.
+
+#### Scope
+- no LLM dependency in the PR package
+- exact-word `craft` routing
+- deterministic craft/job request handling
+- deterministic parsing improvements that stand on their own
+- tests
+
+#### Upstream social constraint
 CDDA contributors are not generally enthusiastic about AI-generated code, which is a reasonable thing to dislike.
-So any upstream-facing package should be kept:
+So any upstream-facing package should stay:
+
 - deterministic
 - small in scope
 - readable and reviewable
 - suitable for human cleanup / humanization before submission
 
-Do not bundle the LLM layer into the upstream package just because it exists locally.
-
-Basecamp request-board v1 is real now.
-That means the next interesting problem is no longer "can camp hear a craft request at all?".
-It is now:
-- how to keep the deterministic board/action spine,
-- while giving camp replies actual personality and social texture,
-- and extending the same pattern toward build / mission / broader camp-management actions.
-
-So the next pass should not be a blind rewrite.
-It should be a **hybrid v2 design pass**: deterministic action resolution underneath, personality-rich LLM reply + constrained action-token choice on top.
+Do **not** bundle the richer LLM layer into the upstream package just because it exists locally.
+Pitch the PR as useful deterministic camp-command infrastructure, not as an AI manifesto.
 
 ---
 
-## Milestone 1: Basecamp AI v1 stabilization (done enough)
+### 3. Movement-system improvements
+**Status:** GREEN
 
-### Goal
-Make the deterministic Basecamp request-board slice stable enough to trust and reuse.
+This is green, but it follows the current deterministic Basecamp/PR slice instead of pre-empting it.
 
-### Landed in this pass
-- regression coverage for spoken-board parsing and request references
-- short spoken board barks instead of only dry bookkeeping text
-- harness verification that builds, launches, and loads the known save
-- harness filtering for inherited startup-noise lines so the checks focus on real regressions
+#### Current direction
+- replace the LLM-facing coordinate payload for local tactical movement with relative signed deltas instead of step spam
+- keep the existing pathing / target-tile / follow-state machinery intact
+- keep the existing post-move state suffixes intact:
+  - `wait_here`
+  - `hold_position`
+- in other words, do **not** erase the current system; only replace how the LLM expresses the destination
+- use the same relative-delta idea for overmap-targeted movement/planning as well
+- update prompt/snapshot explanation accordingly, and consider lightweight grid/axis hints if they help the model reason about offsets more reliably
 
-### Why this milestone matters
-This is the spine that v2 will stand on.
-If the deterministic queue / board / retry / approval flow is not stable, any LLM layer on top will just become expensive confusion.
-
----
-
-## Milestone 2: Basecamp AI v2 interface sketch
-
-This is the current active design problem.
-
-### Goal
-Define the hybrid interface between:
-- the deterministic Basecamp resolver, and
-- the personality-rich LLM reply/action layer.
-
-### Target shape
-When the player says something at camp:
-1. choose the relevant camp NPC voice
-2. build a compact follower-style social snapshot
-3. include ranked deterministic action candidates
-4. let the LLM return:
-   - one spoken reply
-   - one constrained action token
-5. apply that action token through deterministic code
-
-### Constraints
-- no minimap
-- no raw inventory dump
-- no giant recipe dump
-- no XML circus if simple `key: value` lines are enough
-- keep the snapshot close in style to the existing follower-NPC snapshot
-- keep the prompt close in style to the existing follower-NPC prompt
-
-### Candidate action-token shape
-For the first craft-oriented version, the model should only choose from a narrow legal menu such as:
-- `craft_go:candidate_n`
-- `craft_wait:candidate_n`
-- `status:request_n`
-- `status_all`
-- `approve:request_n`
-- `cancel:request_n`
-- `clarify`
-- `idle`
-
-The deterministic layer should prepare the legal tokens; the model should not invent its own.
-
-### Candidate snapshot shape
-The snapshot should stay lean and reuse proven follower-style fields where possible:
-- player name / utterance / utterance present
-- `your_name`
-- `your_profession`
-- `your_tone`
-- `your_example_expression`
-- `your_recent_memories`
-- `your_state[0-10]`
-- `your_emotions[0-10]`
-- `your_personality[0-10]`
-- `your_opinion_of_player[0-10]`
-- compact camp context lines
-- ranked craft / board candidates
-- allowed action list
-
-### Matching policy for craft candidates
-The deterministic matcher should hand the model only a small ranked set:
-- top 5 candidates max
-- phrase-aware scoring, not just bag-of-words matching
-- longer specific phrase matches should beat generic noun matches
-- example: `boiled bandages` should rank above plain `bandages` when both are valid
-
-### Why this milestone matters
-This is the bridge between:
-- useful deterministic camp automation, and
-- the "alive" social feeling Josef actually wants from camp NPCs.
+This work should feed both follower movement cleanup and later Basecamp job-subflow architecture instead of happening as a disconnected side quest.
 
 ---
 
-## Milestone 3: Broaden Basecamp action tokens beyond crafting
+## Discuss-before-implementation board
 
-Useful next, but only after the v2 interface is nailed down.
+### 4. Bandit AI
+**Status:** DISCUSS
 
-### Goal
-Extend the same constrained-token pattern from craft requests to broader camp management.
+Bandit AI is real future work, but it has **not** been discussed in enough detail yet to let autonomous implementation start safely.
+Do not treat “eventually” as permission.
+We should talk through architecture, constraints, and intended test checkpoints first.
 
-### Candidate scope
-- build / construction requests
-- board-side request queries and follow-ups
-- local mission dispatch
-- camp capability questions such as:
-  - "what can we make?"
-  - "what is blocked?"
-  - "who is free?"
-  - "what is queued?"
-- richer disambiguation and follow-ups like:
-  - "make 5 more"
-  - "cancel request 12"
-  - "status on 7"
+### 5. Follower NPC deterministic-first rework
+**Status:** DISCUSS / PARKED
 
-This is where Basecamp starts becoming a real camp foreman interface rather than just a craft clipboard.
+Important longer-term direction, but not active implementation yet.
+The key design tension is obvious:
+- deterministic command extraction is useful,
+- but follower NPCs must still be able to remain reluctant, weird, characteristic, defiant, or even hostile.
+
+So this cannot degrade into “NPC always obeys the parsed command.”
+Keep it remembered; do not tackle it casually.
 
 ---
 
-## Milestone 4: Board QoL and deeper feasibility summaries
-
-Also real, also not first.
-
-### Goal
-Make the board easier to read and explain why a request is or is not startable.
-
-### Candidate scope
-- sort active requests ahead of archived ones
-- clearer one-line status labels
-- clearer blocker summaries
-- clearer ETA display
-- clearer assigned-worker display
-- better grouping for active / blocked / archived requests
-- bulk actions that stay sane:
-  - clear completed
-  - approve all ready
-  - retry blocked
-- per-request feasibility summaries for:
-  - missing tools
-  - missing ingredients
-  - liquid storage blockers
-  - estimated work time
-  - likely best worker
-  - subcraft / recursive planning hints
-
-This is valuable glue, but it should follow the v2 interface design instead of happening in parallel confusion.
-
----
-
-## Not-now parking lot
-
-These are legitimate ideas that should **not** displace the current hardening pass.
-
-### Action-status / failure-reason layer
-Still worthwhile as a broader architecture direction, especially for:
-- `look_around`
-- `look_inventory`
-- `attack=<target>`
-
-But it is not the current stretch.
-The Basecamp board is already real and needs stabilization first.
-
-### Broader automation harness growth
-Also worthwhile, especially for:
-- richer smoke scenarios
-- fixture-save management
-- debug-menu scenario setup
-- broader release validation
-
-But the first harness slice already exists and is good enough for the current Basecamp finish-line work.
-Do not let harness ambition eat the whole schedule again.
-
-### Curated summary coverage / content polish
-Nice side work, not the structural priority.
-Flavor can continue opportunistically, but it should not crowd out code hardening.
-
----
-
-## Recommended implementation order
+## Recommended implementation order (current reality)
 
 ### First
-- Lock the follower-style Basecamp v2 snapshot field list.
-- Lock the matching prompt format.
-- Lock the first constrained action-token grammar.
+Ship the upstreamable deterministic camp-command slice:
+- exact-word `craft` routing
+- deterministic craft query / ambiguity / blocker handling
+- tests
+- small PR-friendly packaging
 
 ### Second
-- Implement the deterministic candidate-prep layer for v2:
-  - top-5 craft candidates
-  - phrase-aware ranking
-  - legal action-token generation
+Improve the movement contract without erasing the existing system:
+- local tactical movement should replace step chains with relative signed deltas
+- overmap/job movement should use the same relative-delta idea where appropriate
+- keep `wait_here` / `hold_position`
+- keep deterministic pathing / target-tile logic
+- add tests
+- avoid accidental behavioral regressions while changing only the LLM-facing coordinate expression
 
 ### Third
-- Let the LLM choose between reply + constrained action token, while deterministic code still executes the actual result.
+Continue the richer Basecamp AI on `dev`:
+- deterministic-first command extraction
+- structured legal action tokens
+- deterministic execution of those tokens
+- richer snapshot/prompt handoff only when deterministic handling is insufficient
 
 ### Fourth
-- Expand the same pattern to build / mission / broader board actions.
-
-### Fifth
-- Improve board QoL and deeper feasibility summaries once the interface stops moving.
+Return to broader camp job types / deeper board QoL once the previous contracts stop moving.
 
 That is enough work already.
 There is still no need to turn one successful half-day into a full municipal bureaucracy.
+
+---
+
+## Finish lines / signoff gates
+
+### Deterministic PR slice
+Call it ready for packaging when it:
+- compiles cleanly
+- has relevant deterministic tests
+- contains no LLM dependency
+- is small enough to explain honestly in one sane PR description
+- looks like something a human can clean up and defend upstream
+
+### Basecamp work on `dev`
+Call it done only when it is:
+- implemented on `dev`
+- compiles
+- the game launches
+- a save loads successfully
+- there are zero new debug messages / zero crashes
+
+The finish line is not “the patch exists.”
+The finish line is “it survives contact with the actual game.”
+
+---
+
+## Autonomous work-loop rules
+The cron/autonomous loop should:
+- continue only **GREEN** items
+- prepare deterministic tests whenever behavior is supposed to be deterministic
+- run compile / launch / save-load checks when appropriate
+- prepare Josef-facing test packets when human gameplay validation is the next step
+- ping Josef on meaningful progress, blockers, or ready-for-testing states
+- stop and ask when only **DISCUSS** work remains
+
+Narrow recon subagents are allowed for GREEN work if useful.
+Do **not** use subagents to invent architecture for DISCUSS items.
