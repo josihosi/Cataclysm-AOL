@@ -193,6 +193,9 @@ Call it ready for packaging when it:
 - compiles cleanly
 - has relevant deterministic tests
 - contains no LLM dependency
+- launches successfully in-game
+- loads a save/world successfully
+- gets at least a small manual smoke/play test of the actual deterministic feature
 - is small enough to explain honestly in one sane PR description
 - looks like something a human can clean up and defend upstream
 

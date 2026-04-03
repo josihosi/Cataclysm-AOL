@@ -50,6 +50,7 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
   - does the intended craft trigger reliably?
   - do obvious false positives stay dead?
   - does the resulting board/job behavior feel natural enough to keep?
+- [ ] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
@@ -67,6 +68,9 @@ It is ready when:
 - [ ] code compiles
 - [ ] relevant deterministic tests pass
 - [ ] no LLM dependency is required
+- [ ] game launches successfully with the PR slice in place
+- [ ] save/world load succeeds with the PR slice in place
+- [ ] the actual deterministic feature gets a small manual smoke/play test
 - [ ] scope is small and reviewable
 - [ ] PR description matches the code honestly
 - [ ] Josef is not embarrassed by the behavior
