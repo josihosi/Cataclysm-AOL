@@ -28,7 +28,7 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 - [x] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
 - [x] `wait_here` / `hold_position` suffix behavior is preserved exactly after the syntax change.
 - [ ] Existing pathing / target-tile behavior still works after replacing only the LLM-facing coordinate payload.
-- [ ] Overmap `dx` / `dy` parser tests exist and pass.
+- [x] Overmap `dx` / `dy` parser tests exist and pass.
 - [x] Snapshot/prompt axis hints are present for the delta contract.
 - [x] Malformed movement falls back safely.
 

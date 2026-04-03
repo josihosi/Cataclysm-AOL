@@ -165,8 +165,9 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::parse_heard_camp_approval_query;
     using basecamp_ai::parse_heard_camp_cancel_query;
     using basecamp_ai::parse_heard_camp_craft_order;
-    using basecamp_ai::match_camp_craft_query;
     using basecamp_ai::parse_heard_camp_status_query;
+    using basecamp_ai::parse_relative_omt_delta;
+    using basecamp_ai::match_camp_craft_query;
     using basecamp_ai::resolve_camp_craft_query;
     using basecamp_ai::score_camp_recipe_query;
 
@@ -223,6 +224,32 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         REQUIRE( parsed.has_value() );
         CHECK_FALSE( parsed->has_request_id );
         CHECK( parsed->query == "long string" );
+    }
+
+    SECTION( "overmap delta parser keeps signed dx and dy values" ) {
+        point_rel_omt delta = point_rel_omt::zero;
+        std::string error;
+
+        CHECK( parse_relative_omt_delta( "4", "-2", delta, error ) );
+        CHECK( delta == point_rel_omt( 4, -2 ) );
+        CHECK( error.empty() );
+
+        CHECK( parse_relative_omt_delta( " -1 ", " +3 ", delta, error ) );
+        CHECK( delta == point_rel_omt( -1, 3 ) );
+        CHECK( error.empty() );
+    }
+
+    SECTION( "overmap delta parser rejects malformed fields" ) {
+        point_rel_omt delta = point_rel_omt( 9, 9 );
+        std::string error;
+
+        CHECK_FALSE( parse_relative_omt_delta( "east", "2", delta, error ) );
+        CHECK( error == "Overmap delta dx is invalid." );
+        CHECK( delta == point_rel_omt::zero );
+
+        CHECK_FALSE( parse_relative_omt_delta( "2", "north", delta, error ) );
+        CHECK( error == "Overmap delta dy is invalid." );
+        CHECK( delta == point_rel_omt::zero );
     }
 
     SECTION( "craft router prefers specific phrase matches over generic noun matches" ) {
