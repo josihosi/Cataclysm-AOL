@@ -1777,6 +1777,29 @@ static std::string camp_request_subject_list( const std::vector<std::string> &su
     return joined;
 }
 
+static npc_ptr recall_crafting_request_worker( basecamp &camp, const camp_llm_request &request )
+{
+    const comp_list matching_workers = camp.get_mission_workers( request.active_mission_id );
+    const auto worker_it = std::find_if( matching_workers.begin(), matching_workers.end(),
+    [&]( const npc_ptr & comp ) {
+        return comp != nullptr &&
+               basecamp_ai::matches_assigned_camp_request_worker( request, comp->getID(), comp->disp_name() );
+    } );
+    if( worker_it == matching_workers.end() ) {
+        popup( _( "That crafter is no longer available for recall." ) );
+        return nullptr;
+    }
+
+    const npc_ptr &comp = *worker_it;
+    const mission_id active_mission = comp->get_companion_mission().miss_id;
+    const std::string return_msg = _( "responds to the emergency recall…" );
+    camp.finish_return( *comp, false, return_msg, skill_menial.str(), 0, true );
+    camp.cancel_crafting_request( active_mission, *comp,
+                                  string_format( _( "%s was recalled before the craft order was finished." ),
+                                          comp->disp_name() ) );
+    return comp;
+}
+
 struct camp_craft_risk_snapshot {
     time_duration work_days = 0_turns;
     int kcal_cost = 0;
@@ -2564,6 +2587,18 @@ std::vector<int> collect_ready_camp_request_ids( const std::vector<camp_llm_requ
     return ready_ids;
 }
 
+bool matches_assigned_camp_request_worker( const camp_llm_request &request,
+        const character_id &worker_id, std::string_view worker_name )
+{
+    if( request.assigned_worker_npc_id.is_valid() ) {
+        return request.assigned_worker_npc_id == worker_id;
+    }
+    if( !request.assigned_worker_name.empty() ) {
+        return request.assigned_worker_name == worker_name;
+    }
+    return false;
+}
+
 bool parse_relative_omt_delta( std::string_view dx_text, std::string_view dy_text,
                                point_rel_omt &delta, std::string &error )
 {
@@ -3032,7 +3067,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         camp_llm_request *best_request = lookup.found ? find_camp_request( lookup.request_id ) : nullptr;
         if( best_request != nullptr ) {
             if( best_request->status == "in_progress" ) {
-                emergency_recall( best_request->active_mission_id );
+                recall_crafting_request_worker( *this, *best_request );
             } else {
                 best_request->status = "cancelled";
                 best_request->approval_state = "rejected";
@@ -3556,7 +3591,7 @@ void basecamp::camp_request_ui()
             if( action_menu.ret == 2 ) {
                 if( query_yn( _( "Recall %s and cancel this crafting request?  Spent materials stay spent." ),
                               request->assigned_worker_name ) ) {
-                    emergency_recall( request->active_mission_id );
+                    recall_crafting_request_worker( *this, *request );
                 }
                 break;
             }

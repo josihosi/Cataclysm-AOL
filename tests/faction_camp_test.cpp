@@ -164,14 +164,15 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
 TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
     using basecamp_ai::collect_ready_camp_request_ids;
+    using basecamp_ai::match_camp_craft_query;
+    using basecamp_ai::match_camp_request_reference;
+    using basecamp_ai::matches_assigned_camp_request_worker;
     using basecamp_ai::parse_heard_camp_approval_query;
     using basecamp_ai::parse_heard_camp_cancel_query;
     using basecamp_ai::parse_heard_camp_clear_query;
     using basecamp_ai::parse_heard_camp_craft_order;
     using basecamp_ai::parse_heard_camp_status_query;
     using basecamp_ai::parse_relative_omt_delta;
-    using basecamp_ai::match_camp_craft_query;
-    using basecamp_ai::match_camp_request_reference;
     using basecamp_ai::resolve_camp_craft_query;
     using basecamp_ai::score_camp_recipe_query;
 
@@ -404,6 +405,23 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( match.request_id == 8 );
         CHECK( match.score >= 650 );
         CHECK( match.ambiguous_matches.empty() );
+    }
+
+    SECTION( "craft recall matching prefers the assigned worker id over the name" ) {
+        camp_llm_request request;
+        request.assigned_worker_npc_id = character_id( 7 );
+        request.assigned_worker_name = "Alice";
+
+        CHECK( matches_assigned_camp_request_worker( request, character_id( 7 ), "Not Alice" ) );
+        CHECK_FALSE( matches_assigned_camp_request_worker( request, character_id( 8 ), "Alice" ) );
+    }
+
+    SECTION( "craft recall matching falls back to the worker name when legacy ids are missing" ) {
+        camp_llm_request request;
+        request.assigned_worker_name = "Alice";
+
+        CHECK( matches_assigned_camp_request_worker( request, character_id(), "Alice" ) );
+        CHECK_FALSE( matches_assigned_camp_request_worker( request, character_id(), "Bob" ) );
     }
 
     SECTION( "overmap delta parser keeps signed dx and dy values" ) {

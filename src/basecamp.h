@@ -229,6 +229,8 @@ camp_request_match_result match_camp_request_reference( const std::vector<camp_l
         const std::function<bool( const camp_llm_request & )> &predicate );
 bool parse_relative_omt_delta( std::string_view dx_text, std::string_view dy_text,
                                point_rel_omt &delta, std::string &error );
+bool matches_assigned_camp_request_worker( const camp_llm_request &request,
+        const character_id &worker_id, std::string_view worker_name );
 int score_camp_recipe_query( const recipe &making, std::string_view query );
 camp_craft_recipe_match match_camp_craft_query( const std::unordered_set<recipe_id> &available_recipes,
         std::string_view query );
