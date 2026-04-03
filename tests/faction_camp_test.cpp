@@ -308,6 +308,42 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         } ) );
     }
 
+    SECTION( "request matcher can disambiguate duplicate work orders by worker name" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 3, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "awaiting_approval", .assigned_worker_name = "Alice" },
+            camp_llm_request{ .request_id = 4, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "awaiting_approval", .assigned_worker_name = "Bob" }
+        };
+        basecamp_ai::parsed_camp_request_reference reference;
+        reference.query = "bob bandages";
+
+        const basecamp_ai::camp_request_match_result match = match_camp_request_reference( requests,
+                reference, []( const camp_llm_request & request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        CHECK( match.found );
+        CHECK( match.request_id == 4 );
+        CHECK( match.score > 1000 );
+        CHECK( match.ambiguous_matches.empty() );
+    }
+
+    SECTION( "request matcher can disambiguate duplicate work orders by status words" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 3, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "awaiting_approval", .approval_state = "waiting_player", .assigned_worker_name = "Alice" },
+            camp_llm_request{ .request_id = 4, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "blocked", .assigned_worker_name = "Bob" }
+        };
+        basecamp_ai::parsed_camp_request_reference reference;
+        reference.query = "blocked bandages";
+
+        const basecamp_ai::camp_request_match_result match = match_camp_request_reference( requests,
+                reference, []( const camp_llm_request & request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        CHECK( match.found );
+        CHECK( match.request_id == 4 );
+        CHECK( match.score > 1000 );
+        CHECK( match.ambiguous_matches.empty() );
+    }
+
     SECTION( "request matcher can resolve spoken subject text through the source utterance" ) {
         const std::vector<camp_llm_request> requests = {
             camp_llm_request{ .request_id = 8, .requested_item_query = "heavy cable", .chosen_recipe_name = "heavy cable", .source_utterance = "please craft me a long string", .status = "awaiting_approval" }

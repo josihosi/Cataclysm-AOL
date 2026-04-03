@@ -2697,11 +2697,23 @@ namespace
 
 static int score_camp_board_request_match( const camp_llm_request &request, std::string_view query )
 {
-    int best_score = 0;
-    best_score = std::max( best_score, score_camp_request_text_match( request.requested_item_query, query ) );
-    best_score = std::max( best_score, score_camp_request_text_match( request.chosen_recipe_name, query ) );
-    best_score = std::max( best_score, score_camp_request_text_match( request.source_utterance, query ) );
-    return best_score;
+    int subject_score = 0;
+    subject_score = std::max( subject_score, score_camp_request_text_match( request.requested_item_query, query ) );
+    subject_score = std::max( subject_score, score_camp_request_text_match( request.chosen_recipe_name, query ) );
+    subject_score = std::max( subject_score, score_camp_request_text_match( request.source_utterance, query ) );
+
+    int metadata_score = 0;
+    metadata_score = std::max( metadata_score,
+                               score_camp_request_text_match( request.assigned_worker_name, query ) );
+    metadata_score = std::max( metadata_score,
+                               score_camp_request_text_match( camp_request_status_label( request ), query ) );
+    if( request.approval_state != "not_needed" ) {
+        metadata_score = std::max( metadata_score,
+                                   score_camp_request_text_match( camp_request_approval_label( request ), query ) );
+    }
+
+    return std::max( subject_score, metadata_score ) +
+           ( subject_score > 0 && metadata_score > 0 ? metadata_score : 0 );
 }
 
 } // namespace
