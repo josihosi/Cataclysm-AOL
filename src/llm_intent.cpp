@@ -1912,11 +1912,27 @@ int threat_level_for_snapshot( npc &listener, const Creature &critter )
     return static_cast<int>( std::round( ( clamped / max_threat ) * 10.0 ) );
 }
 
+std::string attitude_label_for_snapshot( npc &listener, const Creature &critter )
+{
+    switch( listener.attitude_to( critter ) ) {
+        case Creature::Attitude::HOSTILE:
+            return "hostile";
+        case Creature::Attitude::FRIENDLY:
+            return "friendly";
+        case Creature::Attitude::NEUTRAL:
+            return "neutral";
+        case Creature::Attitude::ANY:
+            break;
+    }
+    return "unknown";
+}
+
 std::string creature_legend_entry( npc &listener, const Creature &critter )
 {
     const std::string name = critter.is_avatar() ? "player" :
                              strip_leading_article( sanitize_text( critter.disp_name() ) );
-    return string_format( "%s threat=%d/10", name, threat_level_for_snapshot( listener, critter ) );
+    return string_format( "%s %s threat=%d/10", name, attitude_label_for_snapshot( listener, critter ),
+                          threat_level_for_snapshot( listener, critter ) );
 }
 
 std::string build_snapshot_legend()
@@ -2333,7 +2349,7 @@ std::string build_snapshot_json( npc &listener, const std::string &player_uttera
 
     const map_snapshot map_data = build_ascii_map_snapshot( listener, request_id );
     out << "legend:\n" << build_snapshot_legend();
-    out << "creature legend with threat level:\n";
+    out << "creature legend with attitude and threat level:\n";
     if( map_data.legend.empty() ) {
         out << "(none)\n";
     } else {
@@ -2367,15 +2383,15 @@ Only use 'idle' when no action change is needed. Do not use 'idle' as a substitu
 'look_around' to view your surroundings and pick-up, grab, search, explore for items around you.
 'look_inventory' to look inside your inventory and wear/wield/activate items.
 'move: <coordinate> <coordinate> ... <state>' to move step-by-step on your snapshot map. Use N, S, E, W, NE, NW, SE and SW and chain 4 to 15 coordinates. After the coordinates you must also include either 'wait_here' or 'hold_position' to set state.
-'attack=<target>' to attack a target with the letter from your map.
+'attack=<target>' to attack a target with the letter from your map. Any creature with a map letter is a valid explicit target handle, including the player, friendlies, neutrals, and hostiles.
 'idle' if none of the above.
 </Explanation allowed actions>
 </Fields 2-4>
 Print only Fields 1-4, separated by | .If you break this format, you have failed.Output a single line with an answer and actions from the allowed list, in fields separated by ‘|’ and no additional text.
 <Example Output 1>Blow me.|idle</Example Output 1>
-<Example Output 2>Lets put those fucks in the ground.|equip_melee|attack=zombie</Example Output 2>
+<Example Output 2>Lets put those fucks in the ground.|equip_melee|attack=a</Example Output 2>
 <Example Output 3>Providing cover!|wait_here|equip_gun</Example Output 3>
-<Example Output 4>Lets get some dinner!|equip_gun|attack=chicken</Example Output 4>
+<Example Output 4>Lets get some dinner!|equip_gun|attack=b</Example Output 4>
 <Example Output 5>Don't worry, I'm ready to kick some teeth in.|equip_melee</Example Output 5>
 <Example Output 6>Locked and loaded.|equip_gun</Example Output 6>
 <Example Output 7>Nope, not doing that!|panic_on</Example Output 7>
