@@ -20,9 +20,7 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 ### Deterministic upstreamable PR slice
 - [x] Exact-word `craft` trigger tests exist and pass.
 - [x] `witchcraft` / substring false-positive regression test exists and pass.
-- [ ] Craft ambiguity / blocker / quantity parsing tests exist and pass.
-  - exact-word trigger, quantity parsing, ordered multi-word preference, and ambiguity coverage are in place
-  - blocked craft query coverage still needs a deterministic test
+- [x] Craft ambiguity / blocker / quantity parsing tests exist and pass.
 - [x] Touched code compiles cleanly.
 - [x] Small PR package is explainable without dragging LLM design into the story.
 

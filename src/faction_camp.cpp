@@ -2604,6 +2604,42 @@ basecamp_ai::camp_craft_recipe_match basecamp_ai::match_camp_craft_query(
     return result;
 }
 
+basecamp_ai::camp_craft_resolution basecamp_ai::resolve_camp_craft_query(
+    const std::unordered_set<recipe_id> &available_recipes, std::string_view query,
+    const std::function<camp_craft_recipe_candidate( const recipe & )> &evaluate_recipe )
+{
+    camp_craft_resolution result;
+    result.match = match_camp_craft_query( available_recipes, query );
+
+    if( result.match.recipe_ids.empty() || result.match.subjects.size() > 1 ) {
+        return result;
+    }
+
+    for( const recipe_id &matched_recipe : result.match.recipe_ids ) {
+        const recipe &making = *matched_recipe;
+        const camp_craft_recipe_candidate candidate = evaluate_recipe( making );
+        const bool has_worker = candidate.worker != nullptr;
+
+        const bool better = !result.choice.has_value() ||
+                            ( has_worker && result.choice->candidate.worker == nullptr ) ||
+                            ( has_worker && result.choice->candidate.worker != nullptr &&
+                              ( result.choice->candidate.duration == 0_turns ||
+                                candidate.duration < result.choice->candidate.duration ) ) ||
+                            ( has_worker == ( result.choice->candidate.worker != nullptr ) &&
+                              candidate.duration == result.choice->candidate.duration &&
+                              making.result_name() < result.choice->subject ) ||
+                            ( has_worker == ( result.choice->candidate.worker != nullptr ) &&
+                              candidate.duration == result.choice->candidate.duration &&
+                              making.result_name() == result.choice->subject &&
+                              matched_recipe.str() < result.choice->recipe_id.str() );
+        if( better ) {
+            result.choice = resolved_camp_craft_recipe{ matched_recipe, making.result_name(), candidate };
+        }
+    }
+
+    return result;
+}
+
 namespace
 {
 
@@ -2906,54 +2942,33 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return false;
     }
 
-    const basecamp_ai::camp_craft_recipe_match craft_match =
-        basecamp_ai::match_camp_craft_query( recipe_deck_all(), parsed->item_query );
-    if( craft_match.recipe_ids.empty() || craft_match.score < 650 ) {
+    const basecamp_ai::camp_craft_resolution craft_resolution =
+        basecamp_ai::resolve_camp_craft_query( recipe_deck_all(), parsed->item_query,
+    [&]( const recipe & making ) {
+        basecamp_ai::camp_craft_recipe_candidate candidate;
+        candidate.worker = resolve_crafting_worker( making, parsed->count, listener.getID(), listener.disp_name(),
+                           &candidate.resolution_note, &candidate.blockers );
+        if( candidate.worker != nullptr ) {
+            candidate.duration = base_camps::to_workdays( making.batch_duration( *candidate.worker, parsed->count ) );
+        }
+        return candidate;
+    } );
+    if( craft_resolution.match.recipe_ids.empty() || craft_resolution.match.score < 650 ) {
         return false;
     }
-    if( craft_match.subjects.size() > 1 ) {
-        add_camp_request_bark( listener, camp_craft_ambiguous_bark( parsed->item_query, craft_match.subjects ) );
+    if( craft_resolution.match.subjects.size() > 1 ) {
+        add_camp_request_bark( listener, camp_craft_ambiguous_bark( parsed->item_query,
+                               craft_resolution.match.subjects ) );
         return true;
     }
-
-    const recipe *best_recipe = nullptr;
-    npc_ptr best_worker;
-    std::string best_resolution_note;
-    std::vector<std::string> best_blockers;
-    bool best_has_worker = false;
-    time_duration best_duration = 0_turns;
-
-    for( const recipe_id &matched_recipe : craft_match.recipe_ids ) {
-        const recipe &making = *matched_recipe;
-
-        std::string resolution_note;
-        std::vector<std::string> blockers;
-        npc_ptr worker = resolve_crafting_worker( making, parsed->count, listener.getID(), listener.disp_name(),
-                         &resolution_note, &blockers );
-        const bool has_worker = worker != nullptr;
-        const time_duration duration = has_worker ?
-                                       base_camps::to_workdays( making.batch_duration( *worker, parsed->count ) ) :
-                                       0_turns;
-
-        const bool better = best_recipe == nullptr ||
-                            ( has_worker && !best_has_worker ) ||
-                            ( has_worker == best_has_worker && has_worker &&
-                              ( best_duration == 0_turns || duration < best_duration ) ) ||
-                            ( has_worker == best_has_worker && duration == best_duration &&
-                              making.result_name() < best_recipe->result_name() );
-        if( better ) {
-            best_recipe = &making;
-            best_worker = worker;
-            best_resolution_note = resolution_note;
-            best_blockers = blockers;
-            best_has_worker = has_worker;
-            best_duration = duration;
-        }
-    }
-
-    if( best_recipe == nullptr ) {
+    if( !craft_resolution.choice.has_value() ) {
         return false;
     }
+
+    const recipe *best_recipe = &*craft_resolution.choice->recipe_id;
+    const npc_ptr &best_worker = craft_resolution.choice->candidate.worker;
+    const std::string &best_resolution_note = craft_resolution.choice->candidate.resolution_note;
+    const std::vector<std::string> &best_blockers = craft_resolution.choice->candidate.blockers;
 
     const npc &board_worker = best_worker != nullptr ? *best_worker : listener;
     const int request_id = queue_crafting_request( *best_recipe, parsed->count, board_worker, utterance,

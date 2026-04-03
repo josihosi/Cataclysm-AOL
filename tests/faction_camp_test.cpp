@@ -167,6 +167,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::parse_heard_camp_craft_order;
     using basecamp_ai::match_camp_craft_query;
     using basecamp_ai::parse_heard_camp_status_query;
+    using basecamp_ai::resolve_camp_craft_query;
     using basecamp_ai::score_camp_recipe_query;
 
     SECTION( "craft orders parse quantity words and direct object" ) {
@@ -250,6 +251,24 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( match.score >= 650 );
         CHECK( match.recipe_ids.size() == 2 );
         CHECK( match.subjects == std::vector<std::string> { "boiled makeshift bandage", "boiled potato" } );
+    }
+
+    SECTION( "shared craft resolver keeps blocked matches and their blockers" ) {
+        const std::unordered_set<recipe_id> recipes = { recipe_id( "bandages" ) };
+
+        const basecamp_ai::camp_craft_resolution resolution = resolve_camp_craft_query( recipes, "bandages",
+        []( const recipe & ) {
+            basecamp_ai::camp_craft_recipe_candidate candidate;
+            candidate.blockers = { "No stationed worker can take this recipe right now." };
+            return candidate;
+        } );
+
+        CHECK( resolution.match.score >= 650 );
+        REQUIRE( resolution.choice.has_value() );
+        CHECK( resolution.choice->recipe_id == recipe_id( "bandages" ) );
+        CHECK( resolution.choice->candidate.worker == nullptr );
+        CHECK( resolution.choice->candidate.blockers ==
+               std::vector<std::string> { "No stationed worker can take this recipe right now." } );
     }
 }
 

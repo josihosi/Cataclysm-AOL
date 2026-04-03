@@ -193,6 +193,24 @@ struct camp_craft_recipe_match {
     int score = 0;
 };
 
+struct camp_craft_recipe_candidate {
+    npc_ptr worker;
+    std::string resolution_note;
+    std::vector<std::string> blockers;
+    time_duration duration = 0_turns;
+};
+
+struct resolved_camp_craft_recipe {
+    recipe_id recipe_id;
+    std::string subject;
+    camp_craft_recipe_candidate candidate;
+};
+
+struct camp_craft_resolution {
+    camp_craft_recipe_match match;
+    std::optional<resolved_camp_craft_recipe> choice;
+};
+
 std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance );
@@ -200,6 +218,9 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std:
 int score_camp_recipe_query( const recipe &making, std::string_view query );
 camp_craft_recipe_match match_camp_craft_query( const std::unordered_set<recipe_id> &available_recipes,
         std::string_view query );
+camp_craft_resolution resolve_camp_craft_query( const std::unordered_set<recipe_id> &available_recipes,
+        std::string_view query,
+        const std::function<camp_craft_recipe_candidate( const recipe & )> &evaluate_recipe );
 
 } // namespace basecamp_ai
 

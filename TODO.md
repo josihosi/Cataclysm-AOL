@@ -5,12 +5,12 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last week�
 ## GREEN now — upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
 - [x] Keep deterministic quantity parsing intact (numeric quantities plus the current small number-word support) while tightening the trigger boundary.
-- [ ] Reuse one deterministic craft resolver for both spoken craft intake and the later structured `craft=<query>` action token path.
+- [x] Reuse one deterministic craft resolver for both spoken craft intake and the later structured `craft=<query>` action token path.
 - [ ] Add tests for:
   - [x] `craft knife` → craft path triggers
   - [x] `witchcraft` → does **not** trigger craft path
   - [x] ambiguous craft query → reports ambiguity instead of guessing
-  - [ ] blocked craft query → reports blocker / missing requirement state
+  - [x] blocked craft query → reports blocker / missing requirement state
   - [x] ordered multi-word phrases beat generic noun fallbacks
 - [ ] Prepare the small PR-friendly explanation/packaging pass once the code/test slice is stable.
 
