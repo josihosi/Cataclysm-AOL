@@ -175,6 +175,20 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( parsed->item_query == "bandages" );
     }
 
+    SECTION( "spoken craft intake requires the exact standalone word craft" ) {
+        const std::optional<basecamp_ai::parsed_camp_craft_order> parsed =
+            parse_heard_camp_craft_order( "craft knife" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->count == 1 );
+        CHECK( parsed->item_query == "knife" );
+    }
+
+    SECTION( "spoken craft intake rejects non craft verbs and partial-word matches" ) {
+        CHECK_FALSE( parse_heard_camp_craft_order( "make knife" ).has_value() );
+        CHECK_FALSE( parse_heard_camp_craft_order( "build knife" ).has_value() );
+        CHECK_FALSE( parse_heard_camp_craft_order( "witchcraft knife" ).has_value() );
+    }
+
     SECTION( "approval commands parse explicit request numbers" ) {
         const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
             parse_heard_camp_approval_query( "approve request #12 please" );

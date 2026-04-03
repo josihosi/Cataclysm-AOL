@@ -2276,10 +2276,7 @@ std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string
 
     bool matched_prefix = false;
     for( const std::string_view prefix : {
-             std::string_view( "make " ), std::string_view( "craft " ), std::string_view( "build " ),
-             std::string_view( "cook " ), std::string_view( "prepare " ), std::string_view( "queue " ),
-             std::string_view( "can you make " ), std::string_view( "could you make " ),
-             std::string_view( "would you make " ), std::string_view( "will you make " ),
+             std::string_view( "craft " ),
              std::string_view( "can you craft " ), std::string_view( "could you craft " ),
              std::string_view( "would you craft " ), std::string_view( "will you craft " ) } ) {
         if( consume_camp_request_prefix( text, prefix ) ) {
