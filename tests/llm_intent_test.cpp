@@ -59,6 +59,14 @@ static void setup_snapshot_test_scene()
     clear_vehicles();
     set_time_to_day();
 }
+
+static void run_npc_turns( npc &guy, int turns )
+{
+    for( int turn = 0; turn < turns; ++turn ) {
+        guy.set_moves( 100 );
+        guy.move();
+    }
+}
 }
 
 TEST_CASE( "llm_intent_snapshot_includes_attitude_and_lettered_targets", "[llm_intent]" )
@@ -141,6 +149,87 @@ TEST_CASE( "llm_intent_resolves_move_deltas_to_snapshot_targets", "[llm_intent]"
            tripoint_abs_ms( 104, 202, 7 ) );
     CHECK( llm_intent::resolve_move_target_for_test( origin, point( -1, 3 ) ) ==
            tripoint_abs_ms( 99, 197, 7 ) );
+}
+
+TEST_CASE( "llm_intent_move_targets_reuse_existing_tile_pathing", "[llm_intent]" )
+{
+    override_option opt_llm_intent( "LLM_INTENT_ENABLE", "true" );
+    setup_snapshot_test_scene();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 46, 50, 0 ) );
+
+    npc &listener = spawn_test_npc_at( point_bub_ms( 50, 50 ), "Listener NPC" );
+    listener.set_fac( faction_your_followers );
+
+    const tripoint_abs_ms target = llm_intent::resolve_move_target_for_test( listener.pos_abs(),
+                                   point( 2, 1 ) );
+    listener.set_llm_intent_move_target( target, llm_intent_action::wait_here );
+    run_npc_turns( listener, 6 );
+
+    CHECK( listener.pos_abs() == target );
+    CHECK_FALSE( listener.goto_to_this_pos.has_value() );
+    CHECK( listener.mission == NPC_MISSION_GUARD_ALLY );
+    CHECK( listener.get_attitude() == NPCATT_NULL );
+
+    clear_npcs();
+}
+
+TEST_CASE( "llm_intent_hold_position_releases_when_player_gets_far", "[llm_intent]" )
+{
+    override_option opt_llm_intent( "LLM_INTENT_ENABLE", "true" );
+    setup_snapshot_test_scene();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 48, 50, 0 ) );
+
+    npc &listener = spawn_test_npc_at( point_bub_ms( 50, 50 ), "Listener NPC" );
+    listener.set_fac( faction_your_followers );
+
+    listener.set_llm_intent_move_target( listener.pos_abs(), llm_intent_action::hold_position );
+    run_npc_turns( listener, 1 );
+
+    REQUIRE( listener.mission == NPC_MISSION_GUARD_ALLY );
+    REQUIRE( listener.get_attitude() == NPCATT_NULL );
+
+    player_character.setpos( here, tripoint_bub_ms( 80, 80, 0 ) );
+    run_npc_turns( listener, 1 );
+
+    CHECK( listener.get_attitude() == NPCATT_FOLLOW );
+    CHECK( listener.mission == NPC_MISSION_NULL );
+    CHECK_FALSE( listener.guard_pos.has_value() );
+
+    clear_npcs();
+}
+
+TEST_CASE( "llm_intent_wait_here_stays_guarded_when_player_gets_far", "[llm_intent]" )
+{
+    override_option opt_llm_intent( "LLM_INTENT_ENABLE", "true" );
+    setup_snapshot_test_scene();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 48, 50, 0 ) );
+
+    npc &listener = spawn_test_npc_at( point_bub_ms( 50, 50 ), "Listener NPC" );
+    listener.set_fac( faction_your_followers );
+
+    listener.set_llm_intent_move_target( listener.pos_abs(), llm_intent_action::wait_here );
+    run_npc_turns( listener, 1 );
+
+    REQUIRE( listener.mission == NPC_MISSION_GUARD_ALLY );
+    REQUIRE( listener.get_attitude() == NPCATT_NULL );
+
+    player_character.setpos( here, tripoint_bub_ms( 80, 80, 0 ) );
+    run_npc_turns( listener, 1 );
+
+    CHECK( listener.get_attitude() == NPCATT_NULL );
+    CHECK( listener.mission == NPC_MISSION_GUARD_ALLY );
+    CHECK( listener.guard_pos == listener.pos_abs() );
+
+    clear_npcs();
 }
 
 TEST_CASE( "llm_intent_can_resolve_lettered_neutral_targets", "[llm_intent]" )
