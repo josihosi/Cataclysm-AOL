@@ -15,7 +15,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 - [x] Prepare the small PR-friendly explanation/packaging pass once the code/test slice is stable.
 
 ## GREEN now â€” movement system improvements
-- [ ] Replace local follower step-chain movement payloads (`E E E`, etc.) with a relative signed-delta destination contract while keeping the current pathing / target-tile behavior intact.
+- [x] Replace local follower step-chain movement payloads (`E E E`, etc.) with a relative signed-delta destination contract while keeping the current pathing / target-tile behavior intact.
 - [x] Preserve the existing post-move state suffixes exactly:
   - `wait_here`
   - `hold_position`

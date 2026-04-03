@@ -991,60 +991,24 @@ bool parse_move_field( const std::string &field, int &dx, int &dy,
         return static_cast<char>( std::tolower( c ) );
     } );
 
-    if( lowered.rfind( "move=", 0 ) == 0 ) {
-        lowered = trim_copy( lowered.substr( 5 ) );
-        if( lowered.empty() ) {
-            error = "Move field is missing coordinates.";
-            return false;
-        }
-        std::istringstream iss( lowered );
-        std::vector<std::string> parts;
-        for( std::string token; iss >> token; ) {
-            parts.push_back( token );
-        }
-        if( parts.size() != 2 ) {
-            error = "Move field must include one delta and terminal state.";
-            return false;
-        }
-        terminal_state = parts.back();
-        if( terminal_state != "wait_here" && terminal_state != "hold_position" ) {
-            error = "Move field terminal state is invalid.";
-            return false;
-        }
-        const size_t comma = parts.front().find( ',' );
-        if( comma == std::string::npos || parts.front().find( ',', comma + 1 ) != std::string::npos ) {
-            error = "Move field delta is invalid.";
-            return false;
-        }
-        const std::string dx_token = trim_copy( parts.front().substr( 0, comma ) );
-        const std::string dy_token = trim_copy( parts.front().substr( comma + 1 ) );
-        if( !parse_signed_move_delta( dx_token, dx ) || !parse_signed_move_delta( dy_token, dy ) ) {
-            error = "Move field delta is invalid.";
-            return false;
-        }
-        return true;
-    }
-
-    if( lowered.rfind( "move:", 0 ) == 0 ) {
-        lowered = trim_copy( lowered.substr( 5 ) );
-    } else if( lowered.rfind( "move ", 0 ) == 0 ) {
-        lowered = trim_copy( lowered.substr( 4 ) );
-    } else {
-        error = "Move field is invalid.";
+    if( lowered.rfind( "move=", 0 ) != 0 ) {
+        error = "Move field must use move=<dx>,<dy> <state>.";
         return false;
     }
-    std::string body = lowered;
-    if( body.empty() ) {
+
+    lowered = trim_copy( lowered.substr( 5 ) );
+    if( lowered.empty() ) {
         error = "Move field is missing coordinates.";
         return false;
     }
-    std::istringstream iss( body );
+
+    std::istringstream iss( lowered );
     std::vector<std::string> parts;
     for( std::string token; iss >> token; ) {
         parts.push_back( token );
     }
-    if( parts.size() < 2 ) {
-        error = "Move field must include coordinates and terminal state.";
+    if( parts.size() != 2 ) {
+        error = "Move field must include one delta and terminal state.";
         return false;
     }
     terminal_state = parts.back();
@@ -1052,38 +1016,16 @@ bool parse_move_field( const std::string &field, int &dx, int &dy,
         error = "Move field terminal state is invalid.";
         return false;
     }
-    parts.pop_back();
-    if( parts.empty() || parts.size() > 15 ) {
-        error = "Move field must have 1-15 coordinates.";
+    const size_t comma = parts.front().find( ',' );
+    if( comma == std::string::npos || parts.front().find( ',', comma + 1 ) != std::string::npos ) {
+        error = "Move field delta is invalid.";
         return false;
     }
-    static const std::set<std::string> valid_coords = { "n", "s", "e", "w", "ne", "nw", "se", "sw" };
-    for( const std::string &part : parts ) {
-        if( valid_coords.count( part ) == 0 ) {
-            error = "Move coordinate is invalid.";
-            return false;
-        }
-        if( part == "n" ) {
-            dy += 1;
-        } else if( part == "s" ) {
-            dy -= 1;
-        } else if( part == "e" ) {
-            dx += 1;
-        } else if( part == "w" ) {
-            dx -= 1;
-        } else if( part == "ne" ) {
-            dx += 1;
-            dy += 1;
-        } else if( part == "nw" ) {
-            dx -= 1;
-            dy += 1;
-        } else if( part == "se" ) {
-            dx += 1;
-            dy -= 1;
-        } else if( part == "sw" ) {
-            dx -= 1;
-            dy -= 1;
-        }
+    const std::string dx_token = trim_copy( parts.front().substr( 0, comma ) );
+    const std::string dy_token = trim_copy( parts.front().substr( comma + 1 ) );
+    if( !parse_signed_move_delta( dx_token, dx ) || !parse_signed_move_delta( dy_token, dy ) ) {
+        error = "Move field delta is invalid.";
+        return false;
     }
     return true;
 }

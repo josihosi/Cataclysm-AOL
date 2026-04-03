@@ -132,10 +132,13 @@ TEST_CASE( "llm_intent_can_parse_delta_move_fields", "[llm_intent]" )
     CHECK( delta == point( -1, 3 ) );
     CHECK( terminal_state == "wait_here" );
 
-    CHECK( llm_intent::parse_move_field_for_test( "move: E E N hold_position", delta,
-           terminal_state, error ) );
-    CHECK( delta == point( 2, 1 ) );
-    CHECK( terminal_state == "hold_position" );
+    CHECK_FALSE( llm_intent::parse_move_field_for_test( "move: E E N hold_position", delta,
+                 terminal_state, error ) );
+    CHECK( error == "Move field must use move=<dx>,<dy> <state>." );
+
+    CHECK_FALSE( llm_intent::parse_move_field_for_test( "move E E N hold_position", delta,
+                 terminal_state, error ) );
+    CHECK( error == "Move field must use move=<dx>,<dy> <state>." );
 
     CHECK_FALSE( llm_intent::parse_move_field_for_test( "move=4 east hold_position", delta,
                  terminal_state, error ) );
