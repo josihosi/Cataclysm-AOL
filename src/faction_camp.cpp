@@ -3423,14 +3423,12 @@ bool basecamp::complete_crafting_request( const mission_id &miss_id, const npc &
     if( request == nullptr ) {
         return false;
     }
-    const int request_id = request->request_id;
     request->status = "completed";
     request->eta_turn = calendar::turn_zero;
     request->active_mission_id = mission_id();
     add_camp_request_note( *request, "completion",
                            note_text.empty() ? string_format( _( "%s returned with the finished job." ),
                                                    worker.disp_name() ) : note_text );
-    clear_camp_request( request_id );
     return true;
 }
 
