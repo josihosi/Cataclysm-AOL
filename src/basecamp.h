@@ -187,6 +187,13 @@ struct parsed_camp_request_reference {
     bool all_requests = false;
 };
 
+struct camp_request_match_result {
+    int request_id = 0;
+    bool found = false;
+    int score = 0;
+    std::vector<std::string> ambiguous_matches;
+};
+
 struct camp_craft_recipe_match {
     std::vector<recipe_id> recipe_ids;
     std::vector<std::string> subjects;
@@ -215,6 +222,9 @@ std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string
 std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std::string_view utterance );
+camp_request_match_result match_camp_request_reference( const std::vector<camp_llm_request> &requests,
+        const parsed_camp_request_reference &reference,
+        const std::function<bool( const camp_llm_request & )> &predicate );
 bool parse_relative_omt_delta( std::string_view dx_text, std::string_view dy_text,
                                point_rel_omt &delta, std::string &error );
 int score_camp_recipe_query( const recipe &making, std::string_view query );

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <optional>
@@ -168,6 +169,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::parse_heard_camp_status_query;
     using basecamp_ai::parse_relative_omt_delta;
     using basecamp_ai::match_camp_craft_query;
+    using basecamp_ai::match_camp_request_reference;
     using basecamp_ai::resolve_camp_craft_query;
     using basecamp_ai::score_camp_recipe_query;
 
@@ -224,6 +226,75 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         REQUIRE( parsed.has_value() );
         CHECK_FALSE( parsed->has_request_id );
         CHECK( parsed->query == "long string" );
+    }
+
+    SECTION( "request matcher prefers explicit ids and respects the active predicate" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 7, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "awaiting_approval" },
+            camp_llm_request{ .request_id = 12, .requested_item_query = "knife", .chosen_recipe_name = "knife", .status = "cancelled" }
+        };
+        basecamp_ai::parsed_camp_request_reference reference;
+        reference.request_id = 12;
+        reference.has_request_id = true;
+
+        const basecamp_ai::camp_request_match_result archived = match_camp_request_reference( requests,
+                reference, []( const camp_llm_request & request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        CHECK_FALSE( archived.found );
+        CHECK( archived.request_id == 0 );
+
+        reference.request_id = 7;
+        const basecamp_ai::camp_request_match_result active = match_camp_request_reference( requests,
+                reference, []( const camp_llm_request & request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        CHECK( active.found );
+        CHECK( active.request_id == 7 );
+        CHECK( active.score == 1000 );
+    }
+
+    SECTION( "request matcher reports ambiguous live board matches instead of guessing" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 3, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "awaiting_approval", .assigned_worker_name = "Alice" },
+            camp_llm_request{ .request_id = 4, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "blocked", .assigned_worker_name = "Bob" },
+            camp_llm_request{ .request_id = 5, .requested_item_query = "bandages", .chosen_recipe_name = "bandages", .status = "cancelled", .assigned_worker_name = "Cara" }
+        };
+        basecamp_ai::parsed_camp_request_reference reference;
+        reference.query = "bandages";
+
+        const basecamp_ai::camp_request_match_result match = match_camp_request_reference( requests,
+                reference, []( const camp_llm_request & request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        CHECK_FALSE( match.found );
+        CHECK( match.score >= 650 );
+        CHECK( match.ambiguous_matches.size() == 2 );
+        CHECK( std::any_of( match.ambiguous_matches.begin(), match.ambiguous_matches.end(),
+        []( const std::string & summary ) {
+            return summary.find( "#3" ) != std::string::npos;
+        } ) );
+        CHECK( std::any_of( match.ambiguous_matches.begin(), match.ambiguous_matches.end(),
+        []( const std::string & summary ) {
+            return summary.find( "#4" ) != std::string::npos;
+        } ) );
+    }
+
+    SECTION( "request matcher can resolve spoken subject text through the source utterance" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 8, .requested_item_query = "heavy cable", .chosen_recipe_name = "heavy cable", .source_utterance = "please craft me a long string", .status = "awaiting_approval" }
+        };
+        basecamp_ai::parsed_camp_request_reference reference;
+        reference.query = "long string";
+
+        const basecamp_ai::camp_request_match_result match = match_camp_request_reference( requests,
+                reference, []( const camp_llm_request & ) {
+            return true;
+        } );
+        CHECK( match.found );
+        CHECK( match.request_id == 8 );
+        CHECK( match.score >= 650 );
+        CHECK( match.ambiguous_matches.empty() );
     }
 
     SECTION( "overmap delta parser keeps signed dx and dy values" ) {

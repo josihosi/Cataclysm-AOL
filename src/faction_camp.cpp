@@ -2691,6 +2691,55 @@ static int score_camp_board_request_match( const camp_llm_request &request, std:
 
 } // namespace
 
+basecamp_ai::camp_request_match_result basecamp_ai::match_camp_request_reference(
+    const std::vector<camp_llm_request> &requests,
+    const parsed_camp_request_reference &reference,
+    const std::function<bool( const camp_llm_request & )> &predicate )
+{
+    camp_request_match_result result;
+    if( reference.all_requests ) {
+        return result;
+    }
+    if( reference.has_request_id ) {
+        const auto it = std::find_if( requests.begin(), requests.end(), [&]( const camp_llm_request & request ) {
+            return request.request_id == reference.request_id && predicate( request );
+        } );
+        if( it != requests.end() ) {
+            result.request_id = it->request_id;
+            result.found = true;
+            result.score = 1000;
+        }
+        return result;
+    }
+    if( reference.query.empty() ) {
+        return result;
+    }
+
+    for( const camp_llm_request &request : requests ) {
+        if( !predicate( request ) ) {
+            continue;
+        }
+        const int score = score_camp_board_request_match( request, reference.query );
+        if( score > result.score ) {
+            result.score = score;
+            result.request_id = request.request_id;
+            result.found = true;
+            result.ambiguous_matches = { camp_request_summary( request ) };
+        } else if( score == result.score && score >= 650 ) {
+            result.ambiguous_matches.push_back( camp_request_summary( request ) );
+        }
+    }
+
+    if( result.score < 650 ) {
+        result = camp_request_match_result{};
+    } else if( result.ambiguous_matches.size() > 1 ) {
+        result.found = false;
+    } else {
+        result.ambiguous_matches.clear();
+    }
+    return result;
+}
+
 int basecamp::add_crafting_request( const recipe &making, int batch_size, const mission_id &miss_id,
                                     const npc &worker, const std::string &source_utterance,
                                     const std::string &requested_item_query,
@@ -2751,53 +2800,6 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return false;
     }
 
-    struct camp_request_lookup_result {
-        camp_llm_request *request = nullptr;
-        int score = 0;
-        std::vector<std::string> ambiguous_matches;
-    };
-
-    const auto find_best_request = [&]( const basecamp_ai::parsed_camp_request_reference &reference,
-    const std::function<bool( const camp_llm_request & )> &predicate ) -> camp_request_lookup_result {
-        camp_request_lookup_result result;
-        if( reference.has_request_id ) {
-            camp_llm_request *request = find_camp_request( reference.request_id );
-            if( request != nullptr && predicate( *request ) ) {
-                result.request = request;
-                result.score = 1000;
-            }
-            return result;
-        }
-        if( reference.query.empty() ) {
-            return result;
-        }
-
-        for( camp_llm_request &request : camp_requests ) {
-            if( !predicate( request ) ) {
-                continue;
-            }
-            const int score = score_camp_board_request_match( request, reference.query );
-            if( score > result.score ) {
-                result.score = score;
-                result.request = &request;
-                result.ambiguous_matches = { camp_request_summary( request ) };
-            } else if( score == result.score && score >= 650 ) {
-                result.ambiguous_matches.push_back( camp_request_summary( request ) );
-            }
-        }
-
-        if( result.score < 650 ) {
-            result.request = nullptr;
-            result.score = 0;
-            result.ambiguous_matches.clear();
-        } else if( result.ambiguous_matches.size() > 1 ) {
-            result.request = nullptr;
-        } else {
-            result.ambiguous_matches.clear();
-        }
-        return result;
-    };
-
     if( const std::optional<basecamp_ai::parsed_camp_request_reference> status_query =
             basecamp_ai::parse_heard_camp_status_query( utterance ) ) {
         if( camp_requests.empty() ) {
@@ -2828,12 +2830,14 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             return true;
         }
 
-        const camp_request_lookup_result lookup = find_best_request( *status_query,
+        const basecamp_ai::camp_request_match_result lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *status_query,
         []( const camp_llm_request & ) {
             return true;
         } );
-        if( lookup.request != nullptr ) {
-            add_camp_request_bark( listener, camp_request_spoken_status( *lookup.request ) );
+        camp_llm_request *matched_request = lookup.found ? find_camp_request( lookup.request_id ) : nullptr;
+        if( matched_request != nullptr ) {
+            add_camp_request_bark( listener, camp_request_spoken_status( *matched_request ) );
         } else if( !lookup.ambiguous_matches.empty() ) {
             add_camp_request_bark( listener,
                                    camp_request_ambiguous_bark( status_query->query, lookup.ambiguous_matches ) );
@@ -2849,12 +2853,13 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
 
     if( const std::optional<basecamp_ai::parsed_camp_request_reference> cancel_query =
             basecamp_ai::parse_heard_camp_cancel_query( utterance ) ) {
-        const camp_request_lookup_result lookup = find_best_request( *cancel_query,
+        const basecamp_ai::camp_request_match_result lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *cancel_query,
         []( const camp_llm_request &request ) {
             return request.status != "completed" && request.status != "cancelled";
         } );
-        if( lookup.request != nullptr ) {
-            camp_llm_request *best_request = lookup.request;
+        camp_llm_request *best_request = lookup.found ? find_camp_request( lookup.request_id ) : nullptr;
+        if( best_request != nullptr ) {
             if( best_request->status == "in_progress" ) {
                 emergency_recall( best_request->active_mission_id );
             } else {
@@ -2929,11 +2934,12 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             return true;
         }
 
-        camp_request_lookup_result lookup = find_best_request( *approval_query,
+        const basecamp_ai::camp_request_match_result lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *approval_query,
         []( const camp_llm_request &request ) {
             return request.status != "completed" && request.status != "cancelled";
         } );
-        if( lookup.request == nullptr ) {
+        if( !lookup.found ) {
             if( !lookup.ambiguous_matches.empty() ) {
                 add_camp_request_bark( listener,
                                        camp_request_ambiguous_bark( approval_query->query, lookup.ambiguous_matches ) );
@@ -2946,7 +2952,10 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             }
             return true;
         }
-        camp_llm_request *best_request = lookup.request;
+        camp_llm_request *best_request = find_camp_request( lookup.request_id );
+        if( best_request == nullptr ) {
+            return true;
+        }
         if( best_request->status == "in_progress" ) {
             add_camp_request_bark( listener,
                                    string_format( _( "Request #%1$d is already underway." ),
