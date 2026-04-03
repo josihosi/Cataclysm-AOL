@@ -20,7 +20,7 @@ follow_far to follow from farther away, hang back, give me space.
 equip_gun to equip gun, rifle, thrower, get ready to shoot.
 equip_melee to equip melee, get ready to bash, cut, kick, stab.
 equip_bow to use bow, crossbow, stealth.
-attack=<target> to attack a target from your map.
+attack=<target> to attack a target from your map. Any creature with a map letter is a valid explicit target handle, including the player, friendlies, neutrals, and hostiles.
 idle if none of the above.
 </Allowed actions>
 </Fields 2-4>
@@ -31,13 +31,13 @@ Output a single line with an answer and actions from the allowed list, in fields
 Blow me.|idle
 </Example Output 1>
 <Example Output 2>
-Lets put those fucks in the ground.|equip_melee|attack=zombie
+Lets put those fucks in the ground.|equip_melee|attack=a
 </Example Output 2>
 <Example Output 3>
 Providing cover!|wait_here|equip_gun
 </Example Output 3>
 <Example Output 4>
-Lets get some dinner!|equip_gun|attack=chicken
+Lets get some dinner!|equip_gun|attack=b
 </Example Output 4>
 <Example Output 5>
 Don't worry, I'm ready to kick some teeth in.|equip_melee
