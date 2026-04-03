@@ -21,7 +21,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
   - `hold_position`
 - [ ] Use the same relative-delta idea for overmap-targeted movement / planner output where appropriate.
 - [x] Update prompt/snapshot explanations and examples so the model is told to emit coordinates rather than micro-step chains.
-- [ ] Consider lightweight grid/axis hints in the snapshot if they help the model reason about offsets more reliably.
+- [x] Consider lightweight grid/axis hints in the snapshot if they help the model reason about offsets more reliably.
 - [x] Add deterministic parser/tests for positive/negative deltas, state suffix retention, and malformed fallback behavior.
 
 ## GREEN now â€” richer Basecamp AI on `dev`
