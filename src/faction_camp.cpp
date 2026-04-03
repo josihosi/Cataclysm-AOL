@@ -1616,12 +1616,17 @@ static std::string camp_request_subject( const camp_llm_request &request )
     return basecamp_ai::camp_request_subject_for_display( request );
 }
 
+static std::string camp_request_summary_subject( const camp_llm_request &request )
+{
+    return basecamp_ai::camp_request_subject_for_display( request, true );
+}
+
 static std::string camp_request_subject_list( const std::vector<std::string> &subjects );
 
 static std::string camp_request_summary( const camp_llm_request &request )
 {
     std::string summary = string_format( "#%d %s — %s", request.request_id,
-                                         camp_request_subject( request ),
+                                         camp_request_summary_subject( request ),
                                          camp_request_status_label( request ) );
     if( !request.assigned_worker_name.empty() ) {
         summary += string_format( _( " (%s)" ), request.assigned_worker_name );
@@ -2349,17 +2354,25 @@ static basecamp_ai::parsed_camp_request_reference finalize_camp_request_referenc
 namespace basecamp_ai
 {
 
-std::string camp_request_subject_for_display( const camp_llm_request &request )
+std::string camp_request_subject_for_display( const camp_llm_request &request,
+        bool include_resolved_recipe )
 {
     const std::string item_name = !request.requested_item_query.empty() ? request.requested_item_query :
                                   request.chosen_recipe_name;
     if( item_name.empty() ) {
         return _( "crafting request" );
     }
-    if( request.requested_count > 0 ) {
-        return string_format( _( "%1$d × %2$s" ), request.requested_count, item_name );
+
+    std::string subject = request.requested_count > 0 ?
+                          string_format( _( "%1$d × %2$s" ), request.requested_count, item_name ) :
+                          item_name;
+
+    if( include_resolved_recipe && !request.requested_item_query.empty() &&
+        !request.chosen_recipe_name.empty() && request.chosen_recipe_name != request.requested_item_query ) {
+        subject += string_format( _( " (matched %s)" ), request.chosen_recipe_name );
     }
-    return item_name;
+
+    return subject;
 }
 
 std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance )
