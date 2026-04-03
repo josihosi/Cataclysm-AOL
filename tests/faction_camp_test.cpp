@@ -427,6 +427,27 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( camp_request_subject_for_display( request ) == "2 × boiled makeshift bandage" );
     }
 
+    SECTION( "request summary subject can append the resolved recipe when it differs" ) {
+        const camp_llm_request request{
+            .requested_item_query = "bandages",
+            .requested_count = 5,
+            .chosen_recipe_name = "sterile bandage"
+        };
+
+        CHECK( camp_request_subject_for_display( request, true ) ==
+               "5 × bandages (matched sterile bandage)" );
+    }
+
+    SECTION( "request summary subject does not duplicate the resolved recipe when it matches" ) {
+        const camp_llm_request request{
+            .requested_item_query = "bandages",
+            .requested_count = 5,
+            .chosen_recipe_name = "bandages"
+        };
+
+        CHECK( camp_request_subject_for_display( request, true ) == "5 × bandages" );
+    }
+
     SECTION( "request display subject falls back to a generic label when empty" ) {
         const camp_llm_request request;
 
