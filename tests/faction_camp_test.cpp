@@ -165,6 +165,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::parse_heard_camp_cancel_query;
     using basecamp_ai::parse_heard_camp_craft_order;
     using basecamp_ai::parse_heard_camp_status_query;
+    using basecamp_ai::score_camp_recipe_query;
 
     SECTION( "craft orders parse quantity words and direct object" ) {
         const std::optional<basecamp_ai::parsed_camp_craft_order> parsed =
@@ -205,6 +206,22 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         REQUIRE( parsed.has_value() );
         CHECK_FALSE( parsed->has_request_id );
         CHECK( parsed->query == "long string" );
+    }
+
+    SECTION( "craft router prefers specific phrase matches over generic noun matches" ) {
+        const recipe &plain_bandages = recipe_id( "bandages" ).obj();
+        const recipe &boiled_bandages = recipe_id( "bandages_makeshift_boiled" ).obj();
+
+        CHECK( score_camp_recipe_query( boiled_bandages, "boiled bandages" ) >
+               score_camp_recipe_query( plain_bandages, "boiled bandages" ) );
+        CHECK( score_camp_recipe_query( plain_bandages, "bandages" ) >
+               score_camp_recipe_query( boiled_bandages, "bandages" ) );
+    }
+
+    SECTION( "craft router uses exact words instead of partial-word substring matches" ) {
+        const recipe &plain_bandages = recipe_id( "bandages" ).obj();
+        CHECK( score_camp_recipe_query( plain_bandages, "band" ) == 0 );
+        CHECK( score_camp_recipe_query( plain_bandages, "bandages" ) > 0 );
     }
 }
 
