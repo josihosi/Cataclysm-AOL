@@ -1768,5 +1768,8 @@ const requirement_data *deduped_requirement_data::select_alternative(
 {
     const std::vector<const requirement_data *> all_reqs =
         feasible_alternatives( inv, filter, batch, flags );
+    if( all_reqs.empty() ) {
+        return nullptr;
+    }
     return crafter.select_requirements( all_reqs, 1, inv, filter );
 }
