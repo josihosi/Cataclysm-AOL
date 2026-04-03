@@ -2,6 +2,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_set>
 
 #include "basecamp.h"
 #include "calendar.h"
@@ -164,6 +165,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::parse_heard_camp_approval_query;
     using basecamp_ai::parse_heard_camp_cancel_query;
     using basecamp_ai::parse_heard_camp_craft_order;
+    using basecamp_ai::match_camp_craft_query;
     using basecamp_ai::parse_heard_camp_status_query;
     using basecamp_ai::score_camp_recipe_query;
 
@@ -236,6 +238,18 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         const recipe &plain_bandages = recipe_id( "bandages" ).obj();
         CHECK( score_camp_recipe_query( plain_bandages, "band" ) == 0 );
         CHECK( score_camp_recipe_query( plain_bandages, "bandages" ) > 0 );
+    }
+
+    SECTION( "craft router reports ambiguous top subject matches instead of guessing" ) {
+        const std::unordered_set<recipe_id> recipes = {
+            recipe_id( "bandages_makeshift_boiled" ),
+            recipe_id( "potato_boiled" )
+        };
+
+        const basecamp_ai::camp_craft_recipe_match match = match_camp_craft_query( recipes, "boiled" );
+        CHECK( match.score >= 650 );
+        CHECK( match.recipe_ids.size() == 2 );
+        CHECK( match.subjects == std::vector<std::string> { "boiled makeshift bandage", "boiled potato" } );
     }
 }
 

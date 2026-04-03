@@ -1682,6 +1682,13 @@ static std::string camp_request_ambiguous_bark( std::string_view query,
                           std::string( query ), camp_request_subject_list( matches ) );
 }
 
+static std::string camp_craft_ambiguous_bark( std::string_view query,
+        const std::vector<std::string> &matches )
+{
+    return string_format( _( "Need a clearer craft order for \"%1$s\": %2$s." ),
+                          std::string( query ), camp_request_subject_list( matches ) );
+}
+
 static std::string camp_request_not_found_bark( std::string_view query )
 {
     return string_format( _( "Nothing on the board matches \"%s\"." ), std::string( query ) );
@@ -2549,6 +2556,54 @@ int basecamp_ai::score_camp_recipe_query( const recipe &making, std::string_view
     return best_score;
 }
 
+basecamp_ai::camp_craft_recipe_match basecamp_ai::match_camp_craft_query(
+    const std::unordered_set<recipe_id> &available_recipes, std::string_view query )
+{
+    camp_craft_recipe_match result;
+
+    for( const recipe_id &known_recipe : available_recipes ) {
+        if( known_recipe.is_empty() ) {
+            continue;
+        }
+        const recipe &making = *known_recipe;
+        const int score = score_camp_recipe_query( making, query );
+        if( score <= 0 ) {
+            continue;
+        }
+        if( score > result.score ) {
+            result.score = score;
+            result.recipe_ids = { known_recipe };
+        } else if( score == result.score ) {
+            result.recipe_ids.push_back( known_recipe );
+        }
+    }
+
+    if( result.score < 650 ) {
+        result.score = 0;
+        result.recipe_ids.clear();
+        return result;
+    }
+
+    std::sort( result.recipe_ids.begin(), result.recipe_ids.end(), []( const recipe_id & lhs,
+    const recipe_id & rhs ) {
+        const recipe &left_recipe = *lhs;
+        const recipe &right_recipe = *rhs;
+        if( left_recipe.result_name() != right_recipe.result_name() ) {
+            return left_recipe.result_name() < right_recipe.result_name();
+        }
+        return lhs.str() < rhs.str();
+    } );
+
+    for( const recipe_id &matched_recipe : result.recipe_ids ) {
+        const std::string subject = matched_recipe->result_name();
+        if( std::find( result.subjects.begin(), result.subjects.end(), subject ) == result.subjects.end() ) {
+            result.subjects.push_back( subject );
+        }
+    }
+
+    return result;
+}
+
 namespace
 {
 
@@ -2851,23 +2906,25 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return false;
     }
 
+    const basecamp_ai::camp_craft_recipe_match craft_match =
+        basecamp_ai::match_camp_craft_query( recipe_deck_all(), parsed->item_query );
+    if( craft_match.recipe_ids.empty() || craft_match.score < 650 ) {
+        return false;
+    }
+    if( craft_match.subjects.size() > 1 ) {
+        add_camp_request_bark( listener, camp_craft_ambiguous_bark( parsed->item_query, craft_match.subjects ) );
+        return true;
+    }
+
     const recipe *best_recipe = nullptr;
     npc_ptr best_worker;
     std::string best_resolution_note;
     std::vector<std::string> best_blockers;
-    int best_score = 0;
     bool best_has_worker = false;
     time_duration best_duration = 0_turns;
 
-    for( const recipe_id &known_recipe : recipe_deck_all() ) {
-        if( known_recipe.is_empty() ) {
-            continue;
-        }
-        const recipe &making = *known_recipe;
-        const int score = basecamp_ai::score_camp_recipe_query( making, parsed->item_query );
-        if( score <= 0 ) {
-            continue;
-        }
+    for( const recipe_id &matched_recipe : craft_match.recipe_ids ) {
+        const recipe &making = *matched_recipe;
 
         std::string resolution_note;
         std::vector<std::string> blockers;
@@ -2878,24 +2935,23 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                                        base_camps::to_workdays( making.batch_duration( *worker, parsed->count ) ) :
                                        0_turns;
 
-        const bool better = score > best_score ||
-                            ( score == best_score && has_worker && !best_has_worker ) ||
-                            ( score == best_score && has_worker == best_has_worker && has_worker &&
+        const bool better = best_recipe == nullptr ||
+                            ( has_worker && !best_has_worker ) ||
+                            ( has_worker == best_has_worker && has_worker &&
                               ( best_duration == 0_turns || duration < best_duration ) ) ||
-                            ( score == best_score && has_worker == best_has_worker && duration == best_duration &&
-                              best_recipe != nullptr && making.result_name() < best_recipe->result_name() );
+                            ( has_worker == best_has_worker && duration == best_duration &&
+                              making.result_name() < best_recipe->result_name() );
         if( better ) {
             best_recipe = &making;
             best_worker = worker;
             best_resolution_note = resolution_note;
             best_blockers = blockers;
-            best_score = score;
             best_has_worker = has_worker;
             best_duration = duration;
         }
     }
 
-    if( best_recipe == nullptr || best_score < 650 ) {
+    if( best_recipe == nullptr ) {
         return false;
     }
 

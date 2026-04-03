@@ -187,11 +187,19 @@ struct parsed_camp_request_reference {
     bool all_requests = false;
 };
 
+struct camp_craft_recipe_match {
+    std::vector<recipe_id> recipe_ids;
+    std::vector<std::string> subjects;
+    int score = 0;
+};
+
 std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std::string_view utterance );
 int score_camp_recipe_query( const recipe &making, std::string_view query );
+camp_craft_recipe_match match_camp_craft_query( const std::unordered_set<recipe_id> &available_recipes,
+        std::string_view query );
 
 } // namespace basecamp_ai
 
