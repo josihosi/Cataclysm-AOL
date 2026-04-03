@@ -95,6 +95,7 @@
 #include "string_formatter.h"
 #include "translation.h"
 #include "translations.h"
+#include "try_parse_integer.h"
 #include "type_id.h"
 #include "uilist.h"
 #include "ui_manager.h"
@@ -2243,6 +2244,20 @@ static std::optional<int> parse_camp_request_id_reference( std::string text )
     return std::stoi( text );
 }
 
+static std::optional<int> parse_camp_signed_int( std::string_view raw_text )
+{
+    const std::string text = trim( raw_text );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    const ret_val<int> parsed = try_parse_integer<int>( text, false );
+    if( !parsed.success() ) {
+        return std::nullopt;
+    }
+    return parsed.value();
+}
+
 static basecamp_ai::parsed_camp_request_reference finalize_camp_request_reference( std::string text,
         bool allow_all_requests )
 {
@@ -2456,6 +2471,28 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std:
         result.all_requests = true;
     }
     return result;
+}
+
+bool parse_relative_omt_delta( std::string_view dx_text, std::string_view dy_text,
+                               point_rel_omt &delta, std::string &error )
+{
+    delta = point_rel_omt::zero;
+    error.clear();
+
+    const std::optional<int> parsed_dx = parse_camp_signed_int( dx_text );
+    if( !parsed_dx.has_value() ) {
+        error = "Overmap delta dx is invalid.";
+        return false;
+    }
+
+    const std::optional<int> parsed_dy = parse_camp_signed_int( dy_text );
+    if( !parsed_dy.has_value() ) {
+        error = "Overmap delta dy is invalid.";
+        return false;
+    }
+
+    delta = point_rel_omt( *parsed_dx, *parsed_dy );
+    return true;
 }
 
 } // namespace basecamp_ai
