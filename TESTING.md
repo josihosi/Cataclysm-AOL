@@ -90,8 +90,8 @@ It is ready when:
 - [x] game launches successfully with the PR slice in place
 - [x] save/world load succeeds with the PR slice in place
 - [ ] the actual deterministic feature gets a small manual smoke/play test
-- [ ] scope is small and reviewable
-- [ ] PR description matches the code honestly
+- [x] scope is small and reviewable
+- [x] PR description matches the code honestly
 - [ ] Josef is not embarrassed by the behavior
 
 ### Basecamp work on `dev`
