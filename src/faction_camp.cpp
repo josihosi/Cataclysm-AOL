@@ -2459,6 +2459,58 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std:
 namespace
 {
 
+static std::vector<std::string_view> split_camp_request_words( const std::string &text )
+{
+    std::vector<std::string_view> words;
+    size_t word_start = 0;
+    while( word_start < text.size() ) {
+        const size_t word_end = text.find( ' ', word_start );
+        if( word_end == std::string::npos ) {
+            words.emplace_back( text.data() + word_start, text.size() - word_start );
+            break;
+        }
+        words.emplace_back( text.data() + word_start, word_end - word_start );
+        word_start = word_end + 1;
+    }
+    return words;
+}
+
+static bool contains_camp_request_phrase( std::string_view text, std::string_view phrase )
+{
+    if( text.size() < phrase.size() ) {
+        return false;
+    }
+    size_t pos = text.find( phrase );
+    while( pos != std::string::npos ) {
+        const bool start_boundary = pos == 0 || text[pos - 1] == ' ';
+        const size_t end_pos = pos + phrase.size();
+        const bool end_boundary = end_pos == text.size() || text[end_pos] == ' ';
+        if( start_boundary && end_boundary ) {
+            return true;
+        }
+        pos = text.find( phrase, pos + 1 );
+    }
+    return false;
+}
+
+static bool camp_request_words_match_in_order( const std::vector<std::string_view> &candidate_words,
+        const std::vector<std::string_view> &query_words )
+{
+    if( candidate_words.empty() || query_words.empty() ) {
+        return false;
+    }
+    size_t query_index = 0;
+    for( const std::string_view candidate_word : candidate_words ) {
+        if( candidate_word == query_words[query_index] ) {
+            query_index++;
+            if( query_index == query_words.size() ) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 static int score_camp_request_text_match( std::string_view candidate, std::string_view query )
 {
     const std::string normalized_candidate = normalize_camp_request_text( candidate );
@@ -2472,23 +2524,26 @@ static int score_camp_request_text_match( std::string_view candidate, std::strin
     if( normalized_candidate.size() > normalized_query.size() &&
         normalized_candidate.compare( 0, normalized_query.size(), normalized_query ) == 0 &&
         normalized_candidate[normalized_query.size()] == ' ' ) {
-        return 850;
+        return 920;
     }
-    if( normalized_query.size() > normalized_candidate.size() &&
-        normalized_query.compare( 0, normalized_candidate.size(), normalized_candidate ) == 0 &&
-        normalized_query[normalized_candidate.size()] == ' ' ) {
-        return 800;
+    if( contains_camp_request_phrase( normalized_candidate, normalized_query ) ) {
+        return 880;
     }
-    if( normalized_candidate.find( normalized_query ) != std::string::npos ) {
-        return 700;
+
+    const std::vector<std::string_view> candidate_words = split_camp_request_words( normalized_candidate );
+    const std::vector<std::string_view> query_words = split_camp_request_words( normalized_query );
+    if( camp_request_words_match_in_order( candidate_words, query_words ) ) {
+        return 800 + static_cast<int>( query_words.size() * 20 );
     }
-    if( normalized_query.find( normalized_candidate ) != std::string::npos ) {
-        return 650;
+    if( contains_camp_request_phrase( normalized_query, normalized_candidate ) ) {
+        return 740;
     }
     return 0;
 }
 
-static int score_camp_recipe_match( const recipe &making, std::string_view query )
+} // namespace
+
+int basecamp_ai::score_camp_recipe_query( const recipe &making, std::string_view query )
 {
     int best_score = 0;
     best_score = std::max( best_score, score_camp_request_text_match( making.result_name(), query ) );
@@ -2496,6 +2551,9 @@ static int score_camp_recipe_match( const recipe &making, std::string_view query
     best_score = std::max( best_score, score_camp_request_text_match( making.result()->nname( 2 ), query ) );
     return best_score;
 }
+
+namespace
+{
 
 static int score_camp_board_request_match( const camp_llm_request &request, std::string_view query )
 {
@@ -2809,7 +2867,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             continue;
         }
         const recipe &making = *known_recipe;
-        const int score = score_camp_recipe_match( making, parsed->item_query );
+        const int score = basecamp_ai::score_camp_recipe_query( making, parsed->item_query );
         if( score <= 0 ) {
             continue;
         }
