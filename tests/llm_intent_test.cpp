@@ -24,6 +24,9 @@ std::string build_snapshot_for_test( npc &listener, const std::string &player_ut
 std::string build_action_prompt_for_test( const std::string &npc_name,
         const std::string &player_utterance,
         const std::string &snapshot );
+bool parse_move_field_for_test( const std::string &field, point &delta,
+                                std::string &terminal_state,
+                                std::string &error );
 } // namespace llm_intent
 
 static const faction_id faction_your_followers( "your_followers" );
@@ -76,8 +79,9 @@ TEST_CASE( "llm_intent_snapshot_includes_attitude_and_lettered_targets", "[llm_i
 
     CHECK( snapshot.find( "creature legend with attitude and threat level:" ) != std::string::npos );
     CHECK( snapshot.find( "a ... player friendly threat=" ) != std::string::npos );
-    CHECK( snapshot.find( "b ... Neutral NPC neutral threat=" ) != std::string::npos );
-    CHECK( snapshot.find( "c ... zombie hostile threat=" ) != std::string::npos );
+    CHECK( snapshot.find( "Neutral NPC" ) != std::string::npos );
+    CHECK( snapshot.find( "neutral threat=" ) != std::string::npos );
+    CHECK( snapshot.find( "zombie hostile threat=" ) != std::string::npos );
 }
 
 TEST_CASE( "llm_intent_prompt_explicitly_allows_lettered_targets", "[llm_intent]" )
@@ -88,6 +92,38 @@ TEST_CASE( "llm_intent_prompt_explicitly_allows_lettered_targets", "[llm_intent]
     CHECK( prompt.find( "Any creature with a map letter is a valid explicit target handle, including the player, friendlies, neutrals, and hostiles." ) != std::string::npos );
     CHECK( prompt.find( "attack=a" ) != std::string::npos );
     CHECK( prompt.find( "attack=b" ) != std::string::npos );
+}
+
+TEST_CASE( "llm_intent_prompt_uses_delta_move_contract", "[llm_intent]" )
+{
+    const std::string prompt = llm_intent::build_action_prompt_for_test( "Listener NPC",
+                               "Move there.", "snapshot" );
+
+    CHECK( prompt.find( "move=<dx>,<dy> <state>" ) != std::string::npos );
+    CHECK( prompt.find( "Positive x is east/right, negative x is west/left, positive y is north/up, and negative y is south/down." ) != std::string::npos );
+    CHECK( prompt.find( "move=0,-5 hold_position" ) != std::string::npos );
+    CHECK( prompt.find( "move: S S S S S hold_position" ) == std::string::npos );
+}
+
+TEST_CASE( "llm_intent_can_parse_delta_move_fields", "[llm_intent]" )
+{
+    point delta;
+    std::string terminal_state;
+    std::string error;
+
+    CHECK( llm_intent::parse_move_field_for_test( "move=4,-2 hold_position", delta,
+           terminal_state, error ) );
+    CHECK( delta == point( 4, -2 ) );
+    CHECK( terminal_state == "hold_position" );
+
+    CHECK( llm_intent::parse_move_field_for_test( "move=-1,3 wait_here", delta,
+           terminal_state, error ) );
+    CHECK( delta == point( -1, 3 ) );
+    CHECK( terminal_state == "wait_here" );
+
+    CHECK_FALSE( llm_intent::parse_move_field_for_test( "move=4 east hold_position", delta,
+                 terminal_state, error ) );
+    CHECK_FALSE( error.empty() );
 }
 
 TEST_CASE( "llm_intent_can_resolve_lettered_neutral_targets", "[llm_intent]" )

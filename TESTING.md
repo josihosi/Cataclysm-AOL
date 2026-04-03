@@ -25,11 +25,11 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 - [x] Small PR package is explainable without dragging LLM design into the story.
 
 ### Movement-system work
-- [ ] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
-- [ ] `wait_here` / `hold_position` suffix behavior is preserved exactly after the syntax change.
+- [x] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
+- [x] `wait_here` / `hold_position` suffix behavior is preserved exactly after the syntax change.
 - [ ] Existing pathing / target-tile behavior still works after replacing only the LLM-facing coordinate payload.
 - [ ] Overmap `dx` / `dy` parser tests exist and pass.
-- [ ] Malformed movement falls back safely.
+- [x] Malformed movement falls back safely.
 
 ### Basecamp work on `dev`
 - [x] Relevant deterministic tests exist for the new routing/token layer.

@@ -16,13 +16,13 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last week�
 
 ## GREEN now — movement system improvements
 - [ ] Replace local follower step-chain movement payloads (`E E E`, etc.) with a relative signed-delta destination contract while keeping the current pathing / target-tile behavior intact.
-- [ ] Preserve the existing post-move state suffixes exactly:
+- [x] Preserve the existing post-move state suffixes exactly:
   - `wait_here`
   - `hold_position`
 - [ ] Use the same relative-delta idea for overmap-targeted movement / planner output where appropriate.
-- [ ] Update prompt/snapshot explanations and examples so the model is told to emit coordinates rather than micro-step chains.
+- [x] Update prompt/snapshot explanations and examples so the model is told to emit coordinates rather than micro-step chains.
 - [ ] Consider lightweight grid/axis hints in the snapshot if they help the model reason about offsets more reliably.
-- [ ] Add deterministic parser/tests for positive/negative deltas, state suffix retention, and malformed fallback behavior.
+- [x] Add deterministic parser/tests for positive/negative deltas, state suffix retention, and malformed fallback behavior.
 
 ## GREEN now — richer Basecamp AI on `dev`
 - [ ] Keep deterministic-first command extraction as the control spine.
