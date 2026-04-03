@@ -1660,9 +1660,19 @@ static void add_camp_request_bark( const npc &speaker, const std::string &text )
 
 [[maybe_unused]] static std::string camp_request_blocked_bark( const camp_llm_request &request )
 {
+    const bool has_resolved_recipe = !request.chosen_recipe_name.empty() &&
+                                     request.chosen_recipe_name != request.requested_item_query;
     if( !request.blockers.empty() ) {
+        if( has_resolved_recipe ) {
+            return string_format( _( "Heard you.  Request #%1$d matched %2$s, but it is blocked: %3$s." ),
+                                  request.request_id, request.chosen_recipe_name, request.blockers.front() );
+        }
         return string_format( _( "Heard you, but crafting request #%1$d is blocked: %2$s." ),
                               request.request_id, request.blockers.front() );
+    }
+    if( has_resolved_recipe ) {
+        return string_format( _( "Heard you.  Request #%1$d matched %2$s, but it cannot start yet." ),
+                              request.request_id, request.chosen_recipe_name );
     }
     return string_format( _( "Heard you, but crafting request #%d cannot start yet." ),
                           request.request_id );
@@ -1702,6 +1712,12 @@ static std::string camp_craft_ambiguous_bark( std::string_view query,
 {
     return string_format( _( "Need a clearer craft order for \"%1$s\": %2$s." ),
                           std::string( query ), camp_request_subject_list( matches ) );
+}
+
+static std::string camp_craft_no_match_bark( std::string_view query )
+{
+    return string_format( _( "Heard craft order for \"%s\", but the camp could not match it to a known recipe." ),
+                          std::string( query ) );
 }
 
 static std::string camp_request_not_found_bark( std::string_view query )
@@ -2668,6 +2684,25 @@ static bool contains_camp_request_phrase( std::string_view text, std::string_vie
     return false;
 }
 
+static std::string singularize_final_camp_request_word( std::string_view query )
+{
+    const std::string normalized_query = normalize_camp_request_text( query );
+    if( normalized_query.empty() ) {
+        return std::string();
+    }
+
+    const size_t last_space = normalized_query.rfind( ' ' );
+    const size_t word_start = last_space == std::string::npos ? 0 : last_space + 1;
+    const size_t word_length = normalized_query.size() - word_start;
+    if( word_length <= 1 || normalized_query.back() != 's' ) {
+        return std::string();
+    }
+
+    std::string singularized = normalized_query;
+    singularized.pop_back();
+    return singularized;
+}
+
 static bool camp_request_words_match_in_order( const std::vector<std::string_view> &candidate_words,
         const std::vector<std::string_view> &query_words )
 {
@@ -2720,11 +2755,25 @@ static int score_camp_request_text_match( std::string_view candidate, std::strin
 
 int basecamp_ai::score_camp_recipe_query( const recipe &making, std::string_view query )
 {
-    int best_score = 0;
-    best_score = std::max( best_score, score_camp_request_text_match( making.result_name(), query ) );
-    best_score = std::max( best_score, score_camp_request_text_match( making.result()->nname( 1 ), query ) );
-    best_score = std::max( best_score, score_camp_request_text_match( making.result()->nname( 2 ), query ) );
-    return best_score;
+    const auto score_query = [&]( std::string_view candidate_query ) {
+        int score = 0;
+        score = std::max( score, score_camp_request_text_match( making.result_name(), candidate_query ) );
+        score = std::max( score, score_camp_request_text_match( making.result()->nname( 1 ), candidate_query ) );
+        score = std::max( score, score_camp_request_text_match( making.result()->nname( 2 ), candidate_query ) );
+        return score;
+    };
+
+    int best_score = score_query( query );
+    if( best_score >= 650 ) {
+        return best_score;
+    }
+
+    const std::string singular_query = singularize_final_camp_request_word( query );
+    if( singular_query.empty() ) {
+        return best_score;
+    }
+
+    return std::max( best_score, score_query( singular_query ) );
 }
 
 basecamp_ai::camp_craft_recipe_match basecamp_ai::match_camp_craft_query(
@@ -3208,7 +3257,8 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return candidate;
     } );
     if( craft_resolution.match.recipe_ids.empty() || craft_resolution.match.score < 650 ) {
-        return false;
+        add_camp_request_bark( listener, camp_craft_no_match_bark( parsed->item_query ) );
+        return true;
     }
     if( craft_resolution.match.subjects.size() > 1 ) {
         add_camp_request_bark( listener, camp_craft_ambiguous_bark( parsed->item_query,

@@ -492,6 +492,11 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( score_camp_recipe_query( plain_bandages, "bandages" ) > 0 );
     }
 
+    SECTION( "craft router can singularize the final plural query word as a fallback" ) {
+        const recipe &makeshift_bandage = recipe_id( "bandages_makeshift" ).obj();
+        CHECK( score_camp_recipe_query( makeshift_bandage, "makeshift bandages" ) >= 650 );
+    }
+
     SECTION( "craft router reports ambiguous top subject matches instead of guessing" ) {
         const std::unordered_set<recipe_id> recipes = {
             recipe_id( "bandages_makeshift_boiled" ),
