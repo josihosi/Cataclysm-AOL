@@ -2268,7 +2268,10 @@ static basecamp_ai::parsed_camp_request_reference finalize_camp_request_referenc
     if( allow_all_requests && ( text == "all" || text == "them" || text == "everything" ||
                                 text == "all of them" || text == "all work orders" ||
                                 text == "all requests" || text == "all jobs" ||
-                                text == "all ready work orders" ) ) {
+                                text == "all ready work orders" ||
+                                text == "all ready orders" ||
+                                text == "all ready requests" ||
+                                text == "all ready jobs" ) ) {
         result.all_requests = true;
         return result;
     }
@@ -2471,6 +2474,18 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std:
         result.all_requests = true;
     }
     return result;
+}
+
+std::vector<int> collect_ready_camp_request_ids( const std::vector<camp_llm_request> &requests )
+{
+    std::vector<int> ready_ids;
+    ready_ids.reserve( requests.size() );
+    for( const camp_llm_request &request : requests ) {
+        if( request.status == "awaiting_approval" ) {
+            ready_ids.push_back( request.request_id );
+        }
+    }
+    return ready_ids;
 }
 
 bool parse_relative_omt_delta( std::string_view dx_text, std::string_view dy_text,
@@ -2887,13 +2902,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
     if( const std::optional<basecamp_ai::parsed_camp_request_reference> approval_query =
             basecamp_ai::parse_heard_camp_approval_query( utterance ) ) {
         if( approval_query->all_requests ) {
-            std::vector<int> launch_ids;
-            launch_ids.reserve( camp_requests.size() );
-            for( const camp_llm_request &request : camp_requests ) {
-                if( request.status == "awaiting_approval" || request.status == "blocked" ) {
-                    launch_ids.push_back( request.request_id );
-                }
-            }
+            const std::vector<int> launch_ids = basecamp_ai::collect_ready_camp_request_ids( camp_requests );
             if( launch_ids.empty() ) {
                 add_camp_request_bark( listener, _( "Nothing on the board is ready to launch." ) );
                 return true;
@@ -3268,7 +3277,7 @@ void basecamp::camp_request_ui()
             if( request.status == "completed" || request.status == "cancelled" ) {
                 has_archived_requests = true;
             }
-            if( request.status == "awaiting_approval" || request.status == "blocked" ) {
+            if( request.status == "awaiting_approval" ) {
                 has_launchable_requests = true;
             }
         }
@@ -3284,13 +3293,7 @@ void basecamp::camp_request_ui()
         }
 
         if( menu.ret == launch_ready_entry ) {
-            std::vector<int> launch_ids;
-            launch_ids.reserve( camp_requests.size() );
-            for( const camp_llm_request &request : camp_requests ) {
-                if( request.status == "awaiting_approval" || request.status == "blocked" ) {
-                    launch_ids.push_back( request.request_id );
-                }
-            }
+            const std::vector<int> launch_ids = basecamp_ai::collect_ready_camp_request_ids( camp_requests );
 
             std::vector<std::string> started_requests;
             std::vector<std::string> blocked_requests;

@@ -222,6 +222,7 @@ std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string
 std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std::string_view utterance );
+std::vector<int> collect_ready_camp_request_ids( const std::vector<camp_llm_request> &requests );
 camp_request_match_result match_camp_request_reference( const std::vector<camp_llm_request> &requests,
         const parsed_camp_request_reference &reference,
         const std::function<bool( const camp_llm_request & )> &predicate );
