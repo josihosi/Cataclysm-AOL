@@ -381,7 +381,7 @@ static std::string mission_ui_activity_of( const mission_id &miss_id )
             return _( "Have A Meal" );
 
         case Camp_Requests:
-            return _( "Camp Requests" );
+            return _( "Crafting Requests" );
 
         case Camp_Hide_Mission:
             return _( "Hide Mission(s)" );
@@ -1365,12 +1365,11 @@ void basecamp::get_available_missions( mission_data &mission_key, map &here )
                 }
             }
             entry = string_format( _( "Notes:\n"
-                                      "Review the bulletin-board scratchpad for camp work requests.\n"
+                                      "Review the bulletin-board scratchpad for camp crafting requests.\n"
                                       "Effects:\n"
                                       "> Inspect request details, recent notes, and assignment state\n"
-                                      "> Approve and batch-launch queued work orders from the board\n"
                                       "> Recall an active crafter directly from the board\n"
-                                      "> Clear completed or cancelled requests once you are done staring at them\n\n"
+                                      "> Clear cancelled requests from the board if needed\n\n"
                                       "Active requests: %d\n"
                                       "Archived requests: %d\n"
                                       "Risk: None\n" ),
@@ -1604,6 +1603,14 @@ static std::string camp_request_approval_label( const camp_llm_request &request 
     return request.approval_state;
 }
 
+static std::string camp_request_kind_label( const camp_llm_request &request )
+{
+    if( request.request_kind == "craft_request" ) {
+        return _( "crafting request" );
+    }
+    return request.request_kind;
+}
+
 static std::string camp_request_subject( const camp_llm_request &request )
 {
     const std::string item_name = !request.chosen_recipe_name.empty() ? request.chosen_recipe_name :
@@ -1652,33 +1659,34 @@ static void add_camp_request_bark( const npc &speaker, const std::string &text )
 
 [[maybe_unused]] static std::string camp_request_queue_bark( const camp_llm_request &request )
 {
-    return string_format( _( "Got it.  Pinned request #%1$d for %2$s." ),
+    return string_format( _( "Got it.  Pinned crafting request #%1$d for %2$s." ),
                           request.request_id, camp_request_subject( request ) );
 }
 
 [[maybe_unused]] static std::string camp_request_blocked_bark( const camp_llm_request &request )
 {
     if( !request.blockers.empty() ) {
-        return string_format( _( "Heard it, but request #%1$d is blocked: %2$s." ),
+        return string_format( _( "Heard you, but crafting request #%1$d is blocked: %2$s." ),
                               request.request_id, request.blockers.front() );
     }
-    return string_format( _( "Heard it, but request #%d cannot start yet." ), request.request_id );
+    return string_format( _( "Heard you, but crafting request #%d cannot start yet." ),
+                          request.request_id );
 }
 
 [[maybe_unused]] static std::string camp_request_launch_bark( const camp_llm_request &request )
 {
-    return string_format( _( "Right.  %1$s is on request #%2$d now." ),
-                          request.assigned_worker_name, request.request_id );
+    return string_format( _( "Got it.  %1$s is crafting %2$s now." ),
+                          request.assigned_worker_name, camp_request_subject( request ) );
 }
 
 static std::string camp_request_cancel_bark( const camp_llm_request &request )
 {
-    return string_format( _( "Fine.  Request #%d is off the board." ), request.request_id );
+    return string_format( _( "All right.  Crafting request #%d is off the board." ), request.request_id );
 }
 
 static std::string camp_request_clear_bark( const camp_llm_request &request )
 {
-    return string_format( _( "Filed away request #%d." ), request.request_id );
+    return string_format( _( "Cleared crafting request #%d." ), request.request_id );
 }
 
 static std::string camp_request_not_archived_bark( const camp_llm_request &request )
@@ -1708,12 +1716,12 @@ static std::string camp_request_not_found_bark( std::string_view query )
 
 static std::string camp_request_details( const camp_llm_request &request )
 {
-    std::string details = string_format( _( "Request #%1$d\n"
+    std::string details = string_format( _( "Crafting request #%1$d\n"
                                            "Kind: %2$s\n"
-                                           "Work order: %3$s\n"
+                                           "Craft order: %3$s\n"
                                            "Status: %4$s\n" ),
                                          request.request_id,
-                                         request.request_kind,
+                                         camp_request_kind_label( request ),
                                          camp_request_subject( request ),
                                          camp_request_status_label( request ) );
     if( request.approval_state != "not_needed" ) {
@@ -1722,8 +1730,14 @@ static std::string camp_request_details( const camp_llm_request &request )
     if( !request.source_utterance.empty() ) {
         details += string_format( _( "Source utterance: %s\n" ), request.source_utterance );
     }
+    if( !request.requested_item_query.empty() ) {
+        details += string_format( _( "Heard request: %s\n" ), request.requested_item_query );
+    }
+    if( !request.chosen_recipe_name.empty() ) {
+        details += string_format( _( "Resolved recipe: %s\n" ), request.chosen_recipe_name );
+    }
     if( !request.chosen_recipe_id.is_empty() ) {
-        details += string_format( _( "Recipe: %s\n" ), request.chosen_recipe_id.str() );
+        details += string_format( _( "Recipe id: %s\n" ), request.chosen_recipe_id.str() );
     }
     if( !request.assigned_worker_name.empty() ) {
         details += string_format( _( "Assigned worker: %s\n" ), request.assigned_worker_name );
@@ -2877,8 +2891,9 @@ int basecamp::queue_crafting_request( const recipe &making, int batch_size, cons
     request.created_turn = calendar::turn;
     request.updated_turn = calendar::turn;
     add_camp_request_note( request, "plan",
-                           string_format( _( "%1$s drafted a work order for %2$d × %3$s.  Waiting on your say-so." ),
-                                          worker.disp_name(), batch_size, making.result_name() ) );
+                           string_format( _( "%1$s pinned crafting request #%2$d for %3$d × %4$s." ),
+                                          worker.disp_name(), request.request_id, batch_size,
+                                          making.result_name() ) );
     camp_requests.push_back( request );
     return request.request_id;
 }
@@ -2912,7 +2927,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                                                archived_requests ) );
             } else {
                 add_camp_request_bark( listener,
-                                       string_format( _( "Board says %1$d active, %2$d archived — %3$s." ),
+                                       string_format( _( "Board lists %1$d active, %2$d archived — %3$s." ),
                                                static_cast<int>( active_subjects.size() ), archived_requests,
                                                camp_request_subject_list( active_subjects ) ) );
             }
@@ -2932,7 +2947,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                                    camp_request_ambiguous_bark( status_query->query, lookup.ambiguous_matches ) );
         } else if( status_query->has_request_id ) {
             add_camp_request_bark( listener,
-                                   string_format( _( "No work order #%d on the board." ),
+                                   string_format( _( "No crafting request #%d on the board." ),
                                            status_query->request_id ) );
         } else {
             add_camp_request_bark( listener, camp_request_not_found_bark( status_query->query ) );
@@ -2951,9 +2966,9 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             const int cleared = static_cast<int>( before - camp_requests.size() );
             if( cleared > 0 ) {
                 add_camp_request_bark( listener,
-                                       string_format( _( "Filed away %d archived requests." ), cleared ) );
+                                       string_format( _( "Cleared %d archived crafting requests." ), cleared ) );
             } else {
-                add_camp_request_bark( listener, _( "No archived paperwork to clear." ) );
+                add_camp_request_bark( listener, _( "No archived crafting requests to clear." ) );
             }
             return true;
         }
@@ -2983,7 +2998,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                 add_camp_request_bark( listener, camp_request_not_archived_bark( *request ) );
             } else {
                 add_camp_request_bark( listener,
-                                       string_format( _( "No work order #%d on the board." ),
+                                       string_format( _( "No crafting request #%d on the board." ),
                                                clear_query->request_id ) );
             }
             return true;
@@ -3033,7 +3048,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                                    camp_request_ambiguous_bark( cancel_query->query, lookup.ambiguous_matches ) );
         } else if( cancel_query->has_request_id ) {
             add_camp_request_bark( listener,
-                                   string_format( _( "No live work order #%d." ), cancel_query->request_id ) );
+                                   string_format( _( "No live crafting request #%d." ), cancel_query->request_id ) );
         } else {
             add_camp_request_bark( listener, camp_request_not_found_bark( cancel_query->query ) );
         }
@@ -3095,7 +3110,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                                        camp_request_ambiguous_bark( approval_query->query, lookup.ambiguous_matches ) );
             } else if( approval_query->has_request_id ) {
                 add_camp_request_bark( listener,
-                                       string_format( _( "No work order #%d on the board." ),
+                                       string_format( _( "No crafting request #%d on the board." ),
                                                approval_query->request_id ) );
             } else {
                 add_camp_request_bark( listener, camp_request_not_found_bark( approval_query->query ) );
@@ -3176,6 +3191,9 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
 
     request->requested_item_query = parsed->item_query;
     request->heard_by_npc_id = listener.getID();
+    add_camp_request_note( *request, "trace",
+                           string_format( _( "Resolved \"%1$s\" to recipe \"%2$s\"." ),
+                                          parsed->item_query, best_recipe->result_name() ) );
     if( best_worker == nullptr ) {
         request->status = "blocked";
         request->assigned_worker_npc_id = character_id();
@@ -3199,7 +3217,19 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             add_camp_request_note( *request, "plan", food_note );
         }
         add_camp_request_note( *request, "plan", camp_craft_approval_note( risk ) );
-        add_camp_request_bark( listener, camp_request_queue_bark( *request ) );
+
+        const bool started = approve_crafting_request( request_id );
+        request = find_camp_request( request_id );
+        if( request == nullptr ) {
+            return true;
+        }
+        if( started && request->status == "in_progress" ) {
+            add_camp_request_bark( listener, camp_request_launch_bark( *request ) );
+        } else if( request->status == "blocked" ) {
+            add_camp_request_bark( listener, camp_request_blocked_bark( *request ) );
+        } else {
+            add_camp_request_bark( listener, camp_request_queue_bark( *request ) );
+        }
     }
     return true;
 }
@@ -3217,7 +3247,7 @@ bool basecamp::approve_crafting_request( int request_id )
     if( request->chosen_recipe_id.is_empty() || !request->chosen_recipe_id.is_valid() ) {
         request->status = "blocked";
         request->blockers = { _( "Chosen recipe is no longer valid." ) };
-        add_camp_request_note( *request, "blocked", _( "The work order no longer points at a valid recipe." ) );
+        add_camp_request_note( *request, "blocked", _( "The crafting request no longer points at a valid recipe." ) );
         return false;
     }
 
@@ -3288,7 +3318,7 @@ bool basecamp::approve_crafting_request( int request_id )
             request->blockers = { _( "Camp storage could not supply the needed ingredients or tools." ) };
         }
         add_camp_request_note( *request, "blocked",
-                               _( "The camp could not gather everything needed, so the work order stayed pinned." ) );
+                               _( "The camp could not gather everything needed, so the crafting request stayed pinned." ) );
         return false;
     }
 
@@ -3358,12 +3388,14 @@ bool basecamp::complete_crafting_request( const mission_id &miss_id, const npc &
     if( request == nullptr ) {
         return false;
     }
+    const int request_id = request->request_id;
     request->status = "completed";
     request->eta_turn = calendar::turn_zero;
     request->active_mission_id = mission_id();
     add_camp_request_note( *request, "completion",
                            note_text.empty() ? string_format( _( "%s returned with the finished job." ),
                                                    worker.disp_name() ) : note_text );
+    clear_camp_request( request_id );
     return true;
 }
 
@@ -3404,8 +3436,8 @@ void basecamp::camp_request_ui()
 
     while( true ) {
         uilist menu;
-        menu.title = _( "Camp Requests" );
-        menu.text = _( "Inspect the board, batch-launch ready orders, recall an active crafter, or clear old paperwork." );
+        menu.title = _( "Crafting Requests" );
+        menu.text = _( "Inspect the board, review crafting details, recall an active crafter, or clear cancelled requests." );
 
         std::vector<int> request_ids;
         request_ids.reserve( camp_requests.size() );
@@ -3424,9 +3456,9 @@ void basecamp::camp_request_ui()
         }
 
         const int launch_ready_entry = entry_index++;
-        menu.addentry( launch_ready_entry, has_launchable_requests, 'a', _( "Approve and start all ready work orders" ) );
+        menu.addentry( launch_ready_entry, has_launchable_requests, 'a', _( "Start all ready crafting requests" ) );
         const int clear_archived_entry = entry_index;
-        menu.addentry( clear_archived_entry, has_archived_requests, 'c', _( "Clear archived requests" ) );
+        menu.addentry( clear_archived_entry, has_archived_requests, 'c', _( "Clear archived crafting requests" ) );
         menu.query();
 
         if( menu.ret < 0 ) {
@@ -3465,7 +3497,7 @@ void basecamp::camp_request_ui()
 
             popup( camp_request_launch_feedback( started_requests, blocked_requests, pinned_requests ) );
             if( camp_requests.empty() ) {
-                popup( _( "The board is empty again.  Miracles happen." ) );
+                popup( _( "The board is empty again." ) );
                 return;
             }
             continue;
@@ -3476,7 +3508,7 @@ void basecamp::camp_request_ui()
                 return request.status == "completed" || request.status == "cancelled";
             } ), camp_requests.end() );
             if( camp_requests.empty() ) {
-                popup( _( "The board is empty again.  Miracles happen." ) );
+                popup( _( "The board is empty again." ) );
                 return;
             }
             continue;
@@ -3499,8 +3531,8 @@ void basecamp::camp_request_ui()
             const bool can_approve = request->status == "awaiting_approval" || request->status == "blocked";
             const bool can_cancel_pending = can_approve;
             const std::string approve_label = request->status == "blocked" ?
-                                              _( "Retry and start work order" ) :
-                                              _( "Approve and start work order" );
+                                              _( "Retry and start crafting request" ) :
+                                              _( "Start crafting request" );
 
             uilist action_menu;
             action_menu.title = camp_request_summary( *request );
@@ -3508,8 +3540,8 @@ void basecamp::camp_request_ui()
             action_menu.addentry( 0, true, 'b', _( "Back" ) );
             action_menu.addentry( 1, can_approve, 'a', approve_label );
             action_menu.addentry( 2, can_recall, 'r', _( "Emergency recall crafter" ) );
-            action_menu.addentry( 3, can_cancel_pending, 'c', _( "Cancel this work order" ) );
-            action_menu.addentry( 4, archived, 'x', _( "Clear this request" ) );
+            action_menu.addentry( 3, can_cancel_pending, 'c', _( "Cancel this crafting request" ) );
+            action_menu.addentry( 4, archived, 'x', _( "Clear this crafting request" ) );
             action_menu.query();
 
             if( action_menu.ret <= 0 ) {
@@ -3522,7 +3554,7 @@ void basecamp::camp_request_ui()
             }
 
             if( action_menu.ret == 2 ) {
-                if( query_yn( _( "Recall %s and cancel this work order?  Spent materials stay spent." ),
+                if( query_yn( _( "Recall %s and cancel this crafting request?  Spent materials stay spent." ),
                               request->assigned_worker_name ) ) {
                     emergency_recall( request->active_mission_id );
                 }
@@ -3536,7 +3568,7 @@ void basecamp::camp_request_ui()
                 request->eta_turn = calendar::turn_zero;
                 request->blockers.clear();
                 add_camp_request_note( *request, "blocked",
-                                       _( "You cancelled the queued work order before it left the board." ) );
+                                       _( "You cancelled the queued crafting request before it left the board." ) );
                 break;
             }
 
@@ -3547,7 +3579,7 @@ void basecamp::camp_request_ui()
         }
 
         if( camp_requests.empty() ) {
-            popup( _( "The board is empty again.  Miracles happen." ) );
+            popup( _( "The board is empty again." ) );
             return;
         }
     }
@@ -5431,13 +5463,13 @@ void basecamp::start_crafting( const mission_id &miss_id )
     handling_menu.text = string_format( _( "%1$s is ready to tackle %2$d × %3$s." ),
                                         guy_to_send->disp_name(), num_to_make, making->result_name() );
     handling_menu.addentry( 0, true, 's', _( "Start now" ) );
-    handling_menu.addentry( 1, true, 'q', _( "Queue for board approval" ) );
+    handling_menu.addentry( 1, true, 'q', _( "Queue as a crafting request" ) );
     handling_menu.addentry( 2, true, 'b', _( "Back" ) );
     handling_menu.query();
 
     if( handling_menu.ret == 1 ) {
         queue_crafting_request( *making, num_to_make, *guy_to_send );
-        popup( _( "Pinned that work order to the board for later approval." ) );
+        popup( _( "Pinned that crafting request to the board for later approval." ) );
         return;
     }
     if( handling_menu.ret != 0 ) {
