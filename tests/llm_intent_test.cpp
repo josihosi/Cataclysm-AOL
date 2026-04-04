@@ -89,6 +89,12 @@ TEST_CASE( "llm_intent_snapshot_includes_attitude_and_lettered_targets", "[llm_i
 
     CHECK( snapshot.find( "creature legend with attitude and threat level:" ) != std::string::npos );
     CHECK( snapshot.find( "map axes: +x east/right, -x west/left, +y north/up, -y south/down" ) != std::string::npos );
+    CHECK( snapshot.find( "-20" ) != std::string::npos );
+    CHECK( snapshot.find( "+20" ) != std::string::npos );
+    CHECK( snapshot.find( "|.........|.........|.........|.........|" ) != std::string::npos );
+    CHECK( snapshot.find( "dy=+20 " ) != std::string::npos );
+    CHECK( snapshot.find( "dy=+00 " ) != std::string::npos );
+    CHECK( snapshot.find( "dy=-20 " ) != std::string::npos );
     CHECK( snapshot.find( "a ... player friendly threat=" ) != std::string::npos );
     CHECK( snapshot.find( "Neutral NPC" ) != std::string::npos );
     CHECK( snapshot.find( "neutral threat=" ) != std::string::npos );
@@ -112,6 +118,7 @@ TEST_CASE( "llm_intent_prompt_uses_delta_move_contract", "[llm_intent]" )
 
     CHECK( prompt.find( "move=<dx>,<dy> <state>" ) != std::string::npos );
     CHECK( prompt.find( "Positive x is east/right, negative x is west/left, positive y is north/up, and negative y is south/down." ) != std::string::npos );
+    CHECK( prompt.find( "dx column markers and dy row labels" ) != std::string::npos );
     CHECK( prompt.find( "move=0,-5 hold_position" ) != std::string::npos );
     CHECK( prompt.find( "move: S S S S S hold_position" ) == std::string::npos );
 }

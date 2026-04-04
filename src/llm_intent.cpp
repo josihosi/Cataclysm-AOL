@@ -1986,6 +1986,38 @@ std::string build_map_legend( const std::vector<std::pair<char, std::string>> &e
     return out;
 }
 
+std::string build_snapshot_dx_label_line( int radius )
+{
+    const int width = radius * 2 + 1;
+    std::string labels( width, ' ' );
+    for( int dx = -radius; dx <= radius; dx += 10 ) {
+        const std::string label = dx == 0 ? "0" : string_format( "%+d", dx );
+        const int column = dx + radius;
+        const int centered_start = column - static_cast<int>( label.size() ) / 2;
+        const int clamped_start = std::clamp( centered_start, 0,
+                                              std::max( width - static_cast<int>( label.size() ), 0 ) );
+        labels.replace( clamped_start, label.size(), label );
+    }
+    return labels;
+}
+
+std::string build_snapshot_dx_marker_line( int radius )
+{
+    const int width = radius * 2 + 1;
+    std::string markers( width, '.' );
+    for( int dx = -radius; dx <= radius; ++dx ) {
+        if( dx % 10 == 0 ) {
+            markers[dx + radius] = '|';
+        }
+    }
+    return markers;
+}
+
+std::string build_snapshot_dy_label( int dy )
+{
+    return string_format( "dy=%+03d ", -dy );
+}
+
 struct map_snapshot {
     std::string map;
     std::string legend;
@@ -1997,8 +2029,11 @@ map_snapshot build_ascii_map_snapshot( npc &listener, const std::string &request
     const tripoint_bub_ms player_pos = get_player_character().pos_bub();
     const tripoint_bub_ms center = listener.pos_bub();
     static constexpr int radius = 20;
+    static constexpr std::string_view header_padding = "        ";
     std::string out_map;
-    out_map.reserve( ( radius * 2 + 1 ) * ( radius * 2 + 2 ) );
+    out_map.reserve( ( radius * 2 + 1 ) * ( radius * 2 + 3 ) );
+    out_map += std::string( header_padding ) + build_snapshot_dx_label_line( radius ) + "\n";
+    out_map += std::string( header_padding ) + build_snapshot_dx_marker_line( radius ) + "\n";
     std::vector<std::pair<char, std::string>> legend_entries;
     std::unordered_map<const Creature *, char> letter_map;
     std::map<char, weak_ptr_fast<Creature>> legend_targets;
@@ -2008,6 +2043,7 @@ map_snapshot build_ascii_map_snapshot( npc &listener, const std::string &request
     const bool player_letter_active = player_in_map && player_pos != center;
     char next_letter = player_letter_active ? 'b' : 'a';
     for( int dy = -radius; dy <= radius; ++dy ) {
+        out_map += build_snapshot_dy_label( dy );
         for( int dx = -radius; dx <= radius; ++dx ) {
             const tripoint_bub_ms p( center.x() + dx, center.y() + dy, center.z() );
             char glyph = ' ';
@@ -2411,7 +2447,7 @@ Only use 'idle' when no action change is needed. Do not use 'idle' as a substitu
 'panic_off' if convincing, to stop fleeing and get your act together.
 'look_around' to view your surroundings and pick-up, grab, search, explore for items around you.
 'look_inventory' to look inside your inventory and wear/wield/activate items.
-'move=<dx>,<dy> <state>' to move to a relative destination offset on your snapshot map. Positive x is east/right, negative x is west/left, positive y is north/up, and negative y is south/down. Always include either 'wait_here' or 'hold_position' after the delta.
+'move=<dx>,<dy> <state>' to move to a relative destination offset on your snapshot map. Positive x is east/right, negative x is west/left, positive y is north/up, and negative y is south/down. The snapshot map includes dx column markers and dy row labels using that same signed-delta convention. Always include either 'wait_here' or 'hold_position' after the delta.
 'attack=<target>' to attack a target with the letter from your map. Any creature with a map letter is a valid explicit target handle, including the player, friendlies, neutrals, and hostiles.
 'idle' if none of the above.
 </Explanation allowed actions>

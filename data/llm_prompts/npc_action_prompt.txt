@@ -32,7 +32,7 @@ Only use 'idle' when no action change is needed. Do not use 'idle' as a substitu
 'panic_off' if convincing, to stop fleeing and get your act together.
 'look_around' to view your surroundings and pick-up, grab, search, explore for items around you.
 'look_inventory' to look inside your inventory and wear/wield/activate items.
-'move=<dx>,<dy> <state>' to move to a relative destination offset on your snapshot map. Positive x is east/right, negative x is west/left, positive y is north/up, and negative y is south/down. Always include either 'wait_here' or 'hold_position' after the delta.
+'move=<dx>,<dy> <state>' to move to a relative destination offset on your snapshot map. Positive x is east/right, negative x is west/left, positive y is north/up, and negative y is south/down. The snapshot map includes dx column markers and dy row labels using that same signed-delta convention. Always include either 'wait_here' or 'hold_position' after the delta.
 'attack=<target>' to attack a target with the letter from your map. Any creature with a map letter is a valid explicit target handle, including the player, friendlies, neutrals, and hostiles.
 'idle' if none of the above.
 </Explanation allowed actions>
