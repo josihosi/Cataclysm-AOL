@@ -35,7 +35,7 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Craft ambiguity / blocker / quantity parsing tests exist and pass.
 - [x] Touched code compiles cleanly.
 - [x] Small PR package is explainable without dragging LLM design into the story.
-- [x] Current HEAD (`55cd73bf17`) passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make -j4 TILES=1 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_140320`).
+- [x] Current HEAD (`696f5c8b61`) passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make -j4 TILES=1 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_162509`).
 
 ### Movement-system work
 - [x] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
@@ -62,19 +62,16 @@ An item is not really "done" just because deterministic tests or Andi self-check
 
 ---
 
-## Current Josef-side checks
+## Current Schani-side checks
 
 ### Pending now
-- [ ] Live-check the follower snapshot legend change in-game:
-  - target legend shows attitude (`friendly` / `neutral` / `hostile`) plus threat
-  - lettered-target wording still feels sensible in real use
-- [ ] Run the spoken camp craft smoke packet below and note anything stupid.
+- [ ] Run the spoken camp craft smoke packet below on current HEAD and note anything stupid before this goes to Josef.
 - [ ] Specifically sanity-check the latest bark-reference polish on current HEAD:
   - live craft-board replies should lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
   - blocked / matched-recipe wording should stay clear without getting more bureaucratic
 - [ ] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
 
-### Spoken camp craft smoke packet (Josef)
+### Spoken camp craft smoke packet (Schani first)
 Use a camp with a bulletin board and at least one NPC who can plausibly craft.  Try these in normal play, not in a sterile lab if avoidable.
 
 Current narrow live-bed target when available:

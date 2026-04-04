@@ -6,7 +6,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 - [ ] Close the deterministic upstreamable PR slice before spending meaningful time on the other green projects, unless a side task directly unblocks the PR or the PR is temporarily hard-blocked.
 - [ ] Work serially through PR close-out items in this order: finish line -> deterministic tests -> Andi self-check -> Schani review/smoke test -> Josef final play test/signoff -> tweak round if needed.
 - [ ] Do not move to the next PR-closing item just because deterministic tests passed; if Schani review or Josef signoff is the next gate, prepare that handoff first.
-- [ ] Current close-out gate: get Josef to live-check the subject-first / trailing-id camp bark polish on current HEAD before moving to the next deterministic PR item.
+- [ ] Current close-out gate: hand Schani/internal main a smoke packet for the subject-first / trailing-id camp bark polish on current HEAD; only kick it to Josef afterward if Schani review still leaves a real human-feel/signoff question.
 
 ## GREEN now â€” upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
