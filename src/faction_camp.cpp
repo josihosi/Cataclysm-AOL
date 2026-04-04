@@ -2331,6 +2331,20 @@ static void strip_camp_request_polite_prefixes( std::string &text )
     }
 }
 
+static void strip_camp_request_leading_prompt( std::string &text )
+{
+    bool changed = true;
+    while( changed ) {
+        const std::string before = text;
+        strip_camp_request_polite_prefixes( text );
+        consume_camp_request_prefix( text, "can you " ) ||
+        consume_camp_request_prefix( text, "could you " ) ||
+        consume_camp_request_prefix( text, "would you " ) ||
+        consume_camp_request_prefix( text, "will you " );
+        changed = text != before;
+    }
+}
+
 static void strip_camp_request_board_reference( std::string &text )
 {
     while( consume_camp_request_prefix( text, "that " ) ||
@@ -2531,7 +2545,7 @@ std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string
         return std::nullopt;
     }
 
-    strip_camp_request_polite_prefixes( text );
+    strip_camp_request_leading_prompt( text );
 
     bool matched_prefix = false;
     for( const std::string_view prefix : {
@@ -2623,7 +2637,7 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_clear_query( std::
         return std::nullopt;
     }
 
-    strip_camp_request_polite_prefixes( text );
+    strip_camp_request_leading_prompt( text );
 
     bool matched_prefix = false;
     for( const std::string_view prefix : {
@@ -2674,11 +2688,7 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std:
         return std::nullopt;
     }
 
-    while( consume_camp_request_prefix( text, "please " ) ||
-           consume_camp_request_prefix( text, "hey " ) ||
-           consume_camp_request_prefix( text, "ok " ) ||
-           consume_camp_request_prefix( text, "okay " ) ) {
-    }
+    strip_camp_request_leading_prompt( text );
 
     bool matched_prefix = false;
     for( const std::string_view prefix : {
@@ -2709,7 +2719,7 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( st
         return std::nullopt;
     }
 
-    strip_camp_request_polite_prefixes( text );
+    strip_camp_request_leading_prompt( text );
 
     bool matched_prefix = false;
     for( const std::string_view prefix : {
@@ -2757,7 +2767,7 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std:
         return std::nullopt;
     }
 
-    strip_camp_request_polite_prefixes( text );
+    strip_camp_request_leading_prompt( text );
 
     for( const std::string_view exact : {
              std::string_view( "what s on the board" ),

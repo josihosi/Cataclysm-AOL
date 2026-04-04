@@ -209,6 +209,14 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( parse_heard_camp_craft_order( "witchcraft knife" ).has_value() );
     }
 
+    SECTION( "spoken craft intake tolerates polite prompt lead-ins" ) {
+        const std::optional<basecamp_ai::parsed_camp_craft_order> parsed =
+            parse_heard_camp_craft_order( "could you please craft me five bandages" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->count == 5 );
+        CHECK( parsed->item_query == "bandages" );
+    }
+
     SECTION( "structured craft tokens parse quantity and direct object" ) {
         const std::optional<basecamp_ai::parsed_camp_craft_order> parsed =
             parse_structured_camp_craft_order( " craft=the five bandages please " );
@@ -280,6 +288,14 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         REQUIRE( parsed.has_value() );
         CHECK( parsed->all_requests );
         CHECK_FALSE( parsed->has_request_id );
+    }
+
+    SECTION( "approval commands tolerate polite prompt lead-ins" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_approval_query( "would you please approve request #12" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->has_request_id );
+        CHECK( parsed->request_id == 12 );
     }
 
     SECTION( "approval commands accept ready-request synonyms" ) {
@@ -360,9 +376,25 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( parsed->has_request_id );
     }
 
+    SECTION( "status queries tolerate polite prompt lead-ins" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_status_query( "can you please show me the board" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->all_requests );
+        CHECK_FALSE( parsed->has_request_id );
+    }
+
     SECTION( "clear commands can target archived paperwork in bulk" ) {
         const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
             parse_heard_camp_clear_query( "clear archived requests" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->all_requests );
+        CHECK_FALSE( parsed->has_request_id );
+    }
+
+    SECTION( "clear commands tolerate polite prompt lead-ins" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_clear_query( "can you please clear archived requests" );
         REQUIRE( parsed.has_value() );
         CHECK( parsed->all_requests );
         CHECK_FALSE( parsed->has_request_id );
@@ -391,6 +423,14 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         REQUIRE( parsed.has_value() );
         CHECK_FALSE( parsed->has_request_id );
         CHECK( parsed->query == "long string" );
+    }
+
+    SECTION( "cancel commands tolerate polite prompt lead-ins" ) {
+        const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+            parse_heard_camp_cancel_query( "could you please cancel request #12" );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->has_request_id );
+        CHECK( parsed->request_id == 12 );
     }
 
     SECTION( "request matcher prefers explicit ids and respects the active predicate" ) {
