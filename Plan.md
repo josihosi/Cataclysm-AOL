@@ -217,13 +217,14 @@ NPCs should periodically check a camp locker zone, compare what they are wearing
 
 #### V1 scope
 Locker Zone v1 should stay deliberately narrow and useful:
+- one explicit **Zone Manager locker zone type**, not an abstract invisible camp concept
 - one camp-wide locker policy, not per-NPC fashion profiles yet
-- one candidate zone containing approved loadout items
+- one candidate locker zone containing approved loadout items
 - one best item per managed category
 - duplicate cleanup for managed categories
 - simple better/worse evaluation per category
-- periodic reevaluation via dirty-flag + cooldown, not constant churn
-- melee and ranged weapon slots included
+- low-key sequential reevaluation, not constant churn or a whole-camp dogpile
+- melee and ranged weapon slots included, but without full ammo logistics yet
 
 #### Managed categories for v1
 - underwear
@@ -252,14 +253,23 @@ The locker zone contents remain the actual supply.
 So policy answers **what categories are allowed**, while the zone answers **what concrete items are available**.
 
 #### Trigger model
-Do not make NPCs reconsider clothes every few turns like nervous pigeons.
-Use a dirty-flag + cooldown model instead.
-Reevaluation should happen when one of these becomes true:
+Keep it low-key.
+The intended feel is not a military inspection. It is a scruffy camp where people get their gear in order when they wake up.
+
+Use a **wake-up dirty + sequential service** model:
+- after sleep / wake-up, NPCs become locker-dirty
+- locker-dirty NPCs enter a camp locker queue
+- the camp services that queue gradually, one NPC at a time
+- if an NPC has nothing to change, the pass is cheap/quick
+- if an NPC needs to swap gear, it takes longer and then the next NPC gets serviced
+
+Additional things that can mark an NPC dirty:
 - the NPC is missing a managed category
 - the player changes locker policy
 - the locker zone gains new eligible items
 - the NPC loses or drops important gear
-- a scheduled camp maintenance window / daily check occurs
+
+This should avoid the whole camp stampeding to the same pants at once.
 
 #### Selection rules (v1)
 - for each enabled category, keep at most one chosen item equipped/wielded
@@ -267,7 +277,8 @@ Reevaluation should happen when one of these becomes true:
 - if the NPC is missing a category, equip the best valid candidate from the locker zone
 - if the locker zone contains a meaningfully better candidate than the current item, upgrade
 - do not churn for tiny score differences
-- do not equip ranged weapons that are unusable in practice just because their headline stats look bigger
+- one NPC should be serviced at a time, and chosen locker items should be treated as temporarily reserved during that pass so the next NPC does not aim for the same gear blindly
+- ranged weapons are included in v1, but do not try to solve full magazine/ammo readiness here yet
 
 #### Better-item evaluation (v1)
 Keep scoring simple and category-specific.
@@ -287,6 +298,7 @@ If a candidate conflicts with the already chosen set, skip it rather than doing 
 - role/loadout presets
 - advanced layering solver
 - style/fashion preference logic
+- full ammo / magazine / reload maintenance
 - sending NPCs to arbitrary in-game jobs through this system
 
 #### Deterministic test picture for v1
@@ -294,12 +306,13 @@ When this becomes active, the first tests should cover:
 - duplicate cleanup (e.g. two socks candidates/categories)
 - obvious upgrade selection (`jeans` -> `military cargo pants`-style cases)
 - disabled-category policy respected even when items are present
-- no-ammo / unusable gun not chosen as the "best" ranged weapon
-- cooldown/dirty-flag prevents constant reequip churn
+- wake-up dirty -> locker queue -> sequential servicing instead of every NPC reevaluating at once
+- a no-op locker pass really is cheap when the NPC already satisfies policy
 - category-missing trigger causes a reevaluation
+- temporary reservation / one-at-a-time servicing prevents two NPCs from targeting the same best item in the same pass window
 
 #### V2 / V3 are parked on purpose
-- **V2 parked:** presets / broader policy variants (light, armored, ranged, hauler, etc.)
+- **V2 parked:** ranged-readiness extension — NPCs with a ranged weapon may pick up up to two compatible magazines from the locker zone and reload from locker-zone ammo supply; broader policy variants/presets can also live here later if they still seem worth it
 - **V3 parked:** seasonal dressing logic (winter coats/blankets, summer shorts/light wear) and per-NPC overrides
 
 Those are good ideas, but they should stay parked until Locker Zone v1 exists and survives contact with real play.
