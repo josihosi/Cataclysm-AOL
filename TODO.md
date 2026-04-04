@@ -6,10 +6,12 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 - [x] Continue actual `dev` development now that the upstream deterministic PR attempt is parked.
 - [x] Treat the small harness observability / deterministic probe slice as good enough for now: useful logging/settle improvements landed, and the remaining tail is parked unless it directly blocks game work again.
 - [x] Clarify the board/snapshot product split: live speech `show me the board` / `what's on the board` stays the concise human-facing bark path, while the richer 5x5 overmap snapshot belongs in the LLM snapshot/prompt path when deterministic handling falls through.
-- [ ] Do one more Basecamp AI bark pass so craft / board / blocker replies sound informal, human, and camp-like rather than numbered or bureaucratic.
-- [ ] Remove or suppress job-number-forward wording from human-facing bark where possible.
+- [x] Do one more Basecamp AI bark pass so craft / board / blocker replies sound informal, human, and camp-like rather than numbered or bureaucratic.
+- [x] Remove or suppress job-number-forward wording from human-facing bark where possible.
 - [x] Follower NPC movement already uses the signed coordinate contract instead of the old `E E E N`-style step wording; do not reopen that as active work right now.
-- [ ] After the bark pass, prepare the next clean Basecamp AI test packet focused on human-facing wording/feel.
+- [x] After the bark pass, prepare the next clean Basecamp AI test packet focused on human-facing wording/feel.
+- [x] Put the current bark/feel packet in front of Josef with the exact live checks and current dirty-tree validation notes.
+- [ ] Josef live-check the current Basecamp AI bark pass for tone/feel on craft / board / blocker replies.
 
 ## PARKED reference â€” upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.

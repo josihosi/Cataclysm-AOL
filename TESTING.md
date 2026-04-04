@@ -74,6 +74,7 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Structured batch board tokens (`launch_ready_jobs`, `retry_blocked_jobs`, `clear_archived_jobs`) are covered by deterministic tests.
 - [x] Crafting-request details expose a compact deterministic handoff snapshot with stable request facts (`id` / `query` / `count` / `source`) plus exact board/detail/follow-up tokens, and the formatter is covered by deterministic tests.
 - [x] Board handoff snapshots expose stable active/archive counts plus per-job detail/action tokens, and the formatter is covered by deterministic tests.
+- [x] Human-facing bark formatting now has deterministic coverage for the current close-out pass: spoken status keeps request ids trailing instead of leading, blocked status can still surface the matched recipe, and the short board summary stays concise/human.
 - [x] The live `show_board` handoff now prepends planner-move contract text plus the shared overmap snapshot block when the camp origin is available, and deterministic tests cover that consumer path.
 - [x] The Basecamp craft-handoff snapshot now loads from the shared prompt-template path (`data/llm_prompts` with `config/llm_prompts` overrides) while preserving the deterministic formatter contract via the same tests.
 - [x] `dev` build compiles.
@@ -93,12 +94,15 @@ An item is not really "done" just because deterministic tests or Andi self-check
   - [x] `craft 5 bandages` stays deterministic blocked/no-crash and explains the resolved recipe/blocker clearly
   - [x] live craft-board replies still lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
 - [x] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
-- [ ] Review the current Basecamp AI bark/feel pass on current HEAD and decide whether any broader agent-side smoke remains before Josef handoff:
+- [x] Review the current Basecamp AI bark/feel pass on the current dirty tree and decide whether any broader agent-side smoke remains before Josef handoff:
   - [x] re-ran `make -j4 tests cataclysm-tiles`
   - [x] re-ran `./tests/cata_test "[camp][basecamp_ai]"`
   - [x] re-ran `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-  - [x] no new crash/debug-popup issue appeared
+  - [x] deterministic bark formatter coverage now exists for trailing-id spoken status and the concise short board-summary bark
+  - [x] no new crash/debug-popup issue appeared (`.userdata/dev/harness_runs/20260405_001058` on the original bark-pass dirty tree, rechecked again at `.userdata/dev/harness_runs/20260405_003604` after the later docs-only head churn)
   - [x] product shape clarified: live spoken `show me the board` stays the concise board-summary bark path, while the richer planner snapshot belongs in the structured/internal / LLM snapshot path
+  - [x] human-facing status bark now suppresses job-number-forward phrasing where possible by moving `(#id)` to trailing detail instead of leading with `#id ...`
+  - [x] Josef handoff packet is prepared/sent with the exact short live tone/feel checks below
   - [ ] next real check is the human-facing one: verify the current bark pass sounds informal, camp-like, and free of job-number / filing-cabinet tone
   - [ ] later, when the LLM-side path returns to the top of the queue: prove the 5x5 overmap snapshot plus present-only legend enters the prompt when deterministic handling falls through
 
@@ -140,6 +144,12 @@ Observed summary:
 - [x] During the blocked probe, just eyeball that the tiny punctuation fix from `1df9e378c8` really killed silliness like `tools..`; if the live text still manages to look stupid, that becomes the tweak note.
 - [x] Do **not** run the old movement-system board packet verbatim anymore; it assumed the richer planner snapshot lived in the live spoken board-reply path.
 - [x] Product shape clarified: live natural speech `show me the board` / `what's on the board` stays the concise human-facing bark path.
+- [ ] Run the current bark/feel packet on the current dirty `dev` tree (agent-validated by `.userdata/dev/harness_runs/20260405_001058`, rechecked again at `.userdata/dev/harness_runs/20260405_003604` after the later docs-only head churn):
+  - [ ] `show me the board` or `what's on the board` → should stay a short human board summary, not the structured `planner_move` / overmap snapshot block
+  - [ ] `status of bandages` (or another pinned/blocked request) → should name the subject first, keep any `(#id)` trailing, and avoid the old `#7 ... awaiting approval — waiting on your approval` filing-cabinet style
+  - [ ] `craft 5 bandages` on the current low-stock save → should still explain the real blocker clearly, but in a camp voice rather than a spreadsheet voice
+  - [ ] `clear request #...` on an old completed/cancelled entry → should sound like clearing old work off the board, not like archiving paperwork
+  - [ ] Flag any line that still sounds like a bored quartermaster reading a ledger out loud
 - [ ] Next validation target is the LLM-side path: prove the richer `planner_move` + 5x5 overmap snapshot + present-only legend enters the prompt when deterministic handling falls through.
 - [ ] Only after that LLM-side path is wired/testable should anyone judge readability/coverage of the richer planner snapshot block.
 

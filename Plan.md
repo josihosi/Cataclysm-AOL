@@ -91,7 +91,7 @@ The overall structure is considered clear enough for autonomous work.
 - [x] do one more bark pass on Basecamp craft / board / blocker replies so they sound like a loose apocalyptic camp, not a bureaucracy
 - [x] remove or suppress job-number-forward phrasing from human-facing bark where possible
 - [x] keep the richer overmap snapshot out of the short spoken bark path; for now, spoken replies stay concise/human
-- [ ] put the current bark pass in front of Josef for a short live tone/feel packet on craft / board / blocker replies
+- [x] put the current bark pass in front of Josef for a short live tone/feel packet on craft / board / blocker replies
 - [x] follower NPC movement already uses the signed coordinate contract (`move=<dx>,<dy> <state>`) instead of the old `E E E N`-style step spam
 
 ---
