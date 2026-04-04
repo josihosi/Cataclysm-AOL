@@ -4,17 +4,12 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 
 ## Active finish line right now
 - [x] Continue actual `dev` development now that the upstream deterministic PR attempt is parked.
-- [x] Keep this queue aligned with `Plan.md`: the first active item is the movement-system overmap snapshot contract, not more PR archaeology.
-- [x] Prepare the first small overmap snapshot grid (currently a centered 5x5 via radius 2) for the broader Basecamp AI snapshot, not just the job-sending selector.
-- [x] Make the legend present-only so only symbols visible in the current snapshot are explained.
-- [x] Use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants.
-- [x] Add deterministic tests for the overmap snapshot formatter / legend / malformed fallback behavior around that contract.
-- [x] Re-run compile / filtered deterministic tests / startup harness smoke after landing the snapshot slice.
-- [x] Thread the new overmap snapshot formatter into the first real Basecamp/planner consumer.
-- [x] Hand the movement-system slice to Schani for review.
-- [x] Prepare the first concise movement live packet and hand it upward through Schani.
-- [ ] Correct the path assumption in that packet: the structured/internal `show_board` handoff carries the planner-move contract plus overmap snapshot context, but live natural speech `show me the board` currently returns the older concise board-summary bark instead.
-- [ ] Resolve the movement-system board-path mismatch before sending Josef another live packet: natural speech `show me the board` currently gives a concise on-screen board summary, while the richer `planner_move` + overmap snapshot block is wired into the structured/internal `show_board` handoff path. Decide which behavior is actually intended, then test *that* path honestly.
+- [x] Keep this queue aligned with `Plan.md`: the first active item is now the small harness observability / deterministic probe slice.
+- [ ] Add one reliable artifact/log sink for board/base-AI snapshot replies during live probes.
+- [ ] Make the live probe path explicit and reproducible for `say sentence` vs `yell a sentence`.
+- [ ] Keep live behavior, deterministic tests, and artifact/log visibility separate in the testing flow so probe-method changes stop muddying conclusions.
+- [ ] Update `TESTING.md` once this slice can prove where a reply appeared (screen, log, or both).
+- [ ] After this tactical harness slice is stable, return to the movement-system board-path mismatch: natural speech `show me the board` currently gives a concise on-screen board summary, while the richer `planner_move` + overmap snapshot block is wired into the structured/internal `show_board` handoff path. Decide which behavior is actually intended, then test *that* path honestly.
 
 ## PARKED reference â€” upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
@@ -28,7 +23,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
   - [x] ordered multi-word phrases beat generic noun fallbacks
 - [x] Prepare the small PR-friendly explanation/packaging pass once the code/test slice is stable.
 
-## GREEN now â€” movement system improvements
+## GREEN next â€” movement system improvements
 - [x] Replace local follower step-chain movement payloads (`E E E`, etc.) with a relative signed-delta destination contract while keeping the current pathing / target-tile behavior intact.
 - [x] Preserve the existing post-move state suffixes exactly:
   - `wait_here`

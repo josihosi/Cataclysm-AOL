@@ -38,6 +38,12 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Schani smoke baseline `311c7ab1b7` (main behavior fix `696f5c8b61`) passed the earlier fresh validation packet and live spoken-craft trio.
 - [x] Gameplay signoff target `4a39c70ac7` (same spoken-craft behavior plus blocked-bark punctuation trim in `1df9e378c8`) re-passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make version TILES=1 -j4 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_171141`).
 
+### Harness observability / deterministic probe slice
+- [ ] Live board/base-AI snapshot replies can be proven by a reliable artifact/log path, not only by on-screen observation.
+- [ ] The harness/live probe flow distinguishes `say sentence` from `yell a sentence` explicitly and reproducibly.
+- [ ] Probe reports keep evidence classes separate: on-screen behavior, deterministic test results, and artifact/log visibility.
+- [ ] A successful live probe records where the evidence landed (screen, log, or both) instead of assuming all reply paths hit `config/llm_intent.log`.
+
 ### Movement-system work
 - [x] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
 - [x] `wait_here` / `hold_position` suffix behavior is preserved exactly after the syntax change.
@@ -56,6 +62,7 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Current live-consumer slice re-passed `make -j4 tests cataclysm-tiles`, `./tests/cata_test "[camp][basecamp_ai]"`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_210854`).
 - [x] Schani review re-ran the same compile/test/startup trio on current dirty HEAD and again got zero recorded debug popups (`.userdata/dev/harness_runs/20260404_213253`).
 - [x] Schani later caught a stale/brittle uppercase-horde expectation in the overmap snapshot tests; fixed in `88f2e3eeb7` and the targeted suite re-passed (`266 assertions in 1 test case`).
+- [x] A later forced fresh rebuild on dirty HEAD `58c620d098-dirty` exposed one more structured-board assertion that still assumed lowercase terrain letters on the camp/road row; the check now looks at the intended row features case-insensitively, and `./tests/cata_test "[camp][basecamp_ai]"` re-passed on the rebuilt binary (`266 assertions in 1 test case`).
 - [ ] Important path distinction still open: the richer `planner_move` + overmap snapshot block is confirmed in the structured/internal `show_board` handoff path, but live natural speech `show me the board` currently returns the older concise board-summary bark instead.
 
 ### Basecamp work on `dev`
