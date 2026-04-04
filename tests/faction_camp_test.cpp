@@ -221,7 +221,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( parse_structured_camp_craft_order( "job=12" ).has_value() );
     }
 
-    SECTION( "structured camp job tokens parse exact request ids" ) {
+    SECTION( "structured camp job tokens parse exact request ids and batch board actions" ) {
         const std::optional<basecamp_ai::parsed_camp_job_token> action =
             parse_structured_camp_job_token( " job=12 " );
         REQUIRE( action.has_value() );
@@ -233,6 +233,24 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         REQUIRE( deletion.has_value() );
         CHECK( deletion->kind == camp_job_token_kind::delete_job );
         CHECK( deletion->request_id == 7 );
+
+        const std::optional<basecamp_ai::parsed_camp_job_token> launch_ready =
+            parse_structured_camp_job_token( " launch_ready_jobs " );
+        REQUIRE( launch_ready.has_value() );
+        CHECK( launch_ready->kind == camp_job_token_kind::launch_ready_jobs );
+        CHECK( launch_ready->request_id == 0 );
+
+        const std::optional<basecamp_ai::parsed_camp_job_token> retry_blocked =
+            parse_structured_camp_job_token( " RETRY_BLOCKED_JOBS " );
+        REQUIRE( retry_blocked.has_value() );
+        CHECK( retry_blocked->kind == camp_job_token_kind::retry_blocked_jobs );
+        CHECK( retry_blocked->request_id == 0 );
+
+        const std::optional<basecamp_ai::parsed_camp_job_token> clear_archived =
+            parse_structured_camp_job_token( "clear_archived_jobs" );
+        REQUIRE( clear_archived.has_value() );
+        CHECK( clear_archived->kind == camp_job_token_kind::clear_archived_jobs );
+        CHECK( clear_archived->request_id == 0 );
     }
 
     SECTION( "structured camp job tokens reject malformed ids and unknown prefixes" ) {
@@ -240,6 +258,8 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( parse_structured_camp_job_token( "job=-2" ).has_value() );
         CHECK_FALSE( parse_structured_camp_job_token( "job=twelve" ).has_value() );
         CHECK_FALSE( parse_structured_camp_job_token( "job=12 please" ).has_value() );
+        CHECK_FALSE( parse_structured_camp_job_token( "launch_ready_jobs please" ).has_value() );
+        CHECK_FALSE( parse_structured_camp_job_token( "retry blocked jobs" ).has_value() );
         CHECK_FALSE( parse_structured_camp_job_token( "work=12" ).has_value() );
     }
 

@@ -191,6 +191,9 @@ struct parsed_camp_request_reference {
 enum class camp_job_token_kind {
     act_on_job,
     delete_job,
+    launch_ready_jobs,
+    retry_blocked_jobs,
+    clear_archived_jobs,
 };
 
 struct parsed_camp_job_token {

@@ -2522,6 +2522,16 @@ std::optional<parsed_camp_job_token> parse_structured_camp_job_token( std::strin
         return static_cast<char>( std::tolower( ch ) );
     } );
 
+    if( text == "launch_ready_jobs" ) {
+        return parsed_camp_job_token{ camp_job_token_kind::launch_ready_jobs, 0 };
+    }
+    if( text == "retry_blocked_jobs" ) {
+        return parsed_camp_job_token{ camp_job_token_kind::retry_blocked_jobs, 0 };
+    }
+    if( text == "clear_archived_jobs" ) {
+        return parsed_camp_job_token{ camp_job_token_kind::clear_archived_jobs, 0 };
+    }
+
     static constexpr std::string_view job_prefix = "job=";
     static constexpr std::string_view delete_prefix = "delete_job=";
     camp_job_token_kind kind;
@@ -3304,8 +3314,66 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return true;
     };
 
+    const auto handle_batch_launch = [&]( const bool retrying_blocked ) {
+        const std::vector<int> launch_ids = retrying_blocked ?
+                                            basecamp_ai::collect_blocked_camp_request_ids( camp_requests ) :
+                                            basecamp_ai::collect_ready_camp_request_ids( camp_requests );
+        if( launch_ids.empty() ) {
+            add_camp_request_bark( listener,
+                                   retrying_blocked ?
+                                   _( "Nothing on the board is blocked for a retry." ) :
+                                   _( "Nothing on the board is ready to launch." ) );
+            return true;
+        }
+
+        const camp_request_launch_result launch_result = attempt_camp_request_launches( launch_ids,
+                                                       [this]( const int request_id ) {
+            return find_camp_request( request_id );
+        },
+        [this]( const int request_id ) {
+            approve_crafting_request( request_id );
+        } );
+        add_camp_request_bark( listener,
+                               retrying_blocked ?
+                               string_format( _( "Retried the blocked pile: started %1$d, still blocked %2$d, pinned %3$d." ),
+                                       static_cast<int>( launch_result.started.size() ),
+                                       static_cast<int>( launch_result.blocked.size() ),
+                                       static_cast<int>( launch_result.pinned.size() ) ) :
+                               string_format( _( "Worked through the board: started %1$d, blocked %2$d, still pinned %3$d." ),
+                                       static_cast<int>( launch_result.started.size() ),
+                                       static_cast<int>( launch_result.blocked.size() ),
+                                       static_cast<int>( launch_result.pinned.size() ) ) );
+        return true;
+    };
+
+    const auto handle_clear_archived = [&]() {
+        const size_t before = camp_requests.size();
+        camp_requests.erase( std::remove_if( camp_requests.begin(), camp_requests.end(),
+        []( const camp_llm_request &request ) {
+            return request.status == "completed" || request.status == "cancelled";
+        } ), camp_requests.end() );
+        const int cleared = static_cast<int>( before - camp_requests.size() );
+        if( cleared > 0 ) {
+            add_camp_request_bark( listener,
+                                   string_format( _( "Cleared %d archived crafting requests." ), cleared ) );
+        } else {
+            add_camp_request_bark( listener, _( "No archived crafting requests to clear." ) );
+        }
+        return true;
+    };
+
     if( const std::optional<basecamp_ai::parsed_camp_job_token> structured_job =
             basecamp_ai::parse_structured_camp_job_token( utterance ) ) {
+        if( structured_job->kind == basecamp_ai::camp_job_token_kind::launch_ready_jobs ) {
+            return handle_batch_launch( false );
+        }
+        if( structured_job->kind == basecamp_ai::camp_job_token_kind::retry_blocked_jobs ) {
+            return handle_batch_launch( true );
+        }
+        if( structured_job->kind == basecamp_ai::camp_job_token_kind::clear_archived_jobs ) {
+            return handle_clear_archived();
+        }
+
         camp_llm_request *request = find_camp_request( structured_job->request_id );
         if( request == nullptr ) {
             add_camp_request_bark( listener, camp_request_missing_bark( structured_job->request_id ) );
@@ -3411,19 +3479,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
     if( const std::optional<basecamp_ai::parsed_camp_request_reference> clear_query =
             basecamp_ai::parse_heard_camp_clear_query( utterance ) ) {
         if( clear_query->all_requests ) {
-            const size_t before = camp_requests.size();
-            camp_requests.erase( std::remove_if( camp_requests.begin(), camp_requests.end(),
-            []( const camp_llm_request &request ) {
-                return request.status == "completed" || request.status == "cancelled";
-            } ), camp_requests.end() );
-            const int cleared = static_cast<int>( before - camp_requests.size() );
-            if( cleared > 0 ) {
-                add_camp_request_bark( listener,
-                                       string_format( _( "Cleared %d archived crafting requests." ), cleared ) );
-            } else {
-                add_camp_request_bark( listener, _( "No archived crafting requests to clear." ) );
-            }
-            return true;
+            return handle_clear_archived();
         }
 
         const basecamp_ai::camp_request_match_result archived_lookup =
@@ -3511,36 +3567,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
     if( const std::optional<basecamp_ai::parsed_camp_request_reference> approval_query =
             basecamp_ai::parse_heard_camp_approval_query( utterance ) ) {
         if( approval_query->all_requests || approval_query->all_blocked_requests ) {
-            const bool retrying_blocked = approval_query->all_blocked_requests;
-            const std::vector<int> launch_ids = retrying_blocked ?
-                                                basecamp_ai::collect_blocked_camp_request_ids( camp_requests ) :
-                                                basecamp_ai::collect_ready_camp_request_ids( camp_requests );
-            if( launch_ids.empty() ) {
-                add_camp_request_bark( listener,
-                                       retrying_blocked ?
-                                       _( "Nothing on the board is blocked for a retry." ) :
-                                       _( "Nothing on the board is ready to launch." ) );
-                return true;
-            }
-
-            const camp_request_launch_result launch_result = attempt_camp_request_launches( launch_ids,
-                                                           [this]( const int request_id ) {
-                return find_camp_request( request_id );
-            },
-            [this]( const int request_id ) {
-                approve_crafting_request( request_id );
-            } );
-            add_camp_request_bark( listener,
-                                   retrying_blocked ?
-                                   string_format( _( "Retried the blocked pile: started %1$d, still blocked %2$d, pinned %3$d." ),
-                                           static_cast<int>( launch_result.started.size() ),
-                                           static_cast<int>( launch_result.blocked.size() ),
-                                           static_cast<int>( launch_result.pinned.size() ) ) :
-                                   string_format( _( "Worked through the board: started %1$d, blocked %2$d, still pinned %3$d." ),
-                                           static_cast<int>( launch_result.started.size() ),
-                                           static_cast<int>( launch_result.blocked.size() ),
-                                           static_cast<int>( launch_result.pinned.size() ) ) );
-            return true;
+            return handle_batch_launch( approval_query->all_blocked_requests );
         }
 
         const basecamp_ai::camp_request_match_result lookup =
