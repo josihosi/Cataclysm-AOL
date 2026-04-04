@@ -64,7 +64,7 @@ That remains the default until reality humiliates it again.
 ## Active status board
 
 ### 1. Basecamp AI completion on `dev`
-**Status:** GREEN
+**Status:** GREEN (queued behind deterministic PR finish, except for PR-closing bugfixes)
 
 This has been discussed deeply enough to proceed through completion.
 The overall structure is considered clear enough for autonomous work.
@@ -87,9 +87,15 @@ The overall structure is considered clear enough for autonomous work.
 ---
 
 ### 2. Upstreamable deterministic PR package
-**Status:** GREEN
+**Status:** GREEN — PRIMARY FINISH LINE
 
 This is the public-facing slice that should be kept small, sober, and mergeable with upstream `cdda-master`.
+
+#### Current focus rule
+Until this package is signoff-ready, it should be treated as the **main finish line**.
+Other green items remain valid, but they should not compete for attention unless:
+- they directly unblock the deterministic PR slice, or
+- the deterministic slice is temporarily hard-blocked and there is no meaningful close-out work left inside it.
 
 #### Scope
 - no LLM dependency in the PR package
@@ -113,7 +119,7 @@ Pitch the PR as useful deterministic camp-command infrastructure, not as an AI m
 ---
 
 ### 3. Movement-system improvements
-**Status:** GREEN
+**Status:** GREEN (queued behind deterministic PR finish)
 
 This is green, but it follows the current deterministic Basecamp/PR slice instead of pre-empting it.
 
