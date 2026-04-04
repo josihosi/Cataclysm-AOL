@@ -138,8 +138,8 @@ That goal is met well enough for now, even though a few cleanup edges remain.
 - [x] add one reliable artifact/log sink for board/base-AI snapshot replies during live probes (`show_board` / `show_job` now emit explicit `camp board reply` / `camp job reply` blocks into `config/llm_intent.log` when `DEBUG_LLM_INTENT_LOG` is enabled; plus live Basecamp hearing now appends `camp heard ... / utterance=...` lines for speech probes that actually reach the camp path)
 - [x] make probe runs preserve their evidence class clearly instead of silently switching from GUI/live evidence to PTY/test evidence (the current ledger/test packet now explicitly distinguishes on-screen behavior, deterministic checks, and log visibility)
 - [x] record the practical startup truth for this save/profile: `game::load: Finalizing end` is too early as a live-input marker; this bed needs a much longer post-load settle before GUI probes are trustworthy
-- [ ] remaining tail, only if later needed: make the live probe path explicit and reproducible for `say sentence` vs `yell a sentence`
-- [ ] remaining tail, only if later needed: prove end-to-end where a natural-speech board reply lands (screen, log, or both)
+- [x] make the live probe path explicit and reproducible for `say sentence` vs `yell a sentence` (`C` → `b` opens `say a sentence`; `C` → `y` opens `yell a sentence`; both are now re-proved live on `dev` / `Sandy Creek` after the long settle, using unique board-query utterances and `config/llm_intent.log` checkpoints)
+- [x] prove end-to-end where a natural-speech board reply lands (at least one live `show me the board` probe is now confirmed in both places: on-screen message log bark and `config/llm_intent.log` artifact lines)
 
 ### 4. Movement-system improvements
 **Status:** GREEN — PRIMARY FINISH LINE
@@ -157,25 +157,25 @@ This is now the active game-development stretch on `dev` again.
 - update prompt/snapshot explanation accordingly, and consider lightweight grid/axis hints if they help the model reason about offsets more reliably
 
 #### Current active sub-item
-The first structured Basecamp/planner-consumer slice now exists locally on `dev`, but one important path distinction is now explicit:
-- [x] threaded the overmap snapshot formatter into the **structured** Basecamp board handoff token path (`show_board`) instead of leaving it as a dead helper
+The first structured Basecamp/planner-consumer slice now exists locally on `dev`, and the intended path split is now explicit:
+- [x] threaded the overmap snapshot formatter into the **structured / LLM-side** board handoff path instead of leaving it as a dead helper
 - [x] kept the signed-axis contract live in prompt text via `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>`
-- [x] kept the same present-only legend / axis-hint snapshot text when the structured board handoff receives a real camp origin
+- [x] kept the same present-only legend / axis-hint snapshot text when the handoff receives a real camp origin
 - [x] added deterministic coverage for the structured board-handoff consumer path
 - [x] re-ran compile / filtered deterministic tests / startup harness checks after landing the live-consumer slice
 - [x] fixed the stale/brittle overmap snapshot expectations in `88f2e3eeb7` (`Stabilize overmap snapshot formatter tests`) after Schani caught the uppercase-horde mismatch
 - [x] fixed the remaining structured-board row assertion that still assumed lowercase terrain letters after a forced fresh `cata_test` rebuild showed legitimate horde capitalization on the camp/road row too
-- [ ] live natural speech `show me the board` / `what's on the board` currently still goes through the older concise board-summary bark path rather than surfacing the richer structured overmap snapshot block
-- [ ] so this slice is **not** Josef-testing clean as a live speech-path change yet; the remaining agent-side question is whether the richer snapshot belongs in the spoken path, stays internal/structured only, or needs a different exposure plan
+- [x] clarified the product shape: live natural speech `show me the board` / `what's on the board` should stay the concise human-facing bark path; the richer 5x5 overmap snapshot belongs in the LLM snapshot/prompt path when deterministic handling falls through to the LLM
+- [ ] next implementation step: inject the 5x5 overmap snapshot plus present-only legend into the real LLM snapshot path used when no deterministic craft/board route resolves the sentence
+- [ ] make sure the extended terrain-symbol list is handled correctly there too (`b`, `u`, `p`, `k`, `n` in addition to the core set)
 
 #### Next movement continuation
-- verify the intended product shape before sending Josef another readability packet:
-  - if the goal is only a structured/internal handoff artifact, document that clearly and stop claiming the live spoken bark should include the snapshot block
-  - if the goal is a richer live spoken board reply, wire that path explicitly and then re-test it live
-- keep the two issues separate while doing that:
-  - live spoken board replies already work on-screen
-  - logging visibility for direct deterministic `show_board` remains incomplete / ambiguous
-- only after the intended path is explicit should Josef get a fresh movement-system readability packet
+- wire the overmap snapshot into the actual LLM prompt/snapshot assembly path, not into the short human-facing spoken bark
+- keep the spoken board reply concise/human unless a later explicit design change says otherwise
+- once the LLM path is wired, test the right thing honestly:
+  - deterministic formatter/tests for the snapshot block itself
+  - prompt/log inspection proving the snapshot entered the LLM call path
+  - only then any live smoke about the human-facing reply if that path was touched
 
 #### Overmap snapshot contract (approved direction)
 - represent the overmap as a **small grid**, roughly **5x5 or 6x6**

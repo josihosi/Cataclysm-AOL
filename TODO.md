@@ -5,8 +5,10 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 ## Active finish line right now
 - [x] Continue actual `dev` development now that the upstream deterministic PR attempt is parked.
 - [x] Treat the small harness observability / deterministic probe slice as good enough for now: useful logging/settle improvements landed, and the remaining tail is parked unless it directly blocks game work again.
-- [ ] Return to the movement-system board-path mismatch: natural speech `show me the board` currently gives a concise on-screen board summary, while the richer `planner_move` + overmap snapshot block is wired into the structured/internal `show_board` handoff path. Decide which behavior is actually intended, then test *that* path honestly.
-- [ ] Once the intended product shape is explicit, prepare the next clean movement-system test packet without mixing live bark claims, deterministic formatter claims, and logging claims.
+- [x] Clarify the board/snapshot product split: live speech `show me the board` / `what's on the board` stays the concise human-facing bark path, while the richer 5x5 overmap snapshot belongs in the LLM snapshot/prompt path when deterministic handling falls through.
+- [ ] Inject the 5x5 overmap grid plus present-only legend into the real LLM snapshot/prompt path.
+- [ ] Make sure the extended terrain-symbol list is handled there too (`b`, `u`, `p`, `k`, `n` as well as the core set).
+- [ ] After wiring that path, prepare the next clean movement-system packet without mixing human-facing bark claims, deterministic formatter claims, and LLM-prompt/log claims.
 
 ## PARKED reference â€” upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.

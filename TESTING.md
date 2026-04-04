@@ -41,9 +41,9 @@ An item is not really "done" just because deterministic tests or Andi self-check
 ### Harness observability / deterministic probe slice
 - [x] Structured board/base-AI snapshot replies now have a reliable artifact path: with `DEBUG_LLM_INTENT_LOG` enabled, deterministic `show_board` / `show_job` append explicit `camp board reply` / `camp job reply` blocks to `config/llm_intent.log`; dirty HEAD `1a54665658-dirty` re-passed `make -j4 tests cataclysm-tiles`, `./tests/cata_test "[camp][basecamp_ai]"`, and startup harness `dev` / `Sandy Creek` (`.userdata/dev/harness_runs/20260404_230538`).
 - [x] Live Basecamp hearing is now provable in logs too: after a sufficiently long post-load settle, three fresh-start GUI probes with unique utterances (`show me the board please`, `what's on the board`, `craft boiled please`) each appended `camp heard Bruna Priest (2)` plus the unique `utterance=...` line to `config/llm_intent.log`.
-- [ ] The harness/live probe flow distinguishes `say sentence` from `yell a sentence` explicitly and reproducibly.
+- [x] The harness/live probe flow now distinguishes `say sentence` from `yell a sentence` explicitly and reproducibly: on `dev` / `Sandy Creek`, after the long post-load settle, `C` → `b` opens `say a sentence` and `C` → `y` opens `yell a sentence`; live probes with unique `show me the board ...` utterances appended the expected `camp heard ... / utterance=...` evidence to `config/llm_intent.log`.
 - [x] Probe reports keep evidence classes separate: on-screen behavior, deterministic test results, and artifact/log visibility.
-- [ ] A successful live probe records where the evidence landed (screen, log, or both) instead of assuming all reply paths hit `config/llm_intent.log`.
+- [x] A successful live probe now records where the evidence landed instead of guessing: the `yellprobe 2345` board query was confirmed in both places — on-screen message log (`You tell 'show me the board'`, followed by the NPC bark beginning `Here is the current...`) and `config/llm_intent.log` (`camp heard ...`, `response ...`, `say ...`).
 - [x] Current `dev` / `Sandy Creek` startup reality is documented: `game::load: Finalizing end` is too early as a live-input marker; this bed needs a much longer post-load settle before GUI probes are trustworthy.
 
 ### Movement-system work
@@ -65,7 +65,8 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Schani review re-ran the same compile/test/startup trio on current dirty HEAD and again got zero recorded debug popups (`.userdata/dev/harness_runs/20260404_213253`).
 - [x] Schani later caught a stale/brittle uppercase-horde expectation in the overmap snapshot tests; fixed in `88f2e3eeb7` and the targeted suite re-passed (`266 assertions in 1 test case`).
 - [x] A later forced fresh rebuild on dirty HEAD `58c620d098-dirty` exposed one more structured-board assertion that still assumed lowercase terrain letters on the camp/road row; the check now looks at the intended row features case-insensitively, and `./tests/cata_test "[camp][basecamp_ai]"` re-passed on the rebuilt binary (`266 assertions in 1 test case`).
-- [ ] Important path distinction still open: the richer `planner_move` + overmap snapshot block is confirmed in the structured/internal `show_board` handoff path, but live natural speech `show me the board` currently returns the older concise board-summary bark instead.
+- [x] Technical path split is now explicit rather than speculative: the richer `planner_move` + overmap snapshot block is confirmed in the structured/internal `show_board` / LLM-side handoff path, while live natural speech `show me the board` currently returns the older concise board-summary bark instead.
+- [x] Product shape is clarified: keep the human-facing spoken path concise; inject the richer 5x5 overmap snapshot plus present-only legend into the LLM snapshot/prompt path when deterministic handling falls through.
 
 ### Basecamp work on `dev`
 - [x] Relevant deterministic tests exist for the new routing/token layer.
@@ -92,12 +93,13 @@ An item is not really "done" just because deterministic tests or Andi self-check
   - [x] `craft 5 bandages` stays deterministic blocked/no-crash and explains the resolved recipe/blocker clearly
   - [x] live craft-board replies still lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
 - [x] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
-- [ ] Review the movement-system `show_board` handoff on current HEAD and decide whether any broader agent-side smoke remains before Josef handoff:
+- [ ] Review the movement-system / LLM-snapshot handoff on current HEAD and decide whether any broader agent-side smoke remains before Josef handoff:
   - [x] re-ran `make -j4 tests cataclysm-tiles`
   - [x] re-ran `./tests/cata_test "[camp][basecamp_ai]"`
   - [x] re-ran `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
   - [x] no new crash/debug-popup issue appeared
-  - [ ] but the intended path still needs clarification: live spoken `show me the board` returns a concise board-summary bark, while the richer planner snapshot is currently only confirmed on the structured/internal `show_board` handoff path
+  - [x] product shape clarified: live spoken `show me the board` stays the concise board-summary bark path, while the richer planner snapshot belongs in the structured/internal / LLM snapshot path
+  - [ ] next real check is the LLM-side one: prove the 5x5 overmap snapshot plus present-only legend enters the prompt when deterministic handling falls through
 
 ### Spoken camp craft smoke packet (done by Schani)
 Use a camp with a bulletin board and at least one NPC who can plausibly craft.  Try these in normal play, not in a sterile lab if avoidable.
@@ -135,11 +137,10 @@ Observed summary:
   - [x] `craft 5 bandages`
 - [x] Judge whether bark + board/detail wording feels human/clear enough, especially for blocked requests where the heard phrase and resolved recipe differ.
 - [x] During the blocked probe, just eyeball that the tiny punctuation fix from `1df9e378c8` really killed silliness like `tools..`; if the live text still manages to look stupid, that becomes the tweak note.
-- [ ] Do **not** run the old movement-system board packet verbatim anymore; it assumed the richer planner snapshot lived in the live spoken board-reply path.
-- [ ] First decide which board path is actually intended for human-facing validation:
-  - [ ] live natural speech `show me the board` / `what's on the board` (currently a concise on-screen summary bark)
-  - [ ] structured/internal `show_board` handoff (currently the richer `planner_move` + overmap snapshot path)
-- [ ] Only after that path is explicit should anyone judge readability/feel of the richer planner snapshot block.
+- [x] Do **not** run the old movement-system board packet verbatim anymore; it assumed the richer planner snapshot lived in the live spoken board-reply path.
+- [x] Product shape clarified: live natural speech `show me the board` / `what's on the board` stays the concise human-facing bark path.
+- [ ] Next validation target is the LLM-side path: prove the richer `planner_move` + 5x5 overmap snapshot + present-only legend enters the prompt when deterministic handling falls through.
+- [ ] Only after that LLM-side path is wired/testable should anyone judge readability/coverage of the richer planner snapshot block.
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
