@@ -38,6 +38,7 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 - [x] Relevant deterministic tests exist for the new routing/token layer.
 - [x] Structured `craft=<query>` / `job=<id>` / `delete_job=<id>` token parsers are covered by deterministic tests.
 - [x] Structured batch board tokens (`launch_ready_jobs`, `retry_blocked_jobs`, `clear_archived_jobs`) are covered by deterministic tests.
+- [x] Crafting-request details expose a compact deterministic handoff snapshot with the exact legal follow-up token, and the formatter is covered by deterministic tests.
 - [x] `dev` build compiles.
 - [x] Game launches.
 - [x] Known save loads successfully.

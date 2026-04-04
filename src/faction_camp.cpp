@@ -1773,6 +1773,10 @@ static std::string camp_request_details( const camp_llm_request &request )
             details += string_format( "- %s\n", blocker );
         }
     }
+    if( const std::string handoff = basecamp_ai::camp_request_handoff_snapshot( request ); !handoff.empty() ) {
+        details += _( "Deterministic handoff:\n" );
+        details += handoff;
+    }
     if( !request.notes.empty() ) {
         details += _( "Recent notes:\n" );
         const size_t start = request.notes.size() > 4 ? request.notes.size() - 4 : 0;
@@ -2427,6 +2431,46 @@ std::string camp_request_subject_for_display( const camp_llm_request &request,
     }
 
     return subject;
+}
+
+std::string camp_request_handoff_snapshot( const camp_llm_request &request )
+{
+    if( request.request_kind != "craft_request" ) {
+        return std::string();
+    }
+
+    const auto join_fields = []( const std::vector<std::string> &parts ) {
+        std::string joined;
+        for( size_t idx = 0; idx < parts.size(); ++idx ) {
+            if( idx > 0 ) {
+                joined += "; ";
+            }
+            joined += parts[idx];
+        }
+        return joined;
+    };
+
+    const std::string request_subject = camp_request_subject_for_display( request );
+    const std::string resolved_recipe = request.chosen_recipe_name.empty() ? "none" :
+                                        request.chosen_recipe_name;
+    const std::string worker = request.assigned_worker_name.empty() ? "none" :
+                               request.assigned_worker_name;
+    const std::string blockers = request.blockers.empty() ? "none" :
+                                 join_fields( request.blockers );
+    const bool archived = request.status == "completed" || request.status == "cancelled";
+    const std::string next_token = request.request_id > 0 ?
+                                   string_format( archived ? "delete_job=%d" : "job=%d",
+                                                  request.request_id ) :
+                                   "none";
+
+    return string_format( "request=%s\nrecipe=%s\nstatus=%s\napproval=%s\nworker=%s\nblockers=%s\nnext=%s\n",
+                          request_subject,
+                          resolved_recipe,
+                          request.status,
+                          request.approval_state,
+                          worker,
+                          blockers,
+                          next_token );
 }
 
 static std::optional<parsed_camp_craft_order> parse_camp_craft_order_payload( std::string text )

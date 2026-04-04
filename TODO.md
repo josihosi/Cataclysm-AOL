@@ -29,6 +29,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 
 ## GREEN now â€” richer Basecamp AI on `dev`
 - [ ] Keep deterministic-first command extraction as the control spine.
+- [x] Surface a compact deterministic handoff snapshot in crafting-request details, including the exact legal follow-up token (`job=<id>` / `delete_job=<id>`), so later Basecamp-AI glue does not have to rediscover resolved recipe/blocker facts from scratch.
 - [x] Define the next structured Basecamp action tokens clearly:
   - [x] `craft=<query>`
   - [x] `delete_job=<id>`

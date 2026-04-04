@@ -163,6 +163,7 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
 }
 TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
+    using basecamp_ai::camp_request_handoff_snapshot;
     using basecamp_ai::camp_request_subject_for_display;
     using basecamp_ai::camp_job_token_kind;
     using basecamp_ai::collect_archived_camp_request_ids;
@@ -559,6 +560,58 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         const camp_llm_request request;
 
         CHECK( camp_request_subject_for_display( request ) == "crafting request" );
+    }
+
+    SECTION( "craft request handoff snapshot keeps resolved recipe blocker facts and next token" ) {
+        const camp_llm_request request{
+            .request_id = 7,
+            .requested_item_query = "bandages",
+            .requested_count = 5,
+            .chosen_recipe_name = "sterile bandage",
+            .status = "blocked",
+            .approval_state = "not_needed",
+            .blockers = { "No stationed worker can take this recipe right now." }
+        };
+
+        CHECK( camp_request_handoff_snapshot( request ) ==
+               "request=5 × bandages\n"
+               "recipe=sterile bandage\n"
+               "status=blocked\n"
+               "approval=not_needed\n"
+               "worker=none\n"
+               "blockers=No stationed worker can take this recipe right now.\n"
+               "next=job=7\n" );
+    }
+
+    SECTION( "craft request handoff snapshot flips archived jobs to delete tokens" ) {
+        const camp_llm_request request{
+            .request_id = 9,
+            .requested_item_query = "bandages",
+            .requested_count = 2,
+            .chosen_recipe_name = "bandages",
+            .status = "completed",
+            .approval_state = "approved",
+            .assigned_worker_name = "Bruna"
+        };
+
+        CHECK( camp_request_handoff_snapshot( request ) ==
+               "request=2 × bandages\n"
+               "recipe=bandages\n"
+               "status=completed\n"
+               "approval=approved\n"
+               "worker=Bruna\n"
+               "blockers=none\n"
+               "next=delete_job=9\n" );
+    }
+
+    SECTION( "non craft requests do not emit craft handoff snapshots" ) {
+        const camp_llm_request request{
+            .request_kind = "camp_upgrade",
+            .request_id = 3,
+            .status = "awaiting_approval"
+        };
+
+        CHECK( camp_request_handoff_snapshot( request ).empty() );
     }
 
     SECTION( "craft recall matching prefers the assigned worker id over the name" ) {
