@@ -3,13 +3,18 @@
 _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ€™s ghost stories._
 
 ## Active finish line right now
-- [ ] Continue actual `dev` development now that the upstream deterministic PR attempt is parked.
-- [ ] Work serially on the movement-system finish line: first overmap snapshot grid, then present-only legend, then collapsed terrain symbols / horde-uppercase handling, then deterministic tests and smoke checks.
-- [ ] Keep this queue aligned with `Plan.md`: the first active item is the movement-system overmap snapshot contract, not more PR archaeology.
-- [ ] Prepare the first small overmap snapshot grid (about 5x5 or 6x6) for the broader Basecamp AI snapshot, not just the job-sending selector.
-- [ ] Make the legend present-only so only symbols visible in the current snapshot are explained.
-- [ ] Use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants.
-- [ ] Add deterministic tests for the overmap snapshot formatter / legend / malformed fallback behavior around that contract.
+- [x] Continue actual `dev` development now that the upstream deterministic PR attempt is parked.
+- [x] Keep this queue aligned with `Plan.md`: the first active item is the movement-system overmap snapshot contract, not more PR archaeology.
+- [x] Prepare the first small overmap snapshot grid (currently a centered 5x5 via radius 2) for the broader Basecamp AI snapshot, not just the job-sending selector.
+- [x] Make the legend present-only so only symbols visible in the current snapshot are explained.
+- [x] Use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants.
+- [x] Add deterministic tests for the overmap snapshot formatter / legend / malformed fallback behavior around that contract.
+- [x] Re-run compile / filtered deterministic tests / startup harness smoke after landing the snapshot slice.
+- [x] Thread the new overmap snapshot formatter into the first real Basecamp/planner consumer.
+- [x] Hand the movement-system slice to Schani for review.
+- [x] Prepare the first concise movement live packet and hand it upward through Schani.
+- [ ] Correct the path assumption in that packet: the structured/internal `show_board` handoff carries the planner-move contract plus overmap snapshot context, but live natural speech `show me the board` currently returns the older concise board-summary bark instead.
+- [ ] Resolve the movement-system board-path mismatch before sending Josef another live packet: natural speech `show me the board` currently gives a concise on-screen board summary, while the richer `planner_move` + overmap snapshot block is wired into the structured/internal `show_board` handoff path. Decide which behavior is actually intended, then test *that* path honestly.
 
 ## PARKED reference â€” upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
@@ -28,17 +33,18 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 - [x] Preserve the existing post-move state suffixes exactly:
   - `wait_here`
   - `hold_position`
-- [ ] Use the same relative-delta idea for overmap-targeted movement / planner output where appropriate.
+- [x] Use the same relative-delta idea for overmap-targeted movement / planner output where appropriate.
   - [x] Land the shared signed `dx` / `dy` parser/tests for future planner consumers.
   - [x] Land a shared `stay` / `move_omt dx=<signed_int> dy=<signed_int>` token parser/tests so future planner consumers agree on one small overmap movement grammar.
   - [x] Land the shared absolute-target resolver so planner consumers reuse one signed-axis convention instead of re-deriving it badly.
   - [x] Land the shared token formatter so future planner output can emit the same overmap grammar it already parses/resolves.
-- [ ] Build a small overmap snapshot grid (about 5x5 or 6x6) for the broader Basecamp AI snapshot, not just the job-sending selector.
-- [ ] Use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants.
-- [ ] Show only a present-only legend for symbols actually visible in the current overmap snapshot.
+  - [x] Thread the first live Basecamp AI/planner consumer (`show_board`) through the shared snapshot formatter and keep the same planner-move contract beside it.
+- [x] Build a small overmap snapshot grid (currently a centered 5x5 via radius 2) for the broader Basecamp AI snapshot, not just the job-sending selector.
+- [x] Use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants.
+- [x] Show only a present-only legend for symbols actually visible in the current overmap snapshot.
 - [x] Update prompt/snapshot explanations and examples so the model is told to emit coordinates rather than micro-step chains.
 - [x] Consider lightweight grid/axis hints in the snapshot if they help the model reason about offsets more reliably.
-- [ ] Add deterministic parser/tests for positive/negative deltas, state suffix retention, malformed fallback behavior, and present-only overmap legend generation.
+- [x] Add deterministic parser/tests for positive/negative deltas, state suffix retention, malformed fallback behavior, and present-only overmap legend generation.
 
 ## GREEN later â€” richer Basecamp AI on `dev` (resume after the movement-system finish line, except follow-up bugfixes)
 - [ ] Keep deterministic-first command extraction as the control spine.
@@ -63,6 +69,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 - [ ] Revisit full `tests/cata_test` linking on this Mac when broader deterministic test coverage needs an end-to-end run; current local framework/library link trouble should be treated as environment work, not as a reason to skip logic tests.
 
 ## Josef manual testing pending / upcoming
+- [ ] Do **not** send Josef another movement-system board-handoff readability packet until the intended path is clarified: live natural speech currently gives a concise board summary, while the richer planner snapshot lives in the structured/internal `show_board` handoff path.
 - [ ] Later live-check the follower snapshot legend change in-game (`friendly` / `neutral` / `hostile` + threat) and confirm live follower behavior interprets the new target wording correctly.
 - [x] Once the exact-word `craft` router lands, hand Josef a concise manual test packet for spoken camp crafting behavior.
 - [ ] After the next Basecamp slice, preserve good in-game settings/state if the current `dev` profile becomes the preferred testing baseline again.

@@ -118,7 +118,7 @@ Do not treat it as the active development branch.
 ---
 
 ### 3. Movement-system improvements
-**Status:** JOSEF TESTING — PRIMARY FINISH LINE
+**Status:** AGENT TESTING — PRIMARY FINISH LINE
 
 This is now the active queue item.
 The upstream deterministic PR slice is parked, so movement-system work becomes the next real stretch on `dev`.
@@ -134,21 +134,24 @@ The upstream deterministic PR slice is parked, so movement-system work becomes t
 - update prompt/snapshot explanation accordingly, and consider lightweight grid/axis hints if they help the model reason about offsets more reliably
 
 #### Current active sub-item
-The first live Basecamp/planner-consumer slice now exists locally on `dev` and has cleared the current agent-side gate:
-- [x] threaded the overmap snapshot formatter into the structured Basecamp board handoff (`show_board`) instead of leaving it as a dead helper
+The first structured Basecamp/planner-consumer slice now exists locally on `dev`, but one important path distinction is now explicit:
+- [x] threaded the overmap snapshot formatter into the **structured** Basecamp board handoff token path (`show_board`) instead of leaving it as a dead helper
 - [x] kept the signed-axis contract live in prompt text via `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>`
-- [x] kept the same present-only legend / axis-hint snapshot text when the board handoff receives a real camp origin
-- [x] added deterministic coverage for the live board-handoff consumer path
+- [x] kept the same present-only legend / axis-hint snapshot text when the structured board handoff receives a real camp origin
+- [x] added deterministic coverage for the structured board-handoff consumer path
 - [x] re-ran compile / filtered deterministic tests / startup harness checks after landing the live-consumer slice
-- [x] Schani review re-ran `make -j4 tests cataclysm-tiles`, `./tests/cata_test "[camp][basecamp_ai]"`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` on current HEAD; nothing new fell over and no broader agent-side smoke looks necessary before Josef feedback
+- [x] fixed the stale/brittle overmap snapshot expectations in `88f2e3eeb7` (`Stabilize overmap snapshot formatter tests`) after Schani caught the uppercase-horde mismatch
+- [ ] live natural speech `show me the board` / `what's on the board` currently still goes through the older concise board-summary bark path rather than surfacing the richer structured overmap snapshot block
+- [ ] so this slice is **not** Josef-testing clean as a live speech-path change yet; the remaining agent-side question is whether the richer snapshot belongs in the spoken path, stays internal/structured only, or needs a different exposure plan
 
 #### Next movement continuation
-- the narrow Josef live packet is now prepared for the `show_board` planner handoff:
-  - on `dev` / `Sandy Creek`, ask a camp NPC `show me the board` or `what's on the board`
-  - confirm the reply leads with `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` and the overmap snapshot block before the active/archive job lines
-  - judge whether the extra planning context helps more than it clutters
-- if Josef likes it, move this movement-system slice out of the primary finish line and only then decide whether more planner consumers need the same overmap snapshot block
-- if Josef thinks the board now reads like a tax form, do one wording/tuning tweak round before expanding the pattern
+- verify the intended product shape before sending Josef another readability packet:
+  - if the goal is only a structured/internal handoff artifact, document that clearly and stop claiming the live spoken bark should include the snapshot block
+  - if the goal is a richer live spoken board reply, wire that path explicitly and then re-test it live
+- keep the two issues separate while doing that:
+  - live spoken board replies already work on-screen
+  - logging visibility for direct deterministic `show_board` remains incomplete / ambiguous
+- only after the intended path is explicit should Josef get a fresh movement-system readability packet
 
 #### Overmap snapshot contract (approved direction)
 - represent the overmap as a **small grid**, roughly **5x5 or 6x6**

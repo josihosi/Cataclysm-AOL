@@ -140,7 +140,8 @@ The smoke harness intentionally tests three layers together:
 - runner I/O + response parsing using game-like pipe-separated action-line validation
 
 ## LLM Intent Actions (Behavior Notes)
-- Direct deterministic `show_board` handling currently does **not** emit a fresh prompt/response block into `config/llm_intent.log`; that log is still tied to the LLM prompt path. If later tooling wants `show_board`-specific log artifacts, add an explicit hook or inspect a different artifact path instead of expecting `llm_intent.log` magic.
+- Direct deterministic `show_board` handling can still produce a real in-game reply even when no fresh prompt/response block appears in `config/llm_intent.log`; that log is still tied to the LLM prompt path. Treat missing `llm_intent.log` output as a logging-visibility gap, not as proof that `show_board` failed. If later tooling wants `show_board`-specific artifacts, add an explicit hook or inspect a different artifact path instead of expecting `llm_intent.log` magic.
+- Important current path split: the richer planner snapshot (`planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` + overmap block) is confirmed on the structured/internal `show_board` handoff token path, while live natural speech like `show me the board` currently still uses the older concise board-summary bark path.
 - `look_around` requests up to three nearby item names for pickup targeting.
 - `look_inventory` supports `wear`, `wield`, `act`, and `drop` sections.
 - `panic_on` sets a forced flee state for about 20 turns and bumps panic while active.

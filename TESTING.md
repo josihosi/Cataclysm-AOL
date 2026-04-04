@@ -55,6 +55,8 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] The first live Basecamp planner consumer now carries `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` plus the shared overmap snapshot block when `show_board` has a real camp origin.
 - [x] Current live-consumer slice re-passed `make -j4 tests cataclysm-tiles`, `./tests/cata_test "[camp][basecamp_ai]"`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_210854`).
 - [x] Schani review re-ran the same compile/test/startup trio on current dirty HEAD and again got zero recorded debug popups (`.userdata/dev/harness_runs/20260404_213253`).
+- [x] Schani later caught a stale/brittle uppercase-horde expectation in the overmap snapshot tests; fixed in `88f2e3eeb7` and the targeted suite re-passed (`266 assertions in 1 test case`).
+- [ ] Important path distinction still open: the richer `planner_move` + overmap snapshot block is confirmed in the structured/internal `show_board` handoff path, but live natural speech `show me the board` currently returns the older concise board-summary bark instead.
 
 ### Basecamp work on `dev`
 - [x] Relevant deterministic tests exist for the new routing/token layer.
@@ -81,11 +83,12 @@ An item is not really "done" just because deterministic tests or Andi self-check
   - [x] `craft 5 bandages` stays deterministic blocked/no-crash and explains the resolved recipe/blocker clearly
   - [x] live craft-board replies still lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
 - [x] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
-- [x] Review the movement-system `show_board` handoff on current HEAD and decide whether any broader agent-side smoke remains before Josef handoff:
+- [ ] Review the movement-system `show_board` handoff on current HEAD and decide whether any broader agent-side smoke remains before Josef handoff:
   - [x] re-ran `make -j4 tests cataclysm-tiles`
   - [x] re-ran `./tests/cata_test "[camp][basecamp_ai]"`
   - [x] re-ran `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-  - [x] no new crash/debug-popup issue appeared, so the remaining gate is Josef readability/feel rather than more agent-side archaeology
+  - [x] no new crash/debug-popup issue appeared
+  - [ ] but the intended path still needs clarification: live spoken `show me the board` returns a concise board-summary bark, while the richer planner snapshot is currently only confirmed on the structured/internal `show_board` handoff path
 
 ### Spoken camp craft smoke packet (done by Schani)
 Use a camp with a bulletin board and at least one NPC who can plausibly craft.  Try these in normal play, not in a sterile lab if avoidable.
@@ -123,10 +126,11 @@ Observed summary:
   - [x] `craft 5 bandages`
 - [x] Judge whether bark + board/detail wording feels human/clear enough, especially for blocked requests where the heard phrase and resolved recipe differ.
 - [x] During the blocked probe, just eyeball that the tiny punctuation fix from `1df9e378c8` really killed silliness like `tools..`; if the live text still manages to look stupid, that becomes the tweak note.
-- [ ] Run the narrow movement-system board-handoff packet on current `dev` / `Sandy Creek`:
-  - [ ] ask a camp NPC `show me the board` (or `what's on the board`) and confirm the reply leads with `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` plus the overmap block before the job list
-  - [ ] judge whether the 5x5 snapshot / `dx` / `dy` hints make movement reasoning easier instead of merely more technical
-  - [ ] confirm the active/archive job lines still read clearly and are not buried by the new planning context
+- [ ] Do **not** run the old movement-system board packet verbatim anymore; it assumed the richer planner snapshot lived in the live spoken board-reply path.
+- [ ] First decide which board path is actually intended for human-facing validation:
+  - [ ] live natural speech `show me the board` / `what's on the board` (currently a concise on-screen summary bark)
+  - [ ] structured/internal `show_board` handoff (currently the richer `planner_move` + overmap snapshot path)
+- [ ] Only after that path is explicit should anyone judge readability/feel of the richer planner snapshot block.
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
@@ -165,5 +169,6 @@ The actual finish line remains:
 
 ## Notes / current annoyances
 - Full `tests/cata_test` linking on this Mac has recently hit local framework/library link trouble (SDL / SDL_ttf / CoreFoundation / FreeType). Treat that as environment work to revisit, not as an excuse to skip logic tests entirely.
-- Direct deterministic `show_board` responses do not currently append a fresh block to `config/llm_intent.log`; if later inspection wants log-based artifacts for that path, it needs either an explicit logging hook or a different artifact source.
+- Direct deterministic `show_board` responses may still work live even when no fresh block appears in `config/llm_intent.log` (and sometimes not in the usual debug log either). Treat log absence there as an instrumentation/visibility gap, not as proof that the board-reply path is broken. If later inspection wants reliable artifacts for that path, it needs either an explicit logging hook or a different artifact source.
 - Keep manual test packets short and concrete: what changed, what to try, expected result, suspicious edge cases.
+- One fresh `make clean-tests && make -j4 tests cataclysm-tiles` attempt on this Mac compiled the current `faction_camp.cpp` slice but then died in the local archive step (`ranlib: can't open file: cataclysm.a`). Treat that as a local build/archiver annoyance to revisit, not as proof that the movement-slice logic itself regressed.
