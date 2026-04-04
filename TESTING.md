@@ -34,6 +34,7 @@ An item is not really "done" just because agent testing passed. If Josef testing
 - [x] Craft ambiguity / blocker / quantity parsing tests exist and pass.
 - [x] Touched code compiles cleanly.
 - [x] Small PR package is explainable without dragging LLM design into the story.
+- [x] Current HEAD (`55cd73bf17`) passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make -j4 TILES=1 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_140320`).
 
 ### Movement-system work
 - [x] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
@@ -67,6 +68,9 @@ An item is not really "done" just because agent testing passed. If Josef testing
   - target legend shows attitude (`friendly` / `neutral` / `hostile`) plus threat
   - lettered-target wording still feels sensible in real use
 - [ ] Run the spoken camp craft smoke packet below and note anything stupid.
+- [ ] Specifically sanity-check the latest bark-reference polish on current HEAD:
+  - live craft-board replies should lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
+  - blocked / matched-recipe wording should stay clear without getting more bureaucratic
 - [ ] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
 
 ### Spoken camp craft smoke packet (Josef)

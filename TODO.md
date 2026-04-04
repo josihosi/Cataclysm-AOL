@@ -6,6 +6,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 - [ ] Close the deterministic upstreamable PR slice before spending meaningful time on the other green projects, unless a side task directly unblocks the PR or the PR is temporarily hard-blocked.
 - [ ] Work serially through PR close-out items in this order: finish line -> deterministic tests -> agent play test -> Josef play test -> tweak round if needed.
 - [ ] Do not move to the next PR-closing item just because deterministic tests passed; if Josef testing is the next gate, prepare that handoff first.
+- [ ] Current close-out gate: get Josef to live-check the subject-first / trailing-id camp bark polish on current HEAD before moving to the next deterministic PR item.
 
 ## GREEN now â€” upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
