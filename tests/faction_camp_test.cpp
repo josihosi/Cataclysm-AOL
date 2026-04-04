@@ -164,6 +164,7 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
 TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
     using basecamp_ai::camp_board_handoff_snapshot;
+    using basecamp_ai::camp_craft_resolution_outcome;
     using basecamp_ai::camp_request_handoff_snapshot;
     using basecamp_ai::camp_request_subject_for_display;
     using basecamp_ai::camp_job_token_kind;
@@ -898,8 +899,15 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     }
 
     SECTION( "craft router can singularize the final plural query word as a fallback" ) {
-        const recipe &makeshift_bandage = recipe_id( "bandages_makeshift" ).obj();
-        CHECK( score_camp_recipe_query( makeshift_bandage, "makeshift bandages" ) >= 650 );
+        const recipe &hunting_knife = recipe_id( "knife_hunting" ).obj();
+        CHECK( score_camp_recipe_query( hunting_knife, "hunting knifes" ) >= 650 );
+
+        const std::unordered_set<recipe_id> recipes = { recipe_id( "knife_hunting" ) };
+        const basecamp_ai::camp_craft_recipe_match match = match_camp_craft_query( recipes,
+                "hunting knifes" );
+        CHECK( match.score >= 650 );
+        CHECK( match.fallback_query == "hunting knife" );
+        CHECK_FALSE( match.score_notes.empty() );
     }
 
     SECTION( "craft router reports ambiguous top subject matches instead of guessing" ) {
@@ -912,6 +920,12 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( match.score >= 650 );
         CHECK( match.recipe_ids.size() == 2 );
         CHECK( match.subjects == std::vector<std::string> { "boiled makeshift bandage", "boiled potato" } );
+
+        const basecamp_ai::camp_craft_resolution resolution = resolve_camp_craft_query( recipes, "boiled",
+        []( const recipe & ) {
+            return basecamp_ai::camp_craft_recipe_candidate{};
+        } );
+        CHECK( resolution.outcome == camp_craft_resolution_outcome::MATCH_AMBIGUOUS );
     }
 
     SECTION( "shared craft resolver keeps blocked matches and their blockers" ) {
@@ -928,8 +942,23 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         REQUIRE( resolution.choice.has_value() );
         CHECK( resolution.choice->recipe_id == recipe_id( "bandages" ) );
         CHECK( resolution.choice->candidate.worker == nullptr );
+        CHECK( resolution.outcome == camp_craft_resolution_outcome::MATCH_BLOCKED );
         CHECK( resolution.choice->candidate.blockers ==
                std::vector<std::string> { "No stationed worker can take this recipe right now." } );
+    }
+
+    SECTION( "shared craft resolver reports no match explicitly" ) {
+        const std::unordered_set<recipe_id> recipes = { recipe_id( "bandages" ) };
+
+        const basecamp_ai::camp_craft_resolution resolution = resolve_camp_craft_query( recipes,
+                "quantum soup",
+        []( const recipe & ) {
+            return basecamp_ai::camp_craft_recipe_candidate{};
+        } );
+
+        CHECK( resolution.outcome == camp_craft_resolution_outcome::NO_MATCH );
+        CHECK_FALSE( resolution.choice.has_value() );
+        CHECK( resolution.match.recipe_ids.empty() );
     }
 }
 
