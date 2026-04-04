@@ -16,6 +16,10 @@ This folder also contains helper-script prompt templates used by:
 
 Those helpers also seed editable copies into config/llm_prompts when needed.
 
+This folder also contains Basecamp handoff templates used by deterministic camp
+crafting flows, such as:
+- basecamp_craft_handoff_snapshot.txt
+
 Important placeholders
 ----------------------
 Keep these placeholders exactly as written if they appear in a file:
@@ -28,6 +32,17 @@ Keep these placeholders exactly as written if they appear in a file:
 - {{items_xml}}
 - {{inventory_xml}}
 - {{story_text_block}}
+- {{request_id}}
+- {{query}}
+- {{count}}
+- {{source_utterance}}
+- {{request_subject}}
+- {{resolved_recipe}}
+- {{status}}
+- {{approval_state}}
+- {{worker}}
+- {{blockers}}
+- {{next_token}}
 
 If a prompt file is missing a required placeholder, the game falls back to the
 bundled default version instead of using the broken file.

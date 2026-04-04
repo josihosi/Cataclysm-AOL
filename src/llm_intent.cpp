@@ -1,4 +1,5 @@
 #include "llm_intent.h"
+#include "llm_prompt_templates.h"
 
 #include <algorithm>
 #include <atomic>
@@ -163,98 +164,11 @@ void append_llm_intent_log( const std::string &payload )
     out << final_payload;
 }
 
-constexpr const char *llm_prompt_dirname = "llm_prompts";
 constexpr const char *npc_action_prompt_filename = "npc_action_prompt.txt";
 constexpr const char *npc_ambient_prompt_filename = "npc_ambient_prompt.txt";
 constexpr const char *look_around_prompt_filename = "look_around_prompt.txt";
 constexpr const char *look_inventory_prompt_filename = "look_inventory_prompt.txt";
 constexpr const char *llm_prompt_readme_filename = "README.txt";
-
-std::filesystem::path llm_prompt_override_dir_path()
-{
-    return ( PATH_INFO::config_dir_path() / llm_prompt_dirname ).get_unrelative_path();
-}
-
-std::filesystem::path bundled_llm_prompt_dir_path()
-{
-    return ( PATH_INFO::datadir_path() / llm_prompt_dirname ).get_unrelative_path();
-}
-
-void replace_all_in_place( std::string &text, const std::string &from, const std::string &to )
-{
-    if( from.empty() ) {
-        return;
-    }
-    size_t pos = 0;
-    while( ( pos = text.find( from, pos ) ) != std::string::npos ) {
-        text.replace( pos, from.size(), to );
-        pos += to.size();
-    }
-}
-
-std::string render_prompt_template( std::string templ,
-                                    const std::initializer_list<std::pair<std::string, std::string>> &replacements )
-{
-    for( const std::pair<std::string, std::string> &entry : replacements ) {
-        replace_all_in_place( templ, entry.first, entry.second );
-    }
-    return templ;
-}
-
-bool prompt_template_has_required_tokens( const std::string &templ,
-        const std::initializer_list<std::string_view> &required_tokens )
-{
-    if( templ.find_first_not_of( " \t\r\n" ) == std::string::npos ) {
-        return false;
-    }
-    for( const std::string_view token : required_tokens ) {
-        if( templ.find( token ) == std::string::npos ) {
-            return false;
-        }
-    }
-    return true;
-}
-
-void seed_llm_prompt_override_files()
-{
-    const std::filesystem::path override_dir = llm_prompt_override_dir_path();
-    if( !assure_dir_exist( override_dir ) ) {
-        return;
-    }
-
-    const std::filesystem::path bundled_dir = bundled_llm_prompt_dir_path();
-    for( const char *filename : { npc_action_prompt_filename, npc_ambient_prompt_filename,
-                                  look_around_prompt_filename, look_inventory_prompt_filename,
-                                  llm_prompt_readme_filename } ) {
-        const std::filesystem::path source = bundled_dir / filename;
-        const std::filesystem::path dest = override_dir / filename;
-        if( file_exist( source ) && !file_exist( dest ) ) {
-            copy_file( source.string(), dest.string() );
-        }
-    }
-}
-
-std::string load_llm_prompt_template( const char *filename, std::string_view fallback_template,
-                                      const std::initializer_list<std::string_view> &required_tokens )
-{
-    static std::once_flag seed_once;
-    std::call_once( seed_once, []() {
-        seed_llm_prompt_override_files();
-    } );
-
-    for( const std::filesystem::path &path : { llm_prompt_override_dir_path() / filename,
-                                               bundled_llm_prompt_dir_path() / filename } ) {
-        if( !file_exist( path ) ) {
-            continue;
-        }
-        const std::string templ = read_entire_file( path );
-        if( prompt_template_has_required_tokens( templ, required_tokens ) ) {
-            return templ;
-        }
-    }
-
-    return std::string( fallback_template );
-}
 
 struct llm_intent_request {
     std::string request_id;
@@ -1492,10 +1406,11 @@ std::string build_look_around_prompt( const std::string &player_utterance,
                   << xml_escape( entry.name ) << "\" qty=\""
                   << entry.quantity << "\"/>\n";
     }
-    const std::string templ = load_llm_prompt_template( look_around_prompt_filename,
+    const std::string templ = llm_prompt_templates::load( look_around_prompt_filename,
                               default_look_around_prompt_template(),
-    { "{{player_utterance}}", "{{items_xml}}" } );
-    return render_prompt_template( templ,
+    { "{{player_utterance}}", "{{items_xml}}" },
+    { look_around_prompt_filename, llm_prompt_readme_filename } );
+    return llm_prompt_templates::render( templ,
     {
         { "{{player_utterance}}", xml_escape( player_utterance ) },
         { "{{items_xml}}", items_xml.str() }
@@ -1510,10 +1425,11 @@ std::string build_look_inventory_prompt( const std::string &player_utterance,
         inventory_xml << "  <Item id=\"" << xml_escape( entry.id ) << "\" name=\""
                       << xml_escape( entry.name ) << "\"/>\n";
     }
-    const std::string templ = load_llm_prompt_template( look_inventory_prompt_filename,
+    const std::string templ = llm_prompt_templates::load( look_inventory_prompt_filename,
                               default_look_inventory_prompt_template(),
-    { "{{player_utterance}}", "{{inventory_xml}}" } );
-    return render_prompt_template( templ,
+    { "{{player_utterance}}", "{{inventory_xml}}" },
+    { look_inventory_prompt_filename, llm_prompt_readme_filename } );
+    return llm_prompt_templates::render( templ,
     {
         { "{{player_utterance}}", xml_escape( player_utterance ) },
         { "{{inventory_xml}}", inventory_xml.str() }
@@ -2493,10 +2409,13 @@ std::string build_prompt( const std::string &npc_name, const std::string &player
         action_list_with_target += ", ";
     }
     action_list_with_target += "attack=<target>, move=<dx>,<dy> <state>";
-    const std::string templ = load_llm_prompt_template( npc_action_prompt_filename,
+    const std::string templ = llm_prompt_templates::load( npc_action_prompt_filename,
                               default_npc_action_prompt_template(),
-    { "{{snapshot}}", "{{action_list_with_target}}" } );
-    return render_prompt_template( templ,
+    { "{{snapshot}}", "{{action_list_with_target}}" },
+    { npc_action_prompt_filename, npc_ambient_prompt_filename,
+      look_around_prompt_filename, look_inventory_prompt_filename,
+      llm_prompt_readme_filename } );
+    return llm_prompt_templates::render( templ,
     {
         { "{{snapshot}}", snapshot },
         { "{{action_list_with_target}}", action_list_with_target },
@@ -2509,10 +2428,13 @@ std::string build_ambient_prompt( const std::string &npc_name,
                                   const std::string &player_utterance,
                                   const std::string &snapshot )
 {
-    const std::string templ = load_llm_prompt_template( npc_ambient_prompt_filename,
+    const std::string templ = llm_prompt_templates::load( npc_ambient_prompt_filename,
                               default_npc_ambient_prompt_template(),
-    { "{{snapshot}}", "{{npc_name}}", "{{player_utterance}}" } );
-    return render_prompt_template( templ,
+    { "{{snapshot}}", "{{npc_name}}", "{{player_utterance}}" },
+    { npc_action_prompt_filename, npc_ambient_prompt_filename,
+      look_around_prompt_filename, look_inventory_prompt_filename,
+      llm_prompt_readme_filename } );
+    return llm_prompt_templates::render( templ,
     {
         { "{{snapshot}}", snapshot },
         { "{{npc_name}}", sanitize_text( npc_name ) },
