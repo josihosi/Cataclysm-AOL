@@ -9,9 +9,20 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 ---
 
 ## Stage meanings
-- **AGENT TESTING** — compile/tests/startup/save-load/log sanity that Schani should run.
-- **JOSEF TESTING** — real gameplay, UX, edge-case, and “does this feel stupid?” checks.
+- **DETERMINISTIC TESTS** — compile/tests/parser checks/unit coverage that should pass before playtesting.
+- **AGENT TESTING** — Schani/Andi startup/save-load/log sanity and any reliable in-game checks they can run themselves.
+- **JOSEF TESTING** — real gameplay, UX, edge-case, and "does this feel stupid?" checks.
 - **TWEAK** — follow-up pass after either kind of testing finds something worth fixing.
+
+## Close-out order for almost-finished features
+For near-finish work, the intended order is:
+1. **Finish line** — implement the current close-out item.
+2. **Deterministic tests** — write/update deterministic tests and get them passing.
+3. **Agent play test** — run the reliable in-game checks yourself when possible.
+4. **Josef play test** — hand off a concrete manual test packet when human judgment is needed.
+5. **Tweak** — expect at least one tweak round after Josef testing; game work is feelings-heavy and rarely ends in a single perfect pass.
+
+An item is not really "done" just because agent testing passed. If Josef testing is the next gate, the item stays the active finish line until that handoff is prepared.
 
 ---
 

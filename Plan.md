@@ -97,6 +97,15 @@ Other green items remain valid, but they should not compete for attention unless
 - they directly unblock the deterministic PR slice, or
 - the deterministic slice is temporarily hard-blocked and there is no meaningful close-out work left inside it.
 
+For each close-out item inside the PR slice, the intended order is:
+1. finish the item,
+2. write/update deterministic tests,
+3. run reliable agent-side play checks,
+4. prepare Josef play testing when human judgment is needed,
+5. expect a tweak round before calling the item closed.
+
+Do not treat "agent tested" as the same thing as "finished" when Josef testing is still the next gate.
+
 #### Scope
 - no LLM dependency in the PR package
 - exact-word `craft` routing
