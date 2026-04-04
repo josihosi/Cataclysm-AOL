@@ -74,4 +74,5 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 ## Parked but remembered
 - [ ] Basecamp zone preset helpers/mod flow for new camps.
 - [ ] Broader board QoL / feasibility summaries once the current command contracts stop moving.
+- [ ] Revisit the harness later using the symbolic/stateful design note in `doc/openclaw-harness-symbolic-rework-note-2026-04-04.md` instead of drifting toward screenshot-first automation.
 - [ ] Broader harness growth after the current Basecamp finish-line work is stable.

@@ -163,6 +163,17 @@ This work should feed both follower movement cleanup and later Basecamp job-subf
 
 ## Discuss-before-implementation board
 
+### Harness rework / in-engine driver API
+**Status:** PARKED
+
+Not active right now, but there is now a saved auxiliary note at [`doc/openclaw-harness-symbolic-rework-note-2026-04-04.md`](doc/openclaw-harness-symbolic-rework-note-2026-04-04.md).
+If this gets revived later, the current preferred direction is:
+- symbolic/stateful harness evolution, not screenshot-first automation
+- action-result / failure-reason contracts before broader agent playtest loops
+- a tiny in-engine driver API for explicit UI state and scenario control
+- external orchestration for profiles, scenarios, artifacts, notebooks, and adapters
+
+
 ### 4. Bandit AI
 **Status:** DISCUSS
 
