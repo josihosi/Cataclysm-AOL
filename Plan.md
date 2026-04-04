@@ -100,11 +100,12 @@ Other green items remain valid, but they should not compete for attention unless
 For each close-out item inside the PR slice, the intended order is:
 1. finish the item,
 2. write/update deterministic tests,
-3. run reliable agent-side play checks,
-4. prepare Josef play testing when human judgment is needed,
-5. expect a tweak round before calling the item closed.
+3. let Andi do cheap/reliable self-checks,
+4. let Schani own the higher-trust review + smoke/play test layer,
+5. prepare Josef final play testing/signoff when human judgment is still needed,
+6. expect a tweak round before calling the item closed.
 
-Do not treat "agent tested" as the same thing as "finished" when Josef testing is still the next gate.
+Do not treat "agent tested" as the same thing as "finished" when Schani review or Josef testing is still the next gate.
 
 #### Scope
 - no LLM dependency in the PR package

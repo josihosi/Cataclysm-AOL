@@ -18,11 +18,12 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 For near-finish work, the intended order is:
 1. **Finish line** — implement the current close-out item.
 2. **Deterministic tests** — write/update deterministic tests and get them passing.
-3. **Agent play test** — run the reliable in-game checks yourself when possible.
-4. **Josef play test** — hand off a concrete manual test packet when human judgment is needed.
-5. **Tweak** — expect at least one tweak round after Josef testing; game work is feelings-heavy and rarely ends in a single perfect pass.
+3. **Andi self-check** — compile, launch/load, and do any cheap/reliable self-checks he can perform directly.
+4. **Schani review + smoke/play test** — Schani owns the higher-trust review layer and should run the meaningful smoke/play checks with the broader Discord/session context in mind.
+5. **Josef final play test / signoff** — when human feel/judgment is still needed, Josef gets the final targeted packet.
+6. **Tweak** — expect at least one tweak round after Josef testing; game work is feelings-heavy and rarely ends in a single perfect pass.
 
-An item is not really "done" just because agent testing passed. If Josef testing is the next gate, the item stays the active finish line until that handoff is prepared.
+An item is not really "done" just because deterministic tests or Andi self-checks passed. If Schani review or Josef signoff is the next gate, the item stays the active finish line until that handoff is prepared and completed.
 
 ---
 
