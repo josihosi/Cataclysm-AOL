@@ -2808,6 +2808,18 @@ bool parse_overmap_movement_token( std::string_view token,
     return true;
 }
 
+tripoint_abs_omt resolve_overmap_movement_target( const tripoint_abs_omt &origin,
+        const parsed_overmap_movement_intent &intent )
+{
+    if( intent.stay ) {
+        return origin;
+    }
+
+    return tripoint_abs_omt( origin.x() + intent.delta.x(),
+                             origin.y() - intent.delta.y(),
+                             origin.z() );
+}
+
 } // namespace basecamp_ai
 
 namespace
