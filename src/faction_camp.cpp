@@ -2445,6 +2445,10 @@ std::string camp_request_subject_for_display( const camp_llm_request &request,
 
 static constexpr const char *basecamp_craft_handoff_snapshot_filename =
     "basecamp_craft_handoff_snapshot.txt";
+static constexpr const char *basecamp_board_handoff_snapshot_filename =
+    "basecamp_board_handoff_snapshot.txt";
+static constexpr const char *basecamp_board_handoff_job_line_filename =
+    "basecamp_board_handoff_job_line.txt";
 static constexpr const char *llm_prompt_readme_filename = "README.txt";
 
 static bool camp_request_is_archived_for_handoff( const camp_llm_request &request )
@@ -2481,6 +2485,20 @@ approval={{approval_state}}
 worker={{worker}}
 blockers={{blockers}}
 next={{next_token}}
+)";
+}
+
+static std::string default_basecamp_board_handoff_snapshot_template()
+{
+    return R"(board=show_board
+active={{active_count}}
+archived={{archived_count}}
+{{jobs}})";
+}
+
+static std::string default_basecamp_board_handoff_job_line_template()
+{
+    return R"(job={{job_id}} subject={{request_subject}} status={{status}} approval={{approval_state}} worker={{worker}} details={{details_token}} next={{next_token}}
 )";
 }
 
@@ -2521,7 +2539,8 @@ std::string camp_request_handoff_snapshot( const camp_llm_request &request )
       "{{source_utterance}}", "{{request_subject}}", "{{resolved_recipe}}",
       "{{status}}", "{{approval_state}}", "{{worker}}", "{{blockers}}",
       "{{next_token}}" },
-    { basecamp_craft_handoff_snapshot_filename, llm_prompt_readme_filename } );
+    { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
+      basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
 
     return llm_prompt_templates::render( templ,
     {
@@ -2542,9 +2561,21 @@ std::string camp_request_handoff_snapshot( const camp_llm_request &request )
 
 std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &requests )
 {
+    const std::string board_templ = llm_prompt_templates::load( basecamp_board_handoff_snapshot_filename,
+                                    default_basecamp_board_handoff_snapshot_template(),
+    { "{{active_count}}", "{{archived_count}}", "{{jobs}}" },
+    { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
+      basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
+    const std::string job_templ = llm_prompt_templates::load( basecamp_board_handoff_job_line_filename,
+                                  default_basecamp_board_handoff_job_line_template(),
+    { "{{job_id}}", "{{request_subject}}", "{{status}}", "{{approval_state}}",
+      "{{worker}}", "{{details_token}}", "{{next_token}}" },
+    { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
+      basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
+
     int active_requests = 0;
     int archived_requests = 0;
-    std::string snapshot;
+    std::string jobs;
     for( const camp_llm_request &request : requests ) {
         if( request.request_kind != "craft_request" ) {
             continue;
@@ -2556,19 +2587,24 @@ std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &re
             ++active_requests;
         }
 
-        snapshot += string_format( "job=%1$d subject=%2$s status=%3$s approval=%4$s worker=%5$s details=%6$s next=%7$s\n",
-                                   request.request_id,
-                                   camp_request_subject_for_display( request, true ),
-                                   request.status,
-                                   request.approval_state,
-                                   request.assigned_worker_name.empty() ? "none" : request.assigned_worker_name,
-                                   camp_request_details_token( request ),
-                                   camp_request_next_token( request ) );
+        jobs += llm_prompt_templates::render( job_templ,
+        {
+            { "{{job_id}}", std::to_string( request.request_id ) },
+            { "{{request_subject}}", camp_request_subject_for_display( request, true ) },
+            { "{{status}}", request.status },
+            { "{{approval_state}}", request.approval_state },
+            { "{{worker}}", request.assigned_worker_name.empty() ? "none" : request.assigned_worker_name },
+            { "{{details_token}}", camp_request_details_token( request ) },
+            { "{{next_token}}", camp_request_next_token( request ) }
+        } );
     }
 
-    return string_format( "board=show_board\nactive=%1$d\narchived=%2$d\n%3$s",
-                          active_requests, archived_requests,
-                          snapshot.empty() ? "jobs=none\n" : snapshot );
+    return llm_prompt_templates::render( board_templ,
+    {
+        { "{{active_count}}", std::to_string( active_requests ) },
+        { "{{archived_count}}", std::to_string( archived_requests ) },
+        { "{{jobs}}", jobs.empty() ? "jobs=none\n" : jobs }
+    } );
 }
 
 static std::optional<parsed_camp_craft_order> parse_camp_craft_order_payload( std::string text )
