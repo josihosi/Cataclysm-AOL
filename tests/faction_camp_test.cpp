@@ -164,6 +164,7 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
 TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
     using basecamp_ai::camp_request_subject_for_display;
+    using basecamp_ai::camp_job_token_kind;
     using basecamp_ai::collect_blocked_camp_request_ids;
     using basecamp_ai::collect_ready_camp_request_ids;
     using basecamp_ai::match_camp_craft_query;
@@ -176,6 +177,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::parse_heard_camp_status_query;
     using basecamp_ai::parse_overmap_movement_token;
     using basecamp_ai::parse_relative_omt_delta;
+    using basecamp_ai::parse_structured_camp_job_token;
     using basecamp_ai::parsed_overmap_movement_intent;
     using basecamp_ai::resolve_camp_craft_query;
     using basecamp_ai::score_camp_recipe_query;
@@ -200,6 +202,28 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( parse_heard_camp_craft_order( "make knife" ).has_value() );
         CHECK_FALSE( parse_heard_camp_craft_order( "build knife" ).has_value() );
         CHECK_FALSE( parse_heard_camp_craft_order( "witchcraft knife" ).has_value() );
+    }
+
+    SECTION( "structured camp job tokens parse exact request ids" ) {
+        const std::optional<basecamp_ai::parsed_camp_job_token> action =
+            parse_structured_camp_job_token( " job=12 " );
+        REQUIRE( action.has_value() );
+        CHECK( action->kind == camp_job_token_kind::act_on_job );
+        CHECK( action->request_id == 12 );
+
+        const std::optional<basecamp_ai::parsed_camp_job_token> deletion =
+            parse_structured_camp_job_token( " DELETE_JOB=7 " );
+        REQUIRE( deletion.has_value() );
+        CHECK( deletion->kind == camp_job_token_kind::delete_job );
+        CHECK( deletion->request_id == 7 );
+    }
+
+    SECTION( "structured camp job tokens reject malformed ids and unknown prefixes" ) {
+        CHECK_FALSE( parse_structured_camp_job_token( "job=0" ).has_value() );
+        CHECK_FALSE( parse_structured_camp_job_token( "job=-2" ).has_value() );
+        CHECK_FALSE( parse_structured_camp_job_token( "job=twelve" ).has_value() );
+        CHECK_FALSE( parse_structured_camp_job_token( "job=12 please" ).has_value() );
+        CHECK_FALSE( parse_structured_camp_job_token( "work=12" ).has_value() );
     }
 
     SECTION( "approval commands parse explicit request numbers" ) {

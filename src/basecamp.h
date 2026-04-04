@@ -188,6 +188,16 @@ struct parsed_camp_request_reference {
     bool all_blocked_requests = false;
 };
 
+enum class camp_job_token_kind {
+    act_on_job,
+    delete_job,
+};
+
+struct parsed_camp_job_token {
+    camp_job_token_kind kind = camp_job_token_kind::act_on_job;
+    int request_id = 0;
+};
+
 struct parsed_overmap_movement_intent {
     point_rel_omt delta = point_rel_omt::zero;
     bool stay = true;
@@ -225,6 +235,7 @@ struct camp_craft_resolution {
 };
 
 std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance );
+std::optional<parsed_camp_job_token> parse_structured_camp_job_token( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_clear_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance );
