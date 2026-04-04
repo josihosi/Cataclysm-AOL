@@ -177,6 +177,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::parse_heard_camp_status_query;
     using basecamp_ai::parse_overmap_movement_token;
     using basecamp_ai::parse_relative_omt_delta;
+    using basecamp_ai::parse_structured_camp_craft_order;
     using basecamp_ai::parse_structured_camp_job_token;
     using basecamp_ai::parsed_overmap_movement_intent;
     using basecamp_ai::resolve_camp_craft_query;
@@ -202,6 +203,20 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( parse_heard_camp_craft_order( "make knife" ).has_value() );
         CHECK_FALSE( parse_heard_camp_craft_order( "build knife" ).has_value() );
         CHECK_FALSE( parse_heard_camp_craft_order( "witchcraft knife" ).has_value() );
+    }
+
+    SECTION( "structured craft tokens parse quantity and direct object" ) {
+        const std::optional<basecamp_ai::parsed_camp_craft_order> parsed =
+            parse_structured_camp_craft_order( " craft=the five bandages please " );
+        REQUIRE( parsed.has_value() );
+        CHECK( parsed->count == 5 );
+        CHECK( parsed->item_query == "bandages" );
+    }
+
+    SECTION( "structured craft tokens reject malformed payloads and unknown prefixes" ) {
+        CHECK_FALSE( parse_structured_camp_craft_order( "craft=" ).has_value() );
+        CHECK_FALSE( parse_structured_camp_craft_order( "craft = bandages" ).has_value() );
+        CHECK_FALSE( parse_structured_camp_craft_order( "job=12" ).has_value() );
     }
 
     SECTION( "structured camp job tokens parse exact request ids" ) {

@@ -34,11 +34,12 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 - [x] Malformed movement falls back safely.
 
 ### Basecamp work on `dev`
-- [ ] Relevant deterministic tests exist for the new routing/token layer.
-- [ ] `dev` build compiles.
-- [ ] Game launches.
-- [ ] Known save loads successfully.
-- [ ] No new debug-log regressions were introduced by the slice.
+- [x] Relevant deterministic tests exist for the new routing/token layer.
+- [x] Structured `craft=<query>` / `job=<id>` / `delete_job=<id>` token parsers are covered by deterministic tests.
+- [x] `dev` build compiles.
+- [x] Game launches.
+- [x] Known save loads successfully.
+- [x] No new debug-log regressions were introduced by the slice.
 
 ---
 

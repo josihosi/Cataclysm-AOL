@@ -28,10 +28,10 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 
 ## GREEN now â€” richer Basecamp AI on `dev`
 - [ ] Keep deterministic-first command extraction as the control spine.
-- [ ] Define the next structured Basecamp action tokens clearly:
-  - `craft=<query>`
-  - `delete_job=<id>`
-  - `job=<id>`
+- [x] Define the next structured Basecamp action tokens clearly:
+  - [x] `craft=<query>`
+  - [x] `delete_job=<id>`
+  - [x] `job=<id>`
 - [ ] When deterministic craft handling cannot complete alone, hand off a compact structured snapshot instead of forcing the LLM to rediscover deterministic facts.
 - [ ] Externalize Basecamp prompt/snapshot text into prompt files once the deterministic craft router and token grammar are stable enough to stop moving every ten minutes.
 
