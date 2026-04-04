@@ -260,6 +260,10 @@ bool parse_overmap_movement_token( std::string_view token,
                                    std::string &error );
 tripoint_abs_omt resolve_overmap_movement_target( const tripoint_abs_omt &origin,
         const parsed_overmap_movement_intent &intent );
+bool format_overmap_movement_token( const tripoint_abs_omt &origin,
+                                    const tripoint_abs_omt &target,
+                                    std::string &token,
+                                    std::string &error );
 bool matches_assigned_camp_request_worker( const camp_llm_request &request,
         const character_id &worker_id, std::string_view worker_name );
 int score_camp_recipe_query( const recipe &making, std::string_view query );

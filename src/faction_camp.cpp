@@ -2942,6 +2942,30 @@ tripoint_abs_omt resolve_overmap_movement_target( const tripoint_abs_omt &origin
                              origin.z() );
 }
 
+bool format_overmap_movement_token( const tripoint_abs_omt &origin,
+                                    const tripoint_abs_omt &target,
+                                    std::string &token,
+                                    std::string &error )
+{
+    token.clear();
+    error.clear();
+
+    if( origin.z() != target.z() ) {
+        error = "Overmap move token cannot encode z-level changes.";
+        return false;
+    }
+
+    const int dx = target.x() - origin.x();
+    const int dy = origin.y() - target.y();
+    if( dx == 0 && dy == 0 ) {
+        token = "stay";
+        return true;
+    }
+
+    token = string_format( "move_omt dx=%+d dy=%+d", dx, dy );
+    return true;
+}
+
 } // namespace basecamp_ai
 
 namespace

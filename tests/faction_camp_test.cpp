@@ -169,6 +169,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::collect_archived_camp_request_ids;
     using basecamp_ai::collect_blocked_camp_request_ids;
     using basecamp_ai::collect_ready_camp_request_ids;
+    using basecamp_ai::format_overmap_movement_token;
     using basecamp_ai::match_camp_craft_query;
     using basecamp_ai::match_camp_request_reference;
     using basecamp_ai::matches_assigned_camp_request_worker;
@@ -721,6 +722,46 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         northwest.stay = false;
         northwest.delta = point_rel_omt( -1, 3 );
         CHECK( resolve_overmap_movement_target( origin, northwest ) == tripoint_abs_omt( 9, 17, 0 ) );
+    }
+
+    SECTION( "overmap movement formatter emits shared stay and signed delta tokens" ) {
+        const tripoint_abs_omt origin( 10, 20, 0 );
+        std::string token;
+        std::string error;
+
+        CHECK( format_overmap_movement_token( origin, origin, token, error ) );
+        CHECK( token == "stay" );
+        CHECK( error.empty() );
+
+        CHECK( format_overmap_movement_token( origin, tripoint_abs_omt( 14, 22, 0 ), token, error ) );
+        CHECK( token == "move_omt dx=+4 dy=-2" );
+        CHECK( error.empty() );
+
+        CHECK( format_overmap_movement_token( origin, tripoint_abs_omt( 9, 17, 0 ), token, error ) );
+        CHECK( token == "move_omt dx=-1 dy=+3" );
+        CHECK( error.empty() );
+    }
+
+    SECTION( "overmap movement formatter round-trips through the shared parser and resolver" ) {
+        const tripoint_abs_omt origin( 10, 20, 0 );
+        const tripoint_abs_omt target( 14, 22, 0 );
+        std::string token;
+        std::string error;
+        parsed_overmap_movement_intent intent;
+
+        REQUIRE( format_overmap_movement_token( origin, target, token, error ) );
+        REQUIRE( parse_overmap_movement_token( token, intent, error ) );
+        CHECK( resolve_overmap_movement_target( origin, intent ) == target );
+    }
+
+    SECTION( "overmap movement formatter rejects z-level changes instead of lying" ) {
+        std::string token = "move_omt dx=+9 dy=+9";
+        std::string error;
+
+        CHECK_FALSE( format_overmap_movement_token( tripoint_abs_omt( 10, 20, 0 ),
+                     tripoint_abs_omt( 10, 20, 1 ), token, error ) );
+        CHECK( token.empty() );
+        CHECK( error == "Overmap move token cannot encode z-level changes." );
     }
 
     SECTION( "craft router prefers specific phrase matches over generic noun matches" ) {
