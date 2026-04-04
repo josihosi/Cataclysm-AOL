@@ -118,11 +118,11 @@ Do not treat it as the active development branch.
 ---
 
 ### 3. Harness observability / deterministic probe slice
-**Status:** GREEN — PRIMARY FINISH LINE
+**Status:** GOOD ENOUGH FOR NOW (park the remaining tail unless it directly blocks game work)
 
-This is now the active queue item.
-The immediate blocker is not grand game architecture. It is that live testing is too slippery, under-logged, and too dependent on probe-method guesswork.
-So the next slice is a **small tactical harness/observability pass**, not the full parked harness rework.
+This slice did enough useful work to stop being the primary finish line.
+The immediate goal was not a grand harness architecture. It was to reduce testing confusion enough that real game work could continue.
+That goal is met well enough for now, even though a few cleanup edges remain.
 
 #### Current direction
 - stick to the symbolic/stateful direction from the parked harness note instead of drifting toward screenshot-first automation
@@ -134,17 +134,17 @@ So the next slice is a **small tactical harness/observability pass**, not the fu
   - artifact/log visibility
 - improve the testing path enough to unblock real game work, not enough to become a week-long harness theology project
 
-#### Current active sub-item
+#### Current result
 - [x] add one reliable artifact/log sink for board/base-AI snapshot replies during live probes (`show_board` / `show_job` now emit explicit `camp board reply` / `camp job reply` blocks into `config/llm_intent.log` when `DEBUG_LLM_INTENT_LOG` is enabled; plus live Basecamp hearing now appends `camp heard ... / utterance=...` lines for speech probes that actually reach the camp path)
-- [ ] make the live probe path explicit and reproducible for `say sentence` vs `yell a sentence` (current live runs still hit `say` more reliably than `yell`)
 - [x] make probe runs preserve their evidence class clearly instead of silently switching from GUI/live evidence to PTY/test evidence (the current ledger/test packet now explicitly distinguishes on-screen behavior, deterministic checks, and log visibility)
-- [ ] update the testing ledger once this slice can prove where a reply appeared (screen, log, or both); current state proves live camp-heard logging, but not yet end-to-end board-reply logging on the natural speech path
 - [x] record the practical startup truth for this save/profile: `game::load: Finalizing end` is too early as a live-input marker; this bed needs a much longer post-load settle before GUI probes are trustworthy
+- [ ] remaining tail, only if later needed: make the live probe path explicit and reproducible for `say sentence` vs `yell a sentence`
+- [ ] remaining tail, only if later needed: prove end-to-end where a natural-speech board reply lands (screen, log, or both)
 
 ### 4. Movement-system improvements
-**Status:** GREEN (queued behind harness observability slice, except for direct follow-up bugfixes)
+**Status:** GREEN — PRIMARY FINISH LINE
 
-This remains the next game-development stretch on `dev` once the immediate testing/probe friction stops wasting time.
+This is now the active game-development stretch on `dev` again.
 
 #### Current direction
 - replace the LLM-facing coordinate payload for local tactical movement with relative signed deltas instead of step spam
@@ -236,14 +236,6 @@ Keep it remembered; do not tackle it casually.
 ## Recommended implementation order (current reality)
 
 ### First
-Do the small harness observability / deterministic probe slice:
-- keep it tactical, not a grand harness rewrite
-- make live speech probes explicit about `say` vs `yell`
-- add one reliable artifact/log sink for board/base-AI snapshot replies
-- keep live behavior, deterministic tests, and artifact/log visibility as separate evidence classes
-- make future live probes reproducible enough that Schani does not have to rediscover the same testing failure mode every night
-
-### Second
 Improve the movement contract without erasing the existing system:
 - local tactical movement should replace step chains with relative signed deltas
 - overmap/job movement should use the same relative-delta idea where appropriate
@@ -253,15 +245,18 @@ Improve the movement contract without erasing the existing system:
 - add tests
 - avoid accidental behavioral regressions while changing only the LLM-facing coordinate expression
 
-### Third
+### Second
 Continue the richer Basecamp AI on `dev`:
 - deterministic-first command extraction
 - structured legal action tokens
 - deterministic execution of those tokens
 - richer snapshot/prompt handoff only when deterministic handling is insufficient
 
-### Fourth
+### Third
 Return to broader camp job types / deeper board QoL once the previous contracts stop moving.
+
+### Good-enough-for-now reference
+The small harness observability / deterministic probe slice is no longer the active finish line. Keep its remaining tail parked unless it directly blocks game work again.
 
 ### Parked reference
 The upstreamable deterministic camp-command slice is kept as reference material, not as the active queue.

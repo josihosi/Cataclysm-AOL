@@ -4,13 +4,9 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 
 ## Active finish line right now
 - [x] Continue actual `dev` development now that the upstream deterministic PR attempt is parked.
-- [x] Keep this queue aligned with `Plan.md`: the first active item is now the small harness observability / deterministic probe slice.
-- [x] Add one reliable artifact/log sink for board/base-AI snapshot replies during live probes (`show_board` / `show_job` now log explicit reply blocks to `config/llm_intent.log` when `DEBUG_LLM_INTENT_LOG` is enabled; live Basecamp hearing now also logs `camp heard ... / utterance=...` when the speech path actually reaches camp handling).
-- [ ] Make the live probe path explicit and reproducible for `say sentence` vs `yell a sentence`.
-- [x] Keep live behavior, deterministic tests, and artifact/log visibility separate in the testing flow so probe-method changes stop muddying conclusions.
-- [x] Update `TESTING.md` with the current proven state: live three-run Basecamp speech probes now log unique heard utterances, but natural-speech board replies still are not end-to-end proven in the logs.
-- [x] Record the real startup/probe constraint for this `dev` save: `game::load: Finalizing end` is too early; the bed needs a much longer post-load settle before GUI probes are trustworthy.
-- [ ] After this tactical harness slice is stable, return to the movement-system board-path mismatch: natural speech `show me the board` currently gives a concise on-screen board summary, while the richer `planner_move` + overmap snapshot block is wired into the structured/internal `show_board` handoff path. Decide which behavior is actually intended, then test *that* path honestly.
+- [x] Treat the small harness observability / deterministic probe slice as good enough for now: useful logging/settle improvements landed, and the remaining tail is parked unless it directly blocks game work again.
+- [ ] Return to the movement-system board-path mismatch: natural speech `show me the board` currently gives a concise on-screen board summary, while the richer `planner_move` + overmap snapshot block is wired into the structured/internal `show_board` handoff path. Decide which behavior is actually intended, then test *that* path honestly.
+- [ ] Once the intended product shape is explicit, prepare the next clean movement-system test packet without mixing live bark claims, deterministic formatter claims, and logging claims.
 
 ## PARKED reference â€” upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
@@ -24,7 +20,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
   - [x] ordered multi-word phrases beat generic noun fallbacks
 - [x] Prepare the small PR-friendly explanation/packaging pass once the code/test slice is stable.
 
-## GREEN next â€” movement system improvements
+## GREEN now â€” movement system improvements
 - [x] Replace local follower step-chain movement payloads (`E E E`, etc.) with a relative signed-delta destination contract while keeping the current pathing / target-tile behavior intact.
 - [x] Preserve the existing post-move state suffixes exactly:
   - `wait_here`
