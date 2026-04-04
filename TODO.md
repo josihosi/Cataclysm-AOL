@@ -39,7 +39,8 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
   - [x] `retry_blocked_jobs`
   - [x] `clear_archived_jobs`
 - [ ] When deterministic craft handling cannot complete alone, hand off a compact structured snapshot instead of forcing the LLM to rediscover deterministic facts.
-- [ ] Externalize Basecamp prompt/snapshot text into prompt files once the deterministic craft router and token grammar are stable enough to stop moving every ten minutes.
+- [x] Externalize the deterministic Basecamp craft-handoff snapshot into `data/llm_prompts` / `config/llm_prompts` so the structured handoff can be tuned without C++ edits.
+- [ ] Externalize any future Basecamp AI prompt text once a stable prompt contract exists, rather than hardcoding it in the camp flow.
 
 ## Agent testing / automation
 - [x] Compile touched objects/binaries after each meaningful slice.

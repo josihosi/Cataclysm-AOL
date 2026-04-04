@@ -1,0 +1,11 @@
+id={{request_id}}
+query={{query}}
+count={{count}}
+source={{source_utterance}}
+request={{request_subject}}
+recipe={{resolved_recipe}}
+status={{status}}
+approval={{approval_state}}
+worker={{worker}}
+blockers={{blockers}}
+next={{next_token}}

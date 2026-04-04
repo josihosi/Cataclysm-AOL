@@ -58,6 +58,7 @@
 #include "itype.h"
 #include "kill_tracker.h"
 #include "list.h"
+#include "llm_prompt_templates.h"
 #include "localized_comparator.h"
 #include "map.h"
 #include "map_iterator.h"
@@ -2447,6 +2448,26 @@ std::string camp_request_subject_for_display( const camp_llm_request &request,
     return subject;
 }
 
+static constexpr const char *basecamp_craft_handoff_snapshot_filename =
+    "basecamp_craft_handoff_snapshot.txt";
+static constexpr const char *llm_prompt_readme_filename = "README.txt";
+
+static std::string default_basecamp_craft_handoff_snapshot_template()
+{
+    return R"(id={{request_id}}
+query={{query}}
+count={{count}}
+source={{source_utterance}}
+request={{request_subject}}
+recipe={{resolved_recipe}}
+status={{status}}
+approval={{approval_state}}
+worker={{worker}}
+blockers={{blockers}}
+next={{next_token}}
+)";
+}
+
 std::string camp_request_handoff_snapshot( const camp_llm_request &request )
 {
     if( request.request_kind != "craft_request" ) {
@@ -2481,28 +2502,27 @@ std::string camp_request_handoff_snapshot( const camp_llm_request &request )
                                                   request.request_id ) :
                                    "none";
 
-    return string_format( "id=%1$d\n"
-                          "query=%2$s\n"
-                          "count=%3$d\n"
-                          "source=%4$s\n"
-                          "request=%5$s\n"
-                          "recipe=%6$s\n"
-                          "status=%7$s\n"
-                          "approval=%8$s\n"
-                          "worker=%9$s\n"
-                          "blockers=%10$s\n"
-                          "next=%11$s\n",
-                          request.request_id,
-                          query,
-                          request.requested_count,
-                          source_utterance,
-                          request_subject,
-                          resolved_recipe,
-                          request.status,
-                          request.approval_state,
-                          worker,
-                          blockers,
-                          next_token );
+    const std::string templ = llm_prompt_templates::load( basecamp_craft_handoff_snapshot_filename,
+                              default_basecamp_craft_handoff_snapshot_template(),
+    { "{{request_id}}", "{{query}}", "{{count}}", "{{source_utterance}}",
+      "{{request_subject}}", "{{resolved_recipe}}", "{{status}}",
+      "{{approval_state}}", "{{worker}}", "{{blockers}}", "{{next_token}}" },
+    { basecamp_craft_handoff_snapshot_filename, llm_prompt_readme_filename } );
+
+    return llm_prompt_templates::render( templ,
+    {
+        { "{{request_id}}", std::to_string( request.request_id ) },
+        { "{{query}}", query },
+        { "{{count}}", std::to_string( request.requested_count ) },
+        { "{{source_utterance}}", source_utterance },
+        { "{{request_subject}}", request_subject },
+        { "{{resolved_recipe}}", resolved_recipe },
+        { "{{status}}", request.status },
+        { "{{approval_state}}", request.approval_state },
+        { "{{worker}}", worker },
+        { "{{blockers}}", blockers },
+        { "{{next_token}}", next_token }
+    } );
 }
 
 static std::optional<parsed_camp_craft_order> parse_camp_craft_order_payload( std::string text )
