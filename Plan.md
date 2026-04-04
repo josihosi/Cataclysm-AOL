@@ -65,7 +65,7 @@ That remains the default until reality humiliates it again.
 ## Active status board
 
 ### 1. Basecamp AI completion on `dev`
-**Status:** GREEN (queued behind movement-system work, except for follow-up bugfixes)
+**Status:** GREEN — PRIMARY FINISH LINE
 
 This has been discussed deeply enough to proceed through completion.
 The overall structure is considered clear enough for autonomous work.
@@ -83,7 +83,15 @@ The overall structure is considered clear enough for autonomous work.
 - deterministic first-pass recognition for obviously structured camp commands
 - deterministic execution remains the legal/action spine
 - richer Basecamp AI on `dev` can sit on top of that spine instead of replacing it
-- eventually externalize prompt/snapshot text where that helps modding and iteration
+- keep the current Basecamp AI focused on crafting / existing camp behavior as it stands right now, not on launching broader in-game jobs through the LLM path yet
+- keep human-facing camp bark informal and survivor-like: no job numbers, no filing-cabinet tone, no faux military command-center voice
+- eventual prompt/snapshot growth can happen later, but today the finish line is to make the existing Basecamp AI feel right
+
+#### Current active sub-item
+- [ ] do one more bark pass on Basecamp craft / board / blocker replies so they sound like a loose apocalyptic camp, not a bureaucracy
+- [ ] remove or suppress job-number-forward phrasing from human-facing bark where possible
+- [ ] keep the richer overmap snapshot out of the short spoken bark path; for now, spoken replies stay concise/human
+- [x] follower NPC movement already uses the signed coordinate contract (`move=<dx>,<dy> <state>`) instead of the old `E E E N`-style step spam
 
 ---
 
@@ -142,9 +150,9 @@ That goal is met well enough for now, even though a few cleanup edges remain.
 - [x] prove end-to-end where a natural-speech board reply lands (at least one live `show me the board` probe is now confirmed in both places: on-screen message log bark and `config/llm_intent.log` artifact lines)
 
 ### 4. Movement-system improvements
-**Status:** GREEN — PRIMARY FINISH LINE
+**Status:** GREEN (queued behind the current Basecamp bark/feel pass)
 
-This is now the active game-development stretch on `dev` again.
+This remains important, but it is no longer the immediate finish line.
 
 #### Current direction
 - replace the LLM-facing coordinate payload for local tactical movement with relative signed deltas instead of step spam
@@ -166,8 +174,8 @@ The first structured Basecamp/planner-consumer slice now exists locally on `dev`
 - [x] fixed the stale/brittle overmap snapshot expectations in `88f2e3eeb7` (`Stabilize overmap snapshot formatter tests`) after Schani caught the uppercase-horde mismatch
 - [x] fixed the remaining structured-board row assertion that still assumed lowercase terrain letters after a forced fresh `cata_test` rebuild showed legitimate horde capitalization on the camp/road row too
 - [x] clarified the product shape: live natural speech `show me the board` / `what's on the board` should stay the concise human-facing bark path; the richer 5x5 overmap snapshot belongs in the LLM snapshot/prompt path when deterministic handling falls through to the LLM
-- [ ] next implementation step: inject the 5x5 overmap snapshot plus present-only legend into the real LLM snapshot path used when no deterministic craft/board route resolves the sentence
-- [ ] make sure the extended terrain-symbol list is handled correctly there too (`b`, `u`, `p`, `k`, `n` in addition to the core set)
+- [ ] later, when this movement/LLM path returns to the top of the queue: inject the 5x5 overmap snapshot plus present-only legend into the real LLM snapshot path used when no deterministic craft/board route resolves the sentence
+- [ ] later, when that path resumes: make sure the extended terrain-symbol list is handled correctly there too (`b`, `u`, `p`, `k`, `n` in addition to the core set)
 
 #### Next movement continuation
 - wire the overmap snapshot into the actual LLM prompt/snapshot assembly path, not into the short human-facing spoken bark

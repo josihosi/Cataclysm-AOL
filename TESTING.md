@@ -93,13 +93,14 @@ An item is not really "done" just because deterministic tests or Andi self-check
   - [x] `craft 5 bandages` stays deterministic blocked/no-crash and explains the resolved recipe/blocker clearly
   - [x] live craft-board replies still lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
 - [x] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
-- [ ] Review the movement-system / LLM-snapshot handoff on current HEAD and decide whether any broader agent-side smoke remains before Josef handoff:
+- [ ] Review the current Basecamp AI bark/feel pass on current HEAD and decide whether any broader agent-side smoke remains before Josef handoff:
   - [x] re-ran `make -j4 tests cataclysm-tiles`
   - [x] re-ran `./tests/cata_test "[camp][basecamp_ai]"`
   - [x] re-ran `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
   - [x] no new crash/debug-popup issue appeared
   - [x] product shape clarified: live spoken `show me the board` stays the concise board-summary bark path, while the richer planner snapshot belongs in the structured/internal / LLM snapshot path
-  - [ ] next real check is the LLM-side one: prove the 5x5 overmap snapshot plus present-only legend enters the prompt when deterministic handling falls through
+  - [ ] next real check is the human-facing one: verify the current bark pass sounds informal, camp-like, and free of job-number / filing-cabinet tone
+  - [ ] later, when the LLM-side path returns to the top of the queue: prove the 5x5 overmap snapshot plus present-only legend enters the prompt when deterministic handling falls through
 
 ### Spoken camp craft smoke packet (done by Schani)
 Use a camp with a bulletin board and at least one NPC who can plausibly craft.  Try these in normal play, not in a sterile lab if avoidable.
