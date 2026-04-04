@@ -65,7 +65,7 @@ That remains the default until reality humiliates it again.
 ## Active status board
 
 ### 1. Basecamp AI completion on `dev`
-**Status:** GREEN — PRIMARY FINISH LINE
+**Status:** JOSEF TESTING — PRIMARY FINISH LINE
 
 This has been discussed deeply enough to proceed through completion.
 The overall structure is considered clear enough for autonomous work.
@@ -88,9 +88,10 @@ The overall structure is considered clear enough for autonomous work.
 - eventual prompt/snapshot growth can happen later, but today the finish line is to make the existing Basecamp AI feel right
 
 #### Current active sub-item
-- [ ] do one more bark pass on Basecamp craft / board / blocker replies so they sound like a loose apocalyptic camp, not a bureaucracy
-- [ ] remove or suppress job-number-forward phrasing from human-facing bark where possible
-- [ ] keep the richer overmap snapshot out of the short spoken bark path; for now, spoken replies stay concise/human
+- [x] do one more bark pass on Basecamp craft / board / blocker replies so they sound like a loose apocalyptic camp, not a bureaucracy
+- [x] remove or suppress job-number-forward phrasing from human-facing bark where possible
+- [x] keep the richer overmap snapshot out of the short spoken bark path; for now, spoken replies stay concise/human
+- [ ] put the current bark pass in front of Josef for a short live tone/feel packet on craft / board / blocker replies
 - [x] follower NPC movement already uses the signed coordinate contract (`move=<dx>,<dy> <state>`) instead of the old `E E E N`-style step spam
 
 ---
@@ -150,7 +151,7 @@ That goal is met well enough for now, even though a few cleanup edges remain.
 - [x] prove end-to-end where a natural-speech board reply lands (at least one live `show me the board` probe is now confirmed in both places: on-screen message log bark and `config/llm_intent.log` artifact lines)
 
 ### 4. Movement-system improvements
-**Status:** GREEN (queued behind the current Basecamp bark/feel pass)
+**Status:** GREEN (queued behind the current Basecamp bark/feel pass and Locker Zone v1)
 
 This remains important, but it is no longer the immediate finish line.
 
@@ -207,6 +208,104 @@ This work should feed both follower movement cleanup and later Basecamp job-subf
 
 ---
 
+### 5. Locker Zone v1
+**Status:** GREEN later (next feature after the current Basecamp bark/feel pass)
+
+This is the next substantial Basecamp-management feature after the bark polish.
+The goal is not "fashion AI." The goal is camp-managed **loadout maintenance**:
+NPCs should periodically check a camp locker zone, compare what they are wearing/wielding against camp-approved categories, clean up duplicates, and equip a better set when an obvious upgrade exists.
+
+#### V1 scope
+Locker Zone v1 should stay deliberately narrow and useful:
+- one camp-wide locker policy, not per-NPC fashion profiles yet
+- one candidate zone containing approved loadout items
+- one best item per managed category
+- duplicate cleanup for managed categories
+- simple better/worse evaluation per category
+- periodic reevaluation via dirty-flag + cooldown, not constant churn
+- melee and ranged weapon slots included
+
+#### Managed categories for v1
+- underwear
+- socks
+- shoes
+- pants
+- shirt
+- vest
+- body armor
+- helmet
+- glasses
+- bag
+- melee weapon
+- ranged weapon
+
+#### Player control (v1)
+Use a camp-wide policy menu plus the physical locker zone supply.
+The menu should let the player enable/disable broad categories such as:
+- armor
+- bag
+- ranged weapon
+- glasses
+- etc.
+
+The locker zone contents remain the actual supply.
+So policy answers **what categories are allowed**, while the zone answers **what concrete items are available**.
+
+#### Trigger model
+Do not make NPCs reconsider clothes every few turns like nervous pigeons.
+Use a dirty-flag + cooldown model instead.
+Reevaluation should happen when one of these becomes true:
+- the NPC is missing a managed category
+- the player changes locker policy
+- the locker zone gains new eligible items
+- the NPC loses or drops important gear
+- a scheduled camp maintenance window / daily check occurs
+
+#### Selection rules (v1)
+- for each enabled category, keep at most one chosen item equipped/wielded
+- if the NPC has multiple equipped items in the same managed category, keep the best and remove the rest
+- if the NPC is missing a category, equip the best valid candidate from the locker zone
+- if the locker zone contains a meaningfully better candidate than the current item, upgrade
+- do not churn for tiny score differences
+- do not equip ranged weapons that are unusable in practice just because their headline stats look bigger
+
+#### Better-item evaluation (v1)
+Keep scoring simple and category-specific.
+Do not try to solve perfect universal outfit optimization yet.
+Examples:
+- body armor favors protection/coverage heavily
+- bags favor storage heavily
+- socks/shoes favor valid coverage/warmth/encumbrance sanity
+- melee weapons favor obvious usability/damage over junk
+- ranged weapons only count as strong candidates if ammo/reload reality makes them actually useful
+
+If a candidate conflicts with the already chosen set, skip it rather than doing heroic combinatorial outfit search.
+
+#### Explicit non-goals for v1
+- seasonal outfits
+- per-NPC loadout overrides
+- role/loadout presets
+- advanced layering solver
+- style/fashion preference logic
+- sending NPCs to arbitrary in-game jobs through this system
+
+#### Deterministic test picture for v1
+When this becomes active, the first tests should cover:
+- duplicate cleanup (e.g. two socks candidates/categories)
+- obvious upgrade selection (`jeans` -> `military cargo pants`-style cases)
+- disabled-category policy respected even when items are present
+- no-ammo / unusable gun not chosen as the "best" ranged weapon
+- cooldown/dirty-flag prevents constant reequip churn
+- category-missing trigger causes a reevaluation
+
+#### V2 / V3 are parked on purpose
+- **V2 parked:** presets / broader policy variants (light, armored, ranged, hauler, etc.)
+- **V3 parked:** seasonal dressing logic (winter coats/blankets, summer shorts/light wear) and per-NPC overrides
+
+Those are good ideas, but they should stay parked until Locker Zone v1 exists and survives contact with real play.
+
+---
+
 ## Discuss-before-implementation board
 
 ### Harness rework / in-engine driver API
@@ -244,23 +343,37 @@ Keep it remembered; do not tackle it casually.
 ## Recommended implementation order (current reality)
 
 ### First
-Improve the movement contract without erasing the existing system:
-- local tactical movement should replace step chains with relative signed deltas
-- overmap/job movement should use the same relative-delta idea where appropriate
-- current first concrete sub-item is the small overmap snapshot grid / present-only legend / terrain-symbol contract
-- keep `wait_here` / `hold_position`
-- keep deterministic pathing / target-tile logic
-- add tests
-- avoid accidental behavioral regressions while changing only the LLM-facing coordinate expression
+Finish the current Basecamp bark/feel pass:
+- keep human-facing camp replies informal, survivor-like, and non-bureaucratic
+- remove job-number-forward phrasing from bark where possible
+- preserve the existing deterministic craft/board behavior while making it sound more human
 
 ### Second
+Build Locker Zone v1:
+- one camp-wide locker policy
+- one locker zone supply
+- one best item per managed category
+- duplicate cleanup
+- simple category-specific upgrade logic
+- dirty-flag + cooldown reevaluation
+- deterministic tests before gameplay polish fantasies
+
+### Third
+Return to the movement contract work without erasing the existing system:
+- local tactical movement already uses relative signed deltas
+- overmap/job movement and the LLM-side 5x5 snapshot path can continue when this returns to the top of the queue
+- keep `wait_here` / `hold_position`
+- keep deterministic pathing / target-tile logic
+- avoid accidental behavioral regressions while changing only the LLM-facing coordinate expression
+
+### Fourth
 Continue the richer Basecamp AI on `dev`:
 - deterministic-first command extraction
 - structured legal action tokens
 - deterministic execution of those tokens
 - richer snapshot/prompt handoff only when deterministic handling is insufficient
 
-### Third
+### Fifth
 Return to broader camp job types / deeper board QoL once the previous contracts stop moving.
 
 ### Good-enough-for-now reference
