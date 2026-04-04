@@ -58,6 +58,7 @@
 #include "itype.h"
 #include "kill_tracker.h"
 #include "list.h"
+#include "llm_intent.h"
 #include "llm_prompt_templates.h"
 #include "localized_comparator.h"
 #include "map.h"
@@ -1643,17 +1644,7 @@ static std::string camp_request_summary( const camp_llm_request &request )
 
 static std::string camp_request_spoken_status( const camp_llm_request &request )
 {
-    std::string spoken = camp_request_summary( request );
-    if( request.status == "blocked" && !request.blockers.empty() ) {
-        spoken += string_format( _( " — blocker: %s" ), request.blockers.front() );
-    } else if( request.status == "in_progress" && request.eta_turn > calendar::turn ) {
-        spoken += string_format( _( " — ETA %s" ), to_string( request.eta_turn - calendar::turn ) );
-    } else if( request.status == "awaiting_approval" && request.approval_state == "suggested_auto" ) {
-        spoken += _( " — ready to launch; looks routine" );
-    } else if( request.status == "awaiting_approval" ) {
-        spoken += _( " — waiting on your approval" );
-    }
-    return spoken;
+    return basecamp_ai::camp_request_spoken_status_bark( request );
 }
 
 static void add_camp_request_bark( const npc &speaker, const std::string &text )
@@ -1662,6 +1653,27 @@ static void add_camp_request_bark( const npc &speaker, const std::string &text )
         return;
     }
     add_msg( _( "%1$s says, \"%2$s\"" ), speaker.disp_name(), text );
+}
+
+static void log_camp_request_heard( const npc &speaker, const std::string &utterance )
+{
+    if( utterance.empty() || !get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+        return;
+    }
+    llm_intent::log_event( string_format( "camp heard %1$s (%2$d)\nutterance=%3$s",
+                          speaker.disp_name(), speaker.getID().get_value(), utterance ) );
+}
+
+static void log_camp_request_reply( const npc &speaker, std::string_view utterance,
+                                    std::string_view reply_kind, const std::string &reply_text )
+{
+    if( reply_text.empty() || !get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+        return;
+    }
+    llm_intent::log_event( string_format(
+                              "camp %1$s reply %2$s (%3$d)\nheard=%4$s\nreply:\n%5$s",
+                              std::string( reply_kind ), speaker.disp_name(),
+                              speaker.getID().get_value(), std::string( utterance ), reply_text ) );
 }
 
 [[maybe_unused]] static std::string camp_request_queue_bark( const camp_llm_request &request )
@@ -1675,7 +1687,7 @@ static void add_camp_request_bark( const npc &speaker, const std::string &text )
                                      request.chosen_recipe_name != request.requested_item_query;
     if( !request.blockers.empty() ) {
         if( has_resolved_recipe ) {
-            return string_format( _( "Heard you.  %1$s matched %2$s, but it is blocked: %3$s" ),
+            return string_format( _( "Heard you.  %1$s matched %2$s, but it's blocked: %3$s" ),
                                   camp_request_bark_subject( request ), request.chosen_recipe_name,
                                   request.blockers.front() );
         }
@@ -1703,7 +1715,7 @@ static std::string camp_request_cancel_bark( const camp_llm_request &request )
 
 static std::string camp_request_clear_bark( const camp_llm_request &request )
 {
-    return string_format( _( "Cleared archived %s." ), camp_request_bark_subject( request ) );
+    return string_format( _( "Cleared old %s off the board." ), camp_request_bark_subject( request ) );
 }
 
 static std::string camp_request_not_archived_bark( const camp_llm_request &request )
@@ -1714,7 +1726,7 @@ static std::string camp_request_not_archived_bark( const camp_llm_request &reque
 
 static std::string camp_request_archived_bark( const camp_llm_request &request )
 {
-    return string_format( _( "%1$s is already archived as %2$s.  Clear it if you want it gone." ),
+    return string_format( _( "%1$s is already %2$s.  Clear it if you want it off the board." ),
                           camp_request_bark_subject( request ), camp_request_status_label( request ) );
 }
 
@@ -2512,6 +2524,7 @@ static constexpr const char *basecamp_board_handoff_snapshot_filename =
 static constexpr const char *basecamp_board_handoff_job_line_filename =
     "basecamp_board_handoff_job_line.txt";
 static constexpr const char *llm_prompt_readme_filename = "README.txt";
+static constexpr int basecamp_board_snapshot_radius = 2;
 
 static bool camp_request_is_archived_for_handoff( const camp_llm_request &request )
 {
@@ -2553,9 +2566,22 @@ next={{next_token}}
 static std::string default_basecamp_board_handoff_snapshot_template()
 {
     return R"(board=show_board
-active={{active_count}}
+{{planning_snapshot}}active={{active_count}}
 archived={{archived_count}}
 {{jobs}})";
+}
+
+static std::string basecamp_board_planning_snapshot( const tripoint_abs_omt &origin )
+{
+    std::string overmap_snapshot;
+    std::string error;
+    if( !format_overmap_snapshot( origin, basecamp_board_snapshot_radius, overmap_snapshot, error ) ) {
+        return string_format( "planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>\novermap=unavailable (%s)\n",
+                              error );
+    }
+
+    return string_format( "planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>\novermap:\n%s",
+                          overmap_snapshot );
 }
 
 static std::string default_basecamp_board_handoff_job_line_template()
@@ -2621,11 +2647,80 @@ std::string camp_request_handoff_snapshot( const camp_llm_request &request )
     } );
 }
 
-std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &requests )
+std::string camp_request_spoken_status_bark( const camp_llm_request &request )
+{
+    const bool include_matched_recipe = request.status == "blocked" &&
+                                        !request.chosen_recipe_name.empty() &&
+                                        request.chosen_recipe_name != request.requested_item_query;
+    const std::string subject = camp_request_subject_for_display( request, include_matched_recipe, true );
+
+    if( request.status == "blocked" ) {
+        if( !request.blockers.empty() ) {
+            return string_format( _( "%1$s is blocked — %2$s" ), subject, request.blockers.front() );
+        }
+        return string_format( _( "%s is blocked for now." ), subject );
+    }
+    if( request.status == "in_progress" ) {
+        std::string spoken = request.assigned_worker_name.empty() ?
+                             string_format( _( "%s is underway." ), subject ) :
+                             string_format( _( "%1$s is underway with %2$s." ), subject,
+                                     request.assigned_worker_name );
+        if( request.eta_turn > calendar::turn ) {
+            spoken += string_format( _( " ETA %s." ), to_string( request.eta_turn - calendar::turn ) );
+        }
+        return spoken;
+    }
+    if( request.status == "awaiting_approval" && request.approval_state == "suggested_auto" ) {
+        return string_format( _( "%s is pinned and looks routine." ), subject );
+    }
+    if( request.status == "awaiting_approval" ) {
+        return string_format( _( "%s is pinned, waiting on your go-ahead." ), subject );
+    }
+    if( request.status == "completed" ) {
+        return string_format( _( "%s is done." ), subject );
+    }
+    if( request.status == "cancelled" ) {
+        return string_format( _( "%s is cancelled." ), subject );
+    }
+    if( request.status.empty() ) {
+        return string_format( _( "%s is still on the board." ), subject );
+    }
+    return string_format( _( "%1$s is %2$s." ), subject, request.status );
+}
+
+std::string camp_board_status_bark( const std::vector<camp_llm_request> &requests )
+{
+    if( requests.empty() ) {
+        return _( "Board's empty." );
+    }
+
+    std::vector<std::string> active_subjects;
+    active_subjects.reserve( requests.size() );
+    int archived_requests = 0;
+    for( const camp_llm_request &request : requests ) {
+        if( camp_request_is_archived_for_handoff( request ) ) {
+            ++archived_requests;
+        } else {
+            active_subjects.push_back( camp_request_subject_for_display( request ) );
+        }
+    }
+
+    if( active_subjects.empty() ) {
+        return string_format( _( "Board's quiet — nothing live, %d old requests still hanging there." ),
+                              archived_requests );
+    }
+
+    return string_format( _( "Board's got %1$d live and %2$d old — %3$s." ),
+                          static_cast<int>( active_subjects.size() ), archived_requests,
+                          camp_request_subject_list( active_subjects ) );
+}
+
+static std::string camp_board_handoff_snapshot_impl( const std::optional<tripoint_abs_omt> &origin,
+        const std::vector<camp_llm_request> &requests )
 {
     const std::string board_templ = llm_prompt_templates::load( basecamp_board_handoff_snapshot_filename,
                                     default_basecamp_board_handoff_snapshot_template(),
-    { "{{active_count}}", "{{archived_count}}", "{{jobs}}" },
+    { "{{planning_snapshot}}", "{{active_count}}", "{{archived_count}}", "{{jobs}}" },
     { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
       basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
     const std::string job_templ = llm_prompt_templates::load( basecamp_board_handoff_job_line_filename,
@@ -2663,10 +2758,22 @@ std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &re
 
     return llm_prompt_templates::render( board_templ,
     {
+        { "{{planning_snapshot}}", origin.has_value() ? basecamp_board_planning_snapshot( *origin ) : std::string() },
         { "{{active_count}}", std::to_string( active_requests ) },
         { "{{archived_count}}", std::to_string( archived_requests ) },
         { "{{jobs}}", jobs.empty() ? "jobs=none\n" : jobs }
     } );
+}
+
+std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &requests )
+{
+    return camp_board_handoff_snapshot_impl( std::nullopt, requests );
+}
+
+std::string camp_board_handoff_snapshot( const tripoint_abs_omt &origin,
+        const std::vector<camp_llm_request> &requests )
+{
+    return camp_board_handoff_snapshot_impl( origin, requests );
 }
 
 static std::optional<parsed_camp_craft_order> parse_camp_craft_order_payload( std::string text )
@@ -3169,6 +3276,118 @@ bool format_overmap_movement_token( const tripoint_abs_omt &origin,
     return true;
 }
 
+struct overmap_snapshot_symbol {
+    char symbol = 'p';
+    const char *legend = "point of interest";
+};
+
+static bool overmap_snapshot_matches( const oter_id &terrain, std::string_view token )
+{
+    const std::string &type = terrain->get_type_id().str();
+    const std::string &id = terrain.id().str();
+    return string_starts_with( type, token ) || string_starts_with( id, token ) ||
+           type.find( token ) != std::string::npos || id.find( token ) != std::string::npos;
+}
+
+static overmap_snapshot_symbol classify_overmap_snapshot_tile( const tripoint_abs_omt &tile )
+{
+    if( const std::optional<basecamp *> camp = overmap_buffer.find_camp( tile.xy() );
+        camp && ( *camp )->camp_omt_pos() == tile ) {
+        return { 'c', "camp" };
+    }
+
+    const oter_id &terrain = overmap_buffer.ter( tile );
+    if( overmap_snapshot_matches( terrain, "bridge" ) ) {
+        return { 'b', "bridge" };
+    }
+    if( overmap_snapshot_matches( terrain, "road" ) || overmap_snapshot_matches( terrain, "trail" ) ) {
+        return { 'r', "road" };
+    }
+    if( overmap_snapshot_matches( terrain, "shore" ) || overmap_snapshot_matches( terrain, "riverbank" ) ||
+        overmap_snapshot_matches( terrain, "river_bank" ) ) {
+        return { 'n', "riverbank/shore" };
+    }
+    if( overmap_snapshot_matches( terrain, "lake" ) || overmap_snapshot_matches( terrain, "river" ) ||
+        overmap_snapshot_matches( terrain, "ocean" ) || overmap_snapshot_matches( terrain, "water" ) ||
+        overmap_snapshot_matches( terrain, "canal" ) ) {
+        return { 'w', "water" };
+    }
+    if( overmap_snapshot_matches( terrain, "swamp" ) ) {
+        return { 's', "swamp" };
+    }
+    if( overmap_snapshot_matches( terrain, "forest" ) || overmap_snapshot_matches( terrain, "woods" ) ) {
+        return { 't', "forest" };
+    }
+    if( overmap_snapshot_matches( terrain, "field" ) || overmap_snapshot_matches( terrain, "meadow" ) ||
+        overmap_snapshot_matches( terrain, "grass" ) ) {
+        return { 'f', "field" };
+    }
+    if( overmap_snapshot_matches( terrain, "house" ) || overmap_snapshot_matches( terrain, "cabin" ) ) {
+        return { 'h', "house" };
+    }
+    if( overmap_snapshot_matches( terrain, "shop" ) || overmap_snapshot_matches( terrain, "store" ) ) {
+        return { 'k', "shop" };
+    }
+    if( overmap_snapshot_matches( terrain, "apartment" ) || overmap_snapshot_matches( terrain, "office" ) ||
+        overmap_snapshot_matches( terrain, "school" ) || overmap_snapshot_matches( terrain, "hospital" ) ||
+        overmap_snapshot_matches( terrain, "garage" ) || overmap_snapshot_matches( terrain, "warehouse" ) ||
+        overmap_snapshot_matches( terrain, "church" ) || overmap_snapshot_matches( terrain, "station" ) ) {
+        return { 'u', "urban" };
+    }
+    return { 'p', "point of interest" };
+}
+
+bool format_overmap_snapshot( const tripoint_abs_omt &origin,
+                              int radius,
+                              std::string &snapshot,
+                              std::string &error )
+{
+    snapshot.clear();
+    error.clear();
+
+    if( radius < 1 || radius > 2 ) {
+        error = "Overmap snapshot radius must stay between 1 and 2 tiles.";
+        return false;
+    }
+
+    std::map<char, std::string> legend_entries;
+    bool saw_horde = false;
+
+    snapshot += "overmap snapshot centered on dx=0 dy=0 (+x east/right, +y north/up)\n";
+    snapshot += "      dx";
+    for( int dx = -radius; dx <= radius; ++dx ) {
+        snapshot += string_format( " %+d", dx );
+    }
+    snapshot += "\n";
+
+    for( int dy = radius; dy >= -radius; --dy ) {
+        snapshot += string_format( "dy=%+d", dy );
+        for( int dx = -radius; dx <= radius; ++dx ) {
+            const tripoint_abs_omt tile( origin.x() + dx, origin.y() - dy, origin.z() );
+            const overmap_snapshot_symbol base = classify_overmap_snapshot_tile( tile );
+            char rendered_symbol = base.symbol;
+            if( std::isalpha( static_cast<unsigned char>( rendered_symbol ) ) &&
+                overmap_buffer.get_horde_size( tile ) > 0 ) {
+                rendered_symbol = static_cast<char>( std::toupper( static_cast<unsigned char>( rendered_symbol ) ) );
+                saw_horde = true;
+            }
+            legend_entries.emplace( base.symbol, base.legend );
+            snapshot += string_format( "  %c", rendered_symbol );
+        }
+        snapshot += "\n";
+    }
+
+    snapshot += "legend:\n";
+    for( const std::pair<const char, std::string> &entry : legend_entries ) {
+        snapshot += string_format( "  %c %s\n", entry.first, entry.second );
+    }
+    if( saw_horde ) {
+        snapshot += "  uppercase = horde present\n";
+    }
+
+    return true;
+}
+
 } // namespace basecamp_ai
 
 namespace
@@ -3584,6 +3803,8 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return false;
     }
 
+    log_camp_request_heard( listener, utterance );
+
     const auto handle_craft_order = [&]( const basecamp_ai::parsed_camp_craft_order &parsed ) {
         const std::unordered_set<recipe_id> known_camp_recipes = recipe_deck_all();
         const std::unordered_set<recipe_id> &search_recipes = all_camp_craft_recipe_ids();
@@ -3709,8 +3930,8 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         if( launch_ids.empty() ) {
             add_camp_request_bark( listener,
                                    retrying_blocked ?
-                                   _( "Nothing on the board is blocked for a retry." ) :
-                                   _( "Nothing on the board is ready to launch." ) );
+                                   _( "Nothing's sitting blocked for another try." ) :
+                                   _( "Nothing's ready to start." ) );
             return true;
         }
 
@@ -3723,11 +3944,11 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         } );
         add_camp_request_bark( listener,
                                retrying_blocked ?
-                               string_format( _( "Retried the blocked pile: started %1$d, still blocked %2$d, pinned %3$d." ),
+                               string_format( _( "Went through the blocked pile: started %1$d, still stuck %2$d, left pinned %3$d." ),
                                        static_cast<int>( launch_result.started.size() ),
                                        static_cast<int>( launch_result.blocked.size() ),
                                        static_cast<int>( launch_result.pinned.size() ) ) :
-                               string_format( _( "Worked through the board: started %1$d, blocked %2$d, still pinned %3$d." ),
+                               string_format( _( "Went through the board: started %1$d, hit blockers on %2$d, left pinned %3$d." ),
                                        static_cast<int>( launch_result.started.size() ),
                                        static_cast<int>( launch_result.blocked.size() ),
                                        static_cast<int>( launch_result.pinned.size() ) ) );
@@ -3743,9 +3964,9 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         const int cleared = static_cast<int>( before - camp_requests.size() );
         if( cleared > 0 ) {
             add_camp_request_bark( listener,
-                                   string_format( _( "Cleared %d archived crafting requests." ), cleared ) );
+                                   string_format( _( "Cleared %d old crafting requests off the board." ), cleared ) );
         } else {
-            add_camp_request_bark( listener, _( "No archived crafting requests to clear." ) );
+            add_camp_request_bark( listener, _( "No old crafting requests cluttering the board." ) );
         }
         return true;
     };
@@ -3753,7 +3974,10 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
     if( const std::optional<basecamp_ai::parsed_camp_job_token> structured_job =
             basecamp_ai::parse_structured_camp_job_token( utterance ) ) {
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::show_board ) {
-            add_camp_request_bark( listener, basecamp_ai::camp_board_handoff_snapshot( camp_requests ) );
+            const std::string board_reply =
+                basecamp_ai::camp_board_handoff_snapshot( camp_omt_pos(), camp_requests );
+            add_camp_request_bark( listener, board_reply );
+            log_camp_request_reply( listener, utterance, "board", board_reply );
             return true;
         }
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::launch_ready_jobs ) {
@@ -3774,7 +3998,9 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         }
 
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::show_job ) {
-            add_camp_request_bark( listener, basecamp_ai::camp_request_handoff_snapshot( *request ) );
+            const std::string job_reply = basecamp_ai::camp_request_handoff_snapshot( *request );
+            add_camp_request_bark( listener, job_reply );
+            log_camp_request_reply( listener, utterance, "job", job_reply );
             return true;
         }
 
@@ -3825,31 +4051,8 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
 
     if( const std::optional<basecamp_ai::parsed_camp_request_reference> status_query =
             basecamp_ai::parse_heard_camp_status_query( utterance ) ) {
-        if( camp_requests.empty() ) {
-            add_camp_request_bark( listener, _( "Board's empty." ) );
-            return true;
-        }
         if( status_query->all_requests ) {
-            std::vector<std::string> active_subjects;
-            active_subjects.reserve( camp_requests.size() );
-            int archived_requests = 0;
-            for( const camp_llm_request &request : camp_requests ) {
-                if( request.status == "completed" || request.status == "cancelled" ) {
-                    archived_requests++;
-                } else {
-                    active_subjects.push_back( camp_request_subject( request ) );
-                }
-            }
-            if( active_subjects.empty() ) {
-                add_camp_request_bark( listener,
-                                       string_format( _( "Board says nothing active, %d archived." ),
-                                               archived_requests ) );
-            } else {
-                add_camp_request_bark( listener,
-                                       string_format( _( "Board lists %1$d active, %2$d archived — %3$s." ),
-                                               static_cast<int>( active_subjects.size() ), archived_requests,
-                                               camp_request_subject_list( active_subjects ) ) );
-            }
+            add_camp_request_bark( listener, basecamp_ai::camp_board_status_bark( camp_requests ) );
             return true;
         }
 
