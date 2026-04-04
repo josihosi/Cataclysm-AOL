@@ -87,7 +87,7 @@ The overall structure is considered clear enough for autonomous work.
 ---
 
 ### 2. Upstreamable deterministic PR package
-**Status:** GREEN — PRIMARY FINISH LINE
+**Status:** JOSEF TESTING — PRIMARY FINISH LINE
 
 This is the public-facing slice that should be kept small, sober, and mergeable with upstream `cdda-master`.
 
@@ -113,6 +113,18 @@ Do not treat "agent tested" as the same thing as "finished" when Schani review o
 - deterministic craft/job request handling
 - deterministic parsing improvements that stand on their own
 - tests
+
+#### Current close-out state
+The spoken camp-craft deterministic close-out is now past the code/test/Schani-smoke gate:
+- clean stamped validation head: `311c7ab1b7`
+- behavior-bearing code: `696f5c8b61`
+- live `dev` / `Sandy Creek` trio is satisfactory:
+  - `craft 5 makeshift bandages` pins cleanly
+  - `craft boiled` clarifies cleanly
+  - `craft 5 bandages` blocks cleanly with the real blocker
+- no crash / no debug-popup nonsense reproduced
+
+So the next gate is Josef final smoke/signoff, not more agent archaeology on the same deterministic spoken-craft sub-item.
 
 #### Upstream social constraint
 CDDA contributors are not generally enthusiastic about AI-generated code, which is a reasonable thing to dislike.

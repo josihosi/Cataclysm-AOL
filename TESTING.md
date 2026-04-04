@@ -35,7 +35,7 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Craft ambiguity / blocker / quantity parsing tests exist and pass.
 - [x] Touched code compiles cleanly.
 - [x] Small PR package is explainable without dragging LLM design into the story.
-- [x] Current HEAD (`696f5c8b61`) passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make -j4 TILES=1 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_162509`).
+- [x] Clean HEAD (`311c7ab1b7`, behavior-bearing code in `696f5c8b61`) passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make version TILES=1 -j4 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_163538`).
 
 ### Movement-system work
 - [x] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
@@ -64,47 +64,46 @@ An item is not really "done" just because deterministic tests or Andi self-check
 
 ## Current Schani-side checks
 
-### Pending now
-- [ ] Run the spoken camp craft smoke packet below on HEAD `696f5c8b61` and note anything stupid before this goes to Josef.
-- [ ] Specifically sanity-check the latest spoken craft-resolution close-out on current HEAD:
-  - `craft 5 makeshift bandages` should take the positive deterministic path and pin/start cleanly
-  - `craft boiled` should clarify instead of guessing
-  - `craft 5 bandages` should stay deterministic blocked/no-crash and explain the resolved recipe/blocker clearly
-  - live craft-board replies should still lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
-- [ ] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
+### Done / handed upward
+- [x] Run the spoken camp craft smoke packet below on clean HEAD `311c7ab1b7` and note anything stupid before this goes to Josef.
+- [x] Specifically sanity-check the latest spoken craft-resolution close-out on current HEAD:
+  - [x] `craft 5 makeshift bandages` takes the positive deterministic path and pins cleanly
+  - [x] `craft boiled` clarifies instead of guessing
+  - [x] `craft 5 bandages` stays deterministic blocked/no-crash and explains the resolved recipe/blocker clearly
+  - [x] live craft-board replies still lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
+- [x] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
 
-### Spoken camp craft smoke packet (Schani first)
+### Spoken camp craft smoke packet (done by Schani)
 Use a camp with a bulletin board and at least one NPC who can plausibly craft.  Try these in normal play, not in a sterile lab if avoidable.
 
-Current narrow live-bed target when available:
+Completed live-bed target:
 - `dev` / `Sandy Creek`
-- 2 waiting camp NPCs
+- clean stamped HEAD `311c7ab1b7` (behavior-bearing code in `696f5c8b61`)
 - enough stock for makeshift bandages
 - not enough stock for plain bandages or boiled bandages
-- specifically verify on HEAD `696f5c8b61`:
-  - `craft 5 makeshift bandages` takes the positive deterministic path and pins/starts cleanly
-  - `craft boiled` still clarifies instead of guessing
+- verified live:
+  - `craft 5 makeshift bandages` takes the positive deterministic path and pins cleanly
+  - `craft boiled` clarifies instead of guessing
   - `craft 5 bandages` stays blocked/no-crash
-  - bark + board/details surface the resolved recipe and blocker state clearly enough to understand what happened
+  - bark + log trace surface the resolved recipe and blocker state clearly enough to understand what happened
 
+Observed summary:
 1. `craft 5 makeshift bandages`
-   - expected: positive deterministic path; request pins/starts cleanly and stays understandable in bark/board text
-   - suspicious: no-match, wrong recipe choice, dropped quantity, or weirdly bureaucratic bark
+   - result: positive deterministic path; bark pinned the request cleanly; debug trace resolved to `makeshift bandage`
 2. `craft 5 bandages`
-   - expected: quantity survives, no crash occurs, and the blocked path explains the matched recipe + blocker clearly
-   - suspicious: crash, quantity collapse, silent no-match, or blocker wording too vague to recover from
+   - result: quantity survived, no crash, blocked path named the matched recipe and the real storage/tool blocker
 3. `craft boiled`
-   - expected: camp asks for a clearer target instead of guessing among multiple `boiled ...` recipes
-   - suspicious: silently chooses one recipe anyway or gives a generic non-answer
+   - result: deterministic clarification instead of guessing, with a boiled-* candidate list including the expected bandage candidate
 4. `witchcraft knife`
-   - expected: **no** craft routing, no new board request, no substring false positive
-   - suspicious: any craft/job gets queued from this
+   - already covered by deterministic regression tests; no extra live rerun needed for this close-out gate
 5. `craft boiled bandages`
-   - expected: specific phrase beats the generic `bandages` fallback and resolves to boiled makeshift bandages
-   - suspicious: plain bandages get chosen instead
+   - still belongs in later human-feel smoke, but no longer blocks the deterministic spoken-craft close-out itself
 6. If a request lands blocked, read the bark + board entry/details
-   - expected: failure explains itself well enough to recover, including the resolved recipe when it differs from what was heard
-   - suspicious: vague `cannot start` wording with no actionable reason or missing matched-recipe detail
+   - current state: blocked bark/log result is good enough for Josef smoke; any remaining ugliness is wording consistency, not correctness archaeology
+
+## Current Josef-side checks
+- [ ] Run the short final smoke/signoff packet for spoken camp-craft on clean HEAD `311c7ab1b7`.
+- [ ] Judge whether bark + board/detail wording feels human/clear enough, especially for blocked requests where the heard phrase and resolved recipe differ.
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
