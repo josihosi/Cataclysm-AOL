@@ -58,7 +58,6 @@
 #include "itype.h"
 #include "kill_tracker.h"
 #include "list.h"
-#include "llm_prompt_templates.h"
 #include "localized_comparator.h"
 #include "map.h"
 #include "map_iterator.h"
@@ -1831,10 +1830,6 @@ static std::string camp_request_details( const camp_llm_request &request )
             details += string_format( "- %s\n", blocker );
         }
     }
-    if( const std::string handoff = basecamp_ai::camp_request_handoff_snapshot( request ); !handoff.empty() ) {
-        details += _( "Deterministic handoff:\n" );
-        details += handoff;
-    }
     if( !request.notes.empty() ) {
         details += _( "Recent notes:\n" );
         const size_t start = request.notes.size() > 4 ? request.notes.size() - 4 : 0;
@@ -2503,170 +2498,6 @@ std::string camp_request_subject_for_display( const camp_llm_request &request,
     }
 
     return subject;
-}
-
-static constexpr const char *basecamp_craft_handoff_snapshot_filename =
-    "basecamp_craft_handoff_snapshot.txt";
-static constexpr const char *basecamp_board_handoff_snapshot_filename =
-    "basecamp_board_handoff_snapshot.txt";
-static constexpr const char *basecamp_board_handoff_job_line_filename =
-    "basecamp_board_handoff_job_line.txt";
-static constexpr const char *llm_prompt_readme_filename = "README.txt";
-
-static bool camp_request_is_archived_for_handoff( const camp_llm_request &request )
-{
-    return request.status == "completed" || request.status == "cancelled";
-}
-
-static std::string camp_request_next_token( const camp_llm_request &request )
-{
-    if( request.request_id <= 0 ) {
-        return "none";
-    }
-    return string_format( camp_request_is_archived_for_handoff( request ) ? "delete_job=%d" : "job=%d",
-                          request.request_id );
-}
-
-static std::string camp_request_details_token( const camp_llm_request &request )
-{
-    return request.request_id > 0 ? string_format( "show_job=%d", request.request_id ) : "none";
-}
-
-static std::string default_basecamp_craft_handoff_snapshot_template()
-{
-    return R"(board=show_board
-details={{details_token}}
-id={{request_id}}
-query={{query}}
-count={{count}}
-source={{source_utterance}}
-request={{request_subject}}
-recipe={{resolved_recipe}}
-status={{status}}
-approval={{approval_state}}
-worker={{worker}}
-blockers={{blockers}}
-next={{next_token}}
-)";
-}
-
-static std::string default_basecamp_board_handoff_snapshot_template()
-{
-    return R"(board=show_board
-active={{active_count}}
-archived={{archived_count}}
-{{jobs}})";
-}
-
-static std::string default_basecamp_board_handoff_job_line_template()
-{
-    return R"(job={{job_id}} subject={{request_subject}} status={{status}} approval={{approval_state}} worker={{worker}} details={{details_token}} next={{next_token}}
-)";
-}
-
-std::string camp_request_handoff_snapshot( const camp_llm_request &request )
-{
-    if( request.request_kind != "craft_request" ) {
-        return std::string();
-    }
-
-    const auto join_fields = []( const std::vector<std::string> &parts ) {
-        std::string joined;
-        for( size_t idx = 0; idx < parts.size(); ++idx ) {
-            if( idx > 0 ) {
-                joined += "; ";
-            }
-            joined += parts[idx];
-        }
-        return joined;
-    };
-
-    const std::string query = request.requested_item_query.empty() ? "none" :
-                              request.requested_item_query;
-    const std::string source_utterance = request.source_utterance.empty() ? "none" :
-                                         request.source_utterance;
-    const std::string request_subject = camp_request_subject_for_display( request );
-    const std::string resolved_recipe = request.chosen_recipe_name.empty() ? "none" :
-                                        request.chosen_recipe_name;
-    const std::string worker = request.assigned_worker_name.empty() ? "none" :
-                               request.assigned_worker_name;
-    const std::string blockers = request.blockers.empty() ? "none" :
-                                 join_fields( request.blockers );
-    const std::string details_token = camp_request_details_token( request );
-    const std::string next_token = camp_request_next_token( request );
-
-    const std::string templ = llm_prompt_templates::load( basecamp_craft_handoff_snapshot_filename,
-                              default_basecamp_craft_handoff_snapshot_template(),
-    { "{{request_id}}", "{{details_token}}", "{{query}}", "{{count}}",
-      "{{source_utterance}}", "{{request_subject}}", "{{resolved_recipe}}",
-      "{{status}}", "{{approval_state}}", "{{worker}}", "{{blockers}}",
-      "{{next_token}}" },
-    { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
-      basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
-
-    return llm_prompt_templates::render( templ,
-    {
-        { "{{request_id}}", std::to_string( request.request_id ) },
-        { "{{details_token}}", details_token },
-        { "{{query}}", query },
-        { "{{count}}", std::to_string( request.requested_count ) },
-        { "{{source_utterance}}", source_utterance },
-        { "{{request_subject}}", request_subject },
-        { "{{resolved_recipe}}", resolved_recipe },
-        { "{{status}}", request.status },
-        { "{{approval_state}}", request.approval_state },
-        { "{{worker}}", worker },
-        { "{{blockers}}", blockers },
-        { "{{next_token}}", next_token }
-    } );
-}
-
-std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &requests )
-{
-    const std::string board_templ = llm_prompt_templates::load( basecamp_board_handoff_snapshot_filename,
-                                    default_basecamp_board_handoff_snapshot_template(),
-    { "{{active_count}}", "{{archived_count}}", "{{jobs}}" },
-    { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
-      basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
-    const std::string job_templ = llm_prompt_templates::load( basecamp_board_handoff_job_line_filename,
-                                  default_basecamp_board_handoff_job_line_template(),
-    { "{{job_id}}", "{{request_subject}}", "{{status}}", "{{approval_state}}",
-      "{{worker}}", "{{details_token}}", "{{next_token}}" },
-    { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
-      basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
-
-    int active_requests = 0;
-    int archived_requests = 0;
-    std::string jobs;
-    for( const camp_llm_request &request : requests ) {
-        if( request.request_kind != "craft_request" ) {
-            continue;
-        }
-
-        if( camp_request_is_archived_for_handoff( request ) ) {
-            ++archived_requests;
-        } else {
-            ++active_requests;
-        }
-
-        jobs += llm_prompt_templates::render( job_templ,
-        {
-            { "{{job_id}}", std::to_string( request.request_id ) },
-            { "{{request_subject}}", camp_request_subject_for_display( request, true ) },
-            { "{{status}}", request.status },
-            { "{{approval_state}}", request.approval_state },
-            { "{{worker}}", request.assigned_worker_name.empty() ? "none" : request.assigned_worker_name },
-            { "{{details_token}}", camp_request_details_token( request ) },
-            { "{{next_token}}", camp_request_next_token( request ) }
-        } );
-    }
-
-    return llm_prompt_templates::render( board_templ,
-    {
-        { "{{active_count}}", std::to_string( active_requests ) },
-        { "{{archived_count}}", std::to_string( archived_requests ) },
-        { "{{jobs}}", jobs.empty() ? "jobs=none\n" : jobs }
-    } );
 }
 
 static std::optional<parsed_camp_craft_order> parse_camp_craft_order_payload( std::string text )
@@ -3753,7 +3584,31 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
     if( const std::optional<basecamp_ai::parsed_camp_job_token> structured_job =
             basecamp_ai::parse_structured_camp_job_token( utterance ) ) {
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::show_board ) {
-            add_camp_request_bark( listener, basecamp_ai::camp_board_handoff_snapshot( camp_requests ) );
+            if( camp_requests.empty() ) {
+                add_camp_request_bark( listener, _( "Board's empty." ) );
+                return true;
+            }
+
+            std::vector<std::string> active_subjects;
+            active_subjects.reserve( camp_requests.size() );
+            int archived_requests = 0;
+            for( const camp_llm_request &request : camp_requests ) {
+                if( request.status == "completed" || request.status == "cancelled" ) {
+                    archived_requests++;
+                } else {
+                    active_subjects.push_back( camp_request_subject( request ) );
+                }
+            }
+            if( active_subjects.empty() ) {
+                add_camp_request_bark( listener,
+                                       string_format( _( "Board says nothing active, %d archived." ),
+                                               archived_requests ) );
+            } else {
+                add_camp_request_bark( listener,
+                                       string_format( _( "Board lists %1$d active, %2$d archived — %3$s." ),
+                                               static_cast<int>( active_subjects.size() ), archived_requests,
+                                               camp_request_subject_list( active_subjects ) ) );
+            }
             return true;
         }
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::launch_ready_jobs ) {
@@ -3774,7 +3629,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         }
 
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::show_job ) {
-            add_camp_request_bark( listener, basecamp_ai::camp_request_handoff_snapshot( *request ) );
+            add_camp_request_bark( listener, camp_request_spoken_status( *request ) );
             return true;
         }
 

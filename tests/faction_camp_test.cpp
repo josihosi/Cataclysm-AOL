@@ -163,9 +163,7 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
 }
 TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
-    using basecamp_ai::camp_board_handoff_snapshot;
     using basecamp_ai::camp_craft_resolution_outcome;
-    using basecamp_ai::camp_request_handoff_snapshot;
     using basecamp_ai::camp_request_subject_for_display;
     using basecamp_ai::camp_job_token_kind;
     using basecamp_ai::collect_archived_camp_request_ids;
@@ -636,95 +634,6 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         const camp_llm_request request{ .request_id = 9 };
 
         CHECK( camp_request_subject_for_display( request, false, true ) == "crafting request (#9)" );
-    }
-
-    SECTION( "craft request handoff snapshot keeps stable request facts plus board/detail/next tokens" ) {
-        const camp_llm_request request{
-            .request_id = 7,
-            .source_utterance = "craft 5 bandages",
-            .requested_item_query = "bandages",
-            .requested_count = 5,
-            .chosen_recipe_name = "sterile bandage",
-            .status = "blocked",
-            .approval_state = "not_needed",
-            .blockers = { "No stationed worker can take this recipe right now." }
-        };
-
-        CHECK( camp_request_handoff_snapshot( request ) ==
-               "board=show_board\n"
-               "details=show_job=7\n"
-               "id=7\n"
-               "query=bandages\n"
-               "count=5\n"
-               "source=craft 5 bandages\n"
-               "request=5 × bandages\n"
-               "recipe=sterile bandage\n"
-               "status=blocked\n"
-               "approval=not_needed\n"
-               "worker=none\n"
-               "blockers=No stationed worker can take this recipe right now.\n"
-               "next=job=7\n" );
-    }
-
-    SECTION( "craft request handoff snapshot flips archived jobs to delete tokens" ) {
-        const camp_llm_request request{
-            .request_id = 9,
-            .requested_item_query = "bandages",
-            .requested_count = 2,
-            .chosen_recipe_name = "bandages",
-            .status = "completed",
-            .approval_state = "approved",
-            .assigned_worker_name = "Bruna"
-        };
-
-        CHECK( camp_request_handoff_snapshot( request ) ==
-               "board=show_board\n"
-               "details=show_job=9\n"
-               "id=9\n"
-               "query=bandages\n"
-               "count=2\n"
-               "source=none\n"
-               "request=2 × bandages\n"
-               "recipe=bandages\n"
-               "status=completed\n"
-               "approval=approved\n"
-               "worker=Bruna\n"
-               "blockers=none\n"
-               "next=delete_job=9\n" );
-    }
-
-    SECTION( "board handoff snapshot summarizes active and archived jobs with detail tokens" ) {
-        const std::vector<camp_llm_request> requests = {
-            camp_llm_request{ .request_id = 7, .requested_item_query = "bandages", .requested_count = 5, .chosen_recipe_name = "sterile bandage", .status = "blocked", .approval_state = "not_needed" },
-            camp_llm_request{ .request_id = 8, .requested_item_query = "knife", .chosen_recipe_name = "knife", .status = "in_progress", .approval_state = "approved", .assigned_worker_name = "Bruna" },
-            camp_llm_request{ .request_id = 9, .requested_item_query = "bandages", .requested_count = 2, .chosen_recipe_name = "bandages", .status = "completed", .approval_state = "approved", .assigned_worker_name = "Cara" }
-        };
-
-        CHECK( camp_board_handoff_snapshot( requests ) ==
-               "board=show_board\n"
-               "active=2\n"
-               "archived=1\n"
-               "job=7 subject=5 × bandages (matched sterile bandage) status=blocked approval=not_needed worker=none details=show_job=7 next=job=7\n"
-               "job=8 subject=knife status=in_progress approval=approved worker=Bruna details=show_job=8 next=job=8\n"
-               "job=9 subject=2 × bandages status=completed approval=approved worker=Cara details=show_job=9 next=delete_job=9\n" );
-    }
-
-    SECTION( "board handoff snapshot stays explicit when the board is empty" ) {
-        CHECK( camp_board_handoff_snapshot( {} ) ==
-               "board=show_board\n"
-               "active=0\n"
-               "archived=0\n"
-               "jobs=none\n" );
-    }
-
-    SECTION( "non craft requests do not emit craft handoff snapshots" ) {
-        const camp_llm_request request{
-            .request_kind = "camp_upgrade",
-            .request_id = 3,
-            .status = "awaiting_approval"
-        };
-
-        CHECK( camp_request_handoff_snapshot( request ).empty() );
     }
 
     SECTION( "craft recall matching prefers the assigned worker id over the name" ) {
