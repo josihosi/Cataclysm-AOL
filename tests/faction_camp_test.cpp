@@ -181,6 +181,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::parse_structured_camp_job_token;
     using basecamp_ai::parsed_overmap_movement_intent;
     using basecamp_ai::resolve_camp_craft_query;
+    using basecamp_ai::resolve_overmap_movement_target;
     using basecamp_ai::score_camp_recipe_query;
 
     SECTION( "craft orders parse quantity words and direct object" ) {
@@ -608,6 +609,23 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( error == "Overmap move token must use 'stay' or 'move_omt dx=<signed_int> dy=<signed_int>'." );
         CHECK( intent.stay );
         CHECK( intent.delta == point_rel_omt::zero );
+    }
+
+    SECTION( "overmap movement resolver keeps stay in place and uses the shared signed axis convention" ) {
+        const tripoint_abs_omt origin( 10, 20, 0 );
+
+        CHECK( resolve_overmap_movement_target( origin,
+                                                parsed_overmap_movement_intent{} ) == origin );
+
+        parsed_overmap_movement_intent southeast;
+        southeast.stay = false;
+        southeast.delta = point_rel_omt( 4, -2 );
+        CHECK( resolve_overmap_movement_target( origin, southeast ) == tripoint_abs_omt( 14, 22, 0 ) );
+
+        parsed_overmap_movement_intent northwest;
+        northwest.stay = false;
+        northwest.delta = point_rel_omt( -1, 3 );
+        CHECK( resolve_overmap_movement_target( origin, northwest ) == tripoint_abs_omt( 9, 17, 0 ) );
     }
 
     SECTION( "craft router prefers specific phrase matches over generic noun matches" ) {
