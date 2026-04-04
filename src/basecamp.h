@@ -218,6 +218,8 @@ struct camp_request_match_result {
 struct camp_craft_recipe_match {
     std::vector<recipe_id> recipe_ids;
     std::vector<std::string> subjects;
+    std::vector<std::string> score_notes;
+    std::string fallback_query;
     int score = 0;
 };
 
@@ -234,9 +236,17 @@ struct resolved_camp_craft_recipe {
     camp_craft_recipe_candidate candidate;
 };
 
+enum class camp_craft_resolution_outcome {
+    MATCH_START,
+    MATCH_BLOCKED,
+    MATCH_AMBIGUOUS,
+    NO_MATCH,
+};
+
 struct camp_craft_resolution {
     camp_craft_recipe_match match;
     std::optional<resolved_camp_craft_recipe> choice;
+    camp_craft_resolution_outcome outcome = camp_craft_resolution_outcome::NO_MATCH;
 };
 
 std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance );
