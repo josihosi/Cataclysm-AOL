@@ -116,12 +116,15 @@ Do not treat "agent tested" as the same thing as "finished" when Schani review o
 
 #### Current close-out state
 The spoken camp-craft deterministic close-out is now past the code/test/Schani-smoke gate:
-- clean stamped validation head: `311c7ab1b7`
-- behavior-bearing code: `696f5c8b61`
+- Schani live-smoke head: `311c7ab1b7`
+- current gameplay signoff target: `4a39c70ac7`
+- main behavior-bearing fix: `696f5c8b61`
+- tiny follow-up polish since the smoke head: `1df9e378c8` trims the duplicate-period blocked-bark punctuation
 - live `dev` / `Sandy Creek` trio is satisfactory:
   - `craft 5 makeshift bandages` pins cleanly
   - `craft boiled` clarifies cleanly
   - `craft 5 bandages` blocks cleanly with the real blocker
+- current signoff target `4a39c70ac7` re-passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make version TILES=1 -j4 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_171141`)
 - no crash / no debug-popup nonsense reproduced
 
 So the next gate is Josef final smoke/signoff, not more agent archaeology on the same deterministic spoken-craft sub-item.

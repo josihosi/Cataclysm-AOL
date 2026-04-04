@@ -35,7 +35,8 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Craft ambiguity / blocker / quantity parsing tests exist and pass.
 - [x] Touched code compiles cleanly.
 - [x] Small PR package is explainable without dragging LLM design into the story.
-- [x] Clean HEAD (`311c7ab1b7`, behavior-bearing code in `696f5c8b61`) passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make version TILES=1 -j4 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_163538`).
+- [x] Schani smoke baseline `311c7ab1b7` (main behavior fix `696f5c8b61`) passed the earlier fresh validation packet and live spoken-craft trio.
+- [x] Gameplay signoff target `4a39c70ac7` (same spoken-craft behavior plus blocked-bark punctuation trim in `1df9e378c8`) re-passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make version TILES=1 -j4 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_171141`).
 
 ### Movement-system work
 - [x] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
@@ -65,7 +66,7 @@ An item is not really "done" just because deterministic tests or Andi self-check
 ## Current Schani-side checks
 
 ### Done / handed upward
-- [x] Run the spoken camp craft smoke packet below on clean HEAD `311c7ab1b7` and note anything stupid before this goes to Josef.
+- [x] Run the spoken camp craft smoke packet below on the Schani smoke baseline `311c7ab1b7` and note anything stupid before this goes to Josef.
 - [x] Specifically sanity-check the latest spoken craft-resolution close-out on current HEAD:
   - [x] `craft 5 makeshift bandages` takes the positive deterministic path and pins cleanly
   - [x] `craft boiled` clarifies instead of guessing
@@ -78,7 +79,8 @@ Use a camp with a bulletin board and at least one NPC who can plausibly craft.  
 
 Completed live-bed target:
 - `dev` / `Sandy Creek`
-- clean stamped HEAD `311c7ab1b7` (behavior-bearing code in `696f5c8b61`)
+- Schani smoke baseline `311c7ab1b7` (main behavior fix `696f5c8b61`)
+- current gameplay signoff target is `4a39c70ac7`, which only adds the tiny blocked-bark punctuation trim in `1df9e378c8` plus doc alignment and has already re-passed agent-side compile/test/startup checks
 - enough stock for makeshift bandages
 - not enough stock for plain bandages or boiled bandages
 - verified live:
@@ -102,12 +104,12 @@ Observed summary:
    - current state: blocked bark/log result is good enough for Josef smoke; any remaining ugliness is wording consistency, not correctness archaeology
 
 ## Current Josef-side checks
-- [ ] Run the narrow final smoke/signoff trio for spoken camp-craft on clean HEAD `311c7ab1b7`:
+- [ ] Run the narrow final smoke/signoff trio for spoken camp-craft on gameplay signoff target `4a39c70ac7`:
   - [ ] `craft 5 makeshift bandages`
   - [ ] `craft boiled`
   - [ ] `craft 5 bandages`
 - [ ] Judge whether bark + board/detail wording feels human/clear enough, especially for blocked requests where the heard phrase and resolved recipe differ.
-- [ ] Tiny UX nit only if trivially cheap: make sure the live blocked bark no longer shows punctuation stupidity like `tools..`.
+- [ ] During the blocked probe, just eyeball that the tiny punctuation fix from `1df9e378c8` really killed silliness like `tools..`; if the live text still manages to look stupid, that becomes the tweak note.
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?

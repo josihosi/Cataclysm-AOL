@@ -6,7 +6,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last week�
 - [ ] Close the deterministic upstreamable PR slice before spending meaningful time on the other green projects, unless a side task directly unblocks the PR or the PR is temporarily hard-blocked.
 - [ ] Work serially through PR close-out items in this order: finish line -> deterministic tests -> Andi self-check -> Schani review/smoke test -> Josef final play test/signoff -> tweak round if needed.
 - [ ] Do not move to the next PR-closing item just because deterministic tests passed; if Schani review or Josef signoff is the next gate, prepare that handoff first.
-- [ ] Current close-out gate: hand Josef a narrow final smoke/signoff trio for the now Schani-green spoken camp-craft deterministic close-out on clean HEAD `311c7ab1b7` (behavior-bearing code in `696f5c8b61`) — positive path (`craft 5 makeshift bandages`), ambiguity (`craft boiled`), blocked/no-crash (`craft 5 bandages`). Keep it focused, not a giant omnibus packet.
+- [ ] Current close-out gate: hand Josef a narrow final smoke/signoff trio for the now Schani-green spoken camp-craft deterministic close-out on gameplay signoff target `4a39c70ac7` (main behavior fix `696f5c8b61`, plus tiny blocked-bark punctuation trim in `1df9e378c8`) — positive path (`craft 5 makeshift bandages`), ambiguity (`craft boiled`), blocked/no-crash (`craft 5 bandages`). Keep it focused, not a giant omnibus packet.
 
 ## GREEN now — upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
