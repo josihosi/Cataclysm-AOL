@@ -2926,32 +2926,54 @@ bool parse_overmap_movement_token( std::string_view token,
         return false;
     }
 
-    std::string fields = trim( std::string_view( text ).substr( prefix.size() ) );
-    const size_t split = fields.find( ' ' );
-    if( split == std::string::npos ) {
-        error = std::string( format_error );
-        return false;
-    }
-
-    const std::string dx_field = fields.substr( 0, split );
-    const std::string dy_field = trim( fields.substr( split + 1 ) );
-    if( dx_field.empty() || dy_field.empty() || dy_field.find( ' ' ) != std::string::npos ) {
-        error = std::string( format_error );
-        return false;
-    }
-
+    const std::string fields = trim( std::string_view( text ).substr( prefix.size() ) );
     static constexpr std::string_view dx_prefix = "dx=";
     static constexpr std::string_view dy_prefix = "dy=";
-    if( dx_field.compare( 0, dx_prefix.size(), dx_prefix ) != 0 ||
-        dy_field.compare( 0, dy_prefix.size(), dy_prefix ) != 0 ) {
+    std::optional<std::string_view> dx_text;
+    std::optional<std::string_view> dy_text;
+
+    size_t pos = 0;
+    while( pos < fields.size() ) {
+        while( pos < fields.size() && std::isspace( static_cast<unsigned char>( fields[pos] ) ) ) {
+            ++pos;
+        }
+        if( pos >= fields.size() ) {
+            break;
+        }
+
+        size_t end = pos;
+        while( end < fields.size() && !std::isspace( static_cast<unsigned char>( fields[end] ) ) ) {
+            ++end;
+        }
+
+        const std::string_view field( fields.data() + pos, end - pos );
+        if( field.compare( 0, dx_prefix.size(), dx_prefix ) == 0 ) {
+            if( dx_text.has_value() ) {
+                error = std::string( format_error );
+                return false;
+            }
+            dx_text = field.substr( dx_prefix.size() );
+        } else if( field.compare( 0, dy_prefix.size(), dy_prefix ) == 0 ) {
+            if( dy_text.has_value() ) {
+                error = std::string( format_error );
+                return false;
+            }
+            dy_text = field.substr( dy_prefix.size() );
+        } else {
+            error = std::string( format_error );
+            return false;
+        }
+
+        pos = end;
+    }
+
+    if( !dx_text.has_value() || !dy_text.has_value() || dx_text->empty() || dy_text->empty() ) {
         error = std::string( format_error );
         return false;
     }
 
     point_rel_omt delta = point_rel_omt::zero;
-    if( !parse_relative_omt_delta( std::string_view( dx_field ).substr( dx_prefix.size() ),
-                                   std::string_view( dy_field ).substr( dy_prefix.size() ),
-                                   delta, error ) ) {
+    if( !parse_relative_omt_delta( *dx_text, *dy_text, delta, error ) ) {
         return false;
     }
 

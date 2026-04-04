@@ -725,6 +725,11 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( intent.stay );
         CHECK( intent.delta == point_rel_omt( -1, 3 ) );
         CHECK( error.empty() );
+
+        CHECK( parse_overmap_movement_token( "move_omt dy=+3 dx=-1", intent, error ) );
+        CHECK_FALSE( intent.stay );
+        CHECK( intent.delta == point_rel_omt( -1, 3 ) );
+        CHECK( error.empty() );
     }
 
     SECTION( "overmap movement parser rejects malformed tokens with safe fallback state" ) {
@@ -742,6 +747,16 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( intent.delta == point_rel_omt::zero );
 
         CHECK_FALSE( parse_overmap_movement_token( "move_omt dx=2", intent, error ) );
+        CHECK( error == "Overmap move token must use 'stay' or 'move_omt dx=<signed_int> dy=<signed_int>'." );
+        CHECK( intent.stay );
+        CHECK( intent.delta == point_rel_omt::zero );
+
+        CHECK_FALSE( parse_overmap_movement_token( "move_omt dx=2 dy=3 dz=1", intent, error ) );
+        CHECK( error == "Overmap move token must use 'stay' or 'move_omt dx=<signed_int> dy=<signed_int>'." );
+        CHECK( intent.stay );
+        CHECK( intent.delta == point_rel_omt::zero );
+
+        CHECK_FALSE( parse_overmap_movement_token( "move_omt dx=2 dx=3 dy=1", intent, error ) );
         CHECK( error == "Overmap move token must use 'stay' or 'move_omt dx=<signed_int> dy=<signed_int>'." );
         CHECK( intent.stay );
         CHECK( intent.delta == point_rel_omt::zero );
