@@ -163,6 +163,7 @@ TEST_CASE( "camp_calorie_counting", "[camp]" )
 }
 TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
+    using basecamp_ai::camp_board_handoff_snapshot;
     using basecamp_ai::camp_request_handoff_snapshot;
     using basecamp_ai::camp_request_subject_for_display;
     using basecamp_ai::camp_job_token_kind;
@@ -231,7 +232,19 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( parse_structured_camp_craft_order( "job=12" ).has_value() );
     }
 
-    SECTION( "structured camp job tokens parse exact request ids and batch board actions" ) {
+    SECTION( "structured camp job tokens parse board inspection, exact request ids, and batch board actions" ) {
+        const std::optional<basecamp_ai::parsed_camp_job_token> board =
+            parse_structured_camp_job_token( " SHOW_BOARD " );
+        REQUIRE( board.has_value() );
+        CHECK( board->kind == camp_job_token_kind::show_board );
+        CHECK( board->request_id == 0 );
+
+        const std::optional<basecamp_ai::parsed_camp_job_token> details =
+            parse_structured_camp_job_token( " show_job=12 " );
+        REQUIRE( details.has_value() );
+        CHECK( details->kind == camp_job_token_kind::show_job );
+        CHECK( details->request_id == 12 );
+
         const std::optional<basecamp_ai::parsed_camp_job_token> action =
             parse_structured_camp_job_token( " job=12 " );
         REQUIRE( action.has_value() );
@@ -264,9 +277,11 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     }
 
     SECTION( "structured camp job tokens reject malformed ids and unknown prefixes" ) {
+        CHECK_FALSE( parse_structured_camp_job_token( "show_job=0" ).has_value() );
         CHECK_FALSE( parse_structured_camp_job_token( "job=0" ).has_value() );
         CHECK_FALSE( parse_structured_camp_job_token( "job=-2" ).has_value() );
         CHECK_FALSE( parse_structured_camp_job_token( "job=twelve" ).has_value() );
+        CHECK_FALSE( parse_structured_camp_job_token( "show_job=12 please" ).has_value() );
         CHECK_FALSE( parse_structured_camp_job_token( "job=12 please" ).has_value() );
         CHECK_FALSE( parse_structured_camp_job_token( "launch_ready_jobs please" ).has_value() );
         CHECK_FALSE( parse_structured_camp_job_token( "retry blocked jobs" ).has_value() );
@@ -603,7 +618,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( camp_request_subject_for_display( request ) == "crafting request" );
     }
 
-    SECTION( "craft request handoff snapshot keeps stable request facts plus blocker facts and next token" ) {
+    SECTION( "craft request handoff snapshot keeps stable request facts plus board/detail/next tokens" ) {
         const camp_llm_request request{
             .request_id = 7,
             .source_utterance = "craft 5 bandages",
@@ -616,6 +631,8 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         };
 
         CHECK( camp_request_handoff_snapshot( request ) ==
+               "board=show_board\n"
+               "details=show_job=7\n"
                "id=7\n"
                "query=bandages\n"
                "count=5\n"
@@ -641,6 +658,8 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         };
 
         CHECK( camp_request_handoff_snapshot( request ) ==
+               "board=show_board\n"
+               "details=show_job=9\n"
                "id=9\n"
                "query=bandages\n"
                "count=2\n"
@@ -652,6 +671,30 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
                "worker=Bruna\n"
                "blockers=none\n"
                "next=delete_job=9\n" );
+    }
+
+    SECTION( "board handoff snapshot summarizes active and archived jobs with detail tokens" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 7, .requested_item_query = "bandages", .requested_count = 5, .chosen_recipe_name = "sterile bandage", .status = "blocked", .approval_state = "not_needed" },
+            camp_llm_request{ .request_id = 8, .requested_item_query = "knife", .chosen_recipe_name = "knife", .status = "in_progress", .approval_state = "approved", .assigned_worker_name = "Bruna" },
+            camp_llm_request{ .request_id = 9, .requested_item_query = "bandages", .requested_count = 2, .chosen_recipe_name = "bandages", .status = "completed", .approval_state = "approved", .assigned_worker_name = "Cara" }
+        };
+
+        CHECK( camp_board_handoff_snapshot( requests ) ==
+               "board=show_board\n"
+               "active=2\n"
+               "archived=1\n"
+               "job=7 subject=5 × bandages (matched sterile bandage) status=blocked approval=not_needed worker=none details=show_job=7 next=job=7\n"
+               "job=8 subject=knife status=in_progress approval=approved worker=Bruna details=show_job=8 next=job=8\n"
+               "job=9 subject=2 × bandages status=completed approval=approved worker=Cara details=show_job=9 next=delete_job=9\n" );
+    }
+
+    SECTION( "board handoff snapshot stays explicit when the board is empty" ) {
+        CHECK( camp_board_handoff_snapshot( {} ) ==
+               "board=show_board\n"
+               "active=0\n"
+               "archived=0\n"
+               "jobs=none\n" );
     }
 
     SECTION( "non craft requests do not emit craft handoff snapshots" ) {

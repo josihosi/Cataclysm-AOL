@@ -37,9 +37,10 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 
 ### Basecamp work on `dev`
 - [x] Relevant deterministic tests exist for the new routing/token layer.
-- [x] Structured `craft=<query>` / `job=<id>` / `delete_job=<id>` token parsers are covered by deterministic tests.
+- [x] Structured `craft=<query>` / `show_board` / `show_job=<id>` / `job=<id>` / `delete_job=<id>` token parsers are covered by deterministic tests.
 - [x] Structured batch board tokens (`launch_ready_jobs`, `retry_blocked_jobs`, `clear_archived_jobs`) are covered by deterministic tests.
-- [x] Crafting-request details expose a compact deterministic handoff snapshot with stable request facts (`id` / `query` / `count` / `source`) plus the exact legal follow-up token, and the formatter is covered by deterministic tests.
+- [x] Crafting-request details expose a compact deterministic handoff snapshot with stable request facts (`id` / `query` / `count` / `source`) plus exact board/detail/follow-up tokens, and the formatter is covered by deterministic tests.
+- [x] Board handoff snapshots expose stable active/archive counts plus per-job detail/action tokens, and the formatter is covered by deterministic tests.
 - [x] The Basecamp craft-handoff snapshot now loads from the shared prompt-template path (`data/llm_prompts` with `config/llm_prompts` overrides) while preserving the deterministic formatter contract via the same tests.
 - [x] `dev` build compiles.
 - [x] Game launches.
