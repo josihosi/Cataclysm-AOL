@@ -24,6 +24,7 @@ Use these labels consistently across planning/testing notes.
 - **AGENT TESTING** — code exists; Schani should run deterministic tests / compile / launch-load checks.
 - **JOSEF TESTING** — human gameplay/feel checks are needed.
 - **TWEAK** — known follow-up pass from testing feedback.
+- **PARKED** — intentionally not active right now, but kept as reference or for later reuse.
 - **DONE** — crossed off only after the agreed finish line, not when the diff merely exists.
 
 ---
@@ -64,7 +65,7 @@ That remains the default until reality humiliates it again.
 ## Active status board
 
 ### 1. Basecamp AI completion on `dev`
-**Status:** GREEN (queued behind deterministic PR finish, except for PR-closing bugfixes)
+**Status:** GREEN (queued behind movement-system work, except for follow-up bugfixes)
 
 This has been discussed deeply enough to proceed through completion.
 The overall structure is considered clear enough for autonomous work.
@@ -87,66 +88,40 @@ The overall structure is considered clear enough for autonomous work.
 ---
 
 ### 2. Upstreamable deterministic PR package
-**Status:** JOSEF TESTING — PRIMARY FINISH LINE
+**Status:** PARKED (kept as reference / possible Reddit-post material, not the active finish line)
 
-This is the public-facing slice that should be kept small, sober, and mergeable with upstream `cdda-master`.
+This was the public-facing deterministic slice for upstream `cdda-master`.
+The code/test/gameplay side landed and passed locally, but the actual upstream PR attempt was closed quickly on project-social grounds.
+So this is no longer the active queue item.
+Keep it around as:
+- a reference branch/worktree for the extracted deterministic slice
+- a record of what passed locally
+- possible material for a later write-up or narrower future upstream attempt
 
-#### Current focus rule
-Until this package is signoff-ready, it should be treated as the **main finish line**.
-Other green items remain valid, but they should not compete for attention unless:
-- they directly unblock the deterministic PR slice, or
-- the deterministic slice is temporarily hard-blocked and there is no meaningful close-out work left inside it.
+#### Local finish state reached
+- exact-word `craft` routing landed
+- deterministic craft query / ambiguity / blocker handling landed
+- deterministic tests passed
+- game launch / save-load checks passed
+- Schani smoke passed
+- Josef live trio passed on the cleaned upstream-based branch
 
-For each close-out item inside the PR slice, the intended order is:
-1. finish the item,
-2. write/update deterministic tests,
-3. let Andi do cheap/reliable self-checks,
-4. let Schani own the higher-trust review + smoke/play test layer,
-5. prepare Josef final play testing/signoff when human judgment is still needed,
-6. expect a tweak round before calling the item closed.
+#### Why it is parked instead of active
+The current blocker is not local implementation quality.
+The current blocker is upstream interest / social acceptance.
+That means further local work should go back to actual `dev` development instead of spending more autonomous cycles trying to resurrect the same PR package.
 
-Do not treat "agent tested" as the same thing as "finished" when Schani review or Josef testing is still the next gate.
-
-#### Scope
-- no LLM dependency in the PR package
-- exact-word `craft` routing
-- deterministic craft/job request handling
-- deterministic parsing improvements that stand on their own
-- tests
-
-#### Current close-out state
-The spoken camp-craft deterministic close-out is now past the code/test/Schani-smoke gate:
-- Schani live-smoke head: `311c7ab1b7`
-- current gameplay signoff target: `4a39c70ac7`
-- main behavior-bearing fix: `696f5c8b61`
-- tiny follow-up polish since the smoke head: `1df9e378c8` trims the duplicate-period blocked-bark punctuation
-- live `dev` / `Sandy Creek` trio is satisfactory:
-  - `craft 5 makeshift bandages` pins cleanly
-  - `craft boiled` clarifies cleanly
-  - `craft 5 bandages` blocks cleanly with the real blocker
-- current signoff target `4a39c70ac7` re-passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make version TILES=1 -j4 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_171141`)
-- no crash / no debug-popup nonsense reproduced
-
-So the next gate is Josef final smoke/signoff, not more agent archaeology on the same deterministic spoken-craft sub-item.
-
-#### Upstream social constraint
-CDDA contributors are not generally enthusiastic about AI-generated code, which is a reasonable thing to dislike.
-So any upstream-facing package should stay:
-
-- deterministic
-- small in scope
-- readable and reviewable
-- suitable for human cleanup / humanization before submission
-
-Do **not** bundle the richer LLM layer into the upstream package just because it exists locally.
-Pitch the PR as useful deterministic camp-command infrastructure, not as an AI manifesto.
+#### Reuse rule
+If we later want a Reddit post, a retrospective, or a fresh deterministic upstreamable slice, use this parked branch/worktree as reference material.
+Do not treat it as the active development branch.
 
 ---
 
 ### 3. Movement-system improvements
-**Status:** GREEN (queued behind deterministic PR finish)
+**Status:** GREEN — PRIMARY FINISH LINE
 
-This is green, but it follows the current deterministic Basecamp/PR slice instead of pre-empting it.
+This is now the active queue item.
+The upstream deterministic PR slice is parked, so movement-system work becomes the next real stretch on `dev`.
 
 #### Current direction
 - replace the LLM-facing coordinate payload for local tactical movement with relative signed deltas instead of step spam
@@ -157,6 +132,12 @@ This is green, but it follows the current deterministic Basecamp/PR slice instea
 - in other words, do **not** erase the current system; only replace how the LLM expresses the destination
 - use the same relative-delta idea for overmap-targeted movement/planning as well
 - update prompt/snapshot explanation accordingly, and consider lightweight grid/axis hints if they help the model reason about offsets more reliably
+
+#### Current active sub-item
+- build the first small overmap snapshot grid (about 5x5 or 6x6)
+- make the legend present-only
+- use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants
+- add deterministic tests for the formatter / legend / malformed fallback behavior around that contract
 
 #### Overmap snapshot contract (approved direction)
 - represent the overmap as a **small grid**, roughly **5x5 or 6x6**
@@ -205,30 +186,27 @@ Keep it remembered; do not tackle it casually.
 ## Recommended implementation order (current reality)
 
 ### First
-Ship the upstreamable deterministic camp-command slice:
-- exact-word `craft` routing
-- deterministic craft query / ambiguity / blocker handling
-- tests
-- small PR-friendly packaging
-
-### Second
 Improve the movement contract without erasing the existing system:
 - local tactical movement should replace step chains with relative signed deltas
 - overmap/job movement should use the same relative-delta idea where appropriate
+- current first concrete sub-item is the small overmap snapshot grid / present-only legend / terrain-symbol contract
 - keep `wait_here` / `hold_position`
 - keep deterministic pathing / target-tile logic
 - add tests
 - avoid accidental behavioral regressions while changing only the LLM-facing coordinate expression
 
-### Third
+### Second
 Continue the richer Basecamp AI on `dev`:
 - deterministic-first command extraction
 - structured legal action tokens
 - deterministic execution of those tokens
 - richer snapshot/prompt handoff only when deterministic handling is insufficient
 
-### Fourth
+### Third
 Return to broader camp job types / deeper board QoL once the previous contracts stop moving.
+
+### Parked reference
+The upstreamable deterministic camp-command slice is kept as reference material, not as the active queue.
 
 That is enough work already.
 There is still no need to turn one successful half-day into a full municipal bureaucracy.

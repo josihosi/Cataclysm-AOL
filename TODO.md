@@ -3,12 +3,15 @@
 _Current actionable queue. Keep this aligned with `Plan.md`, not with last week’s ghost stories._
 
 ## Active finish line right now
-- [ ] Close the deterministic upstreamable PR slice before spending meaningful time on the other green projects, unless a side task directly unblocks the PR or the PR is temporarily hard-blocked.
-- [ ] Work serially through PR close-out items in this order: finish line -> deterministic tests -> Andi self-check -> Schani review/smoke test -> Josef final play test/signoff -> tweak round if needed.
-- [ ] Do not move to the next PR-closing item just because deterministic tests passed; if Schani review or Josef signoff is the next gate, prepare that handoff first.
-- [ ] Current close-out gate: hand Josef a narrow final smoke/signoff trio for the now Schani-green spoken camp-craft deterministic close-out on gameplay signoff target `4a39c70ac7` (main behavior fix `696f5c8b61`, plus tiny blocked-bark punctuation trim in `1df9e378c8`) — positive path (`craft 5 makeshift bandages`), ambiguity (`craft boiled`), blocked/no-crash (`craft 5 bandages`). Keep it focused, not a giant omnibus packet.
+- [ ] Continue actual `dev` development now that the upstream deterministic PR attempt is parked.
+- [ ] Work serially on the movement-system finish line: first overmap snapshot grid, then present-only legend, then collapsed terrain symbols / horde-uppercase handling, then deterministic tests and smoke checks.
+- [ ] Keep this queue aligned with `Plan.md`: the first active item is the movement-system overmap snapshot contract, not more PR archaeology.
+- [ ] Prepare the first small overmap snapshot grid (about 5x5 or 6x6) for the broader Basecamp AI snapshot, not just the job-sending selector.
+- [ ] Make the legend present-only so only symbols visible in the current snapshot are explained.
+- [ ] Use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants.
+- [ ] Add deterministic tests for the overmap snapshot formatter / legend / malformed fallback behavior around that contract.
 
-## GREEN now — upstreamable deterministic PR slice
+## PARKED reference — upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
 - [x] Keep deterministic quantity parsing intact (numeric quantities plus the current small number-word support) while tightening the trigger boundary.
 - [x] Reuse one deterministic craft resolver for both spoken craft intake and the later structured `craft=<query>` action token path.
@@ -20,7 +23,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last week�
   - [x] ordered multi-word phrases beat generic noun fallbacks
 - [x] Prepare the small PR-friendly explanation/packaging pass once the code/test slice is stable.
 
-## GREEN later — movement system improvements (resume after deterministic PR close-out)
+## GREEN now — movement system improvements
 - [x] Replace local follower step-chain movement payloads (`E E E`, etc.) with a relative signed-delta destination contract while keeping the current pathing / target-tile behavior intact.
 - [x] Preserve the existing post-move state suffixes exactly:
   - `wait_here`
@@ -37,7 +40,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last week�
 - [x] Consider lightweight grid/axis hints in the snapshot if they help the model reason about offsets more reliably.
 - [ ] Add deterministic parser/tests for positive/negative deltas, state suffix retention, malformed fallback behavior, and present-only overmap legend generation.
 
-## GREEN later — richer Basecamp AI on `dev` (resume after deterministic PR close-out, except PR-closing bugfixes)
+## GREEN later — richer Basecamp AI on `dev` (resume after the movement-system finish line, except follow-up bugfixes)
 - [ ] Keep deterministic-first command extraction as the control spine.
 - [x] Surface a compact deterministic handoff snapshot in crafting-request details, including exact board/detail/follow-up tokens (`show_board`, `show_job=<id>`, `job=<id>` / `delete_job=<id>`), so later Basecamp-AI glue does not have to rediscover resolved recipe/blocker facts from scratch.
 - [x] Define the next structured Basecamp action tokens clearly:

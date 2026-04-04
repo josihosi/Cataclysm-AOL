@@ -48,6 +48,10 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Overmap origin+delta resolution reuses the same signed axis convention and preserves `stay`.
 - [x] Snapshot/prompt axis hints are present for the delta contract.
 - [x] Malformed movement falls back safely.
+- [ ] Small overmap snapshot grid formatter exists for the broader Basecamp AI snapshot.
+- [ ] Legend output is present-only rather than dumping the whole symbol table.
+- [ ] Collapsed terrain symbols use lowercase normal / UPPERCASE horde-present variants.
+- [ ] Deterministic tests cover the snapshot formatter / legend / malformed fallback behavior for the overmap snapshot contract.
 
 ### Basecamp work on `dev`
 - [x] Relevant deterministic tests exist for the new routing/token layer.
@@ -104,12 +108,12 @@ Observed summary:
    - current state: blocked bark/log result is good enough for Josef smoke; any remaining ugliness is wording consistency, not correctness archaeology
 
 ## Current Josef-side checks
-- [ ] Run the narrow final smoke/signoff trio for spoken camp-craft on gameplay signoff target `4a39c70ac7`:
-  - [ ] `craft 5 makeshift bandages`
-  - [ ] `craft boiled`
-  - [ ] `craft 5 bandages`
-- [ ] Judge whether bark + board/detail wording feels human/clear enough, especially for blocked requests where the heard phrase and resolved recipe differ.
-- [ ] During the blocked probe, just eyeball that the tiny punctuation fix from `1df9e378c8` really killed silliness like `tools..`; if the live text still manages to look stupid, that becomes the tweak note.
+- [x] Run the narrow final smoke/signoff trio for spoken camp-craft on gameplay signoff target `4a39c70ac7`:
+  - [x] `craft 5 makeshift bandages`
+  - [x] `craft boiled`
+  - [x] `craft 5 bandages`
+- [x] Judge whether bark + board/detail wording feels human/clear enough, especially for blocked requests where the heard phrase and resolved recipe differ.
+- [x] During the blocked probe, just eyeball that the tiny punctuation fix from `1df9e378c8` really killed silliness like `tools..`; if the live text still manages to look stupid, that becomes the tweak note.
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
@@ -121,18 +125,18 @@ Observed summary:
 
 ## Signoff gates
 
-### Upstream deterministic PR slice
-Do not call this ready just because the diff exists.
-It is ready when:
+### Upstream deterministic PR slice (parked reference)
+The local technical slice reached the intended finish state, but the actual upstream PR attempt is parked/closed for social-review reasons.
+Keep this here as a record of what passed locally.
 - [x] code compiles
 - [x] relevant deterministic tests pass
 - [x] no LLM dependency is required
 - [x] game launches successfully with the PR slice in place
 - [x] save/world load succeeds with the PR slice in place
-- [ ] the actual deterministic feature gets a small manual smoke/play test
+- [x] the actual deterministic feature got a small manual smoke/play test
 - [x] scope is small and reviewable
-- [x] PR description matches the code honestly
-- [ ] Josef is not embarrassed by the behavior
+- [x] local PR description was eventually corrected to match the feature premise honestly
+- [x] Josef gameplay signoff on the feature behavior happened before the upstream close
 
 ### Basecamp work on `dev`
 The actual finish line remains:
