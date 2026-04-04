@@ -263,8 +263,12 @@ npc::npc()
 
 std::map<character_id, npc::llm_intent_state> &npc::llm_intent_state_map()
 {
-    static std::map<character_id, llm_intent_state> state_map;
-    return state_map;
+    // Keep the state map alive until process exit. NPC teardown can still touch this during
+    // global destruction, and a normal function-local static risks dying before the final npc
+    // destructors run (which showed up as a post-success cata_test teardown crash on macOS).
+    static std::map<character_id, llm_intent_state> *state_map =
+        new std::map<character_id, llm_intent_state>();
+    return *state_map;
 }
 
 namespace
@@ -344,9 +348,9 @@ bool is_terminal_llm_action_phase( npc::llm_action_phase phase )
 
 npc::llm_intent_state &npc::llm_intent_state_for( const npc &guy )
 {
-    static llm_intent_state invalid_state;
+    static llm_intent_state *invalid_state = new llm_intent_state();
     if( !guy.getID().is_valid() ) {
-        return invalid_state;
+        return *invalid_state;
     }
     return llm_intent_state_map()[guy.getID()];
 }
