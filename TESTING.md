@@ -102,8 +102,12 @@ Observed summary:
    - current state: blocked bark/log result is good enough for Josef smoke; any remaining ugliness is wording consistency, not correctness archaeology
 
 ## Current Josef-side checks
-- [ ] Run the short final smoke/signoff packet for spoken camp-craft on clean HEAD `311c7ab1b7`.
+- [ ] Run the narrow final smoke/signoff trio for spoken camp-craft on clean HEAD `311c7ab1b7`:
+  - [ ] `craft 5 makeshift bandages`
+  - [ ] `craft boiled`
+  - [ ] `craft 5 bandages`
 - [ ] Judge whether bark + board/detail wording feels human/clear enough, especially for blocked requests where the heard phrase and resolved recipe differ.
+- [ ] Tiny UX nit only if trivially cheap: make sure the live blocked bark no longer shows punctuation stupidity like `tools..`.
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
