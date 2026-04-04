@@ -127,6 +127,24 @@ This is green, but it follows the current deterministic Basecamp/PR slice instea
 - use the same relative-delta idea for overmap-targeted movement/planning as well
 - update prompt/snapshot explanation accordingly, and consider lightweight grid/axis hints if they help the model reason about offsets more reliably
 
+#### Overmap snapshot contract (approved direction)
+- represent the overmap as a **small grid**, roughly **5x5 or 6x6**
+- this is not just for the job-sending selector; it should become part of the broader Basecamp AI snapshot vocabulary
+- use **collapsed terrain symbols** rather than raw overmap tile soup
+- use **lowercase** for normal terrain and **UPPERCASE** for the same terrain when a **horde** is present on that tile
+- show a **present-only legend**: the legend should list only symbols actually visible in the current snapshot, not the full master symbol table every time
+- current preferred terrain buckets include:
+  - `c` camp
+  - `h` house
+  - `r` road
+  - `m` meadow/grass
+  - `f` field
+  - `t` forest
+  - `s` swamp
+  - `w` water
+  - and the extended set is allowed where useful (`b` bridge, `u` urban, `p` point of interest, `k` shop, `n` riverbank/shore)
+- the key architectural rule is that this grid should be legible enough to support later bandit movement and other overmap-brain behavior, not just immediate camp job targeting
+
 This work should feed both follower movement cleanup and later Basecamp job-subflow architecture instead of happening as a disconnected side quest.
 
 ---

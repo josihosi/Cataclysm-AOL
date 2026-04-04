@@ -24,9 +24,12 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
   - [x] Land a shared `stay` / `move_omt dx=<signed_int> dy=<signed_int>` token parser/tests so future planner consumers agree on one small overmap movement grammar.
   - [x] Land the shared absolute-target resolver so planner consumers reuse one signed-axis convention instead of re-deriving it badly.
   - [x] Land the shared token formatter so future planner output can emit the same overmap grammar it already parses/resolves.
+- [ ] Build a small overmap snapshot grid (about 5x5 or 6x6) for the broader Basecamp AI snapshot, not just the job-sending selector.
+- [ ] Use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants.
+- [ ] Show only a present-only legend for symbols actually visible in the current overmap snapshot.
 - [x] Update prompt/snapshot explanations and examples so the model is told to emit coordinates rather than micro-step chains.
 - [x] Consider lightweight grid/axis hints in the snapshot if they help the model reason about offsets more reliably.
-- [x] Add deterministic parser/tests for positive/negative deltas, state suffix retention, and malformed fallback behavior.
+- [ ] Add deterministic parser/tests for positive/negative deltas, state suffix retention, malformed fallback behavior, and present-only overmap legend generation.
 
 ## GREEN now â€” richer Basecamp AI on `dev`
 - [ ] Keep deterministic-first command extraction as the control spine.

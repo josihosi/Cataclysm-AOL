@@ -354,6 +354,20 @@ That topic stays design-sensitive and should not be treated as settled just beca
   - negative `x` = west / left
   - positive `y` = north / up
   - negative `y` = south / down
+- Overmap context should be shown as a small **5x5 or 6x6 grid** plus a **present-only legend**, in the same general spirit as the follower snapshot.
+- Use collapsed terrain symbols rather than raw overmap tile names.
+- Lowercase symbols = normal terrain; uppercase symbols = the same terrain with a **horde present**.
+- Current preferred symbol vocabulary:
+  - `c` camp
+  - `h` house
+  - `r` road
+  - `m` meadow/grass
+  - `f` field
+  - `t` forest
+  - `s` swamp
+  - `w` water
+  - optional extended set when useful: `b` bridge, `u` urban, `p` point of interest, `k` shop, `n` riverbank/shore
+- The legend should list only symbols actually present in the current snapshot, not the entire symbol table.
 - Update prompt/snapshot explanation accordingly; lightweight axis/grid hints may help if the model needs better offset orientation.
 - Any malformed output resolves to `stay` (no side effects).
 
