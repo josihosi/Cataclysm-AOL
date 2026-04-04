@@ -35,6 +35,16 @@ static const vitamin_id vitamin_mutant_toxin( "mutant_toxin" );
 static const zone_type_id zone_type_CAMP_FOOD( "CAMP_FOOD" );
 static const zone_type_id zone_type_CAMP_STORAGE( "CAMP_STORAGE" );
 
+static std::string find_snapshot_line( const std::string &snapshot, const std::string &prefix )
+{
+    const size_t start = snapshot.find( prefix );
+    if( start == std::string::npos ) {
+        return std::string();
+    }
+    const size_t end = snapshot.find( '\n', start );
+    return snapshot.substr( start, end == std::string::npos ? std::string::npos : end - start );
+}
+
 TEST_CASE( "camp_calorie_counting", "[camp]" )
 {
     clear_avatar();
@@ -172,6 +182,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::collect_blocked_camp_request_ids;
     using basecamp_ai::collect_ready_camp_request_ids;
     using basecamp_ai::format_overmap_movement_token;
+    using basecamp_ai::format_overmap_snapshot;
     using basecamp_ai::match_camp_craft_query;
     using basecamp_ai::match_camp_request_reference;
     using basecamp_ai::matches_assigned_camp_request_worker;
@@ -709,6 +720,46 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
                "job=9 subject=2 × bandages status=completed approval=approved worker=Cara details=show_job=9 next=delete_job=9\n" );
     }
 
+    SECTION( "board handoff snapshot can include live overmap planner context when origin is provided" ) {
+        static const mongroup_id GROUP_ZOMBIE_HORDE( "GROUP_ZOMBIE_HORDE" );
+        const tripoint_abs_omt origin( 1600, 1600, 0 );
+
+        overmap_buffer.clear_mongroups();
+        for( int dy = -2; dy <= 2; ++dy ) {
+            for( int dx = -2; dx <= 2; ++dx ) {
+                overmap_buffer.ter_set( tripoint_abs_omt( origin.x() + dx, origin.y() + dy, origin.z() ),
+                                        oter_id( "field" ) );
+            }
+        }
+
+        get_map().add_camp( origin, "faction_camp", false );
+        overmap_buffer.ter_set( tripoint_abs_omt( origin.x() + 1, origin.y(), origin.z() ), oter_id( "road_nesw" ) );
+        overmap_buffer.spawn_mongroup( project_to<coords::sm>( tripoint_abs_omt( origin.x() + 1, origin.y(), 0 ) ),
+                                       GROUP_ZOMBIE_HORDE, 3 );
+
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 7, .requested_item_query = "bandages", .requested_count = 5, .chosen_recipe_name = "sterile bandage", .status = "blocked", .approval_state = "not_needed" },
+            camp_llm_request{ .request_id = 9, .requested_item_query = "bandages", .requested_count = 2, .chosen_recipe_name = "bandages", .status = "completed", .approval_state = "approved", .assigned_worker_name = "Cara" }
+        };
+
+        const std::string snapshot = camp_board_handoff_snapshot( origin, requests );
+        CAPTURE( snapshot );
+        CHECK( snapshot.find( "board=show_board\nplanner_move=stay | move_omt dx=<signed_int> dy=<signed_int>\novermap:\novermap snapshot centered on dx=0 dy=0 (+x east/right, +y north/up)\n" ) != std::string::npos );
+        const std::string dy0_line = find_snapshot_line( snapshot, "dy=+0" );
+        CHECK_FALSE( dy0_line.empty() );
+        CHECK( dy0_line.find( " c  R " ) != std::string::npos );
+        CHECK( snapshot.find( "  c camp\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  f field\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  r road\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  uppercase = horde present\n" ) != std::string::npos );
+        CHECK( snapshot.find( "active=1\narchived=1\n" ) != std::string::npos );
+        CHECK( snapshot.find( "job=7 subject=5 × bandages (matched sterile bandage) status=blocked approval=not_needed worker=none details=show_job=7 next=job=7\n" ) != std::string::npos );
+        CHECK( snapshot.find( "job=9 subject=2 × bandages status=completed approval=approved worker=Cara details=show_job=9 next=delete_job=9\n" ) != std::string::npos );
+
+        overmap_buffer.clear_camps( origin.xy() );
+        overmap_buffer.clear_mongroups();
+    }
+
     SECTION( "board handoff snapshot stays explicit when the board is empty" ) {
         CHECK( camp_board_handoff_snapshot( {} ) ==
                "board=show_board\n"
@@ -880,6 +931,70 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
                      tripoint_abs_omt( 10, 20, 1 ), token, error ) );
         CHECK( token.empty() );
         CHECK( error == "Overmap move token cannot encode z-level changes." );
+    }
+
+    SECTION( "overmap snapshot formatter builds a present-only legend and marks horde tiles in uppercase" ) {
+        static const mongroup_id GROUP_ZOMBIE_HORDE( "GROUP_ZOMBIE_HORDE" );
+        const tripoint_abs_omt origin( 1500, 1500, 0 );
+        std::string snapshot;
+        std::string error;
+
+        overmap_buffer.clear_mongroups();
+        for( int dy = -2; dy <= 2; ++dy ) {
+            for( int dx = -2; dx <= 2; ++dx ) {
+                overmap_buffer.ter_set( tripoint_abs_omt( origin.x() + dx, origin.y() + dy, origin.z() ),
+                                        oter_id( "field" ) );
+            }
+        }
+
+        get_map().add_camp( origin, "faction_camp", false );
+        overmap_buffer.ter_set( tripoint_abs_omt( origin.x(), origin.y() - 1, origin.z() ), oter_id( "forest" ) );
+        overmap_buffer.ter_set( tripoint_abs_omt( origin.x() + 1, origin.y() - 1, origin.z() ), oter_id( "bridge_north" ) );
+        overmap_buffer.ter_set( tripoint_abs_omt( origin.x() - 1, origin.y(), origin.z() ), oter_id( "house_09_north" ) );
+        overmap_buffer.ter_set( tripoint_abs_omt( origin.x() + 1, origin.y(), origin.z() ), oter_id( "road_nesw" ) );
+        overmap_buffer.ter_set( tripoint_abs_omt( origin.x(), origin.y() + 1, origin.z() ), oter_id( "river_center" ) );
+        overmap_buffer.ter_set( tripoint_abs_omt( origin.x() + 1, origin.y() + 1, origin.z() ),
+                                oter_id( "lake_shore" ) );
+        overmap_buffer.spawn_mongroup( project_to<coords::sm>( tripoint_abs_omt( origin.x() + 1, origin.y(), 0 ) ),
+                                       GROUP_ZOMBIE_HORDE, 3 );
+
+        REQUIRE( format_overmap_snapshot( origin, 2, snapshot, error ) );
+        CAPTURE( snapshot );
+        CHECK( error.empty() );
+        CHECK( overmap_buffer.get_horde_size( tripoint_abs_omt( origin.x() + 1, origin.y(), 0 ) ) > 0 );
+        CHECK( snapshot.find( "      dx -2 -1 +0 +1 +2" ) != std::string::npos );
+        const std::string dy_plus_1_line = find_snapshot_line( snapshot, "dy=+1" );
+        const std::string dy0_line = find_snapshot_line( snapshot, "dy=+0" );
+        const std::string dy_minus_1_line = find_snapshot_line( snapshot, "dy=-1" );
+        CHECK_FALSE( dy_plus_1_line.empty() );
+        CHECK_FALSE( dy0_line.empty() );
+        CHECK_FALSE( dy_minus_1_line.empty() );
+        CHECK( dy_plus_1_line.find( " t  b " ) != std::string::npos );
+        CHECK( dy0_line.find( " h  c  R " ) != std::string::npos );
+        CHECK( dy_minus_1_line.find( " w  n " ) != std::string::npos );
+        CHECK( snapshot.find( "  b bridge\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  c camp\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  f field\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  h house\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  n riverbank/shore\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  r road\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  t forest\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  w water\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  uppercase = horde present\n" ) != std::string::npos );
+        CHECK( snapshot.find( "  p point of interest\n" ) == std::string::npos );
+        CHECK( snapshot.find( "  u urban\n" ) == std::string::npos );
+
+        overmap_buffer.clear_camps( origin.xy() );
+        overmap_buffer.clear_mongroups();
+    }
+
+    SECTION( "overmap snapshot formatter rejects out-of-contract radii with safe fallback output" ) {
+        std::string snapshot = "already here";
+        std::string error;
+
+        CHECK_FALSE( format_overmap_snapshot( tripoint_abs_omt( 10, 20, 0 ), 0, snapshot, error ) );
+        CHECK( snapshot.empty() );
+        CHECK( error == "Overmap snapshot radius must stay between 1 and 2 tiles." );
     }
 
     SECTION( "craft router prefers specific phrase matches over generic noun matches" ) {

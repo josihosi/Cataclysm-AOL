@@ -140,6 +140,7 @@ The smoke harness intentionally tests three layers together:
 - runner I/O + response parsing using game-like pipe-separated action-line validation
 
 ## LLM Intent Actions (Behavior Notes)
+- Direct deterministic `show_board` handling currently does **not** emit a fresh prompt/response block into `config/llm_intent.log`; that log is still tied to the LLM prompt path. If later tooling wants `show_board`-specific log artifacts, add an explicit hook or inspect a different artifact path instead of expecting `llm_intent.log` magic.
 - `look_around` requests up to three nearby item names for pickup targeting.
 - `look_inventory` supports `wear`, `wield`, `act`, and `drop` sections.
 - `panic_on` sets a forced flee state for about 20 turns and bumps panic while active.
@@ -368,6 +369,11 @@ That topic stays design-sensitive and should not be treated as settled just beca
   - `w` water
   - optional extended set when useful: `b` bridge, `u` urban, `p` point of interest, `k` shop, `n` riverbank/shore
 - The legend should list only symbols actually present in the current snapshot, not the entire symbol table.
+- Current helper contract: a centered radius-2 snapshot emits a 5x5 grid with a `dx` header row and `dy` row labels using the same signed-axis convention as `move_omt`.
+- The camp symbol should mark only the actual camp OMT, not every tile that merely falls inside the camp lookup radius.
+- Uppercase is shown only in the grid itself; the legend stays lowercase/present-only and adds a single note when any horde-marked tile appears.
+- Out-of-contract snapshot radii fail safely instead of inventing a malformed grid.
+- The first live consumer is the structured Basecamp board handoff (`show_board`): when a real camp origin is available it prepends `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` plus the shared `overmap:` block so prompt text and helper tests stay in sync.
 - Update prompt/snapshot explanation accordingly; lightweight axis/grid hints may help if the model needs better offset orientation.
 - Any malformed output resolves to `stay` (no side effects).
 

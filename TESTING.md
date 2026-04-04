@@ -48,10 +48,13 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Overmap origin+delta resolution reuses the same signed axis convention and preserves `stay`.
 - [x] Snapshot/prompt axis hints are present for the delta contract.
 - [x] Malformed movement falls back safely.
-- [ ] Small overmap snapshot grid formatter exists for the broader Basecamp AI snapshot.
-- [ ] Legend output is present-only rather than dumping the whole symbol table.
-- [ ] Collapsed terrain symbols use lowercase normal / UPPERCASE horde-present variants.
-- [ ] Deterministic tests cover the snapshot formatter / legend / malformed fallback behavior for the overmap snapshot contract.
+- [x] Small overmap snapshot grid formatter exists for the broader Basecamp AI snapshot.
+- [x] Legend output is present-only rather than dumping the whole symbol table.
+- [x] Collapsed terrain symbols use lowercase normal / UPPERCASE horde-present variants.
+- [x] Deterministic tests cover the snapshot formatter / legend / malformed fallback behavior for the overmap snapshot contract.
+- [x] The first live Basecamp planner consumer now carries `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` plus the shared overmap snapshot block when `show_board` has a real camp origin.
+- [x] Current live-consumer slice re-passed `make -j4 tests cataclysm-tiles`, `./tests/cata_test "[camp][basecamp_ai]"`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_210854`).
+- [x] Schani review re-ran the same compile/test/startup trio on current dirty HEAD and again got zero recorded debug popups (`.userdata/dev/harness_runs/20260404_213253`).
 
 ### Basecamp work on `dev`
 - [x] Relevant deterministic tests exist for the new routing/token layer.
@@ -59,6 +62,7 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Structured batch board tokens (`launch_ready_jobs`, `retry_blocked_jobs`, `clear_archived_jobs`) are covered by deterministic tests.
 - [x] Crafting-request details expose a compact deterministic handoff snapshot with stable request facts (`id` / `query` / `count` / `source`) plus exact board/detail/follow-up tokens, and the formatter is covered by deterministic tests.
 - [x] Board handoff snapshots expose stable active/archive counts plus per-job detail/action tokens, and the formatter is covered by deterministic tests.
+- [x] The live `show_board` handoff now prepends planner-move contract text plus the shared overmap snapshot block when the camp origin is available, and deterministic tests cover that consumer path.
 - [x] The Basecamp craft-handoff snapshot now loads from the shared prompt-template path (`data/llm_prompts` with `config/llm_prompts` overrides) while preserving the deterministic formatter contract via the same tests.
 - [x] `dev` build compiles.
 - [x] Game launches.
@@ -77,6 +81,11 @@ An item is not really "done" just because deterministic tests or Andi self-check
   - [x] `craft 5 bandages` stays deterministic blocked/no-crash and explains the resolved recipe/blocker clearly
   - [x] live craft-board replies still lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
 - [x] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
+- [x] Review the movement-system `show_board` handoff on current HEAD and decide whether any broader agent-side smoke remains before Josef handoff:
+  - [x] re-ran `make -j4 tests cataclysm-tiles`
+  - [x] re-ran `./tests/cata_test "[camp][basecamp_ai]"`
+  - [x] re-ran `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+  - [x] no new crash/debug-popup issue appeared, so the remaining gate is Josef readability/feel rather than more agent-side archaeology
 
 ### Spoken camp craft smoke packet (done by Schani)
 Use a camp with a bulletin board and at least one NPC who can plausibly craft.  Try these in normal play, not in a sterile lab if avoidable.
@@ -114,6 +123,10 @@ Observed summary:
   - [x] `craft 5 bandages`
 - [x] Judge whether bark + board/detail wording feels human/clear enough, especially for blocked requests where the heard phrase and resolved recipe differ.
 - [x] During the blocked probe, just eyeball that the tiny punctuation fix from `1df9e378c8` really killed silliness like `tools..`; if the live text still manages to look stupid, that becomes the tweak note.
+- [ ] Run the narrow movement-system board-handoff packet on current `dev` / `Sandy Creek`:
+  - [ ] ask a camp NPC `show me the board` (or `what's on the board`) and confirm the reply leads with `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` plus the overmap block before the job list
+  - [ ] judge whether the 5x5 snapshot / `dx` / `dy` hints make movement reasoning easier instead of merely more technical
+  - [ ] confirm the active/archive job lines still read clearly and are not buried by the new planning context
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
@@ -152,4 +165,5 @@ The actual finish line remains:
 
 ## Notes / current annoyances
 - Full `tests/cata_test` linking on this Mac has recently hit local framework/library link trouble (SDL / SDL_ttf / CoreFoundation / FreeType). Treat that as environment work to revisit, not as an excuse to skip logic tests entirely.
+- Direct deterministic `show_board` responses do not currently append a fresh block to `config/llm_intent.log`; if later inspection wants log-based artifacts for that path, it needs either an explicit logging hook or a different artifact source.
 - Keep manual test packets short and concrete: what changed, what to try, expected result, suspicious edge cases.
