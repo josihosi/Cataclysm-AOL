@@ -135,10 +135,11 @@ So the next slice is a **small tactical harness/observability pass**, not the fu
 - improve the testing path enough to unblock real game work, not enough to become a week-long harness theology project
 
 #### Current active sub-item
-- [ ] add one reliable artifact/log sink for board/base-AI snapshot replies during live probes
-- [ ] make the live probe path explicit and reproducible for `say sentence` vs `yell a sentence`
-- [ ] make probe runs preserve their evidence class clearly instead of silently switching from GUI/live evidence to PTY/test evidence
-- [ ] update the testing ledger once this slice can prove where a reply appeared (screen, log, or both)
+- [x] add one reliable artifact/log sink for board/base-AI snapshot replies during live probes (`show_board` / `show_job` now emit explicit `camp board reply` / `camp job reply` blocks into `config/llm_intent.log` when `DEBUG_LLM_INTENT_LOG` is enabled; plus live Basecamp hearing now appends `camp heard ... / utterance=...` lines for speech probes that actually reach the camp path)
+- [ ] make the live probe path explicit and reproducible for `say sentence` vs `yell a sentence` (current live runs still hit `say` more reliably than `yell`)
+- [x] make probe runs preserve their evidence class clearly instead of silently switching from GUI/live evidence to PTY/test evidence (the current ledger/test packet now explicitly distinguishes on-screen behavior, deterministic checks, and log visibility)
+- [ ] update the testing ledger once this slice can prove where a reply appeared (screen, log, or both); current state proves live camp-heard logging, but not yet end-to-end board-reply logging on the natural speech path
+- [x] record the practical startup truth for this save/profile: `game::load: Finalizing end` is too early as a live-input marker; this bed needs a much longer post-load settle before GUI probes are trustworthy
 
 ### 4. Movement-system improvements
 **Status:** GREEN (queued behind harness observability slice, except for direct follow-up bugfixes)

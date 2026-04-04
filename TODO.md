@@ -5,10 +5,11 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 ## Active finish line right now
 - [x] Continue actual `dev` development now that the upstream deterministic PR attempt is parked.
 - [x] Keep this queue aligned with `Plan.md`: the first active item is now the small harness observability / deterministic probe slice.
-- [ ] Add one reliable artifact/log sink for board/base-AI snapshot replies during live probes.
+- [x] Add one reliable artifact/log sink for board/base-AI snapshot replies during live probes (`show_board` / `show_job` now log explicit reply blocks to `config/llm_intent.log` when `DEBUG_LLM_INTENT_LOG` is enabled; live Basecamp hearing now also logs `camp heard ... / utterance=...` when the speech path actually reaches camp handling).
 - [ ] Make the live probe path explicit and reproducible for `say sentence` vs `yell a sentence`.
-- [ ] Keep live behavior, deterministic tests, and artifact/log visibility separate in the testing flow so probe-method changes stop muddying conclusions.
-- [ ] Update `TESTING.md` once this slice can prove where a reply appeared (screen, log, or both).
+- [x] Keep live behavior, deterministic tests, and artifact/log visibility separate in the testing flow so probe-method changes stop muddying conclusions.
+- [x] Update `TESTING.md` with the current proven state: live three-run Basecamp speech probes now log unique heard utterances, but natural-speech board replies still are not end-to-end proven in the logs.
+- [x] Record the real startup/probe constraint for this `dev` save: `game::load: Finalizing end` is too early; the bed needs a much longer post-load settle before GUI probes are trustworthy.
 - [ ] After this tactical harness slice is stable, return to the movement-system board-path mismatch: natural speech `show me the board` currently gives a concise on-screen board summary, while the richer `planner_move` + overmap snapshot block is wired into the structured/internal `show_board` handoff path. Decide which behavior is actually intended, then test *that* path honestly.
 
 ## PARKED reference â€” upstreamable deterministic PR slice

@@ -39,10 +39,12 @@ An item is not really "done" just because deterministic tests or Andi self-check
 - [x] Gameplay signoff target `4a39c70ac7` (same spoken-craft behavior plus blocked-bark punctuation trim in `1df9e378c8`) re-passed fresh `make -j4 tests`, `./tests/cata_test "[camp][basecamp_ai]"`, `make version TILES=1 -j4 cataclysm-tiles`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` with zero recorded debug popups (`.userdata/dev/harness_runs/20260404_171141`).
 
 ### Harness observability / deterministic probe slice
-- [ ] Live board/base-AI snapshot replies can be proven by a reliable artifact/log path, not only by on-screen observation.
+- [x] Structured board/base-AI snapshot replies now have a reliable artifact path: with `DEBUG_LLM_INTENT_LOG` enabled, deterministic `show_board` / `show_job` append explicit `camp board reply` / `camp job reply` blocks to `config/llm_intent.log`; dirty HEAD `1a54665658-dirty` re-passed `make -j4 tests cataclysm-tiles`, `./tests/cata_test "[camp][basecamp_ai]"`, and startup harness `dev` / `Sandy Creek` (`.userdata/dev/harness_runs/20260404_230538`).
+- [x] Live Basecamp hearing is now provable in logs too: after a sufficiently long post-load settle, three fresh-start GUI probes with unique utterances (`show me the board please`, `what's on the board`, `craft boiled please`) each appended `camp heard Bruna Priest (2)` plus the unique `utterance=...` line to `config/llm_intent.log`.
 - [ ] The harness/live probe flow distinguishes `say sentence` from `yell a sentence` explicitly and reproducibly.
-- [ ] Probe reports keep evidence classes separate: on-screen behavior, deterministic test results, and artifact/log visibility.
+- [x] Probe reports keep evidence classes separate: on-screen behavior, deterministic test results, and artifact/log visibility.
 - [ ] A successful live probe records where the evidence landed (screen, log, or both) instead of assuming all reply paths hit `config/llm_intent.log`.
+- [x] Current `dev` / `Sandy Creek` startup reality is documented: `game::load: Finalizing end` is too early as a live-input marker; this bed needs a much longer post-load settle before GUI probes are trustworthy.
 
 ### Movement-system work
 - [x] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
