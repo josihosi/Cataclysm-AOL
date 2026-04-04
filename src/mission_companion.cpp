@@ -197,8 +197,9 @@ std::string enum_to_string<mission_kind>( mission_kind data )
         case mission_kind::Forage_Job: return "Forage_Job";
         case mission_kind::Caravan_Commune_Center_Job: return "Caravan_Commune_Center_Job";
         case mission_kind::Camp_Distribute_Food: return "Camp_Distribute_Food";
-		case mission_kind::Camp_Determine_Leadership: return "Camp_Determine_Leadership";
-		case mission_kind::Camp_Have_Meal: return "Camp_Have_Meal";
+        case mission_kind::Camp_Determine_Leadership: return "Camp_Determine_Leadership";
+        case mission_kind::Camp_Have_Meal: return "Camp_Have_Meal";
+        case mission_kind::Camp_Requests: return "Camp_Requests";
         case mission_kind::Camp_Hide_Mission: return "Camp_Hide_Mission";
         case mission_kind::Camp_Reveal_Mission: return "Camp_Reveal_Mission";
         case mission_kind::Camp_Assign_Jobs: return "Camp_Assign_Jobs";
@@ -280,6 +281,10 @@ static const std::array < miss_data, Camp_Harvest + 1 > miss_info = { {
         },
         {
             "Camp_Have_Meal",
+            no_translation( "" )
+        },
+        {
+            "Camp_Requests",
             no_translation( "" )
         },
         {
@@ -1256,6 +1261,7 @@ bool talk_function::handle_outpost_mission( const mission_entry &cur_key, npc &p
         case Camp_Distribute_Food:
         case Camp_Determine_Leadership:
         case Camp_Have_Meal:
+        case Camp_Requests:
         case Camp_Hide_Mission:
         case Camp_Reveal_Mission:
         case Camp_Assign_Jobs:
@@ -2697,10 +2703,7 @@ npc_ptr talk_function::companion_choose( const std::map<skill_id, int> &required
     for( const npc_ptr &e : available ) {
         std::string npc_desc;
         bool can_do = true;
-        if( e->mission == NPC_MISSION_CAMP_RESIDENT ) {
-            //~ %1$s: npc name
-            npc_desc = string_format( pgettext( "companion", "%1$s (Camp resident)" ), e->get_name() );
-        } else if( e->mission == NPC_MISSION_GUARD_ALLY ) {
+        if( e->mission == NPC_MISSION_GUARD_ALLY ) {
             //~ %1$s: npc name
             npc_desc = string_format( pgettext( "companion", "%1$s (Guarding)" ), e->get_name() );
         } else {

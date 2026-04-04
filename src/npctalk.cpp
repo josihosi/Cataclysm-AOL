@@ -1516,6 +1516,39 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
     if( !message.empty() ) {
         add_msg( _( "You yell %s" ), message );
         u.shout( string_format( _( "%s yelling %s" ), u.disp_name(), message ), is_order );
+
+        const std::string utterance = !yell_msg.empty() ? yell_msg : message;
+        std::vector<npc *> hearers = get_npcs_if( [&]( const npc & guy ) {
+            return guy.is_player_ally() && guy.assigned_camp && guy.can_hear( u.pos_bub(), volume );
+        } );
+        struct camp_hearer_group {
+            tripoint_abs_omt camp_omt;
+            basecamp *camp = nullptr;
+            std::vector<npc *> hearers;
+        };
+        std::vector<camp_hearer_group> camp_groups;
+        for( npc *guy : hearers ) {
+            if( guy == nullptr || !guy->assigned_camp ) {
+                continue;
+            }
+            std::optional<basecamp *> camp = overmap_buffer.find_camp( guy->assigned_camp->xy() );
+            if( !camp || *camp == nullptr ) {
+                continue;
+            }
+            auto it = std::find_if( camp_groups.begin(), camp_groups.end(), [&]( const camp_hearer_group & group ) {
+                return group.camp_omt == *guy->assigned_camp;
+            } );
+            if( it == camp_groups.end() ) {
+                camp_groups.push_back( { *guy->assigned_camp, *camp, { guy } } );
+            } else {
+                it->hearers.push_back( guy );
+            }
+        }
+        for( camp_hearer_group &group : camp_groups ) {
+            if( group.camp != nullptr && !group.hearers.empty() ) {
+                group.camp->handle_heard_camp_request( *group.hearers.front(), utterance );
+            }
+        }
     }
     if( !emote_msg.empty() ) {
         add_msg( emote_msg );

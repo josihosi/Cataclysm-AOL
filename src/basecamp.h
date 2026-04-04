@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "calendar.h"
+#include "character_id.h"
 #include "coordinates.h"
 #include "craft_command.h"
 #include "game_constants.h"
@@ -63,6 +64,11 @@ struct expansion_data {
 
 using npc_ptr = shared_ptr_fast<npc>;
 using comp_list = std::vector<npc_ptr>;
+
+namespace catacurses
+{
+class window;
+} // namespace catacurses
 
 namespace base_camps
 {
@@ -139,6 +145,150 @@ struct expansion_salt_water_pipe {
     std::vector<expansion_salt_water_pipe_segment> segments;
 };
 
+struct camp_llm_note {
+    std::string kind;
+    std::string text;
+    time_point created_turn = calendar::turn_zero;
+};
+
+struct camp_llm_request {
+    int request_id = 0;
+    std::string request_kind = "craft_request";
+    std::string source_utterance;
+    std::string requested_item_query;
+    int requested_count = 0;
+    recipe_id chosen_recipe_id;
+    std::string chosen_recipe_name;
+    std::string status = "heard";
+    std::string approval_state = "not_needed";
+    mission_id active_mission_id;
+    character_id heard_by_npc_id;
+    character_id assigned_worker_npc_id;
+    std::string assigned_worker_name;
+    time_point created_turn = calendar::turn_zero;
+    time_point updated_turn = calendar::turn_zero;
+    time_point eta_turn = calendar::turn_zero;
+    std::vector<std::string> blockers;
+    std::vector<camp_llm_note> notes;
+};
+
+namespace basecamp_ai
+{
+
+struct parsed_camp_craft_order {
+    std::string item_query;
+    int count = 1;
+};
+
+struct parsed_camp_request_reference {
+    std::string query;
+    int request_id = 0;
+    bool has_request_id = false;
+    bool all_requests = false;
+    bool all_blocked_requests = false;
+};
+
+enum class camp_job_token_kind {
+    show_board,
+    show_job,
+    act_on_job,
+    delete_job,
+    launch_ready_jobs,
+    retry_blocked_jobs,
+    clear_archived_jobs,
+};
+
+struct parsed_camp_job_token {
+    camp_job_token_kind kind = camp_job_token_kind::act_on_job;
+    int request_id = 0;
+};
+
+struct parsed_overmap_movement_intent {
+    point_rel_omt delta = point_rel_omt::zero;
+    bool stay = true;
+};
+
+struct camp_request_match_result {
+    int request_id = 0;
+    bool found = false;
+    int score = 0;
+    std::vector<std::string> ambiguous_matches;
+};
+
+struct camp_craft_recipe_match {
+    std::vector<recipe_id> recipe_ids;
+    std::vector<std::string> subjects;
+    std::vector<std::string> score_notes;
+    std::string fallback_query;
+    int score = 0;
+};
+
+struct camp_craft_recipe_candidate {
+    npc_ptr worker;
+    std::string resolution_note;
+    std::vector<std::string> blockers;
+    time_duration duration = 0_turns;
+};
+
+struct resolved_camp_craft_recipe {
+    recipe_id recipe_id;
+    std::string subject;
+    camp_craft_recipe_candidate candidate;
+};
+
+enum class camp_craft_resolution_outcome {
+    MATCH_START,
+    MATCH_BLOCKED,
+    MATCH_AMBIGUOUS,
+    NO_MATCH,
+};
+
+struct camp_craft_resolution {
+    camp_craft_recipe_match match;
+    std::optional<resolved_camp_craft_recipe> choice;
+    camp_craft_resolution_outcome outcome = camp_craft_resolution_outcome::NO_MATCH;
+};
+
+std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance );
+std::optional<parsed_camp_craft_order> parse_structured_camp_craft_order( std::string_view utterance );
+std::optional<parsed_camp_job_token> parse_structured_camp_job_token( std::string_view utterance );
+std::optional<parsed_camp_request_reference> parse_heard_camp_clear_query( std::string_view utterance );
+std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance );
+std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance );
+std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std::string_view utterance );
+std::vector<int> collect_ready_camp_request_ids( const std::vector<camp_llm_request> &requests );
+std::vector<int> collect_blocked_camp_request_ids( const std::vector<camp_llm_request> &requests );
+std::vector<int> collect_archived_camp_request_ids( const std::vector<camp_llm_request> &requests );
+std::string camp_request_subject_for_display( const camp_llm_request &request,
+        bool include_resolved_recipe = false,
+        bool include_request_id = false );
+std::string camp_request_handoff_snapshot( const camp_llm_request &request );
+std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &requests );
+camp_request_match_result match_camp_request_reference( const std::vector<camp_llm_request> &requests,
+        const parsed_camp_request_reference &reference,
+        const std::function<bool( const camp_llm_request & )> &predicate );
+bool parse_relative_omt_delta( std::string_view dx_text, std::string_view dy_text,
+                               point_rel_omt &delta, std::string &error );
+bool parse_overmap_movement_token( std::string_view token,
+                                   parsed_overmap_movement_intent &intent,
+                                   std::string &error );
+tripoint_abs_omt resolve_overmap_movement_target( const tripoint_abs_omt &origin,
+        const parsed_overmap_movement_intent &intent );
+bool format_overmap_movement_token( const tripoint_abs_omt &origin,
+                                    const tripoint_abs_omt &target,
+                                    std::string &token,
+                                    std::string &error );
+bool matches_assigned_camp_request_worker( const camp_llm_request &request,
+        const character_id &worker_id, std::string_view worker_name );
+int score_camp_recipe_query( const recipe &making, std::string_view query );
+camp_craft_recipe_match match_camp_craft_query( const std::unordered_set<recipe_id> &available_recipes,
+        std::string_view query );
+camp_craft_resolution resolve_camp_craft_query( const std::unordered_set<recipe_id> &available_recipes,
+        std::string_view query,
+        const std::function<camp_craft_recipe_candidate( const recipe & )> &evaluate_recipe );
+
+} // namespace basecamp_ai
+
 class basecamp_map
 {
         friend basecamp;
@@ -194,6 +344,7 @@ class basecamp
         std::vector<std::vector<ui_mission_id>> hidden_missions;
         std::vector<tripoint_abs_omt> fortifications;
         std::vector<expansion_salt_water_pipe *> salt_water_pipes;
+        void faction_display( const catacurses::window &fac_w, int width ) const;
 
         //change name of camp
         void set_name( const std::string &new_name );
@@ -384,9 +535,25 @@ class basecamp
         void start_menial_labor();
         void worker_assignment_ui();
         void job_assignment_ui();
+        void camp_request_ui();
         // Assembles a dummy NPC with all available recipes and uses player input on the regular crafting GUI to
         // determine what to make, batch size, who to assign to making it, etc.
         void start_crafting( const mission_id &miss_id );
+        int add_crafting_request( const recipe &making, int batch_size, const mission_id &miss_id,
+                                  const npc &worker, const std::string &source_utterance = "",
+                                  const std::string &requested_item_query = "",
+                                  const character_id &heard_by_npc_id = character_id() );
+        int queue_crafting_request( const recipe &making, int batch_size, const npc &worker,
+                                    const std::string &source_utterance = "",
+                                    const std::string &requested_item_query = "",
+                                    const character_id &heard_by_npc_id = character_id() );
+        bool handle_heard_camp_request( npc &listener, const std::string &utterance );
+        bool approve_crafting_request( int request_id );
+        bool complete_crafting_request( const mission_id &miss_id, const npc &worker,
+                                        const std::string &note_text = "" );
+        bool cancel_crafting_request( const mission_id &miss_id, const npc &worker,
+                                      const std::string &note_text = "" );
+        bool clear_camp_request( int request_id );
 
         /// Called when a companion is sent to cut logs
         void start_cut_logs( const mission_id &miss_id, float exertion_level );
@@ -487,6 +654,22 @@ class basecamp
     private:
         friend class basecamp_action_components;
 
+        camp_llm_request *find_camp_request( int request_id );
+        camp_llm_request *find_active_crafting_request( const mission_id &miss_id,
+                const character_id &worker_id );
+        void add_camp_request_note( camp_llm_request &request, const std::string &kind,
+                                    const std::string &text );
+        bool can_assign_crafting_worker( const npc &worker, const recipe &making,
+                                         bool require_available,
+                                         std::string *reason = nullptr ) const;
+        npc_ptr resolve_crafting_worker( const recipe &making, int batch_size,
+                                         const character_id &preferred_worker_id = character_id(),
+                                         const std::string &preferred_worker_name = "",
+                                         std::string *resolution_note = nullptr,
+                                         std::vector<std::string> *blockers = nullptr );
+        std::vector<std::string> release_crafting_tools( const recipe &making,
+                const mapgen_arguments &args, int batch_size );
+
         // Which faction owns this camp?
         mutable faction_id owner = faction_id::NULL_ID();
         // Returns the actual faction object which owns this camp
@@ -512,6 +695,8 @@ class basecamp
         std::set<itype_id> fuel_types; // NOLINT(cata-serialize)
         std::vector<basecamp_fuel> fuels; // NOLINT(cata-serialize)
         std::vector<basecamp_resource> resources; // NOLINT(cata-serialize)
+        std::vector<camp_llm_request> camp_requests;
+        int next_camp_request_id = 1;
         std::vector<std::vector<ui_mission_id>> temp_ui_mission_keys;   // NOLINT(cata-serialize)
         inventory _inv; // NOLINT(cata-serialize)
         bool by_radio = false; // NOLINT(cata-serialize)
