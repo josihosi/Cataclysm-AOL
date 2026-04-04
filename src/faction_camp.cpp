@@ -2681,6 +2681,61 @@ bool parse_relative_omt_delta( std::string_view dx_text, std::string_view dy_tex
     return true;
 }
 
+bool parse_overmap_movement_token( std::string_view token,
+                                   parsed_overmap_movement_intent &intent,
+                                   std::string &error )
+{
+    intent = parsed_overmap_movement_intent{};
+    error.clear();
+
+    const std::string text = trim( token );
+    if( text == "stay" ) {
+        return true;
+    }
+
+    static constexpr std::string_view format_error =
+        "Overmap move token must use 'stay' or 'move_omt dx=<signed_int> dy=<signed_int>'.";
+    static constexpr std::string_view prefix = "move_omt";
+    if( text.size() <= prefix.size() || text.compare( 0, prefix.size(), prefix ) != 0 ||
+        !std::isspace( static_cast<unsigned char>( text[prefix.size()] ) ) ) {
+        error = std::string( format_error );
+        return false;
+    }
+
+    std::string fields = trim( std::string_view( text ).substr( prefix.size() ) );
+    const size_t split = fields.find( ' ' );
+    if( split == std::string::npos ) {
+        error = std::string( format_error );
+        return false;
+    }
+
+    const std::string dx_field = fields.substr( 0, split );
+    const std::string dy_field = trim( fields.substr( split + 1 ) );
+    if( dx_field.empty() || dy_field.empty() || dy_field.find( ' ' ) != std::string::npos ) {
+        error = std::string( format_error );
+        return false;
+    }
+
+    static constexpr std::string_view dx_prefix = "dx=";
+    static constexpr std::string_view dy_prefix = "dy=";
+    if( dx_field.compare( 0, dx_prefix.size(), dx_prefix ) != 0 ||
+        dy_field.compare( 0, dy_prefix.size(), dy_prefix ) != 0 ) {
+        error = std::string( format_error );
+        return false;
+    }
+
+    point_rel_omt delta = point_rel_omt::zero;
+    if( !parse_relative_omt_delta( std::string_view( dx_field ).substr( dx_prefix.size() ),
+                                   std::string_view( dy_field ).substr( dy_prefix.size() ),
+                                   delta, error ) ) {
+        return false;
+    }
+
+    intent.stay = false;
+    intent.delta = delta;
+    return true;
+}
+
 } // namespace basecamp_ai
 
 namespace

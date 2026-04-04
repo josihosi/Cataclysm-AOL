@@ -174,7 +174,9 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
     using basecamp_ai::parse_heard_camp_clear_query;
     using basecamp_ai::parse_heard_camp_craft_order;
     using basecamp_ai::parse_heard_camp_status_query;
+    using basecamp_ai::parse_overmap_movement_token;
     using basecamp_ai::parse_relative_omt_delta;
+    using basecamp_ai::parsed_overmap_movement_intent;
     using basecamp_ai::resolve_camp_craft_query;
     using basecamp_ai::score_camp_recipe_query;
 
@@ -527,6 +529,46 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK_FALSE( parse_relative_omt_delta( "2", "north", delta, error ) );
         CHECK( error == "Overmap delta dy is invalid." );
         CHECK( delta == point_rel_omt::zero );
+    }
+
+    SECTION( "overmap movement parser accepts stay and signed delta intents" ) {
+        parsed_overmap_movement_intent intent;
+        std::string error;
+
+        CHECK( parse_overmap_movement_token( " stay ", intent, error ) );
+        CHECK( intent.stay );
+        CHECK( intent.delta == point_rel_omt::zero );
+        CHECK( error.empty() );
+
+        CHECK( parse_overmap_movement_token( "move_omt dx=4 dy=-2", intent, error ) );
+        CHECK_FALSE( intent.stay );
+        CHECK( intent.delta == point_rel_omt( 4, -2 ) );
+        CHECK( error.empty() );
+
+        CHECK( parse_overmap_movement_token( "move_omt   dx=-1    dy=+3", intent, error ) );
+        CHECK_FALSE( intent.stay );
+        CHECK( intent.delta == point_rel_omt( -1, 3 ) );
+        CHECK( error.empty() );
+    }
+
+    SECTION( "overmap movement parser rejects malformed tokens with safe fallback state" ) {
+        parsed_overmap_movement_intent intent;
+        std::string error;
+
+        CHECK_FALSE( parse_overmap_movement_token( "move_omt 4 -2", intent, error ) );
+        CHECK( error == "Overmap move token must use 'stay' or 'move_omt dx=<signed_int> dy=<signed_int>'." );
+        CHECK( intent.stay );
+        CHECK( intent.delta == point_rel_omt::zero );
+
+        CHECK_FALSE( parse_overmap_movement_token( "move_omt dx=east dy=2", intent, error ) );
+        CHECK( error == "Overmap delta dx is invalid." );
+        CHECK( intent.stay );
+        CHECK( intent.delta == point_rel_omt::zero );
+
+        CHECK_FALSE( parse_overmap_movement_token( "move_omt dx=2", intent, error ) );
+        CHECK( error == "Overmap move token must use 'stay' or 'move_omt dx=<signed_int> dy=<signed_int>'." );
+        CHECK( intent.stay );
+        CHECK( intent.delta == point_rel_omt::zero );
     }
 
     SECTION( "craft router prefers specific phrase matches over generic noun matches" ) {
