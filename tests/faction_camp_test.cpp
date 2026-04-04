@@ -165,6 +165,7 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
 {
     using basecamp_ai::camp_request_subject_for_display;
     using basecamp_ai::camp_job_token_kind;
+    using basecamp_ai::collect_archived_camp_request_ids;
     using basecamp_ai::collect_blocked_camp_request_ids;
     using basecamp_ai::collect_ready_camp_request_ids;
     using basecamp_ai::match_camp_craft_query;
@@ -315,6 +316,18 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         };
 
         CHECK( collect_blocked_camp_request_ids( requests ) == std::vector<int> { 4, 7 } );
+    }
+
+    SECTION( "archived-request collector keeps completed and cancelled work only" ) {
+        const std::vector<camp_llm_request> requests = {
+            camp_llm_request{ .request_id = 2, .status = "awaiting_approval" },
+            camp_llm_request{ .request_id = 4, .status = "blocked" },
+            camp_llm_request{ .request_id = 5, .status = "in_progress" },
+            camp_llm_request{ .request_id = 9, .status = "completed" },
+            camp_llm_request{ .request_id = 11, .status = "cancelled" }
+        };
+
+        CHECK( collect_archived_camp_request_ids( requests ) == std::vector<int> { 9, 11 } );
     }
 
     SECTION( "status queries can ask for the whole board" ) {

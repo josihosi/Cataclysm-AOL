@@ -1896,6 +1896,12 @@ static std::string camp_craft_approval_note( const camp_craft_risk_snapshot &sna
     return _( "Pinned for approval before anyone burns tools, ingredients, and calories on it." );
 }
 
+struct camp_request_launch_result {
+    std::vector<std::string> started;
+    std::vector<std::string> blocked;
+    std::vector<std::string> pinned;
+};
+
 static std::string camp_request_launch_feedback( const std::vector<std::string> &started,
         const std::vector<std::string> &blocked,
         const std::vector<std::string> &pinned )
@@ -1917,6 +1923,38 @@ static std::string camp_request_launch_feedback( const std::vector<std::string> 
         feedback = _( "Nothing changed on the board." );
     }
     return feedback;
+}
+
+static camp_request_launch_result attempt_camp_request_launches( const std::vector<int> &launch_ids,
+        const std::function<camp_llm_request *( int )> &find_request,
+        const std::function<void( int )> &approve_request )
+{
+    camp_request_launch_result result;
+    result.started.reserve( launch_ids.size() );
+    result.blocked.reserve( launch_ids.size() );
+    result.pinned.reserve( launch_ids.size() );
+
+    for( const int launch_id : launch_ids ) {
+        camp_llm_request *request = find_request( launch_id );
+        if( request == nullptr ) {
+            continue;
+        }
+        const std::string subject = camp_request_subject( *request );
+        approve_request( launch_id );
+        request = find_request( launch_id );
+        if( request == nullptr ) {
+            continue;
+        }
+        if( request->status == "in_progress" ) {
+            result.started.push_back( subject );
+        } else if( request->status == "blocked" ) {
+            result.blocked.push_back( subject );
+        } else {
+            result.pinned.push_back( subject );
+        }
+    }
+
+    return result;
 }
 
 static bool camp_request_is_archived( const camp_llm_request &request )
@@ -2719,6 +2757,18 @@ std::vector<int> collect_blocked_camp_request_ids( const std::vector<camp_llm_re
     return blocked_ids;
 }
 
+std::vector<int> collect_archived_camp_request_ids( const std::vector<camp_llm_request> &requests )
+{
+    std::vector<int> archived_ids;
+    archived_ids.reserve( requests.size() );
+    for( const camp_llm_request &request : requests ) {
+        if( request.status == "completed" || request.status == "cancelled" ) {
+            archived_ids.push_back( request.request_id );
+        }
+    }
+    return archived_ids;
+}
+
 bool matches_assigned_camp_request_worker( const camp_llm_request &request,
         const character_id &worker_id, std::string_view worker_name )
 {
@@ -3473,43 +3523,23 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                 return true;
             }
 
-            std::vector<std::string> started_requests;
-            std::vector<std::string> blocked_requests;
-            std::vector<std::string> pinned_requests;
-            started_requests.reserve( launch_ids.size() );
-            blocked_requests.reserve( launch_ids.size() );
-            pinned_requests.reserve( launch_ids.size() );
-
-            for( const int launch_id : launch_ids ) {
-                camp_llm_request *request = find_camp_request( launch_id );
-                if( request == nullptr ) {
-                    continue;
-                }
-                const std::string subject = camp_request_subject( *request );
-                approve_crafting_request( launch_id );
-                request = find_camp_request( launch_id );
-                if( request == nullptr ) {
-                    continue;
-                }
-                if( request->status == "in_progress" ) {
-                    started_requests.push_back( subject );
-                } else if( request->status == "blocked" ) {
-                    blocked_requests.push_back( subject );
-                } else {
-                    pinned_requests.push_back( subject );
-                }
-            }
-
+            const camp_request_launch_result launch_result = attempt_camp_request_launches( launch_ids,
+                                                           [this]( const int request_id ) {
+                return find_camp_request( request_id );
+            },
+            [this]( const int request_id ) {
+                approve_crafting_request( request_id );
+            } );
             add_camp_request_bark( listener,
                                    retrying_blocked ?
                                    string_format( _( "Retried the blocked pile: started %1$d, still blocked %2$d, pinned %3$d." ),
-                                           static_cast<int>( started_requests.size() ),
-                                           static_cast<int>( blocked_requests.size() ),
-                                           static_cast<int>( pinned_requests.size() ) ) :
+                                           static_cast<int>( launch_result.started.size() ),
+                                           static_cast<int>( launch_result.blocked.size() ),
+                                           static_cast<int>( launch_result.pinned.size() ) ) :
                                    string_format( _( "Worked through the board: started %1$d, blocked %2$d, still pinned %3$d." ),
-                                           static_cast<int>( started_requests.size() ),
-                                           static_cast<int>( blocked_requests.size() ),
-                                           static_cast<int>( pinned_requests.size() ) ) );
+                                           static_cast<int>( launch_result.started.size() ),
+                                           static_cast<int>( launch_result.blocked.size() ),
+                                           static_cast<int>( launch_result.pinned.size() ) ) );
             return true;
         }
 
@@ -3771,13 +3801,14 @@ void basecamp::camp_request_ui()
     while( true ) {
         uilist menu;
         menu.title = _( "Crafting Requests" );
-        menu.text = _( "Inspect the board, review crafting details, recall an active crafter, or clear cancelled requests." );
+        menu.text = _( "Inspect the board, review crafting details, retry blocked work, recall an active crafter, or clear archived requests." );
 
         std::vector<int> request_ids;
         request_ids.reserve( camp_requests.size() );
         int entry_index = 0;
         bool has_archived_requests = false;
         bool has_launchable_requests = false;
+        bool has_blocked_requests = false;
         for( const camp_llm_request &request : camp_requests ) {
             request_ids.push_back( request.request_id );
             menu.addentry( entry_index++, true, MENU_AUTOASSIGN, camp_request_summary( request ) );
@@ -3787,10 +3818,15 @@ void basecamp::camp_request_ui()
             if( request.status == "awaiting_approval" ) {
                 has_launchable_requests = true;
             }
+            if( request.status == "blocked" ) {
+                has_blocked_requests = true;
+            }
         }
 
         const int launch_ready_entry = entry_index++;
         menu.addentry( launch_ready_entry, has_launchable_requests, 'a', _( "Start all ready crafting requests" ) );
+        const int retry_blocked_entry = entry_index++;
+        menu.addentry( retry_blocked_entry, has_blocked_requests, 'r', _( "Retry all blocked crafting requests" ) );
         const int clear_archived_entry = entry_index;
         menu.addentry( clear_archived_entry, has_archived_requests, 'c', _( "Clear archived crafting requests" ) );
         menu.query();
@@ -3799,37 +3835,20 @@ void basecamp::camp_request_ui()
             return;
         }
 
-        if( menu.ret == launch_ready_entry ) {
-            const std::vector<int> launch_ids = basecamp_ai::collect_ready_camp_request_ids( camp_requests );
-
-            std::vector<std::string> started_requests;
-            std::vector<std::string> blocked_requests;
-            std::vector<std::string> pinned_requests;
-            started_requests.reserve( launch_ids.size() );
-            blocked_requests.reserve( launch_ids.size() );
-            pinned_requests.reserve( launch_ids.size() );
-
-            for( const int launch_id : launch_ids ) {
-                camp_llm_request *request = find_camp_request( launch_id );
-                if( request == nullptr ) {
-                    continue;
-                }
-                const std::string subject = camp_request_subject( *request );
-                approve_crafting_request( launch_id );
-                request = find_camp_request( launch_id );
-                if( request == nullptr ) {
-                    continue;
-                }
-                if( request->status == "in_progress" ) {
-                    started_requests.push_back( subject );
-                } else if( request->status == "blocked" ) {
-                    blocked_requests.push_back( subject );
-                } else {
-                    pinned_requests.push_back( subject );
-                }
-            }
-
-            popup( camp_request_launch_feedback( started_requests, blocked_requests, pinned_requests ) );
+        if( menu.ret == launch_ready_entry || menu.ret == retry_blocked_entry ) {
+            const std::vector<int> launch_ids = menu.ret == retry_blocked_entry ?
+                                                basecamp_ai::collect_blocked_camp_request_ids( camp_requests ) :
+                                                basecamp_ai::collect_ready_camp_request_ids( camp_requests );
+            const camp_request_launch_result launch_result = attempt_camp_request_launches( launch_ids,
+                                                           [this]( const int request_id ) {
+                return find_camp_request( request_id );
+            },
+            [this]( const int request_id ) {
+                approve_crafting_request( request_id );
+            } );
+            popup( camp_request_launch_feedback( launch_result.started,
+                                                 launch_result.blocked,
+                                                 launch_result.pinned ) );
             if( camp_requests.empty() ) {
                 popup( _( "The board is empty again." ) );
                 return;
@@ -3838,9 +3857,9 @@ void basecamp::camp_request_ui()
         }
 
         if( menu.ret == clear_archived_entry ) {
-            camp_requests.erase( std::remove_if( camp_requests.begin(), camp_requests.end(), []( const camp_llm_request & request ) {
-                return request.status == "completed" || request.status == "cancelled";
-            } ), camp_requests.end() );
+            for( const int request_id : basecamp_ai::collect_archived_camp_request_ids( camp_requests ) ) {
+                clear_camp_request( request_id );
+            }
             if( camp_requests.empty() ) {
                 popup( _( "The board is empty again." ) );
                 return;

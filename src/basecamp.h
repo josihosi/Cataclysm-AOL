@@ -243,6 +243,7 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( st
 std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std::string_view utterance );
 std::vector<int> collect_ready_camp_request_ids( const std::vector<camp_llm_request> &requests );
 std::vector<int> collect_blocked_camp_request_ids( const std::vector<camp_llm_request> &requests );
+std::vector<int> collect_archived_camp_request_ids( const std::vector<camp_llm_request> &requests );
 std::string camp_request_subject_for_display( const camp_llm_request &request,
         bool include_resolved_recipe = false );
 camp_request_match_result match_camp_request_reference( const std::vector<camp_llm_request> &requests,
