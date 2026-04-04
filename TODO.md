@@ -21,6 +21,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
   - `hold_position`
 - [ ] Use the same relative-delta idea for overmap-targeted movement / planner output where appropriate.
   - [x] Land the shared signed `dx` / `dy` parser/tests for future planner consumers.
+  - [x] Land a shared `stay` / `move_omt dx=<signed_int> dy=<signed_int>` token parser/tests so future planner consumers agree on one small overmap movement grammar.
 - [x] Update prompt/snapshot explanations and examples so the model is told to emit coordinates rather than micro-step chains.
 - [x] Consider lightweight grid/axis hints in the snapshot if they help the model reason about offsets more reliably.
 - [x] Add deterministic parser/tests for positive/negative deltas, state suffix retention, and malformed fallback behavior.
