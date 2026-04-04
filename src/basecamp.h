@@ -235,6 +235,7 @@ struct camp_craft_resolution {
 };
 
 std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance );
+std::optional<parsed_camp_craft_order> parse_structured_camp_craft_order( std::string_view utterance );
 std::optional<parsed_camp_job_token> parse_structured_camp_job_token( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_clear_query( std::string_view utterance );
 std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance );

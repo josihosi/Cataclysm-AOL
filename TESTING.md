@@ -35,6 +35,7 @@ If a task is about feel, weirdness, or real gameplay sanity, it should usually s
 
 ### Basecamp work on `dev`
 - [x] Relevant deterministic tests exist for the new routing/token layer.
+- [x] Structured `craft=<query>` / `job=<id>` / `delete_job=<id>` token parsers are covered by deterministic tests.
 - [x] `dev` build compiles.
 - [x] Game launches.
 - [x] Known save loads successfully.
