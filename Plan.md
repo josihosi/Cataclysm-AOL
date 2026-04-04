@@ -92,6 +92,7 @@ The overall structure is considered clear enough for autonomous work.
 - [x] remove or suppress job-number-forward phrasing from human-facing bark where possible
 - [x] keep the richer overmap snapshot out of the short spoken bark path; for now, spoken replies stay concise/human
 - [x] put the current bark pass in front of Josef for a short live tone/feel packet on craft / board / blocker replies
+- [x] re-run compile / targeted tests / startup harness on the latest bark-wording dirty tree before pretending Josef is testing something current (fresh current pass now revalidated on `7879d7b07b-dirty`)
 - [x] follower NPC movement already uses the signed coordinate contract (`move=<dx>,<dy> <state>`) instead of the old `E E E N`-style step spam
 
 ---
@@ -151,7 +152,7 @@ That goal is met well enough for now, even though a few cleanup edges remain.
 - [x] prove end-to-end where a natural-speech board reply lands (at least one live `show me the board` probe is now confirmed in both places: on-screen message log bark and `config/llm_intent.log` artifact lines)
 
 ### 4. Movement-system improvements
-**Status:** GREEN (queued behind the current Basecamp bark/feel pass and Locker Zone v1)
+**Status:** GREEN (queued behind Locker Zone v1)
 
 This remains important, but it is no longer the immediate finish line.
 
@@ -209,7 +210,7 @@ This work should feed both follower movement cleanup and later Basecamp job-subf
 ---
 
 ### 5. Locker Zone v1
-**Status:** GREEN later (next feature after the current Basecamp bark/feel pass)
+**Status:** GREEN — PRIMARY FINISH LINE
 
 Detailed auxiliary patch plan: [`doc/locker-zone-v1-patch-plan.md`](doc/locker-zone-v1-patch-plan.md)
 

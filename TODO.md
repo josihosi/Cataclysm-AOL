@@ -11,6 +11,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 - [x] Follower NPC movement already uses the signed coordinate contract instead of the old `E E E N`-style step wording; do not reopen that as active work right now.
 - [x] After the bark pass, prepare the next clean Basecamp AI test packet focused on human-facing wording/feel.
 - [x] Put the current bark/feel packet in front of Josef with the exact live checks and current dirty-tree validation notes.
+- [x] Revalidate the latest bark-wording dirty tree with compile / targeted tests / startup harness so Josef is not testing stale nonsense.
 - [ ] Josef live-check the current Basecamp AI bark pass for tone/feel on craft / board / blocker replies.
 
 ## PARKED reference â€” upstreamable deterministic PR slice
@@ -63,7 +64,7 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 - [x] Compile touched objects/binaries after each meaningful slice.
 - [x] Run startup harness / launch / save-load checks on `dev` after meaningful Basecamp changes.
 - [x] Keep filtered debug-log deltas clean enough to isolate new regressions.
-- [ ] Revisit full `tests/cata_test` linking on this Mac when broader deterministic test coverage needs an end-to-end run; current local framework/library link trouble should be treated as environment work, not as a reason to skip logic tests.
+- [x] Re-establish a reliable fresh full `tests/cata_test` rebuild path on this Mac for broader deterministic coverage: rebuild `cataclysm.a`, then use top-level `make -j4 tests` (direct `make -C tests cata_test` can drop exported flags here).
 
 ## Josef manual testing pending / upcoming
 - [ ] Do **not** send Josef another movement-system board-handoff readability packet until the intended path is clarified: live natural speech currently gives a concise board summary, while the richer planner snapshot lives in the structured/internal `show_board` handoff path.
