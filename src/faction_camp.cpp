@@ -1617,6 +1617,11 @@ static std::string camp_request_subject( const camp_llm_request &request )
     return basecamp_ai::camp_request_subject_for_display( request );
 }
 
+static std::string camp_request_bark_subject( const camp_llm_request &request )
+{
+    return basecamp_ai::camp_request_subject_for_display( request, false, true );
+}
+
 static std::string camp_request_summary_subject( const camp_llm_request &request )
 {
     return basecamp_ai::camp_request_subject_for_display( request, true );
@@ -1660,8 +1665,7 @@ static void add_camp_request_bark( const npc &speaker, const std::string &text )
 
 [[maybe_unused]] static std::string camp_request_queue_bark( const camp_llm_request &request )
 {
-    return string_format( _( "Got it.  Pinned crafting request #%1$d for %2$s." ),
-                          request.request_id, camp_request_subject( request ) );
+    return string_format( _( "Got it.  Pinned %s." ), camp_request_bark_subject( request ) );
 }
 
 [[maybe_unused]] static std::string camp_request_blocked_bark( const camp_llm_request &request )
@@ -1670,18 +1674,19 @@ static void add_camp_request_bark( const npc &speaker, const std::string &text )
                                      request.chosen_recipe_name != request.requested_item_query;
     if( !request.blockers.empty() ) {
         if( has_resolved_recipe ) {
-            return string_format( _( "Heard you.  Request #%1$d matched %2$s, but it is blocked: %3$s." ),
-                                  request.request_id, request.chosen_recipe_name, request.blockers.front() );
+            return string_format( _( "Heard you.  %1$s matched %2$s, but it is blocked: %3$s." ),
+                                  camp_request_bark_subject( request ), request.chosen_recipe_name,
+                                  request.blockers.front() );
         }
-        return string_format( _( "Heard you, but crafting request #%1$d is blocked: %2$s." ),
-                              request.request_id, request.blockers.front() );
+        return string_format( _( "Heard you, but %1$s is blocked: %2$s." ),
+                              camp_request_bark_subject( request ), request.blockers.front() );
     }
     if( has_resolved_recipe ) {
-        return string_format( _( "Heard you.  Request #%1$d matched %2$s, but it cannot start yet." ),
-                              request.request_id, request.chosen_recipe_name );
+        return string_format( _( "Heard you.  %1$s matched %2$s, but it cannot start yet." ),
+                              camp_request_bark_subject( request ), request.chosen_recipe_name );
     }
-    return string_format( _( "Heard you, but crafting request #%d cannot start yet." ),
-                          request.request_id );
+    return string_format( _( "Heard you, but %s cannot start yet." ),
+                          camp_request_bark_subject( request ) );
 }
 
 [[maybe_unused]] static std::string camp_request_launch_bark( const camp_llm_request &request )
@@ -1692,24 +1697,24 @@ static void add_camp_request_bark( const npc &speaker, const std::string &text )
 
 static std::string camp_request_cancel_bark( const camp_llm_request &request )
 {
-    return string_format( _( "All right.  Crafting request #%d is off the board." ), request.request_id );
+    return string_format( _( "All right.  Took %s off the board." ), camp_request_bark_subject( request ) );
 }
 
 static std::string camp_request_clear_bark( const camp_llm_request &request )
 {
-    return string_format( _( "Cleared crafting request #%d." ), request.request_id );
+    return string_format( _( "Cleared archived %s." ), camp_request_bark_subject( request ) );
 }
 
 static std::string camp_request_not_archived_bark( const camp_llm_request &request )
 {
-    return string_format( _( "Request #%1$d is still %2$s.  Cancel it or let it finish first." ),
-                          request.request_id, camp_request_status_label( request ) );
+    return string_format( _( "%1$s is still %2$s.  Cancel it or let it finish first." ),
+                          camp_request_bark_subject( request ), camp_request_status_label( request ) );
 }
 
 static std::string camp_request_archived_bark( const camp_llm_request &request )
 {
-    return string_format( _( "Request #%1$d is already archived as %2$s.  Clear it if you want it gone." ),
-                          request.request_id, camp_request_status_label( request ) );
+    return string_format( _( "%1$s is already archived as %2$s.  Clear it if you want it gone." ),
+                          camp_request_bark_subject( request ), camp_request_status_label( request ) );
 }
 
 static std::string camp_request_ambiguous_bark( std::string_view query,
@@ -2423,21 +2428,26 @@ namespace basecamp_ai
 {
 
 std::string camp_request_subject_for_display( const camp_llm_request &request,
-        bool include_resolved_recipe )
+        bool include_resolved_recipe, bool include_request_id )
 {
     const std::string item_name = !request.requested_item_query.empty() ? request.requested_item_query :
                                   request.chosen_recipe_name;
+    std::string subject;
     if( item_name.empty() ) {
-        return _( "crafting request" );
+        subject = _( "crafting request" );
+    } else if( request.requested_count > 0 ) {
+        subject = string_format( _( "%1$d × %2$s" ), request.requested_count, item_name );
+    } else {
+        subject = item_name;
     }
-
-    std::string subject = request.requested_count > 0 ?
-                          string_format( _( "%1$d × %2$s" ), request.requested_count, item_name ) :
-                          item_name;
 
     if( include_resolved_recipe && !request.requested_item_query.empty() &&
         !request.chosen_recipe_name.empty() && request.chosen_recipe_name != request.requested_item_query ) {
         subject += string_format( _( " (matched %s)" ), request.chosen_recipe_name );
+    }
+
+    if( include_request_id && request.request_id > 0 ) {
+        subject += string_format( _( " (#%d)" ), request.request_id );
     }
 
     return subject;
@@ -3639,7 +3649,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         }
 
         const int request_id = request->request_id;
-        const std::string subject = camp_request_subject( *request );
+        const std::string subject = camp_request_bark_subject( *request );
         approve_crafting_request( request_id );
         request = find_camp_request( request_id );
         if( request == nullptr ) {
@@ -3831,13 +3841,13 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         }
         if( best_request->status == "in_progress" ) {
             add_camp_request_bark( listener,
-                                   string_format( _( "Request #%1$d is already underway." ),
-                                           best_request->request_id ) );
+                                   string_format( _( "%s is already underway." ),
+                                           camp_request_bark_subject( *best_request ) ) );
             return true;
         }
 
         const int request_id = best_request->request_id;
-        const std::string subject = camp_request_subject( *best_request );
+        const std::string subject = camp_request_bark_subject( *best_request );
         approve_crafting_request( request_id );
         best_request = find_camp_request( request_id );
         if( best_request == nullptr ) {

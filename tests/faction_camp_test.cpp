@@ -618,6 +618,25 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( camp_request_subject_for_display( request ) == "crafting request" );
     }
 
+    SECTION( "request display subject can keep the request number as trailing detail" ) {
+        const camp_llm_request request{
+            .request_id = 7,
+            .requested_item_query = "bandages",
+            .requested_count = 5,
+            .chosen_recipe_name = "sterile bandage"
+        };
+
+        CHECK( camp_request_subject_for_display( request, false, true ) == "5 × bandages (#7)" );
+        CHECK( camp_request_subject_for_display( request, true, true ) ==
+               "5 × bandages (matched sterile bandage) (#7)" );
+    }
+
+    SECTION( "request display subject falls back to a generic numbered label when empty" ) {
+        const camp_llm_request request{ .request_id = 9 };
+
+        CHECK( camp_request_subject_for_display( request, false, true ) == "crafting request (#9)" );
+    }
+
     SECTION( "craft request handoff snapshot keeps stable request facts plus board/detail/next tokens" ) {
         const camp_llm_request request{
             .request_id = 7,

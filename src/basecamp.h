@@ -250,7 +250,8 @@ std::vector<int> collect_ready_camp_request_ids( const std::vector<camp_llm_requ
 std::vector<int> collect_blocked_camp_request_ids( const std::vector<camp_llm_request> &requests );
 std::vector<int> collect_archived_camp_request_ids( const std::vector<camp_llm_request> &requests );
 std::string camp_request_subject_for_display( const camp_llm_request &request,
-        bool include_resolved_recipe = false );
+        bool include_resolved_recipe = false,
+        bool include_request_id = false );
 std::string camp_request_handoff_snapshot( const camp_llm_request &request );
 std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &requests );
 camp_request_match_result match_camp_request_reference( const std::vector<camp_llm_request> &requests,
