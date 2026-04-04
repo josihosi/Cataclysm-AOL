@@ -1675,11 +1675,11 @@ static void add_camp_request_bark( const npc &speaker, const std::string &text )
                                      request.chosen_recipe_name != request.requested_item_query;
     if( !request.blockers.empty() ) {
         if( has_resolved_recipe ) {
-            return string_format( _( "Heard you.  %1$s matched %2$s, but it is blocked: %3$s." ),
+            return string_format( _( "Heard you.  %1$s matched %2$s, but it is blocked: %3$s" ),
                                   camp_request_bark_subject( request ), request.chosen_recipe_name,
                                   request.blockers.front() );
         }
-        return string_format( _( "Heard you, but %1$s is blocked: %2$s." ),
+        return string_format( _( "Heard you, but %1$s is blocked: %2$s" ),
                               camp_request_bark_subject( request ), request.blockers.front() );
     }
     if( has_resolved_recipe ) {
