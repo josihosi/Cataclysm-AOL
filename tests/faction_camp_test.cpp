@@ -562,9 +562,10 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         CHECK( camp_request_subject_for_display( request ) == "crafting request" );
     }
 
-    SECTION( "craft request handoff snapshot keeps resolved recipe blocker facts and next token" ) {
+    SECTION( "craft request handoff snapshot keeps stable request facts plus blocker facts and next token" ) {
         const camp_llm_request request{
             .request_id = 7,
+            .source_utterance = "craft 5 bandages",
             .requested_item_query = "bandages",
             .requested_count = 5,
             .chosen_recipe_name = "sterile bandage",
@@ -574,6 +575,10 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         };
 
         CHECK( camp_request_handoff_snapshot( request ) ==
+               "id=7\n"
+               "query=bandages\n"
+               "count=5\n"
+               "source=craft 5 bandages\n"
                "request=5 × bandages\n"
                "recipe=sterile bandage\n"
                "status=blocked\n"
@@ -595,6 +600,10 @@ TEST_CASE( "camp_request_speech_parsing", "[camp][basecamp_ai]" )
         };
 
         CHECK( camp_request_handoff_snapshot( request ) ==
+               "id=9\n"
+               "query=bandages\n"
+               "count=2\n"
+               "source=none\n"
                "request=2 × bandages\n"
                "recipe=bandages\n"
                "status=completed\n"
