@@ -118,7 +118,7 @@ Do not treat it as the active development branch.
 ---
 
 ### 3. Movement-system improvements
-**Status:** GREEN — PRIMARY FINISH LINE
+**Status:** JOSEF TESTING — PRIMARY FINISH LINE
 
 This is now the active queue item.
 The upstream deterministic PR slice is parked, so movement-system work becomes the next real stretch on `dev`.
@@ -134,10 +134,21 @@ The upstream deterministic PR slice is parked, so movement-system work becomes t
 - update prompt/snapshot explanation accordingly, and consider lightweight grid/axis hints if they help the model reason about offsets more reliably
 
 #### Current active sub-item
-- build the first small overmap snapshot grid (about 5x5 or 6x6)
-- make the legend present-only
-- use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants
-- add deterministic tests for the formatter / legend / malformed fallback behavior around that contract
+The first live Basecamp/planner-consumer slice now exists locally on `dev` and has cleared the current agent-side gate:
+- [x] threaded the overmap snapshot formatter into the structured Basecamp board handoff (`show_board`) instead of leaving it as a dead helper
+- [x] kept the signed-axis contract live in prompt text via `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>`
+- [x] kept the same present-only legend / axis-hint snapshot text when the board handoff receives a real camp origin
+- [x] added deterministic coverage for the live board-handoff consumer path
+- [x] re-ran compile / filtered deterministic tests / startup harness checks after landing the live-consumer slice
+- [x] Schani review re-ran `make -j4 tests cataclysm-tiles`, `./tests/cata_test "[camp][basecamp_ai]"`, and `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` on current HEAD; nothing new fell over and no broader agent-side smoke looks necessary before Josef feedback
+
+#### Next movement continuation
+- the narrow Josef live packet is now prepared for the `show_board` planner handoff:
+  - on `dev` / `Sandy Creek`, ask a camp NPC `show me the board` or `what's on the board`
+  - confirm the reply leads with `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` and the overmap snapshot block before the active/archive job lines
+  - judge whether the extra planning context helps more than it clutters
+- if Josef likes it, move this movement-system slice out of the primary finish line and only then decide whether more planner consumers need the same overmap snapshot block
+- if Josef thinks the board now reads like a tax form, do one wording/tuning tweak round before expanding the pattern
 
 #### Overmap snapshot contract (approved direction)
 - represent the overmap as a **small grid**, roughly **5x5 or 6x6**
@@ -172,6 +183,7 @@ If this gets revived later, the current preferred direction is:
 - action-result / failure-reason contracts before broader agent playtest loops
 - a tiny in-engine driver API for explicit UI state and scenario control
 - external orchestration for profiles, scenarios, artifacts, notebooks, and adapters
+- clearer separation between live behavior, deterministic test contracts, and artifact/log visibility so probe-method changes do not muddy conclusions
 
 
 ### 4. Bandit AI

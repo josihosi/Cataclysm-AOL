@@ -6,6 +6,19 @@ Source: Josef passed along a ChatGPT Pro reasoning note during Discord discussio
 Status: **parked reference, not active queue**.
 Use this when/if the harness gets revisited after the current finish lines.
 
+## Extra local lesson from 2026-04-04 testing
+
+A real harness rework should explicitly help with this failure mode too:
+- live in-game behavior can work even when the expected reply is not visible in the logs being checked
+- deterministic tests, live probes, and logging visibility are different evidence classes and should not be conflated
+- changing probe method mid-investigation (GUI live probe vs terminal/PTTY probe vs test snapshot) can invalidate conclusions if the harness does not make the layer obvious
+- future harness work should make it easy to answer three separate questions cleanly:
+  1. did the feature work on-screen?
+  2. did the deterministic contract/test pass?
+  3. where was the artifact/log for that specific path written?
+
+This strengthens the case for explicit UI-state hooks, action-result contracts, and better artifact routing instead of relying on ad-hoc screen reading or assuming all reply paths land in the same log.
+
 ## Raw note
 
 Here is the design note I would hand to OpenClaw.
