@@ -65,10 +65,12 @@ An item is not really "done" just because deterministic tests or Andi self-check
 ## Current Schani-side checks
 
 ### Pending now
-- [ ] Run the spoken camp craft smoke packet below on current HEAD and note anything stupid before this goes to Josef.
-- [ ] Specifically sanity-check the latest bark-reference polish on current HEAD:
-  - live craft-board replies should lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
-  - blocked / matched-recipe wording should stay clear without getting more bureaucratic
+- [ ] Run the spoken camp craft smoke packet below on HEAD `696f5c8b61` and note anything stupid before this goes to Josef.
+- [ ] Specifically sanity-check the latest spoken craft-resolution close-out on current HEAD:
+  - `craft 5 makeshift bandages` should take the positive deterministic path and pin/start cleanly
+  - `craft boiled` should clarify instead of guessing
+  - `craft 5 bandages` should stay deterministic blocked/no-crash and explain the resolved recipe/blocker clearly
+  - live craft-board replies should still lead with the human request subject and keep the request id as trailing detail instead of sounding like a filing cabinet
 - [ ] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
 
 ### Spoken camp craft smoke packet (Schani first)
@@ -79,29 +81,30 @@ Current narrow live-bed target when available:
 - 2 waiting camp NPCs
 - enough stock for makeshift bandages
 - not enough stock for plain bandages or boiled bandages
-- specifically verify on current HEAD:
+- specifically verify on HEAD `696f5c8b61`:
+  - `craft 5 makeshift bandages` takes the positive deterministic path and pins/starts cleanly
   - `craft boiled` still clarifies instead of guessing
-  - `craft 5 bandages` no longer crashes
-  - board/details surface the resolved recipe and blocker state clearly enough to understand what happened
+  - `craft 5 bandages` stays blocked/no-crash
+  - bark + board/details surface the resolved recipe and blocker state clearly enough to understand what happened
 
-1. `craft knife`
-   - expected: spoken craft path triggers and produces a board request / launch / blocker response
-   - suspicious: gets ignored, routed as unrelated dialogue, or picks something that is not a knife
-2. `craft five bandages`
-   - expected: quantity survives, and the request reflects 5 rather than silently collapsing to 1
-   - suspicious: quantity is dropped or bark text disagrees with the board entry
-3. `witchcraft knife`
+1. `craft 5 makeshift bandages`
+   - expected: positive deterministic path; request pins/starts cleanly and stays understandable in bark/board text
+   - suspicious: no-match, wrong recipe choice, dropped quantity, or weirdly bureaucratic bark
+2. `craft 5 bandages`
+   - expected: quantity survives, no crash occurs, and the blocked path explains the matched recipe + blocker clearly
+   - suspicious: crash, quantity collapse, silent no-match, or blocker wording too vague to recover from
+3. `craft boiled`
+   - expected: camp asks for a clearer target instead of guessing among multiple `boiled ...` recipes
+   - suspicious: silently chooses one recipe anyway or gives a generic non-answer
+4. `witchcraft knife`
    - expected: **no** craft routing, no new board request, no substring false positive
    - suspicious: any craft/job gets queued from this
-4. `craft boiled`
-   - expected: camp asks for a clearer target instead of guessing among multiple "boiled ..." recipes
-   - suspicious: silently chooses one recipe anyway
 5. `craft boiled bandages`
    - expected: specific phrase beats the generic `bandages` fallback and resolves to boiled makeshift bandages
    - suspicious: plain bandages get chosen instead
-6. If a request lands blocked, read the bark + board entry
-   - expected: failure explains itself well enough to recover
-   - suspicious: vague "cannot start" wording with no actionable reason
+6. If a request lands blocked, read the bark + board entry/details
+   - expected: failure explains itself well enough to recover, including the resolved recipe when it differs from what was heard
+   - suspicious: vague `cannot start` wording with no actionable reason or missing matched-recipe detail
 
 ### General human-eye checks
 - [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
