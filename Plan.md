@@ -211,6 +211,8 @@ This work should feed both follower movement cleanup and later Basecamp job-subf
 ### 5. Locker Zone v1
 **Status:** GREEN later (next feature after the current Basecamp bark/feel pass)
 
+Detailed auxiliary patch plan: [`doc/locker-zone-v1-patch-plan.md`](doc/locker-zone-v1-patch-plan.md)
+
 This is the next substantial Basecamp-management feature after the bark polish.
 The goal is not "fashion AI." The goal is camp-managed **loadout maintenance**:
 NPCs should periodically check a camp locker zone, compare what they are wearing/wielding against camp-approved categories, clean up duplicates, and equip a better set when an obvious upgrade exists.
