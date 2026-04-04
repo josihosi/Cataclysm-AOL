@@ -1,3 +1,5 @@
+board=show_board
+details={{details_token}}
 id={{request_id}}
 query={{query}}
 count={{count}}

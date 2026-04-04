@@ -30,15 +30,17 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last weekâ
 
 ## GREEN now â€” richer Basecamp AI on `dev`
 - [ ] Keep deterministic-first command extraction as the control spine.
-- [x] Surface a compact deterministic handoff snapshot in crafting-request details, including the exact legal follow-up token (`job=<id>` / `delete_job=<id>`), so later Basecamp-AI glue does not have to rediscover resolved recipe/blocker facts from scratch.
+- [x] Surface a compact deterministic handoff snapshot in crafting-request details, including exact board/detail/follow-up tokens (`show_board`, `show_job=<id>`, `job=<id>` / `delete_job=<id>`), so later Basecamp-AI glue does not have to rediscover resolved recipe/blocker facts from scratch.
 - [x] Define the next structured Basecamp action tokens clearly:
   - [x] `craft=<query>`
+  - [x] `show_board`
+  - [x] `show_job=<id>`
   - [x] `delete_job=<id>`
   - [x] `job=<id>`
   - [x] `launch_ready_jobs`
   - [x] `retry_blocked_jobs`
   - [x] `clear_archived_jobs`
-- [ ] When deterministic craft handling cannot complete alone, hand off a compact structured snapshot instead of forcing the LLM to rediscover deterministic facts.
+- [x] When deterministic craft handling cannot complete alone, hand off a compact structured snapshot instead of forcing the LLM to rediscover deterministic facts.
 - [x] Externalize the deterministic Basecamp craft-handoff snapshot into `data/llm_prompts` / `config/llm_prompts` so the structured handoff can be tuned without C++ edits.
 - [ ] Externalize any future Basecamp AI prompt text once a stable prompt contract exists, rather than hardcoding it in the camp flow.
 
