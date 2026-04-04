@@ -2450,6 +2450,10 @@ std::string camp_request_handoff_snapshot( const camp_llm_request &request )
         return joined;
     };
 
+    const std::string query = request.requested_item_query.empty() ? "none" :
+                              request.requested_item_query;
+    const std::string source_utterance = request.source_utterance.empty() ? "none" :
+                                         request.source_utterance;
     const std::string request_subject = camp_request_subject_for_display( request );
     const std::string resolved_recipe = request.chosen_recipe_name.empty() ? "none" :
                                         request.chosen_recipe_name;
@@ -2463,7 +2467,21 @@ std::string camp_request_handoff_snapshot( const camp_llm_request &request )
                                                   request.request_id ) :
                                    "none";
 
-    return string_format( "request=%s\nrecipe=%s\nstatus=%s\napproval=%s\nworker=%s\nblockers=%s\nnext=%s\n",
+    return string_format( "id=%1$d\n"
+                          "query=%2$s\n"
+                          "count=%3$d\n"
+                          "source=%4$s\n"
+                          "request=%5$s\n"
+                          "recipe=%6$s\n"
+                          "status=%7$s\n"
+                          "approval=%8$s\n"
+                          "worker=%9$s\n"
+                          "blockers=%10$s\n"
+                          "next=%11$s\n",
+                          request.request_id,
+                          query,
+                          request.requested_count,
+                          source_utterance,
                           request_subject,
                           resolved_recipe,
                           request.status,
