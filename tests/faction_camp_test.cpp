@@ -23,6 +23,7 @@
 #include "json_loader.h"
 #include "map.h"
 #include "map_helpers.h"
+#include "messages.h"
 #include "npc.h"
 #include "overmapbuffer.h"
 #include "player_helpers.h"
@@ -1408,6 +1409,129 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
               "worker=Cara details=show_job=9 next=delete_job=9\n") !=
           std::string::npos);
 
+    overmap_buffer.clear_camps(origin.xy());
+    overmap_buffer.clear_mongroups();
+  }
+
+  SECTION("board handoff keeps planner context as a prefixed layer over the deterministic board body") {
+    const tripoint_abs_omt origin(1605, 1605, 0);
+
+    overmap_buffer.clear_mongroups();
+    for (int dy = -2; dy <= 2; ++dy) {
+      for (int dx = -2; dx <= 2; ++dx) {
+        overmap_buffer.ter_set(
+            tripoint_abs_omt(origin.x() + dx, origin.y() + dy, origin.z()),
+            oter_id("field"));
+      }
+    }
+
+    get_map().add_camp(origin, "faction_camp", false);
+
+    const std::vector<camp_llm_request> requests = {
+        camp_llm_request{.request_id = 7,
+                         .requested_item_query = "bandages",
+                         .requested_count = 5,
+                         .chosen_recipe_name = "sterile bandage",
+                         .status = "blocked",
+                         .approval_state = "not_needed"},
+        camp_llm_request{.request_id = 9,
+                         .requested_item_query = "bandages",
+                         .requested_count = 2,
+                         .chosen_recipe_name = "bandages",
+                         .status = "completed",
+                         .approval_state = "approved",
+                         .assigned_worker_name = "Cara"}};
+
+    const std::string board_snapshot = camp_board_handoff_snapshot(requests);
+    const std::string board_prefix = "board=show_board\n";
+    REQUIRE(board_snapshot.find(board_prefix) == 0);
+    const std::string board_body = board_snapshot.substr(board_prefix.size());
+    REQUIRE_FALSE(board_body.empty());
+
+    const std::string planner_snapshot = camp_board_handoff_snapshot(origin, requests);
+    CAPTURE(planner_snapshot);
+    CHECK(planner_snapshot.find(
+              "board=show_board\nplanner_move=stay | move_omt dx=<signed_int> "
+              "dy=<signed_int>\n") == 0);
+    REQUIRE(planner_snapshot.size() >= board_body.size());
+    CHECK(planner_snapshot.rfind(board_body) == planner_snapshot.size() - board_body.size());
+
+    overmap_buffer.clear_camps(origin.xy());
+    overmap_buffer.clear_mongroups();
+  }
+
+  SECTION("camp request router keeps structured board handoff separate from spoken board bark") {
+    static const mongroup_id GROUP_ZOMBIE_HORDE("GROUP_ZOMBIE_HORDE");
+    clear_avatar();
+    clear_map_without_vision();
+    Messages::clear_messages();
+
+    const tripoint_abs_omt origin(1700, 1700, 0);
+    overmap_buffer.clear_mongroups();
+    for (int dy = -2; dy <= 2; ++dy) {
+      for (int dx = -2; dx <= 2; ++dx) {
+        overmap_buffer.ter_set(
+            tripoint_abs_omt(origin.x() + dx, origin.y() + dy, origin.z()),
+            oter_id("field"));
+      }
+    }
+
+    get_map().add_camp(origin, "faction_camp", false);
+    std::optional<basecamp *> found_camp = overmap_buffer.find_camp(origin.xy());
+    REQUIRE(found_camp.has_value());
+    REQUIRE(*found_camp != nullptr);
+    basecamp *camp = *found_camp;
+
+    overmap_buffer.ter_set(
+        tripoint_abs_omt(origin.x() + 1, origin.y(), origin.z()),
+        oter_id("road_nesw"));
+    overmap_buffer.spawn_mongroup(
+        project_to<coords::sm>(tripoint_abs_omt(origin.x() + 1, origin.y(), 0)),
+        GROUP_ZOMBIE_HORDE, 3);
+
+    npc &listener = spawn_npc(tripoint_bub_ms{5, 5, 0}.xy(), "thug");
+    clear_character(listener, true);
+    listener.assigned_camp = origin;
+
+    const recipe &bandages = recipe_id("bandages").obj();
+    camp->queue_crafting_request(bandages, 5, listener, "craft 5 bandages",
+                                 "bandages", listener.getID());
+
+    REQUIRE(camp->handle_heard_camp_request(listener, "show_board"));
+    std::vector<std::pair<std::string, std::string>> messages =
+        Messages::recent_messages(0);
+    REQUIRE_FALSE(messages.empty());
+    const std::string structured_reply = messages.back().second;
+    CAPTURE(structured_reply);
+    CHECK(structured_reply.find("board=show_board\nplanner_move=stay | move_omt dx=<signed_int> dy=<signed_int>\novermap:\n") !=
+          std::string::npos);
+    CHECK(structured_reply.find("  c camp\n") != std::string::npos);
+    CHECK(structured_reply.find("  uppercase = horde present\n") !=
+          std::string::npos);
+    CHECK(structured_reply.find("active=1\narchived=0\n") !=
+          std::string::npos);
+    CHECK(structured_reply.find("job=1 subject=5 × bandages") !=
+          std::string::npos);
+    CHECK(structured_reply.find("status=awaiting_approval") !=
+          std::string::npos);
+    CHECK(structured_reply.find("approval=waiting_player worker=") !=
+          std::string::npos);
+    CHECK(structured_reply.find("details=show_job=1 next=job=1") !=
+          std::string::npos);
+
+    Messages::clear_messages();
+    REQUIRE(camp->handle_heard_camp_request(listener, "show me the board"));
+    messages = Messages::recent_messages(0);
+    REQUIRE_FALSE(messages.empty());
+    const std::string spoken_reply = messages.back().second;
+    CAPTURE(spoken_reply);
+    CHECK(spoken_reply.find("Board's got 1 live and 0 old — 5 × bandages.") !=
+          std::string::npos);
+    CHECK(spoken_reply.find("board=show_board") == std::string::npos);
+    CHECK(spoken_reply.find("planner_move=") == std::string::npos);
+    CHECK(spoken_reply.find("overmap:") == std::string::npos);
+
+    Messages::clear_messages();
     overmap_buffer.clear_camps(origin.xy());
     overmap_buffer.clear_mongroups();
   }
