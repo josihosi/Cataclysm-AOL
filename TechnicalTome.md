@@ -1,5 +1,10 @@
 # Technical Tome
 
+## Camp locker dirty-trigger follow-through
+- Downtime locker processing now tracks a per-worker state signature built from the worker's managed loadout, current locker candidates, and resulting locker plan.
+- When that actionable state changes, the camp requeues the affected worker even without a fresh sleep/wake or policy toggle.
+- Locker candidate gathering now walks sorted locker tiles so debug/state summaries and deterministic tests do not wobble on unordered zone iteration.
+
 ## Background Summarizer (tools/llm_runner/background_summarizer.py)
 The summarizer now has **two modes**:
 
