@@ -325,6 +325,7 @@ The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is st
 - That downtime path has wake/dirty queue plumbing and temporary reservation filtering too, with deterministic coverage for reservation-aware candidate gathering and one-worker-at-a-time first-service sequencing.
 - The natural dirty triggers are in place for V1: adding an assignee, wake-up dirty, locker-policy changes, newly available eligible locker gear, and losing/dropping important managed gear all feed the locker queue.
 - Post-V1 expansion is explicit now, not fuzzy: V2 is ranged readiness / magazine + reload support from locker supply; V3 is seasonal dressing and per-NPC nuance. Do not quietly mix V3 nuance into V2.
+- The V2 magazine cap counts the weapon’s currently inserted compatible magazine as part of the two-magazine readiness budget. In other words: a managed gun with one mag in the weapon should only grab one more compatible locker mag, and locker ammo may be used to fill those selected magazines before reloading the weapon itself.
 
 ### Follower-NPC caveat
 Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.
