@@ -85,11 +85,16 @@ Latest relevant agent-side locker packet:
       - `camp locker: queued Bruna Priest state-dirty ... plan=[vest upgrade puffer jacket ... <coat_winter> -> light jacket (poor fit)<jacket_light>]`
 
 Latest live-probe status for the open legwear lane:
-- 2026-04-05 agent-side repro audit on current HEAD (`d3b61027ec-dirty`) showed that the missing legwear runtime packet is **not** just waiting to be collected from the old save ritual:
+- 2026-04-05 agent-side repro audit on current HEAD (`6b6de8d477-dirty`) showed that the missing legwear runtime packet is **not** just waiting to be collected from the old save ritual:
   - restored the original current `dev` / `Sandy Creek` save, staged **Bruna Priest** into `shorts_cargo` with `pants_cargo` on the locker tile at `35 F` via `./zzip`, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
   - that reload reached gameplay, but it did **not** emit a fresh legwear locker packet in `debug.log`
   - switched to the harness fixture path (`install-fixture basecamp_dev_manual_2026-04-02 --profile dev --replace`), restaged the same cold probe, advanced turns in live gameplay through Peekaboo, and saved
   - rereading the saved world after that run still showed `Bruna Priest` in `shorts_cargo` with `pants_cargo` still sitting on the locker tile, so that fixture path is also not yet a truthful live legwear reproducer
+- same-day probe-path follow-up on current HEAD (`6b6de8d477-dirty`) narrowed the blocker further instead of pretending the silence was informative:
+  - added temporary queue-drop / skip-reason tracing inside `process_camp_locker_downtime`, then rebuilt with `make -j4 TILES=1 cataclysm-tiles`
+  - a plain fresh harness load on the restored current-save path still produced **no** `camp locker:` lines at all in the new log segment, so this save shape is not even reaching the instrumented locker downtime path on load
+  - the saved manual backup metadata at `.userdata/dev/save/manual_probe_backups/20260405_113052/current-char-zones.json` still shows the historical `CAMP_LOCKER` zone at `(2841,681,0)`, so the current failure is not yet narrowed to a simple “locker zone never existed” claim
+  - meaning: the next honest runtime probe must either recover a save shape that definitely reaches `worker_downtime` / `process_camp_locker_downtime` after load or instrument slightly higher in the caller path; repeated plain startup loads are no longer the missing evidence
 
 Meaning:
 - Locker Zone V1/V2 remain preserved under the new V3 code path at deterministic-suite level
@@ -108,8 +113,8 @@ Meaning:
    - do **not** count the old outerwear save ritual as a valid legwear reproducer anymore until it emits or persists the legwear swap on a fresh run again
 2. next honest agent-side options are:
    - recover the historical dirty-worker/current-save trigger state that used to produce the locker packet on load
-   - craft the smallest save shape that guarantees `process_camp_locker_downtime` actually services the staged worker after load
-   - add temporary instrumentation around the queue / downtime path if the real binary keeps loading silently
+   - craft the smallest save shape that guarantees the staged worker reaches `worker_downtime` / `process_camp_locker_downtime` after load
+   - if the runtime still never enters locker downtime, add the smallest caller-side trace above `process_camp_locker_downtime` instead of repeating the same silent startup ritual
 3. only after the probe path is trustworthy, capture the real locker planner/service path under cold and hot legwear setups
 4. keep per-NPC personality nuance out unless the legwear live probe exposes a real need for a smaller corrective slice
 

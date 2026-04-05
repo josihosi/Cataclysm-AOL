@@ -54,7 +54,8 @@ Current job:
 ### Immediate next move
 - rebuild a **reliable** proportional runtime probe for the landed legwear-temperature lane on the real binary / harness path
 - the old outerwear save path is no longer enough by itself: the staged `shorts_cargo` / `pants_cargo` legwear repro did **not** survive restart as an honest fresh locker packet on either the restored current `dev` save or the harness fixture path, so the probe path itself now needs repair before more runtime claims get written down
-- next honest options are: recover the historical dirty-worker trigger state on the current save, craft the smallest save shape that guarantees `process_camp_locker_downtime` actually services the staged worker after load, or add temporary instrumentation if the live path keeps going silent
+- temporary queue/skip instrumentation now exists inside `process_camp_locker_downtime`, but a plain fresh harness load on the restored current-save path still does **not** reach the locker downtime logs at all, so the next honest probe must use that instrumentation on a save shape or post-load turn-advance path that actually enters the runtime service loop
+- next honest options are now: recover the historical dirty-worker trigger state on the current save, craft the smallest save shape that guarantees the staged worker reaches `worker_downtime` / `process_camp_locker_downtime` after load, or add the smallest caller-side trace if the downtime path still stays completely silent
 - only after that probe path is trustworthy, capture the cold/hot legwear packet and choose the next narrow V3 follow-up lane (likely blanket-adjacent weather handling unless the live probe exposes a legwear correction first)
 
 ---
