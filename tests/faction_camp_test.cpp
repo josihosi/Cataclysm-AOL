@@ -32,6 +32,7 @@
 #include "type_id.h"
 #include "value_ptr.h"
 
+static const itype_id itype_9mm("9mm");
 static const itype_id itype_armor_lc_plate("armor_lc_plate");
 static const itype_id itype_backpack("backpack");
 static const itype_id itype_boots("boots");
@@ -40,6 +41,7 @@ static const itype_id itype_daypack("daypack");
 static const itype_id itype_duffelbag("duffelbag");
 static const itype_id itype_glasses_eye("glasses_eye");
 static const itype_id itype_glock_19("glock_19");
+static const itype_id itype_glockmag("glockmag");
 static const itype_id itype_helmet_bike("helmet_bike");
 static const itype_id itype_jeans("jeans");
 static const itype_id itype_knife_combat("knife_combat");
@@ -354,6 +356,92 @@ TEST_CASE("camp_locker_service_equips_upgrades_and_returns_replaced_gear",
   }
   CHECK(locker_has_daypack);
   CHECK_FALSE(locker_has_duffelbag);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_readies_ranged_loadouts_from_locker_supply",
+          "[camp][locker]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_glockmag));
+  here.add_item_or_charges(locker_local, item(itype_glockmag));
+  here.add_item_or_charges(locker_local, item(itype_glockmag));
+  const int ammo_total = item(itype_glockmag).remaining_ammo_capacity() * 2;
+  here.add_item_or_charges(locker_local,
+                           item(itype_9mm, calendar::turn_zero, ammo_total));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_backpack), false).has_value());
+  item empty_glock(itype_glock_19);
+  REQUIRE(worker.wield(empty_glock));
+  REQUIRE(worker.get_wielded_item());
+  CHECK(worker.get_wielded_item()->ammo_remaining() == 0);
+
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->process_camp_locker_downtime(worker));
+
+  const item_location weapon = worker.get_wielded_item();
+  REQUIRE(weapon);
+  CHECK(weapon->typeId() == itype_glock_19);
+  REQUIRE(weapon->magazine_current() != nullptr);
+  CHECK(weapon->ammo_remaining() > 0);
+
+  int compatible_magazines = 1;
+  int loaded_compatible_magazines = weapon->magazine_current()->ammo_remaining() > 0 ? 1 : 0;
+  int compatible_ammo_total = weapon->magazine_current()->ammo_remaining();
+  worker.visit_items([&weapon, &compatible_magazines,
+                      &loaded_compatible_magazines,
+                      &compatible_ammo_total](item *node, item *) {
+    if (node != nullptr && node->is_magazine() &&
+        weapon->can_reload_with(*node, false)) {
+      compatible_magazines++;
+      compatible_ammo_total += node->ammo_remaining();
+      if (node->ammo_remaining() > 0) {
+        loaded_compatible_magazines++;
+      }
+    }
+    return VisitResponse::NEXT;
+  });
+
+  CHECK(compatible_magazines == 2);
+  CHECK(loaded_compatible_magazines == 2);
+  CHECK(compatible_ammo_total == ammo_total);
+
+  int locker_magazines = 0;
+  int locker_ammo_remaining = 0;
+  for (const item &it : here.i_at(locker_local)) {
+    if (it.typeId() == itype_glockmag) {
+      locker_magazines++;
+    }
+    if (it.typeId() == itype_9mm) {
+      locker_ammo_remaining += it.charges;
+    }
+  }
+  CHECK(locker_magazines == 1);
+  CHECK(locker_ammo_remaining == 0);
+
+  calendar::turn += 10_minutes;
+  CHECK_FALSE(test_camp->process_camp_locker_downtime(worker));
 
   zone_manager::get_manager().clear();
 }
