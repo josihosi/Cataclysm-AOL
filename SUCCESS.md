@@ -17,19 +17,19 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Post-Locker-V1 Basecamp follow-through
 
-Status: ACTIVE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] The live `DEBUG_LLM_INTENT_LOG` board/job artifact packet is made legible enough to stand beside the deterministic router proof.
 - [x] The deterministic Basecamp board/job work is pruned/packaged into a cleaner upstream-ready shape.
-- [ ] The richer structured board/prompt treatment is extended beyond `show_board` in a deliberate next slice.
-- [ ] Proportional validation for each finished sub-slice is recorded in `TESTING.md`.
-- [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
+- [x] The richer structured board/prompt treatment is extended beyond `show_board` in a deliberate next slice.
+- [x] Proportional validation for each finished sub-slice is recorded in `TESTING.md`.
+- [x] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
-- This follow-through lane is already greenlit; do not demote it back into a parked-options menu.
-- Landed order so far: artifact proof cleanup -> upstream deterministic cleanup.
-- Active remaining slice: broader prompt follow-through.
+- This follow-through lane was already greenlit; it is now closed again instead of parked half-finished.
+- Landed order: artifact proof cleanup -> upstream deterministic cleanup -> structured `next=` token follow-through.
+- No Josef-specific follow-up checks are currently needed for this closed slice.
 
 ---
 

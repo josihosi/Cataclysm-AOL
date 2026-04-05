@@ -39,87 +39,39 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Basecamp bark / board-routing checkpoint
+### Post-Locker-V1 Basecamp follow-through close-out
 Latest relevant agent-side packet:
-- current committed HEAD `7c2bf09ec1`
+- committed HEAD `64f2bebc85`
   - `make -j4 tests`
   - `./tests/cata_test "[camp][basecamp_ai]"`
-  - passed at `296 assertions in 1 test case`
-- the targeted suite still covers the real `handle_heard_camp_request` router path, not only helper builders
-- it still proves the existing route split:
-  - structured `show_board` emits the richer handoff snapshot
-  - spoken `show me the board` stays on the concise human-facing bark path
-  - fenced board/job reply packets still use `reply_begin` / `reply_end`
-- new cleanup-specific proof now also shows the packaging seam explicitly:
-  - the stable deterministic board body (`active` / `archived` / `job=...`) is reusable on its own
-  - the `planner_move` / `overmap` block is now only a prefixed layer added by the origin-aware `show_board` path
-  - so the current deterministic board snapshot packages cleanly without baking prompt-planning context into the core board template
-- earlier broader runtime artifact proof remains valid as the live reference:
+  - passed at `320 assertions in 1 test case`
+- the targeted suite now covers the closed structured follow-through loop exposed by the board snapshot itself:
+  - structured `show_board` still emits the richer board snapshot with planning context
+  - structured `job=<id>` now follows the board-emitted `next=` token with an updated structured job snapshot instead of dropping back to spoken bark
+  - structured `delete_job=<id>` now follows the archived board-emitted `next=` token with a refreshed structured board snapshot after the clear
+  - the short spoken board bark stays separate from the structured path
+- earlier live/runtime artifact proof for `show_board` still stands as the current baseline:
   - `make -j4 TILES=1 cataclysm-tiles`
   - launched `./cataclysm-tiles --userdir .userdata/dev --world 'Sandy Creek'`
   - used `Shift+C`, then `bshow_board`
   - fresh `config/llm_intent.log` append showed the fenced structured packet with `camp board reply ...`, `heard=show_board`, `reply_begin`, payload, `reply_end`
-- earlier forced rebuild audit on committed HEAD `dd4faafe32` still matters as stale-binary defense:
-  - `make -B -j4 tests`
-  - `./tests/cata_test "[camp][basecamp_ai]"`
-  - passed on the rebuilt current-head binary instead of the older stale-banner mismatch
 
 Meaning:
-- the board-routing proof slice stays closed as the baseline
-- the upstream deterministic cleanup slice is now agent-validated too
-- use this packet as the deterministic + live reference while working through the remaining broader prompt follow-through slice
-- rerun broader runtime smoke only if the next sub-slice actually changes the live route/output class again
-
-### Locker Zone v1 checkpoint
-Latest relevant agent-side locker packet:
-- `make -j4 tests`
-- `./tests/cata_test "[camp][locker]"`
-  - passed at `121 assertions in 10 test cases` on dirty `ab9cd121f8`
-  - new deterministic cases prove both follow-through triggers:
-    - new eligible locker-zone gear requeues a worker after the baseline no-op pass and services once the existing cooldown expires
-    - losing managed locker gear requeues the affected worker and re-equips from the locker once the existing cooldown expires
-  - deterministic logs now show explicit `state-dirty` queue events in addition to the existing `before` / `plan` / `after` locker summaries
-- later audit on current committed HEAD `dd4faafe32`
-  - `make -B -j4 tests`
-  - `./tests/cata_test "[camp][locker]"`
-  - passed again at `121 assertions in 10 test cases`
-- prior broader runtime baseline remains valid for this same downtime path:
-  - `make -j4 TILES=1 cataclysm-tiles`
-  - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-    - passed cleanly on `.userdata/dev/harness_runs/20260405_110124`
-  - live current-binary probe on `dev` / `Sandy Creek`
-    - restored the missing `CAMP_LOCKER` character-zone fixture from `Sandy Creek.bak.20260405_111739`
-    - launched `./cataclysm-tiles --userdir .userdata/dev/ --world 'Sandy Creek'`
-    - opened the in-game wait menu and chose wait-till-midnight (`m`)
-    - current `debug.log` then emitted a fresh locker packet for **Bruna Priest** on `1a72369cfb-dirty`:
-      - `camp locker: before Bruna Priest ... locker=[none]`
-      - `camp locker: plan for Bruna Priest ... changes=[shirt dedupe keep=polo shirt<polo_shirt> drop=[flotation vest<flotation_vest>]; bag dedupe keep=messenger bag<mbag> drop=[leather belt<leather_belt>]]`
-      - `camp locker: after Bruna Priest ... locker=[shirt=[flotation vest<flotation_vest>]; bag=[leather belt<leather_belt>]]`
-    - screenshots/live capture artifacts: `.userdata/dev/live_probe/`
-
-Meaning:
-- Locker Zone v1 is covered deterministically on top of the already-proved runtime service path
-- the dirty-trigger follow-through evidence closes the last V1 chunk rather than defining the whole lane by itself
-- the done-marked locker baseline also survives a forced rebuild on current committed HEAD
-- no extra startup/live rerun was needed for that final chunk because the changed code only adds queue-dirty detection around the same already-proved downtime/service path
-- this locker V1 slice is checkpointed; do not keep revalidating it unless the locker runtime path changes again
+- the previously active Basecamp follow-through queue is closed for now
+- deterministic coverage now reaches the board-emitted per-job `next=` actions, not only the initial `show_board` inspection token
+- no broader rebuild or live smoke rerun was needed for this slice because the change stayed local to the camp request router/test surface already covered by the targeted suite
+- if Josef later wants more Basecamp prompt work, use this packet as the current deterministic baseline
 
 ---
 
 ## Pending probes
 
-### Active queue — post-Locker-V1 Basecamp follow-through
-
-1. **Broader LLM-side board prompt follow-through**
-   - define the exact next structured extension beyond `show_board` before writing code
-   - add/update the narrow deterministic coverage for that new route
-   - rerun `./tests/cata_test "[camp][basecamp_ai]"`
-   - use startup/live smoke only if the changed runtime path cannot be settled honestly by deterministic coverage alone
+No active probe queue right now.
 
 ### Non-blocking Josef notes
 
-None yet for the active Basecamp follow-through queue.
-If a later sub-slice needs Josef judgment, add it here as a note rather than turning it into a blocker.
+None.
+If Josef later wants extra confidence on the structured follow-through artifacts, batch a live `DEBUG_LLM_INTENT_LOG` probe for `job=` / `delete_job=` with the next runtime-facing Basecamp slice instead of doing a ceremonial standalone rerun.
 
 ---
 
@@ -127,11 +79,11 @@ If a later sub-slice needs Josef judgment, add it here as a note rather than tur
 
 Use these when they are actually the missing evidence, not as ritual.
 
-### Narrow deterministic locker check
-- `./tests/cata_test "[camp][locker]"`
-
 ### Narrow deterministic Basecamp bark / routing check
 - `./tests/cata_test "[camp][basecamp_ai]"`
+
+### Narrow deterministic locker check
+- `./tests/cata_test "[camp][locker]"`
 
 ### Fresh full test rebuild on this Mac
 - `make -j4 tests`

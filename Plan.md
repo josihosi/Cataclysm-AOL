@@ -37,35 +37,38 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — post-Locker-V1 Basecamp follow-through
+## 1. Current delivery target
 
-**Status:** GREENLIT / ACTIVE
+**Status:** WAITING FOR NEXT GREENLIGHT
 
-Josef has now greenlit the previously parked three-part Basecamp follow-through queue too.
-So stop pretending the repo is waiting for a pick.
-
-Current active queue, in order:
-1. **Broader LLM-side board prompt follow-through**
-   - extend the richer structured treatment beyond `show_board`
-
-Recently landed:
-- **Board/job artifact proof cleanup**
-  - the live `DEBUG_LLM_INTENT_LOG` board/job packet now fences the exact handoff text with `reply_begin` / `reply_end`, so the live artifact is easier to scan and compare against the deterministic router proof
-- **Upstream deterministic Basecamp cleanup**
-  - the stable `show_board` request-board body now stays separate from the optional `planner_move` / `overmap` preface, so the deterministic board snapshot packages cleanly without baking the LLM-side planning layer into the core board template
-
-Working rules:
-- these follow-through slices are already greenlit; do **not** move them back into a permission menu
-- keep finished Locker Zone v1 and the finished Basecamp bark / craft / board checkpoint closed unless Josef explicitly reopens them
+No active implementation lane is open right now.
+The post-Locker-V1 Basecamp follow-through queue is checkpointed after its three greenlit slices all landed:
+- board/job artifact proof cleanup
+- upstream deterministic board packaging cleanup
+- broader prompt follow-through for the board-emitted `next=` tokens (`job=<id>` now returns the updated structured job snapshot, and `delete_job=<id>` now returns the refreshed structured board snapshot)
 
 ### Immediate next move
-- move to **Broader LLM-side board prompt follow-through**
-- define the exact next structured extension beyond `show_board` before writing code
-- keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to the now-single active slice plus the two landed cleanup checkpoints
+- do **not** invent a fake active lane
+- if Josef wants more Basecamp prompt work, pick one option from the short parked list below
+- otherwise leave the closed Basecamp/locker checkpoints closed
 
 ---
 
-## 2. Checkpointed — LLM-side board snapshot path
+## 2. Checkpointed — post-Locker-V1 Basecamp follow-through
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+This queue reached its exit criteria for now:
+- the board/job log packet is legible enough to compare against the deterministic router proof
+- the deterministic board packaging is cleaner/upstream-friendlier
+- the richer structured treatment now follows the board-emitted `next=` tokens instead of dropping straight back to spoken bark
+- the testing/docs packet describes the closed state instead of an open queue
+
+Keep this closed unless Josef explicitly reopens Basecamp prompt follow-through or a later change breaks the structured board/job lane again.
+
+---
+
+## 3. Checkpointed — LLM-side board snapshot path
 
 **Status:** CHECKPOINTED
 
@@ -79,16 +82,16 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 3. Additional parked options
+## 4. Additional parked options
 
-None right now.
-
-Do not create a fake menu while the active three-part Basecamp follow-through queue is still open.
-If that queue finishes and Josef wants more, add a fresh short menu then.
+If Josef wants a fresh greenlight, the next sensible options are:
+1. extend the same structured follow-through to the board-wide batch tokens (`launch_ready_jobs`, `retry_blocked_jobs`, `clear_archived_jobs`)
+2. add a compact deterministic action/result header to structured `job=<id>` / `delete_job=<id>` replies if the raw post-action snapshot feels too implicit
+3. run a live `DEBUG_LLM_INTENT_LOG` artifact sweep for the new `job=` / `delete_job=` follow-through packet before asking Josef for any wording/feel judgment
 
 ---
 
-## 4. Documentation discipline
+## 5. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute
