@@ -145,7 +145,7 @@ The smoke harness intentionally tests three layers together:
 - runner I/O + response parsing using game-like pipe-separated action-line validation
 
 ## LLM Intent Actions (Behavior Notes)
-- Structured deterministic `show_board` / `show_job` replies now have an explicit artifact sink: when `DEBUG_LLM_INTENT_LOG` is enabled, they append dedicated `camp board reply` / `camp job reply` blocks to `config/llm_intent.log` even if no normal LLM prompt/response block is involved.
+- Structured deterministic `show_board` / `show_job` replies now have an explicit artifact sink: when `DEBUG_LLM_INTENT_LOG` is enabled, they append dedicated `camp board reply` / `camp job reply` blocks to `config/llm_intent.log` even if no normal LLM prompt/response block is involved. Those packets now fence the exact handoff text between `reply_begin` / `reply_end`, so the live artifact is easier to eyeball and compare against the deterministic snapshot proof.
 - Direct deterministic `show_board` handling can still produce a real in-game reply without a normal prompt/response block in `config/llm_intent.log`; use the explicit camp-reply block as the artifact sink first. If that block is missing, treat it as an instrumentation/config question rather than automatic proof that `show_board` failed.
 - Important current path split: the richer planner snapshot (`planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` + overmap block) is confirmed on the structured/internal `show_board` handoff token path, while live natural speech like `show me the board` currently still uses the older concise board-summary bark path.
 - `look_around` requests up to three nearby item names for pickup targeting.

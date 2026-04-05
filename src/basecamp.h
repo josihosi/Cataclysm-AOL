@@ -356,6 +356,11 @@ camp_board_handoff_snapshot(const std::vector<camp_llm_request> &requests);
 std::string
 camp_board_handoff_snapshot(const tripoint_abs_omt &origin,
                             const std::vector<camp_llm_request> &requests);
+std::string format_camp_reply_log_packet(std::string_view reply_kind,
+                                         std::string_view heard_token,
+                                         std::string_view speaker_name,
+                                         int speaker_id,
+                                         const std::string &reply_text);
 camp_request_match_result match_camp_request_reference(
     const std::vector<camp_llm_request> &requests,
     const parsed_camp_request_reference &reference,
