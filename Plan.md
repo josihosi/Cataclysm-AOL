@@ -37,23 +37,30 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — no new lane greenlit yet
+## 1. Current delivery target — no new post-Locker-V1 lane greenlit yet
 
 **Status:** WAITING FOR NEXT PICK
 
-The previously greenlit locker / zone slice is now closed for this pass:
-- locker dirty-trigger follow-through landed
-- new eligible locker-zone gear now requeues affected workers through the downtime locker path
-- losing/dropping important managed gear now requeues the affected worker through the same path
-- deterministic coverage for that follow-through is in place
+Locker Zone **v1** was the full greenlit lane.
+By the repo's current V1 definition, that lane is now checkpointed / done for this pass:
+- zone + policy + menu/save-load plumbing landed
+- classifier + candidate gathering + scoring landed
+- queue/reservation + one-at-a-time servicing landed
+- live locker execution + duplicate cleanup + obvious upgrades landed
+- dirty-trigger follow-through landed
+- deterministic coverage and proportional runtime validation are in place
+
+Important clarification:
+- `dirty-trigger follow-through` was the **last V1 chunk**, not the whole greenlit lane by itself
+- do **not** rewrite history so V1 sounds like a tiny sub-slice that still needed separate blessing
 
 Current rule:
-- do **not** reopen locker follow-through or the finished Basecamp bark / craft / board work unless Josef explicitly wants another slice there
+- do **not** reopen finished Locker Zone v1 or the finished Basecamp bark / craft / board work unless Josef explicitly wants another slice there
 - the next real move should come from the parked menu below instead of inventing a surprise lane
 
 ### Immediate next move
 - if Josef greenlights another agent-side lane, take it from the parked options below
-- otherwise keep the ledgers honest and report that the locker target is parked / done-for-now instead of pretending there is still an active queue
+- otherwise keep the ledgers honest and report that Locker Zone v1 is checkpointed / done-for-now instead of pretending there is still an active queue
 
 ---
 

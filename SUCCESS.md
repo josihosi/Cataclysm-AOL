@@ -15,25 +15,27 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
-## Locker Zone follow-through
+## Locker Zone v1
 
 Status: CHECKPOINTED / DONE FOR NOW
 
-Baseline already reached:
+V1 success state:
 - [x] `CAMP_LOCKER` exists as the explicit physical supply zone.
-- [x] Locker policy state exists and influences locker candidate selection.
+- [x] Locker policy/menu state exists, influences locker candidate selection, and survives save/load.
+- [x] Representative locker item classification exists across the managed V1 slots.
+- [x] Locker-zone candidate gathering and reservation filtering work deterministically.
+- [x] Per-slot score helpers and meaningful-upgrade thresholds exist for obvious V1 choices.
 - [x] Planner / service / reservation groundwork exists for downtime locker servicing.
-- [x] Wake-up dirty and policy-change dirty already feed the locker queue.
-- [x] Agent-side deterministic, startup, and live downtime proof exists on the current binary.
-
-Selected next chunk — locker dirty-trigger follow-through:
-- [x] New eligible locker-zone gear can dirty relevant assignees for later service.
-- [x] Losing/dropping important managed gear can dirty the affected assignee for later service.
-- [x] Deterministic coverage exists for the new dirty-trigger behavior.
-- [x] Proportional runtime validation for this new chunk is recorded in `TESTING.md`.
-- [x] Any Josef-specific follow-up checks for this chunk are written down as non-blocking notes, not treated as a plan blocker.
+- [x] Locker execution can equip missing categories, apply obvious upgrades, and return replaced managed gear.
+- [x] Duplicate managed gear cleanup works.
+- [x] Wake-up dirty, policy-change dirty, new eligible locker gear, and lost/dropped managed gear all feed the locker queue.
+- [x] One-worker-at-a-time queue sequencing works.
+- [x] Deterministic coverage exists for the V1 behavior slice.
+- [x] Proportional runtime validation for the same downtime/service path is recorded in `TESTING.md`.
+- [x] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
+- `dirty-trigger follow-through` was the final V1 chunk landed, not a separate greenlight lane.
 - Locker candidate scanning now uses sorted locker tiles so debug/state summaries stay deterministic enough for dirty-trigger tracking and tests.
 - Basecamp bark / craft / board work stays closed and does not belong back in this slice.
 - Josef testing did not gate progress here.

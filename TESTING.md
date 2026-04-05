@@ -53,7 +53,7 @@ Meaning:
 - this packet should only be rerun if the relevant camp routing code changes again
 - this area has no standing pending handoff packet anymore
 
-### Locker Zone follow-through checkpoint
+### Locker Zone v1 checkpoint
 Latest relevant agent-side locker packet:
 - `make -j4 tests`
 - `./tests/cata_test "[camp][locker]"`
@@ -77,19 +77,20 @@ Latest relevant agent-side locker packet:
     - screenshots/live capture artifacts: `.userdata/dev/live_probe/`
 
 Meaning:
-- locker dirty-trigger follow-through is covered deterministically on top of the already-proved runtime service path
-- no extra startup/live rerun was needed for this slice because the changed code only adds queue-dirty detection around the same already-proved downtime/service path
-- this locker slice is checkpointed; do not keep revalidating it unless the locker runtime path changes again
+- Locker Zone v1 is covered deterministically on top of the already-proved runtime service path
+- the dirty-trigger follow-through evidence closes the last V1 chunk rather than defining the whole lane by itself
+- no extra startup/live rerun was needed for that final chunk because the changed code only adds queue-dirty detection around the same already-proved downtime/service path
+- this locker V1 slice is checkpointed; do not keep revalidating it unless the locker runtime path changes again
 
 ---
 
 ## Pending probes
 
-No standing probes for the closed locker slice.
+No standing probes for finished Locker Zone v1.
 
 ### Non-blocking Josef notes
 
-None for the finished locker dirty-trigger chunk.
+None for finished Locker Zone v1.
 If Josef later greenlights another lane, rewrite this section to match that lane instead of appending stale archaeology.
 
 ---
