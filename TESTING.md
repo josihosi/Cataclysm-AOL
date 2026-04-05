@@ -39,6 +39,30 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
+### Harness first slice — reusable live probe contract
+Latest relevant harness evidence on current HEAD `59c4a507d6-dirty`:
+- probe packaging / dry-run validation
+  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+  - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
+  - `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait --dry-run`
+- stale-binary audit worked instead of bluffing
+  - first live run of `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait` launched cleanly on `dev-harness` / `Sandy Creek`, but the captured window title was still `Cataclysm: Dark Days Ahead - d55ffe0a53`
+  - the probe therefore reported `verdict: inconclusive_version_mismatch` rather than pretending the current repo HEAD had been exercised
+- current-binary proof path after the rebuild
+  - `make -j4 TILES=1 cataclysm-tiles`
+  - reran `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
+  - startup screen / before / after screenshots all reported `window_title: Cataclysm: Dark Days Ahead - 59c4a507d6-dirty` with `version_matches_repo_head: true`
+  - packaged probe report at `.userdata/dev-harness/harness_runs/20260406_005536/probe.report.json`
+  - the report now cleanly separates:
+    - **screen** — screenshot paths + captured window-title/version audit
+    - **tests** — explicit recommended deterministic command (`./tests/cata_test "[camp][locker]"`), currently marked `not_run`
+    - **artifacts** — captured `probe.artifacts.log`, currently only tileset-load lines and no `camp locker:` match
+  - honest outcome on the current save/fixture shape: `verdict: inconclusive_no_artifact_match`
+- meaning:
+  - the first reusable harness-driven live probe path now exists and is current-binary-audited instead of relying on blind trust
+  - the first packaged scenario contract is real: `locker.weather_wait`
+  - the next missing evidence is stronger scenario setup / triggering, not another round of vague startup ritual
+
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
 Latest relevant agent-side locker packet:
 - broader locker baseline remains anchored by committed HEAD `1381284982`
@@ -116,7 +140,7 @@ Meaning:
 - Locker Zone V1/V2 remain preserved under the landed V3 code path at deterministic-suite level
 - the outerwear and currently implemented legwear V3 lanes now both have deterministic proof and proportional runtime proof on recorded current-binary / current-save paths
 - the `antarvasa` result is now an explicit policy judgment, not a mystery bug: current locker behavior is still one managed pants item per slot, so extra pants-slot garments are treated as duplicates and returned to the locker when a hot/cold swap lands
-- the next missing evidence class is harness packaging/reporting discipline, not more locker packet collection
+- the missing harness work is no longer “can we package/report a first slice at all?”; it is now stronger trigger/setup coverage and more scenarios
 
 ---
 
@@ -124,12 +148,11 @@ Meaning:
 
 ### Active queue — hackathon runway: stabilization + harness
 
-1. package the first harness uplift slice from `doc/harness-first-slice-plan-2026-04-06.md`
-   - one reusable live probe contract/profile/save path on the current binary
-   - explicit reporting split between **screen**, **tests**, and **artifacts/logs**
+1. extend the current harness uplift slice from `doc/harness-first-slice-plan-2026-04-06.md`
+   - keep the reusable live probe contract/profile/save path honest on the current binary
+   - strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
    - avoid probe-method drift mid-claim
-2. make the first three scenarios real probe contracts
-   - `locker.weather_wait`
+2. make the next two scenarios real probe contracts
    - `chat.nearby_npc_basic`
    - `ambient.weird_item_reaction`
 3. add the first scenario-setup helpers that reduce debug-menu ritual
@@ -138,7 +161,7 @@ Meaning:
    - debug spawn follower NPC
    - assign NPC to camp
    - assign NPC to follower
-4. after one harness slice is trustworthy, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
+4. after the probe/helper footing is stronger, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
 5. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
 6. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
 
@@ -167,6 +190,9 @@ Use these when they are actually the missing evidence, not as ritual.
 
 ### Startup/load smoke
 - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+
+### Packaged live probe
+- `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
 
 ## Local build caveat
 

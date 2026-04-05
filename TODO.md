@@ -11,12 +11,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 Hackathon runway — stabilization + harness is the active lane.
 
 Execution queue:
-1. implement/package the first harness slice (see `doc/harness-first-slice-plan-2026-04-06.md`)
-   - one reliable live probe contract/profile/save path on the current binary
-   - deterministic little functions first
-   - explicit separation of **screen**, **tests**, and **artifacts/logs**
-2. start with three named scenarios
-   - `locker.weather_wait`
+1. extend the landed harness slice from `doc/harness-first-slice-plan-2026-04-06.md`
+   - keep the reusable `probe` contract path honest on the current binary
+   - keep explicit separation of **screen**, **tests**, and **artifacts/logs**
+   - turn the current locker probe from “load + wait + report honestly” into a stronger locker-specific signal once setup helpers exist
+2. package the next two named scenarios
    - `chat.nearby_npc_basic`
    - `ambient.weird_item_reaction`
 3. add the first useful scenario-setup helpers so repeated probes stop depending on debug-menu folklore

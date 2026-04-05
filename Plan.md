@@ -61,18 +61,18 @@ Working priority inside this lane:
    - tiny ambient-trigger model for weird-event NPC reactions
 
 ### Immediate next move
-- the current locker state is now honest enough to build on: the hot-side Ricky packet is recorded, and the `antarvasa` outcome is accepted as the current one-item-per-slot pants policy rather than a hidden blocker
-- follow `doc/harness-first-slice-plan-2026-04-06.md` for the first concrete harness uplift
-- start with deterministic little functions, not giant black-box automation
-- package three named first-slice scenarios:
-  - `locker.weather_wait`
-  - `chat.nearby_npc_basic`
-  - `ambient.weird_item_reaction`
-- keep the evidence split explicit:
-  - **screen**
-  - **tests**
-  - **artifacts/logs**
-- batch Josef-facing testing around that harness work before the five-day active-testing window gets eaten by setup friction
+- the current locker state is still honest enough to build on: the hot-side Ricky packet is recorded, and the `antarvasa` outcome remains the current one-item-per-slot pants policy rather than a hidden blocker
+- the first concrete harness uplift now exists in `tools/openclaw_harness/startup_harness.py`:
+  - `probe locker.weather_wait`
+  - dedicated `dev-harness` profile + `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`
+  - explicit **screen** / **tests** / **artifacts** report split
+  - startup screenshots now audit the running window title against repo HEAD so stale binaries stop masquerading as current proof
+- keep following `doc/harness-first-slice-plan-2026-04-06.md`, but now extend the landed pattern instead of restarting from zero
+- next concrete steps:
+  - package `chat.nearby_npc_basic`
+  - package `ambient.weird_item_reaction`
+  - add the first scenario-setup helpers so those probes stop depending on manual debug-menu folklore
+- once the next probe contract or helper slice is in place, batch a compact Josef-facing testing packet instead of sending piecemeal asks
 
 ---
 
