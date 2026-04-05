@@ -40,25 +40,30 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ## Current relevant evidence
 
 ### Harness first slice — reusable live probe contracts
-Latest relevant harness evidence on working tree `89a27f204d-dirty` with the current live tiles binary still at `59c4a507d6-dirty`:
-- narrow validation for the harness-only changes
+Latest relevant harness evidence on working tree `a35e86dd50-dirty` with the last recorded live chat run still on tiles binary `59c4a507d6-dirty`:
+- narrow validation for the latest harness-only blocker fix
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
   - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic --dry-run`
+  - targeted Python import of `install_profile_snapshot(...)` into a temporary profile confirmed the captured `dev` profile snapshot copies `config/` plus related profile state and preserves the needed options:
+    - `DEBUG_LLM_INTENT_LOG=true`
+    - `LLM_INTENT_ENABLE=true`
+    - `LLM_INTENT_BACKEND=api`
 - landed harness uplift beyond the original locker slice
   - profile loading now merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy actually reaches `dev-harness`
   - probe contracts can now script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
   - printable gameplay keys now go through `peekaboo type` instead of invalid `peekaboo press` usage
   - startup no longer treats the first `lastworld.json` flip as sufficient proof of ready gameplay; `post_lastworld_wait_seconds: 8.0` now gates the packaged path
-- current live chat probe on the recorded fixture/runtime path
+  - `chat.nearby_npc_basic` now installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` stops silently dropping the LLM/chat options and keybindings the probe depends on
+- latest recorded live chat probe on the old pre-snapshot-sync runtime path
   - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
   - packaged report at `.userdata/dev-harness/harness_runs/20260406_012827/probe.report.json`
   - agent-side screenshot review of `success.png`, `talk_to_nearby_npc.after.png`, `open_freeform_chat.after.png`, `send_chat_utterance.after.png`, and `wait_for_reply.after.png` shows the path now reaches nearby-NPC dialogue, freeform utterance input, then returns to map play instead of stalling on the loading splash
   - `llm_intent.log` stayed absent / empty on that run, so artifacts remained `no_new_artifacts`
-  - the report still says `verdict: inconclusive_version_mismatch` because the running tiles binary is `59c4a507d6-dirty` while the repo working tree is `89a27f204d-dirty`; for this harness-only slice that is expected and should not be misread as chat-proof success
+  - the report still says `verdict: inconclusive_version_mismatch` because the running tiles binary is `59c4a507d6-dirty` while the repo working tree was `89a27f204d-dirty`; treat that packet as pre-fix evidence only, not as current chat-proof success or failure
 - meaning:
-  - the missing evidence is no longer “can the harness drive the chat UI path at all?”
-  - the missing proof is recipient resolution / `llm_intent.log` emission for `chat.nearby_npc_basic`, plus the next ambient scenario / setup-helper coverage
+  - the missing evidence is no longer “can the harness carry the right profile state into `dev-harness` at all?”
+  - the next honest proof is a fresh `chat.nearby_npc_basic` live run on a current tiles binary/runtime path, to see whether recipient resolution / `llm_intent.log` emission now appears once the snapshot-backed contract is in place
+  - after that, the remaining queue is still the next ambient scenario plus the first reusable setup-helper coverage
 
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
 Latest relevant agent-side locker packet:
@@ -151,7 +156,7 @@ Meaning:
    - strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
    - avoid probe-method drift mid-claim
 2. make the packaged chat scenario artifact-real and add the next named scenario
-   - `chat.nearby_npc_basic` now reaches dialogue + freeform UI, but still lacks recipient / `llm_intent.log` proof
+   - `chat.nearby_npc_basic` now carries the captured `dev` profile snapshot plus the save fixture, but it still needs a fresh current-binary/runtime run to close recipient / `llm_intent.log` proof
    - `ambient.weird_item_reaction`
 3. add the first scenario-setup helpers that reduce debug-menu ritual
    - debug spawn item

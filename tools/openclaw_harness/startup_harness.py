@@ -121,6 +121,10 @@ def fixtures_root() -> Path:
     return repo_root() / "tools" / "openclaw_harness" / "fixtures" / "saves"
 
 
+def profile_snapshots_root() -> Path:
+    return repo_root() / "tools" / "openclaw_harness" / "fixtures" / "profiles"
+
+
 def scenarios_root() -> Path:
     return repo_root() / "tools" / "openclaw_harness" / "scenarios"
 
@@ -497,6 +501,10 @@ def profile_fixture_root(profile: str) -> Path:
     return fixtures_root() / profile
 
 
+def profile_snapshot_root(profile: str) -> Path:
+    return profile_snapshots_root() / profile
+
+
 def list_fixtures(profile: str) -> List[Dict[str, Any]]:
     root = profile_fixture_root(profile)
     if not root.exists():
@@ -692,6 +700,45 @@ def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_prof
     }
 
 
+def install_profile_snapshot(profile: str, snapshot_name: str, snapshot_profile: str = "") -> Dict[str, Any]:
+    source_profile = resolve_profile_name(snapshot_profile or profile)
+    snapshot_dir = profile_snapshot_root(source_profile) / snapshot_name
+    if not snapshot_dir.exists():
+        raise SystemExit(f"Profile snapshot not found: {snapshot_dir}")
+
+    userdir = userdir_for_profile(profile)
+    ensure_dir(userdir)
+    copied_entries = []
+    skipped_entries = []
+    for entry in sorted(snapshot_dir.iterdir(), key=lambda p: p.name.lower()):
+        if entry.name in {"manifest.json", "save", "harness_runs"}:
+            skipped_entries.append(entry.name)
+            continue
+        dst = userdir / entry.name
+        if dst.exists() or dst.is_symlink():
+            if dst.is_dir() and not dst.is_symlink():
+                shutil.rmtree(dst)
+            else:
+                dst.unlink()
+        if entry.is_dir():
+            shutil.copytree(entry, dst)
+        else:
+            shutil.copy2(entry, dst)
+        copied_entries.append(entry.name)
+
+    manifest = load_fixture_manifest(snapshot_dir)
+    return {
+        "profile": profile,
+        "snapshot": snapshot_name,
+        "snapshot_profile": source_profile,
+        "source_path": str(snapshot_dir),
+        "destination": str(userdir),
+        "copied_entries": copied_entries,
+        "skipped_entries": skipped_entries,
+        "manifest": manifest,
+    }
+
+
 def success_from_lastworld(profile: str, baseline_mtime: float, expected_world: str) -> Tuple[bool, Dict[str, str]]:
     path = config_dir_for_profile(profile) / "lastworld.json"
     if not path.exists():
@@ -709,6 +756,13 @@ def success_from_lastworld(profile: str, baseline_mtime: float, expected_world: 
 
 def run_startup(args: argparse.Namespace) -> int:
     profile = resolve_profile_name(args.profile)
+    profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
+    if profile_snapshot:
+        install_profile_snapshot(
+            profile,
+            profile_snapshot,
+            snapshot_profile=getattr(args, "profile_snapshot_profile", ""),
+        )
     if args.fixture:
         install_fixture(
             profile,
@@ -849,6 +903,8 @@ def run_probe(args: argparse.Namespace) -> int:
     world = args.world or str(scenario.get("world", ""))
     fixture = args.fixture if args.fixture is not None else str(scenario.get("fixture", ""))
     fixture_profile = str(scenario.get("fixture_profile", "")).strip()
+    profile_snapshot = str(scenario.get("profile_snapshot", "")).strip()
+    profile_snapshot_profile = str(scenario.get("profile_snapshot_profile", "")).strip()
     replace_existing_worlds = args.replace_existing_worlds or bool(scenario.get("replace_existing_worlds", False))
     advance_count = int(args.advance_turns if args.advance_turns is not None else scenario.get("advance_turns", 0))
     settle_seconds = float(args.settle_seconds if args.settle_seconds is not None else scenario.get("settle_seconds", 1.0))
@@ -869,6 +925,10 @@ def run_probe(args: argparse.Namespace) -> int:
     start_cmd = [sys.executable, str(Path(__file__).resolve()), "start", "--profile", profile]
     if world:
         start_cmd.extend(["--world", world])
+    if profile_snapshot:
+        start_cmd.extend(["--profile-snapshot", profile_snapshot])
+    if profile_snapshot_profile:
+        start_cmd.extend(["--profile-snapshot-profile", profile_snapshot_profile])
     if fixture:
         start_cmd.extend(["--fixture", fixture])
     if fixture_profile:
@@ -885,6 +945,8 @@ def run_probe(args: argparse.Namespace) -> int:
             "resolved_contract": {
                 "profile": profile,
                 "world": world,
+                "profile_snapshot": profile_snapshot,
+                "profile_snapshot_profile": profile_snapshot_profile,
                 "fixture": fixture,
                 "fixture_profile": fixture_profile,
                 "replace_existing_worlds": replace_existing_worlds,
@@ -960,6 +1022,8 @@ def run_probe(args: argparse.Namespace) -> int:
         "contract": {
             "profile": profile,
             "world": world,
+            "profile_snapshot": profile_snapshot,
+            "profile_snapshot_profile": profile_snapshot_profile,
             "fixture": fixture,
             "fixture_profile": fixture_profile,
             "replace_existing_worlds": replace_existing_worlds,
@@ -1008,6 +1072,8 @@ def build_parser() -> argparse.ArgumentParser:
     start_p = subparsers.add_parser("start", help="Launch and try to reach gameplay.")
     start_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
     start_p.add_argument("--world", default="", help="Explicit target world name.")
+    start_p.add_argument("--profile-snapshot", default="", help="Install this captured profile snapshot before startup.")
+    start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
     start_p.add_argument("--fixture", default="", help="Install this fixture before startup.")
     start_p.add_argument("--fixture-profile", default="", help="Fixture source profile; defaults to the target profile.")
     start_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")

@@ -3,6 +3,8 @@
   "description": "Launch the harness-owned Sandy Creek basecamp fixture, exercise the current nearby-NPC/freeform chat path, and capture screen plus llm_intent artifacts separately.",
   "profile": "dev-harness",
   "world": "Sandy Creek",
+  "profile_snapshot": "basecamp_dev_manual_2026-04-02",
+  "profile_snapshot_profile": "dev",
   "fixture": "basecamp_dev_manual_2026-04-02",
   "fixture_profile": "dev",
   "replace_existing_worlds": true,

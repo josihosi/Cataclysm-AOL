@@ -33,8 +33,8 @@ Success state:
 Notes:
 - This lane is about creating stable footing for the hackathon push, not about polishing every last locker nuance forever.
 - The landed baseline slice is `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`, backed by the `dev-harness` profile and the `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`.
-- The next landed extension is `chat.nearby_npc_basic` plus the supporting harness work: scripted key/text steps, selectable artifact logs, printable-key handling that works with Peekaboo, and shared profile startup policy that now actually reaches `dev-harness`.
-- The chat path is currently honest but still incomplete: the packaged live run reaches nearby-NPC dialogue and freeform utterance UI, then returns to map play without fresh `llm_intent.log` artifacts yet.
+- The next landed extension is `chat.nearby_npc_basic` plus the supporting harness work: scripted key/text steps, selectable artifact logs, printable-key handling that works with Peekaboo, shared profile startup policy that now actually reaches `dev-harness`, and profile-snapshot install support so the scenario can carry the captured `dev` config/options/keybindings it actually depends on.
+- The chat path is currently honest but still incomplete: the packaged live run reaches nearby-NPC dialogue and freeform utterance UI, and the contract now carries the right profile state, but fresh recipient / `llm_intent.log` proof still needs a current-binary/runtime packet.
 - The next distinguished feature runways (chat interface, tiny ambient-trigger NPC model) should stand on top of this lane rather than compete with it.
 
 ---

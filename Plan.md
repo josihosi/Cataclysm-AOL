@@ -71,7 +71,8 @@ Working priority inside this lane:
   - profile loading now actually merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
   - probe contracts can now script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
   - `chat.nearby_npc_basic` is packaged and the live path now waits past the first `lastworld.json` flip so the probe reaches dialogue/freeform UI instead of dying on the loading splash
-  - current limitation: the chat probe still returns to map play without fresh `llm_intent.log` artifacts, so recipient/result proof is not closed yet
+  - `chat.nearby_npc_basic` now also installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the LLM/chat options and keybindings the probe actually depends on
+  - current limitation: recipient/result proof is still not closed; the next honest run needs a current tiles binary/runtime packet instead of over-reading the older stale-binary/no-artifact chat report
 - keep following `doc/harness-first-slice-plan-2026-04-06.md`, but now extend the landed pattern instead of restarting from zero
 - next concrete steps:
   - stabilize `chat.nearby_npc_basic` until recipient / artifact confirmation is recorded
