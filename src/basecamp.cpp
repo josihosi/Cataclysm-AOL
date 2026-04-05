@@ -184,6 +184,25 @@ bool armor_covers_any(const item &it,
   }
   return false;
 }
+
+bool armor_specifically_covers_any(
+    const item &it, const std::initializer_list<std::string_view> &parts) {
+  const islot_armor *armor = it.find_armor_data();
+  if (armor == nullptr) {
+    return false;
+  }
+
+  for (const armor_portion_data &portion : armor->data) {
+    for (const auto &covered_part : portion.sub_coverage) {
+      for (const std::string_view part : parts) {
+        if (covered_part.str() == part) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
 } // namespace
 
 namespace {
@@ -331,6 +350,19 @@ bool is_camp_locker_weather_sensitive_outerwear(
          armor_covers_any(it, {"arm_l", "arm_r"});
 }
 
+bool is_camp_locker_weather_sensitive_legwear(
+    camp_locker_slot slot, const item &it) {
+  return slot == camp_locker_slot::pants &&
+         armor_covers_any(it, {"leg_l", "leg_r"});
+}
+
+bool is_camp_locker_short_legwear(const item &it) {
+  return armor_specifically_covers_any(
+             it, {"leg_hip_l", "leg_hip_r", "leg_upper_l", "leg_upper_r"}) &&
+         !armor_specifically_covers_any(
+             it, {"leg_knee_l", "leg_knee_r", "leg_lower_l", "leg_lower_r"});
+}
+
 int camp_locker_outerwear_temperature_adjustment(
     camp_locker_slot slot, const item &it,
     const std::optional<units::temperature> &local_temperature) {
@@ -344,6 +376,23 @@ int camp_locker_outerwear_temperature_adjustment(
   }
   if (*local_temperature >= units::from_fahrenheit(75)) {
     return -it.get_warmth() * 3;
+  }
+  return 0;
+}
+
+int camp_locker_legwear_temperature_adjustment(
+    camp_locker_slot slot, const item &it,
+    const std::optional<units::temperature> &local_temperature) {
+  if (!local_temperature || !is_camp_locker_weather_sensitive_legwear(slot, it)) {
+    return 0;
+  }
+
+  const int coverage_bias = is_camp_locker_short_legwear(it) ? 80 : -80;
+  if (*local_temperature <= units::from_fahrenheit(50)) {
+    return -coverage_bias + it.get_warmth();
+  }
+  if (*local_temperature >= units::from_fahrenheit(75)) {
+    return coverage_bias - it.get_warmth();
   }
   return 0;
 }
@@ -526,7 +575,9 @@ int score_camp_locker_item(
   }
   return score +
          camp_locker_outerwear_temperature_adjustment(slot, it,
-                                                      local_temperature);
+                                                      local_temperature) +
+         camp_locker_legwear_temperature_adjustment(slot, it,
+                                                    local_temperature);
 }
 
 bool is_camp_locker_candidate_meaningfully_better(
