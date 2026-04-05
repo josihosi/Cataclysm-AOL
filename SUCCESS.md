@@ -24,12 +24,17 @@ Success state:
 - [x] At least one reliable harness-driven live probe path exists on the current binary/profile/save path without stale-binary ambiguity.
 - [x] That harness path reports screen/tests/artifacts as separate evidence classes instead of flattening them into one vague verdict.
 - [x] At least one high-value reusable playtest scenario is documented/packaged for Schani-assisted probing instead of re-invented manually each time.
+- [x] The packaged harness path no longer treats the first `lastworld.json` flip as sufficient proof of post-load gameplay readiness.
+- [ ] `chat.nearby_npc_basic` records recipient / artifact proof instead of only reaching dialogue and freeform-input UI.
+- [ ] A second named scenario contract (`ambient.weird_item_reaction`) exists or is explicitly blocked behind a documented helper gap.
+- [ ] At least one reusable scenario-setup helper exists so repeated probes stop depending on debug-menu folklore.
 - [ ] A compact Josef-facing testing packet exists for the pre-holiday active-testing window.
 
 Notes:
 - This lane is about creating stable footing for the hackathon push, not about polishing every last locker nuance forever.
-- The landed first slice is `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`, backed by the `dev-harness` profile and the `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`.
-- The probe is currently honest but intentionally modest: it proves the reusable live path, binary-version audit, and split reporting; it does **not** yet prove a weather-triggered locker packet without further setup helpers.
+- The landed baseline slice is `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`, backed by the `dev-harness` profile and the `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`.
+- The next landed extension is `chat.nearby_npc_basic` plus the supporting harness work: scripted key/text steps, selectable artifact logs, printable-key handling that works with Peekaboo, and shared profile startup policy that now actually reaches `dev-harness`.
+- The chat path is currently honest but still incomplete: the packaged live run reaches nearby-NPC dialogue and freeform utterance UI, then returns to map play without fresh `llm_intent.log` artifacts yet.
 - The next distinguished feature runways (chat interface, tiny ambient-trigger NPC model) should stand on top of this lane rather than compete with it.
 
 ---

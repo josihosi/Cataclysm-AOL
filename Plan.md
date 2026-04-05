@@ -67,12 +67,17 @@ Working priority inside this lane:
   - dedicated `dev-harness` profile + `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`
   - explicit **screen** / **tests** / **artifacts** report split
   - startup screenshots now audit the running window title against repo HEAD so stale binaries stop masquerading as current proof
+- the next honest extension has also landed:
+  - profile loading now actually merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
+  - probe contracts can now script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
+  - `chat.nearby_npc_basic` is packaged and the live path now waits past the first `lastworld.json` flip so the probe reaches dialogue/freeform UI instead of dying on the loading splash
+  - current limitation: the chat probe still returns to map play without fresh `llm_intent.log` artifacts, so recipient/result proof is not closed yet
 - keep following `doc/harness-first-slice-plan-2026-04-06.md`, but now extend the landed pattern instead of restarting from zero
 - next concrete steps:
-  - package `chat.nearby_npc_basic`
+  - stabilize `chat.nearby_npc_basic` until recipient / artifact confirmation is recorded
   - package `ambient.weird_item_reaction`
   - add the first scenario-setup helpers so those probes stop depending on manual debug-menu folklore
-- once the next probe contract or helper slice is in place, batch a compact Josef-facing testing packet instead of sending piecemeal asks
+- once one more probe/helper slice is in place, batch a compact Josef-facing testing packet instead of sending piecemeal asks
 
 ---
 

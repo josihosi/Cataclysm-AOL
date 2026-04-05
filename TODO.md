@@ -14,9 +14,10 @@ Execution queue:
 1. extend the landed harness slice from `doc/harness-first-slice-plan-2026-04-06.md`
    - keep the reusable `probe` contract path honest on the current binary
    - keep explicit separation of **screen**, **tests**, and **artifacts/logs**
+   - keep startup readiness honest after the `lastworld.json` flip; the chat probe already exposed that a plain autoload success signal can still be on the loading splash
    - turn the current locker probe from “load + wait + report honestly” into a stronger locker-specific signal once setup helpers exist
-2. package the next two named scenarios
-   - `chat.nearby_npc_basic`
+2. stabilize the packaged chat probe and package the next named scenario
+   - `chat.nearby_npc_basic` now exists, but it still needs recipient / `llm_intent.log` confirmation on the current runtime path
    - `ambient.weird_item_reaction`
 3. add the first useful scenario-setup helpers so repeated probes stop depending on debug-menu folklore
    - debug spawn item

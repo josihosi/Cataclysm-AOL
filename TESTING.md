@@ -39,29 +39,26 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Harness first slice — reusable live probe contract
-Latest relevant harness evidence on current HEAD `59c4a507d6-dirty`:
-- probe packaging / dry-run validation
+### Harness first slice — reusable live probe contracts
+Latest relevant harness evidence on working tree `89a27f204d-dirty` with the current live tiles binary still at `59c4a507d6-dirty`:
+- narrow validation for the harness-only changes
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
   - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
-  - `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait --dry-run`
-- stale-binary audit worked instead of bluffing
-  - first live run of `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait` launched cleanly on `dev-harness` / `Sandy Creek`, but the captured window title was still `Cataclysm: Dark Days Ahead - d55ffe0a53`
-  - the probe therefore reported `verdict: inconclusive_version_mismatch` rather than pretending the current repo HEAD had been exercised
-- current-binary proof path after the rebuild
-  - `make -j4 TILES=1 cataclysm-tiles`
-  - reran `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
-  - startup screen / before / after screenshots all reported `window_title: Cataclysm: Dark Days Ahead - 59c4a507d6-dirty` with `version_matches_repo_head: true`
-  - packaged probe report at `.userdata/dev-harness/harness_runs/20260406_005536/probe.report.json`
-  - the report now cleanly separates:
-    - **screen** — screenshot paths + captured window-title/version audit
-    - **tests** — explicit recommended deterministic command (`./tests/cata_test "[camp][locker]"`), currently marked `not_run`
-    - **artifacts** — captured `probe.artifacts.log`, currently only tileset-load lines and no `camp locker:` match
-  - honest outcome on the current save/fixture shape: `verdict: inconclusive_no_artifact_match`
+  - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic --dry-run`
+- landed harness uplift beyond the original locker slice
+  - profile loading now merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy actually reaches `dev-harness`
+  - probe contracts can now script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
+  - printable gameplay keys now go through `peekaboo type` instead of invalid `peekaboo press` usage
+  - startup no longer treats the first `lastworld.json` flip as sufficient proof of ready gameplay; `post_lastworld_wait_seconds: 8.0` now gates the packaged path
+- current live chat probe on the recorded fixture/runtime path
+  - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
+  - packaged report at `.userdata/dev-harness/harness_runs/20260406_012827/probe.report.json`
+  - agent-side screenshot review of `success.png`, `talk_to_nearby_npc.after.png`, `open_freeform_chat.after.png`, `send_chat_utterance.after.png`, and `wait_for_reply.after.png` shows the path now reaches nearby-NPC dialogue, freeform utterance input, then returns to map play instead of stalling on the loading splash
+  - `llm_intent.log` stayed absent / empty on that run, so artifacts remained `no_new_artifacts`
+  - the report still says `verdict: inconclusive_version_mismatch` because the running tiles binary is `59c4a507d6-dirty` while the repo working tree is `89a27f204d-dirty`; for this harness-only slice that is expected and should not be misread as chat-proof success
 - meaning:
-  - the first reusable harness-driven live probe path now exists and is current-binary-audited instead of relying on blind trust
-  - the first packaged scenario contract is real: `locker.weather_wait`
-  - the next missing evidence is stronger scenario setup / triggering, not another round of vague startup ritual
+  - the missing evidence is no longer “can the harness drive the chat UI path at all?”
+  - the missing proof is recipient resolution / `llm_intent.log` emission for `chat.nearby_npc_basic`, plus the next ambient scenario / setup-helper coverage
 
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
 Latest relevant agent-side locker packet:
@@ -150,10 +147,11 @@ Meaning:
 
 1. extend the current harness uplift slice from `doc/harness-first-slice-plan-2026-04-06.md`
    - keep the reusable live probe contract/profile/save path honest on the current binary
+   - keep post-load readiness honest; the `lastworld.json` flip alone was not sufficient for the chat path
    - strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
    - avoid probe-method drift mid-claim
-2. make the next two scenarios real probe contracts
-   - `chat.nearby_npc_basic`
+2. make the packaged chat scenario artifact-real and add the next named scenario
+   - `chat.nearby_npc_basic` now reaches dialogue + freeform UI, but still lacks recipient / `llm_intent.log` proof
    - `ambient.weird_item_reaction`
 3. add the first scenario-setup helpers that reduce debug-menu ritual
    - debug spawn item
@@ -191,8 +189,9 @@ Use these when they are actually the missing evidence, not as ritual.
 ### Startup/load smoke
 - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
 
-### Packaged live probe
+### Packaged live probes
 - `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
+- `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
 
 ## Local build caveat
 
