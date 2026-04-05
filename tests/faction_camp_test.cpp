@@ -30,6 +30,7 @@
 #include "point.h"
 #include "stomach.h"
 #include "type_id.h"
+#include "units.h"
 #include "value_ptr.h"
 
 static const itype_id itype_9mm("9mm");
@@ -37,12 +38,14 @@ static const itype_id itype_armor_lc_plate("armor_lc_plate");
 static const itype_id itype_backpack("backpack");
 static const itype_id itype_boots("boots");
 static const itype_id itype_briefs("briefs");
+static const itype_id itype_coat_winter("coat_winter");
 static const itype_id itype_daypack("daypack");
 static const itype_id itype_duffelbag("duffelbag");
 static const itype_id itype_glasses_eye("glasses_eye");
 static const itype_id itype_glock_19("glock_19");
 static const itype_id itype_glockmag("glockmag");
 static const itype_id itype_helmet_bike("helmet_bike");
+static const itype_id itype_jacket_light("jacket_light");
 static const itype_id itype_jeans("jeans");
 static const itype_id itype_knife_combat("knife_combat");
 static const itype_id itype_pants_cargo("pants_cargo");
@@ -313,6 +316,57 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
         current_items, locker_candidates, test_camp.get_locker_policy());
 
     CHECK(plan.count(camp_locker_slot::bag) == 0);
+  }
+
+  SECTION("cold weather prefers warmer outerwear upgrades") {
+    item jacket_light(itype_jacket_light);
+    item winter_coat(itype_coat_winter);
+
+    REQUIRE(classify_camp_locker_item(jacket_light) == camp_locker_slot::vest);
+    REQUIRE(classify_camp_locker_item(winter_coat) == camp_locker_slot::vest);
+
+    const std::vector<const item *> current_items = {&jacket_light};
+    const std::vector<const item *> locker_items = {&winter_coat};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(35));
+
+    REQUIRE(plan.count(camp_locker_slot::vest) == 1);
+    const camp_locker_slot_plan &vest_plan = plan.at(camp_locker_slot::vest);
+    REQUIRE(vest_plan.kept_current != nullptr);
+    CHECK(vest_plan.kept_current->typeId() == itype_jacket_light);
+    REQUIRE(vest_plan.selected_candidate != nullptr);
+    CHECK(vest_plan.selected_candidate->typeId() == itype_coat_winter);
+    CHECK(vest_plan.upgrade_selected);
+    CHECK(vest_plan.has_changes());
+  }
+
+  SECTION("hot weather prefers lighter outerwear upgrades") {
+    item jacket_light(itype_jacket_light);
+    item winter_coat(itype_coat_winter);
+
+    const std::vector<const item *> current_items = {&winter_coat};
+    const std::vector<const item *> locker_items = {&jacket_light};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::vest) == 1);
+    const camp_locker_slot_plan &vest_plan = plan.at(camp_locker_slot::vest);
+    REQUIRE(vest_plan.kept_current != nullptr);
+    CHECK(vest_plan.kept_current->typeId() == itype_coat_winter);
+    REQUIRE(vest_plan.selected_candidate != nullptr);
+    CHECK(vest_plan.selected_candidate->typeId() == itype_jacket_light);
+    CHECK(vest_plan.upgrade_selected);
+    CHECK(vest_plan.has_changes());
   }
 }
 
