@@ -422,6 +422,38 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(pants_plan.upgrade_selected);
     CHECK(pants_plan.has_changes());
   }
+
+  SECTION(
+      "hot weather keeps the best current full-length legwear and drops extra "
+      "duplicates") {
+    item antarvasa( itype_id( "antarvasa" ) );
+    item cargo_pants(itype_pants_cargo);
+    item cargo_shorts(itype_shorts_cargo);
+
+    REQUIRE(classify_camp_locker_item(antarvasa) == camp_locker_slot::pants);
+
+    const std::vector<const item *> current_items = {&antarvasa, &cargo_pants};
+    const std::vector<const item *> locker_items = {&cargo_shorts};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    REQUIRE(pants_plan.kept_current != nullptr);
+    CHECK(pants_plan.kept_current->typeId() == itype_pants_cargo);
+    REQUIRE(pants_plan.duplicate_current.size() == 1);
+    CHECK(pants_plan.duplicate_current.front()->typeId() ==
+          itype_id( "antarvasa" ));
+    REQUIRE(pants_plan.selected_candidate != nullptr);
+    CHECK(pants_plan.selected_candidate->typeId() == itype_shorts_cargo);
+    CHECK(pants_plan.upgrade_selected);
+    CHECK(pants_plan.has_changes());
+  }
 }
 
 TEST_CASE("camp_locker_service_equips_upgrades_and_returns_replaced_gear",
