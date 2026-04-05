@@ -1,8 +1,10 @@
 # Agents
 Follow all instructions in this file.
 Read `Plan.md` first and treat it as the canonical roadmap.
-Keep `Plan.md`, `TODO.md`, and `TESTING.md` aligned with reality, but keep them lean:
+Then read `SUCCESS.md` for the explicit exit criteria of the current roadmap item.
+Keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned with reality, but keep them lean:
 - `Plan.md` = roadmap / active target
+- `SUCCESS.md` = success-state ledger / crossed-off exit criteria
 - `TODO.md` = short current execution queue only
 - `TESTING.md` = current validation policy, latest relevant evidence, pending probes
 - remove finished fluff from `TODO.md` / `TESTING.md` instead of building a graveyard of crossed-off chores

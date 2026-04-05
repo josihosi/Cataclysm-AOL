@@ -24,6 +24,8 @@ Josef should be asked only for:
 - genuinely human-only interaction
 
 Josef being unavailable is **not** a blocker by itself.
+Josef self-testing is **not** a plan blocker and does not belong in the active success state as a gate.
+If Josef-specific checks are useful, write them down as non-blocking notes so he can run them later from his own list.
 If another good agent-side lane exists, keep moving there.
 If several human-only judgments are likely soon, batch them instead of sending tiny separate asks.
 

@@ -17,5 +17,6 @@ Rules:
 
 Execution queue:
 - use the current locker baseline as the starting point, not as an excuse to stall
-- take the next smallest real locker-zone behavior chunk
+- take the next unchecked success-state step from `SUCCESS.md` for the locker lane
 - keep docs/testing focused on the locker lane while it is active
+- if Josef-specific tests arise, write them down as non-blocking notes instead of turning them into reminder-loop blockers
