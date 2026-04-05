@@ -39,6 +39,41 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
+### Locker Zone V1 checkpoint baseline
+Latest relevant agent-side locker packet:
+- forced-rebuild audit on committed HEAD `dd4faafe32`
+  - `make -B -j4 tests`
+  - `./tests/cata_test "[camp][locker]"`
+  - passed at `121 assertions in 10 test cases`
+- the targeted suite covers the bundled V1 close-out shape:
+  - locker policy serialization / save-load
+  - representative locker item classification
+  - locker-zone candidate gathering and reservation filtering
+  - locker loadout planning and disabled-category behavior
+  - service/equip/upgrade/return behavior
+  - one-worker-at-a-time queue sequencing
+  - new eligible locker gear requeues a worker after a baseline no-op pass
+  - losing managed locker gear requeues the affected worker
+  - transient assigned-camp downtime rehydration
+- prior broader runtime baseline remains valid for this same downtime/service path:
+  - `make -j4 TILES=1 cataclysm-tiles`
+  - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+    - passed cleanly on `.userdata/dev/harness_runs/20260405_110124`
+  - live current-binary probe on `dev` / `Sandy Creek`
+    - restored the missing `CAMP_LOCKER` character-zone fixture from `Sandy Creek.bak.20260405_111739`
+    - launched `./cataclysm-tiles --userdir .userdata/dev/ --world 'Sandy Creek'`
+    - opened the in-game wait menu and chose wait-till-midnight (`m`)
+    - current `debug.log` then emitted a fresh locker packet for **Bruna Priest** on `1a72369cfb-dirty`:
+      - `camp locker: before Bruna Priest ... locker=[none]`
+      - `camp locker: plan for Bruna Priest ... changes=[shirt dedupe keep=polo shirt<polo_shirt> drop=[flotation vest<flotation_vest>]; bag dedupe keep=messenger bag<mbag> drop=[leather belt<leather_belt>]]`
+      - `camp locker: after Bruna Priest ... locker=[shirt=[flotation vest<flotation_vest>]; bag=[leather belt<leather_belt>]]`
+    - screenshots/live capture artifacts: `.userdata/dev/live_probe/`
+
+Meaning:
+- Locker Zone V1 stays checkpointed because the bundled V1 task set is backed by deterministic proof plus proportional runtime proof
+- this packet is the baseline to preserve while working on V2
+- if V2 work breaks any bundled V1 claim, reopen V1 instead of waving it away
+
 ### Post-Locker-V1 Basecamp follow-through close-out
 Latest relevant agent-side packet:
 - committed HEAD `64f2bebc85`
@@ -66,12 +101,20 @@ Meaning:
 
 ## Pending probes
 
-No active probe queue right now.
+### Active queue — Locker Zone V2
+
+1. define and test the minimal V2 ranged-readiness contract
+   - up to two compatible magazines when useful
+   - reload support from locker-zone ammo supply
+   - no seasonal/fashion nuance sneaking in from V3
+2. add/update deterministic coverage for the V2 magazine / reload behavior
+3. rerun `./tests/cata_test "[camp][locker]"` after the V2 slice lands
+4. only use startup/live smoke if the changed runtime path cannot be settled honestly by the deterministic locker suite alone
 
 ### Non-blocking Josef notes
 
-None.
-If Josef later wants extra confidence on the structured follow-through artifacts, batch a live `DEBUG_LLM_INTENT_LOG` probe for `job=` / `delete_job=` with the next runtime-facing Basecamp slice instead of doing a ceremonial standalone rerun.
+None yet for Locker Zone V2.
+If later needed, add V2/V3 notes here without turning them into blockers.
 
 ---
 

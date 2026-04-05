@@ -37,24 +37,55 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target
+## 1. Current delivery target — Locker Zone V2
 
-**Status:** WAITING FOR NEXT GREENLIGHT
+**Status:** GREENLIT / ACTIVE
 
-No active implementation lane is open right now.
-The post-Locker-V1 Basecamp follow-through queue is checkpointed after its three greenlit slices all landed:
-- board/job artifact proof cleanup
-- upstream deterministic board packaging cleanup
-- broader prompt follow-through for the board-emitted `next=` tokens (`job=<id>` now returns the updated structured job snapshot, and `delete_job=<id>` now returns the refreshed structured board snapshot)
+Josef wants the locker roadmap active again and wants Locker Zone **V1** represented as a small bundled task set so it cannot be crossed off half-built.
+`SUCCESS.md` now treats V1 as a few bundled completion tasks; by that bundled definition, V1 is checkpointed and the next active locker slice is **V2**.
+
+Current job:
+- land **Locker Zone V2** ranged readiness and locker-based reload support
+- keep **Locker Zone V3** queued immediately after V2
+- if V2 work disproves any bundled V1 claim, reopen V1 first instead of pretending V2 can continue cleanly
 
 ### Immediate next move
-- do **not** invent a fake active lane
-- if Josef wants more Basecamp prompt work, pick one option from the short parked list below
-- otherwise leave the closed Basecamp/locker checkpoints closed
+- define the minimal V2 contract first: basic ranged readiness, up to two compatible magazines, and locker-ammo reload support
+- wire that through the existing locker planner/service path without ballooning into V3 nuance
+- keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to the locker roadmap, not to stale Basecamp leftovers
 
 ---
 
-## 2. Checkpointed — post-Locker-V1 Basecamp follow-through
+## 2. Checkpointed — Locker Zone V1
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+V1 is only considered done because the bundled V1 task set in `SUCCESS.md` is fully checked.
+That bundled close-out is meant to stop false completion:
+- locker surface/control exists as a real zone-manager + camp-policy feature
+- locker outfitting core exists as real planner/service behavior
+- locker maintenance rhythm exists as real dirty/queue/reservation behavior
+- V1 has deterministic + proportional runtime proof recorded
+
+If later code work shows any one of those bundled claims is false or incomplete, reopen V1 immediately.
+
+---
+
+## 3. Greenlit / queued after V2 — Locker Zone V3
+
+**Status:** GREENLIT / QUEUED
+
+After V2, continue straight into Locker Zone V3:
+- seasonal dressing / winter-vs-summer logic
+- coats / blankets / shorts / similar weather-sensitive wardrobe choices
+- per-NPC overrides and nuance
+
+Do **not** pull V3 detail into V2 unless the docs are updated first.
+V2 stays about basic ranged readiness/reload support; V3 is the nuance pass.
+
+---
+
+## 4. Checkpointed — post-Locker-V1 Basecamp follow-through
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -68,7 +99,7 @@ Keep this closed unless Josef explicitly reopens Basecamp prompt follow-through 
 
 ---
 
-## 3. Checkpointed — LLM-side board snapshot path
+## 5. Checkpointed — LLM-side board snapshot path
 
 **Status:** CHECKPOINTED
 
@@ -82,16 +113,14 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 4. Additional parked options
+## 6. Additional parked options
 
-If Josef wants a fresh greenlight, the next sensible options are:
-1. extend the same structured follow-through to the board-wide batch tokens (`launch_ready_jobs`, `retry_blocked_jobs`, `clear_archived_jobs`)
-2. add a compact deterministic action/result header to structured `job=<id>` / `delete_job=<id>` replies if the raw post-action snapshot feels too implicit
-3. run a live `DEBUG_LLM_INTENT_LOG` artifact sweep for the new `job=` / `delete_job=` follow-through packet before asking Josef for any wording/feel judgment
+None outside the locker roadmap right now.
+If Josef later wants more after V3, add a short fresh menu then instead of resurrecting stale parked clutter.
 
 ---
 
-## 5. Documentation discipline
+## 7. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

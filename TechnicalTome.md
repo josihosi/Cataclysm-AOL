@@ -317,13 +317,14 @@ Do not force the model to rediscover deterministic facts we already know how to 
 For the upstreamable deterministic slice, the spoken craft path should stay fully deterministic and human-reviewable.
 The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is stable and cleanly separable.
 
-### Locker Zone v1 groundwork note
-- The physical locker supply is now meant to be explicit: a `CAMP_LOCKER` Zone Manager zone, not an invisible camp concept.
-- The camp also now has a persisted locker-policy stub: the menu says which managed slots are allowed, while the zone will later answer which actual items are available.
-- The locker planner is no longer dead paper: deterministic helpers classify locker items, gather zone candidates, keep the best current managed item, mark duplicate current gear for cleanup, and now feed a live service path that lets idle assigned-camp NPCs perform an infrequent locker reevaluation during worker downtime.
-- That downtime path now has wake/dirty queue plumbing and temporary reservation filtering too, with deterministic coverage for reservation-aware candidate gathering and one-worker-at-a-time first-service sequencing.
-- The natural dirty triggers are now in place for V1 too: adding an assignee, wake-up dirty, locker-policy changes, newly available eligible locker gear, and losing/dropping important managed gear all feed the locker queue.
-- It is still deliberately narrow: it can clean duplicate managed gear and apply obvious missing-slot/upgraded equips from the locker zone, and it now has agent-side live proof for the camp-assigned downtime path on the current binary. Talk about it as a narrow but real Locker Zone v1 slice, not as a vague paper design — and treat later locker work as post-V1 expansion rather than pretending V1 itself is still undefined.
+### Locker Zone roadmap note
+- Locker Zone V1 should be spoken about as a **bundled completed slice**, not as one giant vague blob and not as one tiny lucky sub-patch. Its bundled close-out is: (1) locker surface/control exists (`CAMP_LOCKER` zone + persisted locker policy + player-facing locker policy menu), (2) locker outfitting core exists (classification/gathering/scoring/planning/equip/upgrade/dedupe/return), (3) locker maintenance rhythm exists (dirty triggers + queue + reservations + one-worker-at-a-time servicing), and (4) deterministic + proportional runtime proof exists.
+- The physical locker supply is explicit: a `CAMP_LOCKER` Zone Manager zone, not an invisible camp concept.
+- The camp also now has a persisted locker-policy control surface: the player can toggle which managed slots the camp locker may handle from the basecamp locker-policy UI, while the zone supplies the actual gear.
+- The locker planner is no longer dead paper: deterministic helpers classify locker items, gather zone candidates, keep the best current managed item, mark duplicate current gear for cleanup, and feed a live service path that lets idle assigned-camp NPCs perform an infrequent locker reevaluation during worker downtime.
+- That downtime path has wake/dirty queue plumbing and temporary reservation filtering too, with deterministic coverage for reservation-aware candidate gathering and one-worker-at-a-time first-service sequencing.
+- The natural dirty triggers are in place for V1: adding an assignee, wake-up dirty, locker-policy changes, newly available eligible locker gear, and losing/dropping important managed gear all feed the locker queue.
+- Post-V1 expansion is explicit now, not fuzzy: V2 is ranged readiness / magazine + reload support from locker supply; V3 is seasonal dressing and per-NPC nuance. Do not quietly mix V3 nuance into V2.
 
 ### Follower-NPC caveat
 Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.
