@@ -39,13 +39,13 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Locker Zone V1 / V2 checkpoint baseline
+### Locker Zone V1 / V2 baseline + V3 deterministic slice
 Latest relevant agent-side locker packet:
-- committed HEAD `0d03b1557e`
+- committed HEAD `10750acaad`
   - `make -j4 tests`
   - `./tests/cata_test "[camp][locker]"`
-  - passed at `139 assertions in 11 test cases`
-- the targeted suite still covers the bundled locker baseline from V1 while now proving the landed V2 contract:
+  - passed at `155 assertions in 11 test cases`
+- the targeted suite still covers the bundled locker baseline from V1/V2 and now also proves the first landed V3 lane:
   - locker policy serialization / save-load
   - representative locker item classification
   - locker-zone candidate gathering and reservation filtering
@@ -59,7 +59,11 @@ Latest relevant agent-side locker packet:
     - locker supply contributes only the additional compatible magazines needed to reach that cap
     - locker-zone ammo fills those selected magazines and reloads the supported weapon
     - leftover locker magazine count and ammo depletion stay deterministic
-- proportional runtime proof on the current binary:
+  - new V3 deterministic outerwear coverage in `camp_locker_loadout_planning`
+    - explicit cold-temperature probe (`35 F`) prefers a warmer outerwear upgrade (`jacket_light -> coat_winter`)
+    - explicit hot-temperature probe (`85 F`) prefers a lighter outerwear upgrade (`coat_winter -> jacket_light`)
+    - scope is intentionally narrow: shirt/vest-slot outerwear that covers both torso and arms
+- last recorded proportional runtime locker proof still covers the V1/V2 baseline, not the new V3 lane:
   - `make -j4 TILES=1 cataclysm-tiles`
   - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
     - passed cleanly on `.userdata/dev/harness_runs/20260405_180427`
@@ -71,9 +75,9 @@ Latest relevant agent-side locker packet:
       - `camp locker: after Bruna Priest ... locker=[shirt=[flotation vest<flotation_vest>]; bag=[leather belt<leather_belt>]] ranged=[weapon=compact bullpup shotgun<ksg> mags=0 take=0 reload=0 ready=no]`
 
 Meaning:
-- Locker Zone V2 is now checkpointed: deterministic coverage proves the two-magazine / locker-ammo reload contract, and the real save again executes the ranged locker path on current HEAD
-- Locker Zone V1 remains preserved under the V2 implementation
-- if V3 work breaks either bundled locker baseline, reopen the affected slice instead of performing ceremonial rebuilds
+- Locker Zone V1/V2 remain preserved under the new V3 code path at deterministic-suite level
+- the first V3 outerwear-temperature lane is now landed with deterministic proof
+- V3 still needs proportional runtime evidence on the current binary before it can claim more than a deterministic first slice
 
 ---
 
@@ -81,12 +85,13 @@ Meaning:
 
 ### Active queue — Locker Zone V3
 
-1. define the first V3 weather-sensitive clothing contract
-   - choose one narrow lane with explicit scope (outerwear / blanket / shorts / similar)
-   - name the deterministic inputs that drive it (temperature / weather / season)
-   - keep per-NPC personality nuance out unless a smaller deterministic slice genuinely needs it
-2. add/update deterministic coverage for that first V3 lane
-3. use startup / live probing only after a landed V3 slice needs runtime evidence beyond the deterministic locker suite
+1. get proportional runtime evidence for the landed outerwear-temperature lane
+   - prove the real planner/service path prefers warmer outerwear in a cold setup and lighter outerwear in a hot setup
+   - if the standing `dev` / `Sandy Creek` save does not naturally present that choice, build the smallest controlled probe instead of faking confidence from the old ranged packet
+2. once runtime proof exists, decide the next narrow V3 lane
+   - likely shorts / hot-weather legwear
+   - or a blanket / bedding-adjacent weather lane if that becomes easier to prove honestly
+3. keep per-NPC personality nuance out unless a smaller deterministic clothing slice truly needs it
 
 ### Non-blocking Josef notes
 

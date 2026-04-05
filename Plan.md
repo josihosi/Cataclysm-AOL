@@ -45,14 +45,14 @@ Locker Zone **V2** is now checkpointed: the targeted locker suite proves the two
 That makes **V3** the next active locker slice.
 
 Current job:
-- land the first deliberate **Locker Zone V3** nuance slice without disturbing the simpler V1/V2 spine
-- start with weather-sensitive wardrobe judgment (coats / blankets / shorts / similar), not broad NPC personality simulation
+- keep Locker Zone **V3** narrow and deliberate instead of letting it dissolve into NPC-fashion soup
+- the first landed V3 lane is now local-temperature outerwear judgment for shirt/vest-class torso+arm outerwear through the normal locker planner/service path
 - if V3 work disproves any bundled V1/V2 claim, reopen the affected slice first instead of pretending nuance can stack on broken groundwork
 
 ### Immediate next move
-- define the smallest V3 contract worth landing first: one weather-sensitive outerwear choice lane with deterministic inputs / outputs
-- wire that through the existing locker planner/service path without regressing V2 ranged readiness / reload behavior
-- add narrow deterministic coverage before spending time on broader runtime probing
+- get proportional runtime proof for the landed outerwear-temperature lane on the real binary / harness path
+- if the current save does not naturally surface the lane, create the smallest controlled hot/cold probe that does
+- only after that, choose the next narrow V3 follow-up lane (likely shorts/legwear or blanket-adjacent weather handling)
 
 ---
 

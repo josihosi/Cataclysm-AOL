@@ -61,12 +61,13 @@ Success state:
 - [ ] Seasonal dressing / winter-vs-summer wardrobe logic exists.
 - [ ] Weather-sensitive wardrobe choices (coats / blankets / shorts / similar) are handled deliberately rather than by V1/V2 shortcuts.
 - [ ] Per-NPC overrides / nuance exist without undoing the simpler V1/V2 deterministic spine.
-- [ ] Deterministic coverage exists for the V3 behavior that is actually implemented.
+- [x] Deterministic coverage exists for the V3 behavior that is actually implemented.
 - [ ] Proportional runtime validation for V3 is recorded in `TESTING.md`.
 - [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
 - V3 is active now that V2 is checkpointed.
+- The first landed V3 lane is intentionally narrow: local temperature now nudges shirt/vest-slot torso+arm outerwear toward warmer gear in cold weather and lighter gear in hot weather.
 - Do not quietly let V3 nuance undo the simpler V1/V2 deterministic spine.
 
 ---

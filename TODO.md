@@ -11,13 +11,14 @@ If the queue below stops matching `Plan.md`, fix this file.
 Locker Zone V3 is the active lane.
 
 Execution queue:
-1. define the first V3 weather-sensitive contract clearly before code
-   - what environment inputs count (temperature / weather / season)
-   - which outerwear choices are in scope first
-   - what still stays out of scope for later V3 follow-ups
-2. extend the existing locker planner/service path only far enough to express that first V3 choice lane
-3. add/update the narrow deterministic coverage for the chosen V3 weather-sensitive behavior
-4. only do runtime / harness probing once the first V3 slice lands or if deterministic evidence cannot settle the changed path honestly
+1. get proportional runtime proof for the landed first V3 lane
+   - current scope is local temperature driving shirt/vest-class torso+arm outerwear choices
+   - use the harness / real binary path, and if the usual save does not naturally show it, set up the smallest controlled hot/cold probe that does
+2. record that runtime evidence in `TESTING.md`
+3. then choose the next narrow V3 clothing lane
+   - likely hot-weather legwear / shorts
+   - or a blanket / bedding-adjacent weather lane if that becomes the cleaner next deterministic step
+4. keep V1/V2 closed unless the runtime probe shows this first V3 lane regressed the older locker spine
 
 Still true:
 - Locker Zone V1 and V2 stay closed only because their bundled task sets are checked in `SUCCESS.md`
