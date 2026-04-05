@@ -34,94 +34,66 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — LLM-side board snapshot path
+## 1. Current delivery target — no unblocked agent-side lane
 
-**Status:** ACTIVE
+**Status:** WAITING FOR JOSEF OR GREENLIGHT
 
-### Goal
-Wire the richer board handoff snapshot into the real structured / LLM-side path without polluting the short spoken camp bark.
-The intended product split is:
-- live natural speech `show me the board` stays concise and human-facing
-- the richer `planner_move` + overmap snapshot belongs in the structured / LLM-side handoff path
+The previous active slice is now proved and should not be re-litigated:
+- the real `handle_heard_camp_request` structured `show_board` path emits the richer handoff snapshot
+- that structured reply carries `planner_move` + overmap context when a camp origin is available
+- live natural speech like `show me the board` still stays on the short spoken bark path
 
-### What is already true
-- The snapshot builder and tests already know how to include `planner_move` and an overmap snapshot when an origin is available.
-- The real prompt template on disk now also includes `{{planning_snapshot}}` again, so the shipped prompt matches the code-side snapshot contract.
-- `./tests/cata_test "[camp][basecamp_ai]"` passed (`269 assertions in 1 test case`) after the prompt-template sync.
-
-### What is still missing
-The missing proof is not another spoken-board wording pass.
-What still needs to be shown is that the richer board snapshot enters the **actual structured / LLM-side path** with the right evidence, while the human-facing spoken board reply stays concise.
-
-### Exit criteria for this target
-Before this target can move out of active status:
-1. prove where the richer board handoff snapshot is emitted in the real structured / LLM-side path
-2. show that the prompt path carries the planning snapshot / overmap context when appropriate
-3. keep the short spoken board bark on the human-facing path
-4. document the current truth in `TODO.md` and `TESTING.md` without bloating them
+There is no better unblocked agent-side target in the current roadmap without either Josef's feel judgment or a fresh greenlight on a parked lane.
+Do **not** spend more runs revalidating the same board-routing packet unless the code changes.
 
 ### Immediate next move
-Trace the current `show_board` / handoff path end-to-end and capture the first honest evidence packet for the LLM-side snapshot lane.
-Prefer the smallest proof that answers the routing question — likely targeted deterministic evidence or artifact/log confirmation — instead of another broad live ritual.
+- If Josef is available: run the queued Basecamp bark feel packet.
+- If Josef is still unavailable: stop after sending one short parked-options menu from section 3.
 
 ---
 
-## 3. Locker Zone v1
+## 2. Checkpointed — LLM-side board snapshot path
 
 **Status:** CHECKPOINTED
 
-Locker Zone v1 is no longer the active lane.
-It now has the pieces that were missing:
-- live current-binary downtime proof on `dev` / `Sandy Creek`
-- reviewable checkpoints instead of one giant dirty locker blob
-- current ledger/testing notes aligned to that state
+This slice reached its exit criteria for now:
+- routing proof exists on the actual camp request router, not only on helper builders
+- the richer structured/internal `show_board` lane is covered with deterministic evidence
+- the short spoken board bark stayed separate
+- the testing/docs packet can now describe current truth instead of an open routing question
 
-Keep it out of the active queue unless later code changes break the locker path again.
+Keep this out of the active queue unless later code changes break the route again or a new greenlit slice explicitly extends it.
 
 ---
 
-## 2. Waiting on Josef — Basecamp bark feel pass
+## 3. Waiting on Josef — Basecamp bark feel pass
 
 **Status:** WAITING ON JOSEF
 
-The Basecamp bark pass is already agent-validated enough.
-Josef input is still wanted for tone/feel on:
+The remaining open Basecamp bark questions are product-tone questions, not technical survival questions.
+Josef input is still wanted for:
 - short spoken board bark
 - subject-first status bark
 - blocked craft bark
 - clear/archive wording
 
-This is **not** the active execution target while Josef feedback is pending.
-Do not keep revalidating the same packet unless the code changes again.
-If other agent-side work exists, keep moving there.
-If several Josef-only judgments accumulate naturally, batch them.
+This is not a reason to rerun the old technical packet.
+If Josef is around, batch the feel check into one concise ask.
 
 ---
 
-## 3. Next target after Locker Zone v1 — LLM-side board snapshot path
+## 4. Parked options available for greenlight
 
-**Status:** QUEUED
+If Josef is not available and a new agent-side lane is wanted, offer a short menu from here instead of inventing a new roadmap.
 
-The product split is settled for now:
-- live natural speech `show me the board` stays concise and human-facing
-- the richer `planner_move` + overmap snapshot belongs in the structured / LLM-side path
+1. **Board/job artifact proof cleanup**
+   - tighten the explicit `DEBUG_LLM_INTENT_LOG` board/job artifact path so the live debug packet is as legible as the deterministic router proof
+2. **Upstream deterministic Basecamp cleanup**
+   - prune and package the deterministic board/job handoff work for cleaner upstream review/reference material
+3. **Broader LLM-side board prompt follow-through**
+   - extend the same legible structured-path treatment beyond `show_board` only if Josef explicitly wants the next slice
 
-So the next movement-side work, after locker proof, is not another spoken-board debate.
-It is to wire the richer snapshot into the real LLM fallback/prompt path and prove it entered that path with the right evidence.
-
----
-
-## 4. Parked projects available for greenlight if active lanes stall
-
-**Status:** PARKED MENU
-
-If the active target is honestly blocked and there is no good unblocked next-best lane, send Josef a short menu from here instead of spinning in place.
-Current parked candidates:
-- upstream deterministic PR/reference cleanup
-- broader LLM-side board snapshot / prompt work beyond the queued next slice
-- any later Basecamp UX cleanup that is not needed for Locker Zone v1
-
-Keep the menu short and concrete: what it is, why it is parked, and what one greenlighted next chunk would be.
+Keep the menu short and concrete: what it is, why it is parked, and what one greenlit next chunk would be.
 
 ---
 

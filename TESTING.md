@@ -35,21 +35,24 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ---
 
-## Current baseline evidence
+## Current relevant evidence
 
-### Basecamp bark baseline
-Latest relevant agent-side baseline for the current bark pass:
-- `./tests/cata_test "[camp][basecamp_ai]"` passed at `269 assertions in 1 test case`
-- `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` passed cleanly
-- current relevant harness artifact: `.userdata/dev/harness_runs/20260405_014335`
+### Basecamp bark / board-routing checkpoint
+Latest relevant agent-side packet:
+- `make -j4 tests`
+- `./tests/cata_test "[camp][basecamp_ai]"`
+  - passed at `289 assertions in 1 test case`
+  - includes the real `handle_heard_camp_request` router path, not only helper builders
+  - proves structured `show_board` emits the richer handoff snapshot with `planner_move` + overmap context when a camp origin exists
+  - proves spoken `show me the board` stays on the concise human-facing bark path instead of dumping the full snapshot
 
 Meaning:
-- current bark tree compiles and starts
-- current remaining question is human feel, not technical survival
-- this packet can wait while agent-side work continues elsewhere
+- the board-routing proof slice is closed for now
+- this packet should only be rerun if the relevant camp routing code changes again
+- the remaining open question in this area is Josef's tone/feel judgment, not technical routing survival
 
 ### Locker Zone v1 baseline
-Latest relevant agent-side baseline for the now-checkpointed locker tree:
+Latest relevant agent-side baseline for the checkpointed locker tree:
 - `make -j4 tests`
 - `./tests/cata_test "[camp][locker]"`
   - passed at `94 assertions in 8 test cases` on dirty `1a72369cfb`
@@ -72,35 +75,6 @@ Meaning:
 - locker groundwork, planner/service logic, and queue/reservation tail are covered agent-side
 - the current binary compiles, relinks, starts cleanly, and has one real downtime-driven live locker packet on the current binary
 - this lane is no longer missing technical proof; only revisit it if later code changes break the locker path again
-
-### LLM-side board snapshot baseline
-Latest relevant baseline for the newly active board-snapshot lane:
-- `./tests/cata_test "[camp][basecamp_ai]"`
-  - passed at `269 assertions in 1 test case` after syncing the shipped `basecamp_board_handoff_snapshot.txt` template with `{{planning_snapshot}}`
-- current shipped prompt template now begins with:
-  - `board=show_board`
-  - `{{planning_snapshot}}active={{active_count}}`
-
-Meaning:
-- the code/tests and the on-disk prompt template now agree about the planning-snapshot placeholder
-- **missing evidence is the real structured / LLM-side routing proof, not another compile or startup ritual**
-
----
-
-## Active validation target — LLM-side board snapshot path
-
-### Current truth
-The planning-snapshot placeholder is back in the shipped board handoff prompt, and the current deterministic `basecamp_ai` packet is green.
-The missing question is now routing: where the richer board handoff snapshot actually enters the structured / LLM-side path, and whether that route stays separate from the short spoken board bark.
-
-### Required next validation
-Capture the smallest honest packet that proves the routing claim:
-1. where `show_board` / board-handoff data is emitted for the structured / LLM-side path
-2. that the board handoff snapshot can carry `planner_move` / overmap context on that path
-3. that the human-facing spoken board bark remains concise rather than dumping the full handoff snapshot
-
-Prefer deterministic or artifact/log evidence first.
-Do **not** substitute another broad startup rerun unless the code actually changes in a way that makes startup the missing evidence class.
 
 ---
 
@@ -131,7 +105,7 @@ Use these when they are actually the missing evidence, not as ritual.
 ### Narrow deterministic locker check
 - `./tests/cata_test "[camp][locker]"`
 
-### Narrow deterministic Basecamp bark check
+### Narrow deterministic Basecamp bark / routing check
 - `./tests/cata_test "[camp][basecamp_ai]"`
 
 ### Fresh full test rebuild on this Mac
