@@ -52,11 +52,11 @@ Current job:
 - if V3 work disproves any bundled V1/V2 claim, reopen the affected slice first instead of pretending nuance can stack on broken groundwork
 
 ### Immediate next move
-- rebuild a **reliable** proportional runtime probe for the landed legwear-temperature lane on the real binary / harness path
-- the old outerwear save path is no longer enough by itself: the staged `shorts_cargo` / `pants_cargo` legwear repro did **not** survive restart as an honest fresh locker packet on either the restored current `dev` save or the harness fixture path, so the probe path itself now needs repair before more runtime claims get written down
-- temporary queue/skip instrumentation now exists inside `process_camp_locker_downtime`, but a plain fresh harness load on the restored current-save path still does **not** reach the locker downtime logs at all, so the next honest probe must use that instrumentation on a save shape or post-load turn-advance path that actually enters the runtime service loop
-- next honest options are now: recover the historical dirty-worker trigger state on the current save, craft the smallest save shape that guarantees the staged worker reaches `worker_downtime` / `process_camp_locker_downtime` after load, or add the smallest caller-side trace if the downtime path still stays completely silent
-- only after that probe path is trustworthy, capture the cold/hot legwear packet and choose the next narrow V3 follow-up lane (likely blanket-adjacent weather handling unless the live probe exposes a legwear correction first)
+- keep using the now-honest proportional runtime path for the landed legwear-temperature lane on the real binary / harness path
+- that path is currently: packed-save staging (`o.0.0.zzip` + `maps/3.0.0.zzip`) on the restored current `dev` / `Sandy Creek` save, harness autoload into gameplay, then live post-load turn advance through Peekaboo so the current binary actually reaches `worker_downtime` / `process_camp_locker_downtime`
+- current HEAD (`d55ffe0a53`) now emitted the cold legwear packet on that path for **Ricky Broughton**: `shorts_cargo -> pants_cargo` with the locker tile returning the replaced shorts
+- the next honest move is the matching hot-side runtime packet on that same trustworthy path: stage `pants_cargo` on Ricky, leave `shorts_cargo` on the locker tile, force the hot temperature, then capture the real `pants_cargo -> shorts_cargo` packet
+- only after that hot packet lands should V3 move to the next narrow follow-up lane (likely blanket-adjacent weather handling unless the live probe exposes a legwear correction first)
 
 ---
 

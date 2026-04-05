@@ -11,14 +11,14 @@ If the queue below stops matching `Plan.md`, fix this file.
 Locker Zone V3 is the active lane.
 
 Execution queue:
-1. rebuild a reliable proportional runtime probe for the landed V3 legwear slice
-   - the intended pants-slot short-vs-full-length probe is still `shorts_cargo` / `pants_cargo`
-   - the current staged-save repro is still not honest yet, but the blocker is narrower now: a plain fresh harness load is **not** the missing evidence class on the restored current save; the locker loop only woke once the already-loaded game got live post-load turn advance (`Tab`) through Peekaboo
-   - the smallest caller-side trace above `process_camp_locker_downtime` is now in place, and the packed-save audit showed the current dev save is reading the `./zzip` archives rather than loose extracted staging files
-   - locker-tile staging through the packed map archive now reaches runtime again, but Bruna's staged overmap wardrobe still does not hydrate into the live worker state, so the remaining honest job is finding/staging the **actual active NPC worn-state source** before claiming a legwear packet
-   - next honest options: recover the real active-state source for Bruna on the restored current save, or build the smallest packed-save/current-save path that stages a clean `shorts_cargo` / `pants_cargo` swap onto a worker who definitely reaches the post-load live service loop
-2. keep V1/V2 closed unless this new V3 lane shows the older locker spine regressed
-3. only after the live legwear probe path is trustworthy, capture the packet and choose the next narrow V3 follow-up lane
+1. capture the hot-side runtime packet for the landed V3 legwear slice
+   - keep `shorts_cargo` / `pants_cargo` as the clean pants-slot short-vs-full-length pair
+   - the current honest path is now proven: packed-save staging on the restored current save, harness autoload, then live post-load `Tab` advance through Peekaboo on current HEAD
+   - **Ricky Broughton** is the worker who currently reaches `worker_downtime` / `process_camp_locker_downtime` on that save shape
+   - the cold-side packet now exists (`shorts_cargo -> pants_cargo`), so the remaining live proof is the hot-side counterpart (`pants_cargo -> shorts_cargo`)
+   - only fall back to Bruna active-state archaeology if Ricky stops being a truthful reproducer
+2. keep V1/V2 closed unless this V3 lane shows the older locker spine regressed
+3. after the hot-side packet lands, choose the next narrow V3 follow-up lane instead of adding more probe churn
 
 Still true:
 - Locker Zone V1 and V2 stay closed only because their bundled task sets are checked in `SUCCESS.md`

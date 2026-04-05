@@ -85,24 +85,25 @@ Latest relevant agent-side locker packet:
       - `camp locker: queued Bruna Priest state-dirty ... plan=[vest upgrade puffer jacket ... <coat_winter> -> light jacket (poor fit)<jacket_light>]`
 
 Latest live-probe status for the open legwear lane:
-- 2026-04-05 agent-side repro audit on current HEAD (`6b6de8d477-dirty`) showed that the missing legwear runtime packet is **not** just waiting to be collected from the old save ritual:
-  - restored the original current `dev` / `Sandy Creek` save, staged **Bruna Priest** into `shorts_cargo` with `pants_cargo` on the locker tile at `35 F` via `./zzip`, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-  - that reload reached gameplay, but it did **not** emit a fresh legwear locker packet in `debug.log`
-  - switched to the harness fixture path (`install-fixture basecamp_dev_manual_2026-04-02 --profile dev --replace`), restaged the same cold probe, advanced turns in live gameplay through Peekaboo, and saved
-  - rereading the saved world after that run still showed `Bruna Priest` in `shorts_cargo` with `pants_cargo` still sitting on the locker tile, so that fixture path is also not yet a truthful live legwear reproducer
-- same-day probe-path follow-up on current HEAD (`97eb3adfdc-dirty`) narrowed the blocker further instead of pretending the silence was informative:
-  - added the smallest caller-side trace above `process_camp_locker_downtime` in `npc::move()` / `npc::worker_downtime`, then rebuilt with `make -j4 TILES=1 cataclysm-tiles`
-  - a plain fresh harness load on the restored current-save path still produced **no** fresh `camp locker:` lines at all in the new log segment, so autoload by itself is not an honest legwear runtime probe on this save
-  - focusing the already-loaded game and sending live post-load turn advance through Peekaboo (`peekaboo press tab --count 3 --app cataclysm-tiles --window-id ...`) immediately re-entered the locker service loop on the current binary, proving the missing evidence class is live gameplay after load rather than another ceremonial startup rerun
-  - the resulting packet was for **Ricky Broughton**, not Bruna: `camp locker: queued Ricky Broughton state-dirty ... plan=[pants upgrade antarvasa ... -> cargo pants (poor fit)<pants_cargo>]`, followed by the matching `before` / `after` / `serviced` lines at `23:00:45`
-  - packed-save audit also corrected the save-edit assumption: the restored current dev save is reading the packed `./zzip` overmap/map archives, not just loose extracted staging files; recompressing the staged locker tile back into `maps/3.0.0.zzip` made the `pants_cargo` candidate reachable at runtime again
-  - Bruna's staged overmap wardrobe (`shorts_cargo` + `camp_locker_wake_dirty`) still did **not** hydrate into her live worker state, so the remaining blocker is now specifically the active NPC worn-state source for the current save, not proof that the locker loop or locker tile no longer work
-  - the saved manual backup metadata at `.userdata/dev/save/manual_probe_backups/20260405_113052/current-char-zones.json` still shows the historical `CAMP_LOCKER` zone at `(2841,681,0)`, so the current failure is still not narrowed to a simple “locker zone never existed” claim
+- 2026-04-05 stale-binary audit first corrected the evidence path on current HEAD: the running window title was still `6b6de8d477-dirty`, so the tiles target was rebuilt before collecting new runtime proof; the live packet below comes from `d55ffe0a53`
+- restored the original current `dev` / `Sandy Creek` save, backed it up under `.userdata/dev/save/manual_probe_backups/20260405_232203_ricky_legwear_cold/`, and used the packed-save path that the save audit had already identified as authoritative
+- staged **Ricky Broughton** in `shorts_cargo` inside packed overmap `overmaps/o.0.0.zzip`, left `pants_cargo` on the packed locker tile in `maps/3.0.0.zzip`, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+- a plain fresh autoload still was not the missing evidence class by itself, so the honest runtime step remained live post-load gameplay: focused the current game window and sent `peekaboo press tab --count 3 --app cataclysm-tiles --window-id 10427`
+- current `debug.log` on `d55ffe0a53` then emitted the real cold legwear locker packet at `23:23:32.719`:
+  - `camp locker: action Ricky Broughton reason=worker-downtime ...`
+  - `camp locker: reached worker_downtime for Ricky Broughton ...`
+  - `camp locker: queued Ricky Broughton wake_dirty=true ...`
+  - `camp locker: before Ricky Broughton ... pants=[cargo shorts > 6 items<shorts_cargo>] ... locker=[pants=[cargo pants (poor fit)<pants_cargo>]]`
+  - `camp locker: plan for Ricky Broughton ... changes=[pants upgrade cargo shorts > 6 items<shorts_cargo> -> cargo pants (poor fit)<pants_cargo>] ...`
+  - `camp locker: after Ricky Broughton ... pants=[cargo pants (poor fit)<pants_cargo>] ... locker=[pants=[cargo shorts<shorts_cargo>]]`
+  - `camp locker: serviced Ricky Broughton applied=true ...`
+- restored the staged save from that manual backup after the capture so the default `dev` world did not stay pinned to the probe state
 
 Meaning:
 - Locker Zone V1/V2 remain preserved under the new V3 code path at deterministic-suite level
 - the outerwear V3 lane has both deterministic proof and proportional runtime proof on the current binary
-- the new legwear V3 lane still lacks matching live proof, and the blocker is now the **runtime probe path itself**, not just an uncaptured packet
+- the legwear V3 lane now has deterministic proof plus a matching **cold-side** live packet on the current binary / current-save path
+- the remaining runtime gap is now the **hot-side** legwear counterpart (`pants_cargo -> shorts_cargo`), not probe-path repair
 - the hot-side outerwear runtime evidence currently comes from a real state-dirty replan packet after the live temperature flip rather than a second captured `after` packet, but it still proves the real planner/service path picks the lighter jacket when the temperature turns hot
 
 ---
@@ -111,15 +112,13 @@ Meaning:
 
 ### Active queue — Locker Zone V3
 
-1. rebuild a reliable live probe for the new pants-slot legwear lane
+1. capture the **hot-side** live packet for the new pants-slot legwear lane
    - keep `shorts_cargo` vs `pants_cargo` as the clean deterministic-shaped wardrobe pair
-   - do **not** count the old outerwear save ritual as a valid legwear reproducer anymore until it emits or persists the legwear swap on a fresh run again
-2. next honest agent-side options are:
-   - recover the real active NPC worn-state source that the restored current save hydrates for Bruna, instead of only editing the overmap entry
-   - use the now-proven packed-save + post-load live-turn path to stage a clean `shorts_cargo` / `pants_cargo` pair onto a worker who definitely reaches locker service after load
-   - keep using live post-load gameplay as the probe path; do not treat another plain startup-only harness rerun as new evidence unless the save shape changes materially
-3. only after the probe path is trustworthy, capture the real locker planner/service path under cold and hot legwear setups
-4. keep per-NPC personality nuance out unless the legwear live probe exposes a real need for a smaller corrective slice
+   - reuse the now-proven Ricky current-save path: packed-save staging, harness autoload, then live post-load `Tab` advance through Peekaboo
+   - force the hot temperature before the service window so the missing runtime proof is the real `pants_cargo -> shorts_cargo` swap, not just another cold packet
+2. keep using live post-load gameplay as the probe path; do not treat another plain startup-only harness rerun as new evidence unless the save shape changes materially
+3. only after the hot-side packet lands, decide whether V3 should move to the next narrow follow-up lane or whether the live legwear evidence exposed a smaller corrective slice
+4. keep per-NPC personality nuance out unless the hot-side legwear probe exposes a real need for a smaller corrective slice
 
 ### Non-blocking Josef notes
 
