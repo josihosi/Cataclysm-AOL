@@ -17,7 +17,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Locker Zone follow-through
 
-Status: ACTIVE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Baseline already reached:
 - [x] `CAMP_LOCKER` exists as the explicit physical supply zone.
@@ -27,15 +27,16 @@ Baseline already reached:
 - [x] Agent-side deterministic, startup, and live downtime proof exists on the current binary.
 
 Selected next chunk — locker dirty-trigger follow-through:
-- [ ] New eligible locker-zone gear can dirty relevant assignees for later service.
-- [ ] Losing/dropping important managed gear can dirty the affected assignee for later service.
-- [ ] Deterministic coverage exists for the new dirty-trigger behavior.
-- [ ] Proportional runtime validation for this new chunk is recorded in `TESTING.md`.
-- [ ] Any Josef-specific follow-up checks for this chunk are written down as non-blocking notes, not treated as a plan blocker.
+- [x] New eligible locker-zone gear can dirty relevant assignees for later service.
+- [x] Losing/dropping important managed gear can dirty the affected assignee for later service.
+- [x] Deterministic coverage exists for the new dirty-trigger behavior.
+- [x] Proportional runtime validation for this new chunk is recorded in `TESTING.md`.
+- [x] Any Josef-specific follow-up checks for this chunk are written down as non-blocking notes, not treated as a plan blocker.
 
 Notes:
-- Basecamp bark / craft / board work is closed and does not belong in this active success state.
-- Josef testing does not gate progress here.
+- Locker candidate scanning now uses sorted locker tiles so debug/state summaries stay deterministic enough for dirty-trigger tracking and tests.
+- Basecamp bark / craft / board work stays closed and does not belong back in this slice.
+- Josef testing did not gate progress here.
 
 ---
 

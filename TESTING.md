@@ -53,54 +53,44 @@ Meaning:
 - this packet should only be rerun if the relevant camp routing code changes again
 - this area has no standing pending handoff packet anymore
 
-### Locker Zone v1 baseline
-Latest relevant agent-side baseline for the active locker lane:
+### Locker Zone follow-through checkpoint
+Latest relevant agent-side locker packet:
 - `make -j4 tests`
 - `./tests/cata_test "[camp][locker]"`
-  - passed at `94 assertions in 8 test cases` on dirty `1a72369cfb`
-  - rerun passed again after the live probe at `94 assertions in 8 test cases`
-  - deterministic logs show human-readable locker `before` / `plan` / `after` summaries
-- `make -j4 TILES=1 cataclysm-tiles`
-- `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-  - passed cleanly on `.userdata/dev/harness_runs/20260405_110124`
-- live current-binary probe on `dev` / `Sandy Creek`
-  - restored the missing `CAMP_LOCKER` character-zone fixture from `Sandy Creek.bak.20260405_111739`
-  - launched `./cataclysm-tiles --userdir .userdata/dev/ --world 'Sandy Creek'`
-  - opened the in-game wait menu and chose wait-till-midnight (`m`)
-  - current `debug.log` then emitted a fresh locker packet for **Bruna Priest** on `1a72369cfb-dirty`:
-    - `camp locker: before Bruna Priest ... locker=[none]`
-    - `camp locker: plan for Bruna Priest ... changes=[shirt dedupe keep=polo shirt<polo_shirt> drop=[flotation vest<flotation_vest>]; bag dedupe keep=messenger bag<mbag> drop=[leather belt<leather_belt>]]`
-    - `camp locker: after Bruna Priest ... locker=[shirt=[flotation vest<flotation_vest>]; bag=[leather belt<leather_belt>]]`
-  - screenshots/live capture artifacts: `.userdata/dev/live_probe/`
+  - passed at `121 assertions in 10 test cases` on dirty `ab9cd121f8`
+  - new deterministic cases prove both follow-through triggers:
+    - new eligible locker-zone gear requeues a worker after the baseline no-op pass and services once the existing cooldown expires
+    - losing managed locker gear requeues the affected worker and re-equips from the locker once the existing cooldown expires
+  - deterministic logs now show explicit `state-dirty` queue events in addition to the existing `before` / `plan` / `after` locker summaries
+- prior broader runtime baseline remains valid for this same downtime path:
+  - `make -j4 TILES=1 cataclysm-tiles`
+  - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+    - passed cleanly on `.userdata/dev/harness_runs/20260405_110124`
+  - live current-binary probe on `dev` / `Sandy Creek`
+    - restored the missing `CAMP_LOCKER` character-zone fixture from `Sandy Creek.bak.20260405_111739`
+    - launched `./cataclysm-tiles --userdir .userdata/dev/ --world 'Sandy Creek'`
+    - opened the in-game wait menu and chose wait-till-midnight (`m`)
+    - current `debug.log` then emitted a fresh locker packet for **Bruna Priest** on `1a72369cfb-dirty`:
+      - `camp locker: before Bruna Priest ... locker=[none]`
+      - `camp locker: plan for Bruna Priest ... changes=[shirt dedupe keep=polo shirt<polo_shirt> drop=[flotation vest<flotation_vest>]; bag dedupe keep=messenger bag<mbag> drop=[leather belt<leather_belt>]]`
+      - `camp locker: after Bruna Priest ... locker=[shirt=[flotation vest<flotation_vest>]; bag=[leather belt<leather_belt>]]`
+    - screenshots/live capture artifacts: `.userdata/dev/live_probe/`
 
 Meaning:
-- locker groundwork, planner/service logic, and queue/reservation tail are covered agent-side
-- the current binary compiles, relinks, starts cleanly, and has one real downtime-driven live locker packet on the current binary
-- this packet is the baseline, not the next proof target
-- the next proof target should be the selected dirty-trigger follow-through chunk, not another re-proof of locker existence
+- locker dirty-trigger follow-through is covered deterministically on top of the already-proved runtime service path
+- no extra startup/live rerun was needed for this slice because the changed code only adds queue-dirty detection around the same already-proved downtime/service path
+- this locker slice is checkpointed; do not keep revalidating it unless the locker runtime path changes again
 
 ---
 
 ## Pending probes
 
-### Locker Zone active-lane rule
-
-Locker Zone is the current active lane.
-Use the existing locker packet below as the baseline, then add only the new missing evidence for the selected dirty-trigger follow-through chunk.
-Do **not** spend more probe budget on the finished Basecamp bark / craft slice unless Josef explicitly reopens it.
-
-### Selected next evidence target — locker dirty-trigger follow-through
-
-Prefer this order unless the implementation proves otherwise:
-1. deterministic coverage that new eligible locker gear can dirty/queue relevant assignees
-2. deterministic coverage that losing/dropping important managed gear can dirty/queue the affected assignee
-3. rerun `./tests/cata_test "[camp][locker]"` after the new tests/behavior land
-4. only use startup/live smoke if the changed path actually touches runtime service behavior in a way the deterministic tests cannot settle
+No standing probes for the closed locker slice.
 
 ### Non-blocking Josef notes
 
-None yet for the current selected locker chunk.
-If later needed, add them here as notes only, not as plan gates.
+None for the finished locker dirty-trigger chunk.
+If Josef later greenlights another lane, rewrite this section to match that lane instead of appending stale archaeology.
 
 ---
 

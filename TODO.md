@@ -8,18 +8,9 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Locker Zone is the active lane.
-This is the next item to work on.
+No active execution queue at the moment.
 
-Execution queue:
-- use the current locker baseline as the starting point, not as an excuse to stall
-- implement the selected next chunk from `SUCCESS.md`: locker dirty-trigger follow-through for
-  - new eligible locker-zone gear
-  - lost/dropped important managed gear
-- if code inspection disproves one of those gaps, update `SUCCESS.md` / `Plan.md` first instead of freelancing
-- keep docs/testing focused on the locker lane while it is active
-- if Josef-specific tests arise, write them down as non-blocking notes instead of turning them into reminder-loop blockers
-
-Still true:
-- do **not** ask Josef to greenlight the locker / zone lane again
-- do **not** reopen finished Basecamp bark / craft work unless Josef explicitly reopens it
+Current truth:
+- the selected locker dirty-trigger follow-through slice is landed and covered
+- there is no new greenlit code lane yet beyond the parked options in `Plan.md`
+- do **not** reopen finished locker or Basecamp bark / craft work unless Josef explicitly does so

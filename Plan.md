@@ -37,32 +37,23 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Locker Zone follow-through
+## 1. Current delivery target — no new lane greenlit yet
 
-**Status:** GREENLIT / ACTIVE
+**Status:** WAITING FOR NEXT PICK
 
-Josef explicitly wants the locker / zone lane on top as the next thing worked on.
-Stop treating it as parked, optional, or pending another greenlight.
+The previously greenlit locker / zone slice is now closed for this pass:
+- locker dirty-trigger follow-through landed
+- new eligible locker-zone gear now requeues affected workers through the downtime locker path
+- losing/dropping important managed gear now requeues the affected worker through the same path
+- deterministic coverage for that follow-through is in place
 
-Current known baseline:
-- `CAMP_LOCKER` is the explicit physical supply zone
-- the locker-policy stub exists
-- planner/service/reservation groundwork exists
-- agent-side deterministic + startup + live downtime proof exists on the current binary
-
-Selected next chunk:
-- finish **locker dirty-trigger follow-through** beyond the already-proved wake/policy path
-- specifically: make the camp react when new eligible locker gear appears and when an assignee loses/drops important managed gear
-
-Current job:
-- land that dirty-trigger follow-through as the next real locker-zone product slice
-- record its exact exit criteria in `SUCCESS.md`
-- keep Basecamp bark / craft / board work closed unless Josef explicitly reopens it
+Current rule:
+- do **not** reopen locker follow-through or the finished Basecamp bark / craft / board work unless Josef explicitly wants another slice there
+- the next real move should come from the parked menu below instead of inventing a surprise lane
 
 ### Immediate next move
-- work directly on the selected locker dirty-trigger chunk
-- keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to this locker-first state instead of asking for fresh permission again
-- never treat Josef self-testing as a blocker here; if Josef-specific tests exist, write them down and keep moving
+- if Josef greenlights another agent-side lane, take it from the parked options below
+- otherwise keep the ledgers honest and report that the locker target is parked / done-for-now instead of pretending there is still an active queue
 
 ---
 
