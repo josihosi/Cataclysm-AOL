@@ -49,6 +49,7 @@ static const itype_id itype_jacket_light("jacket_light");
 static const itype_id itype_jeans("jeans");
 static const itype_id itype_knife_combat("knife_combat");
 static const itype_id itype_pants_cargo("pants_cargo");
+static const itype_id itype_shorts_cargo("shorts_cargo");
 static const itype_id itype_sneakers("sneakers");
 static const itype_id itype_socks("socks");
 static const itype_id itype_test_100_kcal("test_100_kcal");
@@ -367,6 +368,59 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(vest_plan.selected_candidate->typeId() == itype_jacket_light);
     CHECK(vest_plan.upgrade_selected);
     CHECK(vest_plan.has_changes());
+  }
+
+  SECTION("cold weather prefers full-length legwear upgrades") {
+    item cargo_shorts(itype_shorts_cargo);
+    item cargo_pants(itype_pants_cargo);
+
+    REQUIRE(classify_camp_locker_item(cargo_shorts) ==
+            camp_locker_slot::pants);
+    REQUIRE(classify_camp_locker_item(cargo_pants) ==
+            camp_locker_slot::pants);
+
+    const std::vector<const item *> current_items = {&cargo_shorts};
+    const std::vector<const item *> locker_items = {&cargo_pants};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(35));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    REQUIRE(pants_plan.kept_current != nullptr);
+    CHECK(pants_plan.kept_current->typeId() == itype_shorts_cargo);
+    REQUIRE(pants_plan.selected_candidate != nullptr);
+    CHECK(pants_plan.selected_candidate->typeId() == itype_pants_cargo);
+    CHECK(pants_plan.upgrade_selected);
+    CHECK(pants_plan.has_changes());
+  }
+
+  SECTION("hot weather prefers short legwear upgrades") {
+    item cargo_shorts(itype_shorts_cargo);
+    item cargo_pants(itype_pants_cargo);
+
+    const std::vector<const item *> current_items = {&cargo_pants};
+    const std::vector<const item *> locker_items = {&cargo_shorts};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    REQUIRE(pants_plan.kept_current != nullptr);
+    CHECK(pants_plan.kept_current->typeId() == itype_pants_cargo);
+    REQUIRE(pants_plan.selected_candidate != nullptr);
+    CHECK(pants_plan.selected_candidate->typeId() == itype_shorts_cargo);
+    CHECK(pants_plan.upgrade_selected);
+    CHECK(pants_plan.has_changes());
   }
 }
 
