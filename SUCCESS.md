@@ -15,6 +15,24 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Post-Locker-V1 Basecamp follow-through
+
+Status: ACTIVE
+
+Success state:
+- [ ] The live `DEBUG_LLM_INTENT_LOG` board/job artifact packet is made legible enough to stand beside the deterministic router proof.
+- [ ] The deterministic Basecamp board/job work is pruned/packaged into a cleaner upstream-ready shape.
+- [ ] The richer structured board/prompt treatment is extended beyond `show_board` in a deliberate next slice.
+- [ ] Proportional validation for each finished sub-slice is recorded in `TESTING.md`.
+- [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
+
+Notes:
+- These three are already greenlit; do not demote them back into a parked-options menu.
+- Default order: artifact proof cleanup -> upstream deterministic cleanup -> broader prompt follow-through.
+- If reality forces a reorder, update `Plan.md` / `TODO.md` / `TESTING.md` so the queue still matches reality.
+
+---
+
 ## Locker Zone v1
 
 Status: CHECKPOINTED / DONE FOR NOW

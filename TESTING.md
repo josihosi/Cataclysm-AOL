@@ -49,9 +49,9 @@ Latest relevant agent-side packet:
   - proves spoken `show me the board` stays on the concise human-facing bark path instead of dumping the full snapshot
 
 Meaning:
-- the board-routing proof slice is closed for now
-- this packet should only be rerun if the relevant camp routing code changes again
-- this area has no standing pending handoff packet anymore
+- the board-routing proof slice is closed for now as a baseline
+- use this packet as the deterministic reference while working through the new active Basecamp follow-through queue
+- rerun it only when the changed sub-slice actually touches the relevant camp routing / formatting path again
 
 ### Locker Zone v1 checkpoint
 Latest relevant agent-side locker packet:
@@ -86,12 +86,28 @@ Meaning:
 
 ## Pending probes
 
-No standing probes for finished Locker Zone v1.
+### Active queue — post-Locker-V1 Basecamp follow-through
+
+1. **Board/job artifact proof cleanup**
+   - prefer the smallest honest evidence that the live `DEBUG_LLM_INTENT_LOG` board/job packet is easier to read and easier to compare against the deterministic router proof
+   - if the cleanup is mostly logging/formatting on the live path, a targeted live artifact packet may be the honest proof
+   - if helper extraction or deterministic formatting code changes too, add/update narrow `"[camp][basecamp_ai]"` coverage accordingly
+
+2. **Upstream deterministic Basecamp cleanup**
+   - prefer deterministic proof first
+   - rerun `./tests/cata_test "[camp][basecamp_ai]"` after the cleanup lands
+   - rebuild broader targets only if the touched code makes the narrow rerun dishonest
+
+3. **Broader LLM-side board prompt follow-through**
+   - define the exact next structured extension beyond `show_board` before writing code
+   - add/update the narrow deterministic coverage for that new route
+   - rerun `./tests/cata_test "[camp][basecamp_ai]"`
+   - use startup/live smoke only if the changed runtime path cannot be settled honestly by deterministic coverage alone
 
 ### Non-blocking Josef notes
 
-None for finished Locker Zone v1.
-If Josef later greenlights another lane, rewrite this section to match that lane instead of appending stale archaeology.
+None yet for the active Basecamp follow-through queue.
+If a later sub-slice needs Josef judgment, add it here as a note rather than turning it into a blocker.
 
 ---
 

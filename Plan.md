@@ -37,30 +37,30 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — no new post-Locker-V1 lane greenlit yet
+## 1. Current delivery target — post-Locker-V1 Basecamp follow-through
 
-**Status:** WAITING FOR NEXT PICK
+**Status:** GREENLIT / ACTIVE
 
-Locker Zone **v1** was the full greenlit lane.
-By the repo's current V1 definition, that lane is now checkpointed / done for this pass:
-- zone + policy + menu/save-load plumbing landed
-- classifier + candidate gathering + scoring landed
-- queue/reservation + one-at-a-time servicing landed
-- live locker execution + duplicate cleanup + obvious upgrades landed
-- dirty-trigger follow-through landed
-- deterministic coverage and proportional runtime validation are in place
+Josef has now greenlit the previously parked three-part Basecamp follow-through queue too.
+So stop pretending the repo is waiting for a pick.
 
-Important clarification:
-- `dirty-trigger follow-through` was the **last V1 chunk**, not the whole greenlit lane by itself
-- do **not** rewrite history so V1 sounds like a tiny sub-slice that still needed separate blessing
+Current active queue, in order:
+1. **Board/job artifact proof cleanup**
+   - make the live `DEBUG_LLM_INTENT_LOG` board/job packet as legible as the deterministic router proof
+2. **Upstream deterministic Basecamp cleanup**
+   - prune/package the existing deterministic board/job work into a cleaner upstream-ready shape
+3. **Broader LLM-side board prompt follow-through**
+   - extend the richer structured treatment beyond `show_board`
 
-Current rule:
-- do **not** reopen finished Locker Zone v1 or the finished Basecamp bark / craft / board work unless Josef explicitly wants another slice there
-- the next real move should come from the parked menu below instead of inventing a surprise lane
+Working rules:
+- these three are already greenlit; do **not** move them back into a permission menu
+- work them in order unless reality forces a better order and the docs are updated to explain why
+- keep finished Locker Zone v1 and the finished Basecamp bark / craft / board checkpoint closed unless Josef explicitly reopens them
 
 ### Immediate next move
-- if Josef greenlights another agent-side lane, take it from the parked options below
-- otherwise keep the ledgers honest and report that Locker Zone v1 is checkpointed / done-for-now instead of pretending there is still an active queue
+- start with **Board/job artifact proof cleanup**
+- keep the other two as the queued next slices, not as vague future wishes
+- keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to this active trio
 
 ---
 
@@ -78,18 +78,12 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 3. Parked options available for greenlight
+## 3. Additional parked options
 
-If Josef is not available and a new agent-side lane is wanted, offer a short menu from here instead of inventing a new roadmap.
+None right now.
 
-1. **Board/job artifact proof cleanup**
-   - tighten the explicit `DEBUG_LLM_INTENT_LOG` board/job artifact path so the live debug packet is as legible as the deterministic router proof
-2. **Upstream deterministic Basecamp cleanup**
-   - prune and package the deterministic board/job handoff work for cleaner upstream review/reference material
-3. **Broader LLM-side board prompt follow-through**
-   - extend the same legible structured-path treatment beyond `show_board` only if Josef explicitly wants the next slice
-
-Keep the menu short and concrete: what it is, why it is parked, and what one greenlit next chunk would be.
+Do not create a fake menu while the active three-part Basecamp follow-through queue is still open.
+If that queue finishes and Josef wants more, add a fresh short menu then.
 
 ---
 

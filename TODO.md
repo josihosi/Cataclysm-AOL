@@ -8,10 +8,17 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No active execution queue at the moment.
+Post-Locker-V1 Basecamp follow-through is the active lane.
 
-Current truth:
-- Locker Zone **v1** is checkpointed / done-for-now by the repo's current definition
-- the old `dirty-trigger follow-through` work was the last V1 chunk, not the name of the whole lane
-- there is no new greenlit post-V1 code lane yet beyond the parked options in `Plan.md`
-- do **not** reopen finished Locker Zone v1 or Basecamp bark / craft work unless Josef explicitly does so
+Execution queue:
+1. board/job artifact proof cleanup
+   - make the live `DEBUG_LLM_INTENT_LOG` board/job packet easier to read and easier to compare against the deterministic router proof
+2. upstream deterministic Basecamp cleanup
+   - prune/package the current deterministic board/job work into a cleaner upstream-ready shape
+3. broader LLM-side board prompt follow-through
+   - extend the richer structured treatment beyond `show_board`
+
+Still true:
+- these three are already greenlit; do **not** move them back into a permission menu
+- keep finished Locker Zone v1 closed unless Josef explicitly reopens locker work
+- keep finished Basecamp bark / craft wording work closed unless Josef explicitly reopens that older slice
