@@ -28,6 +28,13 @@
     "description": "Items in this zone will be added to a basecamp's inventory for use by its workers."
   },
   {
+    "id": "CAMP_LOCKER",
+    "type": "LOOT_ZONE",
+    "name": "Basecamp: Locker",
+    "display_field": "fd_basecamp_storage_zone",
+    "description": "Items in this zone are approved camp locker gear for later NPC loadout maintenance."
+  },
+  {
     "id": "CHOP_TREES",
     "type": "LOOT_ZONE",
     "name": "Work: Chop Trees",

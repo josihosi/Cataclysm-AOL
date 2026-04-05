@@ -4493,6 +4493,37 @@ static void deserialize( camp_llm_request &value, const JsonObject &jo )
     jo.read( "notes", value.notes );
 }
 
+static void serialize( const camp_locker_policy &value, JsonOut &jsout )
+{
+    jsout.start_object();
+    jsout.member( "enabled_slots" );
+    jsout.start_array();
+    for( const camp_locker_slot slot : all_camp_locker_slots() ) {
+        if( value.is_enabled( slot ) ) {
+            jsout.write( camp_locker_slot_id( slot ) );
+        }
+    }
+    jsout.end_array();
+    jsout.end_object();
+}
+
+static void deserialize( camp_locker_policy &value, const JsonObject &jo )
+{
+    jo.allow_omitted_members();
+    std::vector<std::string> enabled_slot_ids;
+    if( jo.read( "enabled_slots", enabled_slot_ids ) ) {
+        for( const camp_locker_slot slot : all_camp_locker_slots() ) {
+            value.set_enabled( slot, false );
+        }
+        for( const std::string &slot_id : enabled_slot_ids ) {
+            const std::optional<camp_locker_slot> slot = camp_locker_slot_from_id( slot_id );
+            if( slot.has_value() ) {
+                value.set_enabled( *slot, true );
+            }
+        }
+    }
+}
+
 // basecamp
 void basecamp::serialize( JsonOut &json ) const
 {
@@ -4505,6 +4536,9 @@ void basecamp::serialize( JsonOut &json ) const
         json.member( "dumping_spot", dumping_spot );
         json.member( "liquid_dumping_spots", liquid_dumping_spots );
         json.member( "camp_requests", camp_requests );
+        json.member( "locker_policy", locker_policy );
+        json.member( "locker_service_queue", locker_service_queue );
+        json.member( "locker_next_service_turn", locker_next_service_turn );
         json.member( "next_camp_request_id", next_camp_request_id );
         json.member( "hidden_missions" );
         json.start_array();
@@ -4596,6 +4630,9 @@ void basecamp::deserialize( const JsonObject &data )
     data.read( "dumping_spot", dumping_spot );
     data.read( "liquid_dumping_spots", liquid_dumping_spots );
     data.read( "camp_requests", camp_requests );
+    data.read( "locker_policy", locker_policy );
+    data.read( "locker_service_queue", locker_service_queue );
+    data.read( "locker_next_service_turn", locker_next_service_turn );
     data.read( "next_camp_request_id", next_camp_request_id );
     for( const camp_llm_request &request : camp_requests ) {
         next_camp_request_id = std::max( next_camp_request_id, request.request_id + 1 );

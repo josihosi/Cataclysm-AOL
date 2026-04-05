@@ -200,6 +200,7 @@ std::string enum_to_string<mission_kind>( mission_kind data )
         case mission_kind::Camp_Determine_Leadership: return "Camp_Determine_Leadership";
         case mission_kind::Camp_Have_Meal: return "Camp_Have_Meal";
         case mission_kind::Camp_Requests: return "Camp_Requests";
+        case mission_kind::Camp_Locker_Policy: return "Camp_Locker_Policy";
         case mission_kind::Camp_Hide_Mission: return "Camp_Hide_Mission";
         case mission_kind::Camp_Reveal_Mission: return "Camp_Reveal_Mission";
         case mission_kind::Camp_Assign_Jobs: return "Camp_Assign_Jobs";
@@ -285,6 +286,10 @@ static const std::array < miss_data, Camp_Harvest + 1 > miss_info = { {
         },
         {
             "Camp_Requests",
+            no_translation( "" )
+        },
+        {
+            "Camp_Locker_Policy",
             no_translation( "" )
         },
         {
@@ -1262,6 +1267,7 @@ bool talk_function::handle_outpost_mission( const mission_entry &cur_key, npc &p
         case Camp_Determine_Leadership:
         case Camp_Have_Meal:
         case Camp_Requests:
+        case Camp_Locker_Policy:
         case Camp_Hide_Mission:
         case Camp_Reveal_Mission:
         case Camp_Assign_Jobs:

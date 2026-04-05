@@ -24,10 +24,13 @@
 #include "event_bus.h"
 #include "faction.h"
 #include "faction_camp.h"
+#include "flag.h"
 #include "game.h"
 #include "input_popup.h"
 #include "inventory.h"
 #include "item.h"
+#include "itype.h"
+#include "llm_intent.h"
 #include "map.h"
 #include "map_iterator.h"
 #include "map_scale_constants.h"
@@ -44,61 +47,785 @@
 #include "string_formatter.h"
 #include "translations.h"
 #include "type_id.h"
+#include "units.h"
 
-static const flag_id json_flag_PSEUDO( "PSEUDO" );
+static const flag_id json_flag_PSEUDO("PSEUDO");
 
-static const zone_type_id zone_type_CAMP_STORAGE( "CAMP_STORAGE" );
+static const zone_type_id zone_type_CAMP_STORAGE("CAMP_STORAGE");
+static const zone_type_id zone_type_CAMP_LOCKER("CAMP_LOCKER");
 
-const std::map<point_rel_omt, base_camps::direction_data> base_camps::all_directions = {
-    // direction, direction id, tab order, direction abbreviation with bracket, direction tab title
-    { base_camps::base_dir, { "[B]", base_camps::TAB_MAIN, to_translation( "base camp: base", "[B]" ), to_translation( "base camp: base", " MAIN " ) } },
-    { point_rel_omt::north, { "[N]", base_camps::TAB_N, to_translation( "base camp: north", "[N]" ), to_translation( "base camp: north", "  [N] " ) } },
-    { point_rel_omt::north_east, { "[NE]", base_camps::TAB_NE, to_translation( "base camp: northeast", "[NE]" ), to_translation( "base camp: northeast", " [NE] " ) } },
-    { point_rel_omt::east, { "[E]", base_camps::TAB_E, to_translation( "base camp: east", "[E]" ), to_translation( "base camp: east", "  [E] " ) } },
-    { point_rel_omt::south_east, { "[SE]", base_camps::TAB_SE, to_translation( "base camp: southeast", "[SE]" ), to_translation( "base camp: southeast", " [SE] " ) } },
-    { point_rel_omt::south, { "[S]", base_camps::TAB_S, to_translation( "base camp: south", "[S]" ), to_translation( "base camp: south", "  [S] " ) } },
-    { point_rel_omt::south_west, { "[SW]", base_camps::TAB_SW, to_translation( "base camp: southwest", "[SW]" ), to_translation( "base camp: southwest", " [SW] " ) } },
-    { point_rel_omt::west, { "[W]", base_camps::TAB_W, to_translation( "base camp: west", "[W]" ), to_translation( "base camp: west", "  [W] " ) } },
-    { point_rel_omt::north_west, { "[NW]", base_camps::TAB_NW, to_translation( "base camp: northwest", "[NW]" ), to_translation( "base camp: northwest", " [NW] " ) } },
+static const damage_type_id damage_bash("bash");
+static const damage_type_id damage_bullet("bullet");
+static const damage_type_id damage_cut("cut");
+
+camp_locker_policy::camp_locker_policy() { enabled_slots.fill(true); }
+
+bool camp_locker_policy::is_enabled(camp_locker_slot slot) const {
+  return enabled_slots[static_cast<size_t>(slot)];
+}
+
+void camp_locker_policy::set_enabled(camp_locker_slot slot, bool enabled) {
+  enabled_slots[static_cast<size_t>(slot)] = enabled;
+}
+
+int camp_locker_policy::enabled_count() const {
+  return static_cast<int>(
+      std::count(enabled_slots.begin(), enabled_slots.end(), true));
+}
+
+std::vector<camp_locker_slot> all_camp_locker_slots() {
+  return {
+      camp_locker_slot::underwear,    camp_locker_slot::socks,
+      camp_locker_slot::shoes,        camp_locker_slot::pants,
+      camp_locker_slot::shirt,        camp_locker_slot::vest,
+      camp_locker_slot::body_armor,   camp_locker_slot::helmet,
+      camp_locker_slot::glasses,      camp_locker_slot::bag,
+      camp_locker_slot::melee_weapon, camp_locker_slot::ranged_weapon,
+  };
+}
+
+std::string camp_locker_slot_id(camp_locker_slot slot) {
+  switch (slot) {
+  case camp_locker_slot::underwear:
+    return "underwear";
+  case camp_locker_slot::socks:
+    return "socks";
+  case camp_locker_slot::shoes:
+    return "shoes";
+  case camp_locker_slot::pants:
+    return "pants";
+  case camp_locker_slot::shirt:
+    return "shirt";
+  case camp_locker_slot::vest:
+    return "vest";
+  case camp_locker_slot::body_armor:
+    return "body_armor";
+  case camp_locker_slot::helmet:
+    return "helmet";
+  case camp_locker_slot::glasses:
+    return "glasses";
+  case camp_locker_slot::bag:
+    return "bag";
+  case camp_locker_slot::melee_weapon:
+    return "melee_weapon";
+  case camp_locker_slot::ranged_weapon:
+    return "ranged_weapon";
+  case camp_locker_slot::num_slots:
+    break;
+  }
+  return "unknown";
+}
+
+translation camp_locker_slot_name(camp_locker_slot slot) {
+  switch (slot) {
+  case camp_locker_slot::underwear:
+    return to_translation("Locker slot", "Underwear");
+  case camp_locker_slot::socks:
+    return to_translation("Locker slot", "Socks");
+  case camp_locker_slot::shoes:
+    return to_translation("Locker slot", "Shoes");
+  case camp_locker_slot::pants:
+    return to_translation("Locker slot", "Pants");
+  case camp_locker_slot::shirt:
+    return to_translation("Locker slot", "Shirt");
+  case camp_locker_slot::vest:
+    return to_translation("Locker slot", "Vest");
+  case camp_locker_slot::body_armor:
+    return to_translation("Locker slot", "Body armor");
+  case camp_locker_slot::helmet:
+    return to_translation("Locker slot", "Helmet");
+  case camp_locker_slot::glasses:
+    return to_translation("Locker slot", "Glasses");
+  case camp_locker_slot::bag:
+    return to_translation("Locker slot", "Bag");
+  case camp_locker_slot::melee_weapon:
+    return to_translation("Locker slot", "Melee weapon");
+  case camp_locker_slot::ranged_weapon:
+    return to_translation("Locker slot", "Ranged weapon");
+  case camp_locker_slot::num_slots:
+    break;
+  }
+  return translation();
+}
+
+std::optional<camp_locker_slot> camp_locker_slot_from_id(std::string_view id) {
+  for (const camp_locker_slot slot : all_camp_locker_slots()) {
+    if (camp_locker_slot_id(slot) == id) {
+      return slot;
+    }
+  }
+  return std::nullopt;
+}
+
+bool camp_locker_slot_plan::has_changes() const {
+  return selected_candidate != nullptr || !duplicate_current.empty();
+}
+
+namespace {
+bool armor_covers_any(const item &it,
+                      const std::initializer_list<std::string_view> &parts) {
+  const islot_armor *armor = it.find_armor_data();
+  if (armor == nullptr) {
+    return false;
+  }
+
+  for (const armor_portion_data &portion : armor->data) {
+    if (!portion.covers) {
+      continue;
+    }
+    for (const auto &covered_part : *portion.covers) {
+      for (const std::string_view part : parts) {
+        if (covered_part.str() == part) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+} // namespace
+
+namespace {
+int average_armor_portion_stat(const item &it,
+                               int armor_portion_data::*member) {
+  const islot_armor *armor = it.find_armor_data();
+  if (armor == nullptr || armor->data.empty()) {
+    return 0;
+  }
+
+  int total = 0;
+  for (const armor_portion_data &portion : armor->data) {
+    total += portion.*member;
+  }
+  return total / static_cast<int>(armor->data.size());
+}
+
+int average_armor_encumber(const item &it) {
+  return average_armor_portion_stat(it, &armor_portion_data::encumber);
+}
+
+int average_armor_coverage(const item &it) {
+  return average_armor_portion_stat(it, &armor_portion_data::coverage);
+}
+
+int storage_score(const item &it, int milliliters_per_point) {
+  if (milliliters_per_point <= 0) {
+    return 0;
+  }
+  return units::to_milliliter(it.get_volume_capacity()) / milliliters_per_point;
+}
+
+int protection_score(const item &it, int bash_weight, int cut_weight,
+                     int bullet_weight) {
+  return static_cast<int>(it.resist(damage_bash)) * bash_weight +
+         static_cast<int>(it.resist(damage_cut)) * cut_weight +
+         static_cast<int>(it.resist(damage_bullet)) * bullet_weight;
+}
+
+int generic_clothing_score(const item &it, int storage_divisor,
+                           int encumbrance_weight) {
+  return average_armor_coverage(it) * 3 + protection_score(it, 4, 6, 8) +
+         it.get_env_resist() * 2 + it.get_warmth() +
+         storage_score(it, storage_divisor) -
+         average_armor_encumber(it) * encumbrance_weight;
+}
+
+int bag_score(const item &it) {
+  return storage_score(it, 25) + protection_score(it, 2, 2, 2) +
+         average_armor_coverage(it) + it.get_env_resist() -
+         average_armor_encumber(it) * 3;
+}
+
+int body_armor_score(const item &it) {
+  return average_armor_coverage(it) * 4 + protection_score(it, 10, 12, 16) +
+         it.get_env_resist() * 2 + it.get_warmth() -
+         average_armor_encumber(it) * 6;
+}
+
+int helmet_score(const item &it) {
+  return average_armor_coverage(it) * 4 + protection_score(it, 8, 10, 14) +
+         it.get_env_resist() * 2 + it.get_warmth() -
+         average_armor_encumber(it) * 4;
+}
+
+int glasses_score(const item &it) {
+  return average_armor_coverage(it) * 2 + protection_score(it, 1, 2, 2) +
+         it.get_env_resist() * 8 - average_armor_encumber(it) * 2;
+}
+
+int melee_weapon_score(const item &it) {
+  return static_cast<int>(it.base_damage_melee().total_damage() * 20.0f) -
+         units::to_gram(it.weight()) / 100 -
+         units::to_milliliter(it.volume()) / 250;
+}
+
+int ranged_weapon_score(const item &it) {
+  return static_cast<int>(it.gun_damage().total_damage() * 20.0f) -
+         units::to_gram(it.weight()) / 250 -
+         units::to_milliliter(it.volume()) / 250;
+}
+
+int camp_locker_upgrade_threshold(camp_locker_slot slot) {
+  switch (slot) {
+  case camp_locker_slot::underwear:
+  case camp_locker_slot::socks:
+    return 20;
+  case camp_locker_slot::shoes:
+  case camp_locker_slot::pants:
+  case camp_locker_slot::shirt:
+  case camp_locker_slot::helmet:
+    return 25;
+  case camp_locker_slot::vest:
+  case camp_locker_slot::body_armor:
+    return 35;
+  case camp_locker_slot::glasses:
+    return 15;
+  case camp_locker_slot::bag:
+    return 120;
+  case camp_locker_slot::melee_weapon:
+    return 20;
+  case camp_locker_slot::ranged_weapon:
+    return 30;
+  case camp_locker_slot::num_slots:
+    break;
+  }
+  return 25;
+}
+
+bool is_better_scored_locker_item(camp_locker_slot slot, const item &lhs,
+                                  const item &rhs) {
+  const int lhs_score = score_camp_locker_item(slot, lhs);
+  const int rhs_score = score_camp_locker_item(slot, rhs);
+  if (lhs_score != rhs_score) {
+    return lhs_score > rhs_score;
+  }
+  return lhs.typeId().str() < rhs.typeId().str();
+}
+
+const item *select_best_locker_item(camp_locker_slot slot,
+                                    const std::vector<const item *> &items) {
+  const item *best = nullptr;
+  for (const item *candidate : items) {
+    if (candidate == nullptr) {
+      continue;
+    }
+    if (best == nullptr ||
+        is_better_scored_locker_item(slot, *candidate, *best)) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+} // namespace
+
+std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
+  if (it.is_firearm()) {
+    return camp_locker_slot::ranged_weapon;
+  }
+  const islot_armor *armor = it.find_armor_data();
+  if (armor == nullptr) {
+    if (it.is_melee()) {
+      return camp_locker_slot::melee_weapon;
+    }
+    return std::nullopt;
+  }
+
+  const bool covers_eyes = armor_covers_any(it, {"eyes"});
+  const bool covers_head = armor_covers_any(it, {"head"});
+  const bool covers_feet = armor_covers_any(it, {"foot_l", "foot_r"});
+  const bool covers_legs = armor_covers_any(it, {"leg_l", "leg_r"});
+  const bool covers_torso = armor_covers_any(it, {"torso"});
+  const bool covers_arms = armor_covers_any(it, {"arm_l", "arm_r"});
+  const bool skintight = it.has_layer({layer_level::SKINTIGHT});
+  const bool outer =
+      it.has_layer({layer_level::OUTER}) || it.has_flag(flag_OUTER);
+  const units::volume storage = it.get_volume_capacity();
+
+  if (covers_eyes) {
+    return camp_locker_slot::glasses;
+  }
+  if (covers_head) {
+    return camp_locker_slot::helmet;
+  }
+  if (covers_feet) {
+    return skintight ? camp_locker_slot::socks : camp_locker_slot::shoes;
+  }
+  if (skintight && (covers_torso || covers_legs || covers_arms)) {
+    return camp_locker_slot::underwear;
+  }
+  if (covers_legs && !covers_feet && !covers_head && !covers_eyes &&
+      !covers_torso) {
+    return camp_locker_slot::pants;
+  }
+  if (covers_torso) {
+    if (storage >= 6_liter) {
+      return camp_locker_slot::bag;
+    }
+    if (storage >= 500_ml) {
+      return camp_locker_slot::vest;
+    }
+    if (outer && it.weight() >= 1500_gram) {
+      return camp_locker_slot::body_armor;
+    }
+    return camp_locker_slot::shirt;
+  }
+
+  return std::nullopt;
+}
+
+camp_locker_candidate_map
+collect_camp_locker_candidates(const std::vector<const item *> &items,
+                               const camp_locker_policy &policy) {
+  camp_locker_candidate_map candidates;
+  for (const item *it : items) {
+    if (it == nullptr) {
+      continue;
+    }
+    const std::optional<camp_locker_slot> slot = classify_camp_locker_item(*it);
+    if (!slot || !policy.is_enabled(*slot)) {
+      continue;
+    }
+    candidates[*slot].push_back(it);
+  }
+  return candidates;
+}
+
+namespace {
+
+bool camp_locker_reservation_matches(const camp_locker_reservation &reservation,
+                                     const tripoint_abs_ms &tile,
+                                     const item &candidate,
+                                     const character_id &requesting_worker) {
+  return reservation.expires > calendar::turn &&
+         reservation.worker_id != requesting_worker && reservation.tile == tile &&
+         reservation.item_type == candidate.typeId();
+}
+
+} // namespace
+
+camp_locker_candidate_map collect_camp_locker_zone_candidates(
+    const tripoint_abs_ms &origin, const faction_id &fac,
+    const camp_locker_policy &policy, int range) {
+  return collect_camp_locker_zone_candidates(origin, fac, policy,
+                                             std::vector<camp_locker_reservation>(),
+                                             character_id(), range);
+}
+
+camp_locker_candidate_map collect_camp_locker_zone_candidates(
+    const tripoint_abs_ms &origin, const faction_id &fac,
+    const camp_locker_policy &policy,
+    const std::vector<camp_locker_reservation> &reservations,
+    const character_id &requesting_worker, int range) {
+  map &here = get_map();
+  const std::unordered_set<tripoint_abs_ms> locker_tiles =
+      zone_manager::get_manager().get_near(zone_type_CAMP_LOCKER, origin, range,
+                                           nullptr, fac);
+
+  std::vector<const item *> items;
+  for (const tripoint_abs_ms &tile : locker_tiles) {
+    const tripoint_bub_ms local = here.get_bub(tile);
+    if (!here.inbounds(local)) {
+      continue;
+    }
+    for (const item &it : here.i_at(local)) {
+      if (std::any_of(reservations.begin(), reservations.end(),
+                      [&tile, &it, &requesting_worker](
+                          const camp_locker_reservation &reservation) {
+                        return camp_locker_reservation_matches(
+                            reservation, tile, it, requesting_worker);
+                      })) {
+        continue;
+      }
+      items.push_back(&it);
+    }
+  }
+
+  return collect_camp_locker_candidates(items, policy);
+}
+
+int score_camp_locker_item(camp_locker_slot slot, const item &it) {
+  switch (slot) {
+  case camp_locker_slot::underwear:
+  case camp_locker_slot::socks:
+  case camp_locker_slot::shoes:
+  case camp_locker_slot::pants:
+  case camp_locker_slot::shirt:
+    return generic_clothing_score(it, 250, 4);
+  case camp_locker_slot::vest:
+    return generic_clothing_score(it, 100, 4);
+  case camp_locker_slot::body_armor:
+    return body_armor_score(it);
+  case camp_locker_slot::helmet:
+    return helmet_score(it);
+  case camp_locker_slot::glasses:
+    return glasses_score(it);
+  case camp_locker_slot::bag:
+    return bag_score(it);
+  case camp_locker_slot::melee_weapon:
+    return melee_weapon_score(it);
+  case camp_locker_slot::ranged_weapon:
+    return ranged_weapon_score(it);
+  case camp_locker_slot::num_slots:
+    break;
+  }
+  return 0;
+}
+
+bool is_camp_locker_candidate_meaningfully_better(camp_locker_slot slot,
+                                                  const item &candidate,
+                                                  const item &current) {
+  return score_camp_locker_item(slot, candidate) >=
+         score_camp_locker_item(slot, current) +
+             camp_locker_upgrade_threshold(slot);
+}
+
+camp_locker_plan
+plan_camp_locker_loadout(const std::vector<const item *> &current_items,
+                         const camp_locker_candidate_map &locker_candidates,
+                         const camp_locker_policy &policy) {
+  camp_locker_plan plan;
+  const camp_locker_candidate_map current_by_slot =
+      collect_camp_locker_candidates(current_items, policy);
+
+  for (const camp_locker_slot slot : all_camp_locker_slots()) {
+    if (!policy.is_enabled(slot)) {
+      continue;
+    }
+
+    camp_locker_slot_plan slot_plan;
+    auto current_it = current_by_slot.find(slot);
+    if (current_it != current_by_slot.end() && !current_it->second.empty()) {
+      std::vector<const item *> sorted_current = current_it->second;
+      std::stable_sort(sorted_current.begin(), sorted_current.end(),
+                       [slot](const item *lhs, const item *rhs) {
+                         if (lhs == nullptr || rhs == nullptr) {
+                           return rhs != nullptr;
+                         }
+                         return is_better_scored_locker_item(slot, *lhs, *rhs);
+                       });
+      slot_plan.kept_current = sorted_current.front();
+      if (sorted_current.size() > 1) {
+        slot_plan.duplicate_current.assign(sorted_current.begin() + 1,
+                                           sorted_current.end());
+      }
+    }
+
+    auto candidate_it = locker_candidates.find(slot);
+    if (candidate_it != locker_candidates.end()) {
+      const item *best_candidate =
+          select_best_locker_item(slot, candidate_it->second);
+      if (best_candidate != nullptr) {
+        if (slot_plan.kept_current == nullptr) {
+          slot_plan.missing_current = true;
+          slot_plan.selected_candidate = best_candidate;
+        } else if (is_camp_locker_candidate_meaningfully_better(
+                       slot, *best_candidate, *slot_plan.kept_current)) {
+          slot_plan.selected_candidate = best_candidate;
+          slot_plan.upgrade_selected = true;
+        }
+      }
+    }
+
+    if (slot_plan.kept_current != nullptr ||
+        slot_plan.selected_candidate != nullptr ||
+        !slot_plan.duplicate_current.empty()) {
+      plan.emplace(slot, std::move(slot_plan));
+    }
+  }
+
+  return plan;
+}
+
+std::vector<const item *> collect_camp_locker_current_items(npc &worker) {
+  std::vector<const item *> current_items;
+  worker.visit_items([&worker, &current_items](item *node, item *) {
+    if (node != nullptr &&
+        (worker.is_worn(*node) || worker.is_wielding(*node))) {
+      current_items.push_back(node);
+    }
+    return VisitResponse::NEXT;
+  });
+  return current_items;
+}
+
+std::vector<tripoint_abs_ms>
+collect_sorted_camp_locker_tiles(const tripoint_abs_ms &origin,
+                                 const faction_id &fac,
+                                 int range = MAX_VIEW_DISTANCE) {
+  std::unordered_set<tripoint_abs_ms> locker_tiles =
+      zone_manager::get_manager().get_near(zone_type_CAMP_LOCKER, origin, range,
+                                           nullptr, fac);
+  std::vector<tripoint_abs_ms> sorted_tiles(locker_tiles.begin(),
+                                            locker_tiles.end());
+  std::sort(sorted_tiles.begin(), sorted_tiles.end(),
+            [](const tripoint_abs_ms &lhs, const tripoint_abs_ms &rhs) {
+              if (lhs.z() != rhs.z()) {
+                return lhs.z() < rhs.z();
+              }
+              if (lhs.y() != rhs.y()) {
+                return lhs.y() < rhs.y();
+              }
+              return lhs.x() < rhs.x();
+            });
+  return sorted_tiles;
+}
+
+std::optional<tripoint_abs_ms> find_camp_locker_item_tile(
+    const std::vector<tripoint_abs_ms> &locker_tiles, const item *target) {
+  if (target == nullptr) {
+    return std::nullopt;
+  }
+
+  map &here = get_map();
+  for (const tripoint_abs_ms &tile : locker_tiles) {
+    const tripoint_bub_ms local = here.get_bub(tile);
+    if (!here.inbounds(local)) {
+      continue;
+    }
+    for (const item &it : here.i_at(local)) {
+      if (&it == target) {
+        return tile;
+      }
+    }
+  }
+
+  return std::nullopt;
+}
+
+item remove_worker_equipped_item(npc &worker, const item *target) {
+  if (target == nullptr) {
+    return item();
+  }
+
+  item_location wielded = worker.get_wielded_item();
+  if (wielded && wielded.get_item() == target) {
+    return worker.remove_weapon();
+  }
+
+  std::list<item> removed = worker.remove_worn_items_with(
+      [target](item &it) { return &it == target; });
+  if (removed.empty()) {
+    return item();
+  }
+
+  item moved = std::move(removed.front());
+  removed.pop_front();
+  return moved;
+}
+
+item take_camp_locker_candidate(
+    const std::vector<tripoint_abs_ms> &locker_tiles, const item *target) {
+  if (target == nullptr) {
+    return item();
+  }
+
+  map &here = get_map();
+  for (const tripoint_abs_ms &tile : locker_tiles) {
+    const tripoint_bub_ms local = here.get_bub(tile);
+    if (!here.inbounds(local)) {
+      continue;
+    }
+    for (item &it : here.i_at(local)) {
+      if (&it != target) {
+        continue;
+      }
+      item moved = it;
+      here.i_rem(local, &it);
+      return moved;
+    }
+  }
+
+  return item();
+}
+
+bool equip_camp_locker_item(npc &worker, camp_locker_slot slot, item &it) {
+  if (it.is_null()) {
+    return false;
+  }
+
+  if (slot == camp_locker_slot::melee_weapon ||
+      slot == camp_locker_slot::ranged_weapon) {
+    return worker.wield(it);
+  }
+
+  return worker.can_wear(it).success() &&
+         worker.wear_item(it, false).has_value();
+}
+
+void store_camp_locker_item(const tripoint_abs_ms &locker_tile, item moved) {
+  if (moved.is_null()) {
+    return;
+  }
+
+  map &here = get_map();
+  const tripoint_bub_ms local = here.get_bub(locker_tile);
+  if (!here.inbounds(local)) {
+    return;
+  }
+  here.add_item_or_charges(local, std::move(moved));
+}
+
+std::string join_camp_locker_debug_parts(const std::vector<std::string> &parts) {
+  if (parts.empty()) {
+    return "none";
+  }
+
+  std::ostringstream out;
+  for (size_t i = 0; i < parts.size(); ++i) {
+    if (i > 0) {
+      out << "; ";
+    }
+    out << parts[i];
+  }
+  return out.str();
+}
+
+std::string camp_locker_item_debug_label(const item &it) {
+  return string_format("%s<%s>", it.tname(1, false), it.typeId().str());
+}
+
+std::string camp_locker_candidate_debug_summary(
+    const camp_locker_candidate_map &candidates) {
+  std::vector<std::string> parts;
+  for (const camp_locker_slot slot : all_camp_locker_slots()) {
+    const auto found = candidates.find(slot);
+    if (found == candidates.end() || found->second.empty()) {
+      continue;
+    }
+
+    std::vector<std::string> labels;
+    for (const item *candidate : found->second) {
+      if (candidate != nullptr) {
+        labels.push_back(camp_locker_item_debug_label(*candidate));
+      }
+    }
+    if (!labels.empty()) {
+      parts.push_back(string_format("%s=[%s]", camp_locker_slot_id(slot),
+                                    join_camp_locker_debug_parts(labels)));
+    }
+  }
+
+  return join_camp_locker_debug_parts(parts);
+}
+
+std::string camp_locker_item_debug_summary(
+    const std::vector<const item *> &items, const camp_locker_policy &policy) {
+  return camp_locker_candidate_debug_summary(
+      collect_camp_locker_candidates(items, policy));
+}
+
+std::string camp_locker_plan_debug_summary(const camp_locker_plan &plan) {
+  std::vector<std::string> parts;
+  for (const camp_locker_slot slot : all_camp_locker_slots()) {
+    const auto found = plan.find(slot);
+    if (found == plan.end() || !found->second.has_changes()) {
+      continue;
+    }
+
+    const camp_locker_slot_plan &slot_plan = found->second;
+    if (slot_plan.selected_candidate != nullptr) {
+      if (slot_plan.missing_current) {
+        parts.push_back(string_format(
+            "%s equip %s", camp_locker_slot_id(slot),
+            camp_locker_item_debug_label(*slot_plan.selected_candidate)));
+      } else if (slot_plan.upgrade_selected && slot_plan.kept_current != nullptr) {
+        parts.push_back(string_format(
+            "%s upgrade %s -> %s", camp_locker_slot_id(slot),
+            camp_locker_item_debug_label(*slot_plan.kept_current),
+            camp_locker_item_debug_label(*slot_plan.selected_candidate)));
+      }
+    }
+
+    if (!slot_plan.duplicate_current.empty()) {
+      std::vector<std::string> duplicates;
+      for (const item *duplicate : slot_plan.duplicate_current) {
+        if (duplicate != nullptr) {
+          duplicates.push_back(camp_locker_item_debug_label(*duplicate));
+        }
+      }
+      parts.push_back(string_format(
+          "%s dedupe keep=%s drop=[%s]", camp_locker_slot_id(slot),
+          slot_plan.kept_current != nullptr
+              ? camp_locker_item_debug_label(*slot_plan.kept_current).c_str()
+              : "none",
+          join_camp_locker_debug_parts(duplicates)));
+    }
+  }
+
+  return join_camp_locker_debug_parts(parts);
+}
+
+const std::map<point_rel_omt, base_camps::direction_data>
+    base_camps::all_directions = {
+        // direction, direction id, tab order, direction abbreviation with
+        // bracket, direction tab title
+        {base_camps::base_dir,
+         {"[B]", base_camps::TAB_MAIN, to_translation("base camp: base", "[B]"),
+          to_translation("base camp: base", " MAIN ")}},
+        {point_rel_omt::north,
+         {"[N]", base_camps::TAB_N, to_translation("base camp: north", "[N]"),
+          to_translation("base camp: north", "  [N] ")}},
+        {point_rel_omt::north_east,
+         {"[NE]", base_camps::TAB_NE,
+          to_translation("base camp: northeast", "[NE]"),
+          to_translation("base camp: northeast", " [NE] ")}},
+        {point_rel_omt::east,
+         {"[E]", base_camps::TAB_E, to_translation("base camp: east", "[E]"),
+          to_translation("base camp: east", "  [E] ")}},
+        {point_rel_omt::south_east,
+         {"[SE]", base_camps::TAB_SE,
+          to_translation("base camp: southeast", "[SE]"),
+          to_translation("base camp: southeast", " [SE] ")}},
+        {point_rel_omt::south,
+         {"[S]", base_camps::TAB_S, to_translation("base camp: south", "[S]"),
+          to_translation("base camp: south", "  [S] ")}},
+        {point_rel_omt::south_west,
+         {"[SW]", base_camps::TAB_SW,
+          to_translation("base camp: southwest", "[SW]"),
+          to_translation("base camp: southwest", " [SW] ")}},
+        {point_rel_omt::west,
+         {"[W]", base_camps::TAB_W, to_translation("base camp: west", "[W]"),
+          to_translation("base camp: west", "  [W] ")}},
+        {point_rel_omt::north_west,
+         {"[NW]", base_camps::TAB_NW,
+          to_translation("base camp: northwest", "[NW]"),
+          to_translation("base camp: northwest", " [NW] ")}},
 };
 
-point_rel_omt base_camps::direction_from_id( const std::string &id )
-{
-    for( const auto &dir : all_directions ) {
-        if( dir.second.id == id ) {
-            return dir.first;
+point_rel_omt base_camps::direction_from_id(const std::string &id) {
+  for (const auto &dir : all_directions) {
+    if (dir.second.id == id) {
+      return dir.first;
         }
     }
-    return base_dir;
+  return base_dir;
 }
 
-std::string base_camps::faction_encode_short( const std::string &type )
-{
-    return prefix + type + "_";
+std::string base_camps::faction_encode_short(const std::string &type) {
+  return prefix + type + "_";
 }
 
-std::string base_camps::faction_encode_abs( const expansion_data &e, int number )
-{
-    return faction_encode_short( e.type ) + std::to_string( number );
+std::string base_camps::faction_encode_abs(const expansion_data &e,
+                                           int number) {
+  return faction_encode_short(e.type) + std::to_string(number);
 }
 
-std::string base_camps::faction_decode( std::string_view full_type )
-{
-    if( full_type.size() < ( prefix_len + 2 ) ) {
-        return "camp";
-    }
-    int last_bar = full_type.find_last_of( '_' );
+std::string base_camps::faction_decode(std::string_view full_type) {
+  if (full_type.size() < (prefix_len + 2)) {
+    return "camp";
+  }
+  int last_bar = full_type.find_last_of('_');
 
-    return std::string{ full_type.substr( prefix_len, size_t( last_bar - prefix_len ) ) };
+  return std::string{
+      full_type.substr(prefix_len, size_t(last_bar - prefix_len))};
 }
 
 static const time_duration work_day_hours_time = work_day_hours * 1_hours;
 
-time_duration base_camps::to_workdays( const time_duration &work_time )
-{
-    // logic here is duplicated in reverse in basecamp::time_to_food
-    if( work_time < ( work_day_hours + 1 ) * 1_hours ) {
-        return work_time;
+time_duration base_camps::to_workdays(const time_duration &work_time) {
+  // logic here is duplicated in reverse in basecamp::time_to_food
+  if (work_time < (work_day_hours + 1) * 1_hours) {
+    return work_time;
     }
     int work_days = work_time / work_day_hours_time;
     time_duration excess_time = work_time - work_days * work_day_hours_time;
@@ -107,11 +834,10 @@ time_duration base_camps::to_workdays( const time_duration &work_time )
 
 static std::map<std::string, int> max_upgrade_cache;
 
-int base_camps::max_upgrade_by_type( const std::string &type )
-{
-    if( max_upgrade_cache.find( type ) == max_upgrade_cache.end() ) {
-        int max = -1;
-        const std::string faction_base = faction_encode_short( type );
+int base_camps::max_upgrade_by_type(const std::string &type) {
+  if (max_upgrade_cache.find(type) == max_upgrade_cache.end()) {
+    int max = -1;
+    const std::string faction_base = faction_encode_short(type);
         while( recipe_id( faction_base + std::to_string( max + 1 ) ).is_valid() ) {
             max += 1;
         }
@@ -122,85 +848,80 @@ int base_camps::max_upgrade_by_type( const std::string &type )
 
 basecamp::basecamp() = default;
 
-basecamp_map::basecamp_map( const basecamp_map & ) {}
+basecamp_map::basecamp_map(const basecamp_map &) {}
 
-basecamp_map &basecamp_map::operator=( const basecamp_map & )
-{
-    map_.reset();
-    return *this;
+basecamp_map &basecamp_map::operator=(const basecamp_map &) {
+  map_.reset();
+  return *this;
 }
 
-basecamp::basecamp( const std::string &name_, const tripoint_abs_omt &omt_pos_ ): name( name_ ),
-    omt_pos( omt_pos_ )
-{
-    parse_tags( name, get_player_character(), get_player_character() );
+basecamp::basecamp(const std::string &name_, const tripoint_abs_omt &omt_pos_)
+    : name(name_), omt_pos(omt_pos_) {
+  parse_tags(name, get_player_character(), get_player_character());
 }
 
-basecamp::basecamp( const std::string &name_, const tripoint_abs_ms &bb_pos_,
-                    const std::vector<point_rel_omt> &directions_,
-                    const std::map<point_rel_omt, expansion_data> &expansions_ )
-    : directions( directions_ ), name( name_ ), bb_pos( bb_pos_ ), expansions( expansions_ )
-{
-    parse_tags( name, get_player_character(), get_player_character() );
+basecamp::basecamp(const std::string &name_, const tripoint_abs_ms &bb_pos_,
+                   const std::vector<point_rel_omt> &directions_,
+                   const std::map<point_rel_omt, expansion_data> &expansions_)
+    : directions(directions_), name(name_), bb_pos(bb_pos_),
+      expansions(expansions_) {
+  parse_tags(name, get_player_character(), get_player_character());
 }
 
-std::string basecamp::board_name() const
-{
-    //~ Name of a basecamp
-    return string_format( _( "%s Board" ), name );
+std::string basecamp::board_name() const {
+  //~ Name of a basecamp
+  return string_format(_("%s Board"), name);
 }
 
-void basecamp::set_by_radio( bool access_by_radio )
-{
-    by_radio = access_by_radio;
+void basecamp::set_by_radio(bool access_by_radio) {
+  by_radio = access_by_radio;
 }
 
 // read an expansion's terrain ID of the form faction_base_$TYPE_$CURLEVEL
-// find the last underbar, strip off the prefix of faction_base_ (which is 13 chars),
-// and the pull out the $TYPE and $CURLEVEL
-// This is legacy support for existing camps; future camps don't use cur_level at all
-expansion_data basecamp::parse_expansion( std::string_view terrain,
-        const tripoint_abs_omt &new_pos )
-{
-    expansion_data e;
-    size_t last_bar = terrain.find_last_of( '_' );
-    e.type = terrain.substr( base_camps::prefix_len, last_bar - base_camps::prefix_len );
-    e.cur_level = std::stoi( str_cat( "0", terrain.substr( last_bar + 1 ) ) );
-    e.pos = new_pos;
-    return e;
+// find the last underbar, strip off the prefix of faction_base_ (which is 13
+// chars), and the pull out the $TYPE and $CURLEVEL This is legacy support for
+// existing camps; future camps don't use cur_level at all
+expansion_data basecamp::parse_expansion(std::string_view terrain,
+                                         const tripoint_abs_omt &new_pos) {
+  expansion_data e;
+  size_t last_bar = terrain.find_last_of('_');
+  e.type =
+      terrain.substr(base_camps::prefix_len, last_bar - base_camps::prefix_len);
+  e.cur_level = std::stoi(str_cat("0", terrain.substr(last_bar + 1)));
+  e.pos = new_pos;
+  return e;
 }
 
-void basecamp::add_expansion( const std::string &terrain, const tripoint_abs_omt &new_pos )
-{
-    if( terrain.find( base_camps::prefix ) == std::string::npos ) {
-        return;
-    }
+void basecamp::add_expansion(const std::string &terrain,
+                             const tripoint_abs_omt &new_pos) {
+  if (terrain.find(base_camps::prefix) == std::string::npos) {
+    return;
+  }
 
     const point_rel_omt dir = talk_function::om_simple_dir( omt_pos, new_pos );
     expansions[ dir ] = parse_expansion( terrain, new_pos );
     update_provides( terrain, expansions[ dir ] );
-    directions.push_back( dir );
+  directions.push_back(dir);
 }
 
-void basecamp::add_expansion( const std::string &bldg, const tripoint_abs_omt &new_pos,
-                              const point_rel_omt &dir )
-{
-    expansion_data e;
-    e.type = base_camps::faction_decode( bldg );
-    e.cur_level = -1;
+void basecamp::add_expansion(const std::string &bldg,
+                             const tripoint_abs_omt &new_pos,
+                             const point_rel_omt &dir) {
+  expansion_data e;
+  e.type = base_camps::faction_decode(bldg);
+  e.cur_level = -1;
     e.pos = new_pos;
     expansions[ dir ] = e;
     directions.push_back( dir );
     update_provides( bldg, expansions[ dir ] );
-    update_resources( bldg );
+  update_resources(bldg);
 }
 
-void basecamp::define_camp( const tripoint_abs_omt &p, std::string_view camp_type,
-                            bool player_founded )
-{
-    if( player_founded ) {
-        query_new_name( true );
-    }
+void basecamp::define_camp(const tripoint_abs_omt &p,
+                           std::string_view camp_type, bool player_founded) {
+  if (player_founded) {
+    query_new_name(true);
+  }
     omt_pos = p;
     const oter_id &omt_ref = overmap_buffer.ter( omt_pos );
     // purging the regions guarantees all entries will start with faction_base_
@@ -214,14 +935,15 @@ void basecamp::define_camp( const tripoint_abs_omt &p, std::string_view camp_typ
         e.type = base_camps::faction_decode( camp_type );
         e.cur_level = -1;
         e.pos = omt_pos;
-        expansions[base_camps::base_dir] = e;
-        const std::string direction = oter_get_rotation_string( omt_ref );
-        if( player_founded ) {
-            const oter_id bcid( direction.empty() ? "faction_base_camp_0" : "faction_base_camp_new_0" +
-                                direction );
-            overmap_buffer.ter_set( omt_pos, bcid );
-        }
-        update_provides( base_camps::faction_encode_abs( e, 0 ),
+    expansions[base_camps::base_dir] = e;
+    const std::string direction = oter_get_rotation_string(omt_ref);
+    if (player_founded) {
+      const oter_id bcid(direction.empty()
+                             ? "faction_base_camp_0"
+                             : "faction_base_camp_new_0" + direction);
+      overmap_buffer.ter_set(omt_pos, bcid);
+    }
+    update_provides(base_camps::faction_encode_abs(e, 0),
                          expansions[base_camps::base_dir] );
     } else {
         expansions[base_camps::base_dir] = parse_expansion( om_cur, omt_pos );
@@ -229,21 +951,22 @@ void basecamp::define_camp( const tripoint_abs_omt &p, std::string_view camp_typ
 }
 
 /// Returns the description for the recipe of the next building @ref bldg
-std::string basecamp::om_upgrade_description( const std::string &bldg, const mapgen_arguments &args,
-        bool trunc ) const
-{
-    const recipe &making = recipe_id( bldg ).obj();
+std::string basecamp::om_upgrade_description(const std::string &bldg,
+                                             const mapgen_arguments &args,
+                                             bool trunc) const {
+  const recipe &making = recipe_id(bldg).obj();
 
-    const requirement_data *reqs;
+  const requirement_data *reqs;
     time_duration base_time;
     const std::map<skill_id, int> *skills;
 
-    if( making.is_blueprint() ) {
-        auto req_it = making.blueprint_build_reqs().reqs_by_parameters.find( args );
-        cata_assert( req_it != making.blueprint_build_reqs().reqs_by_parameters.end() );
-        const build_reqs &bld_reqs = req_it->second;
-        reqs = &bld_reqs.consolidated_reqs;
-        base_time = time_duration::from_moves( bld_reqs.time );
+  if (making.is_blueprint()) {
+    auto req_it = making.blueprint_build_reqs().reqs_by_parameters.find(args);
+    cata_assert(req_it !=
+                making.blueprint_build_reqs().reqs_by_parameters.end());
+    const build_reqs &bld_reqs = req_it->second;
+    reqs = &bld_reqs.consolidated_reqs;
+    base_time = time_duration::from_moves(bld_reqs.time);
         skills = &bld_reqs.skills;
     } else {
         reqs = &making.simple_requirements();
@@ -251,35 +974,37 @@ std::string basecamp::om_upgrade_description( const std::string &bldg, const map
         skills = &making.required_skills;
     }
 
-    std::vector<std::string> component_print_buffer;
-    const int pane = FULL_SCREEN_WIDTH;
-    const auto tools = reqs->get_folded_tools_list( pane, c_white, _inv, 1 );
-    const auto comps = reqs->get_folded_components_list( pane, c_white, _inv,
-                       making.get_component_filter(), 1 );
-    component_print_buffer.insert( component_print_buffer.end(), tools.begin(), tools.end() );
-    component_print_buffer.insert( component_print_buffer.end(), comps.begin(), comps.end() );
+  std::vector<std::string> component_print_buffer;
+  const int pane = FULL_SCREEN_WIDTH;
+  const auto tools = reqs->get_folded_tools_list(pane, c_white, _inv, 1);
+  const auto comps = reqs->get_folded_components_list(
+      pane, c_white, _inv, making.get_component_filter(), 1);
+  component_print_buffer.insert(component_print_buffer.end(), tools.begin(),
+                                tools.end());
+  component_print_buffer.insert(component_print_buffer.end(), comps.begin(),
+                                comps.end());
 
-    std::string comp;
-    for( auto &elem : component_print_buffer ) {
-        str_append( comp, elem, "\n" );
-    }
-    comp = string_format( _( "Notes:\n%s\n\nSkills used: %s\n%s\n" ),
-                          making.description, making.required_all_skills_string( *skills ),
-                          comp );
-    if( !trunc ) {
-        comp += string_format( _( "Risk: None\nTime: %s\n" ),
-                               to_string( base_camps::to_workdays( base_time ) ) );
+  std::string comp;
+  for (auto &elem : component_print_buffer) {
+    str_append(comp, elem, "\n");
+  }
+  comp = string_format(_("Notes:\n%s\n\nSkills used: %s\n%s\n"),
+                       making.description,
+                       making.required_all_skills_string(*skills), comp);
+  if (!trunc) {
+    comp += string_format(_("Risk: None\nTime: %s\n"),
+                          to_string(base_camps::to_workdays(base_time)));
     }
     return comp;
 }
 
 // upgrade levels
 // legacy next upgrade
-std::string basecamp::next_upgrade( const point_rel_omt &dir, const int offset ) const
-{
-    const auto &e = expansions.find( dir );
-    if( e == expansions.end() ) {
-        return "null";
+std::string basecamp::next_upgrade(const point_rel_omt &dir,
+                                   const int offset) const {
+  const auto &e = expansions.find(dir);
+  if (e == expansions.end()) {
+    return "null";
     }
     const expansion_data &e_data = e->second;
 
@@ -295,25 +1020,25 @@ std::string basecamp::next_upgrade( const point_rel_omt &dir, const int offset )
     if( cur_level >= 0 ) {
         return base_camps::faction_encode_abs( e_data, cur_level + offset );
     }
-    return "null";
+  return "null";
 }
 
-bool basecamp::has_provides( const std::string &req, const expansion_data &e_data, int level ) const
-{
-    for( const auto &provide : e_data.provides ) {
-        if( provide.first == req && provide.second > level ) {
-            return true;
+bool basecamp::has_provides(const std::string &req,
+                            const expansion_data &e_data, int level) const {
+  for (const auto &provide : e_data.provides) {
+    if (provide.first == req && provide.second > level) {
+      return true;
         }
     }
-    return false;
+  return false;
 }
 
-bool basecamp::has_provides( const std::string &req, const std::optional<point_rel_omt> &dir,
-                             int level ) const
-{
-    if( !dir ) {
-        for( const auto &e : expansions ) {
-            if( has_provides( req, e.second, level ) ) {
+bool basecamp::has_provides(const std::string &req,
+                            const std::optional<point_rel_omt> &dir,
+                            int level) const {
+  if (!dir) {
+    for (const auto &e : expansions) {
+      if (has_provides(req, e.second, level)) {
                 return true;
             }
         }
@@ -323,38 +1048,39 @@ bool basecamp::has_provides( const std::string &req, const std::optional<point_r
             return has_provides( req, e->second, level );
         }
     }
-    return false;
+  return false;
 }
 
-bool basecamp::has_water() const
-{
-    // special case required for fbmh_well_north constructed between b9162 (Jun 16, 2019) and b9644 (Sep 20, 2019)
-    return has_provides( "water_well" ) || has_provides( "fbmh_well_north" );
+bool basecamp::has_water() const {
+  // special case required for fbmh_well_north constructed between b9162 (Jun
+  // 16, 2019) and b9644 (Sep 20, 2019)
+  return has_provides("water_well") || has_provides("fbmh_well_north");
 }
 
-bool basecamp::allowed_access_by( Character &guy, bool water_request ) const
-{
-    // The owner can always access their own camp.
-    if( fac() == guy.get_faction() ) {
-        return true;
-    }
-    // Sharing stuff also means sharing access.
-    if( fac()->has_relationship( guy.get_faction()->id, npc_factions::relationship::share_my_stuff ) ) {
-        return true;
-    }
-    // Some factions will share access to infinite water sources, but not food
-    if( water_request &&
-        fac()->has_relationship( guy.get_faction()->id, npc_factions::relationship::share_public_goods ) ) {
-        return true;
-    }
-    return false;
+bool basecamp::allowed_access_by(Character &guy, bool water_request) const {
+  // The owner can always access their own camp.
+  if (fac() == guy.get_faction()) {
+    return true;
+  }
+  // Sharing stuff also means sharing access.
+  if (fac()->has_relationship(guy.get_faction()->id,
+                              npc_factions::relationship::share_my_stuff)) {
+    return true;
+  }
+  // Some factions will share access to infinite water sources, but not food
+  if (water_request &&
+      fac()->has_relationship(guy.get_faction()->id,
+                              npc_factions::relationship::share_public_goods)) {
+    return true;
+  }
+  return false;
 }
 
-std::vector<basecamp_upgrade> basecamp::available_upgrades( const point_rel_omt &dir )
-{
-    std::vector<basecamp_upgrade> ret_data;
-    auto e = expansions.find( dir );
-    if( e != expansions.end() ) {
+std::vector<basecamp_upgrade>
+basecamp::available_upgrades(const point_rel_omt &dir) {
+  std::vector<basecamp_upgrade> ret_data;
+  auto e = expansions.find(dir);
+  if (e != expansions.end()) {
         expansion_data &e_data = e->second;
         for( const recipe *recp_p : recipe_dict.all_blueprints() ) {
             const recipe &recp = *recp_p;
@@ -386,40 +1112,42 @@ std::vector<basecamp_upgrade> basecamp::available_upgrades( const point_rel_omt 
                     if( e_data.provides[bp_exclude.first] >= bp_exclude.second ) {
                         should_display = false;
                         break;
-                    }
-                }
-                // track buildings that are currently being built
-                if( e_data.in_progress.find( bp_exclude.first ) != e_data.in_progress.end() ) {
-                    if( e_data.in_progress[bp_exclude.first] >= bp_exclude.second ) {
-                        in_progress = true;
-                        break;
+          }
+        }
+        // track buildings that are currently being built
+        if (e_data.in_progress.find(bp_exclude.first) !=
+            e_data.in_progress.end()) {
+          if (e_data.in_progress[bp_exclude.first] >= bp_exclude.second) {
+            in_progress = true;
+            break;
                     }
                 }
             }
             if( !should_display ) {
-                continue;
-            }
-            if( recp.blueprint_build_reqs().reqs_by_parameters.empty() ) {
-                debugmsg( "blueprint recipe %s lacked any blueprint_build_reqs", recp.result().str() );
-            }
-            for( const std::pair<const mapgen_arguments, build_reqs> &args_and_reqs :
-                 recp.blueprint_build_reqs().reqs_by_parameters ) {
-                const mapgen_arguments &args = args_and_reqs.first;
-                const requirement_data &reqs = args_and_reqs.second.consolidated_reqs;
-                bool can_make =
-                    reqs.can_make_with_inventory( _inv, recp.get_component_filter(), 1, craft_flags::none, false );
-                ret_data.push_back( { bldg, args, recp.blueprint_name(), can_make, in_progress } );
-            }
-        }
+        continue;
+      }
+      if (recp.blueprint_build_reqs().reqs_by_parameters.empty()) {
+        debugmsg("blueprint recipe %s lacked any blueprint_build_reqs",
+                 recp.result().str());
+      }
+      for (const std::pair<const mapgen_arguments, build_reqs> &args_and_reqs :
+           recp.blueprint_build_reqs().reqs_by_parameters) {
+        const mapgen_arguments &args = args_and_reqs.first;
+        const requirement_data &reqs = args_and_reqs.second.consolidated_reqs;
+        bool can_make = reqs.can_make_with_inventory(
+            _inv, recp.get_component_filter(), 1, craft_flags::none, false);
+        ret_data.push_back(
+            {bldg, args, recp.blueprint_name(), can_make, in_progress});
+      }
     }
-    return ret_data;
+  }
+  return ret_data;
 }
 
-std::unordered_set<recipe_id> basecamp::recipe_deck_all() const
-{
-    std::unordered_set<recipe_id> known_recipes;
-    for( const npc_ptr &guy : assigned_npcs ) {
-        if( guy.get() ) {
+std::unordered_set<recipe_id> basecamp::recipe_deck_all() const {
+  std::unordered_set<recipe_id> known_recipes;
+  for (const npc_ptr &guy : assigned_npcs) {
+    if (guy.get()) {
             for( const recipe *rec : guy->get_learned_recipes() ) {
                 known_recipes.insert( rec->ident() );
             }
@@ -439,11 +1167,11 @@ std::unordered_set<recipe_id> basecamp::recipe_deck_all() const
 }
 
 // recipes and craft support functions
-std::map<recipe_id, translation> basecamp::recipe_deck( const point_rel_omt &dir ) const
-{
-    std::map<recipe_id, translation> recipes;
+std::map<recipe_id, translation>
+basecamp::recipe_deck(const point_rel_omt &dir) const {
+  std::map<recipe_id, translation> recipes;
 
-    const auto &e = expansions.find( dir );
+  const auto &e = expansions.find(dir);
     if( e == expansions.end() ) {
         return recipes;
     }
@@ -451,41 +1179,39 @@ std::map<recipe_id, translation> basecamp::recipe_deck( const point_rel_omt &dir
         const auto &test_s = recipe_group::get_recipes_by_id( provides.first );
         recipes.insert( test_s.cbegin(), test_s.cend() );
     }
-    return recipes;
+  return recipes;
 }
 
-std::map<recipe_id, translation> basecamp::recipe_deck( const std::string &bldg ) const
-{
-    return recipe_group::get_recipes_by_bldg( bldg );
+std::map<recipe_id, translation>
+basecamp::recipe_deck(const std::string &bldg) const {
+  return recipe_group::get_recipes_by_bldg(bldg);
 }
 
-void basecamp::add_resource( const itype_id &camp_resource )
-{
-    basecamp_resource bcp_r;
-    bcp_r.fake_id = camp_resource;
-    item camp_item( bcp_r.fake_id, calendar::turn_zero );
+void basecamp::add_resource(const itype_id &camp_resource) {
+  basecamp_resource bcp_r;
+  bcp_r.fake_id = camp_resource;
+  item camp_item(bcp_r.fake_id, calendar::turn_zero);
     bcp_r.ammo_id = camp_item.ammo_default();
     resources.emplace_back( bcp_r );
-    fuel_types.insert( bcp_r.ammo_id );
+  fuel_types.insert(bcp_r.ammo_id);
 }
 
-void basecamp::update_resources( const std::string &bldg )
-{
-    if( !recipe_id( bldg ).is_valid() ) {
-        return;
-    }
+void basecamp::update_resources(const std::string &bldg) {
+  if (!recipe_id(bldg).is_valid()) {
+    return;
+  }
 
     const recipe &making = recipe_id( bldg ).obj();
     for( const itype_id &bp_resource : making.blueprint_resources() ) {
         add_resource( bp_resource );
-    }
+  }
 }
 
-void basecamp::update_provides( const std::string &bldg, expansion_data &e_data )
-{
-    if( !recipe_id( bldg ).is_valid() ) {
-        debugmsg( "Invalid basecamp recipe %s", bldg );
-        return;
+void basecamp::update_provides(const std::string &bldg,
+                               expansion_data &e_data) {
+  if (!recipe_id(bldg).is_valid()) {
+    debugmsg("Invalid basecamp recipe %s", bldg);
+    return;
     }
 
     const recipe &making = recipe_id( bldg ).obj();
@@ -494,34 +1220,34 @@ void basecamp::update_provides( const std::string &bldg, expansion_data &e_data 
             e_data.provides[bp_provides.first] = 0;
         }
         e_data.provides[bp_provides.first] += bp_provides.second;
-    }
+  }
 }
 
-void basecamp::update_in_progress( const std::string &bldg, const point_rel_omt &dir )
-{
-    if( !recipe_id( bldg ).is_valid() ) {
-        return;
-    }
+void basecamp::update_in_progress(const std::string &bldg,
+                                  const point_rel_omt &dir) {
+  if (!recipe_id(bldg).is_valid()) {
+    return;
+  }
     auto e = expansions.find( dir );
     if( e == expansions.end() ) {
         return;
     }
     expansion_data &e_data = e->second;
 
-    const recipe &making = recipe_id( bldg ).obj();
-    for( const auto &bp_provides : making.blueprint_provides() ) {
-        if( e_data.in_progress.find( bp_provides.first ) == e_data.in_progress.end() ) {
-            e_data.in_progress[bp_provides.first] = 0;
-        }
-        e_data.in_progress[bp_provides.first] += bp_provides.second;
+  const recipe &making = recipe_id(bldg).obj();
+  for (const auto &bp_provides : making.blueprint_provides()) {
+    if (e_data.in_progress.find(bp_provides.first) ==
+        e_data.in_progress.end()) {
+      e_data.in_progress[bp_provides.first] = 0;
     }
+    e_data.in_progress[bp_provides.first] += bp_provides.second;
+  }
 }
 
-void basecamp::reset_camp_resources( map &here )
-{
-    reset_camp_workers();
-    for( auto &e : expansions ) {
-        expansion_data &e_data = e.second;
+void basecamp::reset_camp_resources(map &here) {
+  reset_camp_workers();
+  for (auto &e : expansions) {
+    expansion_data &e_data = e.second;
         for( int level = 0; level <= e_data.cur_level; level++ ) {
             const std::string &bldg = base_camps::faction_encode_abs( e_data, level );
             if( bldg == "null" ) {
@@ -541,59 +1267,68 @@ void basecamp::reset_camp_resources( map &here )
 
 // available companion list manipulation
 // get all the companions currently performing missions at this camp
-void basecamp::reset_camp_workers()
-{
-    camp_workers.clear();
-    for( const auto &elem : overmap_buffer.get_companion_mission_npcs() ) {
-        npc_companion_mission c_mission = elem->get_companion_mission();
+void basecamp::reset_camp_workers() {
+  camp_workers.clear();
+  for (const auto &elem : overmap_buffer.get_companion_mission_npcs()) {
+    npc_companion_mission c_mission = elem->get_companion_mission();
         if( c_mission.position == omt_pos && c_mission.role_id == "FACTION_CAMP" ) {
             camp_workers.push_back( elem );
         }
-    }
+  }
 }
 
-void basecamp::add_assignee( character_id id )
-{
-    npc_ptr npc_to_add = overmap_buffer.find_npc( id );
-    if( !npc_to_add ) {
-        debugmsg( "cant find npc to assign to basecamp, on the overmap_buffer" );
+void basecamp::add_assignee(character_id id) {
+  npc_ptr npc_to_add = overmap_buffer.find_npc(id);
+  if (!npc_to_add) {
+    debugmsg("cant find npc to assign to basecamp, on the overmap_buffer");
         return;
     }
     npc_to_add->assigned_camp = omt_pos;
-    assigned_npcs.push_back( npc_to_add );
+  assigned_npcs.push_back(npc_to_add);
+  mark_camp_locker_dirty(*npc_to_add, true);
 }
 
-void basecamp::remove_assignee( character_id id )
-{
-    npc_ptr npc_to_remove = overmap_buffer.find_npc( id );
-    if( !npc_to_remove ) {
-        debugmsg( "cant find npc to remove from basecamp, on the overmap_buffer" );
-        return;
-    }
-    npc_to_remove->assigned_camp = std::nullopt;
-    assigned_npcs.erase( std::remove( assigned_npcs.begin(), assigned_npcs.end(), npc_to_remove ),
-                         assigned_npcs.end() );
+void basecamp::remove_assignee(character_id id) {
+  npc_ptr npc_to_remove = overmap_buffer.find_npc(id);
+  if (!npc_to_remove) {
+    debugmsg("cant find npc to remove from basecamp, on the overmap_buffer");
+    return;
+  }
+  npc_to_remove->assigned_camp = std::nullopt;
+  assigned_npcs.erase(
+      std::remove(assigned_npcs.begin(), assigned_npcs.end(), npc_to_remove),
+      assigned_npcs.end());
+  locker_service_queue.erase(
+      std::remove(locker_service_queue.begin(), locker_service_queue.end(), id),
+      locker_service_queue.end());
+  locker_reservations.erase(
+      std::remove_if(locker_reservations.begin(), locker_reservations.end(),
+                     [&id](const camp_locker_reservation &reservation) {
+                       return reservation.worker_id == id;
+                     }),
+      locker_reservations.end());
 }
 
-void basecamp::validate_assignees()
-{
-    std::vector<npc_ptr>::iterator iter = assigned_npcs.begin();
-    while( iter != assigned_npcs.end() ) {
-        if( !( *iter ) || !( *iter )->assigned_camp || *( *iter )->assigned_camp != omt_pos ) {
-            iter = assigned_npcs.erase( iter );
-        } else {
-            ++iter;
+void basecamp::validate_assignees() {
+  std::vector<npc_ptr>::iterator iter = assigned_npcs.begin();
+  while (iter != assigned_npcs.end()) {
+    if (!(*iter) || !(*iter)->assigned_camp ||
+        *(*iter)->assigned_camp != omt_pos) {
+      iter = assigned_npcs.erase(iter);
+    } else {
+      ++iter;
         }
     }
     for( character_id elem : g->get_follower_list() ) {
         npc_ptr npc_to_add = overmap_buffer.find_npc( elem );
-        if( !npc_to_add ) {
-            continue;
-        }
-        if( std::find( assigned_npcs.begin(), assigned_npcs.end(), npc_to_add ) != assigned_npcs.end() ) {
-            continue;
-        } else {
-            if( npc_to_add->assigned_camp && *npc_to_add->assigned_camp == omt_pos ) {
+    if (!npc_to_add) {
+      continue;
+    }
+    if (std::find(assigned_npcs.begin(), assigned_npcs.end(), npc_to_add) !=
+        assigned_npcs.end()) {
+      continue;
+    } else {
+      if (npc_to_add->assigned_camp && *npc_to_add->assigned_camp == omt_pos) {
                 assigned_npcs.push_back( npc_to_add );
             }
         }
@@ -601,78 +1336,77 @@ void basecamp::validate_assignees()
     // remove duplicates - for legacy handling.
     std::sort( assigned_npcs.begin(), assigned_npcs.end() );
     auto last = std::unique( assigned_npcs.begin(), assigned_npcs.end() );
-    assigned_npcs.erase( last, assigned_npcs.end() );
+  assigned_npcs.erase(last, assigned_npcs.end());
 }
 
-std::vector<npc_ptr> basecamp::get_npcs_assigned()
-{
-    validate_assignees();
-    return assigned_npcs;
+std::vector<npc_ptr> basecamp::get_npcs_assigned() {
+  validate_assignees();
+  return assigned_npcs;
 }
 
-void basecamp::hide_mission( ui_mission_id id )
-{
-    const base_camps::direction_data &base_data = base_camps::all_directions.at( id.id.dir.value() );
-    for( ui_mission_id &miss_id : hidden_missions[size_t( base_data.tab_order )] ) {
-        if( is_equal( miss_id, id ) ) {
-            return;
-        }  //  The UI shouldn't allow us to hide something already hidden, but check anyway.
-    }
-    hidden_missions[size_t( base_data.tab_order )].push_back( id );
+void basecamp::hide_mission(ui_mission_id id) {
+  const base_camps::direction_data &base_data =
+      base_camps::all_directions.at(id.id.dir.value());
+  for (ui_mission_id &miss_id : hidden_missions[size_t(base_data.tab_order)]) {
+    if (is_equal(miss_id, id)) {
+      return;
+    } //  The UI shouldn't allow us to hide something already hidden, but check
+      //  anyway.
+  }
+  hidden_missions[size_t(base_data.tab_order)].push_back(id);
 }
 
-void basecamp::reveal_mission( ui_mission_id id )
-{
-    const base_camps::direction_data &base_data = base_camps::all_directions.at( id.id.dir.value() );
-    for( auto it = hidden_missions[size_t( base_data.tab_order )].begin();
-         it != hidden_missions[size_t( base_data.tab_order )].end(); it++ ) {
-        if( is_equal( id.id, it->id ) ) {
+void basecamp::reveal_mission(ui_mission_id id) {
+  const base_camps::direction_data &base_data =
+      base_camps::all_directions.at(id.id.dir.value());
+  for (auto it = hidden_missions[size_t(base_data.tab_order)].begin();
+       it != hidden_missions[size_t(base_data.tab_order)].end(); it++) {
+    if (is_equal(id.id, it->id)) {
             hidden_missions[size_t( base_data.tab_order )].erase( it );
             return;
         }
     }
-    debugmsg( "Trying to reveal revealed mission.  Has no effect." );
+  debugmsg("Trying to reveal revealed mission.  Has no effect.");
 }
 
-bool basecamp::is_hidden( ui_mission_id id )
-{
-    if( hidden_missions.empty() ) {
-        return false;
-    }
+bool basecamp::is_hidden(ui_mission_id id) {
+  if (hidden_missions.empty()) {
+    return false;
+  }
 
     if( !id.id.dir ) {
-        return false;
-    }
+    return false;
+  }
 
-    const base_camps::direction_data &base_data = base_camps::all_directions.at( id.id.dir.value() );
-    for( ui_mission_id &miss_id : hidden_missions[size_t( base_data.tab_order )] ) {
-        if( is_equal( miss_id, id ) ) {
-            return true;
+  const base_camps::direction_data &base_data =
+      base_camps::all_directions.at(id.id.dir.value());
+  for (ui_mission_id &miss_id : hidden_missions[size_t(base_data.tab_order)]) {
+    if (is_equal(miss_id, id)) {
+      return true;
         }
     }
     return false;
 }
 
 // get the subset of companions working on a specific task
-comp_list basecamp::get_mission_workers( const mission_id &miss_id, bool contains )
-{
-    comp_list available;
-    for( const auto &elem : camp_workers ) {
-        npc_companion_mission c_mission = elem->get_companion_mission();
+comp_list basecamp::get_mission_workers(const mission_id &miss_id,
+                                        bool contains) {
+  comp_list available;
+  for (const auto &elem : camp_workers) {
+    npc_companion_mission c_mission = elem->get_companion_mission();
         if( is_equal( c_mission.miss_id, miss_id ) ||
             ( contains && c_mission.miss_id.id == miss_id.id &&
               c_mission.miss_id.dir == miss_id.dir ) ) {
             available.push_back( elem );
         }
     }
-    return available;
+  return available;
 }
 
-void basecamp::query_new_name( bool force )
-{
-    string_input_popup_imgui input_popup( 40 );
-    bool done = false;
-    bool need_input = true;
+void basecamp::query_new_name(bool force) {
+  string_input_popup_imgui input_popup(40);
+  bool done = false;
+  bool need_input = true;
     std::string text;
     do {
         input_popup.set_description( _( "Name this camp" ) );
@@ -690,24 +1424,22 @@ void basecamp::query_new_name( bool force )
     } while( !done && need_input );
     if( done ) {
         name = text;
-    }
+  }
 }
 
-void basecamp::set_name( const std::string &new_name )
-{
-    name = new_name;
-    parse_tags( name, get_player_character(), get_player_character() );
+void basecamp::set_name(const std::string &new_name) {
+  name = new_name;
+  parse_tags(name, get_player_character(), get_player_character());
 }
 
 /*
- * we could put this logic in map::use_charges() the way the vehicle code does, but I think
- * that's sloppy
+ * we could put this logic in map::use_charges() the way the vehicle code does,
+ * but I think that's sloppy
  */
-std::list<item> basecamp::use_charges( const itype_id &fake_id, int &quantity )
-{
-    std::list<item> ret;
-    if( quantity <= 0 ) {
-        return ret;
+std::list<item> basecamp::use_charges(const itype_id &fake_id, int &quantity) {
+  std::list<item> ret;
+  if (quantity <= 0) {
+    return ret;
     }
     for( basecamp_resource &bcp_r : resources ) {
         if( bcp_r.fake_id == fake_id ) {
@@ -721,25 +1453,24 @@ std::list<item> basecamp::use_charges( const itype_id &fake_id, int &quantity )
                 break;
             }
         }
-    }
-    return ret;
+  }
+  return ret;
 }
-void basecamp::form_storage_zones( map &here, const tripoint_abs_ms &abspos )
-{
-    zone_manager &mgr = zone_manager::get_manager();
-    if( here.check_vehicle_zones( here.get_abs_sub().z() ) ) {
-        mgr.cache_vzones();
+void basecamp::form_storage_zones(map &here, const tripoint_abs_ms &abspos) {
+  zone_manager &mgr = zone_manager::get_manager();
+  if (here.check_vehicle_zones(here.get_abs_sub().z())) {
+    mgr.cache_vzones();
     }
     // NPC camps may never have had bb_pos registered
     validate_bb_pos( project_to<coords::ms>( omt_pos ) );
-    tripoint_bub_ms src_loc = here.get_bub( bb_pos ) + point::north;
-    std::vector<tripoint_abs_ms> possible_liquid_dumps;
-    if( mgr.has_near( zone_type_CAMP_STORAGE, abspos, MAX_VIEW_DISTANCE ) ) {
-        const std::vector<const zone_data *> zones = mgr.get_near_zones( zone_type_CAMP_STORAGE, abspos,
-                MAX_VIEW_DISTANCE, get_owner() );
-        // Find the nearest unsorted zone to dump objects at
-        if( !zones.empty() ) {
-            std::unordered_set<tripoint_abs_ms> src_set;
+  tripoint_bub_ms src_loc = here.get_bub(bb_pos) + point::north;
+  std::vector<tripoint_abs_ms> possible_liquid_dumps;
+  if (mgr.has_near(zone_type_CAMP_STORAGE, abspos, MAX_VIEW_DISTANCE)) {
+    const std::vector<const zone_data *> zones = mgr.get_near_zones(
+        zone_type_CAMP_STORAGE, abspos, MAX_VIEW_DISTANCE, get_owner());
+    // Find the nearest unsorted zone to dump objects at
+    if (!zones.empty()) {
+      std::unordered_set<tripoint_abs_ms> src_set;
             for( const zone_data *zone : zones ) {
                 for( const tripoint_abs_ms &p : tripoint_range<tripoint_abs_ms>(
                          zone->get_start_point(), zone->get_end_point() ) ) {
@@ -751,39 +1482,38 @@ void basecamp::form_storage_zones( map &here, const tripoint_abs_ms &abspos )
         }
         map &here = get_map();
         for( const zone_data *zone : zones ) {
-            if( zone->get_type() == zone_type_CAMP_STORAGE ) {
-                for( const tripoint_abs_ms &p : tripoint_range<tripoint_abs_ms>(
-                         zone->get_start_point(), zone->get_end_point() ) ) {
-                    if( here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_LIQUIDCONT, here.get_bub( p ) ) ) {
-                        possible_liquid_dumps.emplace_back( p );
-                    }
-                }
+      if (zone->get_type() == zone_type_CAMP_STORAGE) {
+        for (const tripoint_abs_ms &p : tripoint_range<tripoint_abs_ms>(
+                 zone->get_start_point(), zone->get_end_point())) {
+          if (here.has_flag_ter_or_furn(ter_furn_flag::TFLAG_LIQUIDCONT,
+                                        here.get_bub(p))) {
+            possible_liquid_dumps.emplace_back(p);
+          }
+        }
             }
         }
-    }
-    set_dumping_spot( here.get_abs( src_loc ) );
-    set_liquid_dumping_spot( possible_liquid_dumps );
-
+  }
+  set_dumping_spot(here.get_abs(src_loc));
+  set_liquid_dumping_spot(possible_liquid_dumps);
 }
-void basecamp::form_crafting_inventory( map &target_map )
-{
-    _inv.clear();
-    zone_manager &mgr = zone_manager::get_manager();
-    map &here = get_map();
+void basecamp::form_crafting_inventory(map &target_map) {
+  _inv.clear();
+  zone_manager &mgr = zone_manager::get_manager();
+  map &here = get_map();
     if( here.check_vehicle_zones( here.get_abs_sub().z() ) ) {
         mgr.cache_vzones();
     }
     if( !src_set.empty() ) {
         _inv.form_from_zone( target_map, src_set, nullptr, false );
-    }
-    /*
-     * something of a hack: add the resources we know the camp has
-     * the hacky part is that we're adding resources based on the camp's flags, which were
-     * generated based on upgrade missions, instead of having resources added when the
-     * map changes
-     */
-    // make sure the array is empty
-    fuels.clear();
+  }
+  /*
+   * something of a hack: add the resources we know the camp has
+   * the hacky part is that we're adding resources based on the camp's flags,
+   * which were generated based on upgrade missions, instead of having resources
+   * added when the map changes
+   */
+  // make sure the array is empty
+  fuels.clear();
     for( const itype_id &fuel_id : fuel_types ) {
         basecamp_fuel bcp_f;
         bcp_f.ammo_id = fuel_id;
@@ -801,13 +1531,12 @@ void basecamp::form_crafting_inventory( map &target_map )
                         bcp_f.available += i.charges;
                         break;
                     }
-                }
-            }
         }
-
+      }
     }
-    for( basecamp_resource &bcp_r : resources ) {
-        bcp_r.consumed = 0;
+  }
+  for (basecamp_resource &bcp_r : resources) {
+    bcp_r.consumed = 0;
         item camp_item( bcp_r.fake_id, calendar::turn_zero );
         camp_item.set_flag( json_flag_PSEUDO );
         if( !bcp_r.ammo_id.is_null() ) {
@@ -821,16 +1550,16 @@ void basecamp::form_crafting_inventory( map &target_map )
                 }
             }
         }
-        _inv.add_item( camp_item );
-    }
+    _inv.add_item(camp_item);
+  }
 
-    //  We're potentially adding the same item multiple times if present in multiple expansions,
-    //  but we're already that with the resources above. The resources are stored in expansions
-    //  rather than in a common pool to allow them to apply only to their respective expansion
-    //  in the future.
-    for( auto &expansion : expansions ) {
-        for( itype_id &it : expansion.second.available_pseudo_items ) {
-            item camp_item = item( it );
+  //  We're potentially adding the same item multiple times if present in
+  //  multiple expansions, but we're already that with the resources above. The
+  //  resources are stored in expansions rather than in a common pool to allow
+  //  them to apply only to their respective expansion in the future.
+  for (auto &expansion : expansions) {
+    for (itype_id &it : expansion.second.available_pseudo_items) {
+      item camp_item = item(it);
             if( camp_item.is_magazine() ) {
                 for( basecamp_fuel &bcp_f : fuels ) {
                     if( camp_item.can_reload_with( item( bcp_f.ammo_id ), false ) ) {
@@ -844,52 +1573,305 @@ void basecamp::form_crafting_inventory( map &target_map )
 
             _inv.add_item( camp_item );
         }
-    }
+  }
 }
 
-map &basecamp::get_camp_map()
-{
-    if( by_radio ) {
-        if( !camp_map.map_ ) {
-            camp_map.map_ = std::make_unique<map>();
+map &basecamp::get_camp_map() {
+  if (by_radio) {
+    if (!camp_map.map_) {
+      camp_map.map_ = std::make_unique<map>();
             camp_map.map_->load( project_to<coords::sm>( omt_pos ) - point( 5, 5 ), false );
         }
         return *camp_map.map_;
     }
-    return get_map();
+  return get_map();
 }
 
-void basecamp::unload_camp_map()
-{
-    if( camp_map.map_ ) {
-        camp_map.map_.reset();
+void basecamp::unload_camp_map() {
+  if (camp_map.map_) {
+    camp_map.map_.reset();
+  }
+}
+
+void basecamp::set_owner(faction_id new_owner) {
+  // Absolutely no safety checks, factions don't exist until you've encountered
+  // them but we sometimes set the owner before that
+  owner = new_owner;
+}
+
+faction_id basecamp::get_owner() { return owner; }
+
+bool basecamp::has_locker_zone() const {
+  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
+  return zone_manager::get_manager().has_defined(zone_type_CAMP_LOCKER, fac_id);
+}
+
+void basecamp::mark_camp_locker_dirty(npc &worker, bool high_priority) {
+  const character_id worker_id = worker.getID();
+  locker_service_queue.erase(
+      std::remove(locker_service_queue.begin(), locker_service_queue.end(),
+                  worker_id),
+      locker_service_queue.end());
+  if (high_priority) {
+    locker_service_queue.insert(locker_service_queue.begin(), worker_id);
+  } else {
+    locker_service_queue.push_back(worker_id);
+  }
+}
+
+bool basecamp::process_camp_locker_downtime(npc &worker) {
+  if (!has_locker_zone()) {
+    return false;
+  }
+
+  validate_assignees();
+
+  locker_reservations.erase(
+      std::remove_if(
+          locker_reservations.begin(), locker_reservations.end(),
+          [](const camp_locker_reservation &reservation) {
+            return reservation.expires <= calendar::turn;
+          }),
+      locker_reservations.end());
+
+  const diag_value &wake_dirty_value =
+      worker.get_value("camp_locker_wake_dirty");
+  const bool wake_dirty = wake_dirty_value.str() == "true";
+  const bool already_queued =
+      std::find(locker_service_queue.begin(), locker_service_queue.end(),
+                worker.getID()) != locker_service_queue.end();
+  if ((worker.get_value("camp_locker_last_service_turn").is_empty() &&
+       !already_queued) ||
+      wake_dirty) {
+    mark_camp_locker_dirty(worker, wake_dirty);
+    worker.set_value("camp_locker_wake_dirty", "false");
+    DebugLog(D_INFO, DC_ALL)
+        << string_format(
+               "camp locker: queued %s wake_dirty=%s queue_size=%d next_turn=%d",
+               worker.get_name(), wake_dirty ? "true" : "false",
+               static_cast<int>(locker_service_queue.size()),
+               to_turn<int>(locker_next_service_turn));
+  }
+
+  std::set<character_id> valid_workers;
+  for (const npc_ptr &assignee : assigned_npcs) {
+    if (assignee && assignee->assigned_camp && *assignee->assigned_camp == omt_pos) {
+      valid_workers.insert(assignee->getID());
     }
+  }
+  locker_service_queue.erase(
+      std::remove_if(locker_service_queue.begin(), locker_service_queue.end(),
+                     [&valid_workers](const character_id &worker_id) {
+                       return valid_workers.count(worker_id) == 0;
+                     }),
+      locker_service_queue.end());
+
+  if (locker_service_queue.empty() ||
+      locker_service_queue.front() != worker.getID() ||
+      calendar::turn < locker_next_service_turn) {
+    return false;
+  }
+
+  DebugLog(D_INFO, DC_ALL)
+      << string_format("camp locker: servicing %s queue_size=%d now=%d",
+                       worker.get_name(),
+                       static_cast<int>(locker_service_queue.size()),
+                       to_turn<int>(calendar::turn));
+  const bool applied_changes = service_camp_locker(worker);
+  locker_service_queue.erase(locker_service_queue.begin());
+  worker.set_value("camp_locker_last_service_turn", to_turn<int>(calendar::turn));
+  locker_next_service_turn =
+      calendar::turn + (applied_changes ? 10_minutes : 2_minutes);
+  DebugLog(D_INFO, DC_ALL)
+      << string_format(
+             "camp locker: serviced %s applied=%s queue_remaining=%d next_turn=%d",
+             worker.get_name(), applied_changes ? "true" : "false",
+             static_cast<int>(locker_service_queue.size()),
+             to_turn<int>(locker_next_service_turn));
+  return applied_changes;
 }
 
-void basecamp::set_owner( faction_id new_owner )
-{
-    // Absolutely no safety checks, factions don't exist until you've encountered them but we sometimes set the owner before that
-    owner = new_owner;
+bool basecamp::service_camp_locker(npc &worker) {
+  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
+  const std::vector<tripoint_abs_ms> locker_tiles =
+      collect_sorted_camp_locker_tiles(worker.pos_abs(), fac_id);
+  if (locker_tiles.empty()) {
+    return false;
+  }
+
+  locker_reservations.erase(
+      std::remove_if(
+          locker_reservations.begin(), locker_reservations.end(),
+          [&worker](const camp_locker_reservation &reservation) {
+            return reservation.expires <= calendar::turn ||
+                   reservation.worker_id == worker.getID();
+          }),
+      locker_reservations.end());
+
+  const std::vector<const item *> current_items =
+      collect_camp_locker_current_items(worker);
+  const camp_locker_candidate_map locker_candidates =
+      collect_camp_locker_zone_candidates(worker.pos_abs(), fac_id,
+                                          locker_policy, locker_reservations,
+                                          worker.getID());
+  int candidate_count = 0;
+  for (const auto &entry : locker_candidates) {
+    candidate_count += static_cast<int>(entry.second.size());
+  }
+  const camp_locker_plan plan =
+      plan_camp_locker_loadout(current_items, locker_candidates, locker_policy);
+  if (plan.empty()) {
+    DebugLog(D_INFO, DC_ALL)
+        << string_format(
+               "camp locker: no-op for %s locker_tiles=%d current_items=%d candidates=%d reservations=%d",
+               worker.get_name(), static_cast<int>(locker_tiles.size()),
+               static_cast<int>(current_items.size()), candidate_count,
+               static_cast<int>(locker_reservations.size()));
+    return false;
+  }
+
+  DebugLog(D_INFO, DC_ALL)
+      << string_format("camp locker: before %s worker=[%s] locker=[%s]",
+                       worker.get_name(),
+                       camp_locker_item_debug_summary(current_items,
+                                                      locker_policy),
+                       camp_locker_candidate_debug_summary(locker_candidates));
+
+  const time_point reservation_expiry = calendar::turn + 10_minutes;
+  for (const auto &[slot, slot_plan] : plan) {
+    if (slot_plan.selected_candidate == nullptr) {
+      continue;
+    }
+    const std::optional<tripoint_abs_ms> candidate_tile =
+        find_camp_locker_item_tile(locker_tiles, slot_plan.selected_candidate);
+    if (!candidate_tile) {
+      continue;
+    }
+    locker_reservations.push_back({worker.getID(), slot, *candidate_tile,
+                                   slot_plan.selected_candidate->typeId(),
+                                   reservation_expiry});
+  }
+
+  int planned_slots = 0;
+  for (const auto &entry : plan) {
+    if (entry.second.has_changes()) {
+      planned_slots++;
+    }
+  }
+  DebugLog(D_INFO, DC_ALL)
+      << string_format(
+             "camp locker: plan for %s locker_tiles=%d current_items=%d candidates=%d changed_slots=%d reservations=%d changes=[%s]",
+             worker.get_name(), static_cast<int>(locker_tiles.size()),
+             static_cast<int>(current_items.size()), candidate_count, planned_slots,
+             static_cast<int>(locker_reservations.size()),
+             camp_locker_plan_debug_summary(plan));
+
+  const tripoint_abs_ms locker_drop_tile = locker_tiles.front();
+  std::vector<item> displaced_items;
+  bool applied_changes = false;
+
+  for (const auto &[slot, slot_plan] : plan) {
+    if (slot_plan.selected_candidate == nullptr) {
+      continue;
+    }
+
+    item candidate =
+        take_camp_locker_candidate(locker_tiles, slot_plan.selected_candidate);
+    if (candidate.is_null()) {
+      continue;
+    }
+
+    item replaced_current;
+    if (slot_plan.upgrade_selected && slot_plan.kept_current != nullptr) {
+      replaced_current =
+          remove_worker_equipped_item(worker, slot_plan.kept_current);
+      if (replaced_current.is_null()) {
+        store_camp_locker_item(locker_drop_tile, std::move(candidate));
+        continue;
+      }
+    }
+
+    if (equip_camp_locker_item(worker, slot, candidate)) {
+      applied_changes = true;
+      if (!replaced_current.is_null()) {
+        displaced_items.emplace_back(std::move(replaced_current));
+      }
+      continue;
+    }
+
+    if (!replaced_current.is_null()) {
+      if (!equip_camp_locker_item(worker, slot, replaced_current)) {
+        store_camp_locker_item(locker_drop_tile, std::move(replaced_current));
+      }
+    }
+    store_camp_locker_item(locker_drop_tile, std::move(candidate));
+  }
+
+  for (const auto &plan_entry : plan) {
+    const camp_locker_slot_plan &slot_plan = plan_entry.second;
+    for (const item *duplicate : slot_plan.duplicate_current) {
+      item removed = remove_worker_equipped_item(worker, duplicate);
+      if (removed.is_null()) {
+        continue;
+      }
+      applied_changes = true;
+      displaced_items.emplace_back(std::move(removed));
+    }
+  }
+
+  for (item &displaced : displaced_items) {
+    store_camp_locker_item(locker_drop_tile, std::move(displaced));
+  }
+
+  const std::vector<const item *> current_items_after =
+      collect_camp_locker_current_items(worker);
+  const camp_locker_candidate_map locker_candidates_after =
+      collect_camp_locker_zone_candidates(worker.pos_abs(), fac_id,
+                                          locker_policy, locker_reservations,
+                                          worker.getID());
+  DebugLog(D_INFO, DC_ALL)
+      << string_format("camp locker: after %s applied=%s worker=[%s] locker=[%s]",
+                       worker.get_name(), applied_changes ? "true" : "false",
+                       camp_locker_item_debug_summary(current_items_after,
+                                                      locker_policy),
+                       camp_locker_candidate_debug_summary(
+                           locker_candidates_after));
+
+  return applied_changes;
 }
 
-faction_id basecamp::get_owner()
-{
-    return owner;
+bool basecamp::is_locker_slot_enabled(camp_locker_slot slot) const {
+  return locker_policy.is_enabled(slot);
 }
 
-void basecamp::handle_takeover_by( faction_id new_owner, bool violent_takeover )
-{
-    get_event_bus().send<event_type::camp_taken_over>( get_owner(), new_owner, name, violent_takeover );
+void basecamp::set_locker_slot_enabled(camp_locker_slot slot, bool enabled) {
+  if (locker_policy.is_enabled(slot) == enabled) {
+    return;
+  }
+  locker_policy.set_enabled(slot, enabled);
+  for (const npc_ptr &assignee : assigned_npcs) {
+    if (assignee && assignee->assigned_camp && *assignee->assigned_camp == omt_pos) {
+      mark_camp_locker_dirty(*assignee, true);
+    }
+  }
+}
 
-    // If anyone was somehow assigned here, they aren't any longer.
-    assigned_npcs.clear();
-    camp_workers.clear();
+void basecamp::handle_takeover_by(faction_id new_owner, bool violent_takeover) {
+  get_event_bus().send<event_type::camp_taken_over>(get_owner(), new_owner,
+                                                    name, violent_takeover);
 
-    add_msg_debug( debugmode::DF_CAMPS, "Camp %s owned by %s is being taken over by %s!",
-                   name, fac()->id.c_str(), new_owner->id.c_str() );
+  // If anyone was somehow assigned here, they aren't any longer.
+  assigned_npcs.clear();
+  camp_workers.clear();
+  locker_service_queue.clear();
+  locker_reservations.clear();
 
-    if( !violent_takeover ) {
-        set_owner( new_owner );
+  add_msg_debug(debugmode::DF_CAMPS,
+                "Camp %s owned by %s is being taken over by %s!", name,
+                fac()->id.c_str(), new_owner->id.c_str());
+
+  if (!violent_takeover) {
+    set_owner(new_owner);
         return;
     }
 
@@ -898,76 +1880,85 @@ void basecamp::handle_takeover_by( faction_id new_owner, bool violent_takeover )
     if( new_owner == get_player_character().get_faction()->id ) {
         fac()->likes_u -= 100;
         fac()->trusts_u -= 100;
-    }
+  }
 
-    int num_of_owned_camps = 0;
-    // Go over all camps in existence and count the ones belonging to current owner
-    // TODO: Remove this when camps stop being stored on the player
-    for( tripoint_abs_omt camp_loc : get_player_character().camps ) {
-        std::optional<basecamp *> bcp = overmap_buffer.find_camp( camp_loc.xy() );
+  int num_of_owned_camps = 0;
+  // Go over all camps in existence and count the ones belonging to current
+  // owner
+  // TODO: Remove this when camps stop being stored on the player
+  for (tripoint_abs_omt camp_loc : get_player_character().camps) {
+    std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_loc.xy());
         if( !bcp ) {
             continue;
         }
-        basecamp *checked_camp = *bcp;
-        // Note: Will count current basecamp object as well
-        if( checked_camp->get_owner() == get_owner() ) {
-            add_msg_debug( debugmode::DF_CAMPS,
-                           "Camp %s at %s is owned by %s, adding it to plunder calculations.",
-                           checked_camp->camp_name(), checked_camp->camp_omt_pos().to_string_writable(),
-                           get_owner()->id.c_str() );
-            num_of_owned_camps++;
-        }
+    basecamp *checked_camp = *bcp;
+    // Note: Will count current basecamp object as well
+    if (checked_camp->get_owner() == get_owner()) {
+      add_msg_debug(
+          debugmode::DF_CAMPS,
+          "Camp %s at %s is owned by %s, adding it to plunder calculations.",
+          checked_camp->camp_name(),
+          checked_camp->camp_omt_pos().to_string_writable(),
+          get_owner()->id.c_str());
+      num_of_owned_camps++;
     }
+  }
 
-    if( num_of_owned_camps < 1 ) {
-        debugmsg( "Tried to take over a camp owned by %s, but they somehow own no camps!  Is the owner's faction id no longer valid?",
-                  get_owner().c_str() );
-        // Also abort the rest
-        set_owner( new_owner );
-        return;
-    }
+  if (num_of_owned_camps < 1) {
+    debugmsg("Tried to take over a camp owned by %s, but they somehow own no "
+             "camps!  Is the owner's faction id no longer valid?",
+             get_owner().c_str());
+    // Also abort the rest
+    set_owner(new_owner);
+    return;
+  }
 
-    // The faction taking over also seizes resources proportional to the number of camps the previous owner had
-    // e.g. a single-camp faction has its entire stockpile plundered, a 10-camp faction has 10% transferred
-    nutrients captured_with_camp = fac()->food_supply() / num_of_owned_camps;
-    nutrients taken_from_camp = -captured_with_camp;
-    camp_food_supply( taken_from_camp );
-    add_msg_debug( debugmode::DF_CAMPS,
-                   "Food supplies of %s plundered by %d kilocalories!  Total food supply reduced to %d kilocalories after losing %.1f%% of their camps.",
-                   fac()->id.c_str(), captured_with_camp.kcal(), fac()->food_supply().kcal(),
-                   1.0 / static_cast<double>( num_of_owned_camps ) * 100.0 );
-    set_owner( new_owner );
+  // The faction taking over also seizes resources proportional to the number of
+  // camps the previous owner had e.g. a single-camp faction has its entire
+  // stockpile plundered, a 10-camp faction has 10% transferred
+  nutrients captured_with_camp = fac()->food_supply() / num_of_owned_camps;
+  nutrients taken_from_camp = -captured_with_camp;
+  camp_food_supply(taken_from_camp);
+  add_msg_debug(
+      debugmode::DF_CAMPS,
+      "Food supplies of %s plundered by %d kilocalories!  Total food supply "
+      "reduced to %d kilocalories after losing %.1f%% of their camps.",
+      fac()->id.c_str(), captured_with_camp.kcal(), fac()->food_supply().kcal(),
+      1.0 / static_cast<double>(num_of_owned_camps) * 100.0);
+  set_owner(new_owner);
     int previous_days_of_food = camp_food_supply_days( MODERATE_EXERCISE );
     // kinda a bug - rot time is lost here
     std::map<time_point, nutrients> added;
-    added[calendar::turn_zero] = captured_with_camp;
-    fac()->add_to_food_supply( added );
-    add_msg_debug( debugmode::DF_CAMPS,
-                   "Food supply of new owner %s has increased to %d kilocalories due to takeover of camp %s!",
-                   fac()->id.c_str(), new_owner->food_supply().kcal(), name );
-    if( new_owner == get_player_character().get_faction()->id ) {
-        popup( _( "Through your looting of %s you found %d days worth of food and other resources." ),
-               name, camp_food_supply_days( MODERATE_EXERCISE ) - previous_days_of_food );
-    }
+  added[calendar::turn_zero] = captured_with_camp;
+  fac()->add_to_food_supply(added);
+  add_msg_debug(debugmode::DF_CAMPS,
+                "Food supply of new owner %s has increased to %d kilocalories "
+                "due to takeover of camp %s!",
+                fac()->id.c_str(), new_owner->food_supply().kcal(), name);
+  if (new_owner == get_player_character().get_faction()->id) {
+    popup(_("Through your looting of %s you found %d days worth of food and "
+            "other resources."),
+          name,
+          camp_food_supply_days(MODERATE_EXERCISE) - previous_days_of_food);
+  }
 }
 
-void basecamp::form_crafting_inventory()
-{
-    map &here = get_camp_map();
-    form_crafting_inventory( here );
-    here.save();
+void basecamp::form_crafting_inventory() {
+  map &here = get_camp_map();
+  form_crafting_inventory(here);
+  here.save();
 }
 
 // display names
-std::string basecamp::expansion_tab( const point_rel_omt &dir ) const
-{
-    if( dir == base_camps::base_dir ) {
-        return _( "Base Missions" );
-    }
-    const auto &expansion_types = recipe_group::get_recipes_by_id( "all_faction_base_expansions" );
+std::string basecamp::expansion_tab(const point_rel_omt &dir) const {
+  if (dir == base_camps::base_dir) {
+    return _("Base Missions");
+  }
+  const auto &expansion_types =
+      recipe_group::get_recipes_by_id("all_faction_base_expansions");
 
-    const auto &e = expansions.find( dir );
-    if( e != expansions.end() ) {
+  const auto &e = expansions.find(dir);
+  if (e != expansions.end()) {
         recipe_id id( base_camps::faction_encode_abs( e->second, 0 ) );
         const auto e_type = expansion_types.find( id );
         if( e_type != expansion_types.end() ) {
@@ -975,39 +1966,31 @@ std::string basecamp::expansion_tab( const point_rel_omt &dir ) const
             return string_format( _( "%s Expansion" ), e_type->second );
         }
     }
-    return _( "Empty Expansion" );
+  return _("Empty Expansion");
 }
 
-bool basecamp::point_within_camp( const tripoint_abs_omt &p ) const
-{
-    return std::any_of( expansions.begin(), expansions.end(), [ p ]( auto & e ) {
-        return p == e.second.pos;
-    } );
+bool basecamp::point_within_camp(const tripoint_abs_omt &p) const {
+  return std::any_of(expansions.begin(), expansions.end(),
+                     [p](auto &e) { return p == e.second.pos; });
 }
 
 // legacy load and save
-void basecamp::load_data( const std::string &data )
-{
-    std::stringstream stream( data );
-    stream >> name >> bb_pos.x() >> bb_pos.y();
-    // add space to name
+void basecamp::load_data(const std::string &data) {
+  std::stringstream stream(data);
+  stream >> name >> bb_pos.x() >> bb_pos.y();
+  // add space to name
     replace( name.begin(), name.end(), '_', ' ' );
 }
 
 basecamp_action_components::basecamp_action_components(
-    const recipe &making, const mapgen_arguments &args, int batch_size, basecamp &base ) :
-    making_( making ),
-    args_( args ),
-    batch_size_( batch_size ),
-    base_( base )
-{
-}
+    const recipe &making, const mapgen_arguments &args, int batch_size,
+    basecamp &base)
+    : making_(making), args_(args), batch_size_(batch_size), base_(base) {}
 
-bool basecamp_action_components::choose_components()
-{
-    const auto filter = is_crafting_component;
-    avatar &player_character = get_avatar();
-    const requirement_data *req;
+bool basecamp_action_components::choose_components() {
+  const auto filter = is_crafting_component;
+  avatar &player_character = get_avatar();
+  const requirement_data *req;
     if( making_.is_blueprint() ) {
         const std::unordered_map<mapgen_arguments, build_reqs> &reqs_map =
             making_.blueprint_build_reqs().reqs_by_parameters;
@@ -1026,45 +2009,42 @@ bool basecamp_action_components::choose_components()
     }
     if( !item_selections_.empty() || !tool_selections_.empty() ) {
         debugmsg( "Reused basecamp_action_components" );
-        return false;
+    return false;
+  }
+  for (const auto &it : req->get_components()) {
+    comp_selection<item_comp> is = player_character.select_item_component(
+        it, batch_size_, base_._inv, true, filter, !base_.by_radio);
+    if (is.use_from == usage_from::cancel) {
+      return false;
     }
-    for( const auto &it : req->get_components() ) {
-        comp_selection<item_comp> is =
-            player_character.select_item_component( it, batch_size_, base_._inv, true, filter,
-                    !base_.by_radio );
-        if( is.use_from == usage_from::cancel ) {
-            return false;
-        }
         item_selections_.push_back( is );
+  }
+  // this may consume pseudo-resources from fake items
+  for (const auto &it : req->get_tools()) {
+    comp_selection<tool_comp> ts = player_character.select_tool_component(
+        it, batch_size_, base_._inv, true, !base_.by_radio);
+    if (ts.use_from == usage_from::cancel) {
+      return false;
     }
-    // this may consume pseudo-resources from fake items
-    for( const auto &it : req->get_tools() ) {
-        comp_selection<tool_comp> ts =
-            player_character.select_tool_component( it, batch_size_, base_._inv, true,
-                    !base_.by_radio );
-        if( ts.use_from == usage_from::cancel ) {
-            return false;
-        }
         tool_selections_.push_back( ts );
     }
-    return true;
+  return true;
 }
 
-void basecamp_action_components::consume_components()
-{
-    map &target_map = base_.get_camp_map();
-    avatar &player_character = get_avatar();
-    std::vector<tripoint_bub_ms> src;
+void basecamp_action_components::consume_components() {
+  map &target_map = base_.get_camp_map();
+  avatar &player_character = get_avatar();
+  std::vector<tripoint_bub_ms> src;
     src.reserve( base_.src_set.size() );
     for( const tripoint_abs_ms &p : base_.src_set ) {
-        src.emplace_back( target_map.get_bub( p ) );
+    src.emplace_back(target_map.get_bub(p));
+  }
+  for (const comp_selection<item_comp> &sel : item_selections_) {
+    std::list<item> consumed = player_character.consume_items(
+        target_map, sel, batch_size_, is_crafting_component, src);
+    for (item &comp : consumed) {
+      consumed_components_.add(comp);
     }
-    for( const comp_selection<item_comp> &sel : item_selections_ ) {
-        std::list<item> consumed = player_character.consume_items( target_map, sel, batch_size_,
-                                   is_crafting_component, src );
-        for( item &comp : consumed ) {
-            consumed_components_.add( comp );
-        }
     }
     // this may consume pseudo-resources from fake items
     for( const comp_selection<tool_comp> &sel : tool_selections_ ) {

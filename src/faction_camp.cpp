@@ -116,6 +116,8 @@ static const addiction_id addiction_alcohol( "alcohol" );
 
 static const efftype_id effect_HACK_camp_vision_for_npc( "HACK_camp_vision_for_npc" );
 
+static const zone_type_id zone_type_CAMP_LOCKER( "CAMP_LOCKER" );
+
 static const faction_mission_id faction_mission_camp_clearcut( "camp_clearcut" );
 static const faction_mission_id faction_mission_camp_collect_firewood( "camp_collect_firewood" );
 static const faction_mission_id faction_mission_camp_combat_patrol( "camp_combat_patrol" );
@@ -385,6 +387,9 @@ static std::string mission_ui_activity_of( const mission_id &miss_id )
 
         case Camp_Requests:
             return _( "Crafting Requests" );
+
+        case Camp_Locker_Policy:
+            return _( "Locker Policy" );
 
         case Camp_Hide_Mission:
             return _( "Hide Mission(s)" );
@@ -1379,6 +1384,22 @@ void basecamp::get_available_missions( mission_data &mission_key, map &here )
                                    active_requests, archived_requests );
             mission_key.add( { miss_id, false }, name_display_of( miss_id ),
                              entry );
+        }
+        {
+            const mission_id miss_id = { Camp_Locker_Policy, "", {}, base_dir };
+            entry = string_format( _( "Notes:\n"
+                                      "Choose which loadout slots the camp locker may manage.\n"
+                                      "The locker zone provides the actual gear; this menu only says what kinds of gear are allowed.\n"
+                                      "Effects:\n"
+                                      "> Toggle managed slots like socks, pants, armor, bag, or weapons\n"
+                                      "> Policy survives save/load for this camp\n\n"
+                                      "Enabled slots: %d / %d\n"
+                                      "Locker zone: %s\n"
+                                      "Risk: None\n" ),
+                                   locker_policy.enabled_count(),
+                                   static_cast<int>( all_camp_locker_slots().size() ),
+                                   has_locker_zone() ? _( "defined" ) : _( "not defined yet" ) );
+            mission_key.add( { miss_id, false }, name_display_of( miss_id ), entry );
         }
         {
             validate_assignees();
@@ -4419,6 +4440,38 @@ bool basecamp::clear_camp_request( int request_id )
     return true;
 }
 
+void basecamp::locker_policy_ui()
+{
+    const std::vector<camp_locker_slot> slots = all_camp_locker_slots();
+    while( true ) {
+        uilist menu;
+        menu.title = _( "Locker Policy" );
+        menu.text = has_locker_zone() ?
+                    _( "Choose which loadout slots the camp locker may manage.  The locker zone supplies the actual gear." ) :
+                    _( "Choose which loadout slots the camp locker may manage.  Define a Basecamp: Locker zone in the Zone Manager to supply the actual gear." );
+
+        int entry_index = 0;
+        for( const camp_locker_slot slot : slots ) {
+            const bool enabled = is_locker_slot_enabled( slot );
+            menu.addentry( entry_index++, true, MENU_AUTOASSIGN,
+                           string_format( "%s %s", enabled ? "[x]" : "[ ]",
+                                          camp_locker_slot_name( slot ).translated() ) );
+        }
+        const int done_entry = entry_index;
+        menu.addentry( done_entry, true, 'q', _( "Done" ) );
+        menu.query();
+
+        if( menu.ret < 0 || menu.ret == done_entry ) {
+            return;
+        }
+
+        if( static_cast<size_t>( menu.ret ) < slots.size() ) {
+            const camp_locker_slot slot = slots[menu.ret];
+            set_locker_slot_enabled( slot, !is_locker_slot_enabled( slot ) );
+        }
+    }
+}
+
 void basecamp::camp_request_ui()
 {
     if( camp_requests.empty() ) {
@@ -4590,6 +4643,10 @@ bool basecamp::handle_mission( const ui_mission_id &miss_id )
 
         case Camp_Requests:
             camp_request_ui();
+            break;
+
+        case Camp_Locker_Policy:
+            locker_policy_ui();
             break;
 
         case Camp_Hide_Mission:
@@ -9060,6 +9117,7 @@ std::string basecamp::name_display_of( const mission_id &miss_id )
         case Camp_Determine_Leadership:
         case Camp_Have_Meal:
         case Camp_Requests:
+        case Camp_Locker_Policy:
         case Camp_Hide_Mission:
         case Camp_Reveal_Mission:
         case Camp_Assign_Jobs:

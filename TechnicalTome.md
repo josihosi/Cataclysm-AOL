@@ -140,7 +140,8 @@ The smoke harness intentionally tests three layers together:
 - runner I/O + response parsing using game-like pipe-separated action-line validation
 
 ## LLM Intent Actions (Behavior Notes)
-- Direct deterministic `show_board` handling can still produce a real in-game reply even when no fresh prompt/response block appears in `config/llm_intent.log`; that log is still tied to the LLM prompt path. Treat missing `llm_intent.log` output as a logging-visibility gap, not as proof that `show_board` failed. If later tooling wants `show_board`-specific artifacts, add an explicit hook or inspect a different artifact path instead of expecting `llm_intent.log` magic.
+- Structured deterministic `show_board` / `show_job` replies now have an explicit artifact sink: when `DEBUG_LLM_INTENT_LOG` is enabled, they append dedicated `camp board reply` / `camp job reply` blocks to `config/llm_intent.log` even if no normal LLM prompt/response block is involved.
+- Direct deterministic `show_board` handling can still produce a real in-game reply without a normal prompt/response block in `config/llm_intent.log`; use the explicit camp-reply block as the artifact sink first. If that block is missing, treat it as an instrumentation/config question rather than automatic proof that `show_board` failed.
 - Important current path split: the richer planner snapshot (`planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` + overmap block) is confirmed on the structured/internal `show_board` handoff token path, while live natural speech like `show me the board` currently still uses the older concise board-summary bark path.
 - `look_around` requests up to three nearby item names for pickup targeting.
 - `look_inventory` supports `wear`, `wield`, `act`, and `drop` sections.
@@ -310,6 +311,13 @@ Do not force the model to rediscover deterministic facts we already know how to 
 ### Basecamp-specific note
 For the upstreamable deterministic slice, the spoken craft path should stay fully deterministic and human-reviewable.
 The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is stable and cleanly separable.
+
+### Locker Zone v1 groundwork note
+- The physical locker supply is now meant to be explicit: a `CAMP_LOCKER` Zone Manager zone, not an invisible camp concept.
+- The camp also now has a persisted locker-policy stub: the menu says which managed slots are allowed, while the zone will later answer which actual items are available.
+- The locker planner is no longer dead paper: deterministic helpers classify locker items, gather zone candidates, keep the best current managed item, mark duplicate current gear for cleanup, and now feed a live service path that lets idle assigned-camp NPCs perform an infrequent locker reevaluation during worker downtime.
+- That downtime path now has wake/dirty queue plumbing and temporary reservation filtering too, with deterministic coverage for reservation-aware candidate gathering and one-worker-at-a-time first-service sequencing.
+- It is still deliberately narrow: it can clean duplicate managed gear and apply obvious missing-slot/upgraded equips from the locker zone, but it still lacks trustworthy live proof of the actual camp-assigned downtime behavior — so talk about it as an agent-smoked orchestration slice, not as a finished locker system.
 
 ### Follower-NPC caveat
 Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.
