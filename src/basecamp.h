@@ -225,10 +225,12 @@ struct camp_locker_slot_plan {
 using camp_locker_plan = std::map<camp_locker_slot, camp_locker_slot_plan>;
 
 std::optional<camp_locker_slot> classify_camp_locker_item(const item &it);
-int score_camp_locker_item(camp_locker_slot slot, const item &it);
-bool is_camp_locker_candidate_meaningfully_better(camp_locker_slot slot,
-                                                  const item &candidate,
-                                                  const item &current);
+int score_camp_locker_item(
+    camp_locker_slot slot, const item &it,
+    const std::optional<units::temperature> &local_temperature = std::nullopt);
+bool is_camp_locker_candidate_meaningfully_better(
+    camp_locker_slot slot, const item &candidate, const item &current,
+    const std::optional<units::temperature> &local_temperature = std::nullopt);
 camp_locker_candidate_map
 collect_camp_locker_candidates(const std::vector<const item *> &items,
                                const camp_locker_policy &policy);
@@ -242,9 +244,11 @@ camp_locker_candidate_map collect_camp_locker_zone_candidates(
     const character_id &requesting_worker,
     int range = MAX_VIEW_DISTANCE);
 camp_locker_plan
-plan_camp_locker_loadout(const std::vector<const item *> &current_items,
-                         const camp_locker_candidate_map &locker_candidates,
-                         const camp_locker_policy &policy);
+plan_camp_locker_loadout(
+    const std::vector<const item *> &current_items,
+    const camp_locker_candidate_map &locker_candidates,
+    const camp_locker_policy &policy,
+    const std::optional<units::temperature> &local_temperature = std::nullopt);
 
 namespace basecamp_ai {
 

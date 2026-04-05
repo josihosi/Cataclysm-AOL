@@ -5,6 +5,11 @@
 - When that actionable state changes, the camp requeues the affected worker even without a fresh sleep/wake or policy toggle.
 - Locker candidate gathering now walks sorted locker tiles so debug/state summaries and deterministic tests do not wobble on unordered zone iteration.
 
+## Camp locker V3 outerwear temperature lane
+- The first Locker Zone V3 slice is deliberately narrow: local temperature now adjusts locker scoring only for shirt/vest-slot outerwear that covers both torso and arms.
+- Cold weather (<= 50 F) boosts warmth-heavy outerwear in that lane; hot weather (>= 75 F) penalizes it, so the same planner/service path can swap between warm and light jackets without touching ranged-readiness or the broader V1/V2 spine.
+- This does **not** yet cover shorts, blankets, or per-NPC clothing personality; those remain later V3 follow-ups.
+
 ## Background Summarizer (tools/llm_runner/background_summarizer.py)
 The summarizer now has **two modes**:
 
