@@ -1691,10 +1691,9 @@ static void log_camp_request_reply( const npc &speaker, std::string_view utteran
     if( reply_text.empty() || !get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
         return;
     }
-    llm_intent::log_event( string_format(
-                              "camp %1$s reply %2$s (%3$d)\nheard=%4$s\nreply:\n%5$s",
-                              std::string( reply_kind ), speaker.disp_name(),
-                              speaker.getID().get_value(), std::string( utterance ), reply_text ) );
+    llm_intent::log_event( basecamp_ai::format_camp_reply_log_packet(
+                              reply_kind, utterance, speaker.disp_name(),
+                              speaker.getID().get_value(), reply_text ) );
 }
 
 [[maybe_unused]] static std::string camp_request_queue_bark( const camp_llm_request &request )
@@ -2795,6 +2794,23 @@ std::string camp_board_handoff_snapshot( const tripoint_abs_omt &origin,
         const std::vector<camp_llm_request> &requests )
 {
     return camp_board_handoff_snapshot_impl( origin, requests );
+}
+
+std::string format_camp_reply_log_packet( std::string_view reply_kind,
+        std::string_view heard_token, std::string_view speaker_name,
+        int speaker_id, const std::string &reply_text )
+{
+    std::string packet = string_format( "camp %1$s reply %2$s (%3$d)\nheard=%4$s\nreply_begin\n",
+                                        std::string( reply_kind ),
+                                        std::string( speaker_name ),
+                                        speaker_id,
+                                        std::string( heard_token ) );
+    packet += reply_text;
+    if( packet.empty() || packet.back() != '\n' ) {
+        packet += '\n';
+    }
+    packet += "reply_end";
+    return packet;
 }
 
 static std::optional<parsed_camp_craft_order> parse_camp_craft_order_payload( std::string text )

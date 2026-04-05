@@ -1496,6 +1496,26 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
                                              "jobs=none\n");
   }
 
+  SECTION("camp reply log packet fences the structured payload") {
+    CHECK(basecamp_ai::format_camp_reply_log_packet("board", "show_board", "Ricky Broughton", 3,
+                                                     "board=show_board\nactive=0\narchived=0\njobs=none\n") ==
+          "camp board reply Ricky Broughton (3)\n"
+          "heard=show_board\n"
+          "reply_begin\n"
+          "board=show_board\n"
+          "active=0\n"
+          "archived=0\n"
+          "jobs=none\n"
+          "reply_end");
+    CHECK(basecamp_ai::format_camp_reply_log_packet("job", "show_job=7", "Ricky Broughton", 3,
+                                                     "request_id=7") ==
+          "camp job reply Ricky Broughton (3)\n"
+          "heard=show_job=7\n"
+          "reply_begin\n"
+          "request_id=7\n"
+          "reply_end");
+  }
+
   SECTION("non craft requests do not emit craft handoff snapshots") {
     const camp_llm_request request{.request_kind = "camp_upgrade",
                                    .request_id = 3,
