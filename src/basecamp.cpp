@@ -390,6 +390,11 @@ collect_camp_locker_candidates(const std::vector<const item *> &items,
   return candidates;
 }
 
+std::vector<tripoint_abs_ms>
+collect_sorted_camp_locker_tiles(const tripoint_abs_ms &origin,
+                                 const faction_id &fac,
+                                 int range = MAX_VIEW_DISTANCE);
+
 namespace {
 
 bool camp_locker_reservation_matches(const camp_locker_reservation &reservation,
@@ -417,9 +422,8 @@ camp_locker_candidate_map collect_camp_locker_zone_candidates(
     const std::vector<camp_locker_reservation> &reservations,
     const character_id &requesting_worker, int range) {
   map &here = get_map();
-  const std::unordered_set<tripoint_abs_ms> locker_tiles =
-      zone_manager::get_manager().get_near(zone_type_CAMP_LOCKER, origin, range,
-                                           nullptr, fac);
+  const std::vector<tripoint_abs_ms> locker_tiles =
+      collect_sorted_camp_locker_tiles(origin, fac, range);
 
   std::vector<const item *> items;
   for (const tripoint_abs_ms &tile : locker_tiles) {
@@ -551,7 +555,7 @@ std::vector<const item *> collect_camp_locker_current_items(npc &worker) {
 std::vector<tripoint_abs_ms>
 collect_sorted_camp_locker_tiles(const tripoint_abs_ms &origin,
                                  const faction_id &fac,
-                                 int range = MAX_VIEW_DISTANCE) {
+                                 int range) {
   std::unordered_set<tripoint_abs_ms> locker_tiles =
       zone_manager::get_manager().get_near(zone_type_CAMP_LOCKER, origin, range,
                                            nullptr, fac);
@@ -754,6 +758,48 @@ std::string camp_locker_plan_debug_summary(const camp_locker_plan &plan) {
 
   return join_camp_locker_debug_parts(parts);
 }
+
+namespace {
+
+constexpr const char *camp_locker_state_signature_key =
+    "camp_locker_last_state_signature";
+
+struct camp_locker_live_state {
+  std::vector<const item *> current_items;
+  camp_locker_candidate_map locker_candidates;
+  camp_locker_plan plan;
+};
+
+bool camp_locker_plan_has_changes(const camp_locker_plan &plan) {
+  return std::any_of(plan.begin(), plan.end(),
+                     [](const camp_locker_plan::value_type &entry) {
+                       return entry.second.has_changes();
+                     });
+}
+
+camp_locker_live_state collect_camp_locker_live_state(
+    npc &worker, const faction_id &fac, const camp_locker_policy &policy,
+    const std::vector<camp_locker_reservation> &reservations) {
+  camp_locker_live_state live_state;
+  live_state.current_items = collect_camp_locker_current_items(worker);
+  live_state.locker_candidates = collect_camp_locker_zone_candidates(
+      worker.pos_abs(), fac, policy, reservations, worker.getID());
+  live_state.plan = plan_camp_locker_loadout(
+      live_state.current_items, live_state.locker_candidates, policy);
+  return live_state;
+}
+
+std::string camp_locker_live_state_signature(
+    const camp_locker_live_state &live_state,
+    const camp_locker_policy &policy) {
+  return string_format(
+      "worker=[%s]|locker=[%s]|plan=[%s]",
+      camp_locker_item_debug_summary(live_state.current_items, policy),
+      camp_locker_candidate_debug_summary(live_state.locker_candidates),
+      camp_locker_plan_debug_summary(live_state.plan));
+}
+
+} // namespace
 
 const std::map<point_rel_omt, base_camps::direction_data>
     base_camps::all_directions = {
@@ -1666,6 +1712,29 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
                      }),
       locker_service_queue.end());
 
+  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
+  const camp_locker_live_state live_state = collect_camp_locker_live_state(
+      worker, fac_id, locker_policy, locker_reservations);
+  const std::string locker_state_signature =
+      camp_locker_live_state_signature(live_state, locker_policy);
+  const std::string previous_signature =
+      worker.get_value(camp_locker_state_signature_key).str();
+  const bool has_state_changes = camp_locker_plan_has_changes(live_state.plan);
+  const bool queued_after_cleanup =
+      std::find(locker_service_queue.begin(), locker_service_queue.end(),
+                worker.getID()) != locker_service_queue.end();
+  if (previous_signature != locker_state_signature && has_state_changes &&
+      !queued_after_cleanup) {
+    mark_camp_locker_dirty(worker);
+    DebugLog(D_INFO, DC_ALL)
+        << string_format(
+               "camp locker: queued %s state-dirty queue_size=%d next_turn=%d changes=[%s]",
+               worker.get_name(), static_cast<int>(locker_service_queue.size()),
+               to_turn<int>(locker_next_service_turn),
+               camp_locker_plan_debug_summary(live_state.plan));
+  }
+  worker.set_value(camp_locker_state_signature_key, locker_state_signature);
+
   if (locker_service_queue.empty() ||
       locker_service_queue.front() != worker.getID() ||
       calendar::turn < locker_next_service_turn) {
@@ -1682,6 +1751,13 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
   worker.set_value("camp_locker_last_service_turn", to_turn<int>(calendar::turn));
   locker_next_service_turn =
       calendar::turn + (applied_changes ? 10_minutes : 2_minutes);
+
+  const camp_locker_live_state post_service_state = collect_camp_locker_live_state(
+      worker, fac_id, locker_policy, locker_reservations);
+  worker.set_value(camp_locker_state_signature_key,
+                   camp_locker_live_state_signature(post_service_state,
+                                                    locker_policy));
+
   DebugLog(D_INFO, DC_ALL)
       << string_format(
              "camp locker: serviced %s applied=%s queue_remaining=%d next_turn=%d",
