@@ -1,0 +1,13 @@
+{
+  "name": "locker.weather_wait",
+  "description": "Launch a harness-owned Sandy Creek locker baseline, advance a few turns, and report screen/tests/artifacts separately for the live locker path.",
+  "profile": "dev-harness",
+  "world": "Sandy Creek",
+  "fixture": "basecamp_dev_manual_2026-04-02",
+  "fixture_profile": "dev",
+  "replace_existing_worlds": true,
+  "advance_turns": 3,
+  "settle_seconds": 1.0,
+  "artifact_pattern": "camp locker:",
+  "recommended_test_command": "./tests/cata_test \"[camp][locker]\""
+}

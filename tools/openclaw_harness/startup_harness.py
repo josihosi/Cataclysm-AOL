@@ -91,6 +91,16 @@ def current_branch() -> str:
     return branch or "detached"
 
 
+def current_head_short() -> str:
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root()), "rev-parse", "--short=10", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return proc.stdout.strip()
+
+
 def resolve_profile_name(explicit: str) -> str:
     return sanitize_profile_name(explicit or current_branch())
 
@@ -109,6 +119,10 @@ def config_dir_for_profile(profile: str) -> Path:
 
 def fixtures_root() -> Path:
     return repo_root() / "tools" / "openclaw_harness" / "fixtures" / "saves"
+
+
+def scenarios_root() -> Path:
+    return repo_root() / "tools" / "openclaw_harness" / "scenarios"
 
 
 def profile_config_path(profile: str) -> Path:
@@ -275,6 +289,12 @@ def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
     subprocess.run(cmd, check=True, capture_output=True, text=True)
 
 
+def advance_turns(pid: int, count: int) -> None:
+    if count <= 0:
+        return
+    peekaboo_press_sequence(pid, ["tab"] * count)
+
+
 def copy_file_if_exists(src: Path, dst: Path) -> None:
     if src.exists():
         ensure_dir(dst.parent)
@@ -290,17 +310,24 @@ def filter_debug_log_text(text: str) -> str:
     return "".join(filtered_lines)
 
 
-def copy_filtered_debug_log_delta_if_exists(src: Path, start_size: int, dst: Path) -> None:
+def read_filtered_log_delta(src: Path, start_size: int) -> str:
     if not src.exists():
-        return
+        return ""
     size = src.stat().st_size
     if size <= start_size:
-        return
-    ensure_dir(dst.parent)
+        return ""
     with src.open("r", encoding="utf-8", errors="replace") as fh:
         fh.seek(start_size)
         data = fh.read()
-    dst.write_text(filter_debug_log_text(data), encoding="utf-8")
+    return filter_debug_log_text(data)
+
+
+def copy_filtered_debug_log_delta_if_exists(src: Path, start_size: int, dst: Path) -> None:
+    data = read_filtered_log_delta(src, start_size)
+    if not data:
+        return
+    ensure_dir(dst.parent)
+    dst.write_text(data, encoding="utf-8")
 
 
 def capture_debug_delta(profile: str, start_size: int, run_dir: Path, serial: int) -> int:
@@ -308,17 +335,63 @@ def capture_debug_delta(profile: str, start_size: int, run_dir: Path, serial: in
     if not debug_log.exists():
         return start_size
     size = debug_log.stat().st_size
-    if size <= start_size:
+    data = read_filtered_log_delta(debug_log, start_size)
+    if not data:
         return start_size
-    with debug_log.open("r", encoding="utf-8", errors="replace") as fh:
-        fh.seek(start_size)
-        data = fh.read()
     out = run_dir / f"debug_delta_{serial:02d}.log"
-    out.write_text(filter_debug_log_text(data), encoding="utf-8")
+    out.write_text(data, encoding="utf-8")
     return size
 
 
-def capture_screenshot(pid: int, run_dir: Path, label: str) -> None:
+def extract_window_build_info(window_title: str) -> Dict[str, Any]:
+    info: Dict[str, Any] = {
+        "window_title": window_title,
+        "captured_head": "",
+        "captured_dirty": False,
+    }
+    match = re.search(r" - ([0-9a-f]{10})(-dirty)?$", window_title or "")
+    if not match:
+        return info
+    info["captured_head"] = match.group(1)
+    info["captured_dirty"] = bool(match.group(2))
+    return info
+
+
+def summarize_peekaboo_capture(stdout: str, png_path: Path, json_path: Path) -> Dict[str, Any]:
+    repo_head = current_head_short()
+    summary: Dict[str, Any] = {
+        "png_path": str(png_path),
+        "peekaboo_json": str(json_path),
+        "repo_head": repo_head,
+        "peekaboo_success": False,
+        "window_title": "",
+        "captured_head": "",
+        "captured_dirty": False,
+        "version_matches_repo_head": None,
+        "parse_error": "",
+    }
+    if not stdout.strip():
+        summary["parse_error"] = "peekaboo produced no JSON stdout"
+        return summary
+    try:
+        payload = json.loads(stdout)
+    except Exception as exc:
+        summary["parse_error"] = str(exc)
+        return summary
+    if not isinstance(payload, dict):
+        summary["parse_error"] = "peekaboo stdout was not a JSON object"
+        return summary
+    data = payload.get("data", {}) if isinstance(payload.get("data"), dict) else {}
+    summary["peekaboo_success"] = bool(payload.get("success"))
+    summary["window_title"] = str(data.get("window_title", "")).strip()
+    build_info = extract_window_build_info(summary["window_title"])
+    summary.update(build_info)
+    if summary["captured_head"]:
+        summary["version_matches_repo_head"] = summary["captured_head"] == repo_head
+    return summary
+
+
+def capture_screenshot(pid: int, run_dir: Path, label: str) -> Dict[str, Any]:
     png_path = run_dir / f"{label}.png"
     json_path = run_dir / f"{label}.peekaboo.json"
     proc = subprocess.run(
@@ -328,11 +401,14 @@ def capture_screenshot(pid: int, run_dir: Path, label: str) -> None:
         check=False,
     )
     payload = {
+        "label": label,
         "returncode": proc.returncode,
         "stdout": proc.stdout,
         "stderr": proc.stderr,
+        "screen_summary": summarize_peekaboo_capture(proc.stdout, png_path, json_path),
     }
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return payload
 
 
 def kill_existing_game_processes() -> List[int]:
@@ -394,6 +470,39 @@ def list_fixtures(profile: str) -> List[Dict[str, Any]]:
     return fixtures
 
 
+def scenario_path(name: str) -> Path:
+    return scenarios_root() / f"{name}.json"
+
+
+def load_scenario(name: str) -> Dict[str, Any]:
+    path = scenario_path(name)
+    if not path.exists():
+        raise SystemExit(f"Scenario not found: {path}")
+    loaded = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict):
+        raise SystemExit(f"Invalid scenario config: {path}")
+    loaded.setdefault("name", name)
+    loaded["path"] = str(path)
+    return loaded
+
+
+def list_scenarios() -> List[Dict[str, Any]]:
+    root = scenarios_root()
+    if not root.exists():
+        return []
+    scenarios = []
+    for path in sorted(root.glob("*.json"), key=lambda p: p.name.lower()):
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(loaded, dict):
+            continue
+        scenarios.append({
+            "name": str(loaded.get("name", path.stem)),
+            "path": str(path),
+            "description": str(loaded.get("description", "")).strip(),
+        })
+    return scenarios
+
+
 def choose_world_for_fixture(profile: str, explicit_world: str) -> WorldInfo:
     worlds = list_worlds(profile)
     if explicit_world:
@@ -435,8 +544,9 @@ def capture_fixture(profile: str, fixture_name: str, explicit_world: str, overwr
     }
 
 
-def install_fixture(profile: str, fixture_name: str, replace: bool) -> Dict[str, Any]:
-    fixture_dir = profile_fixture_root(profile) / fixture_name
+def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_profile: str = "") -> Dict[str, Any]:
+    source_profile = resolve_profile_name(fixture_profile or profile)
+    fixture_dir = profile_fixture_root(source_profile) / fixture_name
     save_src = fixture_dir / "save"
     if not save_src.exists():
         raise SystemExit(f"Fixture save payload not found: {save_src}")
@@ -454,6 +564,7 @@ def install_fixture(profile: str, fixture_name: str, replace: bool) -> Dict[str,
     return {
         "fixture": fixture_name,
         "profile": profile,
+        "fixture_profile": source_profile,
         "installed_worlds": installed_worlds,
         "destination": str(save_dst),
     }
@@ -477,7 +588,12 @@ def success_from_lastworld(profile: str, baseline_mtime: float, expected_world: 
 def run_startup(args: argparse.Namespace) -> int:
     profile = resolve_profile_name(args.profile)
     if args.fixture:
-        install_fixture(profile, args.fixture, replace=args.replace_existing_worlds)
+        install_fixture(
+            profile,
+            args.fixture,
+            replace=args.replace_existing_worlds,
+            fixture_profile=getattr(args, "fixture_profile", ""),
+        )
     config = load_profile_config(profile)
     plan = build_plan(profile, args.world, args.fixture)
     run_dir = Path(plan.run_dir)
@@ -520,30 +636,40 @@ def run_startup(args: argparse.Namespace) -> int:
     while time.monotonic() < deadline:
         code = proc.poll()
         if code is not None:
-            capture_screenshot(proc.pid, run_dir, "failure_process_exit")
+            screen = capture_screenshot(proc.pid, run_dir, "failure_process_exit")
             copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
-            print(json.dumps({
+            result = {
                 "ok": False,
                 "reason": "process_exited",
                 "returncode": code,
+                "pid": proc.pid,
+                "profile": profile,
                 "run_dir": str(run_dir),
-            }, indent=2, ensure_ascii=False))
+                "screen": screen.get("screen_summary", {}),
+            }
+            write_json(run_dir / "startup.result.json", result)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
             return 1
 
         ok, data = success_from_lastworld(profile, baseline_mtime, expected_world)
         if ok:
-            capture_screenshot(proc.pid, run_dir, "success")
+            screen = capture_screenshot(proc.pid, run_dir, "success")
             copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
-            print(json.dumps({
+            result = {
                 "ok": True,
+                "pid": proc.pid,
+                "profile": profile,
                 "ok_with_debug_popups": dismissals > 0,
                 "debug_popups_recorded": dismissals,
                 "strategy": plan.strategy,
                 "lastworld": data,
                 "run_dir": str(run_dir),
-            }, indent=2, ensure_ascii=False))
+                "screen": screen.get("screen_summary", {}),
+            }
+            write_json(run_dir / "startup.result.json", result)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
             return 0
 
         new_debug_size = capture_debug_delta(profile, debug_size, run_dir, dismissals + 1)
@@ -555,16 +681,171 @@ def run_startup(args: argparse.Namespace) -> int:
             dismissals += 1
         time.sleep(poll_seconds)
 
-    capture_screenshot(proc.pid, run_dir, "failure_timeout")
+    screen = capture_screenshot(proc.pid, run_dir, "failure_timeout")
     copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
     copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
-    print(json.dumps({
+    result = {
         "ok": False,
         "reason": "startup_timeout",
+        "pid": proc.pid,
+        "profile": profile,
         "strategy": plan.strategy,
         "run_dir": str(run_dir),
-    }, indent=2, ensure_ascii=False))
+        "screen": screen.get("screen_summary", {}),
+    }
+    write_json(run_dir / "startup.result.json", result)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
     return 1
+
+
+def run_json_command(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    stdout = proc.stdout.strip()
+    if not stdout:
+        return proc.returncode, {}, proc.stdout, proc.stderr
+    try:
+        payload = json.loads(stdout)
+    except Exception:
+        payload = {
+            "ok": False,
+            "reason": "invalid_json_stdout",
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+            "returncode": proc.returncode,
+        }
+    return proc.returncode, payload, proc.stdout, proc.stderr
+
+
+def run_probe(args: argparse.Namespace) -> int:
+    scenario = load_scenario(args.scenario)
+    profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
+    world = args.world or str(scenario.get("world", ""))
+    fixture = args.fixture if args.fixture is not None else str(scenario.get("fixture", ""))
+    fixture_profile = str(scenario.get("fixture_profile", "")).strip()
+    replace_existing_worlds = args.replace_existing_worlds or bool(scenario.get("replace_existing_worlds", False))
+    advance_count = int(args.advance_turns if args.advance_turns is not None else scenario.get("advance_turns", 0))
+    settle_seconds = float(args.settle_seconds if args.settle_seconds is not None else scenario.get("settle_seconds", 1.0))
+    artifact_pattern = args.artifact_pattern or str(scenario.get("artifact_pattern", "")).strip()
+    recommended_test_command = args.test_command or str(scenario.get("recommended_test_command", "")).strip()
+
+    start_cmd = [sys.executable, str(Path(__file__).resolve()), "start", "--profile", profile]
+    if world:
+        start_cmd.extend(["--world", world])
+    if fixture:
+        start_cmd.extend(["--fixture", fixture])
+    if fixture_profile:
+        start_cmd.extend(["--fixture-profile", fixture_profile])
+    if replace_existing_worlds:
+        start_cmd.append("--replace-existing-worlds")
+    if args.dry_run:
+        start_cmd.append("--dry-run")
+
+    start_rc, start_result, start_stdout, start_stderr = run_json_command(start_cmd)
+    if args.dry_run:
+        print(json.dumps({
+            "scenario": scenario,
+            "resolved_contract": {
+                "profile": profile,
+                "world": world,
+                "fixture": fixture,
+                "fixture_profile": fixture_profile,
+                "replace_existing_worlds": replace_existing_worlds,
+                "advance_turns": advance_count,
+                "settle_seconds": settle_seconds,
+                "artifact_pattern": artifact_pattern,
+                "recommended_test_command": recommended_test_command,
+            },
+            "startup_plan": start_result,
+            "start_command": start_cmd,
+        }, indent=2, ensure_ascii=False))
+        return 0
+
+    run_dir_value = str(start_result.get("run_dir", "")).strip()
+    run_dir = Path(run_dir_value) if run_dir_value else None
+    if start_rc != 0 or not start_result.get("ok"):
+        report = {
+            "ok": False,
+            "scenario": str(scenario.get("name", args.scenario)),
+            "reason": "startup_failed",
+            "startup": start_result,
+            "start_command": start_cmd,
+            "start_stdout": start_stdout,
+            "start_stderr": start_stderr,
+        }
+        if run_dir is not None:
+            write_json(run_dir / "probe.report.json", report)
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        return 1
+
+    pid = int(start_result.get("pid", 0))
+    if pid <= 0 or run_dir is None:
+        report = {
+            "ok": False,
+            "scenario": str(scenario.get("name", args.scenario)),
+            "reason": "startup_missing_runtime_details",
+            "startup": start_result,
+        }
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        return 1
+
+    debug_log = config_dir_for_profile(profile) / "debug.log"
+    artifact_start = debug_log.stat().st_size if debug_log.exists() else 0
+    screen_before = capture_screenshot(pid, run_dir, "probe_before")
+    advance_turns(pid, advance_count)
+    if settle_seconds > 0:
+        time.sleep(settle_seconds)
+    screen_after = capture_screenshot(pid, run_dir, "probe_after")
+
+    artifact_text = read_filtered_log_delta(debug_log, artifact_start)
+    artifact_path = run_dir / "probe.artifacts.log"
+    if artifact_text:
+        artifact_path.write_text(artifact_text, encoding="utf-8")
+    matched_lines = [line for line in artifact_text.splitlines() if artifact_pattern and artifact_pattern in line]
+
+    verdict = "inconclusive_no_artifact_match"
+    screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
+    if screen_summary.get("version_matches_repo_head") is False:
+        verdict = "inconclusive_version_mismatch"
+    elif matched_lines:
+        verdict = "artifacts_matched"
+    elif not artifact_text.strip():
+        verdict = "inconclusive_no_new_artifacts"
+
+    report = {
+        "ok": True,
+        "scenario": str(scenario.get("name", args.scenario)),
+        "contract": {
+            "profile": profile,
+            "world": world,
+            "fixture": fixture,
+            "fixture_profile": fixture_profile,
+            "replace_existing_worlds": replace_existing_worlds,
+            "advance_turns": advance_count,
+            "settle_seconds": settle_seconds,
+            "artifact_pattern": artifact_pattern,
+        },
+        "startup": start_result,
+        "screen": {
+            "status": "captured",
+            "before": screen_before.get("screen_summary", {}),
+            "after": screen_after.get("screen_summary", {}),
+        },
+        "tests": {
+            "status": "not_run",
+            "recommended_command": recommended_test_command,
+        },
+        "artifacts": {
+            "status": "captured" if artifact_text else "no_new_artifacts",
+            "path": str(artifact_path) if artifact_text else "",
+            "match_pattern": artifact_pattern,
+            "matched_lines": matched_lines,
+            "line_count": len(artifact_text.splitlines()) if artifact_text else 0,
+        },
+        "verdict": verdict,
+    }
+    write_json(run_dir / "probe.report.json", report)
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -580,6 +861,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
     start_p.add_argument("--world", default="", help="Explicit target world name.")
     start_p.add_argument("--fixture", default="", help="Install this fixture before startup.")
+    start_p.add_argument("--fixture-profile", default="", help="Fixture source profile; defaults to the target profile.")
     start_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
     start_p.add_argument("--dry-run", action="store_true", help="Resolve plan only; do not launch or press keys.")
 
@@ -595,7 +877,23 @@ def build_parser() -> argparse.ArgumentParser:
     install_p = subparsers.add_parser("install-fixture", help="Install a captured fixture into the target profile save dir.")
     install_p.add_argument("fixture", help="Fixture name to install.")
     install_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
+    install_p.add_argument("--fixture-profile", default="", help="Fixture source profile; defaults to the target profile.")
     install_p.add_argument("--replace", action="store_true", help="Replace existing worlds when installing.")
+
+    scenarios_p = subparsers.add_parser("list-scenarios", help="List packaged live-probe scenario contracts.")
+    scenarios_p.add_argument("--profile", default="", help="Ignored today; reserved for future per-profile scenario filtering.")
+
+    probe_p = subparsers.add_parser("probe", help="Run a packaged live-probe scenario contract.")
+    probe_p.add_argument("scenario", help="Scenario name, e.g. locker.weather_wait")
+    probe_p.add_argument("--profile", default="", help="Override scenario profile.")
+    probe_p.add_argument("--world", default="", help="Override scenario world.")
+    probe_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
+    probe_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
+    probe_p.add_argument("--advance-turns", type=int, default=None, help="Override the deterministic turn-advance count.")
+    probe_p.add_argument("--settle-seconds", type=float, default=None, help="Override post-action settle time.")
+    probe_p.add_argument("--artifact-pattern", default="", help="Override the artifact substring to match in the debug delta.")
+    probe_p.add_argument("--test-command", default="", help="Override the recommended deterministic test command recorded in the report.")
+    probe_p.add_argument("--dry-run", action="store_true", help="Resolve the scenario contract and startup plan only.")
 
     return parser
 
@@ -621,9 +919,14 @@ def main() -> int:
         return 0
     if args.command == "install-fixture":
         profile = resolve_profile_name(args.profile)
-        result = install_fixture(profile, args.fixture, replace=args.replace)
+        result = install_fixture(profile, args.fixture, replace=args.replace, fixture_profile=args.fixture_profile)
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
+    if args.command == "list-scenarios":
+        print(json.dumps({"scenarios": list_scenarios()}, indent=2, ensure_ascii=False))
+        return 0
+    if args.command == "probe":
+        return run_probe(args)
     parser.error(f"Unknown command: {args.command}")
     return 2
 
