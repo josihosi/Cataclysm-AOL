@@ -37,26 +37,40 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Locker Zone V2
+## 1. Current delivery target — Locker Zone V3
 
 **Status:** GREENLIT / ACTIVE
 
-Josef wants the locker roadmap active again and wants Locker Zone **V1** represented as a small bundled task set so it cannot be crossed off half-built.
-`SUCCESS.md` now treats V1 as a few bundled completion tasks; by that bundled definition, V1 is checkpointed and the next active locker slice is **V2**.
+Locker Zone **V2** is now checkpointed: the targeted locker suite proves the two-magazine / locker-ammo reload contract, and the live `dev` / `Sandy Creek` pass on current HEAD emitted the new ranged locker packet on a real save again.
+That makes **V3** the next active locker slice.
 
 Current job:
-- land **Locker Zone V2** ranged readiness and locker-based reload support
-- keep **Locker Zone V3** queued immediately after V2
-- if V2 work disproves any bundled V1 claim, reopen V1 first instead of pretending V2 can continue cleanly
+- land the first deliberate **Locker Zone V3** nuance slice without disturbing the simpler V1/V2 spine
+- start with weather-sensitive wardrobe judgment (coats / blankets / shorts / similar), not broad NPC personality simulation
+- if V3 work disproves any bundled V1/V2 claim, reopen the affected slice first instead of pretending nuance can stack on broken groundwork
 
 ### Immediate next move
-- define the minimal V2 contract first: basic ranged readiness, up to two compatible magazines, and locker-ammo reload support
-- wire that through the existing locker planner/service path without ballooning into V3 nuance
-- keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to the locker roadmap, not to stale Basecamp leftovers
+- define the smallest V3 contract worth landing first: one weather-sensitive outerwear choice lane with deterministic inputs / outputs
+- wire that through the existing locker planner/service path without regressing V2 ranged readiness / reload behavior
+- add narrow deterministic coverage before spending time on broader runtime probing
 
 ---
 
-## 2. Checkpointed — Locker Zone V1
+## 2. Checkpointed — Locker Zone V2
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+V2 is now considered done for now because the bundled V2 task set in `SUCCESS.md` is checked:
+- managed ranged loadouts can pull up to two compatible magazines from locker supply
+- selected compatible magazines can be topped off from locker-zone ammo and the supported weapon reloaded from that supply
+- deterministic coverage exists for the V2 contract
+- proportional runtime proof is recorded on the current binary
+
+If later code work or runtime evidence shows any one of those bundled claims is false or incomplete, reopen V2 immediately.
+
+---
+
+## 3. Checkpointed — Locker Zone V1
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -68,20 +82,6 @@ That bundled close-out is meant to stop false completion:
 - V1 has deterministic + proportional runtime proof recorded
 
 If later code work shows any one of those bundled claims is false or incomplete, reopen V1 immediately.
-
----
-
-## 3. Greenlit / queued after V2 — Locker Zone V3
-
-**Status:** GREENLIT / QUEUED
-
-After V2, continue straight into Locker Zone V3:
-- seasonal dressing / winter-vs-summer logic
-- coats / blankets / shorts / similar weather-sensitive wardrobe choices
-- per-NPC overrides and nuance
-
-Do **not** pull V3 detail into V2 unless the docs are updated first.
-V2 stays about basic ranged readiness/reload support; V3 is the nuance pass.
 
 ---
 

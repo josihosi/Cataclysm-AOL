@@ -8,19 +8,19 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Locker Zone V2 is the active lane.
+Locker Zone V3 is the active lane.
 
 Execution queue:
-1. define the minimal V2 contract clearly before code
-   - basic ranged readiness
-   - up to two compatible magazines when useful
-   - locker-ammo reload support
-2. extend the existing locker planner/service path for that V2 contract without dragging in V3 nuance
-3. add/update the narrow deterministic coverage for V2 magazine + reload behavior
-4. rerun the honest locker packet after the V2 slice lands
+1. define the first V3 weather-sensitive contract clearly before code
+   - what environment inputs count (temperature / weather / season)
+   - which outerwear choices are in scope first
+   - what still stays out of scope for later V3 follow-ups
+2. extend the existing locker planner/service path only far enough to express that first V3 choice lane
+3. add/update the narrow deterministic coverage for the chosen V3 weather-sensitive behavior
+4. only do runtime / harness probing once the first V3 slice lands or if deterministic evidence cannot settle the changed path honestly
 
 Still true:
-- Locker Zone V1 stays closed only because its whole bundled task set is checked in `SUCCESS.md`
-- if V2 work disproves any bundled V1 claim, reopen V1 first
-- Locker Zone V3 is already greenlit, but it waits until V2 is actually closed
+- Locker Zone V1 and V2 stay closed only because their bundled task sets are checked in `SUCCESS.md`
+- if V3 work disproves any bundled V1/V2 claim, reopen the affected slice first
+- keep V3 from turning into giant NPC-personality soup
 - keep the finished Basecamp follow-through closed unless Josef explicitly reopens it

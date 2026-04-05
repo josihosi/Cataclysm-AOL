@@ -17,20 +17,20 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Locker Zone V2
 
-Status: ACTIVE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] Locker service can select up to two compatible magazines from locker supply when a managed ranged loadout needs them.
-- [ ] Locker service can reload supported ranged weapons from locker-zone ammo supply.
-- [ ] V2 ranged-readiness logic stays basic and deterministic instead of ballooning into V3 fashion/season nuance.
-- [ ] Deterministic coverage exists for the V2 ranged readiness / reload behavior.
-- [ ] Proportional runtime validation for V2 is recorded in `TESTING.md`.
-- [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
+- [x] Locker service can select up to two compatible magazines from locker supply when a managed ranged loadout needs them.
+- [x] Locker service can reload supported ranged weapons from locker-zone ammo supply.
+- [x] V2 ranged-readiness logic stays basic and deterministic instead of ballooning into V3 fashion/season nuance.
+- [x] Deterministic coverage exists for the V2 ranged readiness / reload behavior.
+- [x] Proportional runtime validation for V2 is recorded in `TESTING.md`.
+- [x] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
-- V2 is the active next locker slice after the bundled V1 close-out.
+- V2 is checkpointed because the targeted locker suite plus the current-binary live packet now cover the bundled exit state.
 - If V2 work disproves any bundled V1 claim, reopen V1 first instead of pretending V2 can continue cleanly.
-- V3 stays queued until V2 is actually closed.
+- No Josef-specific follow-up checks are currently needed for this closed slice.
 
 ---
 
@@ -55,7 +55,7 @@ Notes:
 
 ## Locker Zone V3
 
-Status: GREENLIT / QUEUED AFTER V2
+Status: ACTIVE
 
 Success state:
 - [ ] Seasonal dressing / winter-vs-summer wardrobe logic exists.
@@ -66,8 +66,8 @@ Success state:
 - [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
-- V3 is already greenlit, but it stays queued until V2 is actually done.
-- Do not quietly drag V3 nuance into V2.
+- V3 is active now that V2 is checkpointed.
+- Do not quietly let V3 nuance undo the simpler V1/V2 deterministic spine.
 
 ---
 
