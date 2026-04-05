@@ -90,11 +90,14 @@ Latest live-probe status for the open legwear lane:
   - that reload reached gameplay, but it did **not** emit a fresh legwear locker packet in `debug.log`
   - switched to the harness fixture path (`install-fixture basecamp_dev_manual_2026-04-02 --profile dev --replace`), restaged the same cold probe, advanced turns in live gameplay through Peekaboo, and saved
   - rereading the saved world after that run still showed `Bruna Priest` in `shorts_cargo` with `pants_cargo` still sitting on the locker tile, so that fixture path is also not yet a truthful live legwear reproducer
-- same-day probe-path follow-up on current HEAD (`6b6de8d477-dirty`) narrowed the blocker further instead of pretending the silence was informative:
-  - added temporary queue-drop / skip-reason tracing inside `process_camp_locker_downtime`, then rebuilt with `make -j4 TILES=1 cataclysm-tiles`
-  - a plain fresh harness load on the restored current-save path still produced **no** `camp locker:` lines at all in the new log segment, so this save shape is not even reaching the instrumented locker downtime path on load
-  - the saved manual backup metadata at `.userdata/dev/save/manual_probe_backups/20260405_113052/current-char-zones.json` still shows the historical `CAMP_LOCKER` zone at `(2841,681,0)`, so the current failure is not yet narrowed to a simple “locker zone never existed” claim
-  - meaning: the next honest runtime probe must either recover a save shape that definitely reaches `worker_downtime` / `process_camp_locker_downtime` after load or instrument slightly higher in the caller path; repeated plain startup loads are no longer the missing evidence
+- same-day probe-path follow-up on current HEAD (`97eb3adfdc-dirty`) narrowed the blocker further instead of pretending the silence was informative:
+  - added the smallest caller-side trace above `process_camp_locker_downtime` in `npc::move()` / `npc::worker_downtime`, then rebuilt with `make -j4 TILES=1 cataclysm-tiles`
+  - a plain fresh harness load on the restored current-save path still produced **no** fresh `camp locker:` lines at all in the new log segment, so autoload by itself is not an honest legwear runtime probe on this save
+  - focusing the already-loaded game and sending live post-load turn advance through Peekaboo (`peekaboo press tab --count 3 --app cataclysm-tiles --window-id ...`) immediately re-entered the locker service loop on the current binary, proving the missing evidence class is live gameplay after load rather than another ceremonial startup rerun
+  - the resulting packet was for **Ricky Broughton**, not Bruna: `camp locker: queued Ricky Broughton state-dirty ... plan=[pants upgrade antarvasa ... -> cargo pants (poor fit)<pants_cargo>]`, followed by the matching `before` / `after` / `serviced` lines at `23:00:45`
+  - packed-save audit also corrected the save-edit assumption: the restored current dev save is reading the packed `./zzip` overmap/map archives, not just loose extracted staging files; recompressing the staged locker tile back into `maps/3.0.0.zzip` made the `pants_cargo` candidate reachable at runtime again
+  - Bruna's staged overmap wardrobe (`shorts_cargo` + `camp_locker_wake_dirty`) still did **not** hydrate into her live worker state, so the remaining blocker is now specifically the active NPC worn-state source for the current save, not proof that the locker loop or locker tile no longer work
+  - the saved manual backup metadata at `.userdata/dev/save/manual_probe_backups/20260405_113052/current-char-zones.json` still shows the historical `CAMP_LOCKER` zone at `(2841,681,0)`, so the current failure is still not narrowed to a simple “locker zone never existed” claim
 
 Meaning:
 - Locker Zone V1/V2 remain preserved under the new V3 code path at deterministic-suite level
@@ -112,9 +115,9 @@ Meaning:
    - keep `shorts_cargo` vs `pants_cargo` as the clean deterministic-shaped wardrobe pair
    - do **not** count the old outerwear save ritual as a valid legwear reproducer anymore until it emits or persists the legwear swap on a fresh run again
 2. next honest agent-side options are:
-   - recover the historical dirty-worker/current-save trigger state that used to produce the locker packet on load
-   - craft the smallest save shape that guarantees the staged worker reaches `worker_downtime` / `process_camp_locker_downtime` after load
-   - if the runtime still never enters locker downtime, add the smallest caller-side trace above `process_camp_locker_downtime` instead of repeating the same silent startup ritual
+   - recover the real active NPC worn-state source that the restored current save hydrates for Bruna, instead of only editing the overmap entry
+   - use the now-proven packed-save + post-load live-turn path to stage a clean `shorts_cargo` / `pants_cargo` pair onto a worker who definitely reaches locker service after load
+   - keep using live post-load gameplay as the probe path; do not treat another plain startup-only harness rerun as new evidence unless the save shape changes materially
 3. only after the probe path is trustworthy, capture the real locker planner/service path under cold and hot legwear setups
 4. keep per-NPC personality nuance out unless the legwear live probe exposes a real need for a smaller corrective slice
 
