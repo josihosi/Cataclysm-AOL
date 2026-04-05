@@ -317,7 +317,7 @@ The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is st
 - The camp also now has a persisted locker-policy stub: the menu says which managed slots are allowed, while the zone will later answer which actual items are available.
 - The locker planner is no longer dead paper: deterministic helpers classify locker items, gather zone candidates, keep the best current managed item, mark duplicate current gear for cleanup, and now feed a live service path that lets idle assigned-camp NPCs perform an infrequent locker reevaluation during worker downtime.
 - That downtime path now has wake/dirty queue plumbing and temporary reservation filtering too, with deterministic coverage for reservation-aware candidate gathering and one-worker-at-a-time first-service sequencing.
-- It is still deliberately narrow: it can clean duplicate managed gear and apply obvious missing-slot/upgraded equips from the locker zone, but it still lacks trustworthy live proof of the actual camp-assigned downtime behavior — so talk about it as an agent-smoked orchestration slice, not as a finished locker system.
+- It is still deliberately narrow: it can clean duplicate managed gear and apply obvious missing-slot/upgraded equips from the locker zone, and it now has agent-side live proof for the camp-assigned downtime path on the current binary. Talk about it as a narrow but real locker-system slice, not as a vague paper design — and keep the next work on expanding/refining that locker lane rather than re-proving its existence.
 
 ### Follower-NPC caveat
 Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.

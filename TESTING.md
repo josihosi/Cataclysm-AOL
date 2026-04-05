@@ -80,8 +80,11 @@ Meaning:
 
 ## Pending probes
 
-None for the finished Basecamp bark / craft slice.
-If this area is reopened later, add only the new missing evidence instead of resurrecting the old handoff packet by habit.
+### Locker Zone active-lane rule
+
+Locker Zone is the current active lane.
+Use the existing locker packet below as the baseline, then add only the new missing evidence for the next locker-zone change.
+Do **not** spend more probe budget on the finished Basecamp bark / craft slice unless Josef explicitly reopens it.
 
 ---
 

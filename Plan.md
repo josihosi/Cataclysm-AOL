@@ -34,21 +34,26 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — waiting for next greenlit lane
+## 1. Current delivery target — Locker Zone follow-through
 
-**Status:** WAITING FOR GREENLIGHT
+**Status:** GREENLIT / ACTIVE
 
-The previous Basecamp bark / board-routing / craft-handoff slice is closed and should not stay in the active roadmap:
-- the real `handle_heard_camp_request` structured `show_board` path emits the richer handoff snapshot
-- that structured reply carries `planner_move` + overmap context when a camp origin is available
-- live natural speech like `show me the board` still stays on the short spoken bark path
-- the current crafting/bark flow is considered done enough for this slice and is no longer waiting on a separate feel-gate here
+Josef explicitly wants the locker / zone lane on top as the next thing worked on.
+Stop treating it as parked, optional, or pending another greenlight.
 
-There is no currently selected next agent-side lane in the roadmap.
-Do **not** spend more runs revalidating the same Basecamp packet unless the code changes or Josef explicitly reopens it.
+Current known baseline:
+- `CAMP_LOCKER` is the explicit physical supply zone
+- the locker-policy stub exists
+- planner/service/reservation groundwork exists
+- agent-side deterministic + startup + live downtime proof exists on the current binary
+
+Current job:
+- advance the locker-zone lane from proved groundwork to the next real product slice
+- keep Basecamp bark / craft / board work closed unless Josef explicitly reopens it
 
 ### Immediate next move
-- Ask Josef to greenlight one parked option from section 3, or name a different lane.
+- work directly on the next locker-zone behavior chunk
+- keep `Plan.md`, `TODO.md`, and `TESTING.md` aligned to this locker-first state instead of asking for fresh permission again
 
 ---
 
