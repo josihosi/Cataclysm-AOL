@@ -2585,8 +2585,7 @@ next={{next_token}}
 
 static std::string default_basecamp_board_handoff_snapshot_template()
 {
-    return R"(board=show_board
-{{planning_snapshot}}active={{active_count}}
+    return R"(active={{active_count}}
 archived={{archived_count}}
 {{jobs}})";
 }
@@ -2735,8 +2734,7 @@ std::string camp_board_status_bark( const std::vector<camp_llm_request> &request
                           camp_request_subject_list( active_subjects ) );
 }
 
-static std::string camp_board_handoff_snapshot_impl( const std::optional<tripoint_abs_omt> &origin,
-        const std::vector<camp_llm_request> &requests )
+static std::string camp_board_handoff_snapshot_body( const std::vector<camp_llm_request> &requests )
 {
     const std::string board_templ = llm_prompt_templates::load( basecamp_board_handoff_snapshot_filename,
                                     default_basecamp_board_handoff_snapshot_template(),
@@ -2778,7 +2776,7 @@ static std::string camp_board_handoff_snapshot_impl( const std::optional<tripoin
 
     return llm_prompt_templates::render( board_templ,
     {
-        { "{{planning_snapshot}}", origin.has_value() ? basecamp_board_planning_snapshot( *origin ) : std::string() },
+        { "{{planning_snapshot}}", std::string() },
         { "{{active_count}}", std::to_string( active_requests ) },
         { "{{archived_count}}", std::to_string( archived_requests ) },
         { "{{jobs}}", jobs.empty() ? "jobs=none\n" : jobs }
@@ -2787,13 +2785,14 @@ static std::string camp_board_handoff_snapshot_impl( const std::optional<tripoin
 
 std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &requests )
 {
-    return camp_board_handoff_snapshot_impl( std::nullopt, requests );
+    return string_format( "board=show_board\n%s", camp_board_handoff_snapshot_body( requests ) );
 }
 
 std::string camp_board_handoff_snapshot( const tripoint_abs_omt &origin,
         const std::vector<camp_llm_request> &requests )
 {
-    return camp_board_handoff_snapshot_impl( origin, requests );
+    return string_format( "board=show_board\n%s%s", basecamp_board_planning_snapshot( origin ),
+                          camp_board_handoff_snapshot_body( requests ) );
 }
 
 std::string format_camp_reply_log_packet( std::string_view reply_kind,

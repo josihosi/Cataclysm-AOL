@@ -1,4 +1,3 @@
-board=show_board
-{{planning_snapshot}}active={{active_count}}
+active={{active_count}}
 archived={{archived_count}}
 {{jobs}}

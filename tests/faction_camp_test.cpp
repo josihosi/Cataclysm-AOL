@@ -1413,6 +1413,53 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     overmap_buffer.clear_mongroups();
   }
 
+  SECTION("board handoff keeps planner context as a prefixed layer over the deterministic board body") {
+    const tripoint_abs_omt origin(1605, 1605, 0);
+
+    overmap_buffer.clear_mongroups();
+    for (int dy = -2; dy <= 2; ++dy) {
+      for (int dx = -2; dx <= 2; ++dx) {
+        overmap_buffer.ter_set(
+            tripoint_abs_omt(origin.x() + dx, origin.y() + dy, origin.z()),
+            oter_id("field"));
+      }
+    }
+
+    get_map().add_camp(origin, "faction_camp", false);
+
+    const std::vector<camp_llm_request> requests = {
+        camp_llm_request{.request_id = 7,
+                         .requested_item_query = "bandages",
+                         .requested_count = 5,
+                         .chosen_recipe_name = "sterile bandage",
+                         .status = "blocked",
+                         .approval_state = "not_needed"},
+        camp_llm_request{.request_id = 9,
+                         .requested_item_query = "bandages",
+                         .requested_count = 2,
+                         .chosen_recipe_name = "bandages",
+                         .status = "completed",
+                         .approval_state = "approved",
+                         .assigned_worker_name = "Cara"}};
+
+    const std::string board_snapshot = camp_board_handoff_snapshot(requests);
+    const std::string board_prefix = "board=show_board\n";
+    REQUIRE(board_snapshot.find(board_prefix) == 0);
+    const std::string board_body = board_snapshot.substr(board_prefix.size());
+    REQUIRE_FALSE(board_body.empty());
+
+    const std::string planner_snapshot = camp_board_handoff_snapshot(origin, requests);
+    CAPTURE(planner_snapshot);
+    CHECK(planner_snapshot.find(
+              "board=show_board\nplanner_move=stay | move_omt dx=<signed_int> "
+              "dy=<signed_int>\n") == 0);
+    REQUIRE(planner_snapshot.size() >= board_body.size());
+    CHECK(planner_snapshot.rfind(board_body) == planner_snapshot.size() - board_body.size());
+
+    overmap_buffer.clear_camps(origin.xy());
+    overmap_buffer.clear_mongroups();
+  }
+
   SECTION("camp request router keeps structured board handoff separate from spoken board bark") {
     static const mongroup_id GROUP_ZOMBIE_HORDE("GROUP_ZOMBIE_HORDE");
     clear_avatar();
