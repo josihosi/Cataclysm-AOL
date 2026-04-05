@@ -14,6 +14,23 @@ _Current actionable queue. Keep this aligned with `Plan.md`, not with last week�
 - [x] Revalidate the latest bark-wording dirty tree with compile / targeted tests / startup harness so Josef is not testing stale nonsense.
 - [ ] Josef live-check the current Basecamp AI bark pass for tone/feel on craft / board / blocker replies.
 
+## GREEN now — Locker Zone v1 patch 1 groundwork
+- [x] Add an explicit `CAMP_LOCKER` Zone Manager type as the future physical locker supply marker.
+- [x] Add a camp-wide locker policy data model and persist it through basecamp save/load.
+- [x] Expose a first faction-camp `Locker Policy` direct action that toggles managed slots and shows whether a locker zone exists yet.
+- [x] Add a deterministic locker groundwork contract in `tests/faction_camp_test.cpp` for zone registration + policy round-trip.
+- [x] Compile-check the touched locker-groundwork objects (`basecamp`, `faction_camp`, `mission_companion`, `savegame_json`, `faction_camp_test`).
+- [x] Finish a full `cata_test` relink/run so the new locker-groundwork contract actually executes, not just compiles.
+- [x] Run startup harness + save/load smoke on a fresh binary after the locker-groundwork relink finishes.
+- [x] Land the first real locker behavior groundwork: slot classifier + locker-zone candidate gathering with deterministic coverage.
+- [x] Continue the real locker behavior slice: planner-level duplicate cleanup + obvious-upgrade rules on top of the landed classifier/candidate helpers.
+- [x] Wire the new locker loadout plan into actual NPC locker reevaluation / equip-drop behavior instead of leaving it as deterministic planning only.
+- [x] Re-run the current locker slice through startup harness on a fresh current binary; after relinking the stale pre-locker `cataclysm-tiles` build with `make -j4 TILES=1 cataclysm-tiles`, `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` passed cleanly on `.userdata/dev/harness_runs/20260405_043857` with zero recorded debug popups.
+- [x] Land the locker orchestration tail: wake/dirty queue + temporary reservation logic now exist, and the first-service self-requeue livelock for already-queued NPCs is fixed.
+- [x] Revalidate that orchestration tail on a fresh rebuild (`make -j4 tests`, `./tests/cata_test "[camp][locker]"`, `make -j4 TILES=1 cataclysm-tiles`, and startup harness `dev` / `Sandy Creek` on `.userdata/dev/harness_runs/20260405_054403`).
+- [x] Next locker follow-up is now the actual live-proof tail: run a live downtime-driven locker probe on the landed wake/dirty queue/reservation path instead of pretending startup/load is the same thing. Same method, same save, different binary: on fresh harness load `.userdata/dev/harness_runs/20260405_101148`, an 120-turn wait probe in `Sandy Creek` now drives `config/debug.log` through `queued -> servicing -> plan -> serviced` for Ricky Broughton after the transient-post-load assignee refresh fix.
+- [ ] Josef live-check Locker Zone v1 on `dev` / `Sandy Creek`: stand near `Debug Central`, let camp time advance, and confirm locker behavior feels sane (one worker at a time, obvious upgrades/duplicate cleanup only, displaced gear back on the locker tile, no spammy churn).
+
 ## PARKED reference — upstreamable deterministic PR slice
 - [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
 - [x] Keep deterministic quantity parsing intact (numeric quantities plus the current small number-word support) while tightening the trigger boundary.

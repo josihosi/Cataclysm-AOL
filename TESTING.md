@@ -170,22 +170,28 @@ Observed summary:
 - Added `camp_locker_zone_candidate_gathering` in `tests/faction_camp_test.cpp`.
 - Added `camp_locker_loadout_planning` in `tests/faction_camp_test.cpp`.
 - Added `camp_locker_service_equips_upgrades_and_returns_replaced_gear` in `tests/faction_camp_test.cpp`.
+- Added `camp_locker_zone_candidate_gathering_respects_reservations` in `tests/faction_camp_test.cpp`.
+- Added `camp_locker_downtime_queue_processes_one_worker_at_a_time` in `tests/faction_camp_test.cpp`.
+- Added `camp_locker_downtime_rehydrates_transient_assignees` in `tests/faction_camp_test.cpp`.
 - Intended contract now covers:
   - `CAMP_LOCKER` zone type is registered.
   - a basecamp locker policy defaults to all managed slots enabled.
   - toggled-off slots survive basecamp JSON save/load round-trip.
   - representative items classify into the expected managed locker slots (underwear/socks/shoes/pants/shirt/vest/body armor/helmet/glasses/bag/melee/ranged).
   - locker-zone candidate gathering buckets only items on `CAMP_LOCKER` tiles and respects disabled policy slots.
+  - locker-zone candidate gathering also respects temporary reservations so the next worker does not target the same candidate blindly.
   - locker loadout planning keeps the best current managed item, marks duplicate current gear for cleanup, equips missing managed categories, selects obvious upgrades only when the candidate clears the slot threshold, and leaves disabled categories out of the plan entirely.
   - the first live locker service helper actually equips an obvious upgrade from the locker zone and returns the replaced managed item back to locker storage.
-- 2026-04-05: after a fresh top-level relink (`make -j4 tests cataclysm-tiles`), `./tests/cata_test "[camp][locker]"` passed on dirty `14e7f9afa3`.
-  - result: passed (`62 assertions in 5 test cases`)
-  - meaning: the locker groundwork, planner-level duplicate-cleanup/upgrade rules, and the first live equip/drop service helper all executed on a freshly relinked `cata_test`, not just as compiled object files
+  - downtime locker orchestration services one worker at a time with cooldown spacing between passes.
+  - a transiently empty camp assignee cache can be rehydrated before downtime locker queue sanitization, which is the post-load shape the live save hit.
+- 2026-04-05: after a fresh top-level relink (`make -j4 tests cataclysm-tiles`), `./tests/cata_test "[camp][locker]"` passed on dirty `f1e786db48`.
+  - result: passed (`94 assertions in 8 test cases`)
+  - meaning: the locker groundwork, planner-level duplicate-cleanup/upgrade rules, queue/reservation tail, and transient-assignee rehydration fix all executed on a freshly relinked `cata_test`, not just as compiled object files
 
 ### Compile evidence
 - 2026-04-05: fresh top-level relink `make -j4 tests cataclysm-tiles`
   - result: passed
-  - meaning: the current locker policy/menu/save-load plumbing, classifier/candidate helpers, live locker service hook, and the new loadout-planning/service tests all rebuilt cleanly together on this Mac
+  - meaning: the current locker policy/menu/save-load plumbing, classifier/candidate helpers, live locker service hook, queue/reservation path, and post-load assignee-refresh fix all rebuilt cleanly together on this Mac
 
 ### Live smoke / harness evidence
 - 2026-04-05: earlier groundwork-only startup/load smoke still stands:
@@ -193,22 +199,35 @@ Observed summary:
   - result: passed on the fresh post-relink groundwork tree with zero recorded debug popups
   - artifact: `.userdata/dev/harness_runs/20260405_024224`
   - meaning: the menu/save-load groundwork tree launched and loaded the known save cleanly after the forced rebuild
-- 2026-04-05: fresh startup harness on the current execution tree now passes on a freshly relinked current binary.
+- 2026-04-05: fresh startup harness on the current execution tree now passes on freshly relinked current binaries.
   - commands: `make -j4 TILES=1 cataclysm-tiles`, then `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-  - result: passed with zero recorded debug popups on `.userdata/dev/harness_runs/20260405_043857`
+  - result: passed with zero recorded debug popups on `.userdata/dev/harness_runs/20260405_043857`, `.userdata/dev/harness_runs/20260405_054403`, and the post-assignee-refresh-fix rerun `.userdata/dev/harness_runs/20260405_101148`
   - replaced false alarm: the earlier popup/dismissal failures (`.userdata/dev/harness_runs/20260405_034420`, `.userdata/dev/harness_runs/20260405_034724`, `.userdata/dev/harness_runs/20260405_034951`, `.userdata/dev/harness_runs/20260405_041728`) were not trustworthy evidence against the current source tree because the repo-local `cataclysm-tiles` binary was stale until the explicit `TILES=1` relink
   - pre-slice comparison artifacts still useful: `.userdata/dev/harness_runs/20260405_032319`, `.userdata/dev/harness_runs/20260405_032641`
-  - meaning: current locker execution code now has fresh startup/load smoke again, but this is still **not** live proof of the downtime-triggered locker behavior itself
-- Important separation: current evidence now proves deterministic locker planning, the first live equip/drop helper contract, **and** fresh startup/load on the current execution tree; it still does **not** prove live downtime-triggered locker behavior for the camp-assigned NPC path.
 
-### Next live packet
-Now that the startup/load path is green again:
+### Live behavior evidence
+- Probe method stayed the same before and after the fix: harness-load `dev` / `Sandy Creek`, wait for normal gameplay, then inject a plain wait-turn packet near `Debug Central` with Peekaboo and inspect the same `config/debug.log` sink.
+- Pre-fix evidence on the same save/method: the loaded game only spammed `camp locker: queued Ricky Broughton wake_dirty=false queue_size=1 next_turn=0`, which exposed that the live post-load assignee state was being sanitized away before service.
+- 2026-04-05 post-fix rerun on `.userdata/dev/harness_runs/20260405_101148`: a 120-turn wait packet produced real live downtime service for the camp-assigned path.
+  - result: passed
+  - live behavior meaning: the real `Sandy Creek` save now advances from idle/waiting time into actual locker reevaluation for Ricky Broughton instead of stalling at queue entry forever
+
+### Logging / artifact visibility
+- The post-fix live probe landed explicit locker orchestration evidence in `.userdata/dev/config/debug.log` at `10:12:24.706`:
+  - `camp locker: queued Ricky Broughton wake_dirty=false queue_size=1 next_turn=0`
+  - `camp locker: servicing Ricky Broughton queue_size=1 now=5227550`
+  - `camp locker: plan for Ricky Broughton locker_tiles=1 current_items=12 candidates=0 changed_slots=1 reservations=0`
+  - `camp locker: serviced Ricky Broughton applied=true queue_remaining=0 next_turn=5228150`
+- Meaning: the queue survived post-load validation, the worker reached real service, the planner ran against the live locker tile, and the runtime recorded the resulting cooldown turn.
+
+### Future Josef play packet
 - Keep `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` as the baseline launch/load smoke for later locker iterations.
-- Re-run the already-scoped locker groundwork packet:
-  - open the faction camp menu and enter `Locker Policy`
-  - toggle 2-3 slots off, exit, save, quit, reload, and confirm the toggles persist
-  - create a `Basecamp: Locker` zone and confirm the menu hint flips from `not defined yet` to `defined`
-- Next, add a new packet specifically for managed duplicate cleanup and obvious-upgrade equips on the live downtime-driven locker path; do **not** pretend the current deterministic helper coverage or startup/load smoke is enough to stand in for that live probe.
+- Josef live-check packet on `dev` / `Sandy Creek`:
+  - stand near `Debug Central` long enough for camp downtime to tick
+  - confirm only one worker reevaluates at a time
+  - confirm obvious upgrades / duplicate cleanup happen without churny gear swapping
+  - confirm displaced gear winds up back on the locker tile
+  - confirm the behavior is legible enough in actual play, not just in `debug.log`
 
 ## Signoff gates
 
