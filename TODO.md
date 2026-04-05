@@ -19,8 +19,14 @@ Execution queue:
    - `locker.weather_wait`
    - `chat.nearby_npc_basic`
    - `ambient.weird_item_reaction`
-3. package one compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
-4. only after the footing is stable, move toward the distinguished hackathon runways
+3. add the first useful scenario-setup helpers so repeated probes stop depending on debug-menu folklore
+   - debug spawn item
+   - debug spawn monster
+   - debug spawn follower NPC
+   - assign NPC to camp
+   - assign NPC to follower
+4. package one compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
+5. only after the footing is stable, move toward the distinguished hackathon runways
    - chat interface over dialogue branches
    - tiny ambient-trigger NPC model
 

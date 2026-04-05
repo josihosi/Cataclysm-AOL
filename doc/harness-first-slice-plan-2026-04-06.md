@@ -54,6 +54,21 @@ These do not need to be perfect forever; they need to be stable enough to compos
 - `note_inconclusive(reason)`
 - `report_probe(screen, tests, artifacts)`
 
+### D. Scenario-setup helpers (next wave after the first slice)
+These are high-value because they turn repeated debug-menu ritual into reusable probe setup.
+
+- `debug_spawn_item(item_id, count=1, location=near_player_or_target_tile)`
+- `debug_spawn_monster(monster_id, location=near_player_or_target_tile)`
+- `debug_spawn_follower_npc(template_or_name, location=near_player)`
+- `assign_npc_to_camp(npc_selector, camp_selector)`
+- `assign_npc_to_follower(npc_selector)`
+
+These do not all need to land on day one, but they belong on the near harness roadmap because they directly support:
+- locker setup
+- chat setup
+- ambient-reaction setup
+- repeatable scenario staging without hand-driving the debug UI every single time
+
 ## First concrete scenarios
 
 ### 1. `locker.weather_wait`
@@ -110,7 +125,13 @@ The harness and later implementation should assume:
 1. make `locker.weather_wait` reproducible with the current proven save path
 2. package the report format: **screen / tests / artifacts**
 3. formalize `chat.nearby_npc_basic` around the current known controls (`C,t` and `C,b`)
-4. only then shape the ambient-reaction scenario enough to drive the tiny-model design
+4. add the first useful scenario-setup helpers so probes stop depending on hand-piloted debug-menu rituals
+   - debug spawn item
+   - debug spawn monster
+   - debug spawn follower NPC
+   - assign NPC to camp
+   - assign NPC to follower
+5. only then shape the ambient-reaction scenario enough to drive the tiny-model design
 
 ## Non-goals for this slice
 

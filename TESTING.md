@@ -132,9 +132,15 @@ Meaning:
    - `locker.weather_wait`
    - `chat.nearby_npc_basic`
    - `ambient.weird_item_reaction`
-3. after one harness slice is trustworthy, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
-4. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
-5. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
+3. add the first scenario-setup helpers that reduce debug-menu ritual
+   - debug spawn item
+   - debug spawn monster
+   - debug spawn follower NPC
+   - assign NPC to camp
+   - assign NPC to follower
+4. after one harness slice is trustworthy, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
+5. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
+6. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
 
 ### Non-blocking Josef notes
 
