@@ -40,6 +40,7 @@ Avoid bundling broad roadmap rewrites into this commit unless the behavior genui
 ### 2. Ledger/doc alignment commit
 Contains only:
 - `Plan.md`
+- `SUCCESS.md`
 - `TODO.md`
 - `TESTING.md`
 - maybe a small related note/doc file
@@ -81,9 +82,10 @@ Before committing a behavior/probe checkpoint:
 - run the narrowest honest validation for the slice
 - make sure `Plan.md`, `TODO.md`, and `TESTING.md` reflect the new truth if the active state actually changed
 
-## Interaction with Plan / TODO / TESTING
+## Interaction with Plan / SUCCESS / TODO / TESTING
 
 - `Plan.md` tells you what the active target is.
+- `SUCCESS.md` says what "done" means for that target and what remains unchecked.
 - `TODO.md` is the short queue for moving that target forward.
 - `TESTING.md` says what evidence still matters.
 - `COMMIT_POLICY.md` tells you when to checkpoint the work instead of letting it rot in the tree.

@@ -2,6 +2,7 @@
 Follow all instructions in this file.
 Read `Plan.md` first and treat it as the canonical roadmap.
 Then read `SUCCESS.md` for the explicit exit criteria of the current roadmap item.
+The first unchecked row in the active success-state block is the default next target; do not invent a different chunk unless you first update the ledger to explain why.
 Keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned with reality, but keep them lean:
 - `Plan.md` = roadmap / active target
 - `SUCCESS.md` = success-state ledger / crossed-off exit criteria

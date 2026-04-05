@@ -50,12 +50,17 @@ Current known baseline:
 - planner/service/reservation groundwork exists
 - agent-side deterministic + startup + live downtime proof exists on the current binary
 
+Selected next chunk:
+- finish **locker dirty-trigger follow-through** beyond the already-proved wake/policy path
+- specifically: make the camp react when new eligible locker gear appears and when an assignee loses/drops important managed gear
+
 Current job:
-- advance the locker-zone lane from proved groundwork to the next real product slice
+- land that dirty-trigger follow-through as the next real locker-zone product slice
+- record its exact exit criteria in `SUCCESS.md`
 - keep Basecamp bark / craft / board work closed unless Josef explicitly reopens it
 
 ### Immediate next move
-- work directly on the next locker-zone behavior chunk
+- work directly on the selected locker dirty-trigger chunk
 - keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to this locker-first state instead of asking for fresh permission again
 - never treat Josef self-testing as a blocker here; if Josef-specific tests exist, write them down and keep moving
 

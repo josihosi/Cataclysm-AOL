@@ -54,7 +54,7 @@ Meaning:
 - this area has no standing pending handoff packet anymore
 
 ### Locker Zone v1 baseline
-Latest relevant agent-side baseline for the checkpointed locker tree:
+Latest relevant agent-side baseline for the active locker lane:
 - `make -j4 tests`
 - `./tests/cata_test "[camp][locker]"`
   - passed at `94 assertions in 8 test cases` on dirty `1a72369cfb`
@@ -76,7 +76,8 @@ Latest relevant agent-side baseline for the checkpointed locker tree:
 Meaning:
 - locker groundwork, planner/service logic, and queue/reservation tail are covered agent-side
 - the current binary compiles, relinks, starts cleanly, and has one real downtime-driven live locker packet on the current binary
-- this lane is no longer missing technical proof; only revisit it if later code changes break the locker path again
+- this packet is the baseline, not the next proof target
+- the next proof target should be the selected dirty-trigger follow-through chunk, not another re-proof of locker existence
 
 ---
 
@@ -85,8 +86,21 @@ Meaning:
 ### Locker Zone active-lane rule
 
 Locker Zone is the current active lane.
-Use the existing locker packet below as the baseline, then add only the new missing evidence for the next locker-zone change.
+Use the existing locker packet below as the baseline, then add only the new missing evidence for the selected dirty-trigger follow-through chunk.
 Do **not** spend more probe budget on the finished Basecamp bark / craft slice unless Josef explicitly reopens it.
+
+### Selected next evidence target — locker dirty-trigger follow-through
+
+Prefer this order unless the implementation proves otherwise:
+1. deterministic coverage that new eligible locker gear can dirty/queue relevant assignees
+2. deterministic coverage that losing/dropping important managed gear can dirty/queue the affected assignee
+3. rerun `./tests/cata_test "[camp][locker]"` after the new tests/behavior land
+4. only use startup/live smoke if the changed path actually touches runtime service behavior in a way the deterministic tests cannot settle
+
+### Non-blocking Josef notes
+
+None yet for the current selected locker chunk.
+If later needed, add them here as notes only, not as plan gates.
 
 ---
 
