@@ -110,20 +110,23 @@ Meaning:
 
 ## Pending probes
 
-### Active queue — Locker Zone V3
+### Active queue — hackathon runway: stabilization + harness
 
-1. capture the **hot-side** live packet for the new pants-slot legwear lane
+1. resolve the current locker-state honesty question before piling on more nuance
+   - capture the **hot-side** live packet for the new pants-slot legwear lane, or explicitly demote any docs that are still pretending that packet already exists
    - keep `shorts_cargo` vs `pants_cargo` as the clean deterministic-shaped wardrobe pair
    - reuse the now-proven Ricky current-save path: packed-save staging, harness autoload, then live post-load `Tab` advance through Peekaboo
-   - force the hot temperature before the service window so the missing runtime proof is the real `pants_cargo -> shorts_cargo` swap, not just another cold packet
-2. keep using live post-load gameplay as the probe path; do not treat another plain startup-only harness rerun as new evidence unless the save shape changes materially
-3. only after the hot-side packet lands, decide whether V3 should move to the next narrow follow-up lane or whether the live legwear evidence exposed a smaller corrective slice
-4. keep per-NPC personality nuance out unless the hot-side legwear probe exposes a real need for a smaller corrective slice
+2. once the V3 state is honest, define the first harness uplift slice
+   - one reusable live probe contract/profile/save path on the current binary
+   - explicit reporting split between **screen**, **tests**, and **artifacts/logs**
+   - avoid probe-method drift mid-claim
+3. after one harness slice is trustworthy, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
+4. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
 
 ### Non-blocking Josef notes
 
-None yet for Locker Zone V3.
-If later needed, add V3 notes here without turning them into blockers.
+None yet for the hackathon runway lane.
+If later needed, add notes here without turning them into blockers.
 
 ---
 

@@ -15,6 +15,23 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Hackathon runway — stabilization + harness
+
+Status: ACTIVE
+
+Success state:
+- [ ] The currently claimed locker baseline is honest enough to build on: V1/V2 stay trusted, and the active V3 slice is either properly evidenced or explicitly demoted back to the honest current state.
+- [ ] At least one reliable harness-driven live probe path exists on the current binary/profile/save path without stale-binary ambiguity.
+- [ ] That harness path reports screen/tests/artifacts as separate evidence classes instead of flattening them into one vague verdict.
+- [ ] At least one high-value reusable playtest scenario is documented/packaged for Schani-assisted probing instead of re-invented manually each time.
+- [ ] A compact Josef-facing testing packet exists for the pre-holiday active-testing window.
+
+Notes:
+- This lane is about creating stable footing for the hackathon push, not about polishing every last locker nuance forever.
+- The next distinguished feature runways (chat interface, tiny ambient-trigger NPC model) should stand on top of this lane rather than compete with it.
+
+---
+
 ## Locker Zone V2
 
 Status: CHECKPOINTED / DONE FOR NOW
@@ -69,8 +86,8 @@ Notes:
 - V3 is active now that V2 is checkpointed.
 - The first landed V3 lane is intentionally narrow: local temperature nudges shirt/vest-slot torso+arm outerwear toward warmer gear in cold weather and lighter gear in hot weather.
 - The next landed V3 lane is still narrow: pants-slot legwear now distinguishes shorts-like coverage from full-length coverage so cold weather prefers full-length legwear and hot weather prefers shorts-like legwear.
-- Outerwear has proportional runtime proof already; the newer legwear lane now has a cold-side live packet, but it still needs the matching hot-side packet before this runtime row can be checked again.
-- The current blocker is not Josef availability; it is finishing that hot-side legwear runtime counterpart, not repairing the probe path.
+- Outerwear already has proportional runtime proof, and the legwear lane currently has the cold-side live packet on the current binary / current-save path.
+- The next honest V3 runtime step is still the hot-side legwear packet plus the policy judgment around the `antarvasa` return-to-locker behavior.
 - Do not quietly let V3 nuance undo the simpler V1/V2 deterministic spine.
 
 ---

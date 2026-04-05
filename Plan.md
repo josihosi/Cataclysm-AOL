@@ -37,26 +37,37 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Locker Zone V3
+## 1. Current delivery target — Hackathon runway: stabilization + harness
 
 **Status:** GREENLIT / ACTIVE
 
-Locker Zone **V2** is now checkpointed: the targeted locker suite proves the two-magazine / locker-ammo reload contract, and the live `dev` / `Sandy Creek` pass on current HEAD emitted the new ranged locker packet on a real save again.
-That makes **V3** the next active locker slice.
+Josef now has a real external deadline: OpenAI hackathon in roughly two weeks, with only about five active human-testing days before holiday.
+That changes the top job.
 
 Current job:
-- keep Locker Zone **V3** narrow and deliberate instead of letting it dissolve into NPC-fashion soup
-- the landed V3 slices are now:
-  - local-temperature outerwear judgment for shirt/vest-class torso+arm outerwear through the normal locker planner/service path
-  - local-temperature legwear judgment for pants-slot short-vs-full-length swaps through that same planner/service path
-- if V3 work disproves any bundled V1/V2 claim, reopen the affected slice first instead of pretending nuance can stack on broken groundwork
+- make Cataclysm-AOL stable enough that later hackathon work can stand on it without swamp logic
+- improve the harness enough that Schani can help meaningfully with playtesting instead of relying on fragile ritual probes
+- keep current locker work honest and narrow while doing that, rather than continuing V3 nuance for its own sake
+
+Working priority inside this lane:
+1. **stabilization tail on the current locker work**
+   - preserve trusted V1/V2 baseline
+   - keep V3 honest: finish the current narrow question or demote it back to the honest state
+2. **first real harness uplift**
+   - establish one reliable live probe path with explicit screen/tests/artifacts boundaries
+   - make that path reusable instead of re-invented each run
+3. **prepare the runway for the distinguished hackathon features**
+   - chat-style interface in place of dialogue-branch soup
+   - tiny ambient-trigger model for weird-event NPC reactions
 
 ### Immediate next move
-- keep using the now-honest proportional runtime path for the landed legwear-temperature lane on the real binary / harness path
-- that path is currently: packed-save staging (`o.0.0.zzip` + `maps/3.0.0.zzip`) on the restored current `dev` / `Sandy Creek` save, harness autoload into gameplay, then live post-load turn advance through Peekaboo so the current binary actually reaches `worker_downtime` / `process_camp_locker_downtime`
-- current HEAD (`d55ffe0a53`) now emitted the cold legwear packet on that path for **Ricky Broughton**: `shorts_cargo -> pants_cargo` with the locker tile returning the replaced shorts
-- the next honest move is the matching hot-side runtime packet on that same trustworthy path: stage `pants_cargo` on Ricky, leave `shorts_cargo` on the locker tile, force the hot temperature, then capture the real `pants_cargo -> shorts_cargo` packet
-- only after that hot packet lands should V3 move to the next narrow follow-up lane (likely blanket-adjacent weather handling unless the live probe exposes a legwear correction first)
+- close the current V3 follow-up question honestly: decide whether the `antarvasa` return behavior is acceptable current one-item-per-slot locker policy or the next narrow corrective slice
+- if that answer needs evidence, use the already-proved Ricky current-save live path rather than inventing a new probe ritual
+- once the current locker state is honest, take the first harness slice: one reusable probe contract/profile/save path that cleanly reports
+  - **screen**
+  - **tests**
+  - **artifacts/logs**
+- batch Josef-facing testing around that harness work before the five-day active-testing window gets eaten by setup friction
 
 ---
 
@@ -117,10 +128,17 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 6. Additional parked options
+## 6. Queued after stabilization/harness
 
-None outside the locker roadmap right now.
-If Josef later wants more after V3, add a short fresh menu then instead of resurrecting stale parked clutter.
+These are not the immediate base-stability job, but they are the likely distinguished hackathon runways once the repo/harness footing is good enough:
+
+1. **Chat interface over in-game dialogue branches**
+   - replace dialogue-branch soup with a cleaner chat-style interaction surface
+2. **Tiny ambient-trigger NPC model**
+   - introduce a small RoBERTa-like model that notices weird situations and triggers ambient NPC reactions
+
+Do not start pretending these are cheap side errands.
+They need stable footing first.
 
 ---
 
