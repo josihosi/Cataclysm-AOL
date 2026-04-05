@@ -1,100 +1,40 @@
 # TODO
 
-_Current actionable queue. Keep this aligned with `Plan.md`, not with last week’s ghost stories._
+Short execution queue only.
 
-## Active finish line right now
-- [x] Continue actual `dev` development now that the upstream deterministic PR attempt is parked.
-- [x] Treat the small harness observability / deterministic probe slice as good enough for now: useful logging/settle improvements landed, and the remaining tail is parked unless it directly blocks game work again.
-- [x] Clarify the board/snapshot product split: live speech `show me the board` / `what's on the board` stays the concise human-facing bark path, while the richer 5x5 overmap snapshot belongs in the LLM snapshot/prompt path when deterministic handling falls through.
-- [x] Do one more Basecamp AI bark pass so craft / board / blocker replies sound informal, human, and camp-like rather than numbered or bureaucratic.
-- [x] Remove or suppress job-number-forward wording from human-facing bark where possible.
-- [x] Follower NPC movement already uses the signed coordinate contract instead of the old `E E E N`-style step wording; do not reopen that as active work right now.
-- [x] After the bark pass, prepare the next clean Basecamp AI test packet focused on human-facing wording/feel.
-- [x] Put the current bark/feel packet in front of Josef with the exact live checks and current dirty-tree validation notes.
-- [x] Revalidate the latest bark-wording dirty tree with compile / targeted tests / startup harness so Josef is not testing stale nonsense.
-- [ ] Josef live-check the current Basecamp AI bark pass for tone/feel on craft / board / blocker replies.
+Remove finished items when they are done.
+Do not turn this file into a museum of crossed-off errands.
+If the queue below stops matching `Plan.md`, fix this file.
 
-## GREEN now — Locker Zone v1 patch 1 groundwork
-- [x] Add an explicit `CAMP_LOCKER` Zone Manager type as the future physical locker supply marker.
-- [x] Add a camp-wide locker policy data model and persist it through basecamp save/load.
-- [x] Expose a first faction-camp `Locker Policy` direct action that toggles managed slots and shows whether a locker zone exists yet.
-- [x] Add a deterministic locker groundwork contract in `tests/faction_camp_test.cpp` for zone registration + policy round-trip.
-- [x] Compile-check the touched locker-groundwork objects (`basecamp`, `faction_camp`, `mission_companion`, `savegame_json`, `faction_camp_test`).
-- [x] Finish a full `cata_test` relink/run so the new locker-groundwork contract actually executes, not just compiles.
-- [x] Run startup harness + save/load smoke on a fresh binary after the locker-groundwork relink finishes.
-- [x] Land the first real locker behavior groundwork: slot classifier + locker-zone candidate gathering with deterministic coverage.
-- [x] Continue the real locker behavior slice: planner-level duplicate cleanup + obvious-upgrade rules on top of the landed classifier/candidate helpers.
-- [x] Wire the new locker loadout plan into actual NPC locker reevaluation / equip-drop behavior instead of leaving it as deterministic planning only.
-- [x] Re-run the current locker slice through startup harness on a fresh current binary; after relinking the stale pre-locker `cataclysm-tiles` build with `make -j4 TILES=1 cataclysm-tiles`, `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` passed cleanly on `.userdata/dev/harness_runs/20260405_043857` with zero recorded debug popups.
-- [x] Land the locker orchestration tail: wake/dirty queue + temporary reservation logic now exist, and the first-service self-requeue livelock for already-queued NPCs is fixed.
-- [x] Revalidate that orchestration tail on a fresh rebuild (`make -j4 tests`, `./tests/cata_test "[camp][locker]"`, `make -j4 TILES=1 cataclysm-tiles`, and startup harness `dev` / `Sandy Creek` on `.userdata/dev/harness_runs/20260405_054403`).
-- [x] Next locker follow-up is now the actual live-proof tail: run a live downtime-driven locker probe on the landed wake/dirty queue/reservation path instead of pretending startup/load is the same thing. Same method, same save, different binary: on fresh harness load `.userdata/dev/harness_runs/20260405_101148`, an 120-turn wait probe in `Sandy Creek` now drives `config/debug.log` through `queued -> servicing -> plan -> serviced` for Ricky Broughton after the transient-post-load assignee refresh fix.
-- [ ] Josef live-check Locker Zone v1 on `dev` / `Sandy Creek`: stand near `Debug Central`, let camp time advance, and confirm locker behavior feels sane (one worker at a time, obvious upgrades/duplicate cleanup only, displaced gear back on the locker tile, no spammy churn).
+## Now
 
-## PARKED reference — upstreamable deterministic PR slice
-- [x] Narrow the spoken camp craft trigger to the exact standalone word `craft` for the upstream-facing package.
-- [x] Keep deterministic quantity parsing intact (numeric quantities plus the current small number-word support) while tightening the trigger boundary.
-- [x] Reuse one deterministic craft resolver for both spoken craft intake and the later structured `craft=<query>` action token path.
-- [x] Add tests for:
-  - [x] `craft knife` → craft path triggers
-  - [x] `witchcraft` → does **not** trigger craft path
-  - [x] ambiguous craft query → reports ambiguity instead of guessing
-  - [x] blocked craft query → reports blocker / missing requirement state
-  - [x] ordered multi-word phrases beat generic noun fallbacks
-- [x] Prepare the small PR-friendly explanation/packaging pass once the code/test slice is stable.
+- Split or checkpoint the locker work per `COMMIT_POLICY.md`.
+  - Keep the locker behavior/test/data/mechanic-note slice reviewable.
+  - Do **not** drag unrelated bark/prompt churn into the locker checkpoint.
+- Keep the live locker evidence attached to this state:
+  - restored `CAMP_LOCKER` character-zone fixture from `Sandy Creek.bak.20260405_111739`
+  - real `dev` / `Sandy Creek` wait-to-midnight probe on `1a72369cfb-dirty`
+  - live packet: Bruna Priest deduped managed gear into locker storage via the downtime queue path
+  - supporting artifacts: `.userdata/dev/live_probe/` and current `debug.log` locker `before` / `plan` / `after` lines
 
-## GREEN now — movement system improvements
-- [x] Replace local follower step-chain movement payloads (`E E E`, etc.) with a relative signed-delta destination contract while keeping the current pathing / target-tile behavior intact.
-- [x] Preserve the existing post-move state suffixes exactly:
-  - `wait_here`
-  - `hold_position`
-- [x] Use the same relative-delta idea for overmap-targeted movement / planner output where appropriate.
-  - [x] Land the shared signed `dx` / `dy` parser/tests for future planner consumers.
-  - [x] Land a shared `stay` / `move_omt dx=<signed_int> dy=<signed_int>` token parser/tests so future planner consumers agree on one small overmap movement grammar.
-  - [x] Land the shared absolute-target resolver so planner consumers reuse one signed-axis convention instead of re-deriving it badly.
-  - [x] Land the shared token formatter so future planner output can emit the same overmap grammar it already parses/resolves.
-  - [x] Thread the first live Basecamp AI/planner consumer (`show_board`) through the shared snapshot formatter and keep the same planner-move contract beside it.
-- [x] Build a small overmap snapshot grid (currently a centered 5x5 via radius 2) for the broader Basecamp AI snapshot, not just the job-sending selector.
-- [x] Use collapsed terrain symbols with lowercase normal / UPPERCASE horde-present variants.
-- [x] Show only a present-only legend for symbols actually visible in the current overmap snapshot.
-- [x] Update prompt/snapshot explanations and examples so the model is told to emit coordinates rather than micro-step chains.
-- [x] Consider lightweight grid/axis hints in the snapshot if they help the model reason about offsets more reliably.
-- [x] Add deterministic parser/tests for positive/negative deltas, state suffix retention, malformed fallback behavior, and present-only overmap legend generation.
+## If blocked
 
-## GREEN later — richer Basecamp AI on `dev` (resume after the movement-system finish line, except follow-up bugfixes)
-- [ ] Keep deterministic-first command extraction as the control spine.
-- [x] Surface a compact deterministic handoff snapshot in crafting-request details, including exact board/detail/follow-up tokens (`show_board`, `show_job=<id>`, `job=<id>` / `delete_job=<id>`), so later Basecamp-AI glue does not have to rediscover resolved recipe/blocker facts from scratch.
-- [x] Define the next structured Basecamp action tokens clearly:
-  - [x] `craft=<query>`
-  - [x] `show_board`
-  - [x] `show_job=<id>`
-  - [x] `delete_job=<id>`
-  - [x] `job=<id>`
-  - [x] `launch_ready_jobs`
-  - [x] `retry_blocked_jobs`
-  - [x] `clear_archived_jobs`
-- [x] When deterministic craft handling cannot complete alone, hand off a compact structured snapshot instead of forcing the LLM to rediscover deterministic facts.
-- [x] Externalize the deterministic Basecamp craft-handoff snapshot into `data/llm_prompts` / `config/llm_prompts` so the structured handoff can be tuned without C++ edits.
-- [ ] Externalize any future Basecamp AI prompt text once a stable prompt contract exists, rather than hardcoding it in the camp flow.
+- If the blocker is harness/probe setup or save state, improve the probe path, restore a pre-service fixture, or add the smallest temporary re-arm hook needed.
+- Do **not** burn another run just repeating startup/load smoke unless the binary actually changed in a way that justifies it.
+- Do **not** sit on a Josef-waiting item when an agent-side target is available.
+- If there is no good unblocked target left, send Josef a short parked-options menu from `Plan.md` instead of spinning.
 
-## Agent testing / automation
-- [x] Compile touched objects/binaries after each meaningful slice.
-- [x] Run startup harness / launch / save-load checks on `dev` after meaningful Basecamp changes.
-- [x] Keep filtered debug-log deltas clean enough to isolate new regressions.
-- [x] Re-establish a reliable fresh full `tests/cata_test` rebuild path on this Mac for broader deterministic coverage: rebuild `cataclysm.a`, then use top-level `make -j4 tests` (direct `make -C tests cata_test` can drop exported flags here).
+## Waiting on Josef
 
-## Josef manual testing pending / upcoming
-- [ ] Do **not** send Josef another movement-system board-handoff readability packet until the intended path is clarified: live natural speech currently gives a concise board summary, while the richer planner snapshot lives in the structured/internal `show_board` handoff path.
-- [ ] Later live-check the follower snapshot legend change in-game (`friendly` / `neutral` / `hostile` + threat) and confirm live follower behavior interprets the new target wording correctly.
-- [x] Once the exact-word `craft` router lands, hand Josef a concise manual test packet for spoken camp crafting behavior.
-- [ ] After the next Basecamp slice, preserve good in-game settings/state if the current `dev` profile becomes the preferred testing baseline again.
+Keep this parked without drama until Josef is available:
+- Basecamp bark feel pass on the current dirty tree:
+  - `show me the board`
+  - `status of bandages`
+  - `craft 5 bandages`
+  - `clear request #...`
 
-## DISCUSS before implementation
-- [ ] Bandit AI architecture / constraints / test checkpoint design.
-- [ ] Follower NPC deterministic-first command extraction without erasing reluctance, personality, defiance, or hostile edge cases.
+Do not treat this as a stop-work order.
 
-## Parked but remembered
-- [ ] Basecamp zone preset helpers/mod flow for new camps.
-- [ ] Broader board QoL / feasibility summaries once the current command contracts stop moving.
-- [ ] Revisit the harness later using the symbolic/stateful design note in `doc/openclaw-harness-symbolic-rework-note-2026-04-04.md` instead of drifting toward screenshot-first automation.
-- [ ] Broader harness growth after the current Basecamp finish-line work is stable.
+## Later
+
+- After Locker Zone v1 is proven live and checkpointed cleanly, return to the LLM-side board snapshot path and wire the richer overmap snapshot into the real fallback/prompt flow.
