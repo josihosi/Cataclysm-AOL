@@ -34,41 +34,49 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Locker Zone v1
+## 1. Current delivery target — LLM-side board snapshot path
 
 **Status:** ACTIVE
 
 ### Goal
-Ship the first genuinely useful camp locker system on `dev`:
-- explicit `CAMP_LOCKER` zone
-- persisted camp-wide locker policy
-- locker candidate classification and planning
-- live NPC downtime service path for duplicate cleanup / obvious upgrades
-- queue/reservation logic so camp workers do not fight over the same gear
+Wire the richer board handoff snapshot into the real structured / LLM-side path without polluting the short spoken camp bark.
+The intended product split is:
+- live natural speech `show me the board` stays concise and human-facing
+- the richer `planner_move` + overmap snapshot belongs in the structured / LLM-side handoff path
 
 ### What is already true
-- Locker policy, zone type, menu wiring, save/load, classifier, candidate gathering, planner logic, and the first live equip/drop path all exist.
-- The downtime orchestration tail exists too: wake/dirty queueing, temporary reservations, and the first-service self-requeue fix are already in the tree.
-- Deterministic locker tests cover the current orchestration slice.
-- Human-readable locker debug summaries now exist for live probes (`before` / `plan` / `after`).
-- Fresh startup/load smoke on current locker binaries is green again after explicit relinks.
-- A real current-binary live probe now exists on `dev` / `Sandy Creek`: after restoring the missing `CAMP_LOCKER` character-zone fixture from backup and running an in-game wait-to-midnight probe, Bruna Priest hit the actual downtime queue path and deduped managed gear into locker storage on `1a72369cfb-dirty`.
+- The snapshot builder and tests already know how to include `planner_move` and an overmap snapshot when an origin is available.
+- The real prompt template on disk now also includes `{{planning_snapshot}}` again, so the shipped prompt matches the code-side snapshot contract.
+- `./tests/cata_test "[camp][basecamp_ai]"` passed (`269 assertions in 1 test case`) after the prompt-template sync.
 
 ### What is still missing
-The missing blocker is no longer live locker proof.
-What remains is repo hygiene: the locker tree still needs to be checkpointed or split into reviewable commits instead of living as one big dirty blob.
-If the commit split changes behavior, rerun only the narrow locker evidence that honestly covers the changed slice.
+The missing proof is not another spoken-board wording pass.
+What still needs to be shown is that the richer board snapshot enters the **actual structured / LLM-side path** with the right evidence, while the human-facing spoken board reply stays concise.
 
 ### Exit criteria for this target
 Before this target can move out of active status:
-1. run and document one real downtime-driven live locker probe
-2. capture before/after evidence clearly enough that a human can tell what changed
-3. checkpoint or split the locker diff into reviewable commits instead of one giant mudball
-4. update `TODO.md` and `TESTING.md` to reflect the new truth without keeping dead checklist fluff
+1. prove where the richer board handoff snapshot is emitted in the real structured / LLM-side path
+2. show that the prompt path carries the planning snapshot / overmap context when appropriate
+3. keep the short spoken board bark on the human-facing path
+4. document the current truth in `TODO.md` and `TESTING.md` without bloating them
 
 ### Immediate next move
-Checkpoint or split the locker work per `COMMIT_POLICY.md` now that the live downtime packet is real.
-Keep the commit shape legible: locker behavior/test/data/mechanic-note work together, ledger alignment separately if needed, and leave unrelated bark/prompt churn out of the locker checkpoint.
+Trace the current `show_board` / handoff path end-to-end and capture the first honest evidence packet for the LLM-side snapshot lane.
+Prefer the smallest proof that answers the routing question — likely targeted deterministic evidence or artifact/log confirmation — instead of another broad live ritual.
+
+---
+
+## 3. Locker Zone v1
+
+**Status:** CHECKPOINTED
+
+Locker Zone v1 is no longer the active lane.
+It now has the pieces that were missing:
+- live current-binary downtime proof on `dev` / `Sandy Creek`
+- reviewable checkpoints instead of one giant dirty locker blob
+- current ledger/testing notes aligned to that state
+
+Keep it out of the active queue unless later code changes break the locker path again.
 
 ---
 

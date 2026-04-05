@@ -8,14 +8,13 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-- Split or checkpoint the locker work per `COMMIT_POLICY.md`.
-  - Keep the locker behavior/test/data/mechanic-note slice reviewable.
-  - Do **not** drag unrelated bark/prompt churn into the locker checkpoint.
-- Keep the live locker evidence attached to this state:
-  - restored `CAMP_LOCKER` character-zone fixture from `Sandy Creek.bak.20260405_111739`
-  - real `dev` / `Sandy Creek` wait-to-midnight probe on `1a72369cfb-dirty`
-  - live packet: Bruna Priest deduped managed gear into locker storage via the downtime queue path
-  - supporting artifacts: `.userdata/dev/live_probe/` and current `debug.log` locker `before` / `plan` / `after` lines
+- Trace the real `show_board` / board-handoff path end-to-end.
+  - Confirm where the structured / LLM-side path consumes `basecamp_board_handoff_snapshot.txt`.
+  - Keep the human-facing spoken board bark concise instead of dumping the full handoff snapshot at the player.
+- Capture the first honest evidence packet for the board-snapshot lane.
+  - Deterministic baseline already passed: `./tests/cata_test "[camp][basecamp_ai]"`
+  - The shipped board handoff template now includes `{{planning_snapshot}}`
+  - The missing piece is proof of the actual prompt/artifact path, not another broad compile ritual
 
 ## If blocked
 
@@ -37,4 +36,4 @@ Do not treat this as a stop-work order.
 
 ## Later
 
-- After Locker Zone v1 is proven live and checkpointed cleanly, return to the LLM-side board snapshot path and wire the richer overmap snapshot into the real fallback/prompt flow.
+- If the routing proof lands cleanly, expand the LLM-side board snapshot work only as far as needed to make the prompt/artifact path legible and testable.
