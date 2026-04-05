@@ -41,11 +41,11 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
 Latest relevant agent-side locker packet:
-- committed HEAD `1381284982`
+- broader locker baseline remains anchored by committed HEAD `1381284982`
   - `make -j4 tests`
   - `./tests/cata_test "[camp][locker]"`
   - passed at `171 assertions in 11 test cases`
-- the targeted suite still covers the bundled locker baseline from V1/V2 and now also proves the landed V3 temperature slices:
+- that broader suite still covers the bundled locker baseline from V1/V2 and the landed V3 temperature slices:
   - locker policy serialization / save-load
   - representative locker item classification
   - locker-zone candidate gathering and reservation filtering
@@ -63,13 +63,19 @@ Latest relevant agent-side locker packet:
     - explicit cold-temperature probe (`35 F`) prefers a warmer outerwear upgrade (`jacket_light -> coat_winter`)
     - explicit hot-temperature probe (`85 F`) prefers a lighter outerwear upgrade (`coat_winter -> jacket_light`)
     - scope stays intentionally narrow: shirt/vest-slot outerwear that covers both torso and arms
-  - new V3 deterministic legwear coverage in `camp_locker_loadout_planning`
+  - V3 deterministic legwear coverage in `camp_locker_loadout_planning`
     - explicit cold-temperature probe (`35 F`) prefers full-length cargo pants over cargo shorts (`shorts_cargo -> pants_cargo`)
     - explicit hot-temperature probe (`85 F`) prefers cargo shorts over full-length cargo pants (`pants_cargo -> shorts_cargo`)
-    - scope stays intentionally narrow: pants-slot short-vs-full-length coverage only
-- latest proportional runtime locker proof still covers the V1/V2 baseline **and** the first V3 outerwear-temperature lane:
+    - explicit duplicate-current hot probe keeps `pants_cargo` as the best current full-length legwear, marks `antarvasa` as duplicate current, and still selects `shorts_cargo` as the hot upgrade
+    - scope stays intentionally narrow: pants-slot short-vs-full-length coverage only; it does **not** pretend to preserve layered lower-body nuance yet
+- latest narrow validation for the new deterministic judgment lock on current HEAD `e6e2b38540-dirty`:
   - `make -j4 tests`
-  - `./tests/cata_test "[camp][locker]"`
+  - `./tests/cata_test "camp_locker_loadout_planning"`
+  - passed at `68 assertions in 1 test case`
+- note: `./tests/cata_test "[camp][locker]"` on `e6e2b38540-dirty` still reports `All tests passed (181 assertions in 11 test cases)`, but Catch exits non-zero because an existing `diag_value` debug error in the queue/downtime lane is treated as failure; the planner-only case above is the honest validation for this slice because no locker service code changed
+
+Latest proportional runtime locker proof:
+- outerwear lane on the recorded current-binary path
   - `make -j4 TILES=1 cataclysm-tiles`
   - controlled cold probe on `dev` / `Sandy Creek`
     - staged **Bruna Priest** in `jacket_light` with `coat_winter` on the `CAMP_LOCKER` tile via the repo `./zzip` save tool, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
@@ -83,28 +89,34 @@ Latest relevant agent-side locker packet:
     - the resulting live current-binary packet showed the planner re-queueing a lighter-outerwear swap:
       - `camp locker: before Bruna Priest ... vest=[puffer jacket ... <coat_winter>] ... locker_raw=[light jacket (poor fit)<jacket_light>]`
       - `camp locker: queued Bruna Priest state-dirty ... plan=[vest upgrade puffer jacket ... <coat_winter> -> light jacket (poor fit)<jacket_light>]`
-
-Latest live-probe status for the open legwear lane:
-- 2026-04-05 stale-binary audit first corrected the evidence path on current HEAD: the running window title was still `6b6de8d477-dirty`, so the tiles target was rebuilt before collecting new runtime proof; the live packet below comes from `d55ffe0a53`
-- restored the original current `dev` / `Sandy Creek` save, backed it up under `.userdata/dev/save/manual_probe_backups/20260405_232203_ricky_legwear_cold/`, and used the packed-save path that the save audit had already identified as authoritative
-- staged **Ricky Broughton** in `shorts_cargo` inside packed overmap `overmaps/o.0.0.zzip`, left `pants_cargo` on the packed locker tile in `maps/3.0.0.zzip`, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-- a plain fresh autoload still was not the missing evidence class by itself, so the honest runtime step remained live post-load gameplay: focused the current game window and sent `peekaboo press tab --count 3 --app cataclysm-tiles --window-id 10427`
-- current `debug.log` on `d55ffe0a53` then emitted the real cold legwear locker packet at `23:23:32.719`:
-  - `camp locker: action Ricky Broughton reason=worker-downtime ...`
-  - `camp locker: reached worker_downtime for Ricky Broughton ...`
-  - `camp locker: queued Ricky Broughton wake_dirty=true ...`
-  - `camp locker: before Ricky Broughton ... pants=[cargo shorts > 6 items<shorts_cargo>] ... locker=[pants=[cargo pants (poor fit)<pants_cargo>]]`
-  - `camp locker: plan for Ricky Broughton ... changes=[pants upgrade cargo shorts > 6 items<shorts_cargo> -> cargo pants (poor fit)<pants_cargo>] ...`
-  - `camp locker: after Ricky Broughton ... pants=[cargo pants (poor fit)<pants_cargo>] ... locker=[pants=[cargo shorts<shorts_cargo>]]`
-  - `camp locker: serviced Ricky Broughton applied=true ...`
-- restored the staged save from that manual backup after the capture so the default `dev` world did not stay pinned to the probe state
+- legwear lane on the stale-binary-audited Ricky current-save path
+  - 2026-04-05 stale-binary audit first corrected the evidence path on current HEAD: the running window title was still `6b6de8d477-dirty`, so the tiles target was rebuilt before collecting new runtime proof; the recorded live legwear packets below come from `d55ffe0a53`
+  - restored the original current `dev` / `Sandy Creek` save, backed it up under `.userdata/dev/save/manual_probe_backups/20260405_232203_ricky_legwear_cold/`, and used the packed-save path that the save audit had already identified as authoritative
+  - cold-side packet
+    - staged **Ricky Broughton** in `shorts_cargo` inside packed overmap `overmaps/o.0.0.zzip`, left `pants_cargo` on the packed locker tile in `maps/3.0.0.zzip`, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+    - a plain fresh autoload still was not the missing evidence class by itself, so the honest runtime step remained live post-load gameplay: focused the current game window and sent `peekaboo press tab --count 3 --app cataclysm-tiles --window-id 10427`
+    - current `debug.log` on `d55ffe0a53` then emitted the real cold legwear locker packet at `23:23:32.719`:
+      - `camp locker: action Ricky Broughton reason=worker-downtime ...`
+      - `camp locker: reached worker_downtime for Ricky Broughton ...`
+      - `camp locker: queued Ricky Broughton wake_dirty=true ...`
+      - `camp locker: before Ricky Broughton ... pants=[cargo shorts > 6 items<shorts_cargo>] ... locker=[pants=[cargo pants (poor fit)<pants_cargo>]]`
+      - `camp locker: plan for Ricky Broughton ... changes=[pants upgrade cargo shorts > 6 items<shorts_cargo> -> cargo pants (poor fit)<pants_cargo>] ...`
+      - `camp locker: after Ricky Broughton ... pants=[cargo pants (poor fit)<pants_cargo>] ... locker=[pants=[cargo shorts<shorts_cargo>]]`
+      - `camp locker: serviced Ricky Broughton applied=true ...`
+  - hot-side packet
+    - reused the same Ricky current-save path with `shorts_cargo` on the locker tile and Ricky wearing `cargo pants` alongside his existing `antarvasa`
+    - current `debug.log` on `d55ffe0a53` then emitted the real hot legwear locker packet at `23:59:27.798`:
+      - `camp locker: queued Ricky Broughton state-dirty ... plan=[pants upgrade cargo pants<pants_cargo> -> cargo shorts (poor fit)<shorts_cargo>; pants dedupe keep=cargo pants<pants_cargo> drop=[antarvasa > 6 items<antarvasa>]] ...`
+      - `camp locker: before Ricky Broughton ... pants=[antarvasa > 6 items<antarvasa>; cargo pants<pants_cargo>] ... locker=[pants=[cargo shorts (poor fit)<shorts_cargo>]]`
+      - `camp locker: after Ricky Broughton ... pants=[cargo shorts (poor fit)<shorts_cargo>] ... locker=[pants=[cargo pants<pants_cargo>; antarvasa<antarvasa>]]`
+      - `camp locker: serviced Ricky Broughton applied=true ...`
+  - restored the staged save from the manual backup after the captures so the default `dev` world did not stay pinned to the probe state
 
 Meaning:
-- Locker Zone V1/V2 remain preserved under the new V3 code path at deterministic-suite level
-- the outerwear V3 lane has both deterministic proof and proportional runtime proof on the current binary
-- the legwear V3 lane now has deterministic proof plus a matching **cold-side** live packet on the current binary / current-save path
-- the remaining runtime gap is now the **hot-side** legwear counterpart (`pants_cargo -> shorts_cargo`), not probe-path repair
-- the hot-side outerwear runtime evidence currently comes from a real state-dirty replan packet after the live temperature flip rather than a second captured `after` packet, but it still proves the real planner/service path picks the lighter jacket when the temperature turns hot
+- Locker Zone V1/V2 remain preserved under the landed V3 code path at deterministic-suite level
+- the outerwear and currently implemented legwear V3 lanes now both have deterministic proof and proportional runtime proof on recorded current-binary / current-save paths
+- the `antarvasa` result is now an explicit policy judgment, not a mystery bug: current locker behavior is still one managed pants item per slot, so extra pants-slot garments are treated as duplicates and returned to the locker when a hot/cold swap lands
+- the next missing evidence class is harness packaging/reporting discipline, not more locker packet collection
 
 ---
 
@@ -112,16 +124,17 @@ Meaning:
 
 ### Active queue — hackathon runway: stabilization + harness
 
-1. resolve the current locker-state honesty question before piling on more nuance
-   - capture the **hot-side** live packet for the new pants-slot legwear lane, or explicitly demote any docs that are still pretending that packet already exists
-   - keep `shorts_cargo` vs `pants_cargo` as the clean deterministic-shaped wardrobe pair
-   - reuse the now-proven Ricky current-save path: packed-save staging, harness autoload, then live post-load `Tab` advance through Peekaboo
-2. once the V3 state is honest, define the first harness uplift slice
+1. package the first harness uplift slice from `doc/harness-first-slice-plan-2026-04-06.md`
    - one reusable live probe contract/profile/save path on the current binary
    - explicit reporting split between **screen**, **tests**, and **artifacts/logs**
    - avoid probe-method drift mid-claim
+2. make the first three scenarios real probe contracts
+   - `locker.weather_wait`
+   - `chat.nearby_npc_basic`
+   - `ambient.weird_item_reaction`
 3. after one harness slice is trustworthy, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
-4. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
+4. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
+5. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
 
 ### Non-blocking Josef notes
 

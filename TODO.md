@@ -11,14 +11,14 @@ If the queue below stops matching `Plan.md`, fix this file.
 Hackathon runway — stabilization + harness is the active lane.
 
 Execution queue:
-1. close the current locker stabilization question honestly
-   - audit the `antarvasa` return behavior from the hot-side legwear packet
-   - decide whether it is acceptable current one-item-per-slot locker policy or the next narrow corrective slice
-   - if that answer changes the claimed V3 state, demote the docs before adding new nuance
-2. define the first real harness slice
+1. implement/package the first harness slice (see `doc/harness-first-slice-plan-2026-04-06.md`)
    - one reliable live probe contract/profile/save path on the current binary
+   - deterministic little functions first
    - explicit separation of **screen**, **tests**, and **artifacts/logs**
-   - reusable enough that Schani can help with playtesting instead of re-inventing the ritual
+2. start with three named scenarios
+   - `locker.weather_wait`
+   - `chat.nearby_npc_basic`
+   - `ambient.weird_item_reaction`
 3. package one compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
 4. only after the footing is stable, move toward the distinguished hackathon runways
    - chat interface over dialogue branches

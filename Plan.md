@@ -61,9 +61,14 @@ Working priority inside this lane:
    - tiny ambient-trigger model for weird-event NPC reactions
 
 ### Immediate next move
-- close the current V3 follow-up question honestly: decide whether the `antarvasa` return behavior is acceptable current one-item-per-slot locker policy or the next narrow corrective slice
-- if that answer needs evidence, use the already-proved Ricky current-save live path rather than inventing a new probe ritual
-- once the current locker state is honest, take the first harness slice: one reusable probe contract/profile/save path that cleanly reports
+- the current locker state is now honest enough to build on: the hot-side Ricky packet is recorded, and the `antarvasa` outcome is accepted as the current one-item-per-slot pants policy rather than a hidden blocker
+- follow `doc/harness-first-slice-plan-2026-04-06.md` for the first concrete harness uplift
+- start with deterministic little functions, not giant black-box automation
+- package three named first-slice scenarios:
+  - `locker.weather_wait`
+  - `chat.nearby_npc_basic`
+  - `ambient.weird_item_reaction`
+- keep the evidence split explicit:
   - **screen**
   - **tests**
   - **artifacts/logs**

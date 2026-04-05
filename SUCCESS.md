@@ -20,7 +20,7 @@ Use this file so completion is explicit instead of vibes-based.
 Status: ACTIVE
 
 Success state:
-- [ ] The currently claimed locker baseline is honest enough to build on: V1/V2 stay trusted, and the active V3 slice is either properly evidenced or explicitly demoted back to the honest current state.
+- [x] The currently claimed locker baseline is honest enough to build on: V1/V2 stay trusted, and the active V3 slice is either properly evidenced or explicitly demoted back to the honest current state.
 - [ ] At least one reliable harness-driven live probe path exists on the current binary/profile/save path without stale-binary ambiguity.
 - [ ] That harness path reports screen/tests/artifacts as separate evidence classes instead of flattening them into one vague verdict.
 - [ ] At least one high-value reusable playtest scenario is documented/packaged for Schani-assisted probing instead of re-invented manually each time.
@@ -79,15 +79,15 @@ Success state:
 - [ ] Weather-sensitive wardrobe choices (coats / blankets / shorts / similar) are handled deliberately rather than by V1/V2 shortcuts.
 - [ ] Per-NPC overrides / nuance exist without undoing the simpler V1/V2 deterministic spine.
 - [x] Deterministic coverage exists for the V3 behavior that is actually implemented.
-- [ ] Proportional runtime validation for the currently implemented V3 behavior is recorded in `TESTING.md`.
+- [x] Proportional runtime validation for the currently implemented V3 behavior is recorded in `TESTING.md`.
 - [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
 - V3 is active now that V2 is checkpointed.
 - The first landed V3 lane is intentionally narrow: local temperature nudges shirt/vest-slot torso+arm outerwear toward warmer gear in cold weather and lighter gear in hot weather.
 - The next landed V3 lane is still narrow: pants-slot legwear now distinguishes shorts-like coverage from full-length coverage so cold weather prefers full-length legwear and hot weather prefers shorts-like legwear.
-- Outerwear already has proportional runtime proof, and the legwear lane currently has the cold-side live packet on the current binary / current-save path.
-- The next honest V3 runtime step is still the hot-side legwear packet plus the policy judgment around the `antarvasa` return-to-locker behavior.
+- Outerwear and the currently landed legwear lane now both have proportional runtime proof on the recorded current-binary / current-save path.
+- The `antarvasa` return-to-locker outcome is currently accepted as the honest one-item-per-slot pants policy: keep the best current pants item for comparison, and return extra pants-slot duplicates to the locker when a hot/cold swap lands.
 - Do not quietly let V3 nuance undo the simpler V1/V2 deterministic spine.
 
 ---
