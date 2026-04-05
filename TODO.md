@@ -11,11 +11,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 Locker Zone V3 is the active lane.
 
 Execution queue:
-1. choose the next narrow V3 clothing lane
-   - likely hot-weather legwear / shorts
-   - or a blanket / bedding-adjacent weather lane if that becomes the cleaner next deterministic step
-2. land deterministic proof for that next slice before chasing another live packet
-3. keep V1/V2 closed unless the new V3 work shows this first lane regressed the older locker spine
+1. get proportional runtime proof for the landed V3 legwear slice
+   - target the pants-slot short-vs-full-length swap (`shorts_cargo` / `pants_cargo` is the cleanest deterministic-shaped probe)
+   - use the smallest controlled hot/cold setup that actually surfaces the planner/service path
+2. keep V1/V2 closed unless this new V3 lane shows the older locker spine regressed
+3. only after the live legwear packet is honest, choose the next narrow V3 follow-up lane
 
 Still true:
 - Locker Zone V1 and V2 stay closed only because their bundled task sets are checked in `SUCCESS.md`

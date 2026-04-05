@@ -41,11 +41,11 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
 Latest relevant agent-side locker packet:
-- committed HEAD `10750acaad`
+- committed HEAD `1381284982`
   - `make -j4 tests`
   - `./tests/cata_test "[camp][locker]"`
-  - passed at `155 assertions in 11 test cases`
-- the targeted suite still covers the bundled locker baseline from V1/V2 and now also proves the first landed V3 lane:
+  - passed at `171 assertions in 11 test cases`
+- the targeted suite still covers the bundled locker baseline from V1/V2 and now also proves the landed V3 temperature slices:
   - locker policy serialization / save-load
   - representative locker item classification
   - locker-zone candidate gathering and reservation filtering
@@ -59,11 +59,15 @@ Latest relevant agent-side locker packet:
     - locker supply contributes only the additional compatible magazines needed to reach that cap
     - locker-zone ammo fills those selected magazines and reloads the supported weapon
     - leftover locker magazine count and ammo depletion stay deterministic
-  - new V3 deterministic outerwear coverage in `camp_locker_loadout_planning`
+  - V3 deterministic outerwear coverage in `camp_locker_loadout_planning`
     - explicit cold-temperature probe (`35 F`) prefers a warmer outerwear upgrade (`jacket_light -> coat_winter`)
     - explicit hot-temperature probe (`85 F`) prefers a lighter outerwear upgrade (`coat_winter -> jacket_light`)
-    - scope is intentionally narrow: shirt/vest-slot outerwear that covers both torso and arms
-- latest proportional runtime locker proof now covers the V1/V2 baseline **and** the first V3 outerwear-temperature lane:
+    - scope stays intentionally narrow: shirt/vest-slot outerwear that covers both torso and arms
+  - new V3 deterministic legwear coverage in `camp_locker_loadout_planning`
+    - explicit cold-temperature probe (`35 F`) prefers full-length cargo pants over cargo shorts (`shorts_cargo -> pants_cargo`)
+    - explicit hot-temperature probe (`85 F`) prefers cargo shorts over full-length cargo pants (`pants_cargo -> shorts_cargo`)
+    - scope stays intentionally narrow: pants-slot short-vs-full-length coverage only
+- latest proportional runtime locker proof still covers the V1/V2 baseline **and** the first V3 outerwear-temperature lane:
   - `make -j4 tests`
   - `./tests/cata_test "[camp][locker]"`
   - `make -j4 TILES=1 cataclysm-tiles`
@@ -82,8 +86,9 @@ Latest relevant agent-side locker packet:
 
 Meaning:
 - Locker Zone V1/V2 remain preserved under the new V3 code path at deterministic-suite level
-- the first V3 outerwear-temperature lane now has both deterministic proof and proportional runtime proof on the current binary
-- the hot-side runtime evidence currently comes from a real state-dirty replan packet after the live temperature flip rather than a second captured `after` packet, but it still proves the real planner/service path picks the lighter jacket when the temperature turns hot
+- the outerwear V3 lane has both deterministic proof and proportional runtime proof on the current binary
+- the new legwear V3 lane now has deterministic proof but still lacks its matching live packet, so V3 runtime validation is no longer fully closed again yet
+- the hot-side outerwear runtime evidence currently comes from a real state-dirty replan packet after the live temperature flip rather than a second captured `after` packet, but it still proves the real planner/service path picks the lighter jacket when the temperature turns hot
 
 ---
 
@@ -91,11 +96,11 @@ Meaning:
 
 ### Active queue — Locker Zone V3
 
-1. choose the next narrow V3 clothing lane now that the first outerwear-temperature slice has live proof
-   - likely shorts / hot-weather legwear
-   - or a blanket / bedding-adjacent weather lane if that becomes easier to prove honestly
-2. for that next slice, land deterministic coverage first and only then ask for the matching live packet
-3. keep per-NPC personality nuance out unless a smaller deterministic clothing slice truly needs it
+1. get the missing proportional runtime proof for the new pants-slot legwear lane
+   - best controlled shape right now is `shorts_cargo` vs `pants_cargo`
+   - capture the real locker planner/service path under at least one cold and one hot setup if the save staging stays cheap
+2. if the current `dev` / `Sandy Creek` save does not naturally surface that lane, restage the smallest honest locker tile + worker loadout that does
+3. keep per-NPC personality nuance out unless the legwear live probe exposes a real need for a smaller corrective slice
 
 ### Non-blocking Josef notes
 

@@ -46,13 +46,15 @@ That makes **V3** the next active locker slice.
 
 Current job:
 - keep Locker Zone **V3** narrow and deliberate instead of letting it dissolve into NPC-fashion soup
-- the first landed V3 lane is now local-temperature outerwear judgment for shirt/vest-class torso+arm outerwear through the normal locker planner/service path
+- the landed V3 slices are now:
+  - local-temperature outerwear judgment for shirt/vest-class torso+arm outerwear through the normal locker planner/service path
+  - local-temperature legwear judgment for pants-slot short-vs-full-length swaps through that same planner/service path
 - if V3 work disproves any bundled V1/V2 claim, reopen the affected slice first instead of pretending nuance can stack on broken groundwork
 
 ### Immediate next move
-- get proportional runtime proof for the landed outerwear-temperature lane on the real binary / harness path
-- if the current save does not naturally surface the lane, create the smallest controlled hot/cold probe that does
-- only after that, choose the next narrow V3 follow-up lane (likely shorts/legwear or blanket-adjacent weather handling)
+- get proportional runtime proof for the landed legwear-temperature lane on the real binary / harness path
+- if the current save does not naturally surface the lane, create the smallest controlled hot/cold cargo-shorts-vs-cargo-pants probe that does
+- only after that, choose the next narrow V3 follow-up lane (likely blanket-adjacent weather handling unless the live probe exposes a legwear correction first)
 
 ---
 
