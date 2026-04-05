@@ -140,18 +140,26 @@ def load_profile_config(profile: str) -> Dict[str, Any]:
             "poll_seconds": 2.0,
             "timeout_seconds": 90.0,
             "max_popup_dismissals": 6,
+            "post_lastworld_wait_seconds": 0.0,
         },
     }
-    path = profile_config_path(profile)
-    if not path.exists():
-        return defaults
-    loaded = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(loaded, dict):
-        raise SystemExit(f"Invalid profile config: {path}")
+
     merged = dict(defaults)
     merged_startup = dict(defaults["startup"])
-    merged_startup.update(loaded.get("startup", {}))
-    merged.update(loaded)
+    candidate_paths = [profile_config_path("master")]
+    if profile != "master":
+        candidate_paths.append(profile_config_path(profile))
+
+    for path in candidate_paths:
+        if not path.exists():
+            continue
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(loaded, dict):
+            raise SystemExit(f"Invalid profile config: {path}")
+        merged_startup.update(loaded.get("startup", {}))
+        merged.update(loaded)
+
+    merged["profile_name"] = profile
     merged["startup"] = merged_startup
     return merged
 
@@ -275,11 +283,30 @@ def peekaboo_focus_pid(pid: int) -> None:
     subprocess.run(["peekaboo", "window", "focus", "--pid", str(pid)], check=False, capture_output=True, text=True)
 
 
+def is_printable_text_key(key: str) -> bool:
+    return len(key) == 1 and key.isprintable() and key not in {"\n", "\r", "\t"}
+
+
 def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> None:
     if not keys:
         return
-    cmd = ["peekaboo", "press", *keys, "--pid", str(pid), "--delay", str(delay_ms)]
-    subprocess.run(cmd, check=True, capture_output=True, text=True)
+    text_buffer: List[str] = []
+
+    def flush_text_buffer() -> None:
+        if not text_buffer:
+            return
+        peekaboo_type_text(pid, "".join(text_buffer), delay_ms=max(10, min(delay_ms, 200)))
+        text_buffer.clear()
+
+    for raw_key in keys:
+        key = str(raw_key)
+        if is_printable_text_key(key):
+            text_buffer.append(key)
+            continue
+        flush_text_buffer()
+        cmd = ["peekaboo", "press", key, "--pid", str(pid), "--delay", str(delay_ms)]
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+    flush_text_buffer()
 
 
 def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
@@ -310,7 +337,7 @@ def filter_debug_log_text(text: str) -> str:
     return "".join(filtered_lines)
 
 
-def read_filtered_log_delta(src: Path, start_size: int) -> str:
+def read_log_delta(src: Path, start_size: int, *, filter_debug_noise: bool = False) -> str:
     if not src.exists():
         return ""
     size = src.stat().st_size
@@ -319,7 +346,13 @@ def read_filtered_log_delta(src: Path, start_size: int) -> str:
     with src.open("r", encoding="utf-8", errors="replace") as fh:
         fh.seek(start_size)
         data = fh.read()
-    return filter_debug_log_text(data)
+    if filter_debug_noise:
+        return filter_debug_log_text(data)
+    return data
+
+
+def read_filtered_log_delta(src: Path, start_size: int) -> str:
+    return read_log_delta(src, start_size, filter_debug_noise=True)
 
 
 def copy_filtered_debug_log_delta_if_exists(src: Path, start_size: int, dst: Path) -> None:
@@ -328,6 +361,15 @@ def copy_filtered_debug_log_delta_if_exists(src: Path, start_size: int, dst: Pat
         return
     ensure_dir(dst.parent)
     dst.write_text(data, encoding="utf-8")
+
+
+def resolve_artifact_source(profile: str, source: str) -> Tuple[Path, bool, str]:
+    normalized = source.strip().lower() if source else "debug.log"
+    if normalized in {"debug", "debug.log"}:
+        return config_dir_for_profile(profile) / "debug.log", True, "debug.log"
+    if normalized in {"llm", "llm_intent", "llm_intent.log"}:
+        return config_dir_for_profile(profile) / "llm_intent.log", False, "llm_intent.log"
+    raise SystemExit(f"Unsupported artifact source: {source}")
 
 
 def capture_debug_delta(profile: str, start_size: int, run_dir: Path, serial: int) -> int:
@@ -499,8 +541,88 @@ def list_scenarios() -> List[Dict[str, Any]]:
             "name": str(loaded.get("name", path.stem)),
             "path": str(path),
             "description": str(loaded.get("description", "")).strip(),
+            "artifact_source": str(loaded.get("artifact_source", "debug.log")).strip() or "debug.log",
+            "step_count": len(loaded.get("steps", [])) if isinstance(loaded.get("steps"), list) else 0,
         })
     return scenarios
+
+
+def normalize_scenario_steps(raw_steps: Any, advance_count: int, settle_seconds: float) -> List[Dict[str, Any]]:
+    if isinstance(raw_steps, list) and raw_steps:
+        steps: List[Dict[str, Any]] = []
+        for index, raw in enumerate(raw_steps, start=1):
+            if not isinstance(raw, dict):
+                raise SystemExit(f"Scenario step #{index} is not an object")
+            step = dict(raw)
+            step.setdefault("label", f"step_{index:02d}_{str(step.get('kind', 'step')).strip() or 'step'}")
+            steps.append(step)
+        return steps
+    if advance_count > 0:
+        return [{
+            "kind": "advance_turns",
+            "count": advance_count,
+            "settle_seconds": settle_seconds,
+            "label": "advance_turns",
+        }]
+    return []
+
+
+def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    reports: List[Dict[str, Any]] = []
+    for index, step in enumerate(steps, start=1):
+        kind = str(step.get("kind", "")).strip().lower()
+        label = str(step.get("label", f"step_{index:02d}")).strip() or f"step_{index:02d}"
+        settle_seconds = float(step.get("settle_seconds", 0.0) or 0.0)
+        report: Dict[str, Any] = {
+            "index": index,
+            "kind": kind,
+            "label": label,
+            "settle_seconds": settle_seconds,
+        }
+        if kind == "press":
+            raw_keys = step.get("keys", [])
+            if isinstance(raw_keys, str):
+                keys = [raw_keys] if raw_keys.strip() else []
+            elif isinstance(raw_keys, list):
+                keys = [str(key) for key in raw_keys if str(key).strip()]
+            else:
+                keys = []
+            if not keys:
+                raise SystemExit(f"Scenario step '{label}' has no keys")
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            peekaboo_press_sequence(pid, keys, delay_ms=delay_ms)
+            report.update({"keys": keys, "delay_ms": delay_ms})
+        elif kind == "type":
+            text = str(step.get("text", ""))
+            if not text:
+                raise SystemExit(f"Scenario step '{label}' has no text")
+            delay_ms = int(step.get("delay_ms", 20) or 20)
+            peekaboo_type_text(pid, text, delay_ms=delay_ms)
+            submit = bool(step.get("submit", False))
+            report.update({"text": text, "delay_ms": delay_ms, "submit": submit})
+            if submit:
+                submit_key = str(step.get("submit_key", "enter") or "enter")
+                submit_delay_ms = int(step.get("submit_delay_ms", 200) or 200)
+                peekaboo_press_sequence(pid, [submit_key], delay_ms=submit_delay_ms)
+                report.update({"submit_key": submit_key, "submit_delay_ms": submit_delay_ms})
+        elif kind == "advance_turns":
+            count = int(step.get("count", 0) or 0)
+            if count <= 0:
+                raise SystemExit(f"Scenario step '{label}' needs count > 0")
+            advance_turns(pid, count)
+            report["count"] = count
+        elif kind == "capture":
+            capture = capture_screenshot(pid, run_dir, label)
+            report["screen"] = capture.get("screen_summary", {})
+        else:
+            raise SystemExit(f"Unsupported scenario step kind: {kind or '<empty>'}")
+        if settle_seconds > 0:
+            time.sleep(settle_seconds)
+        if kind != "capture" and bool(step.get("capture_after", False)):
+            capture = capture_screenshot(pid, run_dir, f"{label}.after")
+            report["screen_after"] = capture.get("screen_summary", {})
+        reports.append(report)
+    return reports
 
 
 def choose_world_for_fixture(profile: str, explicit_world: str) -> WorldInfo:
@@ -654,6 +776,10 @@ def run_startup(args: argparse.Namespace) -> int:
 
         ok, data = success_from_lastworld(profile, baseline_mtime, expected_world)
         if ok:
+            post_lastworld_wait = float(startup_cfg.get("post_lastworld_wait_seconds", 0.0) or 0.0)
+            if post_lastworld_wait > 0:
+                time.sleep(post_lastworld_wait)
+                peekaboo_focus_pid(proc.pid)
             screen = capture_screenshot(proc.pid, run_dir, "success")
             copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
@@ -664,6 +790,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "ok_with_debug_popups": dismissals > 0,
                 "debug_popups_recorded": dismissals,
                 "strategy": plan.strategy,
+                "post_lastworld_wait_seconds": post_lastworld_wait,
                 "lastworld": data,
                 "run_dir": str(run_dir),
                 "screen": screen.get("screen_summary", {}),
@@ -725,8 +852,19 @@ def run_probe(args: argparse.Namespace) -> int:
     replace_existing_worlds = args.replace_existing_worlds or bool(scenario.get("replace_existing_worlds", False))
     advance_count = int(args.advance_turns if args.advance_turns is not None else scenario.get("advance_turns", 0))
     settle_seconds = float(args.settle_seconds if args.settle_seconds is not None else scenario.get("settle_seconds", 1.0))
-    artifact_pattern = args.artifact_pattern or str(scenario.get("artifact_pattern", "")).strip()
+    raw_patterns = scenario.get("artifact_patterns", [])
+    if isinstance(raw_patterns, list):
+        artifact_patterns = [str(pattern).strip() for pattern in raw_patterns if str(pattern).strip()]
+    else:
+        artifact_patterns = []
+    if not artifact_patterns:
+        artifact_pattern = args.artifact_pattern or str(scenario.get("artifact_pattern", "")).strip()
+        artifact_patterns = [artifact_pattern] if artifact_pattern else []
+    elif args.artifact_pattern:
+        artifact_patterns = [args.artifact_pattern]
     recommended_test_command = args.test_command or str(scenario.get("recommended_test_command", "")).strip()
+    artifact_source = str(scenario.get("artifact_source", "debug.log")).strip() or "debug.log"
+    steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
 
     start_cmd = [sys.executable, str(Path(__file__).resolve()), "start", "--profile", profile]
     if world:
@@ -752,8 +890,10 @@ def run_probe(args: argparse.Namespace) -> int:
                 "replace_existing_worlds": replace_existing_worlds,
                 "advance_turns": advance_count,
                 "settle_seconds": settle_seconds,
-                "artifact_pattern": artifact_pattern,
+                "artifact_source": artifact_source,
+                "artifact_patterns": artifact_patterns,
                 "recommended_test_command": recommended_test_command,
+                "steps": steps,
             },
             "startup_plan": start_result,
             "start_command": start_cmd,
@@ -788,25 +928,28 @@ def run_probe(args: argparse.Namespace) -> int:
         print(json.dumps(report, indent=2, ensure_ascii=False))
         return 1
 
-    debug_log = config_dir_for_profile(profile) / "debug.log"
-    artifact_start = debug_log.stat().st_size if debug_log.exists() else 0
+    artifact_log, filter_debug_noise, resolved_artifact_source = resolve_artifact_source(profile, artifact_source)
+    artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
     screen_before = capture_screenshot(pid, run_dir, "probe_before")
-    advance_turns(pid, advance_count)
-    if settle_seconds > 0:
-        time.sleep(settle_seconds)
+    step_reports = execute_probe_steps(pid, run_dir, steps)
     screen_after = capture_screenshot(pid, run_dir, "probe_after")
 
-    artifact_text = read_filtered_log_delta(debug_log, artifact_start)
+    artifact_text = read_log_delta(artifact_log, artifact_start, filter_debug_noise=filter_debug_noise)
     artifact_path = run_dir / "probe.artifacts.log"
     if artifact_text:
         artifact_path.write_text(artifact_text, encoding="utf-8")
-    matched_lines = [line for line in artifact_text.splitlines() if artifact_pattern and artifact_pattern in line]
+    matches_by_pattern = []
+    all_matched_lines: List[str] = []
+    for pattern in artifact_patterns:
+        lines = [line for line in artifact_text.splitlines() if pattern in line]
+        matches_by_pattern.append({"pattern": pattern, "lines": lines})
+        all_matched_lines.extend(lines)
 
     verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
     if screen_summary.get("version_matches_repo_head") is False:
         verdict = "inconclusive_version_mismatch"
-    elif matched_lines:
+    elif any(entry["lines"] for entry in matches_by_pattern):
         verdict = "artifacts_matched"
     elif not artifact_text.strip():
         verdict = "inconclusive_no_new_artifacts"
@@ -822,9 +965,12 @@ def run_probe(args: argparse.Namespace) -> int:
             "replace_existing_worlds": replace_existing_worlds,
             "advance_turns": advance_count,
             "settle_seconds": settle_seconds,
-            "artifact_pattern": artifact_pattern,
+            "artifact_source": resolved_artifact_source,
+            "artifact_patterns": artifact_patterns,
+            "steps": steps,
         },
         "startup": start_result,
+        "steps": step_reports,
         "screen": {
             "status": "captured",
             "before": screen_before.get("screen_summary", {}),
@@ -837,8 +983,10 @@ def run_probe(args: argparse.Namespace) -> int:
         "artifacts": {
             "status": "captured" if artifact_text else "no_new_artifacts",
             "path": str(artifact_path) if artifact_text else "",
-            "match_pattern": artifact_pattern,
-            "matched_lines": matched_lines,
+            "source_log": str(artifact_log),
+            "match_patterns": artifact_patterns,
+            "matches_by_pattern": matches_by_pattern,
+            "matched_lines": all_matched_lines,
             "line_count": len(artifact_text.splitlines()) if artifact_text else 0,
         },
         "verdict": verdict,

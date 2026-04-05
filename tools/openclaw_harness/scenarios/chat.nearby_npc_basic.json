@@ -1,0 +1,52 @@
+{
+  "name": "chat.nearby_npc_basic",
+  "description": "Launch the harness-owned Sandy Creek basecamp fixture, exercise the current nearby-NPC/freeform chat path, and capture screen plus llm_intent artifacts separately.",
+  "profile": "dev-harness",
+  "world": "Sandy Creek",
+  "fixture": "basecamp_dev_manual_2026-04-02",
+  "fixture_profile": "dev",
+  "replace_existing_worlds": true,
+  "artifact_source": "llm_intent.log",
+  "artifact_patterns": [
+    "prompt ",
+    "response "
+  ],
+  "steps": [
+    {
+      "kind": "press",
+      "label": "talk_to_nearby_npc",
+      "keys": ["C", "t"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "close_talk_window",
+      "keys": ["escape"],
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "press",
+      "label": "open_freeform_chat",
+      "keys": ["C", "b"],
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "type",
+      "label": "send_chat_utterance",
+      "text": "Hello there.",
+      "submit": true,
+      "settle_seconds": 1.5,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_reply",
+      "count": 2,
+      "settle_seconds": 1.0,
+      "capture_after": true
+    }
+  ],
+  "recommended_test_command": "./tests/cata_test \"[llm_intent]\""
+}
