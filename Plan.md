@@ -52,9 +52,10 @@ Current job:
 - if V3 work disproves any bundled V1/V2 claim, reopen the affected slice first instead of pretending nuance can stack on broken groundwork
 
 ### Immediate next move
-- get proportional runtime proof for the landed legwear-temperature lane on the real binary / harness path
-- if the current save does not naturally surface the lane, create the smallest controlled hot/cold cargo-shorts-vs-cargo-pants probe that does
-- only after that, choose the next narrow V3 follow-up lane (likely blanket-adjacent weather handling unless the live probe exposes a legwear correction first)
+- rebuild a **reliable** proportional runtime probe for the landed legwear-temperature lane on the real binary / harness path
+- the old outerwear save path is no longer enough by itself: the staged `shorts_cargo` / `pants_cargo` legwear repro did **not** survive restart as an honest fresh locker packet on either the restored current `dev` save or the harness fixture path, so the probe path itself now needs repair before more runtime claims get written down
+- next honest options are: recover the historical dirty-worker trigger state on the current save, craft the smallest save shape that guarantees `process_camp_locker_downtime` actually services the staged worker after load, or add temporary instrumentation if the live path keeps going silent
+- only after that probe path is trustworthy, capture the cold/hot legwear packet and choose the next narrow V3 follow-up lane (likely blanket-adjacent weather handling unless the live probe exposes a legwear correction first)
 
 ---
 

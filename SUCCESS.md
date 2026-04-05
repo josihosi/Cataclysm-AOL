@@ -70,6 +70,7 @@ Notes:
 - The first landed V3 lane is intentionally narrow: local temperature nudges shirt/vest-slot torso+arm outerwear toward warmer gear in cold weather and lighter gear in hot weather.
 - The next landed V3 lane is still narrow: pants-slot legwear now distinguishes shorts-like coverage from full-length coverage so cold weather prefers full-length legwear and hot weather prefers shorts-like legwear.
 - Outerwear has proportional runtime proof already; the newer legwear lane still needs its matching live packet before this runtime row can be checked again.
+- The current blocker is not Josef availability; it is that the staged legwear live probe path still needs repair before a fresh runtime claim would be honest.
 - Do not quietly let V3 nuance undo the simpler V1/V2 deterministic spine.
 
 ---

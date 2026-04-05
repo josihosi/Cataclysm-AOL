@@ -84,10 +84,17 @@ Latest relevant agent-side locker packet:
       - `camp locker: before Bruna Priest ... vest=[puffer jacket ... <coat_winter>] ... locker_raw=[light jacket (poor fit)<jacket_light>]`
       - `camp locker: queued Bruna Priest state-dirty ... plan=[vest upgrade puffer jacket ... <coat_winter> -> light jacket (poor fit)<jacket_light>]`
 
+Latest live-probe status for the open legwear lane:
+- 2026-04-05 agent-side repro audit on current HEAD (`d3b61027ec-dirty`) showed that the missing legwear runtime packet is **not** just waiting to be collected from the old save ritual:
+  - restored the original current `dev` / `Sandy Creek` save, staged **Bruna Priest** into `shorts_cargo` with `pants_cargo` on the locker tile at `35 F` via `./zzip`, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+  - that reload reached gameplay, but it did **not** emit a fresh legwear locker packet in `debug.log`
+  - switched to the harness fixture path (`install-fixture basecamp_dev_manual_2026-04-02 --profile dev --replace`), restaged the same cold probe, advanced turns in live gameplay through Peekaboo, and saved
+  - rereading the saved world after that run still showed `Bruna Priest` in `shorts_cargo` with `pants_cargo` still sitting on the locker tile, so that fixture path is also not yet a truthful live legwear reproducer
+
 Meaning:
 - Locker Zone V1/V2 remain preserved under the new V3 code path at deterministic-suite level
 - the outerwear V3 lane has both deterministic proof and proportional runtime proof on the current binary
-- the new legwear V3 lane now has deterministic proof but still lacks its matching live packet, so V3 runtime validation is no longer fully closed again yet
+- the new legwear V3 lane still lacks matching live proof, and the blocker is now the **runtime probe path itself**, not just an uncaptured packet
 - the hot-side outerwear runtime evidence currently comes from a real state-dirty replan packet after the live temperature flip rather than a second captured `after` packet, but it still proves the real planner/service path picks the lighter jacket when the temperature turns hot
 
 ---
@@ -96,11 +103,15 @@ Meaning:
 
 ### Active queue — Locker Zone V3
 
-1. get the missing proportional runtime proof for the new pants-slot legwear lane
-   - best controlled shape right now is `shorts_cargo` vs `pants_cargo`
-   - capture the real locker planner/service path under at least one cold and one hot setup if the save staging stays cheap
-2. if the current `dev` / `Sandy Creek` save does not naturally surface that lane, restage the smallest honest locker tile + worker loadout that does
-3. keep per-NPC personality nuance out unless the legwear live probe exposes a real need for a smaller corrective slice
+1. rebuild a reliable live probe for the new pants-slot legwear lane
+   - keep `shorts_cargo` vs `pants_cargo` as the clean deterministic-shaped wardrobe pair
+   - do **not** count the old outerwear save ritual as a valid legwear reproducer anymore until it emits or persists the legwear swap on a fresh run again
+2. next honest agent-side options are:
+   - recover the historical dirty-worker/current-save trigger state that used to produce the locker packet on load
+   - craft the smallest save shape that guarantees `process_camp_locker_downtime` actually services the staged worker after load
+   - add temporary instrumentation around the queue / downtime path if the real binary keeps loading silently
+3. only after the probe path is trustworthy, capture the real locker planner/service path under cold and hot legwear setups
+4. keep per-NPC personality nuance out unless the legwear live probe exposes a real need for a smaller corrective slice
 
 ### Non-blocking Josef notes
 

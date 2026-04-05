@@ -11,11 +11,12 @@ If the queue below stops matching `Plan.md`, fix this file.
 Locker Zone V3 is the active lane.
 
 Execution queue:
-1. get proportional runtime proof for the landed V3 legwear slice
-   - target the pants-slot short-vs-full-length swap (`shorts_cargo` / `pants_cargo` is the cleanest deterministic-shaped probe)
-   - use the smallest controlled hot/cold setup that actually surfaces the planner/service path
+1. rebuild a reliable proportional runtime probe for the landed V3 legwear slice
+   - the intended pants-slot short-vs-full-length probe is still `shorts_cargo` / `pants_cargo`
+   - the current staged-save repro is not honest yet: restoring the current `dev` save and staging that pair did not emit a fresh legwear locker packet after restart, and the harness fixture plus Peekaboo-driven turn advance/save also left the staged swap untouched
+   - next honest options: recover the old dirty-worker trigger on the current save, stage a guaranteed downtime/dirty NPC state, or temporarily instrument `process_camp_locker_downtime` / the queue path so the silence is explained instead of hand-waved
 2. keep V1/V2 closed unless this new V3 lane shows the older locker spine regressed
-3. only after the live legwear packet is honest, choose the next narrow V3 follow-up lane
+3. only after the live legwear probe path is trustworthy, capture the packet and choose the next narrow V3 follow-up lane
 
 Still true:
 - Locker Zone V1 and V2 stay closed only because their bundled task sets are checked in `SUCCESS.md`
