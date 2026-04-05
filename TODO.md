@@ -11,14 +11,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 Locker Zone V3 is the active lane.
 
 Execution queue:
-1. get proportional runtime proof for the landed first V3 lane
-   - current scope is local temperature driving shirt/vest-class torso+arm outerwear choices
-   - use the harness / real binary path, and if the usual save does not naturally show it, set up the smallest controlled hot/cold probe that does
-2. record that runtime evidence in `TESTING.md`
-3. then choose the next narrow V3 clothing lane
+1. choose the next narrow V3 clothing lane
    - likely hot-weather legwear / shorts
    - or a blanket / bedding-adjacent weather lane if that becomes the cleaner next deterministic step
-4. keep V1/V2 closed unless the runtime probe shows this first V3 lane regressed the older locker spine
+2. land deterministic proof for that next slice before chasing another live packet
+3. keep V1/V2 closed unless the new V3 work shows this first lane regressed the older locker spine
 
 Still true:
 - Locker Zone V1 and V2 stay closed only because their bundled task sets are checked in `SUCCESS.md`

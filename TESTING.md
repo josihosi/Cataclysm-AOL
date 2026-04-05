@@ -63,21 +63,27 @@ Latest relevant agent-side locker packet:
     - explicit cold-temperature probe (`35 F`) prefers a warmer outerwear upgrade (`jacket_light -> coat_winter`)
     - explicit hot-temperature probe (`85 F`) prefers a lighter outerwear upgrade (`coat_winter -> jacket_light`)
     - scope is intentionally narrow: shirt/vest-slot outerwear that covers both torso and arms
-- last recorded proportional runtime locker proof still covers the V1/V2 baseline, not the new V3 lane:
+- latest proportional runtime locker proof now covers the V1/V2 baseline **and** the first V3 outerwear-temperature lane:
+  - `make -j4 tests`
+  - `./tests/cata_test "[camp][locker]"`
   - `make -j4 TILES=1 cataclysm-tiles`
-  - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-    - passed cleanly on `.userdata/dev/harness_runs/20260405_180427`
-  - live current-binary probe on `dev` / `Sandy Creek`
-    - let the loaded save advance with `Tab` x12 after the harness load
-    - current `debug.log` on `0d03b1557e-dirty` then emitted a fresh locker packet for **Bruna Priest**:
-      - `camp locker: before Bruna Priest ... ranged=[weapon=compact bullpup shotgun<ksg> mags=0 take=0 reload=0 ready=no]`
-      - `camp locker: plan for Bruna Priest ... changes=[shirt dedupe keep=polo shirt<polo_shirt> drop=[flotation vest<flotation_vest>]; bag dedupe keep=messenger bag<mbag> drop=[leather belt<leather_belt>]] ranged=[weapon=compact bullpup shotgun<ksg> mags=0 take=0 reload=0 ready=no]`
-      - `camp locker: after Bruna Priest ... locker=[shirt=[flotation vest<flotation_vest>]; bag=[leather belt<leather_belt>]] ranged=[weapon=compact bullpup shotgun<ksg> mags=0 take=0 reload=0 ready=no]`
+  - controlled cold probe on `dev` / `Sandy Creek`
+    - staged **Bruna Priest** in `jacket_light` with `coat_winter` on the `CAMP_LOCKER` tile via the repo `./zzip` save tool, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+    - harness load passed cleanly on `.userdata/dev/harness_runs/20260405_204703`
+    - current `debug.log` on `d3b61027ec-dirty` emitted the real locker service packet:
+      - `camp locker: before Bruna Priest ... temp_f=45.0 ... vest=[light jacket ... <jacket_light>] ... locker_raw=[puffer jacket (poor fit)<coat_winter>]`
+      - `camp locker: plan for Bruna Priest ... changes=[... vest upgrade light jacket ... <jacket_light> -> puffer jacket (poor fit)<coat_winter> ...]`
+      - `camp locker: after Bruna Priest ... vest=[puffer jacket (poor fit)<coat_winter>] ... locker=[... vest=[light jacket<jacket_light>] ...]`
+  - controlled hot probe on the same save shape
+    - restaged **Bruna Priest** in `coat_winter` with `jacket_light` on the locker tile, loaded through the harness, then forced `85 F` in the live debug temperature control before advancing to the next service window
+    - the resulting live current-binary packet showed the planner re-queueing a lighter-outerwear swap:
+      - `camp locker: before Bruna Priest ... vest=[puffer jacket ... <coat_winter>] ... locker_raw=[light jacket (poor fit)<jacket_light>]`
+      - `camp locker: queued Bruna Priest state-dirty ... plan=[vest upgrade puffer jacket ... <coat_winter> -> light jacket (poor fit)<jacket_light>]`
 
 Meaning:
 - Locker Zone V1/V2 remain preserved under the new V3 code path at deterministic-suite level
-- the first V3 outerwear-temperature lane is now landed with deterministic proof
-- V3 still needs proportional runtime evidence on the current binary before it can claim more than a deterministic first slice
+- the first V3 outerwear-temperature lane now has both deterministic proof and proportional runtime proof on the current binary
+- the hot-side runtime evidence currently comes from a real state-dirty replan packet after the live temperature flip rather than a second captured `after` packet, but it still proves the real planner/service path picks the lighter jacket when the temperature turns hot
 
 ---
 
@@ -85,12 +91,10 @@ Meaning:
 
 ### Active queue — Locker Zone V3
 
-1. get proportional runtime evidence for the landed outerwear-temperature lane
-   - prove the real planner/service path prefers warmer outerwear in a cold setup and lighter outerwear in a hot setup
-   - if the standing `dev` / `Sandy Creek` save does not naturally present that choice, build the smallest controlled probe instead of faking confidence from the old ranged packet
-2. once runtime proof exists, decide the next narrow V3 lane
+1. choose the next narrow V3 clothing lane now that the first outerwear-temperature slice has live proof
    - likely shorts / hot-weather legwear
    - or a blanket / bedding-adjacent weather lane if that becomes easier to prove honestly
+2. for that next slice, land deterministic coverage first and only then ask for the matching live packet
 3. keep per-NPC personality nuance out unless a smaller deterministic clothing slice truly needs it
 
 ### Non-blocking Josef notes
