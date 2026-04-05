@@ -41,35 +41,34 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ### Basecamp bark / board-routing checkpoint
 Latest relevant agent-side packet:
-- `make -j4 tests`
-- `./tests/cata_test "[camp][basecamp_ai]"`
-  - passed at `291 assertions in 1 test case`
-  - includes the real `handle_heard_camp_request` router path, not only helper builders
-  - proves structured `show_board` emits the richer handoff snapshot with `planner_move` + overmap context when a camp origin exists
-  - proves spoken `show me the board` stays on the concise human-facing bark path instead of dumping the full snapshot
-  - now also proves the fenced board/job log packet helper shape used by the live artifact sink
-- `make -j4 TILES=1 cataclysm-tiles`
-  - forced a fresh tiles relink after stale-binary suspicion on the previously running app
-- later audit on current committed HEAD `dd4faafe32`
+- current committed HEAD `7c2bf09ec1`
+  - `make -j4 tests`
+  - `./tests/cata_test "[camp][basecamp_ai]"`
+  - passed at `296 assertions in 1 test case`
+- the targeted suite still covers the real `handle_heard_camp_request` router path, not only helper builders
+- it still proves the existing route split:
+  - structured `show_board` emits the richer handoff snapshot
+  - spoken `show me the board` stays on the concise human-facing bark path
+  - fenced board/job reply packets still use `reply_begin` / `reply_end`
+- new cleanup-specific proof now also shows the packaging seam explicitly:
+  - the stable deterministic board body (`active` / `archived` / `job=...`) is reusable on its own
+  - the `planner_move` / `overmap` block is now only a prefixed layer added by the origin-aware `show_board` path
+  - so the current deterministic board snapshot packages cleanly without baking prompt-planning context into the core board template
+- earlier broader runtime artifact proof remains valid as the live reference:
+  - `make -j4 TILES=1 cataclysm-tiles`
+  - launched `./cataclysm-tiles --userdir .userdata/dev --world 'Sandy Creek'`
+  - used `Shift+C`, then `bshow_board`
+  - fresh `config/llm_intent.log` append showed the fenced structured packet with `camp board reply ...`, `heard=show_board`, `reply_begin`, payload, `reply_end`
+- earlier forced rebuild audit on committed HEAD `dd4faafe32` still matters as stale-binary defense:
   - `make -B -j4 tests`
   - `./tests/cata_test "[camp][basecamp_ai]"`
-  - passed again at `291 assertions in 1 test case`, this time with the rebuilt test binary correctly reporting `Cataclysm DDA version dd4faafe32` instead of the older stale-banner mismatch
-- live `dev` / `Sandy Creek` probe on `b3f02923df-dirty`
-  - launched `./cataclysm-tiles --userdir .userdata/dev --world 'Sandy Creek'`
-  - used `Shift+C`, then `bshow_board` to trigger the deterministic Basecamp request path in-game
-  - fresh `config/llm_intent.log` append now shows the fenced artifact packet:
-    - `camp board reply Bruna Priest (2)`
-    - `heard=show_board`
-    - `reply_begin`
-    - `... exact structured handoff payload ...`
-    - `reply_end`
+  - passed on the rebuilt current-head binary instead of the older stale-banner mismatch
 
 Meaning:
-- the board-routing proof slice is closed for now as a baseline
-- the artifact-proof cleanup slice is now agent-validated on both the narrow deterministic helper path and the live log sink
-- the done-marked baseline also survives a forced rebuild on current committed HEAD, so it is no longer leaning on a stale `cata_test` banner accident
-- use this packet as the deterministic + live reference while working through the remaining Basecamp follow-through queue
-- rerun it only when the changed sub-slice actually touches the relevant camp routing / formatting path again
+- the board-routing proof slice stays closed as the baseline
+- the upstream deterministic cleanup slice is now agent-validated too
+- use this packet as the deterministic + live reference while working through the remaining broader prompt follow-through slice
+- rerun broader runtime smoke only if the next sub-slice actually changes the live route/output class again
 
 ### Locker Zone v1 checkpoint
 Latest relevant agent-side locker packet:
@@ -111,12 +110,7 @@ Meaning:
 
 ### Active queue — post-Locker-V1 Basecamp follow-through
 
-1. **Upstream deterministic Basecamp cleanup**
-   - prefer deterministic proof first
-   - rerun `./tests/cata_test "[camp][basecamp_ai]"` after the cleanup lands
-   - rebuild broader targets only if the touched code makes the narrow rerun dishonest
-
-2. **Broader LLM-side board prompt follow-through**
+1. **Broader LLM-side board prompt follow-through**
    - define the exact next structured extension beyond `show_board` before writing code
    - add/update the narrow deterministic coverage for that new route
    - rerun `./tests/cata_test "[camp][basecamp_ai]"`

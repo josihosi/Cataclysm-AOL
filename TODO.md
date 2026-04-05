@@ -11,12 +11,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 Post-Locker-V1 Basecamp follow-through is the active lane.
 
 Execution queue:
-1. upstream deterministic Basecamp cleanup
-   - prune/package the current deterministic board/job work into a cleaner upstream-ready shape
-2. broader LLM-side board prompt follow-through
-   - extend the richer structured treatment beyond `show_board`
+1. broader LLM-side board prompt follow-through
+   - define the exact next structured extension beyond `show_board`
+   - extend the richer structured treatment once that target is explicit
 
 Still true:
-- these three are already greenlit; do **not** move them back into a permission menu
+- this follow-through lane is already greenlit; do **not** move it back into a permission menu
 - keep finished Locker Zone v1 closed unless Josef explicitly reopens locker work
 - keep finished Basecamp bark / craft wording work closed unless Josef explicitly reopens that older slice

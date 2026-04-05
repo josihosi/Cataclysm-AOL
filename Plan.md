@@ -45,24 +45,23 @@ Josef has now greenlit the previously parked three-part Basecamp follow-through 
 So stop pretending the repo is waiting for a pick.
 
 Current active queue, in order:
-1. **Upstream deterministic Basecamp cleanup**
-   - prune/package the existing deterministic board/job work into a cleaner upstream-ready shape
-2. **Broader LLM-side board prompt follow-through**
+1. **Broader LLM-side board prompt follow-through**
    - extend the richer structured treatment beyond `show_board`
 
 Recently landed:
 - **Board/job artifact proof cleanup**
   - the live `DEBUG_LLM_INTENT_LOG` board/job packet now fences the exact handoff text with `reply_begin` / `reply_end`, so the live artifact is easier to scan and compare against the deterministic router proof
+- **Upstream deterministic Basecamp cleanup**
+  - the stable `show_board` request-board body now stays separate from the optional `planner_move` / `overmap` preface, so the deterministic board snapshot packages cleanly without baking the LLM-side planning layer into the core board template
 
 Working rules:
-- these three are already greenlit; do **not** move them back into a permission menu
-- work them in order unless reality forces a better order and the docs are updated to explain why
+- these follow-through slices are already greenlit; do **not** move them back into a permission menu
 - keep finished Locker Zone v1 and the finished Basecamp bark / craft / board checkpoint closed unless Josef explicitly reopens them
 
 ### Immediate next move
-- move to **Upstream deterministic Basecamp cleanup**
-- keep the broader prompt follow-through as the queued next slice, not as a vague future wish
-- keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to the now-two-step active queue plus the landed artifact cleanup proof
+- move to **Broader LLM-side board prompt follow-through**
+- define the exact next structured extension beyond `show_board` before writing code
+- keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to the now-single active slice plus the two landed cleanup checkpoints
 
 ---
 
