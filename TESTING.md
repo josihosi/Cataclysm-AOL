@@ -50,6 +50,10 @@ Latest relevant agent-side packet:
   - now also proves the fenced board/job log packet helper shape used by the live artifact sink
 - `make -j4 TILES=1 cataclysm-tiles`
   - forced a fresh tiles relink after stale-binary suspicion on the previously running app
+- later audit on current committed HEAD `dd4faafe32`
+  - `make -B -j4 tests`
+  - `./tests/cata_test "[camp][basecamp_ai]"`
+  - passed again at `291 assertions in 1 test case`, this time with the rebuilt test binary correctly reporting `Cataclysm DDA version dd4faafe32` instead of the older stale-banner mismatch
 - live `dev` / `Sandy Creek` probe on `b3f02923df-dirty`
   - launched `./cataclysm-tiles --userdir .userdata/dev --world 'Sandy Creek'`
   - used `Shift+C`, then `bshow_board` to trigger the deterministic Basecamp request path in-game
@@ -63,6 +67,7 @@ Latest relevant agent-side packet:
 Meaning:
 - the board-routing proof slice is closed for now as a baseline
 - the artifact-proof cleanup slice is now agent-validated on both the narrow deterministic helper path and the live log sink
+- the done-marked baseline also survives a forced rebuild on current committed HEAD, so it is no longer leaning on a stale `cata_test` banner accident
 - use this packet as the deterministic + live reference while working through the remaining Basecamp follow-through queue
 - rerun it only when the changed sub-slice actually touches the relevant camp routing / formatting path again
 
@@ -75,6 +80,10 @@ Latest relevant agent-side locker packet:
     - new eligible locker-zone gear requeues a worker after the baseline no-op pass and services once the existing cooldown expires
     - losing managed locker gear requeues the affected worker and re-equips from the locker once the existing cooldown expires
   - deterministic logs now show explicit `state-dirty` queue events in addition to the existing `before` / `plan` / `after` locker summaries
+- later audit on current committed HEAD `dd4faafe32`
+  - `make -B -j4 tests`
+  - `./tests/cata_test "[camp][locker]"`
+  - passed again at `121 assertions in 10 test cases`
 - prior broader runtime baseline remains valid for this same downtime path:
   - `make -j4 TILES=1 cataclysm-tiles`
   - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
@@ -92,6 +101,7 @@ Latest relevant agent-side locker packet:
 Meaning:
 - Locker Zone v1 is covered deterministically on top of the already-proved runtime service path
 - the dirty-trigger follow-through evidence closes the last V1 chunk rather than defining the whole lane by itself
+- the done-marked locker baseline also survives a forced rebuild on current committed HEAD
 - no extra startup/live rerun was needed for that final chunk because the changed code only adds queue-dirty detection around the same already-proved downtime/service path
 - this locker V1 slice is checkpointed; do not keep revalidating it unless the locker runtime path changes again
 
