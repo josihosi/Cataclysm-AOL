@@ -162,6 +162,54 @@ Observed summary:
 
 ---
 
+## Locker Zone v1 — groundwork + classifier/candidate slice
+
+### Deterministic contracts
+- Added `camp_locker_policy_serialization` in `tests/faction_camp_test.cpp`.
+- Added `camp_locker_item_classification` in `tests/faction_camp_test.cpp`.
+- Added `camp_locker_zone_candidate_gathering` in `tests/faction_camp_test.cpp`.
+- Added `camp_locker_loadout_planning` in `tests/faction_camp_test.cpp`.
+- Added `camp_locker_service_equips_upgrades_and_returns_replaced_gear` in `tests/faction_camp_test.cpp`.
+- Intended contract now covers:
+  - `CAMP_LOCKER` zone type is registered.
+  - a basecamp locker policy defaults to all managed slots enabled.
+  - toggled-off slots survive basecamp JSON save/load round-trip.
+  - representative items classify into the expected managed locker slots (underwear/socks/shoes/pants/shirt/vest/body armor/helmet/glasses/bag/melee/ranged).
+  - locker-zone candidate gathering buckets only items on `CAMP_LOCKER` tiles and respects disabled policy slots.
+  - locker loadout planning keeps the best current managed item, marks duplicate current gear for cleanup, equips missing managed categories, selects obvious upgrades only when the candidate clears the slot threshold, and leaves disabled categories out of the plan entirely.
+  - the first live locker service helper actually equips an obvious upgrade from the locker zone and returns the replaced managed item back to locker storage.
+- 2026-04-05: after a fresh top-level relink (`make -j4 tests cataclysm-tiles`), `./tests/cata_test "[camp][locker]"` passed on dirty `14e7f9afa3`.
+  - result: passed (`62 assertions in 5 test cases`)
+  - meaning: the locker groundwork, planner-level duplicate-cleanup/upgrade rules, and the first live equip/drop service helper all executed on a freshly relinked `cata_test`, not just as compiled object files
+
+### Compile evidence
+- 2026-04-05: fresh top-level relink `make -j4 tests cataclysm-tiles`
+  - result: passed
+  - meaning: the current locker policy/menu/save-load plumbing, classifier/candidate helpers, live locker service hook, and the new loadout-planning/service tests all rebuilt cleanly together on this Mac
+
+### Live smoke / harness evidence
+- 2026-04-05: earlier groundwork-only startup/load smoke still stands:
+  - command: `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+  - result: passed on the fresh post-relink groundwork tree with zero recorded debug popups
+  - artifact: `.userdata/dev/harness_runs/20260405_024224`
+  - meaning: the menu/save-load groundwork tree launched and loaded the known save cleanly after the forced rebuild
+- 2026-04-05: fresh startup harness on the current execution tree now passes on a freshly relinked current binary.
+  - commands: `make -j4 TILES=1 cataclysm-tiles`, then `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+  - result: passed with zero recorded debug popups on `.userdata/dev/harness_runs/20260405_043857`
+  - replaced false alarm: the earlier popup/dismissal failures (`.userdata/dev/harness_runs/20260405_034420`, `.userdata/dev/harness_runs/20260405_034724`, `.userdata/dev/harness_runs/20260405_034951`, `.userdata/dev/harness_runs/20260405_041728`) were not trustworthy evidence against the current source tree because the repo-local `cataclysm-tiles` binary was stale until the explicit `TILES=1` relink
+  - pre-slice comparison artifacts still useful: `.userdata/dev/harness_runs/20260405_032319`, `.userdata/dev/harness_runs/20260405_032641`
+  - meaning: current locker execution code now has fresh startup/load smoke again, but this is still **not** live proof of the downtime-triggered locker behavior itself
+- Important separation: current evidence now proves deterministic locker planning, the first live equip/drop helper contract, **and** fresh startup/load on the current execution tree; it still does **not** prove live downtime-triggered locker behavior for the camp-assigned NPC path.
+
+### Next live packet
+Now that the startup/load path is green again:
+- Keep `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'` as the baseline launch/load smoke for later locker iterations.
+- Re-run the already-scoped locker groundwork packet:
+  - open the faction camp menu and enter `Locker Policy`
+  - toggle 2-3 slots off, exit, save, quit, reload, and confirm the toggles persist
+  - create a `Basecamp: Locker` zone and confirm the menu hint flips from `not defined yet` to `defined`
+- Next, add a new packet specifically for managed duplicate cleanup and obvious-upgrade equips on the live downtime-driven locker path; do **not** pretend the current deterministic helper coverage or startup/load smoke is enough to stand in for that live probe.
+
 ## Signoff gates
 
 ### Upstream deterministic PR slice (parked reference)
