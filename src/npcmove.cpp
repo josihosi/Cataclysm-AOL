@@ -2406,14 +2406,36 @@ void npc::move() {
                 mission = NPC_MISSION_NULL;
       }
     }
-    if (assigned_camp && attitude != NPCATT_ACTIVITY) {
-      if (has_job() && calendar::once_every(10_minutes) &&
-          find_job_to_perform()) {
-        action = npc_player_activity;
-      } else {
-        action = npc_worker_downtime;
-        goal = pos_abs_omt();
-      }
+    if( assigned_camp ) {
+        const bool locker_probe_active =
+            get_value( "camp_locker_wake_dirty" ).str() == "true";
+        auto log_locker_probe_action = [&]( const std::string &reason ) {
+            if( !locker_probe_active ||
+                get_value( "camp_locker_probe_action_reason" ).str() == reason ) {
+                return;
+            }
+            DebugLog( D_INFO, DC_ALL )
+                << string_format(
+                       "camp locker: action %s reason=%s attitude=%d has_job=%s in_sleep=%s mounted=%s pos=%s",
+                       get_name(), reason, attitude, has_job() ? "true" : "false",
+                       in_sleep_state() ? "true" : "false",
+                       is_mounted() ? "true" : "false",
+                       pos_abs().to_string_writable() );
+            set_value( "camp_locker_probe_action_reason", reason );
+        };
+        if( attitude != NPCATT_ACTIVITY ) {
+            if( has_job() && calendar::once_every( 10_minutes ) &&
+                find_job_to_perform() ) {
+                action = npc_player_activity;
+                log_locker_probe_action( "player-activity" );
+            } else {
+                action = npc_worker_downtime;
+                goal = pos_abs_omt();
+                log_locker_probe_action( "worker-downtime" );
+            }
+        } else {
+            log_locker_probe_action( "attitude-activity" );
+        }
     }
     if (is_stationary(true) && !assigned_camp &&
         !has_flag(json_flag_CANNOT_MOVE)) {
@@ -4365,11 +4387,23 @@ bool npc::find_job_to_perform() {
 void npc::worker_downtime() {
   map &here = get_map();
   creature_tracker &creatures = get_creature_tracker();
-  if (assigned_camp) {
-    if (std::optional<basecamp *> camp =
-            overmap_buffer.find_camp(assigned_camp->xy());
-        camp && *camp) {
-      (*camp)->process_camp_locker_downtime(*this);
+  if( assigned_camp ) {
+    const bool locker_probe_active =
+        get_value( "camp_locker_wake_dirty" ).str() == "true";
+    if( locker_probe_active &&
+        get_value( "camp_locker_probe_reached_worker_downtime" ).str() != "true" ) {
+        DebugLog( D_INFO, DC_ALL )
+            << string_format(
+                   "camp locker: reached worker_downtime for %s pos=%s in_sleep=%s mounted=%s",
+                   get_name(), pos_abs().to_string_writable(),
+                   in_sleep_state() ? "true" : "false",
+                   is_mounted() ? "true" : "false" );
+        set_value( "camp_locker_probe_reached_worker_downtime", "true" );
+    }
+    if( std::optional<basecamp *> camp =
+            overmap_buffer.find_camp( assigned_camp->xy() );
+        camp && *camp ) {
+      ( *camp )->process_camp_locker_downtime( *this );
     }
   }
   // are we already in a chair
