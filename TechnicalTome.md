@@ -123,12 +123,26 @@ Run the named-NPC smoke harness without invoking the model:
 Run the named-NPC smoke harness through the normal runner pipe:
 - `python3 tools/llm_runner/npc_harness.py --scenario tools/llm_runner/scenarios/rubik_trade.json --backend ollama --ollama-model mistral`
 
+Check structured action-status output from `llm_intent.log`:
+- `python3 tools/llm_runner/action_status_check.py --log-file config/llm_intent.log --npc "Marlene Pike" --kind attack_target --terminal-phase blocked --terminal-reason attack.target_missing`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_attack_target_missing.txt --expect-file tools/llm_runner/fixtures/action_status_attack_target_missing.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_pickup_item_missing.txt --expect-file tools/llm_runner/fixtures/action_status_pickup_item_missing.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_inventory_cannot_wield.txt --expect-file tools/llm_runner/fixtures/action_status_inventory_cannot_wield.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_attack_morale_or_panic_block.txt --expect-file tools/llm_runner/fixtures/action_status_attack_morale_or_panic_block.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_pickup_panic_override.txt --expect-file tools/llm_runner/fixtures/action_status_pickup_panic_override.expect.json --json`
+- `python3 tools/llm_runner/run_action_status_fixtures.py`
+
+The checker also supports `phase_sequence` expectations so a fixture can assert on ordered lifecycle progression, not just whether a phase appeared somewhere eventually.
+
 The smoke harness intentionally tests three layers together:
 - selector resolution (manual vs generated precedence)
 - snapshot/prompt assembly for one named NPC
 - runner I/O + response parsing using game-like pipe-separated action-line validation
 
 ## LLM Intent Actions (Behavior Notes)
+- Structured deterministic `show_board` / `show_job` replies now have an explicit artifact sink: when `DEBUG_LLM_INTENT_LOG` is enabled, they append dedicated `camp board reply` / `camp job reply` blocks to `config/llm_intent.log` even if no normal LLM prompt/response block is involved.
+- Direct deterministic `show_board` handling can still produce a real in-game reply without a normal prompt/response block in `config/llm_intent.log`; use the explicit camp-reply block as the artifact sink first. If that block is missing, treat it as an instrumentation/config question rather than automatic proof that `show_board` failed.
+- Important current path split: the richer planner snapshot (`planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` + overmap block) is confirmed on the structured/internal `show_board` handoff token path, while live natural speech like `show me the board` currently still uses the older concise board-summary bark path.
 - `look_around` requests up to three nearby item names for pickup targeting.
 - `look_inventory` supports `wear`, `wield`, `act`, and `drop` sections.
 - `panic_on` sets a forced flee state for about 20 turns and bumps panic while active.
@@ -256,6 +270,60 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
 - For each topic, `dialogue::dynamic_line()` calls `json_talk_topic::get_dynamic_line()` and `dialogue::gen_responses()` calls `json_talk_topic::gen_responses()` to build visible player responses from JSON, filtering by dialogue conditions and attaching effects/trials.
 - The response's effect sets the next topic; the loop continues until `TALK_DONE`, with `TALK_NONE` popping the stack. This is the central hook if we ever want to intercept or rewrite dialogue selection globally.
 
+## Project Execution Workflow (Current)
+
+### Status language
+Use one shared status vocabulary across `Plan.md`, `TODO.md`, and `TESTING.md`:
+- `DISCUSS` — not specified enough yet; do not implement autonomously.
+- `GREEN` — structure agreed; implementation can proceed autonomously.
+- `AGENT TESTING` — Schani should run deterministic checks / compile / startup-load verification.
+- `JOSEF TESTING` — human gameplay/feel validation is pending.
+- `TWEAK` — known fixup round from testing.
+- `DONE` — only after the agreed finish line, not when a patch merely exists.
+
+### Autonomous work-loop rule
+The cron/autonomous loop should:
+- continue only `GREEN` work,
+- stop and ask when only `DISCUSS` work remains,
+- prepare deterministic tests whenever behavior is supposed to be deterministic,
+- ping Josef on meaningful progress, blockers, or ready-for-testing states.
+
+Narrow recon subagents are fine for `GREEN` work.
+Do not use subagents to invent architecture for `DISCUSS` work.
+
+## Basecamp Command Architecture (Current Direction)
+- Prefer **deterministic first-pass recognition** whenever the player is expressing a clear structured intent.
+- Use richer LLM/snapshot handling only when the problem is genuinely interpretive, ambiguous, or open-ended.
+
+### Deterministic-first rule
+Current intended examples:
+- `craft ...`
+- later board/job references such as `delete_job=<id>` and `job=<id>`
+- other obvious structured camp commands as they become real
+
+The key architectural rule is:
+1. deterministic recognizer extracts/normalizes intent first,
+2. deterministic code resolves legal candidates / blockers / action tokens,
+3. only then should a richer snapshot/LLM layer add interpretation or personality on top.
+
+Do not force the model to rediscover deterministic facts we already know how to compute cheaply.
+
+### Basecamp-specific note
+For the upstreamable deterministic slice, the spoken craft path should stay fully deterministic and human-reviewable.
+The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is stable and cleanly separable.
+
+### Locker Zone v1 groundwork note
+- The physical locker supply is now meant to be explicit: a `CAMP_LOCKER` Zone Manager zone, not an invisible camp concept.
+- The camp also now has a persisted locker-policy stub: the menu says which managed slots are allowed, while the zone will later answer which actual items are available.
+- The locker planner is no longer dead paper: deterministic helpers classify locker items, gather zone candidates, keep the best current managed item, mark duplicate current gear for cleanup, and now feed a live service path that lets idle assigned-camp NPCs perform an infrequent locker reevaluation during worker downtime.
+- That downtime path now has wake/dirty queue plumbing and temporary reservation filtering too, with deterministic coverage for reservation-aware candidate gathering and one-worker-at-a-time first-service sequencing.
+- It is still deliberately narrow: it can clean duplicate managed gear and apply obvious missing-slot/upgraded equips from the locker zone, but it still lacks trustworthy live proof of the actual camp-assigned downtime behavior — so talk about it as an agent-smoked orchestration slice, not as a finished locker system.
+
+### Follower-NPC caveat
+Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.
+Follower command parsing can become more deterministic over time, but followers must still be able to remain reluctant, weird, characteristic, defiant, or hostile.
+That topic stays design-sensitive and should not be treated as settled just because Basecamp command routing is becoming more structured.
+
 ## Hierarchical LLM Control (Planned, Compute-Lean)
 - Design goal: keep high strategic agency while minimizing LLM calls by using deterministic execution for most behavior.
 
@@ -269,14 +337,54 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
   - Existing AI executes pathing, combat, inventory, and local reactions.
   - LLM is only escalated on context gates.
 
-### Overmap movement contract
-- Planned minimal parser contract for overmap planner output:
-  - `Stay`
-  - `Move <dir>`
-  - `Move <dir> <dir>`
-  - `Move <dir> <dir> <dir>`
-- Allowed directions: `N NE E SE S SW W NW`.
-- Any malformed output resolves to `Stay` (no side effects).
+### Movement contract
+#### Local tactical follower movement
+- Replace only the **LLM-facing coordinate expression**, not the underlying movement system.
+- Current intended replacement:
+  - old shape: `move: E E E E hold_position`
+  - new shape: `move=<dx>,<dy> <state>`
+- Example outputs:
+  - `move=4,0 hold_position`
+  - `move=0,4 wait_here`
+  - `move=-2,1 hold_position`
+- Keep the existing post-move state suffixes exactly:
+  - `wait_here`
+  - `hold_position`
+- Keep deterministic pathing / target-tile resolution intact.
+- In other words: the model should express a destination offset, while deterministic code still performs route selection and execution.
+- Any malformed output should fail safely rather than producing side effects.
+
+#### Overmap movement / planner output
+- Use the same relative signed-delta idea for overmap-targeted planning/job selection.
+- Current intended shape:
+  - `stay`
+  - `move_omt dx=<signed_int> dy=<signed_int>`
+- Coordinate meaning:
+  - positive `x` = east / right
+  - negative `x` = west / left
+  - positive `y` = north / up
+  - negative `y` = south / down
+- Overmap context should be shown as a small **5x5 or 6x6 grid** plus a **present-only legend**, in the same general spirit as the follower snapshot.
+- Use collapsed terrain symbols rather than raw overmap tile names.
+- Lowercase symbols = normal terrain; uppercase symbols = the same terrain with a **horde present**.
+- Current preferred symbol vocabulary:
+  - `c` camp
+  - `h` house
+  - `r` road
+  - `m` meadow/grass
+  - `f` field
+  - `t` forest
+  - `s` swamp
+  - `w` water
+  - optional extended set when useful: `b` bridge, `u` urban, `p` point of interest, `k` shop, `n` riverbank/shore
+- The legend should list only symbols actually present in the current snapshot, not the entire symbol table.
+- Current helper contract: a centered radius-2 snapshot emits a 5x5 grid with a `dx` header row and `dy` row labels using the same signed-axis convention as `move_omt`.
+- The camp symbol should mark only the actual camp OMT, not every tile that merely falls inside the camp lookup radius.
+- Uppercase is shown only in the grid itself; the legend stays lowercase/present-only and adds a single note when any horde-marked tile appears.
+- Out-of-contract snapshot radii fail safely instead of inventing a malformed grid.
+- The first live consumer is the structured Basecamp board handoff (`show_board`): when a real camp origin is available it prepends `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` plus the shared `overmap:` block so prompt text and helper tests stay in sync.
+- Update prompt/snapshot explanation accordingly; lightweight axis/grid hints may help if the model needs better offset orientation.
+- Any malformed output resolves to `stay` (no side effects).
 
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:
@@ -291,3 +399,29 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
   - then clear intent and continue with local deterministic AI.
 - If planner is unavailable or parse fails:
   - keep gameplay stable by using non-LLM defaults.
+
+## Basecamp Request-Board Reference Commits
+
+For the first deterministic Basecamp request-board / spoken-camp-control slice on `dev`, the main reference commits are:
+
+- `ddd0b8fdad` — Add camp request board scaffolding
+- `3d0575715e` — Add board approval flow for camp craft requests
+- `1f534b2f87` — basecamp: batch-report work order launch results
+- `70bb56a9ce` — Teach camp crafts to reclaim hoarded tools
+- `8c7b502910` — Basecamp requests retry with alternate crafters
+- `8d8a51fd62` — Handle spoken camp craft orders via request board
+- `f38e5d0c06` — Add spoken camp request board controls
+- `9ff5455588` — Basecamp board speech supports request numbers
+- `d9362c8087` — Harden basecamp request board speech handling
+
+Supporting harness/debug-validation cleanup from the same pass:
+
+- `a53cf4be0d` — harness: filter benign attack_vector startup noise
+- `b7c84cb9c8` — harness: ignore pack load timing noise
+- `985128da47` — Capture dev basecamp testing baseline
+
+Upstream portability note:
+- A scratch squash/transplant check onto `upstream/master` showed the deterministic slice is mostly portable, but not yet a clean public patch.
+- The meaningful manual merge seam was `src/npctalk.cpp`.
+- A fork-local `Plan.md` docs conflict was irrelevant noise and not part of the code story.
+- Treat this section as reference archaeology, not as proof of an upstream-ready public patch.
