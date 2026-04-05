@@ -1217,6 +1217,8 @@ namespace {
 
 constexpr const char *camp_locker_state_signature_key =
     "camp_locker_last_state_signature";
+constexpr const char *camp_locker_probe_skip_reason_key =
+    "camp_locker_probe_skip_reason";
 
 struct camp_locker_live_state {
   std::vector<const item *> current_items;
@@ -2149,12 +2151,12 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
   const diag_value &wake_dirty_value =
       worker.get_value("camp_locker_wake_dirty");
   const bool wake_dirty = wake_dirty_value.str() == "true";
+  const diag_value &last_service_turn_value =
+      worker.get_value("camp_locker_last_service_turn");
   const bool already_queued =
       std::find(locker_service_queue.begin(), locker_service_queue.end(),
                 worker.getID()) != locker_service_queue.end();
-  if ((worker.get_value("camp_locker_last_service_turn").is_empty() &&
-       !already_queued) ||
-      wake_dirty) {
+  if ((last_service_turn_value.is_empty() && !already_queued) || wake_dirty) {
     mark_camp_locker_dirty(worker, wake_dirty);
     worker.set_value("camp_locker_wake_dirty", "false");
     DebugLog(D_INFO, DC_ALL)
@@ -2171,12 +2173,28 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
       valid_workers.insert(assignee->getID());
     }
   }
+  const bool queued_before_cleanup =
+      std::find(locker_service_queue.begin(), locker_service_queue.end(),
+                worker.getID()) != locker_service_queue.end();
   locker_service_queue.erase(
       std::remove_if(locker_service_queue.begin(), locker_service_queue.end(),
                      [&valid_workers](const character_id &worker_id) {
                        return valid_workers.count(worker_id) == 0;
                      }),
       locker_service_queue.end());
+  const bool queued_after_cleanup =
+      std::find(locker_service_queue.begin(), locker_service_queue.end(),
+                worker.getID()) != locker_service_queue.end();
+  const bool worker_assigned_here =
+      worker.assigned_camp && *worker.assigned_camp == omt_pos;
+  if (queued_before_cleanup && !queued_after_cleanup) {
+    DebugLog(D_INFO, DC_ALL)
+        << string_format(
+               "camp locker: dropped %s from queue during assignee cleanup assigned_here=%s valid_workers=%d assigned_npcs=%d",
+               worker.get_name(), worker_assigned_here ? "true" : "false",
+               static_cast<int>(valid_workers.size()),
+               static_cast<int>(assigned_npcs.size()));
+  }
 
   const faction_id fac_id = owner.is_valid() ? owner : your_fac;
   const camp_locker_live_state live_state = collect_camp_locker_live_state(
@@ -2188,9 +2206,6 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
   const bool has_state_changes =
       camp_locker_plan_has_changes(live_state.plan) ||
       live_state.ranged_readiness.has_changes();
-  const bool queued_after_cleanup =
-      std::find(locker_service_queue.begin(), locker_service_queue.end(),
-                worker.getID()) != locker_service_queue.end();
   if (previous_signature != locker_state_signature && has_state_changes &&
       !queued_after_cleanup) {
     mark_camp_locker_dirty(worker);
@@ -2208,8 +2223,34 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
   if (locker_service_queue.empty() ||
       locker_service_queue.front() != worker.getID() ||
       calendar::turn < locker_next_service_turn) {
+    std::string skip_reason;
+    if (locker_service_queue.empty()) {
+      skip_reason = "queue-empty";
+    } else if (locker_service_queue.front() != worker.getID()) {
+      skip_reason = "waiting-behind-other-worker";
+    } else {
+      skip_reason = string_format("cooldown-until=%d",
+                                  to_turn<int>(locker_next_service_turn));
+    }
+    if (worker.get_value(camp_locker_probe_skip_reason_key).str() != skip_reason) {
+      DebugLog(D_INFO, DC_ALL)
+          << string_format(
+                 "camp locker: skip %s reason=%s queue_size=%d worker_in_queue=%s assigned_here=%s valid_workers=%d last_service=%s has_changes=%s now=%d next_turn=%d",
+                 worker.get_name(), skip_reason,
+                 static_cast<int>(locker_service_queue.size()),
+                 queued_after_cleanup ? "true" : "false",
+                 worker_assigned_here ? "true" : "false",
+                 static_cast<int>(valid_workers.size()),
+                 last_service_turn_value.is_empty() ? "none"
+                                                   : last_service_turn_value.str(),
+                 has_state_changes ? "true" : "false",
+                 to_turn<int>(calendar::turn),
+                 to_turn<int>(locker_next_service_turn));
+      worker.set_value(camp_locker_probe_skip_reason_key, skip_reason);
+    }
     return false;
   }
+  worker.remove_value(camp_locker_probe_skip_reason_key);
 
   DebugLog(D_INFO, DC_ALL)
       << string_format("camp locker: servicing %s queue_size=%d now=%d",
