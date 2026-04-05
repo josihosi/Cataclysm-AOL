@@ -1,4 +1,4 @@
 board=show_board
-active={{active_count}}
+{{planning_snapshot}}active={{active_count}}
 archived={{archived_count}}
 {{jobs}}
