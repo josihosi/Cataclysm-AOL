@@ -1536,6 +1536,103 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     overmap_buffer.clear_mongroups();
   }
 
+  SECTION("camp request router keeps structured next=job follow-through on the job snapshot path") {
+    clear_avatar();
+    clear_map_without_vision();
+    Messages::clear_messages();
+
+    const tripoint_abs_omt origin(1705, 1705, 0);
+    overmap_buffer.clear_mongroups();
+    for( int dy = -2; dy <= 2; ++dy ) {
+        for( int dx = -2; dx <= 2; ++dx ) {
+            overmap_buffer.ter_set(
+                tripoint_abs_omt( origin.x() + dx, origin.y() + dy, origin.z() ),
+                oter_id( "field" ) );
+        }
+    }
+
+    get_map().add_camp( origin, "faction_camp", false );
+    std::optional<basecamp *> found_camp = overmap_buffer.find_camp( origin.xy() );
+    REQUIRE( found_camp.has_value() );
+    REQUIRE( *found_camp != nullptr );
+    basecamp *camp = *found_camp;
+
+    npc &listener = spawn_npc( tripoint_bub_ms{ 6, 6, 0 }.xy(), "thug" );
+    clear_character( listener, true );
+    listener.assigned_camp = origin;
+
+    const recipe &bandages = recipe_id( "bandages" ).obj();
+    camp->queue_crafting_request( bandages, 5, listener, "craft 5 bandages",
+                                  "bandages", listener.getID() );
+
+    REQUIRE( camp->handle_heard_camp_request( listener, "job=1" ) );
+    const std::vector<std::pair<std::string, std::string>> messages =
+        Messages::recent_messages( 0 );
+    REQUIRE_FALSE( messages.empty() );
+    const std::string followup_reply = messages.back().second;
+    CAPTURE( followup_reply );
+    CHECK( followup_reply.find( "board=show_board\ndetails=show_job=1\nid=1\n" ) != std::string::npos );
+    CHECK( followup_reply.find( "query=bandages\n" ) != std::string::npos );
+    CHECK( followup_reply.find( "source=craft 5 bandages\n" ) != std::string::npos );
+    CHECK( followup_reply.find( "next=job=1\n" ) != std::string::npos );
+    CHECK( followup_reply.find( "planner_move=" ) == std::string::npos );
+    CHECK( followup_reply.find( "Got it." ) == std::string::npos );
+
+    Messages::clear_messages();
+    overmap_buffer.clear_camps( origin.xy() );
+    overmap_buffer.clear_mongroups();
+  }
+
+  SECTION("camp request router keeps structured next=delete_job follow-through on archived clears") {
+    clear_avatar();
+    clear_map_without_vision();
+    Messages::clear_messages();
+
+    const tripoint_abs_omt origin(1710, 1710, 0);
+    overmap_buffer.clear_mongroups();
+    for( int dy = -2; dy <= 2; ++dy ) {
+        for( int dx = -2; dx <= 2; ++dx ) {
+            overmap_buffer.ter_set(
+                tripoint_abs_omt( origin.x() + dx, origin.y() + dy, origin.z() ),
+                oter_id( "field" ) );
+        }
+    }
+
+    get_map().add_camp( origin, "faction_camp", false );
+    std::optional<basecamp *> found_camp = overmap_buffer.find_camp( origin.xy() );
+    REQUIRE( found_camp.has_value() );
+    REQUIRE( *found_camp != nullptr );
+    basecamp *camp = *found_camp;
+
+    npc &listener = spawn_npc( tripoint_bub_ms{ 7, 7, 0 }.xy(), "thug" );
+    clear_character( listener, true );
+    listener.assigned_camp = origin;
+
+    const recipe &bandages = recipe_id( "bandages" ).obj();
+    const int request_id = camp->queue_crafting_request( bandages, 2, listener,
+                           "craft 2 bandages", "bandages", listener.getID() );
+    REQUIRE( request_id == 1 );
+
+    REQUIRE( camp->handle_heard_camp_request( listener, "cancel request #1" ) );
+    Messages::clear_messages();
+
+    REQUIRE( camp->handle_heard_camp_request( listener, "delete_job=1" ) );
+    const std::vector<std::pair<std::string, std::string>> messages =
+        Messages::recent_messages( 0 );
+    REQUIRE_FALSE( messages.empty() );
+    const std::string clear_reply = messages.back().second;
+    CAPTURE( clear_reply );
+    CHECK( clear_reply.find( "board=show_board\nplanner_move=stay | move_omt dx=<signed_int> dy=<signed_int>\novermap:\n" ) !=
+           std::string::npos );
+    CHECK( clear_reply.find( "active=0\narchived=0\njobs=none\n" ) != std::string::npos );
+    CHECK( clear_reply.find( "job=1" ) == std::string::npos );
+    CHECK( clear_reply.find( "Cleared old" ) == std::string::npos );
+
+    Messages::clear_messages();
+    overmap_buffer.clear_camps( origin.xy() );
+    overmap_buffer.clear_mongroups();
+  }
+
   SECTION("board handoff snapshot stays explicit when the board is empty") {
     CHECK(camp_board_handoff_snapshot({}) == "board=show_board\n"
                                              "active=0\n"
