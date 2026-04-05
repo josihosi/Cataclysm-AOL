@@ -49,7 +49,7 @@ Latest relevant agent-side packet:
 Meaning:
 - the board-routing proof slice is closed for now
 - this packet should only be rerun if the relevant camp routing code changes again
-- the remaining open question in this area is Josef's tone/feel judgment, not technical routing survival
+- this area has no standing pending handoff packet anymore
 
 ### Locker Zone v1 baseline
 Latest relevant agent-side baseline for the checkpointed locker tree:
@@ -78,23 +78,10 @@ Meaning:
 
 ---
 
-## Pending Josef checks — Basecamp bark feel pass
+## Pending probes
 
-Josef is only needed here for tone/feel judgment on the current bark tree.
-Current packet:
-- `show me the board` / `what's on the board`
-- `status of bandages`
-- `craft 5 bandages`
-- `clear request #...`
-
-Expected shape:
-- concise spoken board bark
-- subject-first status bark with trailing `(#id)` detail where needed
-- clear blocked-craft wording without spreadsheet sludge
-- clear/archive wording that sounds like camp speech, not office archiving
-
-Until the code changes again, do not keep revalidating this technically just because the human answer is not back yet.
-If another Josef-only packet appears soon, batch them.
+None for the finished Basecamp bark / craft slice.
+If this area is reopened later, add only the new missing evidence instead of resurrecting the old handoff packet by habit.
 
 ---
 

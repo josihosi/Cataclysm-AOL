@@ -8,22 +8,12 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No unblocked agent-side build/probe target is left on the current roadmap.
-Do not keep rerunning the board-routing packet unless the code changes.
+No active execution queue is selected yet.
+The finished Basecamp bark / craft packet is not current work anymore.
+Do not keep rerunning it unless the code changes or Josef explicitly reopens it.
 
-Next action depends on availability:
-- If Josef is around, batch the Basecamp bark feel packet.
-- If Josef is not around, send one short parked-options menu from `Plan.md` and stop.
-
-## Waiting on Josef
-
-Basecamp bark feel pass on the current checkpointed tree:
-- `show me the board`
-- `status of bandages`
-- `craft 5 bandages`
-- `clear request #...`
-
-This is a tone/feel packet, not a technical proof packet.
+Next action:
+- ask Josef to greenlight one parked option from `Plan.md`, or name a different lane
 
 ## Parked menu if Josef wants a new lane
 

@@ -34,21 +34,21 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — no unblocked agent-side lane
+## 1. Current delivery target — waiting for next greenlit lane
 
-**Status:** WAITING FOR JOSEF OR GREENLIGHT
+**Status:** WAITING FOR GREENLIGHT
 
-The previous active slice is now proved and should not be re-litigated:
+The previous Basecamp bark / board-routing / craft-handoff slice is closed and should not stay in the active roadmap:
 - the real `handle_heard_camp_request` structured `show_board` path emits the richer handoff snapshot
 - that structured reply carries `planner_move` + overmap context when a camp origin is available
 - live natural speech like `show me the board` still stays on the short spoken bark path
+- the current crafting/bark flow is considered done enough for this slice and is no longer waiting on a separate feel-gate here
 
-There is no better unblocked agent-side target in the current roadmap without either Josef's feel judgment or a fresh greenlight on a parked lane.
-Do **not** spend more runs revalidating the same board-routing packet unless the code changes.
+There is no currently selected next agent-side lane in the roadmap.
+Do **not** spend more runs revalidating the same Basecamp packet unless the code changes or Josef explicitly reopens it.
 
 ### Immediate next move
-- If Josef is available: run the queued Basecamp bark feel packet.
-- If Josef is still unavailable: stop after sending one short parked-options menu from section 3.
+- Ask Josef to greenlight one parked option from section 3, or name a different lane.
 
 ---
 
@@ -66,23 +66,7 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 3. Waiting on Josef — Basecamp bark feel pass
-
-**Status:** WAITING ON JOSEF
-
-The remaining open Basecamp bark questions are product-tone questions, not technical survival questions.
-Josef input is still wanted for:
-- short spoken board bark
-- subject-first status bark
-- blocked craft bark
-- clear/archive wording
-
-This is not a reason to rerun the old technical packet.
-If Josef is around, batch the feel check into one concise ask.
-
----
-
-## 4. Parked options available for greenlight
+## 3. Parked options available for greenlight
 
 If Josef is not available and a new agent-side lane is wanted, offer a short menu from here instead of inventing a new roadmap.
 
@@ -97,7 +81,7 @@ Keep the menu short and concrete: what it is, why it is parked, and what one gre
 
 ---
 
-## 5. Documentation discipline
+## 4. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute
