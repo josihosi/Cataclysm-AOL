@@ -20,7 +20,7 @@ Use this file so completion is explicit instead of vibes-based.
 Status: ACTIVE
 
 Success state:
-- [ ] The live `DEBUG_LLM_INTENT_LOG` board/job artifact packet is made legible enough to stand beside the deterministic router proof.
+- [x] The live `DEBUG_LLM_INTENT_LOG` board/job artifact packet is made legible enough to stand beside the deterministic router proof.
 - [ ] The deterministic Basecamp board/job work is pruned/packaged into a cleaner upstream-ready shape.
 - [ ] The richer structured board/prompt treatment is extended beyond `show_board` in a deliberate next slice.
 - [ ] Proportional validation for each finished sub-slice is recorded in `TESTING.md`.

@@ -11,11 +11,9 @@ If the queue below stops matching `Plan.md`, fix this file.
 Post-Locker-V1 Basecamp follow-through is the active lane.
 
 Execution queue:
-1. board/job artifact proof cleanup
-   - make the live `DEBUG_LLM_INTENT_LOG` board/job packet easier to read and easier to compare against the deterministic router proof
-2. upstream deterministic Basecamp cleanup
+1. upstream deterministic Basecamp cleanup
    - prune/package the current deterministic board/job work into a cleaner upstream-ready shape
-3. broader LLM-side board prompt follow-through
+2. broader LLM-side board prompt follow-through
    - extend the richer structured treatment beyond `show_board`
 
 Still true:

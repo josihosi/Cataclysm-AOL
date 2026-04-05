@@ -43,14 +43,27 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 Latest relevant agent-side packet:
 - `make -j4 tests`
 - `./tests/cata_test "[camp][basecamp_ai]"`
-  - passed at `289 assertions in 1 test case`
+  - passed at `291 assertions in 1 test case`
   - includes the real `handle_heard_camp_request` router path, not only helper builders
   - proves structured `show_board` emits the richer handoff snapshot with `planner_move` + overmap context when a camp origin exists
   - proves spoken `show me the board` stays on the concise human-facing bark path instead of dumping the full snapshot
+  - now also proves the fenced board/job log packet helper shape used by the live artifact sink
+- `make -j4 TILES=1 cataclysm-tiles`
+  - forced a fresh tiles relink after stale-binary suspicion on the previously running app
+- live `dev` / `Sandy Creek` probe on `b3f02923df-dirty`
+  - launched `./cataclysm-tiles --userdir .userdata/dev --world 'Sandy Creek'`
+  - used `Shift+C`, then `bshow_board` to trigger the deterministic Basecamp request path in-game
+  - fresh `config/llm_intent.log` append now shows the fenced artifact packet:
+    - `camp board reply Bruna Priest (2)`
+    - `heard=show_board`
+    - `reply_begin`
+    - `... exact structured handoff payload ...`
+    - `reply_end`
 
 Meaning:
 - the board-routing proof slice is closed for now as a baseline
-- use this packet as the deterministic reference while working through the new active Basecamp follow-through queue
+- the artifact-proof cleanup slice is now agent-validated on both the narrow deterministic helper path and the live log sink
+- use this packet as the deterministic + live reference while working through the remaining Basecamp follow-through queue
 - rerun it only when the changed sub-slice actually touches the relevant camp routing / formatting path again
 
 ### Locker Zone v1 checkpoint
@@ -88,17 +101,12 @@ Meaning:
 
 ### Active queue — post-Locker-V1 Basecamp follow-through
 
-1. **Board/job artifact proof cleanup**
-   - prefer the smallest honest evidence that the live `DEBUG_LLM_INTENT_LOG` board/job packet is easier to read and easier to compare against the deterministic router proof
-   - if the cleanup is mostly logging/formatting on the live path, a targeted live artifact packet may be the honest proof
-   - if helper extraction or deterministic formatting code changes too, add/update narrow `"[camp][basecamp_ai]"` coverage accordingly
-
-2. **Upstream deterministic Basecamp cleanup**
+1. **Upstream deterministic Basecamp cleanup**
    - prefer deterministic proof first
    - rerun `./tests/cata_test "[camp][basecamp_ai]"` after the cleanup lands
    - rebuild broader targets only if the touched code makes the narrow rerun dishonest
 
-3. **Broader LLM-side board prompt follow-through**
+2. **Broader LLM-side board prompt follow-through**
    - define the exact next structured extension beyond `show_board` before writing code
    - add/update the narrow deterministic coverage for that new route
    - rerun `./tests/cata_test "[camp][basecamp_ai]"`
@@ -134,3 +142,4 @@ Use these when they are actually the missing evidence, not as ritual.
 
 On this Mac, treat top-level `make -j4 tests` as the reliable path for a fresh `cata_test`.
 Avoid treating `make -C tests cata_test` as authoritative here; it has been a repeated source of toolchain/stale-build nonsense.
+Also: if you actually need a fresh tiles binary, use `make -j4 TILES=1 cataclysm-tiles`; plain `make cataclysm-tiles` is not an honest rebuild path here.

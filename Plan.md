@@ -45,12 +45,14 @@ Josef has now greenlit the previously parked three-part Basecamp follow-through 
 So stop pretending the repo is waiting for a pick.
 
 Current active queue, in order:
-1. **Board/job artifact proof cleanup**
-   - make the live `DEBUG_LLM_INTENT_LOG` board/job packet as legible as the deterministic router proof
-2. **Upstream deterministic Basecamp cleanup**
+1. **Upstream deterministic Basecamp cleanup**
    - prune/package the existing deterministic board/job work into a cleaner upstream-ready shape
-3. **Broader LLM-side board prompt follow-through**
+2. **Broader LLM-side board prompt follow-through**
    - extend the richer structured treatment beyond `show_board`
+
+Recently landed:
+- **Board/job artifact proof cleanup**
+  - the live `DEBUG_LLM_INTENT_LOG` board/job packet now fences the exact handoff text with `reply_begin` / `reply_end`, so the live artifact is easier to scan and compare against the deterministic router proof
 
 Working rules:
 - these three are already greenlit; do **not** move them back into a permission menu
@@ -58,9 +60,9 @@ Working rules:
 - keep finished Locker Zone v1 and the finished Basecamp bark / craft / board checkpoint closed unless Josef explicitly reopens them
 
 ### Immediate next move
-- start with **Board/job artifact proof cleanup**
-- keep the other two as the queued next slices, not as vague future wishes
-- keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to this active trio
+- move to **Upstream deterministic Basecamp cleanup**
+- keep the broader prompt follow-through as the queued next slice, not as a vague future wish
+- keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned to the now-two-step active queue plus the landed artifact cleanup proof
 
 ---
 
