@@ -8,30 +8,20 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Locker-capable harness restaging is the active lane.
+No pre-hackathon code/probe lane is currently active.
+The locker-capable harness restaging lane is checkpointed.
+Do not keep rerunning the old locker packet unless the fixture, harness path, or locker runtime behavior changes again.
 
-Execution queue:
-1. inspect the current shipped fixture/restaging path for `locker.weather_wait`
-   - confirm exactly where the missing `CAMP_LOCKER` zone/state gap lives
-2. choose the smallest honest repair
-   - new fixture with a real `CAMP_LOCKER` zone, or
-   - reproducible restaging step that creates/restores the needed locker state before the probe
-3. keep expanding the near-term harness helper list where repeated setup pain is obvious
-   - current new candidate: `sustain_npc` for checking/fixing hunger and thirst via debug when possible, or via controlled consumption otherwise
-4. rerun `locker.weather_wait` once the fixture path is real
-   - report **screen** / **tests** / **artifacts** separately
-5. keep the story reviewer-clean
-   - this is harness/fixture work on existing locker behavior
-   - it is **not** the hackathon chat feature
-   - it is **not** the hackathon ambient-model feature
+Parked options Josef can greenlight next:
+1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
+2. discuss/prototype a **patrol zone** for the Zone Manager
+3. discuss/prototype a **smart zone manager**
 
 Still true:
 - Hackathon-reserved — do not touch before the event:
   - chat interface over dialogue branches
   - ambient-trigger reaction lane / tiny ambient-trigger NPC model
-- Later discussion topics only, not active lanes yet:
-  - patrol zone for the Zone Manager
-  - smart zone manager
+- `sustain_npc` is parked as a helper idea until a future live-probe lane actually needs it
 - Locker Zone V1 and V2 stay closed only because their bundled task sets are checked in `SUCCESS.md`
 - if later work disproves any bundled V1/V2 claim, reopen the affected slice first
 - keep V3 from turning into giant NPC-personality soup

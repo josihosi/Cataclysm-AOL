@@ -37,42 +37,46 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Locker-capable harness restaging
+## 1. Current delivery target — Waiting for next greenlight
 
-**Status:** GREENLIT / ACTIVE
+**Status:** PARKED / WAITING FOR GREENLIGHT
 
-Josef has now greenlit the only pre-hackathon follow-up that is still fair game before the event:
-- **Locker-capable harness restaging**
+The only fair pre-hackathon follow-up lane that had been greenlit is now done for now:
+- **Locker-capable harness restaging** is checkpointed
 
-Current job:
-- build or capture a fixture/restaging path with a real `CAMP_LOCKER` zone
-- make `locker.weather_wait` a reusable live regression instead of a known blocked contract
-- keep the current reviewer-facing boundary explicit: this is harness/fixture work on existing locker behavior, not one of the reserved hackathon features
+What changed:
+- the harness now has a locker-ready save fixture at `tools/openclaw_harness/fixtures/saves/dev/locker_ready_dev_2026-04-06/`
+- `locker.weather_wait` is no longer a fake-blocked contract; it now restores the normal `basecamp_dev_manual_2026-04-02` profile snapshot, installs the locker-ready save, and lands a fresh packaged report at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`
+- that report separates **screen** / **tests** / **artifacts** and ends `artifacts_matched`
+- reviewer boundary stays explicit: this is harness/fixture work on existing locker behavior, **not** early hackathon feature work
 
 ### Immediate next move
-- inspect the current fixture/save path and choose the smallest honest restaging method
-- either:
-  - capture a new harness fixture that already contains a real `CAMP_LOCKER` zone and suitable locker items/NPC state, or
-  - add a reliable harness restaging step that can create/restore that state before the probe
-- once the fixture/restaging path is real, rerun `locker.weather_wait` and report **screen** / **tests** / **artifacts** separately
+- send Josef one concise parked-options note instead of doing more ceremonial locker reruns
+- do **not** reopen reserved hackathon lanes early
+- do **not** keep rerunning `locker.weather_wait` unless the fixture, harness path, or locker runtime behavior changes again
 
-### Reserved / not to be touched before the event
-1. **Chat interface over dialogue branches**
-   - reserved for the hackathon itself
-   - current harness chat work is only probe scaffolding; it is **not** the feature implementation and must not be presented as partial feature completion
-2. **Ambient-trigger reaction lane**
-   - reserved for the hackathon itself
-   - current `ambient.weird_item_reaction` work is only harness/observability scaffolding; it is **not** the tiny-model feature and must not be presented as partial feature completion
-
-### Later discussion topics once current work runs dry
-- **Patrol zone** for the Zone Manager
-- **Smart Zone Manager**
-
-These are discussion topics for later, not active or pre-approved code lanes right now.
+### Parked options Josef can greenlight next
+1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
+2. discuss/prototype a **patrol zone** for the Zone Manager
+3. discuss/prototype a **smart zone manager**
 
 ---
 
-## 2. Checkpointed — Locker Zone V2
+## 2. Checkpointed — Locker-capable harness restaging
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+This lane is now considered done for now because the bundled success state in `SUCCESS.md` is checked:
+- a real locker-capable fixture/restaging path exists
+- `locker.weather_wait` is no longer blocked on missing fixture shape
+- a fresh packaged run reports **screen** / **tests** / **artifacts** separately
+- the result is documented reviewer-cleanly as harness/fixture work on existing locker behavior
+
+If later fixture drift, harness drift, or locker runtime evidence breaks any one of those bundled claims, reopen this lane immediately.
+
+---
+
+## 3. Checkpointed — Locker Zone V2
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -86,7 +90,7 @@ If later code work or runtime evidence shows any one of those bundled claims is 
 
 ---
 
-## 3. Checkpointed — Locker Zone V1
+## 4. Checkpointed — Locker Zone V1
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -101,7 +105,7 @@ If later code work shows any one of those bundled claims is false or incomplete,
 
 ---
 
-## 4. Checkpointed — post-Locker-V1 Basecamp follow-through
+## 5. Checkpointed — post-Locker-V1 Basecamp follow-through
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -115,7 +119,7 @@ Keep this closed unless Josef explicitly reopens Basecamp prompt follow-through 
 
 ---
 
-## 5. Checkpointed — LLM-side board snapshot path
+## 6. Checkpointed — LLM-side board snapshot path
 
 **Status:** CHECKPOINTED
 
@@ -129,7 +133,7 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 6. Hackathon-reserved feature lanes — do not touch before the event
+## 7. Hackathon-reserved feature lanes — do not touch before the event
 
 These are intentionally **reserved for the hackathon itself**.
 They should stay visibly separate from the current repo-footing/harness work so reviewers do not mistake scaffolding for early feature implementation.
@@ -145,7 +149,7 @@ Do not start them early, do not half-land them, and do not describe scaffolding 
 
 ---
 
-## 7. Documentation discipline
+## 8. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

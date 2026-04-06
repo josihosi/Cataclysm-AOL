@@ -88,22 +88,22 @@ Latest relevant harness evidence for the current helper wave:
     - the packaged chat report at `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json` now lands `artifacts_matched` with recipient + `prompt` / `response` proof for `Bruna Priest`
     - the packaged ambient report at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` now tails the correct `llm_intent.log` source and honestly returns `inconclusive_no_new_artifacts`; the missing proof is live ambient behavior, not wrong-log bookkeeping
     - `ambient.weird_item_reaction` still runs all three packaged steps on the shipped fixture and returns to gameplay view after the scripted item/drop actions
-- newest narrow validation for the helper/reporting slice that touched locker setup honesty
-  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/log_probe.py`
+- newest narrow validation for the locker-fixture restaging slice
+  - `git diff --check`
+  - `python3 tools/openclaw_harness/startup_harness.py capture-fixture locker_ready_dev_2026-04-06 --profile dev --world 'Sandy Creek'`
   - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
-  - `make -j4 TILES=1 cataclysm-tiles`
   - `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
-  - `./zzip /tmp/.../#RGFuaWFsIEdvbnphbGV6.sav.zzip` + inspect `#RGFuaWFsIEdvbnphbGV6.zones.json`
   - passed:
-    - the harness now has a reusable `debug_force_temperature` helper on the current debug path `}`, `m`, `T`
-    - probe contracts can now include a generic `wait` step, which was enough to show that the post-`lastworld.json` autoload "success" screenshot can still be on the verification splash while later step captures are in real gameplay
-    - `locker.weather_wait` no longer fails because of stale binary or missing UI control; the real blocker is fixture shape
-    - inspection of the shipped `basecamp_dev_manual_2026-04-02` save fixture shows camp/follower state but **no `CAMP_LOCKER` zone** in the fixture zone data, so the packaged locker contract cannot honestly emit `camp locker:` packets yet
-    - that scenario is now supposed to stay explicitly blocked until a locker-capable fixture/restaging path exists
+    - the new harness-owned save fixture `tools/openclaw_harness/fixtures/saves/dev/locker_ready_dev_2026-04-06/` captures the current dev Sandy Creek world with a real `CAMP_LOCKER` zone and live locker/NPC state
+    - `locker.weather_wait` now restores the usual `basecamp_dev_manual_2026-04-02` profile snapshot while installing that locker-ready save fixture, so the scenario is packaged instead of depending on leftover `dev-harness` state
+    - the latest packaged run at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json` reports **screen** / **tests** / **artifacts** separately and lands `verdict: artifacts_matched`
+    - the captured artifact packet is a real locker-service packet on existing behavior (`camp locker:` lines for Ricky Broughton), not a fake blocked-fixture stub
+    - no compile/test rerun was needed because this slice changed harness fixture/scenario packaging only, not game code
 - meaning:
-  - chat recipient/artifact proof is no longer missing; the active probe gap is ambient-reaction evidence plus the already-known locker-fixture blocker
+  - chat recipient/artifact proof is still in place, and the locker-fixture blocker is no longer part of the active gap set
+  - the remaining pre-hackathon live evidence gap is still ambient reaction proof, but that lane stays hackathon-reserved rather than quietly becoming the next active target
   - do not regress packaged LLM probes back to per-profile `llm_intent.log` paths or raw repo-HEAD mismatch checks; those were harness bookkeeping mistakes, not behavior verdicts
-  - do not keep rerunning `locker.weather_wait` on the shipped fixture until the scenario has a real `CAMP_LOCKER` save shape again
+  - do not keep rerunning `locker.weather_wait` unless the fixture, harness path, or locker runtime behavior changes again
   - do not keep claiming `ambient.weird_item_reaction` is blocked on assign-NPC helpers unless a new fixture/state actually proves that again
 
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
@@ -189,18 +189,16 @@ Meaning:
 
 ## Pending probes
 
-### Active queue — locker-capable harness restaging
+### No active pre-hackathon probe queue
 
-1. inspect the current fixture/restaging path for `locker.weather_wait`
-   - confirm the exact missing `CAMP_LOCKER` zone/state gap on the shipped fixture
-2. choose the smallest honest repair
-   - a captured fixture that already contains the real locker state, or
-   - a reproducible restaging step that creates/restores it before the probe
-3. rerun `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait` once the fixture path is real
-4. report the result as separate **screen** / **tests** / **artifacts** evidence
-5. keep expanding the helper wave only where it removes repeated setup mud
-   - new near-term candidate: `sustain_npc` to inspect/fix hunger and thirst via debug if possible, or via controlled food/drink consumption otherwise
-6. keep the reviewer boundary explicit: this is harness/fixture work on existing locker behavior, not early hackathon feature work
+- `locker.weather_wait` restaging is now checkpointed on the captured fixture `locker_ready_dev_2026-04-06`; latest packaged proof lives at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`
+- no other pre-hackathon probe/code lane is currently greenlit, so do not keep churning the old locker packet
+- the helper idea `sustain_npc` stays parked until a future live-probe lane actually needs it
+
+**Parked options that need Josef greenlight:**
+1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
+2. discuss/prototype a **patrol zone** for the Zone Manager
+3. discuss/prototype a **smart zone manager**
 
 **Hackathon-reserved — do not touch before the event:**
 1. **chat interface over dialogue branches**
@@ -212,8 +210,9 @@ Meaning:
 
 - Compact pre-holiday packet: `doc/josef-hackathon-runway-testing-packet-2026-04-06.md`
   - ready now: `chat.nearby_npc_basic` via `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json`
-  - current honest caveats: ambient is still `inconclusive_no_new_artifacts`; locker probe is now the active fixture-restaging lane
-- Later discussion topics once the current lane runs dry:
+  - ready now: `locker.weather_wait` via `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`
+  - current honest caveat: ambient is still `inconclusive_no_new_artifacts`, and that feature lane remains hackathon-reserved rather than the next active target
+- Later discussion topics once Josef reopens work:
   - patrol zone for the Zone Manager
   - smart zone manager
 

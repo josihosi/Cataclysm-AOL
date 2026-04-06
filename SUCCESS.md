@@ -17,17 +17,19 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Locker-capable harness restaging
 
-Status: ACTIVE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] A fixture or restaging path exists that contains a real `CAMP_LOCKER` zone and suitable locker-state/NPC-state for `locker.weather_wait`.
-- [ ] `locker.weather_wait` is no longer blocked on missing fixture shape.
-- [ ] A fresh packaged `locker.weather_wait` run reports **screen** / **tests** / **artifacts** separately on the repaired fixture path.
-- [ ] The result is described reviewer-cleanly as harness/fixture work on existing locker behavior, not as early hackathon feature work.
+- [x] A fixture or restaging path exists that contains a real `CAMP_LOCKER` zone and suitable locker-state/NPC-state for `locker.weather_wait`.
+- [x] `locker.weather_wait` is no longer blocked on missing fixture shape.
+- [x] A fresh packaged `locker.weather_wait` run reports **screen** / **tests** / **artifacts** separately on the repaired fixture path.
+- [x] The result is described reviewer-cleanly as harness/fixture work on existing locker behavior, not as early hackathon feature work.
 
 Notes:
-- This lane exists because the shipped `basecamp_dev_manual_2026-04-02` fixture does not contain a `CAMP_LOCKER` zone.
-- The goal is not new locker gameplay; the goal is to make existing locker behavior probeable and regressible.
+- This lane existed because the shipped `basecamp_dev_manual_2026-04-02` save fixture did not contain a `CAMP_LOCKER` zone even though the live dev save did.
+- The repair is the captured harness-owned save fixture `tools/openclaw_harness/fixtures/saves/dev/locker_ready_dev_2026-04-06/`, plus the scenario update that restores the usual `basecamp_dev_manual_2026-04-02` profile snapshot while installing that locker-ready save.
+- Latest packaged proof: `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait` -> `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json` with `verdict: artifacts_matched` and separate screen/tests/artifacts reporting.
+- The goal was not new locker gameplay; it was to make existing locker behavior probeable and regressible.
 - Keep the hackathon-reserved chat/ambient feature lanes clearly separate.
 
 ---
