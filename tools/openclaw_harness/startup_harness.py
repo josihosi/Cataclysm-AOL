@@ -1110,6 +1110,128 @@ def capture_screenshot(
     return payload
 
 
+def render_blink_compare(
+    run_dir: Path,
+    label: str,
+    frame_names: List[str],
+    *,
+    scale: int = 1,
+    frame_delay_ms: int = 450,
+) -> Dict[str, Any]:
+    frame_paths = [(run_dir / str(name)).resolve() for name in frame_names]
+    missing_inputs = [str(path) for path in frame_paths if not path.exists()]
+    ffmpeg_path = shutil.which("ffmpeg")
+    output_path = run_dir / f"{label}.gif"
+    concat_path = run_dir / f"{label}.ffconcat"
+    report: Dict[str, Any] = {
+        "kind": "blink_compare",
+        "label": label,
+        "inputs": [str(path) for path in frame_paths],
+        "output_path": str(output_path),
+        "scale": max(1, int(scale)),
+        "frame_delay_ms": max(50, int(frame_delay_ms)),
+        "ffconcat_path": str(concat_path),
+    }
+    if missing_inputs:
+        report.update({
+            "ok": False,
+            "reason": "missing_inputs",
+            "missing_inputs": missing_inputs,
+        })
+        return report
+    if not ffmpeg_path:
+        report.update({
+            "ok": False,
+            "reason": "missing_ffmpeg",
+        })
+        return report
+
+    frame_delay_seconds = report["frame_delay_ms"] / 1000.0
+    concat_lines = ["ffconcat version 1.0"]
+    for frame_path in frame_paths:
+        concat_lines.append(f"file '{frame_path}'")
+        concat_lines.append(f"duration {frame_delay_seconds:.3f}")
+    concat_lines.append(f"file '{frame_paths[-1]}'")
+    concat_path.write_text("\n".join(concat_lines) + "\n", encoding="utf-8")
+
+    scale_filter = "null"
+    if report["scale"] > 1:
+        scale_filter = f"scale=iw*{report['scale']}:ih*{report['scale']}:flags=neighbor"
+    filter_complex = (
+        f"[0:v]{scale_filter},split[s0][s1];"
+        "[s0]palettegen=stats_mode=diff[p];"
+        "[s1][p]paletteuse"
+    )
+    cmd = [
+        ffmpeg_path,
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        str(concat_path),
+        "-vsync",
+        "vfr",
+        "-filter_complex",
+        filter_complex,
+        "-loop",
+        "0",
+        str(output_path),
+    ]
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    report.update({
+        "ok": proc.returncode == 0,
+        "command": cmd,
+        "returncode": proc.returncode,
+        "stdout": proc.stdout,
+        "stderr": proc.stderr,
+    })
+    if proc.returncode != 0 and output_path.exists():
+        output_path.unlink()
+    return report
+
+
+def render_derived_screens(run_dir: Path, specs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    reports: List[Dict[str, Any]] = []
+    for index, spec in enumerate(specs, start=1):
+        if not isinstance(spec, dict):
+            reports.append({
+                "ok": False,
+                "kind": "invalid",
+                "label": f"derived_screen_{index:02d}",
+                "reason": "spec_not_object",
+            })
+            continue
+        kind = str(spec.get("kind", "")).strip().lower()
+        label = str(spec.get("label", f"derived_screen_{index:02d}")).strip() or f"derived_screen_{index:02d}"
+        if kind == "blink_compare":
+            raw_frames = spec.get("frames", [])
+            frame_names = [str(frame).strip() for frame in raw_frames if str(frame).strip()] if isinstance(raw_frames, list) else []
+            reports.append(
+                render_blink_compare(
+                    run_dir,
+                    label,
+                    frame_names,
+                    scale=int(spec.get("scale", 1) or 1),
+                    frame_delay_ms=int(spec.get("frame_delay_ms", 450) or 450),
+                )
+            )
+            continue
+        reports.append({
+            "ok": False,
+            "kind": kind or "unknown",
+            "label": label,
+            "reason": "unsupported_kind",
+        })
+    return reports
+
+
 def kill_existing_game_processes() -> List[int]:
     proc = subprocess.run(["pgrep", "-f", "cataclysm-(tiles|tlg-tiles)"], capture_output=True, text=True, check=False)
     pids: List[int] = []
@@ -1770,6 +1892,8 @@ def run_probe(args: argparse.Namespace) -> int:
     recommended_test_command = args.test_command or str(scenario.get("recommended_test_command", "")).strip()
     artifact_source = str(scenario.get("artifact_source", "debug.log")).strip() or "debug.log"
     steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
+    raw_derived_screens = scenario.get("derived_screens", [])
+    derived_screens = [entry for entry in raw_derived_screens if isinstance(entry, dict)] if isinstance(raw_derived_screens, list) else []
 
     if blocker_info["status"] == "blocked":
         run_dir = create_run_dir(profile)
@@ -1957,6 +2081,7 @@ def run_probe(args: argparse.Namespace) -> int:
     artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
     screen_before = capture_screenshot(pid, run_dir, "probe_before")
     step_reports = execute_probe_steps(pid, run_dir, steps)
+    derived_screen_reports = render_derived_screens(run_dir, derived_screens)
     screen_after = capture_screenshot(pid, run_dir, "probe_after")
 
     artifact_text = read_log_delta(artifact_log, artifact_start, filter_debug_noise=filter_debug_noise)
@@ -1996,9 +2121,11 @@ def run_probe(args: argparse.Namespace) -> int:
             "artifact_source": resolved_artifact_source,
             "artifact_patterns": artifact_patterns,
             "steps": steps,
+            "derived_screens": derived_screens,
         },
         "startup": start_result,
         "steps": step_reports,
+        "derived_screens": derived_screen_reports,
         "screen": {
             "status": "captured",
             "before": screen_before.get("screen_summary", {}),

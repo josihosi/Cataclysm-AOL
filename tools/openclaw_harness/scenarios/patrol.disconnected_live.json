@@ -1,6 +1,6 @@
 {
   "name": "patrol.disconnected_live",
-  "description": "Load the disconnected-post patrol probe fixture, arm Bruna and Ricky with patrol priority 1, then wait for the on-shift guard to start walking the four single-tile patrol posts while emitting patrol trace logs.",
+  "description": "Load the disconnected-post patrol probe fixture, arm Bruna and Ricky with patrol priority 1, capture a tighter runtime crop after the active guard settles onto the route, then capture a second dwell-later crop and package the pair as a blink-comparison GIF so the loop movement across disconnected posts reads visually without leaning on patrol trace logs alone.",
   "profile": "dev-harness",
   "world": "Sandy Creek",
   "profile_snapshot": "basecamp_dev_manual_2026-04-02",
@@ -122,9 +122,28 @@
     {
       "kind": "advance_turns",
       "label": "wait_for_patrol_runtime",
-      "count": 20,
+      "count": 200,
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "capture_after_crop": {
+        "height": 691,
+        "width": 717,
+        "offset_y": 806,
+        "offset_x": 614
+      }
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_patrol_runtime_one_dwell_later",
+      "count": 600,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "capture_after_crop": {
+        "height": 691,
+        "width": 717,
+        "offset_y": 806,
+        "offset_x": 614
+      }
     },
     {
       "kind": "press",
@@ -138,6 +157,18 @@
         "offset_y": 0,
         "offset_x": 2100
       }
+    }
+  ],
+  "derived_screens": [
+    {
+      "kind": "blink_compare",
+      "label": "runtime_motion_compare",
+      "frames": [
+        "wait_for_patrol_runtime.after.png",
+        "wait_for_patrol_runtime_one_dwell_later.after.png"
+      ],
+      "scale": 2,
+      "frame_delay_ms": 450
     }
   ],
   "recommended_test_command": "./tests/cata_test \"[camp][patrol]\""
