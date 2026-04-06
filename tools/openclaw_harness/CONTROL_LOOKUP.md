@@ -23,6 +23,8 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 | Talk to nearby NPC | `C`, `t` | First practical target in the current save is Ricky Broughton. |
 | Open freeform player utterance | `C`, `b` | Type utterance, then `Enter`, then usually `Tab` x1-2 to let the response inject. |
 | Open ruleset window from chat UI | `a` (sometimes `a`, then `a` again) | Quest-first chat variants may consume the first `a`; if so, press `a` again to reach the ruleset window. |
+| Spawn item wish menu from debug path | `}`, `s`, `w` | Harness helper path for `debug_spawn_item`. Current helper drives the wish-menu text filter (`/` + query) and amount prompt, then exits the menu. Because the uilist filter matches displayed entry text, practical queries should be item names / visible text, not raw item ids. |
+| Spawn monster wish menu from debug path | `}`, `s`, `m` | Harness helper path for `debug_spawn_monster`. Current helper drives the wish-menu text filter (`/` + query), optional friendly/hallucination toggles, then confirms the look-around target. Practical queries should be monster names / visible text, not raw monster ids. |
 | Spawn random follower NPC from debug path | `}`, `s`, `f` | Landed harness helper path (`debug_spawn_follower_npc`). Spawns a random follower near the player with current debug-menu hotkeys. |
 | Spawn Rubik from debug path | `}`, `s`, `p`, `O` | Current remembered path only; treat as provisional until reverified in automation. |
 

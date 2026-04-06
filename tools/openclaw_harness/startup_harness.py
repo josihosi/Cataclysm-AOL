@@ -455,6 +455,135 @@ def run_debug_menu_shortcut_path(
         time.sleep(menu_settle_seconds)
 
 
+def apply_uilist_filter(
+    pid: int,
+    query: str,
+    *,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    settle_seconds: float = 0.25,
+) -> None:
+    query = query.strip()
+    if not query:
+        raise SystemExit("UI list filter query cannot be empty")
+    peekaboo_press_sequence(pid, ["/"], delay_ms=delay_ms)
+    time.sleep(settle_seconds)
+    peekaboo_type_text(pid, query, delay_ms=type_delay_ms)
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(settle_seconds)
+
+
+def fill_numeric_prompt(
+    pid: int,
+    value: int,
+    *,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    clear_presses: int = 8,
+    settle_seconds: float = 0.15,
+) -> None:
+    if value < 0:
+        raise SystemExit("Numeric prompt value cannot be negative")
+    peekaboo_press_sequence(pid, ["backspace"] * max(1, clear_presses), delay_ms=max(50, min(delay_ms, 150)))
+    time.sleep(settle_seconds)
+    peekaboo_type_text(pid, str(value), delay_ms=type_delay_ms)
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(settle_seconds)
+
+
+def debug_spawn_item(
+    pid: int,
+    *,
+    item_query: str,
+    count: int = 1,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.35,
+    prompt_settle_seconds: float = 0.25,
+    exit_menu: bool = True,
+) -> None:
+    if count <= 0:
+        raise SystemExit("Item spawn count must be > 0")
+    run_debug_menu_shortcut_path(
+        pid,
+        ["s", "w"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+    apply_uilist_filter(
+        pid,
+        item_query,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        settle_seconds=prompt_settle_seconds,
+    )
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    if count == 1:
+        peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    else:
+        fill_numeric_prompt(
+            pid,
+            count,
+            delay_ms=delay_ms,
+            type_delay_ms=type_delay_ms,
+        )
+    if exit_menu:
+        peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+
+
+def debug_spawn_monster(
+    pid: int,
+    *,
+    monster_query: str,
+    target_keys: Optional[List[str]] = None,
+    group_radius: int = 0,
+    friendly: bool = False,
+    hallucination: bool = False,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.35,
+    prompt_settle_seconds: float = 0.25,
+    exit_menu: bool = True,
+) -> None:
+    if group_radius < 0:
+        raise SystemExit("Monster group radius cannot be negative")
+    run_debug_menu_shortcut_path(
+        pid,
+        ["s", "m"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+    apply_uilist_filter(
+        pid,
+        monster_query,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        settle_seconds=prompt_settle_seconds,
+    )
+    if friendly:
+        peekaboo_press_sequence(pid, ["f"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    if hallucination:
+        peekaboo_press_sequence(pid, ["h"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    if group_radius > 0:
+        peekaboo_press_sequence(pid, ["i"] * group_radius, delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    if target_keys:
+        peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    if exit_menu:
+        peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+
+
 def debug_spawn_follower_npc(
     pid: int,
     *,
@@ -766,6 +895,87 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 raise SystemExit(f"Scenario step '{label}' needs count > 0")
             advance_turns(pid, count)
             report["count"] = count
+        elif kind == "debug_spawn_item":
+            item_query = str(
+                step.get("item_query")
+                or step.get("item")
+                or step.get("query")
+                or ""
+            ).strip()
+            if not item_query:
+                raise SystemExit(f"Scenario step '{label}' needs item_query/item")
+            count = int(step.get("count", 1) or 1)
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            debug_spawn_item(
+                pid,
+                item_query=item_query,
+                count=count,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "item_query": item_query,
+                "count": count,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "debug_menu_path": ["}", "s", "w"],
+                "spawn_target": "inventory",
+            })
+        elif kind == "debug_spawn_monster":
+            monster_query = str(
+                step.get("monster_query")
+                or step.get("monster")
+                or step.get("query")
+                or ""
+            ).strip()
+            if not monster_query:
+                raise SystemExit(f"Scenario step '{label}' needs monster_query/monster")
+            raw_target_keys = step.get("target_keys", [])
+            if isinstance(raw_target_keys, str):
+                target_keys = [raw_target_keys] if raw_target_keys.strip() else []
+            elif isinstance(raw_target_keys, list):
+                target_keys = [str(key) for key in raw_target_keys if str(key).strip()]
+            else:
+                target_keys = []
+            group_radius = int(step.get("group_radius", step.get("radius", 0)) or 0)
+            friendly = bool(step.get("friendly", False))
+            hallucination = bool(step.get("hallucination", False))
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            debug_spawn_monster(
+                pid,
+                monster_query=monster_query,
+                target_keys=target_keys,
+                group_radius=group_radius,
+                friendly=friendly,
+                hallucination=hallucination,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "monster_query": monster_query,
+                "target_keys": target_keys,
+                "group_radius": group_radius,
+                "friendly": friendly,
+                "hallucination": hallucination,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "debug_menu_path": ["}", "s", "m"],
+                "spawn_target": "look_around_confirm",
+            })
         elif kind == "debug_spawn_follower_npc":
             count = int(step.get("count", 1) or 1)
             if count <= 0:
