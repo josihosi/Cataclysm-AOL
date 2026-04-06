@@ -439,6 +439,64 @@ def advance_turns(pid: int, count: int) -> None:
     peekaboo_press_sequence(pid, ["tab"] * count)
 
 
+def looks_like_inventory_slot(selector: str) -> bool:
+    selector = selector.strip()
+    return len(selector) == 1 and selector.isprintable() and not selector.isspace()
+
+
+def drop_item(
+    pid: int,
+    *,
+    query_or_slot: str,
+    count: int = 1,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.35,
+    prompt_settle_seconds: float = 0.25,
+    exit_menu: bool = True,
+) -> str:
+    selector = query_or_slot.strip()
+    if not selector:
+        raise SystemExit("Drop-item selector cannot be empty")
+    if count <= 0:
+        raise SystemExit("Drop-item count must be > 0")
+
+    peekaboo_press_sequence(pid, ["d"], delay_ms=delay_ms)
+    time.sleep(menu_settle_seconds)
+
+    selection_mode = "slot" if looks_like_inventory_slot(selector) else "filter"
+    if selection_mode == "slot":
+        peekaboo_press_sequence(pid, [selector], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    else:
+        apply_uilist_filter(
+            pid,
+            selector,
+            delay_ms=delay_ms,
+            type_delay_ms=type_delay_ms,
+            settle_seconds=prompt_settle_seconds,
+        )
+        peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+
+    if count == 1:
+        peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    else:
+        fill_numeric_prompt(
+            pid,
+            count,
+            delay_ms=delay_ms,
+            type_delay_ms=type_delay_ms,
+        )
+
+    if exit_menu:
+        peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+
+    return selection_mode
+
+
 def run_debug_menu_shortcut_path(
     pid: int,
     shortcut_keys: List[str],
@@ -1018,6 +1076,39 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 "menu_settle_seconds": menu_settle_seconds,
                 "debug_menu_path": ["}", "s", "f"],
                 "spawn_type": "random_follower_npc",
+            })
+        elif kind == "drop_item":
+            query_or_slot = str(
+                step.get("query_or_slot")
+                or step.get("query")
+                or step.get("slot")
+                or ""
+            ).strip()
+            if not query_or_slot:
+                raise SystemExit(f"Scenario step '{label}' needs query_or_slot/query/slot")
+            count = int(step.get("count", 1) or 1)
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            selection_mode = drop_item(
+                pid,
+                query_or_slot=query_or_slot,
+                count=count,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "query_or_slot": query_or_slot,
+                "count": count,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "inventory_action": "drop_item",
+                "selection_mode": selection_mode,
             })
         elif kind == "capture":
             capture = capture_screenshot(pid, run_dir, label)
