@@ -64,6 +64,8 @@ Current job:
   - lone guard on disconnected posts
   - staffed connected cluster with distinct holders
 - next tighten the **screen** evidence so the hold-vs-loop contrast reads clearly to a player without needing the artifact log to explain the screenshot
+  - readable staffing-pool / zone-topology companion crops now exist via harness crop captures
+  - the remaining missing piece is the actual runtime frame: make loop-vs-hold posture legible in-play instead of only legible in supporting crops
 - keep watching for hallucinations, fake progress, and prose outrunning code/tests/live proof
 - do **not** drift into smart-zone-manager cleverness during v1
 

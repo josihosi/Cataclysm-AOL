@@ -35,7 +35,8 @@ Notes:
 - Canonical implementation sketch lives in `doc/patrol-zone-v1-patch-plan-2026-04-06.md`.
 - Intended order: zone surface + 4-way clustering -> deterministic planner contract -> sticky roster / interrupt whitelist -> on-map hold-vs-loop -> live proof.
 - The current packaged live proofs are `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_193626/probe.report.json` and `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_194336/probe.report.json`.
-- The remaining honest gap is screen legibility: the artifact logs clearly show loop vs hold, but the current full-window screenshots still do not make that contrast obvious enough on their own.
+- A crop-capable harness capture path now exists; helper reruns at `.userdata/dev-harness/harness_runs/20260406_203337/probe.report.json` and `.userdata/dev-harness/harness_runs/20260406_203212/probe.report.json` produce readable staffing-pool and zone-topology companion crops, even though those reruns are not the canonical live proofs because the launched binary is older than the current repo state.
+- The remaining honest gap is runtime screen legibility: the companion crops now explain staffing/topology, but the actual in-play map frame still does not make loop vs hold posture obvious enough on its own.
 - The interrupt whitelist should be nailed down early so the feature does not quietly rot into fake patrol.
 - Watch for hallucinations, fake progress, and roadmap prose outrunning code/tests/live proof.
 

@@ -52,10 +52,14 @@ Current honest state:
 - live patrol proof now exists as separate screen/tests/artifacts packets:
   - `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_193626/probe.report.json` with `verdict: artifacts_matched`, `workers=2 roster=1 active=1`, and a looping disconnected-post route
   - `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_194336/probe.report.json` with `verdict: artifacts_matched`, `workers=4 roster=2 active=2`, and two distinct hold targets on a staffed connected cluster
-- the remaining honest gap is **screen legibility**: the artifact logs clearly distinguish loop vs hold, but the current full-window screenshots do not make that contrast obvious enough on their own
+- screen-helper reruns after harness crop support now produce readable companion captures:
+  - `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_203337/probe.report.json` with a readable `close_ricky_priorities.after.png` staffing crop and `open_zones_manager.after.png` topology crop
+  - `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_203212/probe.report.json` with a readable `close_milo_priorities.after.png` staffing crop and `open_zones_manager.after.png` topology crop
+  - both reruns are intentionally **not** the canonical live proof packet because the launched binary is older than the current repo state (`verdict: inconclusive_version_mismatch`)
+- the remaining honest gap is **runtime screen legibility**: the companion crops now explain staffing/topology, but the actual in-play map frame still does not make loop vs hold posture obvious enough on its own
 
 What counts next:
-- tighten only the smallest screen-framing/helper path that makes the live hold-vs-loop contrast readable without leaning on the artifact log
+- tighten only the smallest runtime screen-framing/helper path that makes the live hold-vs-loop contrast readable without leaning on the artifact log
 - if that stalls, add only the narrowest helper/instrumentation that makes patrol behavior visually legible
 
 ### Existing baseline that should not be mistaken for patrol proof
@@ -76,9 +80,10 @@ What counts next:
 
 ### Active queue — Patrol Zone v1
 
-1. tighten the existing patrol **screen** packet so loop-vs-hold reads clearly from the image itself
+1. tighten the existing patrol **screen** packet so the runtime frame reads loop-vs-hold clearly from the image itself
    - `patrol.disconnected_live` should still show the looping disconnected-post case
    - `patrol.connected_live` should still show the staffed connected-cluster hold case
+   - keep the readable staffing/topology companion crops, but do not mistake them for the finished runtime answer
 2. keep the helper idea `sustain_npc` available only if a future patrol probe genuinely needs it
 3. if the improved screen packet still exposes confusing behavior, tighten only the smallest patrol constants/docs needed to explain it
 
@@ -105,7 +110,7 @@ If the story starts sounding cleaner than the evidence, stop and audit.
 
 ### Active-lane handoff block
 
-- **finish line:** the packaged live-proof packet already exists; the remaining close-out is for patrol to read clearly enough in play while still looking like simple v1 patrol rather than smart-zone soup
+- **finish line:** the packaged live-proof packet already exists; the remaining close-out is for the runtime patrol frame itself to read clearly enough in play while still looking like simple v1 patrol rather than smart-zone soup
 - **deterministic tests:** topology, planner contract, sticky roster/interrupt contract, hold-vs-loop runtime intent coverage, and legacy save-compat priority-surface coverage are in place
 - **agent live proof:** packaged disconnected-loop and connected-hold scenarios both exist with separate screen/tests/artifacts evidence
 - **Josef ask:** none yet; batch visually important patrol questions together only if the improved screen packet is worth human eyes

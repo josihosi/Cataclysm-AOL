@@ -12,8 +12,9 @@ Patrol Zone v1 is the active lane.
 
 Execution queue:
 1. follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
-2. tighten the live patrol **screen** packet so loop-vs-hold reads visually
+2. tighten the live patrol **screen** packet so runtime loop-vs-hold reads visually
    - keep the disconnected-post and connected-cluster harness scenarios
+   - keep the new cropped staffing/topology companion captures; improve the actual runtime frame next
    - prefer framing/capture/fixture tweaks over new mechanic work
    - do not rely on artifact logs alone to explain the screenshot
 3. keep reports honest
