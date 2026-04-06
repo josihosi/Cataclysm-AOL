@@ -276,6 +276,20 @@ TEST_CASE("camp_patrol_zone_clusters_use_4_way_connectivity",
   zone_manager::get_manager().clear();
 }
 
+TEST_CASE("legacy_job_data_load_adds_missing_patrol_priority_surface",
+          "[camp][patrol]") {
+  static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
+
+  job_data loaded;
+  JsonValue jsin = json_loader::from_string(
+      R"({"task_priorities":{"ACT_MOVE_LOOT":6,"ACT_MULTIPLE_FARM":4},"fetch_history":{}})");
+  loaded.deserialize(jsin);
+
+  CHECK(loaded.get_priority_of_job(ACT_CAMP_PATROL) == 0);
+  loaded.set_all_priorities(3);
+  CHECK(loaded.get_priority_of_job(ACT_CAMP_PATROL) == 3);
+}
+
 TEST_CASE("camp_patrol_worker_pool_uses_patrol_priority_surface",
           "[camp][patrol]") {
   clear_avatar();

@@ -79,6 +79,36 @@ void sort_tripoints_zyx(std::vector<tripoint_abs_ms> &tiles) {
     std::sort(tiles.begin(), tiles.end(), tripoint_abs_ms_zyx_less);
 }
 
+std::string summarize_camp_patrol_cluster_tiles(
+    const std::vector<camp_patrol_cluster> &clusters ) {
+    std::ostringstream summary;
+    for( size_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index ) {
+        if( cluster_index > 0 ) {
+            summary << "; ";
+        }
+        summary << cluster_index << "=[";
+        const camp_patrol_cluster &cluster = clusters[cluster_index];
+        for( size_t tile_index = 0; tile_index < cluster.size(); ++tile_index ) {
+            if( tile_index > 0 ) {
+                summary << ", ";
+            }
+            summary << cluster[tile_index].to_string_writable();
+        }
+        summary << "]";
+    }
+    return summary.str();
+}
+
+const char *camp_patrol_shift_name( const camp_patrol_shift shift ) {
+    switch( shift ) {
+        case camp_patrol_shift::day:
+            return "day";
+        case camp_patrol_shift::night:
+            return "night";
+    }
+    return "unknown";
+}
+
 } // namespace
 
 camp_locker_policy::camp_locker_policy() { enabled_slots.fill(true); }
@@ -2546,6 +2576,9 @@ bool basecamp::refresh_patrol_shift_cache() {
 
   clear_patrol_shift_cache();
   if( !has_patrol_zone() ) {
+    DebugLog( D_INFO, DC_ALL )
+        << string_format( "camp patrol: cache camp=%s shift=%s reason=no_patrol_zone",
+                          name, camp_patrol_shift_name( current_shift ) );
     return false;
   }
 
@@ -2553,6 +2586,9 @@ bool basecamp::refresh_patrol_shift_cache() {
   const std::vector<camp_patrol_cluster> clusters =
       collect_camp_patrol_clusters(patrol_origin(), fac_id);
   if( clusters.empty() ) {
+    DebugLog( D_INFO, DC_ALL )
+        << string_format( "camp patrol: cache camp=%s shift=%s reason=no_clusters",
+                          name, camp_patrol_shift_name( current_shift ) );
     return false;
   }
 
@@ -2564,6 +2600,13 @@ bool basecamp::refresh_patrol_shift_cache() {
   patrol_shift_cache_valid = true;
   patrol_shift_cache_day = current_day;
   patrol_shift_cache_kind = current_shift;
+  DebugLog( D_INFO, DC_ALL )
+      << string_format(
+             "camp patrol: cache camp=%s shift=%s workers=%zu roster=%zu active=%zu reserve=%zu clusters=%s",
+             name, camp_patrol_shift_name( current_shift ), workers.size(),
+             patrol_shift_cache.roster.size(), patrol_shift_cache.active_guards.size(),
+             patrol_shift_cache.reserve_guards.size(),
+             summarize_camp_patrol_cluster_tiles( clusters ) );
   return !patrol_shift_cache.roster.empty();
 }
 

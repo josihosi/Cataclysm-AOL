@@ -561,7 +561,7 @@ def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
 def advance_turns(pid: int, count: int) -> None:
     if count <= 0:
         return
-    peekaboo_press_sequence(pid, ["tab"] * count)
+    peekaboo_press_sequence(pid, ["."] * count)
 
 
 def looks_like_inventory_slot(selector: str) -> bool:

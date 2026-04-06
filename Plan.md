@@ -60,7 +60,10 @@ Current job:
   - fully staffed connected clusters hold distinct squares
   - understaffed or multi-post assignments walk a fixed 10-minute loop order
   - off-shift patrol workers fall back to ordinary camp downtime
-- next package one honest live patrol proof with separate screen/tests/artifacts evidence
+- the first honest live patrol packet now exists with separate screen/tests/artifacts reporting for:
+  - lone guard on disconnected posts
+  - staffed connected cluster with distinct holders
+- next tighten the **screen** evidence so the hold-vs-loop contrast reads clearly to a player without needing the artifact log to explain the screenshot
 - keep watching for hallucinations, fake progress, and prose outrunning code/tests/live proof
 - do **not** drift into smart-zone-manager cleverness during v1
 

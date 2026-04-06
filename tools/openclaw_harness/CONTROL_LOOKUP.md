@@ -14,7 +14,8 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 |---|---|---|
 | New Game -> Play Now! (default path on current `master`) | `n`, `d` | Current harness Phase-0 uses this minimal sequence. Branch-specific variants may diverge later. |
 | Ignore debug popup | `i` | Popup text says `I/i` to ignore in the future. Timing/focus still matters. |
-| Pass turns / let queued output resolve | `Tab` | Usually one or two presses are enough for queued NPC answer injection after `C+b`. |
+| Pass one turn / let queued output resolve | `.` | Current `dev` keybindings map pause/pass-turn to `.` (also `5` / keypad 5). Use this for deterministic one-turn advancement in harness probes. |
+| Let queued NPC answer injection resolve after `C+b` | `.` x1-2 | The current practical path is to burn one or two real turns, not `Tab`; on this branch `Tab` opens the main menu and sabotages live probes. |
 
 ## In-game interaction probes
 

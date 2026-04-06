@@ -4428,6 +4428,28 @@ void npc::worker_downtime() {
           set_mission( patrol_runtime->behavior == camp_patrol_guard_behavior::loop ?
                        NPC_MISSION_GUARD_PATROL : NPC_MISSION_GUARD );
 
+          std::ostringstream route_summary;
+          for( size_t route_index = 0; route_index < patrol_runtime->route.size(); ++route_index ) {
+            if( route_index > 0 ) {
+              route_summary << ", ";
+            }
+            route_summary << patrol_runtime->route[route_index].to_string_writable();
+          }
+          const std::string patrol_trace = string_format(
+              "%s|target=%s|route=%s",
+              patrol_runtime->behavior == camp_patrol_guard_behavior::loop ? "loop" : "hold",
+              patrol_target.to_string_writable(), route_summary.str() );
+          if( get_value( "camp_patrol_probe_last" ).str() != patrol_trace ) {
+            DebugLog( D_INFO, DC_ALL )
+                << string_format(
+                       "camp patrol: runtime worker=%s behavior=%s pos=%s target=%s route=[%s]",
+                       get_name(),
+                       patrol_runtime->behavior == camp_patrol_guard_behavior::loop ? "loop" : "hold",
+                       pos_abs().to_string_writable(), patrol_target.to_string_writable(),
+                       route_summary.str() );
+            set_value( "camp_patrol_probe_last", patrol_trace );
+          }
+
           const tripoint_bub_ms local_patrol_target = here.get_bub( patrol_target );
           update_path( local_patrol_target );
           if( pos_abs() == patrol_target || path.empty() ) {
@@ -4440,6 +4462,12 @@ void npc::worker_downtime() {
         }
 
         if( mission == NPC_MISSION_GUARD || mission == NPC_MISSION_GUARD_PATROL ) {
+          if( get_value( "camp_patrol_probe_last" ).str() != "inactive" ) {
+            DebugLog( D_INFO, DC_ALL )
+                << string_format( "camp patrol: runtime worker=%s behavior=inactive pos=%s",
+                                  get_name(), pos_abs().to_string_writable() );
+            set_value( "camp_patrol_probe_last", "inactive" );
+          }
           guard_pos = std::nullopt;
           ai_cache.guard_pos = std::nullopt;
           set_mission( NPC_MISSION_NULL );

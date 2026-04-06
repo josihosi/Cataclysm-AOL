@@ -2098,6 +2098,11 @@ void job_data::deserialize( const JsonValue &jv )
         jo.allow_omitted_members();
         jo.read( "task_priorities", task_priorities );
         jo.read( "fetch_history", fetch_history );
+
+        const job_data default_job;
+        for( const auto &entry : default_job.task_priorities ) {
+            task_priorities.emplace( entry.first, entry.second );
+        }
     }
 }
 
