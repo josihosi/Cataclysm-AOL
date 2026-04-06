@@ -4,6 +4,7 @@
 - Patrol now has its own camp-job priority surface (`ACT_CAMP_PATROL`), and the deterministic patrol worker pool is exactly the assigned camp NPCs with patrol priority > 0.
 - The v1 planner splits that patrol pool into day/night rosters by sorted priority order, gives every patrol cluster at least one route owner before stacking extra guards onto larger clusters, and caps per-shift active guards at the total patrol-tile count.
 - In the current planner contract, one guard may own multiple disconnected posts on a shift, while extra guards beyond one-per-cluster stack onto larger connected clusters for the later hold-vs-loop behavior.
+- The current shift roster now latches for the whole day/night block instead of being recomputed every job tick: routine chores must not steal active guards mid-shift, while the interrupt whitelist only allows combat/severe-need/player-reassignment breaks and backfills from reserve without rebalancing the whole shift.
 
 ## Camp locker dirty-trigger follow-through
 - Downtime locker processing now tracks a per-worker state signature built from the worker's managed loadout, current locker candidates, and resulting locker plan.

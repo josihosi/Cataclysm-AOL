@@ -117,6 +117,7 @@ enum class side : int;
 
 static const activity_id ACT_CRAFT( "ACT_CRAFT" );
 static const activity_id ACT_FIRSTAID( "ACT_FIRSTAID" );
+static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
 static const activity_id ACT_MOVE_LOOT( "ACT_MOVE_LOOT" );
 static const activity_id ACT_MULTIPLE_BUTCHER( "ACT_MULTIPLE_BUTCHER" );
 static const activity_id ACT_MULTIPLE_CHOP_PLANKS( "ACT_MULTIPLE_CHOP_PLANKS" );
@@ -4337,6 +4338,13 @@ bool npc::find_job_to_perform() {
     for( activity_id &elem : job.get_prioritised_vector() ) {
         if( job.get_priority_of_job( elem ) == 0 ) {
             continue;
+        }
+        if( elem != ACT_CAMP_PATROL && assigned_camp ) {
+            if( std::optional<basecamp *> camp =
+                    overmap_buffer.find_camp( assigned_camp->xy() );
+                camp && *camp && ( *camp )->is_worker_on_patrol_shift( *this ) ) {
+                continue;
+            }
         }
         player_activity scan_act = player_activity( elem );
         // TODO: remove if-else blocks once player_activity is obsoleted
