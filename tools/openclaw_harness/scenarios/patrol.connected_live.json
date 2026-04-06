@@ -1,6 +1,6 @@
 {
   "name": "patrol.connected_live",
-  "description": "Load the connected-cluster patrol probe fixture, arm four camp workers with patrol priority 1, capture a tighter runtime crop after the two day-shift guards settle onto their hold tiles, then capture a second dwell-later crop and package the pair as a blink-comparison GIF so the same distinct hold positions stay visually readable without leaning on patrol trace logs alone.",
+  "description": "Load the connected-cluster patrol probe fixture, arm four camp workers with patrol priority 1, capture a tighter runtime crop after the two day-shift guards settle onto their hold tiles, then capture a second dwell-later crop and package the pair as a blink-comparison GIF plus a small `probe.patrol_summary.txt` explainer so the hold posture and off-shift count stay readable without spelunking raw patrol trace logs.",
   "profile": "dev-harness",
   "world": "Sandy Creek",
   "profile_snapshot": "basecamp_dev_manual_2026-04-02",

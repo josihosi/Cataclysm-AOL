@@ -50,6 +50,17 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "make.sh",
 )
 
+PATROL_CACHE_RE = re.compile(
+    r"camp patrol: cache camp=(?P<camp>.+?) shift=(?P<shift>\w+) workers=(?P<workers>\d+) "
+    r"roster=(?P<roster>\d+) active=(?P<active>\d+) reserve=(?P<reserve>\d+) "
+    r"clusters=(?P<clusters>.+)$"
+)
+PATROL_RUNTIME_RE = re.compile(
+    r"camp patrol: runtime worker=(?P<worker>.+?) behavior=(?P<behavior>\w+) "
+    r"pos=(?P<pos>\([^)]*\)) target=(?P<target>\([^)]*\)) route=(?P<route>\[[^\]]*\])"
+)
+PATROL_COORD_RE = re.compile(r"\((-?\d+),(-?\d+),(-?\d+)\)")
+
 
 @dataclass
 class WorldInfo:
@@ -855,6 +866,188 @@ def copy_filtered_debug_log_delta_if_exists(src: Path, start_size: int, dst: Pat
         return
     ensure_dir(dst.parent)
     dst.write_text(data, encoding="utf-8")
+
+
+def parse_patrol_coords(raw: str) -> List[Dict[str, int]]:
+    coords: List[Dict[str, int]] = []
+    for x, y, z in PATROL_COORD_RE.findall(raw or ""):
+        coords.append({"x": int(x), "y": int(y), "z": int(z)})
+    return coords
+
+
+def parse_patrol_clusters(raw: str) -> List[Dict[str, Any]]:
+    clusters: List[Dict[str, Any]] = []
+    for chunk in [part.strip() for part in str(raw or "").split(";") if part.strip()]:
+        match = re.match(r"(?P<index>\d+)=\[(?P<body>.*)\]$", chunk)
+        if not match:
+            continue
+        tiles = parse_patrol_coords(match.group("body"))
+        clusters.append({
+            "index": int(match.group("index")),
+            "tile_count": len(tiles),
+            "tiles": tiles,
+        })
+    return clusters
+
+
+def summarize_patrol_artifacts(scenario_name: str, matched_lines: List[str]) -> Optional[Dict[str, Any]]:
+    cache_summary: Optional[Dict[str, Any]] = None
+    runtime_entries: List[Dict[str, Any]] = []
+
+    for line in matched_lines:
+        cache_match = PATROL_CACHE_RE.search(line)
+        if cache_match and cache_summary is None:
+            clusters = parse_patrol_clusters(cache_match.group("clusters"))
+            cache_summary = {
+                "camp": cache_match.group("camp"),
+                "shift": cache_match.group("shift"),
+                "workers": int(cache_match.group("workers")),
+                "roster": int(cache_match.group("roster")),
+                "active": int(cache_match.group("active")),
+                "reserve": int(cache_match.group("reserve")),
+                "cluster_count": len(clusters),
+                "cluster_tile_count": sum(cluster["tile_count"] for cluster in clusters),
+                "clusters": clusters,
+                "raw_line": line,
+            }
+            continue
+
+        runtime_match = PATROL_RUNTIME_RE.search(line)
+        if runtime_match:
+            route = parse_patrol_coords(runtime_match.group("route"))
+            positions = parse_patrol_coords(runtime_match.group("pos"))
+            targets = parse_patrol_coords(runtime_match.group("target"))
+            runtime_entries.append({
+                "worker": runtime_match.group("worker"),
+                "behavior": runtime_match.group("behavior"),
+                "position": positions[0] if positions else {},
+                "target": targets[0] if targets else {},
+                "route_length": len(route),
+                "route": route,
+                "raw_line": line,
+            })
+
+    if cache_summary is None and not runtime_entries:
+        return None
+
+    notes: List[str] = []
+    if cache_summary is not None:
+        workers = cache_summary["workers"]
+        roster = cache_summary["roster"]
+        active = cache_summary["active"]
+        shift = cache_summary["shift"]
+        reserve = cache_summary["reserve"]
+        cluster_count = cache_summary["cluster_count"]
+        cluster_tile_count = cache_summary["cluster_tile_count"]
+        off_shift = max(0, workers - roster)
+        singleton_clusters = cluster_count > 0 and all(cluster["tile_count"] == 1 for cluster in cache_summary["clusters"])
+
+        if singleton_clusters:
+            notes.append(
+                f"This fixture paints {cluster_count} disconnected one-tile patrol posts, so a lone active guard must circulate instead of occupying them all at once."
+            )
+        elif cluster_count == 1 and cluster_tile_count > 1:
+            notes.append(
+                f"This fixture paints one connected patrol cluster with {cluster_tile_count} patrol tiles, so multiple active guards can hold distinct squares inside the same cluster."
+            )
+
+        if off_shift > 0:
+            notes.append(
+                f"{workers} patrol-enabled worker(s) exist, but only {roster} are rostered on the {shift} shift, so {off_shift} remain off-shift before reserve is even counted."
+            )
+        else:
+            notes.append(
+                f"All {workers} patrol-enabled worker(s) are rostered on the {shift} shift for this packet."
+            )
+
+        if reserve > 0:
+            notes.append(
+                f"{reserve} rostered guard(s) are in reserve for the current shift, which is why they are not expected to occupy a patrol tile unless an active guard drops out."
+            )
+
+        if active < cluster_count:
+            notes.append(
+                f"Only {active} active guard(s) cover {cluster_count} patrol post/group(s), so uncovered posts are expected between visits in this snapshot."
+            )
+
+    loop_workers = [entry for entry in runtime_entries if entry.get("behavior") == "loop"]
+    if loop_workers:
+        unique_loop_names = list(dict.fromkeys(entry["worker"] for entry in loop_workers))
+        loop_names = ", ".join(unique_loop_names)
+        loop_verb = "walks" if len(unique_loop_names) == 1 else "walk"
+        longest_route = max(entry.get("route_length", 0) for entry in loop_workers)
+        if longest_route > 0:
+            notes.append(
+                f"Loop behavior is live here: {loop_names} {loop_verb} a fixed {longest_route}-tile patrol route, so the paired runtime crops should show motion one dwell later."
+            )
+        else:
+            notes.append(
+                f"Loop behavior is live here: {loop_names} should move between the paired runtime crops instead of holding a single square."
+            )
+
+    hold_workers = [entry for entry in runtime_entries if entry.get("behavior") == "hold"]
+    if hold_workers:
+        unique_hold_names = list(dict.fromkeys(entry["worker"] for entry in hold_workers))
+        hold_names = ", ".join(unique_hold_names)
+        hold_verb = "keeps" if len(unique_hold_names) == 1 else "keep"
+        notes.append(
+            f"Hold behavior is live here: {hold_names} {hold_verb} their assigned patrol squares, so the paired runtime crops should stay visually unchanged apart from UI noise."
+        )
+
+    return {
+        "kind": "camp_patrol_summary",
+        "scenario": scenario_name,
+        "cache": cache_summary,
+        "runtime_workers": runtime_entries,
+        "player_legibility_notes": notes,
+    }
+
+
+def write_patrol_summary(run_dir: Path, patrol_summary: Dict[str, Any]) -> Dict[str, Any]:
+    cache_summary = patrol_summary.get("cache") or {}
+    runtime_workers = patrol_summary.get("runtime_workers") or []
+    lines = [
+        f"Patrol packet explainer: {patrol_summary.get('scenario', '')}",
+        "",
+    ]
+
+    if cache_summary:
+        shift = cache_summary.get("shift", "?")
+        workers = int(cache_summary.get("workers", 0))
+        roster = int(cache_summary.get("roster", 0))
+        active = int(cache_summary.get("active", 0))
+        reserve = int(cache_summary.get("reserve", 0))
+        off_shift = max(0, workers - roster)
+        cluster_count = int(cache_summary.get("cluster_count", 0))
+        cluster_tile_count = int(cache_summary.get("cluster_tile_count", 0))
+        lines.extend([
+            f"- shift: {shift}",
+            f"- patrol-enabled workers: {workers}",
+            f"- this-shift roster: {roster} total = {active} active + {reserve} reserve + {off_shift} off-shift",
+            f"- patrol layout: {cluster_count} cluster(s) across {cluster_tile_count} painted patrol tile(s)",
+            "",
+        ])
+
+    if runtime_workers:
+        lines.append("Runtime workers:")
+        for entry in runtime_workers:
+            target = entry.get("target") or {}
+            lines.append(
+                f"- {entry.get('worker', '?')}: {entry.get('behavior', '?')} target=({target.get('x', '?')},{target.get('y', '?')},{target.get('z', '?')}) route_len={entry.get('route_length', 0)}"
+            )
+        lines.append("")
+
+    lines.append("Read this packet as:")
+    for note in patrol_summary.get("player_legibility_notes", []):
+        lines.append(f"- {note}")
+
+    summary_path = run_dir / "probe.patrol_summary.txt"
+    summary_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    return {
+        "kind": "camp_patrol_summary",
+        "path": str(summary_path),
+        "summary": patrol_summary,
+    }
 
 
 def resolve_artifact_source(profile: str, source: str) -> Tuple[Path, bool, str]:
@@ -2095,6 +2288,11 @@ def run_probe(args: argparse.Namespace) -> int:
         matches_by_pattern.append({"pattern": pattern, "lines": lines})
         all_matched_lines.extend(lines)
 
+    companion_helpers: List[Dict[str, Any]] = []
+    patrol_summary = summarize_patrol_artifacts(str(scenario.get("name", args.scenario)), all_matched_lines)
+    if patrol_summary is not None:
+        companion_helpers.append(write_patrol_summary(run_dir, patrol_summary))
+
     verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
     version_matches_runtime = screen_summary.get("version_matches_runtime_paths")
@@ -2126,6 +2324,7 @@ def run_probe(args: argparse.Namespace) -> int:
         "startup": start_result,
         "steps": step_reports,
         "derived_screens": derived_screen_reports,
+        "companion_helpers": companion_helpers,
         "screen": {
             "status": "captured",
             "before": screen_before.get("screen_summary", {}),
