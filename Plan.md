@@ -79,8 +79,9 @@ Working priority inside this lane:
   - keep extending the landed scenario-setup helper wave so the harness can keep moving on unblocked live-probe work
     - `debug_spawn_follower_npc` is already landed on `}`, `s`, `f`
     - `debug_spawn_item` / `debug_spawn_monster` now cover the current wish paths `}`, `s`, `w` and `}`, `s`, `m`
+    - `drop_item(...)` now covers the normal inventory drop path (`d`) via either raw slot selection or filtered visible item text
     - `ambient.weird_item_reaction` is now packaged as an honestly blocked contract instead of a vague future note
-    - next missing setup surfaces are stable `drop_item(...)` plus assign-NPC helper coverage for camp/follower staging
+    - next missing setup surfaces are assign-NPC helper coverage for camp/follower staging
   - strengthen `locker.weather_wait` with a more direct locker-trigger/setup path
 - once one more unblocked probe/helper slice is in place, batch a compact Josef-facing testing packet instead of sending piecemeal asks
 
