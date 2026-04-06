@@ -32,11 +32,13 @@ Success state:
 
 Notes:
 - This lane is about creating stable footing for the hackathon push, not about polishing every last locker nuance forever.
-- The landed baseline slice is `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`, backed by the `dev-harness` profile and the `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`.
+- The current clean packaged current-binary probe is `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction` on `dev-harness`, with the latest report at `.userdata/dev-harness/harness_runs/20260406_083006/probe.report.json`.
+- `locker.weather_wait` is now explicitly demoted back to blocked status: the shipped `basecamp_dev_manual_2026-04-02` fixture does not contain a `CAMP_LOCKER` zone, so the contract cannot honestly claim locker-service evidence until a locker-capable fixture/restaging path exists.
 - The next landed extension is `chat.nearby_npc_basic` plus the supporting harness work: scripted key/text steps, selectable artifact logs, printable-key handling that works with Peekaboo, shared profile startup policy that now actually reaches `dev-harness`, and profile-snapshot install support so the scenario can carry the captured `dev` config/options/keybindings it actually depends on.
 - The chat path is currently honest but still incomplete: the packaged live run reaches nearby-NPC dialogue and freeform utterance UI, and the contract now carries the right profile state, but fresh recipient / `llm_intent.log` proof still needs a current-binary/runtime packet.
 - `ambient.weird_item_reaction` now exists as a packaged contract and already runs on the shipped basecamp fixture; the missing proof is ambient reaction/artifact evidence, not a ceremonial camp/follower helper prerequisite.
 - The first landed scenario-setup helper is `debug_spawn_follower_npc`, wired to the current debug-menu path `}`, `s`, `f` so harness scenarios can spawn a nearby follower without hand-piloted menu folklore.
+- The harness now also has a reusable `debug_force_temperature` helper on `}`, `m`, `T` plus a generic `wait` step; the blocker is no longer missing UI control, it is missing a locker-capable probe fixture.
 - The next distinguished feature runways (chat interface, tiny ambient-trigger NPC model) should stand on top of this lane rather than compete with it.
 
 ---

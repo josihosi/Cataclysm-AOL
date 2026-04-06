@@ -23,8 +23,9 @@ Execution queue:
    - keep `drop_item(...)` honest on the normal inventory drop path (`d`) for both filtered visible-text selection and raw one-slot selection
    - keep `ambient.weird_item_reaction` honest as runnable on the shipped fixture; do not relabel it blocked just because stronger restaging helpers would be nice
    - only add assign-NPC helper(s) if they unlock a concrete fixture-restaging or stronger-probe need
-3. strengthen the locker probe into a more direct locker-trigger/setup path
-   - turn the current locker probe from “load + wait + report honestly” into a stronger locker-specific signal once setup helpers exist
+3. repair the locker probe contract before spending another live run on it
+   - the shipped `basecamp_dev_manual_2026-04-02` fixture does **not** contain a `CAMP_LOCKER` zone, so `locker.weather_wait` is currently blocked on a locker-capable fixture/restaging path
+   - keep that blocker explicit instead of burning more runs on honest-but-useless `no_artifact` reports
 4. keep the packaged chat probe parked honestly until runner prerequisites exist, then resume it
    - current blocker packet is explicit on current HEAD: `LLM_INTENT_PYTHON` is empty in `dev`/`dev-harness`, and `CATA_API_KEY` is absent for the harness process
    - do not keep rerunning `chat.nearby_npc_basic` blindly until those prerequisites are real

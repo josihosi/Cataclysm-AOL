@@ -83,7 +83,7 @@ Working priority inside this lane:
     - `drop_item(...)` now covers the normal inventory drop path (`d`) via either raw slot selection or filtered visible item text
     - `ambient.weird_item_reaction` is runnable on the shipped `basecamp_dev_manual_2026-04-02` fixture; do not keep pretending it is helper-blocked
     - any future assign-NPC helper work is now for alternate restaging / stronger probe variants, not for making the current ambient contract runnable
-  - strengthen `locker.weather_wait` with a more direct locker-trigger/setup path
+  - keep `locker.weather_wait` explicitly blocked until a locker-capable fixture/restaging path exists; the shipped `basecamp_dev_manual_2026-04-02` save does not contain a `CAMP_LOCKER` zone, so more no-artifact reruns are just theater
 - once one more unblocked probe/helper slice is in place, batch a compact Josef-facing testing packet instead of sending piecemeal asks
 
 ---

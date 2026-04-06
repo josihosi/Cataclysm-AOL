@@ -77,6 +77,10 @@ Goal:
 - advance enough time/turns for locker downtime
 - verify that the live locker planner/service path reacts as expected
 
+Current honest blocker:
+- the shipped `basecamp_dev_manual_2026-04-02` fixture does **not** contain a `CAMP_LOCKER` zone, so this packaged contract must stay blocked until a locker-capable fixture/restaging path exists
+- the missing piece is no longer debug-menu control; `debug_force_temperature` / `wait` are landed, but the scenario still lacks a real locker-enabled save shape
+
 Expected evidence split:
 - **screen:** visible gear/loadout change or stable visible state
 - **tests:** `./tests/cata_test "[camp][locker]"`
@@ -122,7 +126,7 @@ The harness and later implementation should assume:
 
 ## Implementation order
 
-1. make `locker.weather_wait` reproducible with the current proven save path
+1. either replace the shipped locker fixture or add a restaging path that installs a real `CAMP_LOCKER` zone before claiming `locker.weather_wait` is runnable again
 2. package the report format: **screen / tests / artifacts**
 3. formalize `chat.nearby_npc_basic` around the current known controls (`C,t` and `C,b`)
 4. add the first useful scenario-setup helpers so probes stop depending on hand-piloted debug-menu rituals

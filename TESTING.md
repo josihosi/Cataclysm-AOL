@@ -88,29 +88,35 @@ Latest relevant harness evidence for the current helper wave:
   - verdict is `blocked_runtime_prereqs` with explicit blockers:
     - `llm_python_missing` (`LLM_INTENT_PYTHON` empty)
     - `llm_api_key_env_unset` (`CATA_API_KEY` absent)
-- current ambient-scenario footing is still honest
-  - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
-  - `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction`
-  - `zstdcat 'tools/openclaw_harness/fixtures/saves/dev/basecamp_dev_manual_2026-04-02/save/Sandy Creek/#RGFuaWFsIEdvbnphbGV6.sav.zzip' | rg -n '"followers"|assigned to Debug Central'`
-  - passed:
-    - scenario listing reports `ambient.weird_item_reaction` as `status: active` with no fake helper blocker
-    - packaged probe report at `.userdata/dev-harness/harness_runs/20260406_074747/probe.report.json` runs all three packaged steps (`debug_spawn_item` → `drop_item` → `advance_turns`) on the shipped fixture
-    - the shipped `basecamp_dev_manual_2026-04-02` save already carries `followers: [ 2, 3 ]`
-    - the same save’s player-message history already records `Bruna Priest is assigned to Debug Central` and `Ricky Broughton is assigned to Debug Central`
-    - the latest packaged verdict is `inconclusive_version_mismatch` on stale tiles binary `3867b1c930`, with no artifact matches; that is now an evidence/freshness problem, not `blocked_helper_gap` and not screenshot-capture noise
-- newest narrow validation for the first non-debug inventory helper slice:
+- current ambient-scenario footing is still honest on the fresh current tiles binary
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 - <<'PY' ... drop_item / execute_probe_steps smoke ... PY`
   - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
+  - `make -j4 TILES=1 cataclysm-tiles`
+  - `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction`
+  - `./zzip /tmp/.../#RGFuaWFsIEdvbnphbGV6.sav.zzip` + inspect `#RGFuaWFsIEdvbnphbGV6.sav` / `zones.json`
   - passed:
-    - `drop_item(...)` now drives the normal inventory drop action `d`, choosing either a raw one-character slot or a filtered visible-text query
-    - count handling is wired through the amount prompt, and the helper exits back to gameplay cleanly in the harness contract path
-    - `execute_probe_steps` now reports `drop_item` steps explicitly with `inventory_action=drop_item` and `selection_mode=slot|filter`
-    - that helper slice was enough to make the packaged ambient contract executable on the shipped fixture; the remaining gap is reaction/artifact proof, not missing setup ritual
+    - the fresh tiles build reports `6dcb5b91f7-dirty`, and the packaged ambient report at `.userdata/dev-harness/harness_runs/20260406_083006/probe.report.json` now captures a current-binary, version-matched run instead of hiding behind stale-binary noise
+    - scenario listing still reports `ambient.weird_item_reaction` as `status: active` with no fake helper blocker
+    - the packaged ambient contract still runs all three packaged steps (`debug_spawn_item` → `drop_item` → `advance_turns`) on the shipped fixture and returns to normal gameplay view after the scripted item/drop actions
+    - the shipped `basecamp_dev_manual_2026-04-02` save still carries nearby follower/camp state (`followers: [ 2, 3 ]`; player-message history includes `Bruna Priest is assigned to Debug Central` and `Ricky Broughton is assigned to Debug Central`)
+    - the latest ambient verdict is now the honest one: `inconclusive_no_artifact_match` with no fake helper blocker and no stale-binary excuse
+- newest narrow validation for the helper/reporting slice that touched locker setup honesty
+  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/log_probe.py`
+  - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
+  - `make -j4 TILES=1 cataclysm-tiles`
+  - `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
+  - `./zzip /tmp/.../#RGFuaWFsIEdvbnphbGV6.sav.zzip` + inspect `#RGFuaWFsIEdvbnphbGV6.zones.json`
+  - passed:
+    - the harness now has a reusable `debug_force_temperature` helper on the current debug path `}`, `m`, `T`
+    - probe contracts can now include a generic `wait` step, which was enough to show that the post-`lastworld.json` autoload "success" screenshot can still be on the verification splash while later step captures are in real gameplay
+    - `locker.weather_wait` no longer fails because of stale binary or missing UI control; the real blocker is fixture shape
+    - inspection of the shipped `basecamp_dev_manual_2026-04-02` save fixture shows camp/follower state but **no `CAMP_LOCKER` zone** in the fixture zone data, so the packaged locker contract cannot honestly emit `camp locker:` packets yet
+    - that scenario is now supposed to stay explicitly blocked until a locker-capable fixture/restaging path exists
 - meaning:
-  - the missing evidence is no longer “does the packaged ambient contract even run?” or “can the harness even capture the screen?”
-  - the current blocker is still local runner configuration for chat, plus missing ambient-reaction proof / stale-binary freshness for the ambient lane
+  - the missing evidence is no longer “does the packaged ambient contract even run?” or “can the harness even drive the locker temperature UI?”
+  - the current blockers are: local runner configuration for chat, missing ambient-reaction proof, and a missing locker-capable fixture/restaging path for `locker.weather_wait`
   - do not keep rerunning `chat.nearby_npc_basic` until a real runner path/config exists; use the harness lane on unblocked proof/setup work meanwhile
+  - do not keep rerunning `locker.weather_wait` on the shipped fixture until the scenario has a real `CAMP_LOCKER` save shape again
   - do not keep claiming `ambient.weird_item_reaction` is blocked on assign-NPC helpers unless a new fixture/state actually proves that again
 
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
@@ -209,7 +215,8 @@ Meaning:
    - keep `debug_spawn_monster` on the current `}`, `s`, `m` path honest if the wish filter / target-confirm behavior shifts
    - keep `drop_item(...)` honest on `d` if inventory filtering or amount-prompt behavior shifts
    - only add assign-NPC helper(s) if a concrete alternate-restaging or stronger-probe need actually appears
-3. strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
+3. replace or restage the locker probe save shape before using `locker.weather_wait` again
+   - the shipped `basecamp_dev_manual_2026-04-02` fixture lacks `CAMP_LOCKER`, so the current contract is correctly parked as a fixture blocker rather than a behavior verdict
 4. keep `chat.nearby_npc_basic` parked until runner prerequisites exist, then resume recipient / `llm_intent.log` proof
    - current blocker packet is `.userdata/dev-harness/harness_runs/20260406_022634/probe.report.json`
    - once the runner path/config is real again, rerun `chat.nearby_npc_basic`
