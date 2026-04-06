@@ -56,6 +56,8 @@ static const zone_type_id zone_type_CAMP_STORAGE("CAMP_STORAGE");
 static const zone_type_id zone_type_CAMP_LOCKER("CAMP_LOCKER");
 static const zone_type_id zone_type_CAMP_PATROL("CAMP_PATROL");
 
+static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
+
 static const damage_type_id damage_bash("bash");
 static const damage_type_id damage_bullet("bullet");
 static const damage_type_id damage_cut("cut");
@@ -539,6 +541,141 @@ collect_camp_patrol_clusters(const tripoint_abs_ms &origin,
     }
 
     return clusters;
+}
+
+namespace {
+
+bool camp_patrol_worker_sort_less(const camp_patrol_worker &lhs,
+                                  const camp_patrol_worker &rhs) {
+    if( lhs.priority != rhs.priority ) {
+        return lhs.priority > rhs.priority;
+    }
+    return lhs.worker_id.get_value() < rhs.worker_id.get_value();
+}
+
+size_t count_camp_patrol_tiles(const std::vector<camp_patrol_cluster> &clusters) {
+    size_t total_tiles = 0;
+    for( const camp_patrol_cluster &cluster : clusters ) {
+        total_tiles += cluster.size();
+    }
+    return total_tiles;
+}
+
+void assign_camp_patrol_guard(camp_patrol_guard_plan &guard_plan,
+                              camp_patrol_cluster_plan &cluster_plan,
+                              size_t cluster_index) {
+    guard_plan.cluster_indices.push_back(cluster_index);
+    cluster_plan.assigned_guards.push_back(guard_plan.worker_id);
+}
+
+size_t select_camp_patrol_extra_cluster(
+    const std::vector<camp_patrol_cluster_plan> &clusters) {
+    size_t best_index = 0;
+    size_t best_remaining_capacity = 0;
+    size_t best_cluster_size = 0;
+
+    for( size_t index = 0; index < clusters.size(); ++index ) {
+        const camp_patrol_cluster_plan &cluster = clusters[index];
+        if( cluster.assigned_guards.size() >= cluster.tiles.size() ) {
+            continue;
+        }
+
+        const size_t remaining_capacity =
+            cluster.tiles.size() - cluster.assigned_guards.size();
+        if( remaining_capacity > best_remaining_capacity ||
+            ( remaining_capacity == best_remaining_capacity &&
+              cluster.tiles.size() > best_cluster_size ) ) {
+            best_index = index;
+            best_remaining_capacity = remaining_capacity;
+            best_cluster_size = cluster.tiles.size();
+        }
+    }
+
+    return best_index;
+}
+
+camp_patrol_shift_plan build_camp_patrol_shift_plan(
+    camp_patrol_shift shift, const std::vector<character_id> &roster,
+    const std::vector<camp_patrol_cluster> &clusters) {
+    camp_patrol_shift_plan plan;
+    plan.shift = shift;
+    plan.roster = roster;
+    plan.clusters.reserve(clusters.size());
+    for( const camp_patrol_cluster &cluster : clusters ) {
+        plan.clusters.push_back(camp_patrol_cluster_plan{ cluster, {} });
+    }
+
+    const size_t active_count = std::min(roster.size(), count_camp_patrol_tiles(clusters));
+    plan.active_guards.reserve(active_count);
+    for( size_t index = 0; index < active_count; ++index ) {
+        plan.active_guards.push_back(camp_patrol_guard_plan{ roster[index], {} });
+    }
+    plan.reserve_guards.assign(roster.begin() + active_count, roster.end());
+
+    if( plan.active_guards.empty() || plan.clusters.empty() ) {
+        return plan;
+    }
+
+    for( size_t cluster_index = 0; cluster_index < plan.clusters.size(); ++cluster_index ) {
+        camp_patrol_guard_plan &guard_plan =
+            plan.active_guards[cluster_index % plan.active_guards.size()];
+        assign_camp_patrol_guard(guard_plan, plan.clusters[cluster_index], cluster_index);
+    }
+
+    for( size_t guard_index = plan.clusters.size(); guard_index < plan.active_guards.size();
+         ++guard_index ) {
+        const size_t cluster_index = select_camp_patrol_extra_cluster(plan.clusters);
+        assign_camp_patrol_guard(plan.active_guards[guard_index],
+                                 plan.clusters[cluster_index], cluster_index);
+    }
+
+    return plan;
+}
+
+} // namespace
+
+std::vector<camp_patrol_worker>
+collect_camp_patrol_workers(const std::vector<npc_ptr> &assigned_npcs) {
+    std::vector<camp_patrol_worker> workers;
+
+    for( const npc_ptr &guard : assigned_npcs ) {
+        if( !guard ) {
+            continue;
+        }
+        const int priority = guard->job.get_priority_of_job(ACT_CAMP_PATROL);
+        if( priority <= 0 ) {
+            continue;
+        }
+        workers.push_back(camp_patrol_worker{ guard->getID(), priority });
+    }
+
+    std::sort(workers.begin(), workers.end(), camp_patrol_worker_sort_less);
+    return workers;
+}
+
+camp_patrol_plan
+plan_camp_patrol(const std::vector<camp_patrol_worker> &workers,
+                 const std::vector<camp_patrol_cluster> &clusters) {
+    std::vector<character_id> day_roster;
+    std::vector<character_id> night_roster;
+    day_roster.reserve((workers.size() + 1) / 2);
+    night_roster.reserve(workers.size() / 2);
+
+    for( size_t index = 0; index < workers.size(); ++index ) {
+        const character_id worker_id = workers[index].worker_id;
+        if( index % 2 == 0 ) {
+            day_roster.push_back(worker_id);
+        } else {
+            night_roster.push_back(worker_id);
+        }
+    }
+
+    camp_patrol_plan plan;
+    plan.day = build_camp_patrol_shift_plan(camp_patrol_shift::day, day_roster,
+                                            clusters);
+    plan.night = build_camp_patrol_shift_plan(camp_patrol_shift::night,
+                                              night_roster, clusters);
+    return plan;
 }
 
 std::vector<tripoint_abs_ms>

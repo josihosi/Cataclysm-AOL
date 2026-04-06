@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cctype>
+#include <initializer_list>
 #include <map>
 #include <memory>
 #include <optional>
@@ -90,6 +91,26 @@ static void create_tile_zone(const std::string &name,
                              const tripoint_abs_ms &pos) {
   zone_manager::get_manager().add(name, zone_type, your_fac, false, true, pos,
                                   pos, nullptr, false);
+}
+
+static camp_patrol_cluster make_patrol_cluster(
+    map &here, std::initializer_list<tripoint_bub_ms> local_tiles) {
+  camp_patrol_cluster cluster;
+  cluster.reserve(local_tiles.size());
+  for (const tripoint_bub_ms &tile : local_tiles) {
+    cluster.push_back(here.get_abs(tile));
+  }
+  std::sort(cluster.begin(), cluster.end(), [](const tripoint_abs_ms &lhs,
+                                               const tripoint_abs_ms &rhs) {
+    if (lhs.z() != rhs.z()) {
+      return lhs.z() < rhs.z();
+    }
+    if (lhs.y() != rhs.y()) {
+      return lhs.y() < rhs.y();
+    }
+    return lhs.x() < rhs.x();
+  });
+  return cluster;
 }
 
 TEST_CASE("camp_locker_policy_serialization", "[camp][locker]") {
@@ -253,6 +274,150 @@ TEST_CASE("camp_patrol_zone_clusters_use_4_way_connectivity",
   CHECK(clusters[2][0] == b0);
 
   zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_patrol_worker_pool_uses_patrol_priority_surface",
+          "[camp][patrol]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
+
+  map &here = get_map();
+  const tripoint_abs_ms camp_abs = here.get_abs(tripoint_bub_ms{5, 5, 0});
+  basecamp test_camp("Patrol Camp", project_to<coords::omt>(camp_abs));
+
+  npc &high_priority_guard = spawn_npc(tripoint_bub_ms{6, 5, 0}.xy(), "thug");
+  npc &ignored_guard = spawn_npc(tripoint_bub_ms{7, 5, 0}.xy(), "thug");
+  npc &mid_priority_guard = spawn_npc(tripoint_bub_ms{8, 5, 0}.xy(), "thug");
+
+  REQUIRE(high_priority_guard.job.set_task_priority(ACT_CAMP_PATROL, 8));
+  REQUIRE(ignored_guard.job.set_task_priority(ACT_CAMP_PATROL, 0));
+  REQUIRE(mid_priority_guard.job.set_task_priority(ACT_CAMP_PATROL, 4));
+
+  test_camp.add_assignee(high_priority_guard.getID());
+  test_camp.add_assignee(ignored_guard.getID());
+  test_camp.add_assignee(mid_priority_guard.getID());
+
+  const std::vector<camp_patrol_worker> workers =
+      collect_camp_patrol_workers(test_camp.get_npcs_assigned());
+
+  REQUIRE(workers.size() == 2);
+  CHECK(workers[0].worker_id == high_priority_guard.getID());
+  CHECK(workers[0].priority == 8);
+  CHECK(workers[1].worker_id == mid_priority_guard.getID());
+  CHECK(workers[1].priority == 4);
+}
+
+TEST_CASE("camp_patrol_planner_contract", "[camp][patrol]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+
+  SECTION("1 guard covers four disconnected posts on the day shift") {
+    const std::vector<camp_patrol_worker> workers = {{character_id(101), 5}};
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here, {{10, 10, 0}}),
+        make_patrol_cluster(here, {{12, 10, 0}}),
+        make_patrol_cluster(here, {{14, 10, 0}}),
+        make_patrol_cluster(here, {{16, 10, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    REQUIRE(plan.day.active_guards.size() == 1);
+    CHECK(plan.day.reserve_guards.empty());
+    CHECK(plan.day.active_guards[0].worker_id == character_id(101));
+    CHECK(plan.day.active_guards[0].cluster_indices ==
+          std::vector<size_t>({0, 1, 2, 3}));
+    for (const camp_patrol_cluster_plan &cluster : plan.day.clusters) {
+      REQUIRE(cluster.assigned_guards.size() == 1);
+      CHECK(cluster.assigned_guards.front() == character_id(101));
+    }
+
+    CHECK(plan.night.active_guards.empty());
+    CHECK(plan.night.reserve_guards.empty());
+  }
+
+  SECTION("4 guards split into two shifts across four disconnected posts") {
+    const std::vector<camp_patrol_worker> workers = {
+        {character_id(201), 5}, {character_id(202), 4},
+        {character_id(203), 3}, {character_id(204), 2},
+    };
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here, {{10, 12, 0}}),
+        make_patrol_cluster(here, {{12, 12, 0}}),
+        make_patrol_cluster(here, {{14, 12, 0}}),
+        make_patrol_cluster(here, {{16, 12, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    REQUIRE(plan.day.active_guards.size() == 2);
+    CHECK(plan.day.reserve_guards.empty());
+    CHECK(plan.day.active_guards[0].worker_id == character_id(201));
+    CHECK(plan.day.active_guards[1].worker_id == character_id(203));
+    CHECK(plan.day.active_guards[0].cluster_indices == std::vector<size_t>({0, 2}));
+    CHECK(plan.day.active_guards[1].cluster_indices == std::vector<size_t>({1, 3}));
+
+    REQUIRE(plan.night.active_guards.size() == 2);
+    CHECK(plan.night.reserve_guards.empty());
+    CHECK(plan.night.active_guards[0].worker_id == character_id(202));
+    CHECK(plan.night.active_guards[1].worker_id == character_id(204));
+    CHECK(plan.night.active_guards[0].cluster_indices == std::vector<size_t>({0, 2}));
+    CHECK(plan.night.active_guards[1].cluster_indices == std::vector<size_t>({1, 3}));
+  }
+
+  SECTION("mixed clusters get one guard first before extra coverage stacks") {
+    const std::vector<camp_patrol_worker> workers = {
+        {character_id(301), 9}, {character_id(302), 8}, {character_id(303), 7},
+        {character_id(304), 6}, {character_id(305), 5}, {character_id(306), 4},
+        {character_id(307), 3}, {character_id(308), 2}, {character_id(309), 1},
+        {character_id(310), 1},
+    };
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here,
+                            {{10, 14, 0}, {11, 14, 0}, {12, 14, 0}, {13, 14, 0}}),
+        make_patrol_cluster(here, {{10, 16, 0}, {11, 16, 0}}),
+        make_patrol_cluster(here, {{10, 18, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    REQUIRE(plan.day.active_guards.size() == 5);
+    CHECK(plan.day.clusters[0].assigned_guards.size() == 3);
+    CHECK(plan.day.clusters[1].assigned_guards.size() == 1);
+    CHECK(plan.day.clusters[2].assigned_guards.size() == 1);
+    CHECK(plan.day.active_guards[0].cluster_indices == std::vector<size_t>({0}));
+    CHECK(plan.day.active_guards[1].cluster_indices == std::vector<size_t>({1}));
+    CHECK(plan.day.active_guards[2].cluster_indices == std::vector<size_t>({2}));
+    CHECK(plan.day.active_guards[3].cluster_indices == std::vector<size_t>({0}));
+    CHECK(plan.day.active_guards[4].cluster_indices == std::vector<size_t>({0}));
+  }
+
+  SECTION("connected four-tile cluster caps each shift at four active guards") {
+    std::vector<camp_patrol_worker> workers;
+    for (int index = 0; index < 16; ++index) {
+      workers.push_back(
+          camp_patrol_worker{character_id(400 + index), 16 - index});
+    }
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here,
+                            {{20, 10, 0}, {21, 10, 0}, {20, 11, 0}, {21, 11, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    REQUIRE(plan.day.active_guards.size() == 4);
+    CHECK(plan.day.reserve_guards.size() == 4);
+    CHECK(plan.day.clusters[0].assigned_guards.size() == 4);
+    REQUIRE(plan.night.active_guards.size() == 4);
+    CHECK(plan.night.reserve_guards.size() == 4);
+    CHECK(plan.night.clusters[0].assigned_guards.size() == 4);
+  }
 }
 
 TEST_CASE("camp_locker_zone_candidate_gathering_respects_reservations",
