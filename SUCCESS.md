@@ -24,8 +24,8 @@ Success state:
 - [x] Patrol exists as a real camp job with its own priority surface.
 - [x] Deterministic planner coverage exists for the reference staffing/topology cases.
 - [x] The active patrol roster is chosen at shift boundaries from NPCs with patrol priority > 0.
-- [ ] On-shift patrol is sticky against routine chores.
-- [ ] Urgent disruption can break patrol, and reserve backfill works without full-roster reshuffle.
+- [x] On-shift patrol is sticky against routine chores.
+- [x] Urgent disruption can break patrol, and reserve backfill works without full-roster reshuffle.
 - [ ] On-map behavior distinguishes hold-positions vs fixed-loop patrol in the intended simple v1 way.
 - [ ] Proportional live proof is recorded with separate screen/tests/artifacts reporting.
 - [ ] The result stays explainable as simple v1 patrol rather than quietly turning into smart-zone-manager soup.

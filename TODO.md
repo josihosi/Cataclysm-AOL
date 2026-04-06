@@ -12,14 +12,10 @@ Patrol Zone v1 is the active lane.
 
 Execution queue:
 1. follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
-2. land sticky-roster / interrupt-whitelist behavior
-   - routine work does not steal on-shift guards
-   - urgent disruption can break patrol
-   - reserve backfill without full roster reshuffle
-3. then land on-map hold-vs-loop behavior
+2. land on-map hold-vs-loop behavior
    - fully staffed connected cluster => hold distinct squares
    - understaffed connected cluster => fixed loop
-4. keep reports honest
+3. keep reports honest
    - separate implemented deterministic contract from live proof
    - do not count zone plumbing, prose, or plausible-looking motion as success by themselves
    - if something smells too smooth, audit it
