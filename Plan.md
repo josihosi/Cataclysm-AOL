@@ -67,6 +67,7 @@ Working priority inside this lane:
   - dedicated `dev-harness` profile + `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`
   - explicit **screen** / **tests** / **artifacts** report split
   - startup screenshots audit the running window title against repo HEAD so stale binaries stop masquerading as current proof
+  - direct window-image capture now records `window_id` / `window_index` for startup and probe screenshots, so blocked runs and per-step captures no longer disappear into Peekaboo element-detection timeouts; any remaining version mismatch is now a genuine binary-freshness call rather than screenshot-tool fog
 - the chat extension is now in its honest blocked state instead of a foggy one:
   - profile loading merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
   - probe contracts can script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”

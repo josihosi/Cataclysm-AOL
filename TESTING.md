@@ -60,9 +60,16 @@ Latest relevant harness evidence for the current helper wave:
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
   - `python3 - <<'PY' ... debug_spawn_follower_npc / execute_probe_steps smoke ... PY`
   - passed: helper path expands to the expected debug-menu shortcut sequence `}`, `s`, `f`, and `execute_probe_steps` now reports `debug_menu_path=["}", "s", "f"]` plus `spawn_type=random_follower_npc`
-- prior harness honesty validation for the chat blocker packet still stands
+- newest narrow validation for screenshot-capture honesty on current dirty HEAD
+  - `git diff --check`
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
   - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
+  - `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction`
+  - passed:
+    - harness screenshots now use direct `peekaboo image` capture on a selected Cataclysm window instead of `peekaboo see`, so blocked probes and per-step captures stop failing on element-detection timeout
+    - screen summaries now record `window_id` / `window_index` alongside the captured title/build metadata, so stale-binary audits point at the actual window that was captured
+    - blocked chat report `.userdata/dev-harness/harness_runs/20260406_074721/probe.report.json` still returns `blocked_runtime_prereqs`, but now with a real captured screen instead of an empty timeout shell
+    - ambient report `.userdata/dev-harness/harness_runs/20260406_074747/probe.report.json` captures startup / before / after plus every step screenshot successfully on the shipped fixture; its remaining `inconclusive_version_mismatch` verdict is now a genuine binary-freshness issue rather than screenshot-tool noise
 - landed harness uplift beyond the original locker slice still stands
   - `debug_spawn_follower_npc` is now the first reusable scenario-setup helper, wired to the current debug-menu path `}`, `s`, `f`
   - profile loading merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
@@ -70,30 +77,27 @@ Latest relevant harness evidence for the current helper wave:
   - printable gameplay keys go through `peekaboo type` instead of invalid `peekaboo press` usage
   - startup no longer treats the first `lastworld.json` flip as sufficient proof of ready gameplay; `post_lastworld_wait_seconds: 8.0` gates the packaged path
   - `chat.nearby_npc_basic` installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the saved chat/keybinding state the probe expects
-- current-binary chat evidence is now honest instead of stale-binary theater
-  - before the harness patch, `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic` on current tiles binary `3867b1c930` reached startup successfully but still ended at `verdict: inconclusive_no_new_artifacts`; report: `.userdata/dev-harness/harness_runs/20260406_022006/probe.report.json`
-  - direct option/runtime audit after that run showed the real blocker class, not a mysterious chat regression:
+- current packaged chat blocker packet is still honest
+  - direct option/runtime audit still shows the real blocker class rather than a mysterious chat regression:
     - `.userdata/dev/config/options.json` and `.userdata/dev-harness/config/options.json` both have `LLM_INTENT_PYTHON=''`
     - `CATA_API_KEY` is not present in the harness process environment
     - local stock `python3` cannot satisfy the runner anyway (`python3 tools/llm_runner/runner.py --self-test --backend api ...` -> `any-llm import failed: No module named 'any_llm'`)
-- newest packaged probe now reports that blocker explicitly
-  - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
-  - packaged report at `.userdata/dev-harness/harness_runs/20260406_022634/probe.report.json`
+  - packaged report at `.userdata/dev-harness/harness_runs/20260406_074721/probe.report.json`
   - startup reaches gameplay on current tiles binary `3867b1c930`
   - probe steps are skipped with `status: skipped_runtime_blocker`
-  - verdict is now `blocked_runtime_prereqs` with explicit blockers:
+  - verdict is `blocked_runtime_prereqs` with explicit blockers:
     - `llm_python_missing` (`LLM_INTENT_PYTHON` empty)
     - `llm_api_key_env_unset` (`CATA_API_KEY` absent)
-- newest ambient-scenario audit: the shipped fixture already carries the camp/follower state, so the packaged probe runs today instead of helper-blocked folklore
+- current ambient-scenario footing is still honest
   - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
   - `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction`
   - `zstdcat 'tools/openclaw_harness/fixtures/saves/dev/basecamp_dev_manual_2026-04-02/save/Sandy Creek/#RGFuaWFsIEdvbnphbGV6.sav.zzip' | rg -n '"followers"|assigned to Debug Central'`
   - passed:
-    - scenario listing now reports `ambient.weird_item_reaction` as `status: active` with no fake helper blocker
-    - packaged probe report at `.userdata/dev-harness/harness_runs/20260406_063019/probe.report.json` runs all three packaged steps (`debug_spawn_item` → `drop_item` → `advance_turns`) on the shipped fixture
+    - scenario listing reports `ambient.weird_item_reaction` as `status: active` with no fake helper blocker
+    - packaged probe report at `.userdata/dev-harness/harness_runs/20260406_074747/probe.report.json` runs all three packaged steps (`debug_spawn_item` → `drop_item` → `advance_turns`) on the shipped fixture
     - the shipped `basecamp_dev_manual_2026-04-02` save already carries `followers: [ 2, 3 ]`
     - the same save’s player-message history already records `Bruna Priest is assigned to Debug Central` and `Ricky Broughton is assigned to Debug Central`
-    - the latest packaged verdict is `inconclusive_version_mismatch` on stale tiles binary `3867b1c930`, with no artifact matches; that is an evidence/freshness problem, not `blocked_helper_gap`
+    - the latest packaged verdict is `inconclusive_version_mismatch` on stale tiles binary `3867b1c930`, with no artifact matches; that is now an evidence/freshness problem, not `blocked_helper_gap` and not screenshot-capture noise
 - newest narrow validation for the first non-debug inventory helper slice:
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
   - `python3 - <<'PY' ... drop_item / execute_probe_steps smoke ... PY`
@@ -104,7 +108,7 @@ Latest relevant harness evidence for the current helper wave:
     - `execute_probe_steps` now reports `drop_item` steps explicitly with `inventory_action=drop_item` and `selection_mode=slot|filter`
     - that helper slice was enough to make the packaged ambient contract executable on the shipped fixture; the remaining gap is reaction/artifact proof, not missing setup ritual
 - meaning:
-  - the missing evidence is no longer “does the packaged ambient contract even run?”
+  - the missing evidence is no longer “does the packaged ambient contract even run?” or “can the harness even capture the screen?”
   - the current blocker is still local runner configuration for chat, plus missing ambient-reaction proof / stale-binary freshness for the ambient lane
   - do not keep rerunning `chat.nearby_npc_basic` until a real runner path/config exists; use the harness lane on unblocked proof/setup work meanwhile
   - do not keep claiming `ambient.weird_item_reaction` is blocked on assign-NPC helpers unless a new fixture/state actually proves that again
