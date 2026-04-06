@@ -11,7 +11,8 @@
   "artifact_source": "llm_intent.log",
   "artifact_patterns": [
     "prompt ",
-    "response "
+    "response ",
+    "failed "
   ],
   "steps": [
     {

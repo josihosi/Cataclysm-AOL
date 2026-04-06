@@ -241,6 +241,28 @@ def resolve_configured_python_command(raw_value: str) -> Tuple[List[str], str]:
     return [raw], raw
 
 
+def resolve_game_runtime_python(options: Dict[str, str]) -> Tuple[List[str], str, str]:
+    configured_value = options.get("LLM_INTENT_PYTHON", "")
+    configured_cmd, configured_label = resolve_configured_python_command(configured_value)
+    if configured_cmd:
+        return configured_cmd, configured_label, "configured_option"
+
+    backend = options.get("LLM_INTENT_BACKEND", "").strip().lower()
+    if backend == "api":
+        fallback_cmd, fallback_label = resolve_configured_python_command("/Users/josefhorvath/ollama/api_env311")
+        if fallback_cmd:
+            return fallback_cmd, fallback_label, "api_fallback_venv"
+
+    if backend in {"api", "ollama"}:
+        platform_default = "python" if os.name == "nt" else "/usr/bin/python3"
+        platform_cmd, platform_label = resolve_configured_python_command(platform_default)
+        if platform_cmd:
+            return platform_cmd, platform_label, f"{backend}_platform_default"
+        return [platform_default], platform_default, f"{backend}_platform_default"
+
+    return configured_cmd, configured_label, "configured_option"
+
+
 def probe_runtime_blockers(profile: str, artifact_source: str) -> List[Dict[str, str]]:
     normalized_source = str(artifact_source).strip().lower()
     if normalized_source not in {"llm", "llm_intent", "llm_intent.log"}:
@@ -262,50 +284,71 @@ def probe_runtime_blockers(profile: str, artifact_source: str) -> List[Dict[str,
             "option": "DEBUG_LLM_INTENT_LOG",
         })
 
-    python_value = options.get("LLM_INTENT_PYTHON", "")
-    python_cmd, python_label = resolve_configured_python_command(python_value)
+    backend = options.get("LLM_INTENT_BACKEND", "").strip().lower()
+    python_cmd, python_label, python_source = resolve_game_runtime_python(options)
     if not python_cmd:
         blockers.append({
             "code": "llm_python_missing",
-            "message": "LLM runner Python path is empty; API/Ollama probes cannot launch the runner.",
+            "message": "LLM runner Python path is empty and no runtime fallback resolved.",
             "option": "LLM_INTENT_PYTHON",
         })
+    elif backend == "api":
+        import_check = subprocess.run(
+            python_cmd + ["-c", "import any_llm"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if import_check.returncode != 0:
+            detail_text = (import_check.stderr or import_check.stdout).strip()
+            detail = detail_text.splitlines()[0] if detail_text else "import any_llm failed"
+            blockers.append({
+                "code": "llm_python_missing_any_llm",
+                "message": f"Resolved LLM runner Python cannot import any_llm ({detail}).",
+                "option": "LLM_INTENT_PYTHON",
+                "python": python_label,
+                "python_source": python_source,
+            })
 
+    return blockers
+
+
+def probe_runtime_warnings(profile: str, artifact_source: str) -> List[Dict[str, str]]:
+    normalized_source = str(artifact_source).strip().lower()
+    if normalized_source not in {"llm", "llm_intent", "llm_intent.log"}:
+        return []
+
+    options = load_game_options(profile)
+    warnings: List[Dict[str, str]] = []
     backend = options.get("LLM_INTENT_BACKEND", "").strip().lower()
+    python_cmd, python_label, python_source = resolve_game_runtime_python(options)
+
+    if backend == "api" and options.get("LLM_INTENT_PYTHON", "").strip() == "" and python_cmd:
+        warnings.append({
+            "code": "llm_python_option_empty_using_runtime_fallback",
+            "message": f"LLM_INTENT_PYTHON is empty; the runtime will fall back to {python_label} ({python_source}).",
+            "option": "LLM_INTENT_PYTHON",
+            "python": python_label,
+            "python_source": python_source,
+        })
+
     if backend == "api":
         api_key_env = options.get("LLM_INTENT_API_KEY_ENV", "").strip()
         if not api_key_env:
-            blockers.append({
+            warnings.append({
                 "code": "llm_api_key_env_missing",
-                "message": "API backend is selected, but no API key env-var name is configured.",
+                "message": "API backend is selected, but no API key env-var name is configured; prompt logging may still work, but responses will fail.",
                 "option": "LLM_INTENT_API_KEY_ENV",
             })
         elif not os.environ.get(api_key_env):
-            blockers.append({
+            warnings.append({
                 "code": "llm_api_key_env_unset",
-                "message": f"API backend is selected, but env var '{api_key_env}' is not set for the harness process.",
+                "message": f"API backend is selected, but env var '{api_key_env}' is not set for the harness process; prompt logging may still work, but responses will fail.",
                 "option": "LLM_INTENT_API_KEY_ENV",
                 "env_var": api_key_env,
             })
 
-        if python_cmd:
-            import_check = subprocess.run(
-                python_cmd + ["-c", "import any_llm"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if import_check.returncode != 0:
-                detail_text = (import_check.stderr or import_check.stdout).strip()
-                detail = detail_text.splitlines()[0] if detail_text else "import any_llm failed"
-                blockers.append({
-                    "code": "llm_python_missing_any_llm",
-                    "message": f"Configured LLM runner Python cannot import any_llm ({detail}).",
-                    "option": "LLM_INTENT_PYTHON",
-                    "python": python_label,
-                })
-
-    return blockers
+    return warnings
 
 
 def pick_target_world(profile: str, explicit_world: str) -> Tuple[str, str, List[WorldInfo]]:
@@ -1712,6 +1755,7 @@ def run_probe(args: argparse.Namespace) -> int:
 
     artifact_log, filter_debug_noise, resolved_artifact_source = resolve_artifact_source(profile, artifact_source)
     runtime_blockers = probe_runtime_blockers(profile, resolved_artifact_source)
+    runtime_warnings = probe_runtime_warnings(profile, resolved_artifact_source)
     if runtime_blockers:
         blocked_screen = capture_screenshot(pid, run_dir, "probe_blocked")
         report = {
@@ -1760,6 +1804,7 @@ def run_probe(args: argparse.Namespace) -> int:
                 "line_count": 0,
             },
             "runtime_blockers": runtime_blockers,
+            "runtime_warnings": runtime_warnings,
             "verdict": "blocked_runtime_prereqs",
         }
         write_json(run_dir / "probe.report.json", report)
@@ -1828,6 +1873,7 @@ def run_probe(args: argparse.Namespace) -> int:
             "matched_lines": all_matched_lines,
             "line_count": len(artifact_text.splitlines()) if artifact_text else 0,
         },
+        "runtime_warnings": runtime_warnings,
         "verdict": verdict,
     }
     write_json(run_dir / "probe.report.json", report)
