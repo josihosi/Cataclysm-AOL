@@ -62,23 +62,24 @@ Working priority inside this lane:
 
 ### Immediate next move
 - the current locker state is still honest enough to build on: the hot-side Ricky packet is recorded, and the `antarvasa` outcome remains the current one-item-per-slot pants policy rather than a hidden blocker
-- the first concrete harness uplift now exists in `tools/openclaw_harness/startup_harness.py`:
+- the first concrete harness uplift still stands in `tools/openclaw_harness/startup_harness.py`:
   - `probe locker.weather_wait`
   - dedicated `dev-harness` profile + `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`
   - explicit **screen** / **tests** / **artifacts** report split
-  - startup screenshots now audit the running window title against repo HEAD so stale binaries stop masquerading as current proof
-- the next honest extension has also landed:
-  - profile loading now actually merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
-  - probe contracts can now script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
-  - `chat.nearby_npc_basic` is packaged and the live path now waits past the first `lastworld.json` flip so the probe reaches dialogue/freeform UI instead of dying on the loading splash
-  - `chat.nearby_npc_basic` now also installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the LLM/chat options and keybindings the probe actually depends on
-  - current limitation: recipient/result proof is still not closed; the next honest run needs a current tiles binary/runtime packet instead of over-reading the older stale-binary/no-artifact chat report
-- keep following `doc/harness-first-slice-plan-2026-04-06.md`, but now extend the landed pattern instead of restarting from zero
+  - startup screenshots audit the running window title against repo HEAD so stale binaries stop masquerading as current proof
+- the chat extension is now in its honest blocked state instead of a foggy one:
+  - profile loading merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
+  - probe contracts can script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
+  - `chat.nearby_npc_basic` installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the saved chat/keybinding state the probe expects
+  - a fresh current-binary run on `3867b1c930` no longer hides behind stale-binary noise; it is now explicitly blocked by missing local LLM runner prerequisites (`LLM_INTENT_PYTHON` empty, `CATA_API_KEY` absent for the harness process)
+  - the harness now reports `blocked_runtime_prereqs` for that case instead of pretending “no new artifacts” is a mysterious probe result
+- keep following `doc/harness-first-slice-plan-2026-04-06.md`, but extend the landed pattern instead of restarting from zero
 - next concrete steps:
-  - stabilize `chat.nearby_npc_basic` until recipient / artifact confirmation is recorded
-  - package `ambient.weird_item_reaction`
-  - add the first scenario-setup helpers so those probes stop depending on manual debug-menu folklore
-- once one more probe/helper slice is in place, batch a compact Josef-facing testing packet instead of sending piecemeal asks
+  - stop blind reruns of `chat.nearby_npc_basic` until a real runner path/config exists; keep the blocker explicit
+  - add the first scenario-setup helpers so the harness can keep moving on unblocked live-probe work
+  - strengthen `locker.weather_wait` with a more direct locker-trigger/setup path
+  - only then package the next named scenario such as `ambient.weird_item_reaction`
+- once one more unblocked probe/helper slice is in place, batch a compact Josef-facing testing packet instead of sending piecemeal asks
 
 ---
 

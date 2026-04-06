@@ -15,19 +15,21 @@ Execution queue:
    - keep the reusable `probe` contract path honest on the current binary
    - keep explicit separation of **screen**, **tests**, and **artifacts/logs**
    - keep startup readiness honest after the `lastworld.json` flip; the chat probe already exposed that a plain autoload success signal can still be on the loading splash
-   - turn the current locker probe from “load + wait + report honestly” into a stronger locker-specific signal once setup helpers exist
-2. stabilize the packaged chat probe and package the next named scenario
-   - `chat.nearby_npc_basic` now installs the captured `dev` profile snapshot plus the save fixture so `dev-harness` inherits the LLM/chat options and keybindings it actually needs
-   - rerun it on a current tiles binary/runtime path until recipient / `llm_intent.log` proof is honest, or demote the path again if artifacts still refuse to appear
-   - `ambient.weird_item_reaction`
-3. add the first useful scenario-setup helpers so repeated probes stop depending on debug-menu folklore
+   - keep runtime blockers explicit instead of burning more runs on fake-mysterious no-artifact reports
+2. add the first useful scenario-setup helpers so repeated probes stop depending on debug-menu folklore
    - debug spawn item
    - debug spawn monster
    - debug spawn follower NPC
    - assign NPC to camp
    - assign NPC to follower
-4. package one compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
-5. only after the footing is stable, move toward the distinguished hackathon runways
+3. strengthen the locker probe into a more direct locker-trigger/setup path
+   - turn the current locker probe from “load + wait + report honestly” into a stronger locker-specific signal once setup helpers exist
+4. keep the packaged chat probe parked honestly until runner prerequisites exist, then resume it
+   - current blocker packet is explicit on current HEAD: `LLM_INTENT_PYTHON` is empty in `dev`/`dev-harness`, and `CATA_API_KEY` is absent for the harness process
+   - do not keep rerunning `chat.nearby_npc_basic` blindly until those prerequisites are real
+   - after that, close recipient / `llm_intent.log` proof honestly
+5. package one compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
+6. only after the footing is stable, move toward the distinguished hackathon runways
    - chat interface over dialogue branches
    - tiny ambient-trigger NPC model
 

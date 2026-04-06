@@ -40,30 +40,34 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ## Current relevant evidence
 
 ### Harness first slice — reusable live probe contracts
-Latest relevant harness evidence on working tree `a35e86dd50-dirty` with the last recorded live chat run still on tiles binary `59c4a507d6-dirty`:
-- narrow validation for the latest harness-only blocker fix
+Latest relevant harness evidence on working tree `3867b1c930-dirty`:
+- narrow validation for the latest harness-only honesty fix
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic --dry-run`
-  - targeted Python import of `install_profile_snapshot(...)` into a temporary profile confirmed the captured `dev` profile snapshot copies `config/` plus related profile state and preserves the needed options:
-    - `DEBUG_LLM_INTENT_LOG=true`
-    - `LLM_INTENT_ENABLE=true`
-    - `LLM_INTENT_BACKEND=api`
-- landed harness uplift beyond the original locker slice
-  - profile loading now merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy actually reaches `dev-harness`
-  - probe contracts can now script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
-  - printable gameplay keys now go through `peekaboo type` instead of invalid `peekaboo press` usage
-  - startup no longer treats the first `lastworld.json` flip as sufficient proof of ready gameplay; `post_lastworld_wait_seconds: 8.0` now gates the packaged path
-  - `chat.nearby_npc_basic` now installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` stops silently dropping the LLM/chat options and keybindings the probe depends on
-- latest recorded live chat probe on the old pre-snapshot-sync runtime path
   - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
-  - packaged report at `.userdata/dev-harness/harness_runs/20260406_012827/probe.report.json`
-  - agent-side screenshot review of `success.png`, `talk_to_nearby_npc.after.png`, `open_freeform_chat.after.png`, `send_chat_utterance.after.png`, and `wait_for_reply.after.png` shows the path now reaches nearby-NPC dialogue, freeform utterance input, then returns to map play instead of stalling on the loading splash
-  - `llm_intent.log` stayed absent / empty on that run, so artifacts remained `no_new_artifacts`
-  - the report still says `verdict: inconclusive_version_mismatch` because the running tiles binary is `59c4a507d6-dirty` while the repo working tree was `89a27f204d-dirty`; treat that packet as pre-fix evidence only, not as current chat-proof success or failure
+- landed harness uplift beyond the original locker slice still stands
+  - profile loading merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
+  - probe contracts can script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
+  - printable gameplay keys go through `peekaboo type` instead of invalid `peekaboo press` usage
+  - startup no longer treats the first `lastworld.json` flip as sufficient proof of ready gameplay; `post_lastworld_wait_seconds: 8.0` gates the packaged path
+  - `chat.nearby_npc_basic` installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the saved chat/keybinding state the probe expects
+- current-binary chat evidence is now honest instead of stale-binary theater
+  - before the harness patch, `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic` on current tiles binary `3867b1c930` reached startup successfully but still ended at `verdict: inconclusive_no_new_artifacts`; report: `.userdata/dev-harness/harness_runs/20260406_022006/probe.report.json`
+  - direct option/runtime audit after that run showed the real blocker class, not a mysterious chat regression:
+    - `.userdata/dev/config/options.json` and `.userdata/dev-harness/config/options.json` both have `LLM_INTENT_PYTHON=''`
+    - `CATA_API_KEY` is not present in the harness process environment
+    - local stock `python3` cannot satisfy the runner anyway (`python3 tools/llm_runner/runner.py --self-test --backend api ...` -> `any-llm import failed: No module named 'any_llm'`)
+- newest packaged probe now reports that blocker explicitly
+  - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
+  - packaged report at `.userdata/dev-harness/harness_runs/20260406_022634/probe.report.json`
+  - startup reaches gameplay on current tiles binary `3867b1c930`
+  - probe steps are skipped with `status: skipped_runtime_blocker`
+  - verdict is now `blocked_runtime_prereqs` with explicit blockers:
+    - `llm_python_missing` (`LLM_INTENT_PYTHON` empty)
+    - `llm_api_key_env_unset` (`CATA_API_KEY` absent)
 - meaning:
-  - the missing evidence is no longer “can the harness carry the right profile state into `dev-harness` at all?”
-  - the next honest proof is a fresh `chat.nearby_npc_basic` live run on a current tiles binary/runtime path, to see whether recipient resolution / `llm_intent.log` emission now appears once the snapshot-backed contract is in place
-  - after that, the remaining queue is still the next ambient scenario plus the first reusable setup-helper coverage
+  - the missing evidence is no longer “does the packaged chat probe basically work?”
+  - the current blocker is local runner configuration, not stale binaries and not a proven chat-routing failure
+  - do not keep rerunning `chat.nearby_npc_basic` until a real runner path/config exists; use the harness lane on unblocked helper/setup work meanwhile
 
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
 Latest relevant agent-side locker packet:
@@ -153,18 +157,20 @@ Meaning:
 1. extend the current harness uplift slice from `doc/harness-first-slice-plan-2026-04-06.md`
    - keep the reusable live probe contract/profile/save path honest on the current binary
    - keep post-load readiness honest; the `lastworld.json` flip alone was not sufficient for the chat path
-   - strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
+   - keep runtime blockers explicit so blocked probe classes fail fast instead of pretending they are behavior verdicts
    - avoid probe-method drift mid-claim
-2. make the packaged chat scenario artifact-real and add the next named scenario
-   - `chat.nearby_npc_basic` now carries the captured `dev` profile snapshot plus the save fixture, but it still needs a fresh current-binary/runtime run to close recipient / `llm_intent.log` proof
-   - `ambient.weird_item_reaction`
-3. add the first scenario-setup helpers that reduce debug-menu ritual
+2. add the first scenario-setup helpers that reduce debug-menu ritual
    - debug spawn item
    - debug spawn monster
    - debug spawn follower NPC
    - assign NPC to camp
    - assign NPC to follower
-4. after the probe/helper footing is stronger, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
+3. strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
+4. keep `chat.nearby_npc_basic` parked until runner prerequisites exist, then resume recipient / `llm_intent.log` proof
+   - current blocker packet is `.userdata/dev-harness/harness_runs/20260406_022634/probe.report.json`
+   - once the runner path/config is real again, rerun `chat.nearby_npc_basic`
+   - only after that, package the next named scenario such as `ambient.weird_item_reaction`
+5. after the probe/helper footing is stronger, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
 5. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
 6. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
 
