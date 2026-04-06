@@ -1,6 +1,6 @@
 # Smart Zone Manager v1 — auxiliary plan (2026-04-06)
 
-Status: auxiliary future-lane design note. Not the active lane.
+Status: greenlight-ready future-lane design note. Not the active lane.
 
 ## Why this exists
 
@@ -16,6 +16,20 @@ Recommended v1 surface:
 - deterministic result
 - non-destructive by default
 - no ongoing auto-rearrangement after placement
+
+## Greenlight-ready v1 contract
+
+If this lane is greenlit, v1 should mean exactly this:
+- one explicit one-off smart-zoning action inside Basecamp
+- three main niches only: crafting, food/drink, equipment
+- support zones only: clothing, dirty, rotten, unsorted, blanket/quilt-on-beds
+- furniture/terrain chosen by general anchor flags/categories first, with floor fallback
+- one niche of each type only, never a clever multi-hub layout
+- custom zones allowed for only the currently intended special cases: `rotten`, `dirty`, `splintered`
+- non-destructive by default
+- deterministic placement on the same camp layout
+
+If the implementation starts drifting toward patrol/locker automation, room-classification magic, or continuous self-rearrangement, that is out of v1 and should be cut or deferred.
 
 ## High-level v1 shape
 
@@ -60,6 +74,12 @@ A lot of the detail likely has to be expressed via:
 - existing loot/custom zone machinery
 - stacked zone choices
 - or a very small number of new custom zones
+
+### Subcategory / custom-zone rule
+Default rule for v1:
+- if a useful existing zone has subcategories/options, do **not** exclude it from sorting by default just because it is more detailed
+- prefer using the normal sorting/loot machinery unless a concrete conflict shows that a custom zone or explicit override is cleaner
+- resolve the exact subcategory choices on the way through implementation, but keep the bias toward reuse rather than carving out needless exceptions
 
 ### Code areas likely relevant later
 - `data/json/zones.json` — explicit zone ids and names
@@ -262,9 +282,11 @@ This table is intentionally conservative until the full in-game sorting/loot beh
    - too much furniture-id/string logic instead of flag/category logic
 3. **Unreadable placement**
    - technically correct zones that do not visually read as a crafting/equipment/food corner
-4. **Too much cleverness**
+4. **Over-excluding existing sorting behavior**
+   - treating subcategory/custom-capable zones as something to dodge instead of something to reuse
+5. **Too much cleverness**
    - trying to solve locker/patrol/window-guard logic in the same first version
-5. **Silent destructive overwrite**
+6. **Silent destructive overwrite**
    - stomping on player zones in the name of smartness
 
 ## Deterministic test ideas
@@ -292,6 +314,14 @@ The feature succeeds only if the player can look at the result and immediately t
 - "those beds got blanket/quilt support"
 
 If the player needs a lecture, the smartness failed.
+
+## Greenlight recommendation
+This plan is now in a state where it can be greenlit as a future lane.
+
+The intended greenlight statement would be roughly:
+
+> **Smart Zone Manager v1**
+> Build a one-off, deterministic, non-destructive basecamp auto-layout helper that creates one crafting niche, one food/drink niche, and one equipment niche plus the support zones `dirty`, `rotten`, `unsorted`, clothing, and blanket/quilt-on-beds. Use general anchor flags/categories first, floor fallback second, preserve the explicit firewood/splintered/wood fire layout, and prefer existing sorting-zone machinery/subcategories unless a concrete conflict forces a custom zone.
 
 ## Blunt recommendation
 Smart Zone Manager v1 should be a **one-off, flag-first, non-destructive basecamp auto-layout helper**.
