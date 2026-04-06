@@ -4412,6 +4412,40 @@ void npc::worker_downtime() {
             overmap_buffer.find_camp( assigned_camp->xy() );
         camp && *camp ) {
       ( *camp )->process_camp_locker_downtime( *this );
+
+      const bool patrol_worker =
+          job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 &&
+          ( *camp )->has_patrol_zone();
+      if( patrol_worker ) {
+        const std::optional<camp_patrol_guard_runtime> patrol_runtime =
+            ( *camp )->get_current_patrol_runtime( getID(), calendar::turn );
+        if( patrol_runtime ) {
+          chair_pos = std::nullopt;
+          wander_pos = std::nullopt;
+          const tripoint_abs_ms patrol_target = patrol_runtime->target;
+          guard_pos = patrol_target;
+          ai_cache.guard_pos = patrol_target;
+          set_mission( patrol_runtime->behavior == camp_patrol_guard_behavior::loop ?
+                       NPC_MISSION_GUARD_PATROL : NPC_MISSION_GUARD );
+
+          const tripoint_bub_ms local_patrol_target = here.get_bub( patrol_target );
+          update_path( local_patrol_target );
+          if( pos_abs() == patrol_target || path.empty() ) {
+            move_pause();
+            path.clear();
+          } else {
+            move_to_next();
+          }
+          return;
+        }
+
+        if( mission == NPC_MISSION_GUARD || mission == NPC_MISSION_GUARD_PATROL ) {
+          guard_pos = std::nullopt;
+          ai_cache.guard_pos = std::nullopt;
+          set_mission( NPC_MISSION_NULL );
+          path.clear();
+        }
+      }
     }
   }
   // are we already in a chair

@@ -5,6 +5,7 @@
 - The v1 planner splits that patrol pool into day/night rosters by sorted priority order, gives every patrol cluster at least one route owner before stacking extra guards onto larger clusters, and caps per-shift active guards at the total patrol-tile count.
 - In the current planner contract, one guard may own multiple disconnected posts on a shift, while extra guards beyond one-per-cluster stack onto larger connected clusters for the later hold-vs-loop behavior.
 - The current shift roster now latches for the whole day/night block instead of being recomputed every job tick: routine chores must not steal active guards mid-shift, while the interrupt whitelist only allows combat/severe-need/player-reassignment breaks and backfills from reserve without rebalancing the whole shift.
+- On-map Patrol Zone v1 stays deliberately simple: each on-shift guard gets a deterministic runtime order from the cached shift plan. A guard with one fully staffed connected cluster holds a distinct tile; otherwise the guard walks a fixed loop over the tiles from their assigned cluster(s), advancing one tile every 10 in-game minutes. Off-shift patrol workers drop back into ordinary camp downtime instead of pretending to hold stale patrol posts.
 
 ## Camp locker dirty-trigger follow-through
 - Downtime locker processing now tracks a per-worker state signature built from the worker's managed loadout, current locker candidates, and resulting locker plan.

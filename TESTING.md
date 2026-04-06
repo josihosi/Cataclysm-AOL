@@ -42,16 +42,17 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ### Patrol Zone v1
 
 Current honest state:
-- the topology spine is now real: `CAMP_PATROL` exists and patrol tiles are grouped by 4-way connected clusters
-- narrow deterministic coverage exists for that topology slice in `camp_patrol_zone_surface_and_sorted_tiles` and `camp_patrol_zone_clusters_use_4_way_connectivity`
-- latest narrow evidence: `make -j4 tests` and `./tests/cata_test "[camp][patrol]"` on 2026-04-06
-- there is still **no planner-specific deterministic coverage yet**
+- the topology spine is real: `CAMP_PATROL` exists and patrol tiles are grouped by 4-way connected clusters
+- the deterministic planner contract is real: patrol workers are the assigned camp NPCs with patrol priority > 0, the planner splits them into day/night rosters, and allocation stays deterministic across the reference disconnected-post and connected-cluster cases
+- the sticky-roster / interrupt-whitelist contract is real too: current shift rosters latch for the whole day/night block, routine chores do not steal active guards mid-shift, and urgent breaks can consume reserve backfill without rebalancing the whole roster
+- deterministic on-map runtime intent is now real: a guard with one fully staffed connected cluster holds a distinct tile, while understaffed or multi-post assignments walk a fixed loop that advances every 10 in-game minutes; off-shift patrol workers fall back to ordinary camp downtime instead of clinging to stale posts
+- narrow deterministic coverage now lives in `camp_patrol_zone_surface_and_sorted_tiles`, `camp_patrol_zone_clusters_use_4_way_connectivity`, `camp_patrol_worker_pool_uses_patrol_priority_surface`, `camp_patrol_planner_contract`, `camp_patrol_interrupt_contract`, `camp_patrol_shift_roster_latches_until_boundary`, and `camp_patrol_runtime_contract`
+- latest narrow evidence: repaired fresh `make -j4 tests` plus `./tests/cata_test "[camp][patrol]"` on 2026-04-06 after the on-map runtime-order change
 - there is still **no patrol-specific live proof yet**
 
 What counts next:
-- deterministic planner tests for the staffing/allocation contract
-- then deterministic sticky-roster / interrupt-whitelist tests
-- only after those are real should any live patrol packet be packaged
+- one honest live patrol packet with separate screen / tests / artifacts evidence
+- if that live probe stalls, only the narrowest helper/instrumentation that makes patrol behavior legible
 
 ### Existing baseline that should not be mistaken for patrol proof
 
@@ -61,7 +62,7 @@ What counts next:
 
 ### Meaning
 
-- Patrol Zone v1 has now earned the topology row and still needs to earn the planner / roster / live-proof rows.
+- Patrol Zone v1 has now earned the topology, planner, and sticky-roster rows; it still needs to earn the on-map behavior / live-proof rows.
 - Zone-type plumbing, prose, and plausible-looking motion do **not** count as success by themselves.
 - If a patrol report sounds cleaner than the code/tests/live packet beneath it, stop and audit before touching the ledgers.
 
@@ -71,23 +72,11 @@ What counts next:
 
 ### Active queue — Patrol Zone v1
 
-1. deterministic planner contract
-   - patrol pool = NPCs with patrol priority > 0
-   - two shifts
-   - 1 NPC / 4 disconnected posts
-   - 4 NPCs / 4 disconnected posts
-   - mixed clusters => one-per-cluster coverage first
-2. sticky shift roster / interrupt-whitelist contract
-   - shift-boundary roster formation
-   - routine work does not steal on-shift guards
-   - urgent disruption can break patrol
-   - reserve backfill does not trigger full-roster reshuffle
-3. on-map hold-vs-loop behavior
-   - understaffed connected cluster => fixed loop
-   - fully staffed connected cluster => distinct holders
-   - 16 NPCs / 4 connected squares stays explainable
-4. only after the deterministic contract is real, package one honest live patrol proof with separate **screen** / **tests** / **artifacts** evidence
-5. keep the helper idea `sustain_npc` available if a live patrol probe genuinely needs it
+1. package one honest live patrol proof with separate **screen** / **tests** / **artifacts** evidence
+   - lone guard on disconnected posts
+   - staffed connected cluster with distinct holders
+2. keep the helper idea `sustain_npc` available if a live patrol probe genuinely needs it
+3. if the live packet exposes confusing behavior, tighten only the smallest patrol constants/docs needed to explain it
 
 ### Anti-hallucination rule for this lane
 
@@ -109,6 +98,14 @@ If the story starts sounding cleaner than the evidence, stop and audit.
 **Later discussion topics, not current code lanes:**
 1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
 2. **smart zone manager**
+
+### Active-lane handoff block
+
+- **finish line:** live-proof packet exists, patrol reads clearly in play, and the feature still looks like simple v1 patrol rather than smart-zone soup
+- **deterministic tests:** topology, planner contract, sticky roster/interrupt contract, and hold-vs-loop runtime intent coverage are in place
+- **agent live proof:** one honest packaged patrol scenario with separate screen/tests/artifacts evidence
+- **Josef ask:** none yet; batch visually important patrol questions together once a real live packet exists
+- **likely tweak round:** any remaining patrol legibility/constants cleanup after the first live packet
 
 ### Non-blocking Josef notes
 
