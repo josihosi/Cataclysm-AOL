@@ -1,5 +1,10 @@
 # Technical Tome
 
+## Patrol Zone v1 planner spine
+- Patrol now has its own camp-job priority surface (`ACT_CAMP_PATROL`), and the deterministic patrol worker pool is exactly the assigned camp NPCs with patrol priority > 0.
+- The v1 planner splits that patrol pool into day/night rosters by sorted priority order, gives every patrol cluster at least one route owner before stacking extra guards onto larger clusters, and caps per-shift active guards at the total patrol-tile count.
+- In the current planner contract, one guard may own multiple disconnected posts on a shift, while extra guards beyond one-per-cluster stack onto larger connected clusters for the later hold-vs-loop behavior.
+
 ## Camp locker dirty-trigger follow-through
 - Downtime locker processing now tracks a per-worker state signature built from the worker's managed loadout, current locker candidates, and resulting locker plan.
 - When that actionable state changes, the camp requeues the affected worker even without a fresh sleep/wake or policy toggle.

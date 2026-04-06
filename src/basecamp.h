@@ -213,6 +213,39 @@ using camp_locker_candidate_map =
     std::map<camp_locker_slot, std::vector<const item *>>;
 using camp_patrol_cluster = std::vector<tripoint_abs_ms>;
 
+enum class camp_patrol_shift : int {
+    day = 0,
+    night,
+};
+
+struct camp_patrol_worker {
+    character_id worker_id;
+    int priority = 0;
+};
+
+struct camp_patrol_guard_plan {
+    character_id worker_id;
+    std::vector<size_t> cluster_indices;
+};
+
+struct camp_patrol_cluster_plan {
+    camp_patrol_cluster tiles;
+    std::vector<character_id> assigned_guards;
+};
+
+struct camp_patrol_shift_plan {
+    camp_patrol_shift shift = camp_patrol_shift::day;
+    std::vector<character_id> roster;
+    std::vector<camp_patrol_guard_plan> active_guards;
+    std::vector<character_id> reserve_guards;
+    std::vector<camp_patrol_cluster_plan> clusters;
+};
+
+struct camp_patrol_plan {
+    camp_patrol_shift_plan day;
+    camp_patrol_shift_plan night;
+};
+
 struct camp_locker_slot_plan {
   const item *kept_current = nullptr;
   const item *selected_candidate = nullptr;
@@ -258,6 +291,11 @@ std::vector<camp_patrol_cluster>
 collect_camp_patrol_clusters(const tripoint_abs_ms &origin,
                              const faction_id &fac,
                              int range = MAX_VIEW_DISTANCE);
+std::vector<camp_patrol_worker>
+collect_camp_patrol_workers(const std::vector<npc_ptr> &assigned_npcs);
+camp_patrol_plan
+plan_camp_patrol(const std::vector<camp_patrol_worker> &workers,
+                 const std::vector<camp_patrol_cluster> &clusters);
 
 namespace basecamp_ai {
 

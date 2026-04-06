@@ -150,7 +150,8 @@ class job_data
             { activity_id( "ACT_MULTIPLE_CHOP_PLANKS" ), 0 },
             { activity_id( "ACT_MULTIPLE_FISH" ), 0 },
             { activity_id( "ACT_MOVE_LOOT" ), 0 },
-            { activity_id( "ACT_MULTIPLE_DIS" ), 0}
+            { activity_id( "ACT_MULTIPLE_DIS" ), 0 },
+            { activity_id( "ACT_CAMP_PATROL" ), 0 }
         };
     public:
         // Multi activity fetchs something to complete task. To avoid infinite loop, remember what is tried to fetch already.
