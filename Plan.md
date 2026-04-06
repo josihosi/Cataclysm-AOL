@@ -60,12 +60,15 @@ Current job:
   - fully staffed connected clusters hold distinct squares
   - understaffed or multi-post assignments walk a fixed 10-minute loop order
   - off-shift patrol workers fall back to ordinary camp downtime
-- the first honest live patrol packet now exists with separate screen/tests/artifacts reporting for:
+- the current-binary live patrol packet now exists with separate screen/tests/artifacts reporting for:
   - lone guard on disconnected posts
   - staffed connected cluster with distinct holders
-- next tighten the **screen** evidence so the hold-vs-loop contrast reads clearly to a player without needing the artifact log to explain the screenshot
-  - readable staffing-pool / zone-topology companion crops now exist via harness crop captures
-  - the remaining missing piece is the actual runtime frame: make loop-vs-hold posture legible in-play instead of only legible in supporting crops
+- the runtime screen packet is now tighter and more legible:
+  - readable staffing-pool / zone-topology companion crops still exist via harness crop captures
+  - the runtime dwell pair now produces a tighter map crop plus a `runtime_motion_compare.gif` blink helper so loop-vs-hold posture reads without leaning on the artifact log alone
+- next audit the broader **player-legibility bar** against that improved packet
+  - verify the packet now explains not just hold-vs-loop, but also why disconnected posts leave gaps and why off-shift / reserve guards are not all standing on the same square
+  - if that is still muddy, add only the smallest companion evidence or UI/probe helper needed to explain those remaining questions
 - keep watching for hallucinations, fake progress, and prose outrunning code/tests/live proof
 - do **not** drift into smart-zone-manager cleverness during v1
 

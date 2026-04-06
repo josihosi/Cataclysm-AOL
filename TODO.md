@@ -12,11 +12,11 @@ Patrol Zone v1 is the active lane.
 
 Execution queue:
 1. follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
-2. tighten the live patrol **screen** packet so runtime loop-vs-hold reads visually
+2. audit the broader patrol **player-legibility** packet now that loop-vs-hold has a current-binary blink helper
    - keep the disconnected-post and connected-cluster harness scenarios
-   - keep the new cropped staffing/topology companion captures; improve the actual runtime frame next
-   - prefer framing/capture/fixture tweaks over new mechanic work
-   - do not rely on artifact logs alone to explain the screenshot
+   - use the tighter runtime crops plus `runtime_motion_compare.gif` packet as the new baseline
+   - check whether uncovered posts and off-shift / reserve behavior are understandable enough without leaning on artifact logs
+   - if not, add only the smallest companion evidence/helper that explains those remaining questions
 3. keep reports honest
    - separate deterministic contract, live artifacts, and screen legibility
    - do not count zone plumbing, prose, or plausible-looking motion as success by themselves

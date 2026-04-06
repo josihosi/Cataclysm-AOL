@@ -34,9 +34,9 @@ Success state:
 Notes:
 - Canonical implementation sketch lives in `doc/patrol-zone-v1-patch-plan-2026-04-06.md`.
 - Intended order: zone surface + 4-way clustering -> deterministic planner contract -> sticky roster / interrupt whitelist -> on-map hold-vs-loop -> live proof.
-- The current packaged live proofs are `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_193626/probe.report.json` and `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_194336/probe.report.json`.
-- A crop-capable harness capture path now exists; helper reruns at `.userdata/dev-harness/harness_runs/20260406_203337/probe.report.json` and `.userdata/dev-harness/harness_runs/20260406_203212/probe.report.json` produce readable staffing-pool and zone-topology companion crops, even though those reruns are not the canonical live proofs because the launched binary is older than the current repo state.
-- The remaining honest gap is runtime screen legibility: the companion crops now explain staffing/topology, but the actual in-play map frame still does not make loop vs hold posture obvious enough on its own.
+- The current packaged live proofs are `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_221126/probe.report.json` and `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_221548/probe.report.json`.
+- The current-binary packet now includes readable staffing-pool and zone-topology companion crops plus a tight `runtime_motion_compare.gif` blink helper, so loop-vs-hold posture no longer depends on artifact logs alone to read.
+- The remaining honest gap is the broader player-legibility bar: audit whether uncovered posts and off-shift / reserve state are understandable enough from the improved packet, not just whether loop vs hold can be seen.
 - The interrupt whitelist should be nailed down early so the feature does not quietly rot into fake patrol.
 - Watch for hallucinations, fake progress, and roadmap prose outrunning code/tests/live proof.
 

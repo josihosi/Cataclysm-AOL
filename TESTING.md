@@ -49,18 +49,15 @@ Current honest state:
 - legacy-save patrol control-surface drift is now covered too: old serialized camp-worker job maps can omit newer task keys, so `job_data::deserialize` now reseeds missing default camp jobs and keeps `ACT_CAMP_PATROL` available on older saves/fixtures
 - narrow deterministic coverage now lives in `legacy_job_data_load_adds_missing_patrol_priority_surface`, `camp_patrol_zone_surface_and_sorted_tiles`, `camp_patrol_zone_clusters_use_4_way_connectivity`, `camp_patrol_worker_pool_uses_patrol_priority_surface`, `camp_patrol_planner_contract`, `camp_patrol_interrupt_contract`, `camp_patrol_shift_roster_latches_until_boundary`, and `camp_patrol_runtime_contract`
 - latest narrow evidence: repaired fresh `make -j4 tests` plus `./tests/cata_test "[camp][patrol]"` on 2026-04-06 after the save-compat reseed fix
-- live patrol proof now exists as separate screen/tests/artifacts packets:
-  - `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_193626/probe.report.json` with `verdict: artifacts_matched`, `workers=2 roster=1 active=1`, and a looping disconnected-post route
-  - `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_194336/probe.report.json` with `verdict: artifacts_matched`, `workers=4 roster=2 active=2`, and two distinct hold targets on a staffed connected cluster
-- screen-helper reruns after harness crop support now produce readable companion captures:
-  - `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_203337/probe.report.json` with a readable `close_ricky_priorities.after.png` staffing crop and `open_zones_manager.after.png` topology crop
-  - `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_203212/probe.report.json` with a readable `close_milo_priorities.after.png` staffing crop and `open_zones_manager.after.png` topology crop
-  - both reruns are intentionally **not** the canonical live proof packet because the launched binary is older than the current repo state (`verdict: inconclusive_version_mismatch`)
-- the remaining honest gap is **runtime screen legibility**: the companion crops now explain staffing/topology, but the actual in-play map frame still does not make loop vs hold posture obvious enough on its own
+- live patrol proof now exists as separate screen/tests/artifacts packets on the **current binary**:
+  - `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_221126/probe.report.json` with `verdict: artifacts_matched`, `workers=2 roster=1 active=1`, a readable `close_ricky_priorities.after.png` staffing crop, a readable `open_zones_manager.after.png` topology crop, and a tight `runtime_motion_compare.gif` blink helper showing the disconnected-post loop advance one dwell later
+  - `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_221548/probe.report.json` with `verdict: artifacts_matched`, `workers=4 roster=2 active=2`, a readable `close_milo_priorities.after.png` staffing crop, a readable `open_zones_manager.after.png` topology crop, and a tight `runtime_motion_compare.gif` blink helper showing the connected-cluster hold state staying put one dwell later
+- the stale-binary ambiguity on the earlier helper reruns is gone: the current patrol packet now launches `cataclysm-tiles` at repo head `4e3b63650d-dirty` and reports `version_matches_runtime_paths: true`
+- the remaining honest gap is now the **broader player-legibility bar**, not raw loop-vs-hold visibility: the packet now explains loop vs hold much better, but it still needs an audit for whether uncovered posts and off-shift / reserve state are understandable enough without leaning on artifact logs
 
 What counts next:
-- tighten only the smallest runtime screen-framing/helper path that makes the live hold-vs-loop contrast readable without leaning on the artifact log
-- if that stalls, add only the narrowest helper/instrumentation that makes patrol behavior visually legible
+- audit the improved current-binary packet against the remaining player-legibility questions (coverage gaps and off-shift / reserve readability)
+- if that is still muddy, add only the narrowest companion evidence/helper that explains those remaining questions
 
 ### Existing baseline that should not be mistaken for patrol proof
 
@@ -80,12 +77,12 @@ What counts next:
 
 ### Active queue — Patrol Zone v1
 
-1. tighten the existing patrol **screen** packet so the runtime frame reads loop-vs-hold clearly from the image itself
-   - `patrol.disconnected_live` should still show the looping disconnected-post case
-   - `patrol.connected_live` should still show the staffed connected-cluster hold case
-   - keep the readable staffing/topology companion crops, but do not mistake them for the finished runtime answer
+1. audit the improved patrol packet against the remaining **player-legibility** questions
+   - `patrol.disconnected_live` should still show the looping disconnected-post case plus the resulting coverage gap clearly enough
+   - `patrol.connected_live` should still show the staffed connected-cluster hold case plus why extra workers are off-shift / not dogpiling the same square
+   - treat the staffing crop + topology crop + `runtime_motion_compare.gif` trio as the new baseline packet
 2. keep the helper idea `sustain_npc` available only if a future patrol probe genuinely needs it
-3. if the improved screen packet still exposes confusing behavior, tighten only the smallest patrol constants/docs needed to explain it
+3. if the remaining legibility audit still exposes confusion, tighten only the smallest companion evidence/constants/docs needed to explain it
 
 ### Anti-hallucination rule for this lane
 
@@ -110,11 +107,11 @@ If the story starts sounding cleaner than the evidence, stop and audit.
 
 ### Active-lane handoff block
 
-- **finish line:** the packaged live-proof packet already exists; the remaining close-out is for the runtime patrol frame itself to read clearly enough in play while still looking like simple v1 patrol rather than smart-zone soup
+- **finish line:** the packaged live-proof packet already exists on the current binary; the remaining close-out is whether the full patrol packet is understandable enough in play (coverage gaps, connected-vs-disconnected behavior, off-shift / reserve state) while still looking like simple v1 patrol rather than smart-zone soup
 - **deterministic tests:** topology, planner contract, sticky roster/interrupt contract, hold-vs-loop runtime intent coverage, and legacy save-compat priority-surface coverage are in place
-- **agent live proof:** packaged disconnected-loop and connected-hold scenarios both exist with separate screen/tests/artifacts evidence
-- **Josef ask:** none yet; batch visually important patrol questions together only if the improved screen packet is worth human eyes
-- **likely tweak round:** screen-legibility cleanup first, then any tiny constants/docs cleanup if the improved packet still reads oddly
+- **agent live proof:** packaged disconnected-loop and connected-hold scenarios both exist with separate screen/tests/artifacts evidence plus a `runtime_motion_compare.gif` helper on the current binary
+- **Josef ask:** none yet; batch visually important patrol questions together only if the improved packet is worth human eyes
+- **likely tweak round:** player-legibility audit first, then any tiny companion-evidence/constants/docs cleanup if the improved packet still reads oddly
 
 ### Non-blocking Josef notes
 
