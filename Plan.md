@@ -76,12 +76,12 @@ Working priority inside this lane:
 - keep following `doc/harness-first-slice-plan-2026-04-06.md`, but extend the landed pattern instead of restarting from zero
 - next concrete steps:
   - stop blind reruns of `chat.nearby_npc_basic` until a real runner path/config exists; keep the blocker explicit
-  - extend the landed scenario-setup helper wave so the harness can keep moving on unblocked live-probe work
+  - keep extending the landed scenario-setup helper wave so the harness can keep moving on unblocked live-probe work
     - `debug_spawn_follower_npc` is already landed on `}`, `s`, `f`
     - `debug_spawn_item` / `debug_spawn_monster` now cover the current wish paths `}`, `s`, `w` and `}`, `s`, `m`
-    - next missing setup surface is assign-NPC helper coverage for camp/follower staging
+    - `ambient.weird_item_reaction` is now packaged as an honestly blocked contract instead of a vague future note
+    - next missing setup surfaces are stable `drop_item(...)` plus assign-NPC helper coverage for camp/follower staging
   - strengthen `locker.weather_wait` with a more direct locker-trigger/setup path
-  - only then package the next named scenario such as `ambient.weird_item_reaction`
 - once one more unblocked probe/helper slice is in place, batch a compact Josef-facing testing packet instead of sending piecemeal asks
 
 ---

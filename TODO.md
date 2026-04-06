@@ -20,7 +20,8 @@ Execution queue:
    - keep `debug_spawn_follower_npc` usable/documented on the current debug-menu path (`}`, `s`, `f`)
    - keep `debug_spawn_item` honest on the current wish path (`}`, `s`, `w`) and its filter/amount prompt behavior
    - keep `debug_spawn_monster` honest on the current wish path (`}`, `s`, `m`) and its look-around target confirm behavior
-   - add assign-NPC helper(s) for camp/follower setup
+   - keep the new `ambient.weird_item_reaction` contract honest as blocked, not fake-runnable
+   - add the missing stable staging helpers: `drop_item(...)` plus assign-NPC helper(s) for camp/follower setup
 3. strengthen the locker probe into a more direct locker-trigger/setup path
    - turn the current locker probe from “load + wait + report honestly” into a stronger locker-specific signal once setup helpers exist
 4. keep the packaged chat probe parked honestly until runner prerequisites exist, then resume it

@@ -76,9 +76,21 @@ Latest relevant harness evidence for the current helper wave:
   - verdict is now `blocked_runtime_prereqs` with explicit blockers:
     - `llm_python_missing` (`LLM_INTENT_PYTHON` empty)
     - `llm_api_key_env_unset` (`CATA_API_KEY` absent)
+- newest packaged second-scenario contract is now honest instead of vague future prose
+  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+  - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
+  - `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction`
+  - scenario listing now reports `ambient.weird_item_reaction` as `status: blocked` with explicit required helpers instead of pretending it is runnable
+  - packaged report at `.userdata/dev-harness/harness_runs/20260406_044708/probe.report.json`
+  - verdict is `blocked_helper_gap`; startup and steps are deliberately marked `not_run_blocked_scenario`
+  - current declared helper gap is explicit:
+    - `drop_item(query_or_slot)`
+    - `assign_npc_to_camp(npc_selector, camp_selector)` or equivalent stable camp-staging helper
+    - `assign_npc_to_follower(npc_selector)` or equivalent stable nearby-NPC staging helper
 - meaning:
   - the missing evidence is no longer “does the packaged chat probe basically work?”
   - the current blocker is local runner configuration, not stale binaries and not a proven chat-routing failure
+  - the ambient-reaction lane is now packaged honestly enough to fail fast on its helper gap instead of burning a live run on ritual setup
   - do not keep rerunning `chat.nearby_npc_basic` until a real runner path/config exists; use the harness lane on unblocked helper/setup work meanwhile
 
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
@@ -175,12 +187,12 @@ Meaning:
    - keep `debug_spawn_follower_npc` on the current `}`, `s`, `f` path honest if debug bindings drift
    - keep `debug_spawn_item` on the current `}`, `s`, `w` path honest if the wish filter / amount prompt behavior shifts
    - keep `debug_spawn_monster` on the current `}`, `s`, `m` path honest if the wish filter / target-confirm behavior shifts
-   - add assign-NPC helper(s) for camp/follower setup
+   - add stable `drop_item(...)` plus assign-NPC helper(s) for camp/follower setup
 3. strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
 4. keep `chat.nearby_npc_basic` parked until runner prerequisites exist, then resume recipient / `llm_intent.log` proof
    - current blocker packet is `.userdata/dev-harness/harness_runs/20260406_022634/probe.report.json`
    - once the runner path/config is real again, rerun `chat.nearby_npc_basic`
-   - only after that, package the next named scenario such as `ambient.weird_item_reaction`
+   - `ambient.weird_item_reaction` is already packaged honestly; unblock it by landing stable item-drop plus NPC-staging helpers instead of pretending the scenario itself is missing
 5. after the probe/helper footing is stronger, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
 5. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
 6. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
