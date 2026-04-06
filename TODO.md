@@ -11,9 +11,13 @@ If the queue below stops matching `Plan.md`, fix this file.
 No new lane is greenlit right now.
 The stabilization/harness footing reached its intended checkpoint, and the current Josef packet lives at `doc/josef-hackathon-runway-testing-packet-2026-04-06.md`.
 
-If Josef wants the next chunk, the clean parked options are:
+If Josef wants the next chunk, keep this distinction explicit:
+
+**Hackathon-reserved — do not touch before the event:**
 1. **chat interface over dialogue branches**
 2. **ambient-trigger reaction lane**
+
+**Only pre-hackathon option still available for separate greenlight:**
 3. **locker-capable harness restaging** for a real `locker.weather_wait` fixture
 
 Still true:

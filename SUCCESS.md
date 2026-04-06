@@ -37,7 +37,7 @@ Notes:
 - Harness screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely demote a runtime-compatible captured game window to `inconclusive_version_mismatch`.
 - `ambient.weird_item_reaction` now tails the correct repo-level `config/llm_intent.log`; its latest packaged run at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` is honest about the remaining gap: `inconclusive_no_new_artifacts` on a runtime-compatible build, not a fake no-artifact result from watching `debug.log`.
 - `locker.weather_wait` is now explicitly demoted back to blocked status: the shipped `basecamp_dev_manual_2026-04-02` fixture does not contain a `CAMP_LOCKER` zone, so the contract cannot honestly claim locker-service evidence until a locker-capable fixture/restaging path exists.
-- The next distinguished feature runways (chat interface, tiny ambient-trigger NPC model) should stand on top of this lane rather than compete with it.
+- Important reviewer-facing distinction: the packaged `chat.nearby_npc_basic` and `ambient.weird_item_reaction` scenarios are harness scaffolding only. They are **not** the hackathon feature work for "chat interface over dialogue branches" or the "tiny ambient-trigger NPC model," and must not be described as partial completion of those feature lanes.
 
 ---
 

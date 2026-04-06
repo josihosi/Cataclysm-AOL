@@ -2,6 +2,11 @@
 
 Status: ready for a short non-blocking human spot-check.
 
+Important scope note:
+- this packet is **harness footing only**
+- it is **not** evidence that the future hackathon feature "chat interface over dialogue branches" is already implemented
+- likewise, the ambient probe mentioned below is **not** evidence that the future tiny ambient-trigger NPC model exists yet
+
 This packet exists so Josef can spend a few focused minutes on the highest-value live question instead of reconstructing setup folklore.
 
 ## What to try

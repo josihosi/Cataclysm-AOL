@@ -49,11 +49,17 @@ The stabilization/harness lane reached its intended handoff state for now:
 Do **not** keep grinding the same harness packets by ritual now that the packet exists.
 If Josef does not pick a next lane yet, leave the state parked instead of inventing filler work.
 
-### Parked options Josef can greenlight next
+### Next-lane status
+
+**Hackathon-reserved — do not touch before the event:**
 1. **Chat interface over dialogue branches**
-   - start replacing the brittle dialogue-branch surface with the cleaner chat-style interaction path the harness now exercises
+   - reserved for the hackathon itself
+   - current harness chat work is only probe scaffolding; it is **not** the feature implementation and must not be presented as partial feature completion
 2. **Ambient-trigger reaction lane**
-   - use the runnable `ambient.weird_item_reaction` contract to move from honest `inconclusive_no_new_artifacts` into the first real sparse/event-gated ambient reaction proof
+   - reserved for the hackathon itself
+   - current `ambient.weird_item_reaction` work is only harness/observability scaffolding; it is **not** the tiny-model feature and must not be presented as partial feature completion
+
+**Pre-hackathon option Josef can still greenlight separately:**
 3. **Locker-capable harness restaging**
    - build or capture a fixture/restaging path with a real `CAMP_LOCKER` zone so `locker.weather_wait` becomes a reusable live regression instead of a permanently parked known blocker
 
@@ -116,17 +122,19 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 6. Queued after stabilization/harness
+## 6. Hackathon-reserved feature lanes — do not touch before the event
 
-These are not the immediate base-stability job, but they are the likely distinguished hackathon runways once the repo/harness footing is good enough:
+These are intentionally **reserved for the hackathon itself**.
+They should stay visibly separate from the current repo-footing/harness work so reviewers do not mistake scaffolding for early feature implementation.
 
 1. **Chat interface over in-game dialogue branches**
-   - replace dialogue-branch soup with a cleaner chat-style interaction surface
+   - the future feature lane
+   - current harness work may exercise nearby-NPC/freeform chat controls, but that is only test scaffolding and **not** this feature
 2. **Tiny ambient-trigger NPC model**
-   - introduce a small RoBERTa-like model that notices weird situations and triggers ambient NPC reactions
+   - the future feature lane
+   - current harness work may stage weird-item scenarios and artifact checks, but that is only test scaffolding/observability and **not** this feature
 
-Do not start pretending these are cheap side errands.
-They need stable footing first.
+Do not start them early, do not half-land them, and do not describe scaffolding as partial completion.
 
 ---
 

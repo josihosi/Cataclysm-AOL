@@ -192,9 +192,15 @@ Meaning:
 No active probe queue right now.
 The stabilization/harness lane is checkpointed, so further probe work should wait for a real next pick instead of ritual reruns.
 
-Clean parked follow-ups:
-1. **chat interface over dialogue branches** once Josef explicitly wants the feature lane opened
-2. **ambient-trigger reaction proof** by improving live trigger/staging around `ambient.weird_item_reaction` instead of relitigating harness bookkeeping
+Next-lane distinction:
+
+**Hackathon-reserved — do not touch before the event:**
+1. **chat interface over dialogue branches**
+   - current `chat.nearby_npc_basic` evidence is harness-only scaffolding, not feature implementation
+2. **ambient-trigger reaction lane / tiny ambient-trigger NPC model**
+   - current `ambient.weird_item_reaction` evidence is harness-only scaffolding/observability, not feature implementation
+
+**Only pre-hackathon follow-up still available for separate greenlight:**
 3. **locker-capable fixture/restaging** so `locker.weather_wait` can become a real reusable regression instead of a known blocked contract
 
 ### Non-blocking Josef notes
