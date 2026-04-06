@@ -767,7 +767,56 @@ def extract_window_build_info(window_title: str) -> Dict[str, Any]:
     return info
 
 
-def summarize_peekaboo_capture(stdout: str, png_path: Path, json_path: Path) -> Dict[str, Any]:
+def window_area(window: Dict[str, Any]) -> int:
+    bounds = window.get("bounds")
+    if not isinstance(bounds, list) or len(bounds) != 2:
+        return 0
+    top_left, size = bounds
+    if not isinstance(top_left, list) or not isinstance(size, list) or len(size) != 2:
+        return 0
+    try:
+        width = max(0, int(size[0]))
+        height = max(0, int(size[1]))
+    except (TypeError, ValueError):
+        return 0
+    return width * height
+
+
+def list_windows_for_pid(pid: int) -> List[Dict[str, Any]]:
+    payload = run_json(["peekaboo", "list", "windows", "--json", "--app", f"PID:{pid}"], check=False)
+    if not isinstance(payload, dict):
+        return []
+    data = payload.get("data", {}) if isinstance(payload.get("data"), dict) else {}
+    windows = data.get("windows", [])
+    if not isinstance(windows, list):
+        return []
+    return [window for window in windows if isinstance(window, dict)]
+
+
+def choose_capture_window(pid: int) -> Dict[str, Any]:
+    windows = list_windows_for_pid(pid)
+    if not windows:
+        return {}
+
+    def capture_rank(window: Dict[str, Any]) -> Tuple[int, int, int, int, int]:
+        title = str(window.get("title", "")).strip()
+        return (
+            1 if bool(window.get("isOnScreen", False)) else 0,
+            1 if not bool(window.get("isMinimized", False)) else 0,
+            1 if title else 0,
+            1 if "cataclysm" in title.lower() else 0,
+            window_area(window),
+        )
+
+    return max(windows, key=capture_rank)
+
+
+def summarize_peekaboo_image_capture(
+    stdout: str,
+    png_path: Path,
+    json_path: Path,
+    capture_target: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     repo_head = current_head_short()
     summary: Dict[str, Any] = {
         "png_path": str(png_path),
@@ -775,6 +824,8 @@ def summarize_peekaboo_capture(stdout: str, png_path: Path, json_path: Path) -> 
         "repo_head": repo_head,
         "peekaboo_success": False,
         "window_title": "",
+        "window_id": 0,
+        "window_index": None,
         "captured_head": "",
         "captured_dirty": False,
         "version_matches_repo_head": None,
@@ -791,9 +842,23 @@ def summarize_peekaboo_capture(stdout: str, png_path: Path, json_path: Path) -> 
     if not isinstance(payload, dict):
         summary["parse_error"] = "peekaboo stdout was not a JSON object"
         return summary
+
     data = payload.get("data", {}) if isinstance(payload.get("data"), dict) else {}
+    files = data.get("files", []) if isinstance(data.get("files"), list) else []
+    first_file = files[0] if files and isinstance(files[0], dict) else {}
     summary["peekaboo_success"] = bool(payload.get("success"))
-    summary["window_title"] = str(data.get("window_title", "")).strip()
+    summary["window_title"] = str(
+        first_file.get("window_title")
+        or (capture_target or {}).get("title", "")
+    ).strip()
+    try:
+        summary["window_id"] = int(first_file.get("window_id") or (capture_target or {}).get("window_id") or 0)
+    except (TypeError, ValueError):
+        summary["window_id"] = 0
+    summary["window_index"] = first_file.get("window_index", (capture_target or {}).get("index"))
+    error_info = payload.get("error", {}) if isinstance(payload.get("error"), dict) else {}
+    if not summary["peekaboo_success"] and error_info.get("message"):
+        summary["parse_error"] = str(error_info.get("message", "")).strip()
     build_info = extract_window_build_info(summary["window_title"])
     summary.update(build_info)
     if summary["captured_head"]:
@@ -804,18 +869,31 @@ def summarize_peekaboo_capture(stdout: str, png_path: Path, json_path: Path) -> 
 def capture_screenshot(pid: int, run_dir: Path, label: str) -> Dict[str, Any]:
     png_path = run_dir / f"{label}.png"
     json_path = run_dir / f"{label}.peekaboo.json"
+    capture_target = choose_capture_window(pid)
+    cmd = ["peekaboo", "image", "--json", "--path", str(png_path)]
+    if capture_target.get("window_id"):
+        cmd.extend(["--window-id", str(capture_target["window_id"])])
+    else:
+        cmd.extend(["--pid", str(pid)])
     proc = subprocess.run(
-        ["peekaboo", "see", "--pid", str(pid), "--path", str(png_path), "--json"],
+        cmd,
         capture_output=True,
         text=True,
         check=False,
     )
     payload = {
         "label": label,
+        "command": cmd,
+        "capture_target": capture_target,
         "returncode": proc.returncode,
         "stdout": proc.stdout,
         "stderr": proc.stderr,
-        "screen_summary": summarize_peekaboo_capture(proc.stdout, png_path, json_path),
+        "screen_summary": summarize_peekaboo_image_capture(
+            proc.stdout,
+            png_path,
+            json_path,
+            capture_target=capture_target,
+        ),
     }
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return payload
