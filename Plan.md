@@ -37,48 +37,43 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Patrol Zone v1
+## 1. Current delivery target — none (Patrol Zone v1 is closed)
 
-**Status:** GREENLIT / ACTIVE
+**Status:** PARKED / WAITING FOR NEXT GREENLIGHT
 
-Josef has now greenlit **Patrol Zone v1**.
-This is the next real lane.
+Patrol Zone v1 is now done for now.
+No other lane is currently greenlit in this file, so the repo is parked pending Josef's next pick.
 
-Current job:
-- implement a Zone Manager patrol zone as a real camp job with deterministic scheduling/coverage behavior
-- follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
-- keep the implementation brutally simple, legible, and testable
+### Current truth
+- Patrol Zone v1 reached its close-out bar:
+  - Zone Manager patrol zone + 4-way clustering landed
+  - deterministic planner / shift-roster / interrupt contract landed
+  - live disconnected-loop and connected-hold packets exist on the current binary
+  - the packet now includes a tiny `probe.patrol_summary.txt` explainer so uncovered posts, connected-vs-disconnected behavior, and off-shift counts read without spelunking raw patrol trace logs
+- The remaining lanes below are discussion / parked options, not silent auto-start work.
 
-### Immediate next move
-- the topology spine, deterministic planner contract, sticky shift-roster / interrupt-whitelist contract, and deterministic on-map hold-vs-loop runtime order are landed:
-  - patrol zone type
-  - 4-way connected clustering
-  - patrol-priority worker pool
-  - day/night shift allocation for the reference staffing cases
-  - shift-latched active roster that routine chores do not steal
-  - urgent patrol breaks/backfill without full-roster reshuffle
-  - fully staffed connected clusters hold distinct squares
-  - understaffed or multi-post assignments walk a fixed 10-minute loop order
-  - off-shift patrol workers fall back to ordinary camp downtime
-- the current-binary live patrol packet now exists with separate screen/tests/artifacts reporting for:
-  - lone guard on disconnected posts
-  - staffed connected cluster with distinct holders
-- the runtime screen packet is now tighter and more legible:
-  - readable staffing-pool / zone-topology companion crops still exist via harness crop captures
-  - the runtime dwell pair now produces a tighter map crop plus a `runtime_motion_compare.gif` blink helper so loop-vs-hold posture reads without leaning on the artifact log alone
-- next audit the broader **player-legibility bar** against that improved packet
-  - verify the packet now explains not just hold-vs-loop, but also why disconnected posts leave gaps and why off-shift / reserve guards are not all standing on the same square
-  - if that is still muddy, add only the smallest companion evidence or UI/probe helper needed to explain those remaining questions
-- keep watching for hallucinations, fake progress, and prose outrunning code/tests/live proof
-- do **not** drift into smart-zone-manager cleverness during v1
-
-### Later discussion topics once Patrol Zone v1 runs dry
-1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
-2. discuss/prototype a **smart zone manager**
+### Next greenlight options for Josef
+1. **Smart Zone Manager v1** — start the explicit one-off basecamp auto-layout helper from `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`
+2. **Locker Zone V3** — reopen exactly one narrow judgment slice instead of sliding back into locker-nuance soup
+3. **Leave the repo parked** until a fresh hackathon or product call picks the next lane
 
 ---
 
-## 2. Checkpointed — Locker-capable harness restaging
+## 2. Checkpointed — Patrol Zone v1
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+This lane is now considered done for now because the bundled success state in `SUCCESS.md` is checked:
+- patrol zone surface + planner + sticky-shift contract exist
+- deterministic hold-vs-loop runtime behavior exists
+- current-binary live proof exists for disconnected-loop and connected-hold cases
+- the packaged patrol packet is now legible enough to explain gaps / off-shift state without leaning on raw trace logs alone
+
+If later code work or runtime evidence shows any one of those claims is false or incomplete, reopen Patrol Zone v1 immediately.
+
+---
+
+## 3. Checkpointed — Locker-capable harness restaging
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -92,7 +87,7 @@ If later fixture drift, harness drift, or locker runtime evidence breaks any one
 
 ---
 
-## 3. Checkpointed — Locker Zone V2
+## 4. Checkpointed — Locker Zone V2
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -106,7 +101,7 @@ If later code work or runtime evidence shows any one of those bundled claims is 
 
 ---
 
-## 4. Checkpointed — Locker Zone V1
+## 5. Checkpointed — Locker Zone V1
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -121,7 +116,7 @@ If later code work shows any one of those bundled claims is false or incomplete,
 
 ---
 
-## 5. Checkpointed — post-Locker-V1 Basecamp follow-through
+## 6. Checkpointed — post-Locker-V1 Basecamp follow-through
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -135,7 +130,7 @@ Keep this closed unless Josef explicitly reopens Basecamp prompt follow-through 
 
 ---
 
-## 6. Checkpointed — LLM-side board snapshot path
+## 7. Checkpointed — LLM-side board snapshot path
 
 **Status:** CHECKPOINTED
 
@@ -149,7 +144,7 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 7. Hackathon-reserved feature lanes — do not touch before the event
+## 8. Hackathon-reserved feature lanes — do not touch before the event
 
 These are intentionally **reserved for the hackathon itself**.
 They should stay visibly separate from the current repo-footing/harness work so reviewers do not mistake scaffolding for early feature implementation.
@@ -165,7 +160,7 @@ Do not start them early, do not half-land them, and do not describe scaffolding 
 
 ---
 
-## 8. Documentation discipline
+## 9. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

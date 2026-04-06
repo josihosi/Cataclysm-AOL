@@ -17,7 +17,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Patrol Zone v1
 
-Status: ACTIVE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] A Zone Manager patrol zone exists and patrol squares are grouped by 4-way connected clusters.
@@ -28,23 +28,22 @@ Success state:
 - [x] Urgent disruption can break patrol, and reserve backfill works without full-roster reshuffle.
 - [x] On-map behavior distinguishes hold-positions vs fixed-loop patrol in the intended simple v1 way.
 - [x] Proportional live proof is recorded with separate screen/tests/artifacts reporting.
-- [ ] The player-legibility bar is met: guard behavior, uncovered posts, connected-vs-disconnected behavior, and reserve/off-shift state are understandable enough to read in play.
+- [x] The player-legibility bar is met: guard behavior, uncovered posts, connected-vs-disconnected behavior, and reserve/off-shift state are understandable enough to read in play.
 - [x] The result stays explainable as simple v1 patrol rather than quietly turning into smart-zone-manager soup.
 
 Notes:
 - Canonical implementation sketch lives in `doc/patrol-zone-v1-patch-plan-2026-04-06.md`.
-- Intended order: zone surface + 4-way clustering -> deterministic planner contract -> sticky roster / interrupt whitelist -> on-map hold-vs-loop -> live proof.
-- The current packaged live proofs are `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_221126/probe.report.json` and `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_221548/probe.report.json`.
-- The current-binary packet now includes readable staffing-pool and zone-topology companion crops plus a tight `runtime_motion_compare.gif` blink helper, so loop-vs-hold posture no longer depends on artifact logs alone to read.
-- The remaining honest gap is the broader player-legibility bar: audit whether uncovered posts and off-shift / reserve state are understandable enough from the improved packet, not just whether loop vs hold can be seen.
-- The interrupt whitelist should be nailed down early so the feature does not quietly rot into fake patrol.
+- Intended order stayed: zone surface + 4-way clustering -> deterministic planner contract -> sticky roster / interrupt whitelist -> on-map hold-vs-loop -> live proof -> packet legibility close-out.
+- The current packaged live proofs are `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_230124/probe.report.json` and `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_230552/probe.report.json`.
+- Each current-binary patrol packet now includes readable staffing-pool and zone-topology crops, a tight `runtime_motion_compare.gif` blink helper, and a small `probe.patrol_summary.txt` explainer that states the shift roster, off-shift count, disconnected-vs-connected layout, and why gaps/holds are expected in that snapshot.
+- Keep this lane closed unless later code or runtime evidence shows the deterministic contract or the packaged patrol packet has drifted out of truth.
 - Watch for hallucinations, fake progress, and roadmap prose outrunning code/tests/live proof.
 
 ---
 
 ## Smart Zone Manager v1
 
-Status: GREENLIT / QUEUED AFTER PATROL
+Status: PARKED / NEEDS GREENLIGHT
 
 Success state:
 - [ ] One explicit one-off smart-zoning action exists for Basecamp.
@@ -59,7 +58,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`.
-- This lane is greenlit now, but queued behind Patrol Zone v1 unless Josef explicitly reprioritizes.
+- This lane is a concrete parked option after Patrol Zone v1, not an automatically greenlit follow-on. Plan.md decides when it actually becomes active.
 - Keep this focused on basecamp auto-layout helper behavior, not patrol/locker automation or smart-zone-manager soup.
 
 ---

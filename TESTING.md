@@ -42,32 +42,32 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ### Patrol Zone v1
 
 Current honest state:
+- Patrol Zone v1 is checkpointed / done for now.
 - the topology spine is real: `CAMP_PATROL` exists and patrol tiles are grouped by 4-way connected clusters
 - the deterministic planner contract is real: patrol workers are the assigned camp NPCs with patrol priority > 0, the planner splits them into day/night rosters, and allocation stays deterministic across the reference disconnected-post and connected-cluster cases
 - the sticky-roster / interrupt-whitelist contract is real too: current shift rosters latch for the whole day/night block, routine chores do not steal active guards mid-shift, and urgent breaks can consume reserve backfill without rebalancing the whole roster
-- deterministic on-map runtime intent is now real: a guard with one fully staffed connected cluster holds a distinct tile, while understaffed or multi-post assignments walk a fixed loop that advances every 10 in-game minutes; off-shift patrol workers fall back to ordinary camp downtime instead of clinging to stale posts
-- legacy-save patrol control-surface drift is now covered too: old serialized camp-worker job maps can omit newer task keys, so `job_data::deserialize` now reseeds missing default camp jobs and keeps `ACT_CAMP_PATROL` available on older saves/fixtures
-- narrow deterministic coverage now lives in `legacy_job_data_load_adds_missing_patrol_priority_surface`, `camp_patrol_zone_surface_and_sorted_tiles`, `camp_patrol_zone_clusters_use_4_way_connectivity`, `camp_patrol_worker_pool_uses_patrol_priority_surface`, `camp_patrol_planner_contract`, `camp_patrol_interrupt_contract`, `camp_patrol_shift_roster_latches_until_boundary`, and `camp_patrol_runtime_contract`
-- latest narrow evidence: repaired fresh `make -j4 tests` plus `./tests/cata_test "[camp][patrol]"` on 2026-04-06 after the save-compat reseed fix
-- live patrol proof now exists as separate screen/tests/artifacts packets on the **current binary**:
-  - `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_221126/probe.report.json` with `verdict: artifacts_matched`, `workers=2 roster=1 active=1`, a readable `close_ricky_priorities.after.png` staffing crop, a readable `open_zones_manager.after.png` topology crop, and a tight `runtime_motion_compare.gif` blink helper showing the disconnected-post loop advance one dwell later
-  - `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_221548/probe.report.json` with `verdict: artifacts_matched`, `workers=4 roster=2 active=2`, a readable `close_milo_priorities.after.png` staffing crop, a readable `open_zones_manager.after.png` topology crop, and a tight `runtime_motion_compare.gif` blink helper showing the connected-cluster hold state staying put one dwell later
-- the stale-binary ambiguity on the earlier helper reruns is gone: the current patrol packet now launches `cataclysm-tiles` at repo head `4e3b63650d-dirty` and reports `version_matches_runtime_paths: true`
-- the remaining honest gap is now the **broader player-legibility bar**, not raw loop-vs-hold visibility: the packet now explains loop vs hold much better, but it still needs an audit for whether uncovered posts and off-shift / reserve state are understandable enough without leaning on artifact logs
+- deterministic on-map runtime intent is real: a guard with one fully staffed connected cluster holds a distinct tile, while understaffed or multi-post assignments walk a fixed loop that advances every 10 in-game minutes; off-shift patrol workers fall back to ordinary camp downtime instead of clinging to stale posts
+- legacy-save patrol control-surface drift is covered too: old serialized camp-worker job maps can omit newer task keys, so `job_data::deserialize` now reseeds missing default camp jobs and keeps `ACT_CAMP_PATROL` available on older saves/fixtures
+- narrow deterministic coverage lives in `legacy_job_data_load_adds_missing_patrol_priority_surface`, `camp_patrol_zone_surface_and_sorted_tiles`, `camp_patrol_zone_clusters_use_4_way_connectivity`, `camp_patrol_worker_pool_uses_patrol_priority_surface`, `camp_patrol_planner_contract`, `camp_patrol_interrupt_contract`, `camp_patrol_shift_roster_latches_until_boundary`, and `camp_patrol_runtime_contract`
+- latest deterministic evidence is still the repaired fresh `make -j4 tests` plus `./tests/cata_test "[camp][patrol]"` on 2026-04-06 after the save-compat reseed fix
+- current-binary live patrol proof now exists as separate screen/tests/artifacts packets plus a small explainer helper:
+  - `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_230124/probe.report.json` with `verdict: artifacts_matched`, a readable staffing crop, a readable zone-topology crop, `runtime_motion_compare.gif`, and `probe.patrol_summary.txt` explaining why 4 disconnected posts + a 1-guard day roster necessarily leaves gaps between visits
+  - `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_230552/probe.report.json` with `verdict: artifacts_matched`, a readable staffing crop, a readable zone-topology crop, `runtime_motion_compare.gif`, and `probe.patrol_summary.txt` explaining why 4 patrol-enabled workers still become a 2-guard day roster with 2 off-shift guards and 2 held tiles
+- the stale-binary ambiguity on the earlier helper reruns is gone: the current patrol packet still reports `version_matches_runtime_paths: true` against the current runtime-relevant tree
+- the player-legibility close-out now counts as met for this packet: loop-vs-hold, disconnected-vs-connected layout, uncovered posts, and off-shift counts are all stated directly enough without making the reader mine raw patrol trace logs
 
 What counts next:
-- audit the improved current-binary packet against the remaining player-legibility questions (coverage gaps and off-shift / reserve readability)
-- if that is still muddy, add only the narrowest companion evidence/helper that explains those remaining questions
+- no further patrol probe is queued unless later code or runtime evidence reopens the lane
 
 ### Existing baseline that should not be mistaken for patrol proof
 
-- Locker Zone V1/V2 and locker-capable harness restaging remain checkpointed; do not rerun them by ritual just because Patrol Zone v1 is now active.
+- Locker Zone V1/V2 and locker-capable harness restaging remain checkpointed; do not rerun them by ritual now that Patrol Zone v1 is closed.
 - The repo already has one honest packaged proof format that separates **screen** / **tests** / **artifacts** (for example `locker.weather_wait` at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`). Treat that as a packaging template only, not as Patrol Zone evidence.
 - Current harness scenarios `chat.nearby_npc_basic` and `ambient.weird_item_reaction` remain hackathon-reserved scaffolding. They are not part of Patrol Zone v1.
 
 ### Meaning
 
-- Patrol Zone v1 has now earned the topology, planner, and sticky-roster rows; it still needs to earn the on-map behavior / live-proof rows.
+- Patrol Zone v1 has now earned the topology, planner, sticky-roster, on-map behavior, live-proof, and player-legibility rows; the lane is closed unless later evidence breaks one of those claims.
 - Zone-type plumbing, prose, and plausible-looking motion do **not** count as success by themselves.
 - If a patrol report sounds cleaner than the code/tests/live packet beneath it, stop and audit before touching the ledgers.
 
@@ -75,14 +75,13 @@ What counts next:
 
 ## Pending probes
 
-### Active queue — Patrol Zone v1
+### Active queue
 
-1. audit the improved patrol packet against the remaining **player-legibility** questions
-   - `patrol.disconnected_live` should still show the looping disconnected-post case plus the resulting coverage gap clearly enough
-   - `patrol.connected_live` should still show the staffed connected-cluster hold case plus why extra workers are off-shift / not dogpiling the same square
-   - treat the staffing crop + topology crop + `runtime_motion_compare.gif` trio as the new baseline packet
-2. keep the helper idea `sustain_npc` available only if a future patrol probe genuinely needs it
-3. if the remaining legibility audit still exposes confusion, tighten only the smallest companion evidence/constants/docs needed to explain it
+No active validation queue.
+Patrol Zone v1 is closed, and the next lane is waiting on Josef's greenlight.
+
+Still true:
+1. keep the helper idea `sustain_npc` available only if a future patrol probe genuinely needs it
 
 ### Anti-hallucination rule for this lane
 
@@ -107,11 +106,9 @@ If the story starts sounding cleaner than the evidence, stop and audit.
 
 ### Active-lane handoff block
 
-- **finish line:** the packaged live-proof packet already exists on the current binary; the remaining close-out is whether the full patrol packet is understandable enough in play (coverage gaps, connected-vs-disconnected behavior, off-shift / reserve state) while still looking like simple v1 patrol rather than smart-zone soup
-- **deterministic tests:** topology, planner contract, sticky roster/interrupt contract, hold-vs-loop runtime intent coverage, and legacy save-compat priority-surface coverage are in place
-- **agent live proof:** packaged disconnected-loop and connected-hold scenarios both exist with separate screen/tests/artifacts evidence plus a `runtime_motion_compare.gif` helper on the current binary
-- **Josef ask:** none yet; batch visually important patrol questions together only if the improved packet is worth human eyes
-- **likely tweak round:** player-legibility audit first, then any tiny companion-evidence/constants/docs cleanup if the improved packet still reads oddly
+- **active lane:** none right now; Patrol Zone v1 is closed and the repo is parked for the next greenlight
+- **last closed lane:** Patrol Zone v1 now has deterministic tests, current-binary disconnected/connected live packets, and the tiny `probe.patrol_summary.txt` companion helper for the last legibility questions
+- **Josef ask:** pick the next lane; no patrol-specific follow-up is required for close-out
 
 ### Non-blocking Josef notes
 

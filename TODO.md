@@ -8,19 +8,13 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Patrol Zone v1 is the active lane.
+No active execution queue.
+Patrol Zone v1 is closed, and no later lane is greenlit in `Plan.md` yet.
 
-Execution queue:
-1. follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
-2. audit the broader patrol **player-legibility** packet now that loop-vs-hold has a current-binary blink helper
-   - keep the disconnected-post and connected-cluster harness scenarios
-   - use the tighter runtime crops plus `runtime_motion_compare.gif` packet as the new baseline
-   - check whether uncovered posts and off-shift / reserve behavior are understandable enough without leaning on artifact logs
-   - if not, add only the smallest companion evidence/helper that explains those remaining questions
-3. keep reports honest
-   - separate deterministic contract, live artifacts, and screen legibility
-   - do not count zone plumbing, prose, or plausible-looking motion as success by themselves
-   - if something smells too smooth, audit it
+Parked options waiting for Josef's pick:
+1. Smart Zone Manager v1
+2. Locker Zone V3 — one deliberately narrow next judgment slice
+3. leave the repo parked
 
 Still true:
 - Hackathon-reserved — do not touch before the event:
