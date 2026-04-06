@@ -36,6 +36,20 @@ IGNORABLE_DEBUG_LOG_PATTERNS: List[Pattern[str]] = [
     re.compile( r"\d{2}:\d{2}:\d{2}\.\d{3} WARNING : .* pack load time:: .*" ),
 ]
 
+RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
+    "src",
+    "data",
+    "lang",
+    "gfx",
+    "lua",
+    "mods",
+    "build-data",
+    "cmake",
+    "CMakeLists.txt",
+    "Makefile",
+    "make.sh",
+)
+
 
 @dataclass
 class WorldInfo:
@@ -99,6 +113,44 @@ def current_head_short() -> str:
         check=False,
     )
     return proc.stdout.strip()
+
+
+def runtime_relevant_changes_since(captured_head: str) -> Tuple[List[str], str]:
+    captured = str(captured_head or "").strip()
+    if not captured:
+        return [], "captured head is empty"
+
+    commit_check = subprocess.run(
+        ["git", "-C", str(repo_root()), "cat-file", "-e", f"{captured}^{{commit}}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if commit_check.returncode != 0:
+        detail = (commit_check.stderr or commit_check.stdout).strip()
+        return [], detail or f"captured head {captured} is not resolvable"
+
+    proc = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo_root()),
+            "diff",
+            "--name-only",
+            f"{captured}..HEAD",
+            "--",
+            *RUNTIME_RELEVANT_PATHS,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout).strip()
+        return [], detail or f"git diff failed for {captured}..HEAD"
+
+    changes = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+    return changes, ""
 
 
 def resolve_profile_name(explicit: str) -> str:
@@ -810,7 +862,7 @@ def resolve_artifact_source(profile: str, source: str) -> Tuple[Path, bool, str]
     if normalized in {"debug", "debug.log"}:
         return config_dir_for_profile(profile) / "debug.log", True, "debug.log"
     if normalized in {"llm", "llm_intent", "llm_intent.log"}:
-        return config_dir_for_profile(profile) / "llm_intent.log", False, "llm_intent.log"
+        return repo_root() / "config" / "llm_intent.log", False, "llm_intent.log"
     raise SystemExit(f"Unsupported artifact source: {source}")
 
 
@@ -903,6 +955,10 @@ def summarize_peekaboo_image_capture(
         "captured_head": "",
         "captured_dirty": False,
         "version_matches_repo_head": None,
+        "version_matches_runtime_paths": None,
+        "runtime_relevant_paths": list(RUNTIME_RELEVANT_PATHS),
+        "runtime_relevant_diff_since_capture": [],
+        "runtime_compare_error": "",
         "parse_error": "",
     }
     if not stdout.strip():
@@ -936,7 +992,16 @@ def summarize_peekaboo_image_capture(
     build_info = extract_window_build_info(summary["window_title"])
     summary.update(build_info)
     if summary["captured_head"]:
-        summary["version_matches_repo_head"] = summary["captured_head"] == repo_head
+        captured_head = str(summary["captured_head"])
+        summary["version_matches_repo_head"] = captured_head == repo_head
+        if summary["version_matches_repo_head"]:
+            summary["version_matches_runtime_paths"] = True
+        else:
+            runtime_changes, runtime_error = runtime_relevant_changes_since(captured_head)
+            summary["runtime_relevant_diff_since_capture"] = runtime_changes
+            summary["runtime_compare_error"] = runtime_error
+            if not runtime_error:
+                summary["version_matches_runtime_paths"] = not runtime_changes
     return summary
 
 
@@ -1616,12 +1681,12 @@ def run_probe(args: argparse.Namespace) -> int:
     settle_seconds = float(args.settle_seconds if args.settle_seconds is not None else scenario.get("settle_seconds", 1.0))
     raw_patterns = scenario.get("artifact_patterns", [])
     if isinstance(raw_patterns, list):
-        artifact_patterns = [str(pattern).strip() for pattern in raw_patterns if str(pattern).strip()]
+        artifact_patterns = [str(pattern) for pattern in raw_patterns if str(pattern).strip()]
     else:
         artifact_patterns = []
     if not artifact_patterns:
-        artifact_pattern = args.artifact_pattern or str(scenario.get("artifact_pattern", "")).strip()
-        artifact_patterns = [artifact_pattern] if artifact_pattern else []
+        artifact_pattern = args.artifact_pattern or str(scenario.get("artifact_pattern", ""))
+        artifact_patterns = [artifact_pattern] if artifact_pattern.strip() else []
     elif args.artifact_pattern:
         artifact_patterns = [args.artifact_pattern]
     recommended_test_command = args.test_command or str(scenario.get("recommended_test_command", "")).strip()
@@ -1829,7 +1894,8 @@ def run_probe(args: argparse.Namespace) -> int:
 
     verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
-    if screen_summary.get("version_matches_repo_head") is False:
+    version_matches_runtime = screen_summary.get("version_matches_runtime_paths")
+    if version_matches_runtime is False:
         verdict = "inconclusive_version_mismatch"
     elif any(entry["lines"] for entry in matches_by_pattern):
         verdict = "artifacts_matched"

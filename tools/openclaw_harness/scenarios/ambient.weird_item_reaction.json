@@ -8,10 +8,10 @@
   "fixture": "basecamp_dev_manual_2026-04-02",
   "fixture_profile": "dev",
   "replace_existing_worlds": true,
-  "artifact_source": "debug.log",
+  "artifact_source": "llm_intent.log",
   "artifact_patterns": [
-    "ambient",
-    "llm"
+    "ambient target ",
+    "ambient response "
   ],
   "steps": [
     {
