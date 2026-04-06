@@ -15,6 +15,29 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Patrol Zone v1
+
+Status: ACTIVE
+
+Success state:
+- [ ] A Zone Manager patrol zone exists and patrol squares are grouped by 4-way connected clusters.
+- [ ] Patrol exists as a real camp job with its own priority surface.
+- [ ] Deterministic planner coverage exists for the reference staffing/topology cases.
+- [ ] The active patrol roster is chosen at shift boundaries from NPCs with patrol priority > 0.
+- [ ] On-shift patrol is sticky against routine chores.
+- [ ] Urgent disruption can break patrol, and reserve backfill works without full-roster reshuffle.
+- [ ] On-map behavior distinguishes hold-positions vs fixed-loop patrol in the intended simple v1 way.
+- [ ] Proportional live proof is recorded with separate screen/tests/artifacts reporting.
+- [ ] The result stays explainable as simple v1 patrol rather than quietly turning into smart-zone-manager soup.
+
+Notes:
+- Canonical implementation sketch lives in `doc/patrol-zone-v1-patch-plan-2026-04-06.md`.
+- Intended order: zone surface + 4-way clustering -> deterministic planner contract -> sticky roster / interrupt whitelist -> on-map hold-vs-loop -> live proof.
+- The interrupt whitelist should be nailed down early so the feature does not quietly rot into fake patrol.
+- Watch for hallucinations, fake progress, and roadmap prose outrunning code/tests/live proof.
+
+---
+
 ## Locker-capable harness restaging
 
 Status: CHECKPOINTED / DONE FOR NOW

@@ -37,28 +37,32 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Waiting for next greenlight
+## 1. Current delivery target — Patrol Zone v1
 
-**Status:** PARKED / WAITING FOR GREENLIGHT
+**Status:** GREENLIT / ACTIVE
 
-The only fair pre-hackathon follow-up lane that had been greenlit is now done for now:
-- **Locker-capable harness restaging** is checkpointed
+Josef has now greenlit **Patrol Zone v1**.
+This is the next real lane.
 
-What changed:
-- the harness now has a locker-ready save fixture at `tools/openclaw_harness/fixtures/saves/dev/locker_ready_dev_2026-04-06/`
-- `locker.weather_wait` is no longer a fake-blocked contract; it now restores the normal `basecamp_dev_manual_2026-04-02` profile snapshot, installs the locker-ready save, and lands a fresh packaged report at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`
-- that report separates **screen** / **tests** / **artifacts** and ends `artifacts_matched`
-- reviewer boundary stays explicit: this is harness/fixture work on existing locker behavior, **not** early hackathon feature work
+Current job:
+- implement a Zone Manager patrol zone as a real camp job with deterministic scheduling/coverage behavior
+- follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
+- keep the implementation brutally simple, legible, and testable
 
 ### Immediate next move
-- send Josef one concise parked-options note instead of doing more ceremonial locker reruns
-- do **not** reopen reserved hackathon lanes early
-- do **not** keep rerunning `locker.weather_wait` unless the fixture, harness path, or locker runtime behavior changes again
+- start with the topology spine:
+  - patrol zone type
+  - 4-way connected clustering
+- then land the deterministic planner contract
+- then land sticky shift roster + interrupt-whitelist behavior
+- then land on-map hold-vs-loop behavior
+- only after the deterministic contract is real should live proof packaging happen
+- keep watching for hallucinations, fake progress, and prose outrunning code/tests/live proof
+- do **not** drift into smart-zone-manager cleverness during v1
 
-### Parked options Josef can greenlight next
+### Later discussion topics once Patrol Zone v1 runs dry
 1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
-2. discuss/prototype a **patrol zone** for the Zone Manager
-3. discuss/prototype a **smart zone manager**
+2. discuss/prototype a **smart zone manager**
 
 ---
 

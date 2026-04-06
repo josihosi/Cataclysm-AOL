@@ -39,166 +39,69 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Harness first slice — reusable live probe contracts
-Latest relevant harness evidence for the current helper wave:
-- newest narrow validation for the harness interaction-reliability slice on current dirty HEAD
-  - `git diff --check`
-  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 - <<'PY' ... alias/retry smoke for run_peekaboo_interaction / peekaboo_press_sequence ... PY`
-  - passed:
-    - harness Peekaboo interactions now refocus the Cataclysm window and retry once after a command-level failure instead of treating a single flaky press/type miss as final truth
-    - human-readable contract keys now normalize to the names Peekaboo actually accepts (`enter -> return`, `backspace -> delete`, `esc -> escape`), so packaged step contracts keep working without each scenario reinventing key-name trivia
-    - printable-text buffering still stays intact around those normalized control keys
-- narrow validation for the newest item/monster helper slice checkpointed in `57a0e4ae7d`
-  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 - <<'PY' ... debug_spawn_item / debug_spawn_monster / execute_probe_steps smoke ... PY`
-  - passed:
-    - `debug_spawn_item` now drives the current debug wish path `}`, `s`, `w`, uses the uilist filter popup (`/` + query), handles the amount prompt, and exits back out cleanly
-    - `debug_spawn_monster` now drives the current debug wish path `}`, `s`, `m`, uses the uilist filter popup (`/` + query), supports friendly / hallucination / group-radius toggles, confirms the look-around target, and exits back out cleanly
-    - `execute_probe_steps` now reports those helpers explicitly with `debug_menu_path=["}", "s", "w"]` / `debug_menu_path=["}", "s", "m"]` plus honest spawn-target metadata (`inventory` vs `look_around_confirm`)
-- prior narrow validation for the first landed helper slice still stands
-  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 - <<'PY' ... debug_spawn_follower_npc / execute_probe_steps smoke ... PY`
-  - passed: helper path expands to the expected debug-menu shortcut sequence `}`, `s`, `f`, and `execute_probe_steps` now reports `debug_menu_path=["}", "s", "f"]` plus `spawn_type=random_follower_npc`
-- newest narrow validation for screenshot-capture honesty on current dirty HEAD
-  - `git diff --check`
-  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
-  - `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction`
-  - passed:
-    - harness screenshots now use direct `peekaboo image` capture on a selected Cataclysm window instead of `peekaboo see`, so blocked probes and per-step captures stop failing on element-detection timeout
-    - screen summaries now record `window_id` / `window_index` alongside the captured title/build metadata, so stale-binary audits point at the actual window that was captured
-    - blocked chat report `.userdata/dev-harness/harness_runs/20260406_074721/probe.report.json` still returns `blocked_runtime_prereqs`, but now with a real captured screen instead of an empty timeout shell
-    - ambient report `.userdata/dev-harness/harness_runs/20260406_074747/probe.report.json` captures startup / before / after plus every step screenshot successfully on the shipped fixture; its remaining `inconclusive_version_mismatch` verdict is now a genuine binary-freshness issue rather than screenshot-tool noise
-- landed harness uplift beyond the original locker slice still stands
-  - `debug_spawn_follower_npc` is now the first reusable scenario-setup helper, wired to the current debug-menu path `}`, `s`, `f`
-  - profile loading merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
-  - probe contracts can script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
-  - printable gameplay keys go through `peekaboo type` instead of invalid `peekaboo press` usage
-  - startup no longer treats the first `lastworld.json` flip as sufficient proof of ready gameplay; `post_lastworld_wait_seconds: 8.0` gates the packaged path
-  - `chat.nearby_npc_basic` installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the saved chat/keybinding state the probe expects
-- newest narrow validation for packaged LLM-artifact honesty on the current dirty HEAD
-  - `git diff --check`
-  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
-  - `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction`
-  - passed:
-    - LLM probe artifacts now tail the repo-level `config/llm_intent.log`, which is where current game code writes `prompt` / `response` / `ambient` records; the old per-profile `config/llm_intent.log` expectation was wrong
-    - startup screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely force `inconclusive_version_mismatch` when the captured game build still matches all runtime-relevant paths
-    - the packaged chat report at `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json` now lands `artifacts_matched` with recipient + `prompt` / `response` proof for `Bruna Priest`
-    - the packaged ambient report at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` now tails the correct `llm_intent.log` source and honestly returns `inconclusive_no_new_artifacts`; the missing proof is live ambient behavior, not wrong-log bookkeeping
-    - `ambient.weird_item_reaction` still runs all three packaged steps on the shipped fixture and returns to gameplay view after the scripted item/drop actions
-- newest narrow validation for the locker-fixture restaging slice
-  - `git diff --check`
-  - `python3 tools/openclaw_harness/startup_harness.py capture-fixture locker_ready_dev_2026-04-06 --profile dev --world 'Sandy Creek'`
-  - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
-  - `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
-  - passed:
-    - the new harness-owned save fixture `tools/openclaw_harness/fixtures/saves/dev/locker_ready_dev_2026-04-06/` captures the current dev Sandy Creek world with a real `CAMP_LOCKER` zone and live locker/NPC state
-    - `locker.weather_wait` now restores the usual `basecamp_dev_manual_2026-04-02` profile snapshot while installing that locker-ready save fixture, so the scenario is packaged instead of depending on leftover `dev-harness` state
-    - the latest packaged run at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json` reports **screen** / **tests** / **artifacts** separately and lands `verdict: artifacts_matched`
-    - the captured artifact packet is a real locker-service packet on existing behavior (`camp locker:` lines for Ricky Broughton), not a fake blocked-fixture stub
-    - no compile/test rerun was needed because this slice changed harness fixture/scenario packaging only, not game code
-- meaning:
-  - chat recipient/artifact proof is still in place, and the locker-fixture blocker is no longer part of the active gap set
-  - the remaining pre-hackathon live evidence gap is still ambient reaction proof, but that lane stays hackathon-reserved rather than quietly becoming the next active target
-  - do not regress packaged LLM probes back to per-profile `llm_intent.log` paths or raw repo-HEAD mismatch checks; those were harness bookkeeping mistakes, not behavior verdicts
-  - do not keep rerunning `locker.weather_wait` unless the fixture, harness path, or locker runtime behavior changes again
-  - do not keep claiming `ambient.weird_item_reaction` is blocked on assign-NPC helpers unless a new fixture/state actually proves that again
+### Patrol Zone v1
 
-### Locker Zone V1 / V2 baseline + V3 deterministic slice
-Latest relevant agent-side locker packet:
-- broader locker baseline remains anchored by committed HEAD `1381284982`
-  - `make -j4 tests`
-  - `./tests/cata_test "[camp][locker]"`
-  - passed at `171 assertions in 11 test cases`
-- that broader suite still covers the bundled locker baseline from V1/V2 and the landed V3 temperature slices:
-  - locker policy serialization / save-load
-  - representative locker item classification
-  - locker-zone candidate gathering and reservation filtering
-  - locker loadout planning and disabled-category behavior
-  - service / equip / upgrade / return behavior
-  - one-worker-at-a-time queue sequencing plus dirty-trigger follow-through
-  - transient assigned-camp downtime rehydration
-  - `camp_locker_service_readies_ranged_loadouts_from_locker_supply`
-    - managed ranged loadout starts empty
-    - locker service counts the weapon’s inserted magazine as part of the two-magazine readiness budget
-    - locker supply contributes only the additional compatible magazines needed to reach that cap
-    - locker-zone ammo fills those selected magazines and reloads the supported weapon
-    - leftover locker magazine count and ammo depletion stay deterministic
-  - V3 deterministic outerwear coverage in `camp_locker_loadout_planning`
-    - explicit cold-temperature probe (`35 F`) prefers a warmer outerwear upgrade (`jacket_light -> coat_winter`)
-    - explicit hot-temperature probe (`85 F`) prefers a lighter outerwear upgrade (`coat_winter -> jacket_light`)
-    - scope stays intentionally narrow: shirt/vest-slot outerwear that covers both torso and arms
-  - V3 deterministic legwear coverage in `camp_locker_loadout_planning`
-    - explicit cold-temperature probe (`35 F`) prefers full-length cargo pants over cargo shorts (`shorts_cargo -> pants_cargo`)
-    - explicit hot-temperature probe (`85 F`) prefers cargo shorts over full-length cargo pants (`pants_cargo -> shorts_cargo`)
-    - explicit duplicate-current hot probe keeps `pants_cargo` as the best current full-length legwear, marks `antarvasa` as duplicate current, and still selects `shorts_cargo` as the hot upgrade
-    - scope stays intentionally narrow: pants-slot short-vs-full-length coverage only; it does **not** pretend to preserve layered lower-body nuance yet
-- latest narrow validation for the new deterministic judgment lock on current HEAD `e6e2b38540-dirty`:
-  - `make -j4 tests`
-  - `./tests/cata_test "camp_locker_loadout_planning"`
-  - passed at `68 assertions in 1 test case`
-- note: `./tests/cata_test "[camp][locker]"` on `e6e2b38540-dirty` still reports `All tests passed (181 assertions in 11 test cases)`, but Catch exits non-zero because an existing `diag_value` debug error in the queue/downtime lane is treated as failure; the planner-only case above is the honest validation for this slice because no locker service code changed
+Current honest state:
+- the lane is newly greenlit
+- there is **no patrol-specific deterministic coverage yet**
+- there is **no patrol-specific live proof yet**
+- that is fine, because the first missing evidence class is topology + planner tests, not screen motion
 
-Latest proportional runtime locker proof:
-- outerwear lane on the recorded current-binary path
-  - `make -j4 TILES=1 cataclysm-tiles`
-  - controlled cold probe on `dev` / `Sandy Creek`
-    - staged **Bruna Priest** in `jacket_light` with `coat_winter` on the `CAMP_LOCKER` tile via the repo `./zzip` save tool, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-    - harness load passed cleanly on `.userdata/dev/harness_runs/20260405_204703`
-    - current `debug.log` on `d3b61027ec-dirty` emitted the real locker service packet:
-      - `camp locker: before Bruna Priest ... temp_f=45.0 ... vest=[light jacket ... <jacket_light>] ... locker_raw=[puffer jacket (poor fit)<coat_winter>]`
-      - `camp locker: plan for Bruna Priest ... changes=[... vest upgrade light jacket ... <jacket_light> -> puffer jacket (poor fit)<coat_winter> ...]`
-      - `camp locker: after Bruna Priest ... vest=[puffer jacket (poor fit)<coat_winter>] ... locker=[... vest=[light jacket<jacket_light>] ...]`
-  - controlled hot probe on the same save shape
-    - restaged **Bruna Priest** in `coat_winter` with `jacket_light` on the locker tile, loaded through the harness, then forced `85 F` in the live debug temperature control before advancing to the next service window
-    - the resulting live current-binary packet showed the planner re-queueing a lighter-outerwear swap:
-      - `camp locker: before Bruna Priest ... vest=[puffer jacket ... <coat_winter>] ... locker_raw=[light jacket (poor fit)<jacket_light>]`
-      - `camp locker: queued Bruna Priest state-dirty ... plan=[vest upgrade puffer jacket ... <coat_winter> -> light jacket (poor fit)<jacket_light>]`
-- legwear lane on the stale-binary-audited Ricky current-save path
-  - 2026-04-05 stale-binary audit first corrected the evidence path on current HEAD: the running window title was still `6b6de8d477-dirty`, so the tiles target was rebuilt before collecting new runtime proof; the recorded live legwear packets below come from `d55ffe0a53`
-  - restored the original current `dev` / `Sandy Creek` save, backed it up under `.userdata/dev/save/manual_probe_backups/20260405_232203_ricky_legwear_cold/`, and used the packed-save path that the save audit had already identified as authoritative
-  - cold-side packet
-    - staged **Ricky Broughton** in `shorts_cargo` inside packed overmap `overmaps/o.0.0.zzip`, left `pants_cargo` on the packed locker tile in `maps/3.0.0.zzip`, then loaded through `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-    - a plain fresh autoload still was not the missing evidence class by itself, so the honest runtime step remained live post-load gameplay: focused the current game window and sent `peekaboo press tab --count 3 --app cataclysm-tiles --window-id 10427`
-    - current `debug.log` on `d55ffe0a53` then emitted the real cold legwear locker packet at `23:23:32.719`:
-      - `camp locker: action Ricky Broughton reason=worker-downtime ...`
-      - `camp locker: reached worker_downtime for Ricky Broughton ...`
-      - `camp locker: queued Ricky Broughton wake_dirty=true ...`
-      - `camp locker: before Ricky Broughton ... pants=[cargo shorts > 6 items<shorts_cargo>] ... locker=[pants=[cargo pants (poor fit)<pants_cargo>]]`
-      - `camp locker: plan for Ricky Broughton ... changes=[pants upgrade cargo shorts > 6 items<shorts_cargo> -> cargo pants (poor fit)<pants_cargo>] ...`
-      - `camp locker: after Ricky Broughton ... pants=[cargo pants (poor fit)<pants_cargo>] ... locker=[pants=[cargo shorts<shorts_cargo>]]`
-      - `camp locker: serviced Ricky Broughton applied=true ...`
-  - hot-side packet
-    - reused the same Ricky current-save path with `shorts_cargo` on the locker tile and Ricky wearing `cargo pants` alongside his existing `antarvasa`
-    - current `debug.log` on `d55ffe0a53` then emitted the real hot legwear locker packet at `23:59:27.798`:
-      - `camp locker: queued Ricky Broughton state-dirty ... plan=[pants upgrade cargo pants<pants_cargo> -> cargo shorts (poor fit)<shorts_cargo>; pants dedupe keep=cargo pants<pants_cargo> drop=[antarvasa > 6 items<antarvasa>]] ...`
-      - `camp locker: before Ricky Broughton ... pants=[antarvasa > 6 items<antarvasa>; cargo pants<pants_cargo>] ... locker=[pants=[cargo shorts (poor fit)<shorts_cargo>]]`
-      - `camp locker: after Ricky Broughton ... pants=[cargo shorts (poor fit)<shorts_cargo>] ... locker=[pants=[cargo pants<pants_cargo>; antarvasa<antarvasa>]]`
-      - `camp locker: serviced Ricky Broughton applied=true ...`
-  - restored the staged save from the manual backup after the captures so the default `dev` world did not stay pinned to the probe state
+What counts next:
+- narrow deterministic tests for patrol zone surface + 4-way connected clustering
+- then deterministic planner tests for the staffing/allocation contract
+- then deterministic sticky-roster / interrupt-whitelist tests
+- only after those are real should any live patrol packet be packaged
 
-Meaning:
-- Locker Zone V1/V2 remain preserved under the landed V3 code path at deterministic-suite level
-- the outerwear and currently implemented legwear V3 lanes now both have deterministic proof and proportional runtime proof on recorded current-binary / current-save paths
-- the `antarvasa` result is now an explicit policy judgment, not a mystery bug: current locker behavior is still one managed pants item per slot, so extra pants-slot garments are treated as duplicates and returned to the locker when a hot/cold swap lands
-- the missing harness work is no longer “can we package/report a first slice at all?”; it is now stronger trigger/setup coverage and more scenarios
+### Existing baseline that should not be mistaken for patrol proof
+
+- Locker Zone V1/V2 and locker-capable harness restaging remain checkpointed; do not rerun them by ritual just because Patrol Zone v1 is now active.
+- The repo already has one honest packaged proof format that separates **screen** / **tests** / **artifacts** (for example `locker.weather_wait` at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`). Treat that as a packaging template only, not as Patrol Zone evidence.
+- Current harness scenarios `chat.nearby_npc_basic` and `ambient.weird_item_reaction` remain hackathon-reserved scaffolding. They are not part of Patrol Zone v1.
+
+### Meaning
+
+- Patrol Zone v1 starts with zero honest proof and must earn each row.
+- Zone-type plumbing, prose, and plausible-looking motion do **not** count as success by themselves.
+- If a patrol report sounds cleaner than the code/tests/live packet beneath it, stop and audit before touching the ledgers.
 
 ---
 
 ## Pending probes
 
-### No active pre-hackathon probe queue
+### Active queue — Patrol Zone v1
 
-- `locker.weather_wait` restaging is now checkpointed on the captured fixture `locker_ready_dev_2026-04-06`; latest packaged proof lives at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`
-- no other pre-hackathon probe/code lane is currently greenlit, so do not keep churning the old locker packet
-- the helper idea `sustain_npc` stays parked until a future live-probe lane actually needs it
+1. topology spine first
+   - patrol zone type exists
+   - 4-way connected components split correctly
+2. deterministic planner contract
+   - patrol pool = NPCs with patrol priority > 0
+   - two shifts
+   - 1 NPC / 4 disconnected posts
+   - 4 NPCs / 4 disconnected posts
+   - mixed clusters => one-per-cluster coverage first
+3. sticky shift roster / interrupt-whitelist contract
+   - shift-boundary roster formation
+   - routine work does not steal on-shift guards
+   - urgent disruption can break patrol
+   - reserve backfill does not trigger full-roster reshuffle
+4. on-map hold-vs-loop behavior
+   - understaffed connected cluster => fixed loop
+   - fully staffed connected cluster => distinct holders
+   - 16 NPCs / 4 connected squares stays explainable
+5. only after the deterministic contract is real, package one honest live patrol proof with separate **screen** / **tests** / **artifacts** evidence
+6. keep the helper idea `sustain_npc` available if a live patrol probe genuinely needs it
 
-**Parked options that need Josef greenlight:**
-1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
-2. discuss/prototype a **patrol zone** for the Zone Manager
-3. discuss/prototype a **smart zone manager**
+### Anti-hallucination rule for this lane
+
+Do not treat any of these as success by themselves:
+- only adding patrol zone-type plumbing
+- only writing a planner without tests
+- only writing docs/spec text
+- only observing vaguely plausible NPC motion on-screen
+- only claiming the interrupt rules in prose without deterministic proof
+
+If the story starts sounding cleaner than the evidence, stop and audit.
 
 **Hackathon-reserved — do not touch before the event:**
 1. **chat interface over dialogue branches**
@@ -206,15 +109,14 @@ Meaning:
 2. **ambient-trigger reaction lane / tiny ambient-trigger NPC model**
    - current `ambient.weird_item_reaction` evidence is harness-only scaffolding/observability, not feature implementation
 
+**Later discussion topics, not current code lanes:**
+1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
+2. **smart zone manager**
+
 ### Non-blocking Josef notes
 
-- Compact pre-holiday packet: `doc/josef-hackathon-runway-testing-packet-2026-04-06.md`
-  - ready now: `chat.nearby_npc_basic` via `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json`
-  - ready now: `locker.weather_wait` via `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`
-  - current honest caveat: ambient is still `inconclusive_no_new_artifacts`, and that feature lane remains hackathon-reserved rather than the next active target
-- Later discussion topics once Josef reopens work:
-  - patrol zone for the Zone Manager
-  - smart zone manager
+- None yet for Patrol Zone v1.
+- If a later live packet is worth Josef's eyes, batch the visually important questions together (hold-vs-loop readability, interruption readability, and whether the patrol surface feels legible) instead of drip-feeding tiny asks.
 
 ---
 
@@ -222,24 +124,17 @@ Meaning:
 
 Use these when they are actually the missing evidence, not as ritual.
 
-### Narrow deterministic Basecamp bark / routing check
-- `./tests/cata_test "[camp][basecamp_ai]"`
-
-### Narrow deterministic locker check
-- `./tests/cata_test "[camp][locker]"`
-
 ### Fresh full test rebuild on this Mac
 - `make -j4 tests`
 
 ### Fresh tiles relink on this Mac
 - `make -j4 TILES=1 cataclysm-tiles`
 
-### Startup/load smoke
-- `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+### Patrol-focused deterministic check
+- once patrol tests exist, run the narrowest patrol-specific `cata_test` filter or named case instead of the whole suite
 
-### Packaged live probes
-- `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
-- `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
+### Startup/load smoke for later live patrol proof
+- `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
 
 ## Local build caveat
 

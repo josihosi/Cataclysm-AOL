@@ -8,14 +8,29 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No pre-hackathon code/probe lane is currently active.
-The locker-capable harness restaging lane is checkpointed.
-Do not keep rerunning the old locker packet unless the fixture, harness path, or locker runtime behavior changes again.
+Patrol Zone v1 is the active lane.
 
-Parked options Josef can greenlight next:
-1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
-2. discuss/prototype a **patrol zone** for the Zone Manager
-3. discuss/prototype a **smart zone manager**
+Execution queue:
+1. follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
+2. land the zone surface + topology spine first
+   - patrol zone type
+   - 4-way connected clustering
+3. then land the deterministic planner contract
+   - patrol pool = NPCs with patrol priority > 0
+   - two shifts
+   - one-per-cluster coverage first
+   - explicit reference cases for disconnected posts vs connected clusters
+4. then land sticky-roster / interrupt-whitelist behavior
+   - routine work does not steal on-shift guards
+   - urgent disruption can break patrol
+   - reserve backfill without full roster reshuffle
+5. then land on-map hold-vs-loop behavior
+   - fully staffed connected cluster => hold distinct squares
+   - understaffed connected cluster => fixed loop
+6. keep reports honest
+   - separate implemented deterministic contract from live proof
+   - do not count zone plumbing, prose, or plausible-looking motion as success by themselves
+   - if something smells too smooth, audit it
 
 Still true:
 - Hackathon-reserved — do not touch before the event:
