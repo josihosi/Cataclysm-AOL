@@ -37,21 +37,26 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — waiting for next greenlight after stabilization/harness
+## 1. Current delivery target — Locker-capable harness restaging
 
-**Status:** WAITING FOR GREENLIGHT
+**Status:** GREENLIT / ACTIVE
 
-The stabilization/harness lane reached its intended handoff state for now:
-- the current locker baseline stayed honest enough to build on
-- the harness now has a reliable packaged live-probe path with explicit **screen** / **tests** / **artifacts** reporting
-- a compact Josef packet now exists at `doc/josef-hackathon-runway-testing-packet-2026-04-06.md`
+Josef has now greenlit the only pre-hackathon follow-up that is still fair game before the event:
+- **Locker-capable harness restaging**
 
-Do **not** keep grinding the same harness packets by ritual now that the packet exists.
-If Josef does not pick a next lane yet, leave the state parked instead of inventing filler work.
+Current job:
+- build or capture a fixture/restaging path with a real `CAMP_LOCKER` zone
+- make `locker.weather_wait` a reusable live regression instead of a known blocked contract
+- keep the current reviewer-facing boundary explicit: this is harness/fixture work on existing locker behavior, not one of the reserved hackathon features
 
-### Next-lane status
+### Immediate next move
+- inspect the current fixture/save path and choose the smallest honest restaging method
+- either:
+  - capture a new harness fixture that already contains a real `CAMP_LOCKER` zone and suitable locker items/NPC state, or
+  - add a reliable harness restaging step that can create/restore that state before the probe
+- once the fixture/restaging path is real, rerun `locker.weather_wait` and report **screen** / **tests** / **artifacts** separately
 
-**Hackathon-reserved — do not touch before the event:**
+### Reserved / not to be touched before the event
 1. **Chat interface over dialogue branches**
    - reserved for the hackathon itself
    - current harness chat work is only probe scaffolding; it is **not** the feature implementation and must not be presented as partial feature completion
@@ -59,9 +64,11 @@ If Josef does not pick a next lane yet, leave the state parked instead of invent
    - reserved for the hackathon itself
    - current `ambient.weird_item_reaction` work is only harness/observability scaffolding; it is **not** the tiny-model feature and must not be presented as partial feature completion
 
-**Pre-hackathon option Josef can still greenlight separately:**
-3. **Locker-capable harness restaging**
-   - build or capture a fixture/restaging path with a real `CAMP_LOCKER` zone so `locker.weather_wait` becomes a reusable live regression instead of a permanently parked known blocker
+### Later discussion topics once current work runs dry
+- **Patrol zone** for the Zone Manager
+- **Smart Zone Manager**
+
+These are discussion topics for later, not active or pre-approved code lanes right now.
 
 ---
 

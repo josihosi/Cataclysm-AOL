@@ -15,6 +15,23 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Locker-capable harness restaging
+
+Status: ACTIVE
+
+Success state:
+- [ ] A fixture or restaging path exists that contains a real `CAMP_LOCKER` zone and suitable locker-state/NPC-state for `locker.weather_wait`.
+- [ ] `locker.weather_wait` is no longer blocked on missing fixture shape.
+- [ ] A fresh packaged `locker.weather_wait` run reports **screen** / **tests** / **artifacts** separately on the repaired fixture path.
+- [ ] The result is described reviewer-cleanly as harness/fixture work on existing locker behavior, not as early hackathon feature work.
+
+Notes:
+- This lane exists because the shipped `basecamp_dev_manual_2026-04-02` fixture does not contain a `CAMP_LOCKER` zone.
+- The goal is not new locker gameplay; the goal is to make existing locker behavior probeable and regressible.
+- Keep the hackathon-reserved chat/ambient feature lanes clearly separate.
+
+---
+
 ## Hackathon runway — stabilization + harness
 
 Status: CHECKPOINTED / DONE FOR NOW
@@ -36,7 +53,7 @@ Notes:
 - The Josef packet now lives at `doc/josef-hackathon-runway-testing-packet-2026-04-06.md`.
 - Harness screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely demote a runtime-compatible captured game window to `inconclusive_version_mismatch`.
 - `ambient.weird_item_reaction` now tails the correct repo-level `config/llm_intent.log`; its latest packaged run at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` is honest about the remaining gap: `inconclusive_no_new_artifacts` on a runtime-compatible build, not a fake no-artifact result from watching `debug.log`.
-- `locker.weather_wait` is now explicitly demoted back to blocked status: the shipped `basecamp_dev_manual_2026-04-02` fixture does not contain a `CAMP_LOCKER` zone, so the contract cannot honestly claim locker-service evidence until a locker-capable fixture/restaging path exists.
+- `locker.weather_wait` is now explicitly demoted back to blocked status until a locker-capable fixture/restaging path exists.
 - Important reviewer-facing distinction: the packaged `chat.nearby_npc_basic` and `ambient.weird_item_reaction` scenarios are harness scaffolding only. They are **not** the hackathon feature work for "chat interface over dialogue branches" or the "tiny ambient-trigger NPC model," and must not be described as partial completion of those feature lanes.
 
 ---

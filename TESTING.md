@@ -189,10 +189,16 @@ Meaning:
 
 ## Pending probes
 
-No active probe queue right now.
-The stabilization/harness lane is checkpointed, so further probe work should wait for a real next pick instead of ritual reruns.
+### Active queue — locker-capable harness restaging
 
-Next-lane distinction:
+1. inspect the current fixture/restaging path for `locker.weather_wait`
+   - confirm the exact missing `CAMP_LOCKER` zone/state gap on the shipped fixture
+2. choose the smallest honest repair
+   - a captured fixture that already contains the real locker state, or
+   - a reproducible restaging step that creates/restores it before the probe
+3. rerun `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait` once the fixture path is real
+4. report the result as separate **screen** / **tests** / **artifacts** evidence
+5. keep the reviewer boundary explicit: this is harness/fixture work on existing locker behavior, not early hackathon feature work
 
 **Hackathon-reserved — do not touch before the event:**
 1. **chat interface over dialogue branches**
@@ -200,14 +206,14 @@ Next-lane distinction:
 2. **ambient-trigger reaction lane / tiny ambient-trigger NPC model**
    - current `ambient.weird_item_reaction` evidence is harness-only scaffolding/observability, not feature implementation
 
-**Only pre-hackathon follow-up still available for separate greenlight:**
-3. **locker-capable fixture/restaging** so `locker.weather_wait` can become a real reusable regression instead of a known blocked contract
-
 ### Non-blocking Josef notes
 
 - Compact pre-holiday packet: `doc/josef-hackathon-runway-testing-packet-2026-04-06.md`
   - ready now: `chat.nearby_npc_basic` via `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json`
-  - current honest caveats: ambient is still `inconclusive_no_new_artifacts`; locker probe is still fixture-blocked
+  - current honest caveats: ambient is still `inconclusive_no_new_artifacts`; locker probe is now the active fixture-restaging lane
+- Later discussion topics once the current lane runs dry:
+  - patrol zone for the Zone Manager
+  - smart zone manager
 
 ---
 
