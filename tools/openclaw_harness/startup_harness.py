@@ -195,6 +195,119 @@ def read_lastworld(profile: str) -> Dict[str, str]:
     }
 
 
+def load_game_options(profile: str) -> Dict[str, str]:
+    path = config_dir_for_profile(profile) / "options.json"
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(data, list):
+        return {}
+
+    options: Dict[str, str] = {}
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name", "")).strip()
+        if not name:
+            continue
+        options[name] = str(entry.get("value", "")).strip()
+    return options
+
+
+def resolve_configured_python_command(raw_value: str) -> Tuple[List[str], str]:
+    raw = str(raw_value).strip()
+    if not raw:
+        return [], ""
+
+    expanded = Path(raw).expanduser()
+    candidates: List[Path] = []
+    if expanded.is_dir():
+        candidates = [
+            expanded / "bin" / "python3",
+            expanded / "bin" / "python",
+            expanded / "Scripts" / "python.exe",
+            expanded / "Scripts" / "python",
+        ]
+    elif expanded.exists():
+        candidates = [expanded]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return [str(candidate)], str(candidate)
+
+    return [raw], raw
+
+
+def probe_runtime_blockers(profile: str, artifact_source: str) -> List[Dict[str, str]]:
+    normalized_source = str(artifact_source).strip().lower()
+    if normalized_source not in {"llm", "llm_intent", "llm_intent.log"}:
+        return []
+
+    options = load_game_options(profile)
+    blockers: List[Dict[str, str]] = []
+
+    if options.get("LLM_INTENT_ENABLE", "").lower() != "true":
+        blockers.append({
+            "code": "llm_intent_disabled",
+            "message": "LLM intent is disabled in profile options.",
+            "option": "LLM_INTENT_ENABLE",
+        })
+    if options.get("DEBUG_LLM_INTENT_LOG", "").lower() != "true":
+        blockers.append({
+            "code": "llm_intent_log_disabled",
+            "message": "LLM intent log capture is disabled in profile options.",
+            "option": "DEBUG_LLM_INTENT_LOG",
+        })
+
+    python_value = options.get("LLM_INTENT_PYTHON", "")
+    python_cmd, python_label = resolve_configured_python_command(python_value)
+    if not python_cmd:
+        blockers.append({
+            "code": "llm_python_missing",
+            "message": "LLM runner Python path is empty; API/Ollama probes cannot launch the runner.",
+            "option": "LLM_INTENT_PYTHON",
+        })
+
+    backend = options.get("LLM_INTENT_BACKEND", "").strip().lower()
+    if backend == "api":
+        api_key_env = options.get("LLM_INTENT_API_KEY_ENV", "").strip()
+        if not api_key_env:
+            blockers.append({
+                "code": "llm_api_key_env_missing",
+                "message": "API backend is selected, but no API key env-var name is configured.",
+                "option": "LLM_INTENT_API_KEY_ENV",
+            })
+        elif not os.environ.get(api_key_env):
+            blockers.append({
+                "code": "llm_api_key_env_unset",
+                "message": f"API backend is selected, but env var '{api_key_env}' is not set for the harness process.",
+                "option": "LLM_INTENT_API_KEY_ENV",
+                "env_var": api_key_env,
+            })
+
+        if python_cmd:
+            import_check = subprocess.run(
+                python_cmd + ["-c", "import any_llm"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if import_check.returncode != 0:
+                detail_text = (import_check.stderr or import_check.stdout).strip()
+                detail = detail_text.splitlines()[0] if detail_text else "import any_llm failed"
+                blockers.append({
+                    "code": "llm_python_missing_any_llm",
+                    "message": f"Configured LLM runner Python cannot import any_llm ({detail}).",
+                    "option": "LLM_INTENT_PYTHON",
+                    "python": python_label,
+                })
+
+    return blockers
+
+
 def pick_target_world(profile: str, explicit_world: str) -> Tuple[str, str, List[WorldInfo]]:
     worlds = list_worlds(profile)
     if explicit_world:
@@ -991,6 +1104,61 @@ def run_probe(args: argparse.Namespace) -> int:
         return 1
 
     artifact_log, filter_debug_noise, resolved_artifact_source = resolve_artifact_source(profile, artifact_source)
+    runtime_blockers = probe_runtime_blockers(profile, resolved_artifact_source)
+    if runtime_blockers:
+        blocked_screen = capture_screenshot(pid, run_dir, "probe_blocked")
+        report = {
+            "ok": True,
+            "scenario": str(scenario.get("name", args.scenario)),
+            "contract": {
+                "profile": profile,
+                "world": world,
+                "profile_snapshot": profile_snapshot,
+                "profile_snapshot_profile": profile_snapshot_profile,
+                "fixture": fixture,
+                "fixture_profile": fixture_profile,
+                "replace_existing_worlds": replace_existing_worlds,
+                "advance_turns": advance_count,
+                "settle_seconds": settle_seconds,
+                "artifact_source": resolved_artifact_source,
+                "artifact_patterns": artifact_patterns,
+                "steps": steps,
+            },
+            "startup": start_result,
+            "steps": [
+                {
+                    "index": index,
+                    "kind": str(step.get("kind", "")).strip().lower(),
+                    "label": str(step.get("label", f"step_{index:02d}")).strip() or f"step_{index:02d}",
+                    "status": "skipped_runtime_blocker",
+                }
+                for index, step in enumerate(steps, start=1)
+            ],
+            "screen": {
+                "status": "captured",
+                "before": blocked_screen.get("screen_summary", {}),
+                "after": {},
+            },
+            "tests": {
+                "status": "not_run",
+                "recommended_command": recommended_test_command,
+            },
+            "artifacts": {
+                "status": "blocked",
+                "path": "",
+                "source_log": str(artifact_log),
+                "match_patterns": artifact_patterns,
+                "matches_by_pattern": [],
+                "matched_lines": [],
+                "line_count": 0,
+            },
+            "runtime_blockers": runtime_blockers,
+            "verdict": "blocked_runtime_prereqs",
+        }
+        write_json(run_dir / "probe.report.json", report)
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        return 0
+
     artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
     screen_before = capture_screenshot(pid, run_dir, "probe_before")
     step_reports = execute_probe_steps(pid, run_dir, steps)
