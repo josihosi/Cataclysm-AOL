@@ -40,11 +40,16 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ## Current relevant evidence
 
 ### Harness first slice — reusable live probe contracts
-Latest relevant harness evidence on working tree `3867b1c930-dirty`:
-- narrow validation for the latest harness-only honesty fix
+Latest relevant harness evidence for the first landed helper slice (code landed in `94e9d66836`):
+- narrow validation for the latest harness helper slice
+  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+  - `python3 - <<'PY' ... debug_spawn_follower_npc / execute_probe_steps smoke ... PY`
+  - passed: helper path expands to the expected debug-menu shortcut sequence `}`, `s`, `f`, and `execute_probe_steps` now reports `debug_menu_path=["}", "s", "f"]` plus `spawn_type=random_follower_npc`
+- prior harness honesty validation for the chat blocker packet still stands
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
   - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
 - landed harness uplift beyond the original locker slice still stands
+  - `debug_spawn_follower_npc` is now the first reusable scenario-setup helper, wired to the current debug-menu path `}`, `s`, `f`
   - profile loading merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
   - probe contracts can script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
   - printable gameplay keys go through `peekaboo type` instead of invalid `peekaboo press` usage
@@ -159,12 +164,11 @@ Meaning:
    - keep post-load readiness honest; the `lastworld.json` flip alone was not sufficient for the chat path
    - keep runtime blockers explicit so blocked probe classes fail fast instead of pretending they are behavior verdicts
    - avoid probe-method drift mid-claim
-2. add the first scenario-setup helpers that reduce debug-menu ritual
-   - debug spawn item
-   - debug spawn monster
-   - debug spawn follower NPC
-   - assign NPC to camp
-   - assign NPC to follower
+2. extend scenario-setup helpers beyond the first landed follower-spawn slice
+   - keep `debug_spawn_follower_npc` on the current `}`, `s`, `f` path honest if debug bindings drift
+   - add debug spawn item
+   - add debug spawn monster
+   - add assign-NPC helper(s) for camp/follower setup
 3. strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
 4. keep `chat.nearby_npc_basic` parked until runner prerequisites exist, then resume recipient / `llm_intent.log` proof
    - current blocker packet is `.userdata/dev-harness/harness_runs/20260406_022634/probe.report.json`
