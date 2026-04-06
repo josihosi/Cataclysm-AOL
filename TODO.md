@@ -16,13 +16,13 @@ Execution queue:
    - keep explicit separation of **screen**, **tests**, and **artifacts/logs**
    - keep startup readiness honest after the `lastworld.json` flip; the chat probe already exposed that a plain autoload success signal can still be on the loading splash
    - keep runtime blockers explicit instead of burning more runs on fake-mysterious no-artifact reports
-2. extend scenario-setup helpers now that the first wave is landing
+2. keep the scenario-setup helper wave honest now that the first slice is landing
    - keep `debug_spawn_follower_npc` usable/documented on the current debug-menu path (`}`, `s`, `f`)
    - keep `debug_spawn_item` honest on the current wish path (`}`, `s`, `w`) and its filter/amount prompt behavior
    - keep `debug_spawn_monster` honest on the current wish path (`}`, `s`, `m`) and its look-around target confirm behavior
    - keep `drop_item(...)` honest on the normal inventory drop path (`d`) for both filtered visible-text selection and raw one-slot selection
-   - keep the new `ambient.weird_item_reaction` contract honest as blocked, not fake-runnable
-   - add the remaining stable staging helpers: assign-NPC helper(s) for camp/follower setup
+   - keep `ambient.weird_item_reaction` honest as runnable on the shipped fixture; do not relabel it blocked just because stronger restaging helpers would be nice
+   - only add assign-NPC helper(s) if they unlock a concrete fixture-restaging or stronger-probe need
 3. strengthen the locker probe into a more direct locker-trigger/setup path
    - turn the current locker probe from “load + wait + report honestly” into a stronger locker-specific signal once setup helpers exist
 4. keep the packaged chat probe parked honestly until runner prerequisites exist, then resume it

@@ -76,16 +76,16 @@ Latest relevant harness evidence for the current helper wave:
   - verdict is now `blocked_runtime_prereqs` with explicit blockers:
     - `llm_python_missing` (`LLM_INTENT_PYTHON` empty)
     - `llm_api_key_env_unset` (`CATA_API_KEY` absent)
-- newest packaged second-scenario contract is now honest instead of vague future prose
-  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+- newest ambient-scenario audit: the shipped fixture already carries the camp/follower state, so the packaged probe runs today instead of helper-blocked folklore
   - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
   - `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction`
-  - scenario listing now reports `ambient.weird_item_reaction` as `status: blocked` with explicit required helpers instead of pretending it is runnable
-  - packaged report at `.userdata/dev-harness/harness_runs/20260406_044708/probe.report.json`
-  - verdict is `blocked_helper_gap`; startup and steps are deliberately marked `not_run_blocked_scenario`
-  - current declared helper gap is explicit:
-    - `assign_npc_to_camp(npc_selector, camp_selector)` or equivalent stable camp-staging helper
-    - `assign_npc_to_follower(npc_selector)` or equivalent stable nearby-NPC staging helper
+  - `zstdcat 'tools/openclaw_harness/fixtures/saves/dev/basecamp_dev_manual_2026-04-02/save/Sandy Creek/#RGFuaWFsIEdvbnphbGV6.sav.zzip' | rg -n '"followers"|assigned to Debug Central'`
+  - passed:
+    - scenario listing now reports `ambient.weird_item_reaction` as `status: active` with no fake helper blocker
+    - packaged probe report at `.userdata/dev-harness/harness_runs/20260406_063019/probe.report.json` runs all three packaged steps (`debug_spawn_item` → `drop_item` → `advance_turns`) on the shipped fixture
+    - the shipped `basecamp_dev_manual_2026-04-02` save already carries `followers: [ 2, 3 ]`
+    - the same save’s player-message history already records `Bruna Priest is assigned to Debug Central` and `Ricky Broughton is assigned to Debug Central`
+    - the latest packaged verdict is `inconclusive_version_mismatch` on stale tiles binary `3867b1c930`, with no artifact matches; that is an evidence/freshness problem, not `blocked_helper_gap`
 - newest narrow validation for the first non-debug inventory helper slice:
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
   - `python3 - <<'PY' ... drop_item / execute_probe_steps smoke ... PY`
@@ -94,12 +94,12 @@ Latest relevant harness evidence for the current helper wave:
     - `drop_item(...)` now drives the normal inventory drop action `d`, choosing either a raw one-character slot or a filtered visible-text query
     - count handling is wired through the amount prompt, and the helper exits back to gameplay cleanly in the harness contract path
     - `execute_probe_steps` now reports `drop_item` steps explicitly with `inventory_action=drop_item` and `selection_mode=slot|filter`
-    - `ambient.weird_item_reaction` now names only the remaining NPC-staging helper gap instead of still pretending item-drop setup is missing
+    - that helper slice was enough to make the packaged ambient contract executable on the shipped fixture; the remaining gap is reaction/artifact proof, not missing setup ritual
 - meaning:
-  - the missing evidence is no longer “does the packaged chat probe basically work?”
-  - the current blocker is local runner configuration, not stale binaries and not a proven chat-routing failure
-  - the ambient-reaction lane is now packaged honestly enough to fail fast on its remaining NPC-staging helper gap instead of burning a live run on ritual setup
-  - do not keep rerunning `chat.nearby_npc_basic` until a real runner path/config exists; use the harness lane on unblocked helper/setup work meanwhile
+  - the missing evidence is no longer “does the packaged ambient contract even run?”
+  - the current blocker is still local runner configuration for chat, plus missing ambient-reaction proof / stale-binary freshness for the ambient lane
+  - do not keep rerunning `chat.nearby_npc_basic` until a real runner path/config exists; use the harness lane on unblocked proof/setup work meanwhile
+  - do not keep claiming `ambient.weird_item_reaction` is blocked on assign-NPC helpers unless a new fixture/state actually proves that again
 
 ### Locker Zone V1 / V2 baseline + V3 deterministic slice
 Latest relevant agent-side locker packet:
@@ -196,12 +196,12 @@ Meaning:
    - keep `debug_spawn_item` on the current `}`, `s`, `w` path honest if the wish filter / amount prompt behavior shifts
    - keep `debug_spawn_monster` on the current `}`, `s`, `m` path honest if the wish filter / target-confirm behavior shifts
    - keep `drop_item(...)` honest on `d` if inventory filtering or amount-prompt behavior shifts
-   - add assign-NPC helper(s) for camp/follower setup
+   - only add assign-NPC helper(s) if a concrete alternate-restaging or stronger-probe need actually appears
 3. strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
 4. keep `chat.nearby_npc_basic` parked until runner prerequisites exist, then resume recipient / `llm_intent.log` proof
    - current blocker packet is `.userdata/dev-harness/harness_runs/20260406_022634/probe.report.json`
    - once the runner path/config is real again, rerun `chat.nearby_npc_basic`
-   - `ambient.weird_item_reaction` is already packaged honestly; unblock it by landing stable NPC-staging helpers instead of pretending the scenario itself is missing
+   - `ambient.weird_item_reaction` is already runnable on the shipped fixture; next missing evidence is a real reaction/artifact packet, not a fake helper-unblock ceremony
 5. after the probe/helper footing is stronger, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
 5. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
 6. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice

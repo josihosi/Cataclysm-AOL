@@ -1,12 +1,6 @@
 {
   "name": "ambient.weird_item_reaction",
-  "description": "Stage a small uncanny local event near a camp/NPC setup and watch for any ambient reaction path. The contract is packaged now, but it stays honestly blocked until harness NPC-staging stops depending on hand-piloted camp/follower assignment ritual.",
-  "status": "blocked",
-  "blocked_reason": "Current harness setup still lacks stable NPC staging helpers for repeatable camp/follower assignment.",
-  "required_helpers": [
-    "assign_npc_to_camp(npc_selector, camp_selector) or an equivalent stable camp-staging helper",
-    "assign_npc_to_follower(npc_selector) or an equivalent stable nearby-NPC staging helper"
-  ],
+  "description": "Stage a small uncanny local event near the shipped basecamp/NPC fixture and watch for any ambient reaction path. The current fixture already carries nearby follower/camp state, so this contract is runnable today even though stronger restaging helpers would still help future variants.",
   "profile": "dev-harness",
   "world": "Sandy Creek",
   "profile_snapshot": "basecamp_dev_manual_2026-04-02",

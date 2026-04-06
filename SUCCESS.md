@@ -26,7 +26,7 @@ Success state:
 - [x] At least one high-value reusable playtest scenario is documented/packaged for Schani-assisted probing instead of re-invented manually each time.
 - [x] The packaged harness path no longer treats the first `lastworld.json` flip as sufficient proof of post-load gameplay readiness.
 - [ ] `chat.nearby_npc_basic` records recipient / artifact proof instead of only reaching dialogue and freeform-input UI.
-- [x] A second named scenario contract (`ambient.weird_item_reaction`) exists and is honestly blocked behind a documented helper gap.
+- [x] A second named scenario contract (`ambient.weird_item_reaction`) exists and is honest about its current footing: runnable on the shipped fixture, still lacking real reaction/artifact proof.
 - [x] At least one reusable scenario-setup helper exists so repeated probes stop depending on debug-menu folklore.
 - [ ] A compact Josef-facing testing packet exists for the pre-holiday active-testing window.
 
@@ -35,7 +35,7 @@ Notes:
 - The landed baseline slice is `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`, backed by the `dev-harness` profile and the `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`.
 - The next landed extension is `chat.nearby_npc_basic` plus the supporting harness work: scripted key/text steps, selectable artifact logs, printable-key handling that works with Peekaboo, shared profile startup policy that now actually reaches `dev-harness`, and profile-snapshot install support so the scenario can carry the captured `dev` config/options/keybindings it actually depends on.
 - The chat path is currently honest but still incomplete: the packaged live run reaches nearby-NPC dialogue and freeform utterance UI, and the contract now carries the right profile state, but fresh recipient / `llm_intent.log` proof still needs a current-binary/runtime packet.
-- `ambient.weird_item_reaction` now exists as a packaged contract, but it stays explicitly blocked until the harness has stable NPC staging helpers instead of hand-piloted camp/follower assignment ritual.
+- `ambient.weird_item_reaction` now exists as a packaged contract and already runs on the shipped basecamp fixture; the missing proof is ambient reaction/artifact evidence, not a ceremonial camp/follower helper prerequisite.
 - The first landed scenario-setup helper is `debug_spawn_follower_npc`, wired to the current debug-menu path `}`, `s`, `f` so harness scenarios can spawn a nearby follower without hand-piloted menu folklore.
 - The next distinguished feature runways (chat interface, tiny ambient-trigger NPC model) should stand on top of this lane rather than compete with it.
 

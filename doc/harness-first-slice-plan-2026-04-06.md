@@ -104,7 +104,7 @@ Goal:
 - stage a slightly uncanny local event, e.g. drop a monster tooth on the floor
 - verify whether any ambient NPC reaction path triggers
 
-This scenario is partly parked behind the future tiny-model work, but it should already shape the harness interface.
+This scenario is partly parked behind the future tiny-model work, but it should already shape the harness interface. The shipped `basecamp_dev_manual_2026-04-02` fixture already carries nearby follower/camp state, so the current baseline can run without new assign-NPC helpers; those helpers still matter for restaging and variant probes.
 
 Expected evidence split:
 - **screen:** visible ambient reaction or lack of reaction
@@ -129,9 +129,9 @@ The harness and later implementation should assume:
    - debug spawn item
    - debug spawn monster
    - debug spawn follower NPC
-   - assign NPC to camp
-   - assign NPC to follower
-5. only then shape the ambient-reaction scenario enough to drive the tiny-model design
+   - assign NPC to camp (only when alternate restaging actually needs it)
+   - assign NPC to follower (only when alternate restaging actually needs it)
+5. use the already-runnable ambient baseline to shape the tiny-model design, and only grow more staging helpers when the shipped fixture stops being enough
 
 ## Non-goals for this slice
 
