@@ -1,13 +1,39 @@
 {
   "name": "locker.weather_wait",
-  "description": "Launch a harness-owned Sandy Creek locker baseline, advance a few turns, and report screen/tests/artifacts separately for the live locker path.",
+  "description": "Launch a harness-owned Sandy Creek locker baseline, force a cold locker probe state through the debug menu, then wait for a real camp-locker packet.",
+  "status": "blocked",
+  "blocked_reason": "The shipped basecamp_dev_manual_2026-04-02 fixture does not contain a CAMP_LOCKER zone, so this contract cannot emit real camp-locker packets yet.",
+  "required_helpers": [
+    "locker-capable fixture or restaging path that installs a real CAMP_LOCKER zone plus managed locker contents on the shipped probe save"
+  ],
   "profile": "dev-harness",
   "world": "Sandy Creek",
   "fixture": "basecamp_dev_manual_2026-04-02",
   "fixture_profile": "dev",
   "replace_existing_worlds": true,
-  "advance_turns": 3,
   "settle_seconds": 1.0,
   "artifact_pattern": "camp locker:",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "debug_force_temperature",
+      "label": "force_cold_temperature",
+      "temperature_f": 35,
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_locker_service",
+      "count": 3,
+      "settle_seconds": 1.0,
+      "capture_after": true
+    }
+  ],
   "recommended_test_command": "./tests/cata_test \"[camp][locker]\""
 }

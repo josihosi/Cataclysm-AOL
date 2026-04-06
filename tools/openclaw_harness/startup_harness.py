@@ -690,6 +690,37 @@ def debug_spawn_follower_npc(
         )
 
 
+def debug_force_temperature(
+    pid: int,
+    *,
+    temperature_f: int,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.35,
+    prompt_settle_seconds: float = 0.25,
+) -> None:
+    run_debug_menu_shortcut_path(
+        pid,
+        ["m", "T"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+    # The Force temperature submenu currently lists Reset first and Set second.
+    # Move to Set explicitly before confirming so an existing forced temperature
+    # does not accidentally select Reset.
+    peekaboo_press_sequence(pid, ["down"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    fill_numeric_prompt(
+        pid,
+        temperature_f,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        settle_seconds=prompt_settle_seconds,
+    )
+
+
 def copy_file_if_exists(src: Path, dst: Path) -> None:
     if src.exists():
         ensure_dir(dst.parent)
@@ -1085,6 +1116,12 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 raise SystemExit(f"Scenario step '{label}' needs count > 0")
             advance_turns(pid, count)
             report["count"] = count
+        elif kind == "wait":
+            seconds = float(step.get("seconds", 0.0) or 0.0)
+            if seconds <= 0:
+                raise SystemExit(f"Scenario step '{label}' needs seconds > 0")
+            time.sleep(seconds)
+            report["seconds"] = seconds
         elif kind == "debug_spawn_item":
             item_query = str(
                 step.get("item_query")
@@ -1184,6 +1221,32 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 "menu_settle_seconds": menu_settle_seconds,
                 "debug_menu_path": ["}", "s", "f"],
                 "spawn_type": "random_follower_npc",
+            })
+        elif kind == "debug_force_temperature":
+            try:
+                temperature_f = int(step.get("temperature_f"))
+            except (TypeError, ValueError):
+                raise SystemExit(f"Scenario step '{label}' needs integer temperature_f")
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            debug_force_temperature(
+                pid,
+                temperature_f=temperature_f,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "temperature_f": temperature_f,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "debug_menu_path": ["}", "m", "T"],
+                "selection_path": ["down", "enter"],
             })
         elif kind == "drop_item":
             query_or_slot = str(
