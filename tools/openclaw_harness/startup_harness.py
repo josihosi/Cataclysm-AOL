@@ -439,6 +439,40 @@ def advance_turns(pid: int, count: int) -> None:
     peekaboo_press_sequence(pid, ["tab"] * count)
 
 
+def run_debug_menu_shortcut_path(
+    pid: int,
+    shortcut_keys: List[str],
+    *,
+    delay_ms: int = 200,
+    menu_settle_seconds: float = 0.35,
+) -> None:
+    if not shortcut_keys:
+        raise SystemExit("Debug menu shortcut path needs at least one key")
+    peekaboo_press_sequence(pid, ["}"], delay_ms=delay_ms)
+    time.sleep(menu_settle_seconds)
+    for key in shortcut_keys:
+        peekaboo_press_sequence(pid, [key], delay_ms=delay_ms)
+        time.sleep(menu_settle_seconds)
+
+
+def debug_spawn_follower_npc(
+    pid: int,
+    *,
+    count: int = 1,
+    delay_ms: int = 200,
+    menu_settle_seconds: float = 0.35,
+) -> None:
+    if count <= 0:
+        return
+    for _ in range(count):
+        run_debug_menu_shortcut_path(
+            pid,
+            ["s", "f"],
+            delay_ms=delay_ms,
+            menu_settle_seconds=menu_settle_seconds,
+        )
+
+
 def copy_file_if_exists(src: Path, dst: Path) -> None:
     if src.exists():
         ensure_dir(dst.parent)
@@ -732,6 +766,25 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 raise SystemExit(f"Scenario step '{label}' needs count > 0")
             advance_turns(pid, count)
             report["count"] = count
+        elif kind == "debug_spawn_follower_npc":
+            count = int(step.get("count", 1) or 1)
+            if count <= 0:
+                raise SystemExit(f"Scenario step '{label}' needs count > 0")
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
+            debug_spawn_follower_npc(
+                pid,
+                count=count,
+                delay_ms=delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+            )
+            report.update({
+                "count": count,
+                "delay_ms": delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "debug_menu_path": ["}", "s", "f"],
+                "spawn_type": "random_follower_npc",
+            })
         elif kind == "capture":
             capture = capture_screenshot(pid, run_dir, label)
             report["screen"] = capture.get("screen_summary", {})

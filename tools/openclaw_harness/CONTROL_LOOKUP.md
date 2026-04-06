@@ -23,6 +23,7 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 | Talk to nearby NPC | `C`, `t` | First practical target in the current save is Ricky Broughton. |
 | Open freeform player utterance | `C`, `b` | Type utterance, then `Enter`, then usually `Tab` x1-2 to let the response inject. |
 | Open ruleset window from chat UI | `a` (sometimes `a`, then `a` again) | Quest-first chat variants may consume the first `a`; if so, press `a` again to reach the ruleset window. |
+| Spawn random follower NPC from debug path | `}`, `s`, `f` | Landed harness helper path (`debug_spawn_follower_npc`). Spawns a random follower near the player with current debug-menu hotkeys. |
 | Spawn Rubik from debug path | `}`, `s`, `p`, `O` | Current remembered path only; treat as provisional until reverified in automation. |
 
 ## Important caveats learned live
