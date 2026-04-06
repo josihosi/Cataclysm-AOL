@@ -1005,7 +1005,63 @@ def summarize_peekaboo_image_capture(
     return summary
 
 
-def capture_screenshot(pid: int, run_dir: Path, label: str) -> Dict[str, Any]:
+def normalize_capture_crop(raw_crop: Any) -> Optional[Dict[str, int]]:
+    if not isinstance(raw_crop, dict):
+        return None
+    try:
+        height = int(raw_crop.get("height", raw_crop.get("pixels_h", 0)) or 0)
+        width = int(raw_crop.get("width", raw_crop.get("pixels_w", 0)) or 0)
+        offset_y = int(raw_crop.get("offset_y", raw_crop.get("top", raw_crop.get("y", 0))) or 0)
+        offset_x = int(raw_crop.get("offset_x", raw_crop.get("left", raw_crop.get("x", 0))) or 0)
+    except (TypeError, ValueError):
+        return None
+    if height <= 0 or width <= 0 or offset_y < 0 or offset_x < 0:
+        return None
+    return {
+        "height": height,
+        "width": width,
+        "offset_y": offset_y,
+        "offset_x": offset_x,
+    }
+
+
+def crop_png_with_sips(source_path: Path, output_path: Path, crop: Dict[str, int]) -> Dict[str, Any]:
+    cmd = [
+        "sips",
+        "-c",
+        str(crop["height"]),
+        str(crop["width"]),
+        "--cropOffset",
+        str(crop["offset_y"]),
+        str(crop["offset_x"]),
+        str(source_path),
+        "--out",
+        str(output_path),
+    ]
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return {
+        "ok": proc.returncode == 0,
+        "command": cmd,
+        "returncode": proc.returncode,
+        "stdout": proc.stdout,
+        "stderr": proc.stderr,
+        "source_png_path": str(source_path),
+        "output_png_path": str(output_path),
+        "crop": dict(crop),
+    }
+
+
+def capture_screenshot(
+    pid: int,
+    run_dir: Path,
+    label: str,
+    crop: Optional[Dict[str, int]] = None,
+) -> Dict[str, Any]:
     png_path = run_dir / f"{label}.png"
     json_path = run_dir / f"{label}.peekaboo.json"
     capture_target = choose_capture_window(pid)
@@ -1020,6 +1076,26 @@ def capture_screenshot(pid: int, run_dir: Path, label: str) -> Dict[str, Any]:
         text=True,
         check=False,
     )
+    crop_request = normalize_capture_crop(crop)
+    crop_report: Optional[Dict[str, Any]] = None
+    if proc.returncode == 0 and crop_request:
+        full_png_path = run_dir / f"{label}.full.png"
+        shutil.copy2(png_path, full_png_path)
+        crop_report = crop_png_with_sips(full_png_path, png_path, crop_request)
+        if not crop_report.get("ok"):
+            shutil.copy2(full_png_path, png_path)
+    screen_summary = summarize_peekaboo_image_capture(
+        proc.stdout,
+        png_path,
+        json_path,
+        capture_target=capture_target,
+    )
+    if crop_report:
+        screen_summary["crop_requested"] = crop_request
+        screen_summary["crop_applied"] = bool(crop_report.get("ok"))
+        screen_summary["source_png_path"] = str(crop_report.get("source_png_path", ""))
+        if not crop_report.get("ok"):
+            screen_summary["crop_error"] = str(crop_report.get("stderr", "")).strip()
     payload = {
         "label": label,
         "command": cmd,
@@ -1027,12 +1103,8 @@ def capture_screenshot(pid: int, run_dir: Path, label: str) -> Dict[str, Any]:
         "returncode": proc.returncode,
         "stdout": proc.stdout,
         "stderr": proc.stderr,
-        "screen_summary": summarize_peekaboo_image_capture(
-            proc.stdout,
-            png_path,
-            json_path,
-            capture_target=capture_target,
-        ),
+        "crop": crop_report,
+        "screen_summary": screen_summary,
     }
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return payload
@@ -1390,14 +1462,20 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 "selection_mode": selection_mode,
             })
         elif kind == "capture":
-            capture = capture_screenshot(pid, run_dir, label)
+            capture_crop = normalize_capture_crop(
+                step.get("capture_crop", step.get("crop"))
+            )
+            capture = capture_screenshot(pid, run_dir, label, crop=capture_crop)
             report["screen"] = capture.get("screen_summary", {})
         else:
             raise SystemExit(f"Unsupported scenario step kind: {kind or '<empty>'}")
         if settle_seconds > 0:
             time.sleep(settle_seconds)
         if kind != "capture" and bool(step.get("capture_after", False)):
-            capture = capture_screenshot(pid, run_dir, f"{label}.after")
+            capture_after_crop = normalize_capture_crop(
+                step.get("capture_after_crop", step.get("capture_crop", step.get("crop")))
+            )
+            capture = capture_screenshot(pid, run_dir, f"{label}.after", crop=capture_after_crop)
             report["screen_after"] = capture.get("screen_summary", {})
         reports.append(report)
     return reports

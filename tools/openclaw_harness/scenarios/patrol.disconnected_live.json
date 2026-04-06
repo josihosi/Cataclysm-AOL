@@ -90,7 +90,14 @@
       "kind": "press",
       "label": "close_ricky_priorities",
       "keys": ["escape"],
-      "settle_seconds": 0.4
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "capture_after_crop": {
+        "height": 700,
+        "width": 900,
+        "offset_y": 950,
+        "offset_x": 700
+      }
     },
     {
       "kind": "press",
@@ -118,6 +125,19 @@
       "count": 20,
       "settle_seconds": 1.0,
       "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_zones_manager",
+      "keys": ["Y"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "capture_after_crop": {
+        "height": 1000,
+        "width": 400,
+        "offset_y": 0,
+        "offset_x": 2100
+      }
     }
   ],
   "recommended_test_command": "./tests/cata_test \"[camp][patrol]\""
