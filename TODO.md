@@ -16,10 +16,10 @@ Execution queue:
    - keep explicit separation of **screen**, **tests**, and **artifacts/logs**
    - keep startup readiness honest after the `lastworld.json` flip; the chat probe already exposed that a plain autoload success signal can still be on the loading splash
    - keep runtime blockers explicit instead of burning more runs on fake-mysterious no-artifact reports
-2. extend scenario-setup helpers now that the first one landed
+2. extend scenario-setup helpers now that the first wave is landing
    - keep `debug_spawn_follower_npc` usable/documented on the current debug-menu path (`}`, `s`, `f`)
-   - add debug spawn item
-   - add debug spawn monster
+   - keep `debug_spawn_item` honest on the current wish path (`}`, `s`, `w`) and its filter/amount prompt behavior
+   - keep `debug_spawn_monster` honest on the current wish path (`}`, `s`, `m`) and its look-around target confirm behavior
    - add assign-NPC helper(s) for camp/follower setup
 3. strengthen the locker probe into a more direct locker-trigger/setup path
    - turn the current locker probe from “load + wait + report honestly” into a stronger locker-specific signal once setup helpers exist

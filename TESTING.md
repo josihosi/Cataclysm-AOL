@@ -40,8 +40,15 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ## Current relevant evidence
 
 ### Harness first slice — reusable live probe contracts
-Latest relevant harness evidence for the first landed helper slice (code landed in `94e9d66836`):
-- narrow validation for the latest harness helper slice
+Latest relevant harness evidence for the current helper wave:
+- narrow validation for the newest item/monster helper slice checkpointed in `57a0e4ae7d`
+  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+  - `python3 - <<'PY' ... debug_spawn_item / debug_spawn_monster / execute_probe_steps smoke ... PY`
+  - passed:
+    - `debug_spawn_item` now drives the current debug wish path `}`, `s`, `w`, uses the uilist filter popup (`/` + query), handles the amount prompt, and exits back out cleanly
+    - `debug_spawn_monster` now drives the current debug wish path `}`, `s`, `m`, uses the uilist filter popup (`/` + query), supports friendly / hallucination / group-radius toggles, confirms the look-around target, and exits back out cleanly
+    - `execute_probe_steps` now reports those helpers explicitly with `debug_menu_path=["}", "s", "w"]` / `debug_menu_path=["}", "s", "m"]` plus honest spawn-target metadata (`inventory` vs `look_around_confirm`)
+- prior narrow validation for the first landed helper slice still stands
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
   - `python3 - <<'PY' ... debug_spawn_follower_npc / execute_probe_steps smoke ... PY`
   - passed: helper path expands to the expected debug-menu shortcut sequence `}`, `s`, `f`, and `execute_probe_steps` now reports `debug_menu_path=["}", "s", "f"]` plus `spawn_type=random_follower_npc`
@@ -164,10 +171,10 @@ Meaning:
    - keep post-load readiness honest; the `lastworld.json` flip alone was not sufficient for the chat path
    - keep runtime blockers explicit so blocked probe classes fail fast instead of pretending they are behavior verdicts
    - avoid probe-method drift mid-claim
-2. extend scenario-setup helpers beyond the first landed follower-spawn slice
+2. extend scenario-setup helpers beyond the currently landed follower/item/monster slice
    - keep `debug_spawn_follower_npc` on the current `}`, `s`, `f` path honest if debug bindings drift
-   - add debug spawn item
-   - add debug spawn monster
+   - keep `debug_spawn_item` on the current `}`, `s`, `w` path honest if the wish filter / amount prompt behavior shifts
+   - keep `debug_spawn_monster` on the current `}`, `s`, `m` path honest if the wish filter / target-confirm behavior shifts
    - add assign-NPC helper(s) for camp/follower setup
 3. strengthen `locker.weather_wait` so it reaches a real locker-trigger packet instead of only load/wait/tileset-noise
 4. keep `chat.nearby_npc_basic` parked until runner prerequisites exist, then resume recipient / `llm_intent.log` proof
