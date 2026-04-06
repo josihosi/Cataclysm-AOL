@@ -28,6 +28,7 @@ Success state:
 - [x] Urgent disruption can break patrol, and reserve backfill works without full-roster reshuffle.
 - [ ] On-map behavior distinguishes hold-positions vs fixed-loop patrol in the intended simple v1 way.
 - [ ] Proportional live proof is recorded with separate screen/tests/artifacts reporting.
+- [ ] The player-legibility bar is met: guard behavior, uncovered posts, connected-vs-disconnected behavior, and reserve/off-shift state are understandable enough to read in play.
 - [ ] The result stays explainable as simple v1 patrol rather than quietly turning into smart-zone-manager soup.
 
 Notes:

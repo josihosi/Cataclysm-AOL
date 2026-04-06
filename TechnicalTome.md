@@ -343,6 +343,8 @@ The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is st
 ### Patrol Zone roadmap note
 - Patrol Zone V1 starts with explicit `CAMP_PATROL` tiles from Zone Manager, not invisible camp metadata.
 - The topology spine groups patrol tiles by 4-way connected components only. Diagonal touching does not merge posts, so the later planner can speak in simple cluster terms instead of fuzzy area heuristics.
+- The current intended v1 center is deliberately narrow: two shifts only, one-per-cluster coverage first, sticky on-shift roster, routine chores do not steal active guards, urgent disruption can, and hold-vs-loop behavior should stay readable enough that the player can tell why guards are standing, walking, uncovered, or off-shift.
+- Patrol Zone v1 still needs a few explicit small constants pinned down in code/spec instead of vibes: exact day/night cut, loop dwell time, reserve backfill timing, and off-shift posture.
 
 ### Follower-NPC caveat
 Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.

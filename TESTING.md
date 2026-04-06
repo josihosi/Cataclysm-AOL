@@ -76,8 +76,13 @@ What counts next:
    - understaffed connected cluster => fixed loop
    - fully staffed connected cluster => distinct holders
    - 16 NPCs / 4 connected squares stays explainable
-2. only after the deterministic contract is real, package one honest live patrol proof with separate **screen** / **tests** / **artifacts** evidence
-3. keep the helper idea `sustain_npc` available if a live patrol probe genuinely needs it
+2. pin the small v1 patrol constants explicitly
+   - exact day/night cut
+   - loop dwell time
+   - reserve backfill timing
+   - off-shift posture
+3. only after the deterministic contract is real, package one honest live patrol proof with separate **screen** / **tests** / **artifacts** evidence
+4. keep the helper idea `sustain_npc` available if a live patrol probe genuinely needs it
 
 ### Anti-hallucination rule for this lane
 
@@ -99,6 +104,14 @@ If the story starts sounding cleaner than the evidence, stop and audit.
 **Later discussion topics, not current code lanes:**
 1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
 2. **smart zone manager**
+
+### Active-lane handoff block
+
+- **finish line:** hold-vs-loop behavior is real, live-proof packet exists, and patrol remains legible/simple rather than smart-zone soup
+- **deterministic tests:** topology, planner contract, sticky roster/interrupt contract, then hold-vs-loop intent coverage
+- **agent live proof:** one honest packaged patrol scenario with separate screen/tests/artifacts evidence
+- **Josef ask:** none yet; batch visually important patrol questions together once a real live packet exists
+- **likely tweak round:** patrol legibility/constants (day/night cut, dwell time, reserve behavior) after first live packet
 
 ### Non-blocking Josef notes
 

@@ -36,6 +36,15 @@ Patrol Zone v1 should be brutally simple, deterministic, and explainable.
   - otherwise tolerate the coverage gap until later recompute
 - Do **not** globally reshuffle the rest of the roster mid-shift.
 
+## V1 policy constants to pin down early
+These are small but important. Nail them down explicitly instead of letting them drift into quiet freestyle:
+- **connectivity rule**: 4-way only
+- **shift model**: exactly 2 shifts (`day`, `night`)
+- **day/night cut**: choose explicit hours and keep them stable for v1
+- **loop dwell time**: choose one simple fixed dwell duration per square/post for v1
+- **reserve backfill timing**: choose whether reserve replacement is immediate on true guard loss or only on a coarse patrol check; keep it deterministic
+- **off-shift posture**: decide whether off-shift guards idle near the patrol area or return to ordinary camp life; do not let this stay accidental
+
 ## Explicit non-goals for v1
 - custom shift counts
 - diagonal connectivity cleverness
@@ -153,6 +162,15 @@ Deliverables:
 - recompute timing:
   - shift-boundary recompute yes
   - constant availability-change thrash no
+
+## Player-legibility bar for v1
+Even if the underlying scheduling is correct, Patrol Zone v1 still fails if the player cannot roughly tell:
+- why an NPC is standing still vs walking a loop
+- why a tile/post is uncovered right now
+- why connected clusters behave differently from disconnected posts
+- why some guards are off-shift / reserve instead of dogpiling the same square
+
+Treat this as a real success criterion, not decorative UX garnish.
 
 ## Hallucination / fake-progress traps for Andi
 Do **not** claim success just because:
