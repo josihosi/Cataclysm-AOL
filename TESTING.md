@@ -77,34 +77,17 @@ Latest relevant harness evidence for the current helper wave:
   - printable gameplay keys go through `peekaboo type` instead of invalid `peekaboo press` usage
   - startup no longer treats the first `lastworld.json` flip as sufficient proof of ready gameplay; `post_lastworld_wait_seconds: 8.0` gates the packaged path
   - `chat.nearby_npc_basic` installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the saved chat/keybinding state the probe expects
-- current packaged chat blocker packet is still honest, but the blocker stack changed
-  - narrow validation for the harness-side blocker demotion:
-    - `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/log_probe.py`
-    - `python3 -c "import tools.openclaw_harness.startup_harness as h; opts={'LLM_INTENT_BACKEND':'api','LLM_INTENT_PYTHON':'','LLM_INTENT_API_KEY_ENV':'CATA_API_KEY'}; print(h.resolve_game_runtime_python(opts)); print(h.probe_runtime_blockers('dev-harness','llm_intent.log')); print(h.probe_runtime_warnings('dev-harness','llm_intent.log'))"`
-    - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
-  - passed:
-    - `.userdata/dev/config/options.json` and `.userdata/dev-harness/config/options.json` still both have `LLM_INTENT_PYTHON=''`, but that is no longer treated as a hard blocker on Josef’s Mac because the runtime resolves `/Users/josefhorvath/ollama/api_env311/bin/python3`
-    - `/Users/josefhorvath/ollama/api_env311/bin/python3 -c 'import any_llm'` succeeds, so the old “empty option means no runnable Python” packet was overstated
-    - the packaged chat report at `.userdata/dev-harness/harness_runs/20260406_085106/probe.report.json` now runs the scripted chat steps instead of skipping them with `blocked_runtime_prereqs`
-    - the same report now carries runtime warnings instead of a fake hard blocker:
-      - `llm_python_option_empty_using_runtime_fallback`
-      - `llm_api_key_env_unset`
-  - still blocked / inconclusive:
-    - `CATA_API_KEY` is not present in the harness process environment
-    - the latest run captured stale executable `6dcb5b91f7-dirty` while repo HEAD was `6dc4d9ed1e`, so the verdict is `inconclusive_version_mismatch`
-    - that stale-window run produced no new `llm_intent.log` lines, so recipient/artifact proof is still missing on a genuinely current executable
-- current ambient-scenario footing is still honest on the fresh current tiles binary
+- newest narrow validation for packaged LLM-artifact honesty on the current dirty HEAD
+  - `git diff --check`
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
-  - `make -j4 TILES=1 cataclysm-tiles`
+  - `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic`
   - `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction`
-  - `./zzip /tmp/.../#RGFuaWFsIEdvbnphbGV6.sav.zzip` + inspect `#RGFuaWFsIEdvbnphbGV6.sav` / `zones.json`
   - passed:
-    - the fresh tiles build reports `6dcb5b91f7-dirty`, and the packaged ambient report at `.userdata/dev-harness/harness_runs/20260406_083006/probe.report.json` now captures a current-binary, version-matched run instead of hiding behind stale-binary noise
-    - scenario listing still reports `ambient.weird_item_reaction` as `status: active` with no fake helper blocker
-    - the packaged ambient contract still runs all three packaged steps (`debug_spawn_item` → `drop_item` → `advance_turns`) on the shipped fixture and returns to normal gameplay view after the scripted item/drop actions
-    - the shipped `basecamp_dev_manual_2026-04-02` save still carries nearby follower/camp state (`followers: [ 2, 3 ]`; player-message history includes `Bruna Priest is assigned to Debug Central` and `Ricky Broughton is assigned to Debug Central`)
-    - the latest ambient verdict is now the honest one: `inconclusive_no_artifact_match` with no fake helper blocker and no stale-binary excuse
+    - LLM probe artifacts now tail the repo-level `config/llm_intent.log`, which is where current game code writes `prompt` / `response` / `ambient` records; the old per-profile `config/llm_intent.log` expectation was wrong
+    - startup screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely force `inconclusive_version_mismatch` when the captured game build still matches all runtime-relevant paths
+    - the packaged chat report at `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json` now lands `artifacts_matched` with recipient + `prompt` / `response` proof for `Bruna Priest`
+    - the packaged ambient report at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` now tails the correct `llm_intent.log` source and honestly returns `inconclusive_no_new_artifacts`; the missing proof is live ambient behavior, not wrong-log bookkeeping
+    - `ambient.weird_item_reaction` still runs all three packaged steps on the shipped fixture and returns to gameplay view after the scripted item/drop actions
 - newest narrow validation for the helper/reporting slice that touched locker setup honesty
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/log_probe.py`
   - `python3 tools/openclaw_harness/startup_harness.py list-scenarios`
@@ -118,9 +101,8 @@ Latest relevant harness evidence for the current helper wave:
     - inspection of the shipped `basecamp_dev_manual_2026-04-02` save fixture shows camp/follower state but **no `CAMP_LOCKER` zone** in the fixture zone data, so the packaged locker contract cannot honestly emit `camp locker:` packets yet
     - that scenario is now supposed to stay explicitly blocked until a locker-capable fixture/restaging path exists
 - meaning:
-  - the missing evidence is no longer “does the packaged ambient contract even run?” or “can the harness even drive the locker temperature UI?”
-  - the current blockers are: current-executable freshness plus API env for chat, missing ambient-reaction proof, and a missing locker-capable fixture/restaging path for `locker.weather_wait`
-  - do not keep rerunning `chat.nearby_npc_basic` until the harness is pointed at a genuinely current game window again; once that is fixed, decide whether prompt-only recipient proof is enough or whether a real response packet is still needed
+  - chat recipient/artifact proof is no longer missing; the active probe gap is ambient-reaction evidence plus the already-known locker-fixture blocker
+  - do not regress packaged LLM probes back to per-profile `llm_intent.log` paths or raw repo-HEAD mismatch checks; those were harness bookkeeping mistakes, not behavior verdicts
   - do not keep rerunning `locker.weather_wait` on the shipped fixture until the scenario has a real `CAMP_LOCKER` save shape again
   - do not keep claiming `ambient.weird_item_reaction` is blocked on assign-NPC helpers unless a new fixture/state actually proves that again
 
@@ -222,13 +204,14 @@ Meaning:
    - only add assign-NPC helper(s) if a concrete alternate-restaging or stronger-probe need actually appears
 3. replace or restage the locker probe save shape before using `locker.weather_wait` again
    - the shipped `basecamp_dev_manual_2026-04-02` fixture lacks `CAMP_LOCKER`, so the current contract is correctly parked as a fixture blocker rather than a behavior verdict
-4. keep `chat.nearby_npc_basic` parked until the harness is pointed at a genuinely current executable again, then resume recipient / `llm_intent.log` proof
-   - current blocker packet is `.userdata/dev-harness/harness_runs/20260406_085106/probe.report.json`
-   - once the current-executable path is real again, rerun `chat.nearby_npc_basic` and decide whether prompt-only proof is enough or whether `CATA_API_KEY` must be present for a response packet
-   - `ambient.weird_item_reaction` is already runnable on the shipped fixture; next missing evidence is a real reaction/artifact packet, not a fake helper-unblock ceremony
+4. move `ambient.weird_item_reaction` from runnable-but-empty to first real reaction proof
+   - current honest packet is `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json`
+   - keep the contract on repo-level `config/llm_intent.log`; the missing evidence is ambient target/response output, not more log-path or repo-HEAD bookkeeping
+   - next probe work should improve trigger/staging/wait timing rather than re-litigate whether the scenario itself runs
 5. after the probe/helper footing is stronger, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
-5. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
-6. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
+   - `chat.nearby_npc_basic` is now valid packet material via `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json`
+6. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
+7. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
 
 ### Non-blocking Josef notes
 

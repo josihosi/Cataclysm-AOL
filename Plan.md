@@ -68,16 +68,16 @@ Working priority inside this lane:
   - explicit **screen** / **tests** / **artifacts** report split
   - startup screenshots audit the running window title against repo HEAD so stale binaries stop masquerading as current proof
   - direct window-image capture now records `window_id` / `window_index` for startup and probe screenshots, so blocked runs and per-step captures no longer disappear into Peekaboo element-detection timeouts; any remaining version mismatch is now a genuine binary-freshness call rather than screenshot-tool fog
-- the chat extension is now in its more honest partially-unblocked state instead of the old fake blocker packet:
-  - profile loading merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
+- the chat extension is now in its first actually-proven packaged state instead of the old fake blocker packet:
+  - profile loading still merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
   - probe contracts can script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
-  - `chat.nearby_npc_basic` installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the saved chat/keybinding state the probe expects
-  - the harness now mirrors the game’s API-backend runtime fallback to `/Users/josefhorvath/ollama/api_env311`, so `LLM_INTENT_PYTHON=''` is no longer treated as a hard blocker on Josef’s Mac
-  - the latest packaged run at `.userdata/dev-harness/harness_runs/20260406_085106/probe.report.json` now executes the chat steps instead of skipping them, but it still ends `inconclusive_version_mismatch`: the captured window is stale executable `6dcb5b91f7-dirty` while repo HEAD is `6dc4d9ed1e`, and `CATA_API_KEY` is still absent for the harness process
-  - the remaining blocker packet is therefore: get a genuinely current executable window under the harness again, then rerun with real API-key env if response proof still matters
+  - `chat.nearby_npc_basic` still installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the saved chat/keybinding state the probe expects
+  - the harness now reads LLM artifacts from the repo-level `config/llm_intent.log`, which is where current game code writes prompt/response and ambient logs
+  - startup screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely invalidate a runtime-compatible captured build
+  - the latest packaged chat run at `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json` now lands `artifacts_matched` with recipient + prompt/response proof for `Bruna Priest`
 - keep following `doc/harness-first-slice-plan-2026-04-06.md`, but extend the landed pattern instead of restarting from zero
 - next concrete steps:
-  - stop blind reruns of `chat.nearby_npc_basic` until the harness is looking at a genuinely current executable again; once that is true, decide whether prompt-only recipient proof is enough or whether a real `CATA_API_KEY` response packet is still needed
+  - move `ambient.weird_item_reaction` from “runnable but vague” to real reaction proof; the latest packaged run at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` now tails the correct `llm_intent.log` path and honestly returns `inconclusive_no_new_artifacts`, so the remaining gap is the live trigger/staging, not harness bookkeeping
   - keep extending the landed scenario-setup helper wave so the harness can keep moving on unblocked live-probe work
     - `debug_spawn_follower_npc` is already landed on `}`, `s`, `f`
     - `debug_spawn_item` / `debug_spawn_monster` now cover the current wish paths `}`, `s`, `w` and `}`, `s`, `m`

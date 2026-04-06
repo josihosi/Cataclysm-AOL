@@ -25,18 +25,17 @@ Success state:
 - [x] That harness path reports screen/tests/artifacts as separate evidence classes instead of flattening them into one vague verdict.
 - [x] At least one high-value reusable playtest scenario is documented/packaged for Schani-assisted probing instead of re-invented manually each time.
 - [x] The packaged harness path no longer treats the first `lastworld.json` flip as sufficient proof of post-load gameplay readiness.
-- [ ] `chat.nearby_npc_basic` records recipient / artifact proof instead of only reaching dialogue and freeform-input UI.
+- [x] `chat.nearby_npc_basic` records recipient / artifact proof instead of only reaching dialogue and freeform-input UI.
 - [x] A second named scenario contract (`ambient.weird_item_reaction`) exists and is honest about its current footing: runnable on the shipped fixture, still lacking real reaction/artifact proof.
 - [x] At least one reusable scenario-setup helper exists so repeated probes stop depending on debug-menu folklore.
 - [ ] A compact Josef-facing testing packet exists for the pre-holiday active-testing window.
 
 Notes:
 - This lane is about creating stable footing for the hackathon push, not about polishing every last locker nuance forever.
-- The current clean packaged current-binary probe is `python3 tools/openclaw_harness/startup_harness.py probe ambient.weird_item_reaction` on `dev-harness`, with the latest report at `.userdata/dev-harness/harness_runs/20260406_083006/probe.report.json`.
+- The latest packaged chat proof is `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic` on `dev-harness`, with recipient + prompt/response artifacts recorded at `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json`.
+- Harness screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely demote a runtime-compatible captured game window to `inconclusive_version_mismatch`.
+- `ambient.weird_item_reaction` now tails the correct repo-level `config/llm_intent.log`; its latest packaged run at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` is honest about the remaining gap: `inconclusive_no_new_artifacts` on a runtime-compatible build, not a fake no-artifact result from watching `debug.log`.
 - `locker.weather_wait` is now explicitly demoted back to blocked status: the shipped `basecamp_dev_manual_2026-04-02` fixture does not contain a `CAMP_LOCKER` zone, so the contract cannot honestly claim locker-service evidence until a locker-capable fixture/restaging path exists.
-- The next landed extension is `chat.nearby_npc_basic` plus the supporting harness work: scripted key/text steps, selectable artifact logs, printable-key handling that works with Peekaboo, shared profile startup policy that now actually reaches `dev-harness`, and profile-snapshot install support so the scenario can carry the captured `dev` config/options/keybindings it actually depends on.
-- The chat path is currently honest but still incomplete: the contract now carries the right profile state and no longer treats `LLM_INTENT_PYTHON=''` as a fake hard blocker on Josef’s Mac, but the latest packaged run still captured stale executable `6dcb5b91f7-dirty` instead of repo HEAD `6dc4d9ed1e`, and recipient / `llm_intent.log` proof is still missing on a genuinely current executable.
-- `ambient.weird_item_reaction` now exists as a packaged contract and already runs on the shipped basecamp fixture; the missing proof is ambient reaction/artifact evidence, not a ceremonial camp/follower helper prerequisite.
 - The first landed scenario-setup helper is `debug_spawn_follower_npc`, wired to the current debug-menu path `}`, `s`, `f` so harness scenarios can spawn a nearby follower without hand-piloted menu folklore.
 - The harness now also has a reusable `debug_force_temperature` helper on `}`, `m`, `T` plus a generic `wait` step; the blocker is no longer missing UI control, it is missing a locker-capable probe fixture.
 - The next distinguished feature runways (chat interface, tiny ambient-trigger NPC model) should stand on top of this lane rather than compete with it.

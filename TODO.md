@@ -26,11 +26,12 @@ Execution queue:
 3. repair the locker probe contract before spending another live run on it
    - the shipped `basecamp_dev_manual_2026-04-02` fixture does **not** contain a `CAMP_LOCKER` zone, so `locker.weather_wait` is currently blocked on a locker-capable fixture/restaging path
    - keep that blocker explicit instead of burning more runs on honest-but-useless `no_artifact` reports
-4. keep the packaged chat probe parked honestly until the current-executable path is real again, then resume it
-   - current blocker packet on HEAD `6dc4d9ed1e`: `LLM_INTENT_PYTHON=''` in `dev`/`dev-harness` is only a fallback warning on Josef’s Mac because the game/harness resolve `/Users/josefhorvath/ollama/api_env311`, but the latest run still captured stale executable `6dcb5b91f7-dirty` and the harness process still lacks `CATA_API_KEY`
-   - do not keep rerunning `chat.nearby_npc_basic` blindly until the harness is pointed at a genuinely current game window again
-   - after that, close recipient / `llm_intent.log` proof honestly, and decide whether prompt-only proof is enough or whether a real response packet is still required
+4. move the packaged ambient probe from “honest but empty” to first real reaction proof
+   - `ambient.weird_item_reaction` now tails the correct repo-level `config/llm_intent.log`; the latest packaged run at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` is an honest `inconclusive_no_new_artifacts`
+   - do not regress this contract back to `debug.log` or fake repo-HEAD blocker logic
+   - next step is live trigger/staging work: improve the weird-item setup, wait window, or nearby-NPC positioning until ambient target/response artifacts actually appear
 5. package one compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
+   - `chat.nearby_npc_basic` is now good packet material via `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json`
 6. only after the footing is stable, move toward the distinguished hackathon runways
    - chat interface over dialogue branches
    - tiny ambient-trigger NPC model
