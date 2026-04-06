@@ -246,6 +246,24 @@ struct camp_patrol_plan {
     camp_patrol_shift_plan night;
 };
 
+enum class camp_patrol_guard_behavior : int {
+    hold = 0,
+    loop,
+};
+
+struct camp_patrol_guard_runtime {
+    character_id worker_id;
+    camp_patrol_guard_behavior behavior = camp_patrol_guard_behavior::hold;
+    std::vector<tripoint_abs_ms> route;
+    tripoint_abs_ms target = tripoint_abs_ms::zero;
+};
+
+time_duration camp_patrol_loop_dwell();
+std::optional<camp_patrol_guard_runtime>
+describe_camp_patrol_guard_runtime(const camp_patrol_shift_plan &plan,
+                                   const character_id &worker_id,
+                                   const time_point &turn);
+
 enum class camp_patrol_interrupt_reason : int {
     routine_chore = 0,
     combat_threat,
@@ -851,6 +869,8 @@ public:
   bool has_locker_zone() const;
   bool has_patrol_zone() const;
   const camp_patrol_shift_plan *get_current_patrol_shift_plan();
+  std::optional<camp_patrol_guard_runtime> get_current_patrol_runtime(
+      const character_id &worker_id, const time_point &turn = calendar::turn);
   bool is_worker_on_patrol_shift(const npc &worker);
   bool interrupt_patrol_worker(
       const character_id &worker_id,

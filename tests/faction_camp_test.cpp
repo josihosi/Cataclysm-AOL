@@ -568,6 +568,110 @@ TEST_CASE("camp_patrol_shift_roster_latches_until_boundary",
   zone_manager::get_manager().clear();
 }
 
+TEST_CASE("camp_patrol_runtime_contract", "[camp][patrol]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+
+  SECTION("one guard loops disconnected patrol posts in fixed order") {
+    const std::vector<camp_patrol_worker> workers = {{character_id(801), 5}};
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here, {{10, 22, 0}}),
+        make_patrol_cluster(here, {{12, 22, 0}}),
+        make_patrol_cluster(here, {{14, 22, 0}}),
+        make_patrol_cluster(here, {{16, 22, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    const std::optional<camp_patrol_guard_runtime> start_runtime =
+        describe_camp_patrol_guard_runtime(plan.day, character_id(801),
+                                           calendar::turn_zero);
+    REQUIRE(start_runtime);
+    CHECK(start_runtime->behavior == camp_patrol_guard_behavior::loop);
+    CHECK(start_runtime->route ==
+          std::vector<tripoint_abs_ms>({clusters[0][0], clusters[1][0],
+                                        clusters[2][0], clusters[3][0]}));
+    CHECK(start_runtime->target == clusters[0][0]);
+
+    const std::optional<camp_patrol_guard_runtime> second_runtime =
+        describe_camp_patrol_guard_runtime(plan.day, character_id(801),
+                                           calendar::turn_zero +
+                                               camp_patrol_loop_dwell());
+    REQUIRE(second_runtime);
+    CHECK(second_runtime->target == clusters[1][0]);
+  }
+
+  SECTION("one guard loops an understaffed connected cluster") {
+    const std::vector<camp_patrol_worker> workers = {{character_id(811), 5}};
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here,
+                            {{20, 22, 0}, {21, 22, 0}, {20, 23, 0}, {21, 23, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    const std::optional<camp_patrol_guard_runtime> start_runtime =
+        describe_camp_patrol_guard_runtime(plan.day, character_id(811),
+                                           calendar::turn_zero);
+    REQUIRE(start_runtime);
+    CHECK(start_runtime->behavior == camp_patrol_guard_behavior::loop);
+    CHECK(start_runtime->route == clusters[0]);
+    CHECK(start_runtime->target == clusters[0][0]);
+
+    const std::optional<camp_patrol_guard_runtime> third_runtime =
+        describe_camp_patrol_guard_runtime(plan.day, character_id(811),
+                                           calendar::turn_zero +
+                                               2 * camp_patrol_loop_dwell());
+    REQUIRE(third_runtime);
+    CHECK(third_runtime->target == clusters[0][2]);
+  }
+
+  SECTION("fully staffed connected cluster holds distinct squares") {
+    std::vector<camp_patrol_worker> workers;
+    for (int index = 0; index < 16; ++index) {
+      workers.push_back(
+          camp_patrol_worker{character_id(820 + index), 16 - index});
+    }
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here,
+                            {{30, 22, 0}, {31, 22, 0}, {30, 23, 0}, {31, 23, 0}}),
+    };
+
+    const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    REQUIRE(plan.day.active_guards.size() == 4);
+    REQUIRE(plan.day.reserve_guards.size() == 4);
+    for (size_t index = 0; index < plan.day.active_guards.size(); ++index) {
+      const character_id worker_id = plan.day.active_guards[index].worker_id;
+      const std::optional<camp_patrol_guard_runtime> runtime =
+          describe_camp_patrol_guard_runtime(plan.day, worker_id,
+                                             calendar::turn_zero +
+                                                 3 * camp_patrol_loop_dwell());
+      REQUIRE(runtime);
+      CHECK(runtime->behavior == camp_patrol_guard_behavior::hold);
+      CHECK(runtime->route == std::vector<tripoint_abs_ms>({clusters[0][index]}));
+      CHECK(runtime->target == clusters[0][index]);
+    }
+
+    REQUIRE(plan.night.active_guards.size() == 4);
+    REQUIRE(plan.night.reserve_guards.size() == 4);
+    for (size_t index = 0; index < plan.night.active_guards.size(); ++index) {
+      const character_id worker_id = plan.night.active_guards[index].worker_id;
+      const std::optional<camp_patrol_guard_runtime> runtime =
+          describe_camp_patrol_guard_runtime(plan.night, worker_id,
+                                             calendar::turn_zero +
+                                                 3 * camp_patrol_loop_dwell());
+      REQUIRE(runtime);
+      CHECK(runtime->behavior == camp_patrol_guard_behavior::hold);
+      CHECK(runtime->route == std::vector<tripoint_abs_ms>({clusters[0][index]}));
+      CHECK(runtime->target == clusters[0][index]);
+    }
+  }
+}
+
 TEST_CASE("camp_locker_zone_candidate_gathering_respects_reservations",
           "[camp][locker]") {
   clear_avatar();

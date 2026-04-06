@@ -678,6 +678,109 @@ plan_camp_patrol(const std::vector<camp_patrol_worker> &workers,
     return plan;
 }
 
+namespace {
+
+size_t camp_patrol_guard_cluster_slot(const camp_patrol_cluster_plan &cluster,
+                                      const character_id &worker_id) {
+    const auto assigned_it = std::find(cluster.assigned_guards.begin(),
+                                       cluster.assigned_guards.end(), worker_id);
+    if( assigned_it == cluster.assigned_guards.end() ) {
+        return 0;
+    }
+    return static_cast<size_t>(std::distance(cluster.assigned_guards.begin(),
+                                             assigned_it));
+}
+
+bool camp_patrol_guard_holds_single_cluster(
+    const camp_patrol_shift_plan &plan, const camp_patrol_guard_plan &guard_plan) {
+    if( guard_plan.cluster_indices.size() != 1 ) {
+        return false;
+    }
+    const size_t cluster_index = guard_plan.cluster_indices.front();
+    if( cluster_index >= plan.clusters.size() ) {
+        return false;
+    }
+    const camp_patrol_cluster_plan &cluster = plan.clusters[cluster_index];
+    return cluster.assigned_guards.size() >= cluster.tiles.size();
+}
+
+std::vector<tripoint_abs_ms>
+collect_camp_patrol_guard_route(const camp_patrol_shift_plan &plan,
+                                const camp_patrol_guard_plan &guard_plan) {
+    std::vector<tripoint_abs_ms> route;
+    for( const size_t cluster_index : guard_plan.cluster_indices ) {
+        if( cluster_index >= plan.clusters.size() ) {
+            continue;
+        }
+        const camp_patrol_cluster_plan &cluster = plan.clusters[cluster_index];
+        route.insert(route.end(), cluster.tiles.begin(), cluster.tiles.end());
+    }
+    return route;
+}
+
+size_t camp_patrol_guard_loop_phase(const camp_patrol_shift_plan &plan,
+                                    const camp_patrol_guard_plan &guard_plan) {
+    if( guard_plan.cluster_indices.size() != 1 ) {
+        return 0;
+    }
+    const size_t cluster_index = guard_plan.cluster_indices.front();
+    if( cluster_index >= plan.clusters.size() ) {
+        return 0;
+    }
+    return camp_patrol_guard_cluster_slot(plan.clusters[cluster_index],
+                                          guard_plan.worker_id);
+}
+
+} // namespace
+
+time_duration camp_patrol_loop_dwell() {
+    return 10_minutes;
+}
+
+std::optional<camp_patrol_guard_runtime>
+describe_camp_patrol_guard_runtime(const camp_patrol_shift_plan &plan,
+                                   const character_id &worker_id,
+                                   const time_point &turn) {
+    const auto guard_it = std::find_if(
+        plan.active_guards.begin(), plan.active_guards.end(),
+        [&worker_id]( const camp_patrol_guard_plan &guard_plan ) {
+            return guard_plan.worker_id == worker_id;
+        } );
+    if( guard_it == plan.active_guards.end() ) {
+        return std::nullopt;
+    }
+
+    camp_patrol_guard_runtime runtime;
+    runtime.worker_id = worker_id;
+
+    if( camp_patrol_guard_holds_single_cluster(plan, *guard_it) ) {
+        const size_t cluster_index = guard_it->cluster_indices.front();
+        const camp_patrol_cluster_plan &cluster = plan.clusters[cluster_index];
+        const size_t hold_index = camp_patrol_guard_cluster_slot(cluster, worker_id);
+        if( cluster.tiles.empty() || hold_index >= cluster.tiles.size() ) {
+            return std::nullopt;
+        }
+        runtime.behavior = camp_patrol_guard_behavior::hold;
+        runtime.route = { cluster.tiles[hold_index] };
+        runtime.target = cluster.tiles[hold_index];
+        return runtime;
+    }
+
+    runtime.behavior = camp_patrol_guard_behavior::loop;
+    runtime.route = collect_camp_patrol_guard_route(plan, *guard_it);
+    if( runtime.route.empty() ) {
+        return std::nullopt;
+    }
+
+    const int dwell_turns = to_turns<int>(camp_patrol_loop_dwell());
+    const int absolute_turn = to_turns<int>(turn - calendar::turn_zero);
+    const size_t loop_step = dwell_turns > 0 ? static_cast<size_t>(absolute_turn /
+                             dwell_turns) : 0;
+    const size_t loop_phase = camp_patrol_guard_loop_phase(plan, *guard_it);
+    runtime.target = runtime.route[(loop_step + loop_phase) % runtime.route.size()];
+    return runtime;
+}
+
 bool camp_patrol_interrupt_is_whitelisted(
     camp_patrol_interrupt_reason reason) {
     switch( reason ) {
@@ -2469,6 +2572,16 @@ const camp_patrol_shift_plan *basecamp::get_current_patrol_shift_plan() {
     return nullptr;
   }
   return &patrol_shift_cache;
+}
+
+std::optional<camp_patrol_guard_runtime>
+basecamp::get_current_patrol_runtime(const character_id &worker_id,
+                                     const time_point &turn) {
+  const camp_patrol_shift_plan *plan = get_current_patrol_shift_plan();
+  if( plan == nullptr ) {
+    return std::nullopt;
+  }
+  return describe_camp_patrol_guard_runtime(*plan, worker_id, turn);
 }
 
 bool basecamp::is_worker_on_patrol_shift(const npc &worker) {

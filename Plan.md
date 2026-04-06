@@ -50,15 +50,17 @@ Current job:
 - keep the implementation brutally simple, legible, and testable
 
 ### Immediate next move
-- the topology spine, deterministic planner contract, and sticky shift-roster / interrupt-whitelist contract are landed:
+- the topology spine, deterministic planner contract, sticky shift-roster / interrupt-whitelist contract, and deterministic on-map hold-vs-loop runtime order are landed:
   - patrol zone type
   - 4-way connected clustering
   - patrol-priority worker pool
   - day/night shift allocation for the reference staffing cases
   - shift-latched active roster that routine chores do not steal
   - urgent patrol breaks/backfill without full-roster reshuffle
-- next land on-map hold-vs-loop behavior
-- only after the deterministic contract is real should live proof packaging happen
+  - fully staffed connected clusters hold distinct squares
+  - understaffed or multi-post assignments walk a fixed 10-minute loop order
+  - off-shift patrol workers fall back to ordinary camp downtime
+- next package one honest live patrol proof with separate screen/tests/artifacts evidence
 - keep watching for hallucinations, fake progress, and prose outrunning code/tests/live proof
 - do **not** drift into smart-zone-manager cleverness during v1
 

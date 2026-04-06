@@ -12,10 +12,12 @@ Patrol Zone v1 is the active lane.
 
 Execution queue:
 1. follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
-2. land on-map hold-vs-loop behavior
-   - fully staffed connected cluster => hold distinct squares
-   - understaffed connected cluster => fixed loop
-3. keep reports honest
+2. package one honest live patrol proof
+   - lone guard on disconnected posts
+   - staffed connected cluster with distinct holders
+   - report screen / tests / artifacts separately
+3. if live probing stalls, add only the narrowest helper/instrumentation that makes the patrol proof legible
+4. keep reports honest
    - separate implemented deterministic contract from live proof
    - do not count zone plumbing, prose, or plausible-looking motion as success by themselves
    - if something smells too smooth, audit it
