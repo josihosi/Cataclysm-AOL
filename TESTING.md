@@ -41,6 +41,14 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ### Harness first slice — reusable live probe contracts
 Latest relevant harness evidence for the current helper wave:
+- newest narrow validation for the harness interaction-reliability slice on current dirty HEAD
+  - `git diff --check`
+  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+  - `python3 - <<'PY' ... alias/retry smoke for run_peekaboo_interaction / peekaboo_press_sequence ... PY`
+  - passed:
+    - harness Peekaboo interactions now refocus the Cataclysm window and retry once after a command-level failure instead of treating a single flaky press/type miss as final truth
+    - human-readable contract keys now normalize to the names Peekaboo actually accepts (`enter -> return`, `backspace -> delete`, `esc -> escape`), so packaged step contracts keep working without each scenario reinventing key-name trivia
+    - printable-text buffering still stays intact around those normalized control keys
 - narrow validation for the newest item/monster helper slice checkpointed in `57a0e4ae7d`
   - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
   - `python3 - <<'PY' ... debug_spawn_item / debug_spawn_monster / execute_probe_steps smoke ... PY`
