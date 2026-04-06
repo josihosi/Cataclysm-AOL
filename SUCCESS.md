@@ -17,7 +17,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Hackathon runway — stabilization + harness
 
-Status: ACTIVE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] The currently claimed locker baseline is honest enough to build on: V1/V2 stay trusted, and the active V3 slice is either properly evidenced or explicitly demoted back to the honest current state.
@@ -28,16 +28,15 @@ Success state:
 - [x] `chat.nearby_npc_basic` records recipient / artifact proof instead of only reaching dialogue and freeform-input UI.
 - [x] A second named scenario contract (`ambient.weird_item_reaction`) exists and is honest about its current footing: runnable on the shipped fixture, still lacking real reaction/artifact proof.
 - [x] At least one reusable scenario-setup helper exists so repeated probes stop depending on debug-menu folklore.
-- [ ] A compact Josef-facing testing packet exists for the pre-holiday active-testing window.
+- [x] A compact Josef-facing testing packet exists for the pre-holiday active-testing window.
 
 Notes:
-- This lane is about creating stable footing for the hackathon push, not about polishing every last locker nuance forever.
+- This lane is checkpointed because the requested footing now exists without pretending the remaining ambient/locker gaps are solved.
 - The latest packaged chat proof is `python3 tools/openclaw_harness/startup_harness.py probe chat.nearby_npc_basic` on `dev-harness`, with recipient + prompt/response artifacts recorded at `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json`.
+- The Josef packet now lives at `doc/josef-hackathon-runway-testing-packet-2026-04-06.md`.
 - Harness screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely demote a runtime-compatible captured game window to `inconclusive_version_mismatch`.
 - `ambient.weird_item_reaction` now tails the correct repo-level `config/llm_intent.log`; its latest packaged run at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` is honest about the remaining gap: `inconclusive_no_new_artifacts` on a runtime-compatible build, not a fake no-artifact result from watching `debug.log`.
 - `locker.weather_wait` is now explicitly demoted back to blocked status: the shipped `basecamp_dev_manual_2026-04-02` fixture does not contain a `CAMP_LOCKER` zone, so the contract cannot honestly claim locker-service evidence until a locker-capable fixture/restaging path exists.
-- The first landed scenario-setup helper is `debug_spawn_follower_npc`, wired to the current debug-menu path `}`, `s`, `f` so harness scenarios can spawn a nearby follower without hand-piloted menu folklore.
-- The harness now also has a reusable `debug_force_temperature` helper on `}`, `m`, `T` plus a generic `wait` step; the blocker is no longer missing UI control, it is missing a locker-capable probe fixture.
 - The next distinguished feature runways (chat interface, tiny ambient-trigger NPC model) should stand on top of this lane rather than compete with it.
 
 ---

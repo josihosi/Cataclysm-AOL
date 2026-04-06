@@ -189,34 +189,19 @@ Meaning:
 
 ## Pending probes
 
-### Active queue — hackathon runway: stabilization + harness
+No active probe queue right now.
+The stabilization/harness lane is checkpointed, so further probe work should wait for a real next pick instead of ritual reruns.
 
-1. extend the current harness uplift slice from `doc/harness-first-slice-plan-2026-04-06.md`
-   - keep the reusable live probe contract/profile/save path honest on the current binary
-   - keep post-load readiness honest; the `lastworld.json` flip alone was not sufficient for the chat path
-   - keep runtime blockers explicit so blocked probe classes fail fast instead of pretending they are behavior verdicts
-   - avoid probe-method drift mid-claim
-2. extend scenario-setup helpers beyond the currently landed follower/item/monster/drop slice
-   - keep `debug_spawn_follower_npc` on the current `}`, `s`, `f` path honest if debug bindings drift
-   - keep `debug_spawn_item` on the current `}`, `s`, `w` path honest if the wish filter / amount prompt behavior shifts
-   - keep `debug_spawn_monster` on the current `}`, `s`, `m` path honest if the wish filter / target-confirm behavior shifts
-   - keep `drop_item(...)` honest on `d` if inventory filtering or amount-prompt behavior shifts
-   - only add assign-NPC helper(s) if a concrete alternate-restaging or stronger-probe need actually appears
-3. replace or restage the locker probe save shape before using `locker.weather_wait` again
-   - the shipped `basecamp_dev_manual_2026-04-02` fixture lacks `CAMP_LOCKER`, so the current contract is correctly parked as a fixture blocker rather than a behavior verdict
-4. move `ambient.weird_item_reaction` from runnable-but-empty to first real reaction proof
-   - current honest packet is `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json`
-   - keep the contract on repo-level `config/llm_intent.log`; the missing evidence is ambient target/response output, not more log-path or repo-HEAD bookkeeping
-   - next probe work should improve trigger/staging/wait timing rather than re-litigate whether the scenario itself runs
-5. after the probe/helper footing is stronger, package a compact Josef-facing testing packet before the pre-holiday active-testing window gets chewed up by setup friction
-   - `chat.nearby_npc_basic` is now valid packet material via `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json`
-6. do not spend more runs collecting fresh locker packets unless code changes or the harness work invalidates the recorded current-save path
-7. keep per-NPC personality nuance and decorative side quests out unless the stabilization/harness work exposes a truly smaller corrective slice
+Clean parked follow-ups:
+1. **chat interface over dialogue branches** once Josef explicitly wants the feature lane opened
+2. **ambient-trigger reaction proof** by improving live trigger/staging around `ambient.weird_item_reaction` instead of relitigating harness bookkeeping
+3. **locker-capable fixture/restaging** so `locker.weather_wait` can become a real reusable regression instead of a known blocked contract
 
 ### Non-blocking Josef notes
 
-None yet for the hackathon runway lane.
-If later needed, add notes here without turning them into blockers.
+- Compact pre-holiday packet: `doc/josef-hackathon-runway-testing-packet-2026-04-06.md`
+  - ready now: `chat.nearby_npc_basic` via `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json`
+  - current honest caveats: ambient is still `inconclusive_no_new_artifacts`; locker probe is still fixture-blocked
 
 ---
 

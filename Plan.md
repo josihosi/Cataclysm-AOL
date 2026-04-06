@@ -37,55 +37,25 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Hackathon runway: stabilization + harness
+## 1. Current delivery target — waiting for next greenlight after stabilization/harness
 
-**Status:** GREENLIT / ACTIVE
+**Status:** WAITING FOR GREENLIGHT
 
-Josef now has a real external deadline: OpenAI hackathon in roughly two weeks, with only about five active human-testing days before holiday.
-That changes the top job.
+The stabilization/harness lane reached its intended handoff state for now:
+- the current locker baseline stayed honest enough to build on
+- the harness now has a reliable packaged live-probe path with explicit **screen** / **tests** / **artifacts** reporting
+- a compact Josef packet now exists at `doc/josef-hackathon-runway-testing-packet-2026-04-06.md`
 
-Current job:
-- make Cataclysm-AOL stable enough that later hackathon work can stand on it without swamp logic
-- improve the harness enough that Schani can help meaningfully with playtesting instead of relying on fragile ritual probes
-- keep current locker work honest and narrow while doing that, rather than continuing V3 nuance for its own sake
+Do **not** keep grinding the same harness packets by ritual now that the packet exists.
+If Josef does not pick a next lane yet, leave the state parked instead of inventing filler work.
 
-Working priority inside this lane:
-1. **stabilization tail on the current locker work**
-   - preserve trusted V1/V2 baseline
-   - keep V3 honest: finish the current narrow question or demote it back to the honest state
-2. **first real harness uplift**
-   - establish one reliable live probe path with explicit screen/tests/artifacts boundaries
-   - make that path reusable instead of re-invented each run
-3. **prepare the runway for the distinguished hackathon features**
-   - chat-style interface in place of dialogue-branch soup
-   - tiny ambient-trigger model for weird-event NPC reactions
-
-### Immediate next move
-- the current locker state is still honest enough to build on: the hot-side Ricky packet is recorded, and the `antarvasa` outcome remains the current one-item-per-slot pants policy rather than a hidden blocker
-- the first concrete harness uplift still stands in `tools/openclaw_harness/startup_harness.py`:
-  - `probe locker.weather_wait`
-  - dedicated `dev-harness` profile + `basecamp_dev_manual_2026-04-02` fixture sourced from `dev`
-  - explicit **screen** / **tests** / **artifacts** report split
-  - startup screenshots audit the running window title against repo HEAD so stale binaries stop masquerading as current proof
-  - direct window-image capture now records `window_id` / `window_index` for startup and probe screenshots, so blocked runs and per-step captures no longer disappear into Peekaboo element-detection timeouts; any remaining version mismatch is now a genuine binary-freshness call rather than screenshot-tool fog
-- the chat extension is now in its first actually-proven packaged state instead of the old fake blocker packet:
-  - profile loading still merges `tools/openclaw_harness/profiles/master.json` into non-`master` profiles, so shared startup policy reaches `dev-harness`
-  - probe contracts can script key/text steps and choose artifact logs instead of only “advance turns + grep debug.log”
-  - `chat.nearby_npc_basic` still installs the captured `dev` profile snapshot before the save fixture, so `dev-harness` inherits the saved chat/keybinding state the probe expects
-  - the harness now reads LLM artifacts from the repo-level `config/llm_intent.log`, which is where current game code writes prompt/response and ambient logs
-  - startup screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely invalidate a runtime-compatible captured build
-  - the latest packaged chat run at `.userdata/dev-harness/harness_runs/20260406_092352/probe.report.json` now lands `artifacts_matched` with recipient + prompt/response proof for `Bruna Priest`
-- keep following `doc/harness-first-slice-plan-2026-04-06.md`, but extend the landed pattern instead of restarting from zero
-- next concrete steps:
-  - move `ambient.weird_item_reaction` from “runnable but vague” to real reaction proof; the latest packaged run at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` now tails the correct `llm_intent.log` path and honestly returns `inconclusive_no_new_artifacts`, so the remaining gap is the live trigger/staging, not harness bookkeeping
-  - keep extending the landed scenario-setup helper wave so the harness can keep moving on unblocked live-probe work
-    - `debug_spawn_follower_npc` is already landed on `}`, `s`, `f`
-    - `debug_spawn_item` / `debug_spawn_monster` now cover the current wish paths `}`, `s`, `w` and `}`, `s`, `m`
-    - `drop_item(...)` now covers the normal inventory drop path (`d`) via either raw slot selection or filtered visible item text
-    - `ambient.weird_item_reaction` is runnable on the shipped `basecamp_dev_manual_2026-04-02` fixture; do not keep pretending it is helper-blocked
-    - any future assign-NPC helper work is now for alternate restaging / stronger probe variants, not for making the current ambient contract runnable
-  - keep `locker.weather_wait` explicitly blocked until a locker-capable fixture/restaging path exists; the shipped `basecamp_dev_manual_2026-04-02` save does not contain a `CAMP_LOCKER` zone, so more no-artifact reruns are just theater
-- once one more unblocked probe/helper slice is in place, batch a compact Josef-facing testing packet instead of sending piecemeal asks
+### Parked options Josef can greenlight next
+1. **Chat interface over dialogue branches**
+   - start replacing the brittle dialogue-branch surface with the cleaner chat-style interaction path the harness now exercises
+2. **Ambient-trigger reaction lane**
+   - use the runnable `ambient.weird_item_reaction` contract to move from honest `inconclusive_no_new_artifacts` into the first real sparse/event-gated ambient reaction proof
+3. **Locker-capable harness restaging**
+   - build or capture a fixture/restaging path with a real `CAMP_LOCKER` zone so `locker.weather_wait` becomes a reusable live regression instead of a permanently parked known blocker
 
 ---
 
