@@ -12,13 +12,12 @@ Patrol Zone v1 is the active lane.
 
 Execution queue:
 1. follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
-2. package one honest live patrol proof
-   - lone guard on disconnected posts
-   - staffed connected cluster with distinct holders
-   - report screen / tests / artifacts separately
-3. if live probing stalls, add only the narrowest helper/instrumentation that makes the patrol proof legible
-4. keep reports honest
-   - separate implemented deterministic contract from live proof
+2. tighten the live patrol **screen** packet so loop-vs-hold reads visually
+   - keep the disconnected-post and connected-cluster harness scenarios
+   - prefer framing/capture/fixture tweaks over new mechanic work
+   - do not rely on artifact logs alone to explain the screenshot
+3. keep reports honest
+   - separate deterministic contract, live artifacts, and screen legibility
    - do not count zone plumbing, prose, or plausible-looking motion as success by themselves
    - if something smells too smooth, audit it
 

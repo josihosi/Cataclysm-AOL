@@ -46,13 +46,17 @@ Current honest state:
 - the deterministic planner contract is real: patrol workers are the assigned camp NPCs with patrol priority > 0, the planner splits them into day/night rosters, and allocation stays deterministic across the reference disconnected-post and connected-cluster cases
 - the sticky-roster / interrupt-whitelist contract is real too: current shift rosters latch for the whole day/night block, routine chores do not steal active guards mid-shift, and urgent breaks can consume reserve backfill without rebalancing the whole roster
 - deterministic on-map runtime intent is now real: a guard with one fully staffed connected cluster holds a distinct tile, while understaffed or multi-post assignments walk a fixed loop that advances every 10 in-game minutes; off-shift patrol workers fall back to ordinary camp downtime instead of clinging to stale posts
-- narrow deterministic coverage now lives in `camp_patrol_zone_surface_and_sorted_tiles`, `camp_patrol_zone_clusters_use_4_way_connectivity`, `camp_patrol_worker_pool_uses_patrol_priority_surface`, `camp_patrol_planner_contract`, `camp_patrol_interrupt_contract`, `camp_patrol_shift_roster_latches_until_boundary`, and `camp_patrol_runtime_contract`
-- latest narrow evidence: repaired fresh `make -j4 tests` plus `./tests/cata_test "[camp][patrol]"` on 2026-04-06 after the on-map runtime-order change
-- there is still **no patrol-specific live proof yet**
+- legacy-save patrol control-surface drift is now covered too: old serialized camp-worker job maps can omit newer task keys, so `job_data::deserialize` now reseeds missing default camp jobs and keeps `ACT_CAMP_PATROL` available on older saves/fixtures
+- narrow deterministic coverage now lives in `legacy_job_data_load_adds_missing_patrol_priority_surface`, `camp_patrol_zone_surface_and_sorted_tiles`, `camp_patrol_zone_clusters_use_4_way_connectivity`, `camp_patrol_worker_pool_uses_patrol_priority_surface`, `camp_patrol_planner_contract`, `camp_patrol_interrupt_contract`, `camp_patrol_shift_roster_latches_until_boundary`, and `camp_patrol_runtime_contract`
+- latest narrow evidence: repaired fresh `make -j4 tests` plus `./tests/cata_test "[camp][patrol]"` on 2026-04-06 after the save-compat reseed fix
+- live patrol proof now exists as separate screen/tests/artifacts packets:
+  - `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_193626/probe.report.json` with `verdict: artifacts_matched`, `workers=2 roster=1 active=1`, and a looping disconnected-post route
+  - `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_194336/probe.report.json` with `verdict: artifacts_matched`, `workers=4 roster=2 active=2`, and two distinct hold targets on a staffed connected cluster
+- the remaining honest gap is **screen legibility**: the artifact logs clearly distinguish loop vs hold, but the current full-window screenshots do not make that contrast obvious enough on their own
 
 What counts next:
-- one honest live patrol packet with separate screen / tests / artifacts evidence
-- if that live probe stalls, only the narrowest helper/instrumentation that makes patrol behavior legible
+- tighten only the smallest screen-framing/helper path that makes the live hold-vs-loop contrast readable without leaning on the artifact log
+- if that stalls, add only the narrowest helper/instrumentation that makes patrol behavior visually legible
 
 ### Existing baseline that should not be mistaken for patrol proof
 
@@ -72,11 +76,11 @@ What counts next:
 
 ### Active queue — Patrol Zone v1
 
-1. package one honest live patrol proof with separate **screen** / **tests** / **artifacts** evidence
-   - lone guard on disconnected posts
-   - staffed connected cluster with distinct holders
-2. keep the helper idea `sustain_npc` available if a live patrol probe genuinely needs it
-3. if the live packet exposes confusing behavior, tighten only the smallest patrol constants/docs needed to explain it
+1. tighten the existing patrol **screen** packet so loop-vs-hold reads clearly from the image itself
+   - `patrol.disconnected_live` should still show the looping disconnected-post case
+   - `patrol.connected_live` should still show the staffed connected-cluster hold case
+2. keep the helper idea `sustain_npc` available only if a future patrol probe genuinely needs it
+3. if the improved screen packet still exposes confusing behavior, tighten only the smallest patrol constants/docs needed to explain it
 
 ### Anti-hallucination rule for this lane
 
@@ -101,11 +105,11 @@ If the story starts sounding cleaner than the evidence, stop and audit.
 
 ### Active-lane handoff block
 
-- **finish line:** live-proof packet exists, patrol reads clearly in play, and the feature still looks like simple v1 patrol rather than smart-zone soup
-- **deterministic tests:** topology, planner contract, sticky roster/interrupt contract, and hold-vs-loop runtime intent coverage are in place
-- **agent live proof:** one honest packaged patrol scenario with separate screen/tests/artifacts evidence
-- **Josef ask:** none yet; batch visually important patrol questions together once a real live packet exists
-- **likely tweak round:** any remaining patrol legibility/constants cleanup after the first live packet
+- **finish line:** the packaged live-proof packet already exists; the remaining close-out is for patrol to read clearly enough in play while still looking like simple v1 patrol rather than smart-zone soup
+- **deterministic tests:** topology, planner contract, sticky roster/interrupt contract, hold-vs-loop runtime intent coverage, and legacy save-compat priority-surface coverage are in place
+- **agent live proof:** packaged disconnected-loop and connected-hold scenarios both exist with separate screen/tests/artifacts evidence
+- **Josef ask:** none yet; batch visually important patrol questions together only if the improved screen packet is worth human eyes
+- **likely tweak round:** screen-legibility cleanup first, then any tiny constants/docs cleanup if the improved packet still reads oddly
 
 ### Non-blocking Josef notes
 

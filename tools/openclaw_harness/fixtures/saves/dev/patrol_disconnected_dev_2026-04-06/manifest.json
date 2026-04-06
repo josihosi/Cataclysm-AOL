@@ -1,0 +1,5 @@
+{
+  "name": "patrol_disconnected_dev_2026-04-06",
+  "source_fixture": "basecamp_dev_manual_2026-04-02",
+  "description": "Harness-owned patrol probe fixture derived from the basecamp dev baseline, with the patrol-capable camp provide restored and four disconnected single-tile patrol posts for the lone-loop case."
+}
