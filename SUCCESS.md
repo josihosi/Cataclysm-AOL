@@ -42,6 +42,28 @@ Notes:
 
 ---
 
+## Smart Zone Manager v1
+
+Status: GREENLIT / QUEUED AFTER PATROL
+
+Success state:
+- [ ] One explicit one-off smart-zoning action exists for Basecamp.
+- [ ] The v1 creates exactly one crafting niche, one food/drink niche, and one equipment niche.
+- [ ] Support placement exists for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
+- [ ] The corrected fire layout is implemented: fire tile = `SOURCE_FIREWOOD`, adjacent `splintered`, nearby wood.
+- [ ] Anchor selection is flag/category-first with floor fallback.
+- [ ] Existing sorting/subcategory machinery is reused by default unless a concrete conflict forces a custom-zone/path override.
+- [ ] Placement is deterministic and non-destructive by default.
+- [ ] Deterministic tests exist for anchor choice / zone choice / no-destructive-overwrite behavior.
+- [ ] Proportional live proof is recorded when the lane becomes active.
+
+Notes:
+- Canonical contract lives at `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`.
+- This lane is greenlit now, but queued behind Patrol Zone v1 unless Josef explicitly reprioritizes.
+- Keep this focused on basecamp auto-layout helper behavior, not patrol/locker automation or smart-zone-manager soup.
+
+---
+
 ## Locker-capable harness restaging
 
 Status: CHECKPOINTED / DONE FOR NOW
