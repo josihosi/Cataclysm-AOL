@@ -49,6 +49,13 @@
     "display_field": true
   },
   {
+    "id": "fd_basecamp_patrol_zone",
+    "type": "field_type",
+    "intensity_levels": [ { "name": "basecamp patrol zone", "sym": "P", "dangerous": false } ],
+    "priority": 1,
+    "display_field": true
+  },
+  {
     "id": "fd_bionics_loot_zone",
     "type": "field_type",
     "intensity_levels": [ { "name": "bionics loot zone", "sym": "b", "dangerous": false } ],

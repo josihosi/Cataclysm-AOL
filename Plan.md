@@ -1,232 +1,164 @@
-# C-AOL Plan
+# Plan
 
-## What this document is for
-This is the working roadmap for the **next** meaningful stretch of Cataclysm: Arsenic and Old Lace.
-It should stay practical:
+Canonical roadmap for Cataclysm-AOL.
 
-1. What is already done enough to stop pretending it is still "next"?
-2. What are we actively doing now?
-3. What should happen after that?
-4. What ideas are real, but explicitly **not now**?
+This file answers one question: **what should the agent advance next?**
+It is not a changelog, not a graveyard of crossed-off substeps, and not a place to preserve every historical detour.
+Rewrite it as reality changes.
 
-This file is not a trophy shelf and not a wish-list landfill.
-If something is done, move it out of the active plan.
-If something is not happening now, park it clearly instead of letting it haunt chat.
+## File roles
 
----
+- **Plan.md** — canonical roadmap and current delivery target
+- **SUCCESS.md** — success-state ledger / crossed-off exit criteria for roadmap items
+- **TODO.md** — short execution queue for the current target only
+- **TESTING.md** — current validation policy, latest relevant evidence, and pending probes
+- **TechnicalTome.md** — durable mechanic notes, not daily state tracking
+- **COMMIT_POLICY.md** — checkpoint rules to prevent repo soup
 
-## Current project state
+If these files disagree, **Plan.md wins** and the other files should be repaired.
 
-### Done enough to remove from the active plan
-These items are no longer the immediate roadmap:
+## Working rules for agents
 
-- `dev` is the active iteration branch again.
-- Release-branch flow was cleaned up around `dev`, `master`, and the `port/*` targets.
-- The startup harness can build, launch, and load a known save without Josef hand-driving every menu.
-- The Basecamp LLM / request-board v1 slice landed on `dev`:
-  - request data model
-  - bulletin-board scratchpad UI
-  - spoken camp craft order intake
-  - request approval / retry / cancel / status controls
-  - request-number references
-  - worker reassignment / retry handling
-  - tool reclaiming from hoarded camp stock
-  - save/load persistence for board state
-- Startup harness log handling was cleaned up enough to ignore the known inherited `attack_vector` startup noise and to evaluate filtered **per-run debug deltas** instead of dragging cumulative old junk into every new run.
-
-These are now baseline reality, not the current milestone.
-
-### Current branch policy
-- Do active iteration on `dev`.
-- Promote `dev` to `master` when the current slice is stable and verified.
-- Use `master` as the source branch for orchestrated propagation to `port/*`.
-
-That remains the default until reality humiliates it again.
+- Do **not** mechanically grab the first unchecked-looking thing from some list.
+- Follow the current delivery target below and move it to its **next real state**.
+- Josef being unavailable for playtesting is **not** a blocker by itself.
+- When a target is waiting on Josef, move to the next best unblocked target.
+- If no good unblocked target remains, send Josef a short parked-options note so he can greenlight the next lane; do not just keep revalidating the old packet.
+- Prefer batching human-only asks where practical. One useful packet with two real product questions beats two tiny pings.
+- Keep these files lean. Remove finished fluff from `TODO.md` and `TESTING.md` instead of piling up crossed-off archaeology.
+- Each real roadmap item needs an explicit success state in `SUCCESS.md` (or an equally explicit inline auxiliary) so completion is visible instead of guessed.
+- Cross off reached success-state items; only remove the whole roadmap item from `Plan.md` once its success state is fully crossed off / done.
+- Prefer agent-side playtesting first. Josef should be used for product judgment, feel, priority calls, or genuinely human-only checks.
+- Validation should match risk:
+  - docs-only change -> no compile
+  - small local code change -> narrow compile/test
+  - broad or risky code change, or a Josef handoff -> broader rebuild / startup harness as needed
+- Follow `COMMIT_POLICY.md`. Do not let the repo turn into one giant dirty blob.
 
 ---
 
-## Immediate strategic priority
+## 1. Current delivery target — Patrol Zone v1
 
-## Harden Basecamp AI v1 so it stays working
+**Status:** GREENLIT / ACTIVE
 
-The Basecamp request-board slice exists now.
-That changes the priority.
-The biggest risk is no longer "can we build this at all?".
-It is now:
-- silent regressions,
-- weak feedback when camp staff interprets orders,
-- and future edits breaking the board/speech path because nothing pins behavior down.
+Josef has now greenlit **Patrol Zone v1**.
+This is the next real lane.
 
-So the next pass should be a **small hardening pass**, not a giant new feature binge.
+Current job:
+- implement a Zone Manager patrol zone as a real camp job with deterministic scheduling/coverage behavior
+- follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
+- keep the implementation brutally simple, legible, and testable
 
----
+### Immediate next move
+- the topology spine is landed:
+  - patrol zone type
+  - 4-way connected clustering
+- next land the deterministic planner contract
+- then land sticky shift roster + interrupt-whitelist behavior
+- then land on-map hold-vs-loop behavior
+- only after the deterministic contract is real should live proof packaging happen
+- keep watching for hallucinations, fake progress, and prose outrunning code/tests/live proof
+- do **not** drift into smart-zone-manager cleverness during v1
 
-## Milestone 1: Basecamp AI hardening pass
-
-### Goal
-Make the new Basecamp board / speech layer feel finished enough to trust:
-- covered by targeted tests,
-- a little more alive in speech,
-- and easier to understand when something is queued, blocked, or launched.
-
-### Active scope
-This is what we are doing now.
-
-#### 1. Add regression coverage for spoken-board parsing and request flow
-Targeted tests should cover the highest-value inputs first:
-- craft requests
-- cancel requests
-- approve / launch requests
-- status queries
-- request-number references
-- "all ready work orders" style commands
-
-The goal is not a perfect universal test matrix.
-The goal is to stop the obvious speech/board grammar from quietly rotting.
-
-#### 2. Add short practical barks for the spoken board workflow
-Camp staff should give short useful spoken feedback for:
-- request heard and pinned
-- request blocked
-- request launched
-- request cancelled
-- board empty / board summary
-- ambiguous or missing request references
-
-Keep these short and functional.
-This is not a radio drama.
-
-#### 3. Tighten the finish-line verification loop
-The working finish line for this slice remains:
-- implemented on `dev`
-- compiles
-- game launches
-- save loads successfully
-- no crash
-- no Basecamp-specific debug/pop-up nonsense from this feature path
-
-The harness should remain strict enough to catch real problems without treating inherited upstream startup noise like divine punishment.
-
-### Practical success criteria for this milestone
-This hardening pass is successful if:
-- the main spoken board commands have regression coverage,
-- the camp gives short readable feedback instead of only third-person bookkeeping,
-- the latest `dev` build still compiles,
-- the game launches and loads the known save,
-- and the remaining harness noise is generic startup clutter rather than fresh Basecamp breakage.
+### Later discussion topics once Patrol Zone v1 runs dry
+1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
+2. discuss/prototype a **smart zone manager**
 
 ---
 
-## Milestone 2: Basecamp AI quality-of-life pass
+## 2. Checkpointed — Locker-capable harness restaging
 
-This is the next logical stretch **after** the hardening pass, not now.
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-### Goal
-Make the board faster to read and less annoying to operate.
+This lane is now considered done for now because the bundled success state in `SUCCESS.md` is checked:
+- a real locker-capable fixture/restaging path exists
+- `locker.weather_wait` is no longer blocked on missing fixture shape
+- a fresh packaged run reports **screen** / **tests** / **artifacts** separately
+- the result is documented reviewer-cleanly as harness/fixture work on existing locker behavior
 
-### Candidate scope
-- sort active requests ahead of archived ones
-- clearer one-line status labels
-- clearer blocker summaries
-- clearer ETA display
-- clearer assigned-worker display
-- better grouping for active / blocked / archived requests
-- bulk actions that stay sane:
-  - clear completed
-  - approve all ready
-  - retry blocked
-
-This is boring UI glue, which is exactly why it matters.
+If later fixture drift, harness drift, or locker runtime evidence breaks any one of those bundled claims, reopen this lane immediately.
 
 ---
 
-## Milestone 3: Better spoken disambiguation and camp-side queries
+## 3. Checkpointed — Locker Zone V2
 
-Useful, but explicitly **after** the hardening and QoL passes.
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-### Goal
-Make spoken Basecamp control less brittle and more helpful when the player is vague.
+V2 is now considered done for now because the bundled V2 task set in `SUCCESS.md` is checked:
+- managed ranged loadouts can pull up to two compatible magazines from locker supply
+- selected compatible magazines can be topped off from locker-zone ammo and the supported weapon reloaded from that supply
+- deterministic coverage exists for the V2 contract
+- proportional runtime proof is recorded on the current binary
 
-### Candidate scope
-- disambiguation when multiple recipes or work orders match
-- richer quantity parsing
-- follow-ups like:
-  - "make 5 more"
-  - "cancel request 12"
-  - "status on 7"
-- camp capability queries such as:
-  - "what can we make?"
-  - "what is blocked?"
-  - "who is free?"
-  - "what is queued?"
-
-This is where the board starts feeling like a foreman tool instead of just a smarter clipboard.
+If later code work or runtime evidence shows any one of those bundled claims is false or incomplete, reopen V2 immediately.
 
 ---
 
-## Milestone 4: Deeper feasibility / planning summaries
+## 4. Checkpointed — Locker Zone V1
 
-Also real, also not now.
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-### Goal
-Expose why a request is or is not startable without making the player perform archaeology.
+V1 is only considered done because the bundled V1 task set in `SUCCESS.md` is fully checked.
+That bundled close-out is meant to stop false completion:
+- locker surface/control exists as a real zone-manager + camp-policy feature
+- locker outfitting core exists as real planner/service behavior
+- locker maintenance rhythm exists as real dirty/queue/reservation behavior
+- V1 has deterministic + proportional runtime proof recorded
 
-### Candidate scope
-Per-request summaries for:
-- missing tools
-- missing ingredients
-- liquid storage blockers
-- estimated work time
-- likely best worker
-- subcraft / recursive planning hints
-
-This would be valuable, but it is also where complexity starts breeding in dark corners.
-Do this only once the current board behavior is stable and well-covered.
+If later code work shows any one of those bundled claims is false or incomplete, reopen V1 immediately.
 
 ---
 
-## Not-now parking lot
+## 5. Checkpointed — post-Locker-V1 Basecamp follow-through
 
-These are legitimate ideas that should **not** displace the current hardening pass.
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-### Action-status / failure-reason layer
-Still worthwhile as a broader architecture direction, especially for:
-- `look_around`
-- `look_inventory`
-- `attack=<target>`
+This queue reached its exit criteria for now:
+- the board/job log packet is legible enough to compare against the deterministic router proof
+- the deterministic board packaging is cleaner/upstream-friendlier
+- the richer structured treatment now follows the board-emitted `next=` tokens instead of dropping straight back to spoken bark
+- the testing/docs packet describes the closed state instead of an open queue
 
-But it is not the current stretch.
-The Basecamp board is already real and needs stabilization first.
-
-### Broader automation harness growth
-Also worthwhile, especially for:
-- richer smoke scenarios
-- fixture-save management
-- debug-menu scenario setup
-- broader release validation
-
-But the first harness slice already exists and is good enough for the current Basecamp finish-line work.
-Do not let harness ambition eat the whole schedule again.
-
-### Curated summary coverage / content polish
-Nice side work, not the structural priority.
-Flavor can continue opportunistically, but it should not crowd out code hardening.
+Keep this closed unless Josef explicitly reopens Basecamp prompt follow-through or a later change breaks the structured board/job lane again.
 
 ---
 
-## Recommended implementation order
+## 6. Checkpointed — LLM-side board snapshot path
 
-### First
-- Add targeted regression tests for spoken Basecamp request parsing and board references.
+**Status:** CHECKPOINTED
 
-### Second
-- Add short useful barks for the spoken board workflow.
+This slice reached its exit criteria for now:
+- routing proof exists on the actual camp request router, not only on helper builders
+- the richer structured/internal `show_board` lane is covered with deterministic evidence
+- the short spoken board bark stayed separate
+- the testing/docs packet can now describe current truth instead of an open routing question
 
-### Third
-- Re-run compile + startup/load verification on `dev` and confirm the feature path stays clean.
+Keep this out of the active queue unless later code changes break the route again or a new greenlit slice explicitly extends it.
 
-### Fourth
-- If that pass is stable, move to board QoL improvements from Milestone 2.
+---
 
-That is enough work already.
-There is no need to turn one successful half-day into a full municipal bureaucracy.
+## 7. Hackathon-reserved feature lanes — do not touch before the event
+
+These are intentionally **reserved for the hackathon itself**.
+They should stay visibly separate from the current repo-footing/harness work so reviewers do not mistake scaffolding for early feature implementation.
+
+1. **Chat interface over in-game dialogue branches**
+   - the future feature lane
+   - current harness work may exercise nearby-NPC/freeform chat controls, but that is only test scaffolding and **not** this feature
+2. **Tiny ambient-trigger NPC model**
+   - the future feature lane
+   - current harness work may stage weird-item scenarios and artifact checks, but that is only test scaffolding/observability and **not** this feature
+
+Do not start them early, do not half-land them, and do not describe scaffolding as partial completion.
+
+---
+
+## 8. Documentation discipline
+
+If the structure starts bloating again, apply this rule:
+- `Plan.md` should be readable in a minute
+- `TODO.md` should show only the current execution queue
+- `TESTING.md` should show only current policy, latest relevant evidence, and pending probes
+- `COMMIT_POLICY.md` should stop the dirty tree from becoming a lifestyle
+
+If a sentence exists only to remember that something used to be true, it probably belongs in git history, not here.

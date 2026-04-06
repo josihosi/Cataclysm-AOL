@@ -211,6 +211,7 @@ struct camp_locker_reservation {
 
 using camp_locker_candidate_map =
     std::map<camp_locker_slot, std::vector<const item *>>;
+using camp_patrol_cluster = std::vector<tripoint_abs_ms>;
 
 struct camp_locker_slot_plan {
   const item *kept_current = nullptr;
@@ -249,6 +250,14 @@ plan_camp_locker_loadout(
     const camp_locker_candidate_map &locker_candidates,
     const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt);
+std::vector<tripoint_abs_ms>
+collect_sorted_camp_patrol_tiles(const tripoint_abs_ms &origin,
+                                 const faction_id &fac,
+                                 int range = MAX_VIEW_DISTANCE);
+std::vector<camp_patrol_cluster>
+collect_camp_patrol_clusters(const tripoint_abs_ms &origin,
+                             const faction_id &fac,
+                             int range = MAX_VIEW_DISTANCE);
 
 namespace basecamp_ai {
 

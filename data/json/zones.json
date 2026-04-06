@@ -35,6 +35,13 @@
     "description": "Items in this zone are approved camp locker gear for later NPC loadout maintenance."
   },
   {
+    "id": "CAMP_PATROL",
+    "type": "LOOT_ZONE",
+    "name": "Basecamp: Patrol",
+    "display_field": "fd_basecamp_patrol_zone",
+    "description": "Tiles in this zone form the simple deterministic patrol posts and loops for basecamp guards."
+  },
+  {
     "id": "CHOP_TREES",
     "type": "LOOT_ZONE",
     "name": "Work: Chop Trees",

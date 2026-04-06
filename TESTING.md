@@ -1,130 +1,140 @@
 # TESTING
 
-This file is the canonical testing ledger for the current Cataclysm-AOL stretch.
-It separates what Schani can verify alone from what still needs Josef’s hands/eyes.
+Current validation policy and current evidence only.
 
-If a task is supposedly deterministic, it should usually show up here with a deterministic check.
-If a task is about feel, weirdness, or real gameplay sanity, it should usually show up here as Josef testing.
+This file is not a trophy wall.
+Remove stale or completed fluff instead of stacking crossed-off test history forever.
 
----
+## Validation policy
 
-## Stage meanings
-- **AGENT TESTING** — compile/tests/startup/save-load/log sanity that Schani should run.
-- **JOSEF TESTING** — real gameplay, UX, edge-case, and “does this feel stupid?” checks.
-- **TWEAK** — follow-up pass after either kind of testing finds something worth fixing.
+Use the **smallest evidence that honestly matches the change**.
 
----
+- **Docs-only change** -> no compile
+- **Small local code change** -> narrow build and the narrowest relevant test target
+- **Broad or risky code change** -> broader rebuild and relevant filtered tests
+- **Before a Josef handoff** or after suspicious stale-binary behavior -> rebuild the real targets and rerun the real smoke path
 
-## Current agent-side checks
+### Agent vs Josef
 
-### Deterministic upstreamable PR slice
-- [x] Exact-word `craft` trigger tests exist and pass.
-- [x] `witchcraft` / substring false-positive regression test exists and pass.
-- [x] Craft ambiguity / blocker / quantity parsing tests exist and pass.
-- [x] Touched code compiles cleanly.
-- [x] Small PR package is explainable without dragging LLM design into the story.
+Schani should do agent-side playtesting first whenever the harness or direct in-game probing can answer the question.
+Josef should be asked only for:
+- product judgment
+- tone/feel
+- human-priority choices
+- genuinely human-only interaction
 
-### Movement-system work
-- [x] Local tactical `move=<dx>,<dy> <state>` parser/tests exist and pass.
-- [x] `wait_here` / `hold_position` suffix behavior is preserved exactly after the syntax change.
-- [x] Existing pathing / target-tile behavior still works after replacing only the LLM-facing coordinate payload.
-- [x] Overmap `dx` / `dy` parser tests exist and pass.
-- [x] Overmap `stay` / `move_omt dx=<signed_int> dy=<signed_int>` token parser tests exist and pass.
-- [x] Overmap token formatter tests exist and round-trip through the shared parser/resolver.
-- [x] Overmap origin+delta resolution reuses the same signed axis convention and preserves `stay`.
-- [x] Snapshot/prompt axis hints are present for the delta contract.
-- [x] Malformed movement falls back safely.
+Josef being unavailable is **not** a blocker by itself.
+Josef self-testing is **not** a plan blocker and does not belong in the active success state as a gate.
+If Josef-specific checks are useful, write them down as non-blocking notes so he can run them later from his own list.
+If another good agent-side lane exists, keep moving there.
+If several human-only judgments are likely soon, batch them instead of sending tiny separate asks.
 
-### Basecamp work on `dev`
-- [x] Relevant deterministic tests exist for the new routing/token layer.
-- [x] Structured `craft=<query>` / `show_board` / `show_job=<id>` / `job=<id>` / `delete_job=<id>` token parsers are covered by deterministic tests.
-- [x] Structured batch board tokens (`launch_ready_jobs`, `retry_blocked_jobs`, `clear_archived_jobs`) are covered by deterministic tests.
-- [x] Crafting-request details expose a compact deterministic handoff snapshot with stable request facts (`id` / `query` / `count` / `source`) plus exact board/detail/follow-up tokens, and the formatter is covered by deterministic tests.
-- [x] Board handoff snapshots expose stable active/archive counts plus per-job detail/action tokens, and the formatter is covered by deterministic tests.
-- [x] The Basecamp craft-handoff snapshot now loads from the shared prompt-template path (`data/llm_prompts` with `config/llm_prompts` overrides) while preserving the deterministic formatter contract via the same tests.
-- [x] `dev` build compiles.
-- [x] Game launches.
-- [x] Known save loads successfully.
-- [x] No new debug-log regressions were introduced by the slice.
+### Anti-churn rule
+
+Do not keep rerunning the same startup or test packet when it is no longer the missing evidence class.
+If startup/load is already green, and the missing proof is live behavior, then the next probe must target live behavior.
+If a target is merely waiting on Josef, do not keep revalidating it unless the code changed.
 
 ---
 
-## Current Josef-side checks
+## Current relevant evidence
 
-### Pending now
-- [ ] Live-check the follower snapshot legend change in-game:
-  - target legend shows attitude (`friendly` / `neutral` / `hostile`) plus threat
-  - lettered-target wording still feels sensible in real use
-- [ ] Run the spoken camp craft smoke packet below and note anything stupid.
-- [ ] Before calling the upstream deterministic PR slice ready, do a small hand test with that slice in place and confirm the game still launches and loads a save/world cleanly.
+### Patrol Zone v1
 
-### Spoken camp craft smoke packet (Josef)
-Use a camp with a bulletin board and at least one NPC who can plausibly craft.  Try these in normal play, not in a sterile lab if avoidable.
+Current honest state:
+- the topology spine is now real: `CAMP_PATROL` exists and patrol tiles are grouped by 4-way connected clusters
+- narrow deterministic coverage exists for that topology slice in `camp_patrol_zone_surface_and_sorted_tiles` and `camp_patrol_zone_clusters_use_4_way_connectivity`
+- latest narrow evidence: `make -j4 tests` and `./tests/cata_test "[camp][patrol]"` on 2026-04-06
+- there is still **no planner-specific deterministic coverage yet**
+- there is still **no patrol-specific live proof yet**
 
-Current narrow live-bed target when available:
-- `dev` / `Sandy Creek`
-- 2 waiting camp NPCs
-- enough stock for makeshift bandages
-- not enough stock for plain bandages or boiled bandages
-- specifically verify on current HEAD:
-  - `craft boiled` still clarifies instead of guessing
-  - `craft 5 bandages` no longer crashes
-  - board/details surface the resolved recipe and blocker state clearly enough to understand what happened
+What counts next:
+- deterministic planner tests for the staffing/allocation contract
+- then deterministic sticky-roster / interrupt-whitelist tests
+- only after those are real should any live patrol packet be packaged
 
-1. `craft knife`
-   - expected: spoken craft path triggers and produces a board request / launch / blocker response
-   - suspicious: gets ignored, routed as unrelated dialogue, or picks something that is not a knife
-2. `craft five bandages`
-   - expected: quantity survives, and the request reflects 5 rather than silently collapsing to 1
-   - suspicious: quantity is dropped or bark text disagrees with the board entry
-3. `witchcraft knife`
-   - expected: **no** craft routing, no new board request, no substring false positive
-   - suspicious: any craft/job gets queued from this
-4. `craft boiled`
-   - expected: camp asks for a clearer target instead of guessing among multiple "boiled ..." recipes
-   - suspicious: silently chooses one recipe anyway
-5. `craft boiled bandages`
-   - expected: specific phrase beats the generic `bandages` fallback and resolves to boiled makeshift bandages
-   - suspicious: plain bandages get chosen instead
-6. If a request lands blocked, read the bark + board entry
-   - expected: failure explains itself well enough to recover
-   - suspicious: vague "cannot start" wording with no actionable reason
+### Existing baseline that should not be mistaken for patrol proof
 
-### General human-eye checks
-- [ ] Does Basecamp interaction feel clearer rather than more bureaucratic?
-- [ ] Do NPC replies / barks remain understandable and not absurdly spammy?
-- [ ] Do command failures explain themselves well enough for a player to recover?
-- [ ] Does the movement grammar feel easier rather than merely more technical?
+- Locker Zone V1/V2 and locker-capable harness restaging remain checkpointed; do not rerun them by ritual just because Patrol Zone v1 is now active.
+- The repo already has one honest packaged proof format that separates **screen** / **tests** / **artifacts** (for example `locker.weather_wait` at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`). Treat that as a packaging template only, not as Patrol Zone evidence.
+- Current harness scenarios `chat.nearby_npc_basic` and `ambient.weird_item_reaction` remain hackathon-reserved scaffolding. They are not part of Patrol Zone v1.
+
+### Meaning
+
+- Patrol Zone v1 has now earned the topology row and still needs to earn the planner / roster / live-proof rows.
+- Zone-type plumbing, prose, and plausible-looking motion do **not** count as success by themselves.
+- If a patrol report sounds cleaner than the code/tests/live packet beneath it, stop and audit before touching the ledgers.
 
 ---
 
-## Signoff gates
+## Pending probes
 
-### Upstream deterministic PR slice
-Do not call this ready just because the diff exists.
-It is ready when:
-- [ ] code compiles
-- [ ] relevant deterministic tests pass
-- [ ] no LLM dependency is required
-- [ ] game launches successfully with the PR slice in place
-- [ ] save/world load succeeds with the PR slice in place
-- [ ] the actual deterministic feature gets a small manual smoke/play test
-- [ ] scope is small and reviewable
-- [ ] PR description matches the code honestly
-- [ ] Josef is not embarrassed by the behavior
+### Active queue — Patrol Zone v1
 
-### Basecamp work on `dev`
-The actual finish line remains:
-- [ ] implemented on `dev`
-- [ ] compiles
-- [ ] game launches
-- [ ] save loads successfully
-- [ ] zero new debug messages / zero crashes
-- [ ] Josef gameplay pass completed
-- [ ] tweak round completed if needed
+1. deterministic planner contract
+   - patrol pool = NPCs with patrol priority > 0
+   - two shifts
+   - 1 NPC / 4 disconnected posts
+   - 4 NPCs / 4 disconnected posts
+   - mixed clusters => one-per-cluster coverage first
+2. sticky shift roster / interrupt-whitelist contract
+   - shift-boundary roster formation
+   - routine work does not steal on-shift guards
+   - urgent disruption can break patrol
+   - reserve backfill does not trigger full-roster reshuffle
+3. on-map hold-vs-loop behavior
+   - understaffed connected cluster => fixed loop
+   - fully staffed connected cluster => distinct holders
+   - 16 NPCs / 4 connected squares stays explainable
+4. only after the deterministic contract is real, package one honest live patrol proof with separate **screen** / **tests** / **artifacts** evidence
+5. keep the helper idea `sustain_npc` available if a live patrol probe genuinely needs it
+
+### Anti-hallucination rule for this lane
+
+Do not treat any of these as success by themselves:
+- only adding patrol zone-type plumbing
+- only writing a planner without tests
+- only writing docs/spec text
+- only observing vaguely plausible NPC motion on-screen
+- only claiming the interrupt rules in prose without deterministic proof
+
+If the story starts sounding cleaner than the evidence, stop and audit.
+
+**Hackathon-reserved — do not touch before the event:**
+1. **chat interface over dialogue branches**
+   - current `chat.nearby_npc_basic` evidence is harness-only scaffolding, not feature implementation
+2. **ambient-trigger reaction lane / tiny ambient-trigger NPC model**
+   - current `ambient.weird_item_reaction` evidence is harness-only scaffolding/observability, not feature implementation
+
+**Later discussion topics, not current code lanes:**
+1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
+2. **smart zone manager**
+
+### Non-blocking Josef notes
+
+- None yet for Patrol Zone v1.
+- If a later live packet is worth Josef's eyes, batch the visually important questions together (hold-vs-loop readability, interruption readability, and whether the patrol surface feels legible) instead of drip-feeding tiny asks.
 
 ---
 
-## Notes / current annoyances
-- Full `tests/cata_test` linking on this Mac has recently hit local framework/library link trouble (SDL / SDL_ttf / CoreFoundation / FreeType). Treat that as environment work to revisit, not as an excuse to skip logic tests entirely.
-- Keep manual test packets short and concrete: what changed, what to try, expected result, suspicious edge cases.
+## Reusable commands
+
+Use these when they are actually the missing evidence, not as ritual.
+
+### Fresh full test rebuild on this Mac
+- `make -j4 tests`
+
+### Fresh tiles relink on this Mac
+- `make -j4 TILES=1 cataclysm-tiles`
+
+### Patrol-focused deterministic check
+- once patrol tests exist, run the narrowest patrol-specific `cata_test` filter or named case instead of the whole suite
+
+### Startup/load smoke for later live patrol proof
+- `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+
+## Local build caveat
+
+On this Mac, treat top-level `make -j4 tests` as the reliable path for a fresh `cata_test`.
+Avoid treating `make -C tests cata_test` as authoritative here; it has been a repeated source of toolchain/stale-build nonsense.
+Also: if you actually need a fresh tiles binary, use `make -j4 TILES=1 cataclysm-tiles`; plain `make cataclysm-tiles` is not an honest rebuild path here.
