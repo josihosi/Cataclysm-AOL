@@ -334,6 +334,10 @@ The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is st
 - Post-V1 expansion is explicit now, not fuzzy: V2 is ranged readiness / magazine + reload support from locker supply; V3 is seasonal dressing and per-NPC nuance. Do not quietly mix V3 nuance into V2.
 - The V2 magazine cap counts the weapon’s currently inserted compatible magazine as part of the two-magazine readiness budget. In other words: a managed gun with one mag in the weapon should only grab one more compatible locker mag, and locker ammo may be used to fill those selected magazines before reloading the weapon itself.
 
+### Patrol Zone roadmap note
+- Patrol Zone V1 starts with explicit `CAMP_PATROL` tiles from Zone Manager, not invisible camp metadata.
+- The topology spine groups patrol tiles by 4-way connected components only. Diagonal touching does not merge posts, so the later planner can speak in simple cluster terms instead of fuzzy area heuristics.
+
 ### Follower-NPC caveat
 Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.
 Follower command parsing can become more deterministic over time, but followers must still be able to remain reluctant, weird, characteristic, defiant, or hostile.

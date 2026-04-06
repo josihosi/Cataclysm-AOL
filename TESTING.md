@@ -42,14 +42,14 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ### Patrol Zone v1
 
 Current honest state:
-- the lane is newly greenlit
-- there is **no patrol-specific deterministic coverage yet**
-- there is **no patrol-specific live proof yet**
-- that is fine, because the first missing evidence class is topology + planner tests, not screen motion
+- the topology spine is now real: `CAMP_PATROL` exists and patrol tiles are grouped by 4-way connected clusters
+- narrow deterministic coverage exists for that topology slice in `camp_patrol_zone_surface_and_sorted_tiles` and `camp_patrol_zone_clusters_use_4_way_connectivity`
+- latest narrow evidence: `make -j4 tests` and `./tests/cata_test "[camp][patrol]"` on 2026-04-06
+- there is still **no planner-specific deterministic coverage yet**
+- there is still **no patrol-specific live proof yet**
 
 What counts next:
-- narrow deterministic tests for patrol zone surface + 4-way connected clustering
-- then deterministic planner tests for the staffing/allocation contract
+- deterministic planner tests for the staffing/allocation contract
 - then deterministic sticky-roster / interrupt-whitelist tests
 - only after those are real should any live patrol packet be packaged
 
@@ -61,7 +61,7 @@ What counts next:
 
 ### Meaning
 
-- Patrol Zone v1 starts with zero honest proof and must earn each row.
+- Patrol Zone v1 has now earned the topology row and still needs to earn the planner / roster / live-proof rows.
 - Zone-type plumbing, prose, and plausible-looking motion do **not** count as success by themselves.
 - If a patrol report sounds cleaner than the code/tests/live packet beneath it, stop and audit before touching the ledgers.
 
@@ -71,26 +71,23 @@ What counts next:
 
 ### Active queue — Patrol Zone v1
 
-1. topology spine first
-   - patrol zone type exists
-   - 4-way connected components split correctly
-2. deterministic planner contract
+1. deterministic planner contract
    - patrol pool = NPCs with patrol priority > 0
    - two shifts
    - 1 NPC / 4 disconnected posts
    - 4 NPCs / 4 disconnected posts
    - mixed clusters => one-per-cluster coverage first
-3. sticky shift roster / interrupt-whitelist contract
+2. sticky shift roster / interrupt-whitelist contract
    - shift-boundary roster formation
    - routine work does not steal on-shift guards
    - urgent disruption can break patrol
    - reserve backfill does not trigger full-roster reshuffle
-4. on-map hold-vs-loop behavior
+3. on-map hold-vs-loop behavior
    - understaffed connected cluster => fixed loop
    - fully staffed connected cluster => distinct holders
    - 16 NPCs / 4 connected squares stays explainable
-5. only after the deterministic contract is real, package one honest live patrol proof with separate **screen** / **tests** / **artifacts** evidence
-6. keep the helper idea `sustain_npc` available if a live patrol probe genuinely needs it
+4. only after the deterministic contract is real, package one honest live patrol proof with separate **screen** / **tests** / **artifacts** evidence
+5. keep the helper idea `sustain_npc` available if a live patrol probe genuinely needs it
 
 ### Anti-hallucination rule for this lane
 

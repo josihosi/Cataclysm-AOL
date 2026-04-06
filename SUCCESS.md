@@ -20,7 +20,7 @@ Use this file so completion is explicit instead of vibes-based.
 Status: ACTIVE
 
 Success state:
-- [ ] A Zone Manager patrol zone exists and patrol squares are grouped by 4-way connected clusters.
+- [x] A Zone Manager patrol zone exists and patrol squares are grouped by 4-way connected clusters.
 - [ ] Patrol exists as a real camp job with its own priority surface.
 - [ ] Deterministic planner coverage exists for the reference staffing/topology cases.
 - [ ] The active patrol roster is chosen at shift boundaries from NPCs with patrol priority > 0.

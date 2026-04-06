@@ -54,10 +54,30 @@ static const flag_id json_flag_PSEUDO("PSEUDO");
 
 static const zone_type_id zone_type_CAMP_STORAGE("CAMP_STORAGE");
 static const zone_type_id zone_type_CAMP_LOCKER("CAMP_LOCKER");
+static const zone_type_id zone_type_CAMP_PATROL("CAMP_PATROL");
 
 static const damage_type_id damage_bash("bash");
 static const damage_type_id damage_bullet("bullet");
 static const damage_type_id damage_cut("cut");
+
+namespace {
+
+bool tripoint_abs_ms_zyx_less(const tripoint_abs_ms &lhs,
+                              const tripoint_abs_ms &rhs) {
+    if( lhs.z() != rhs.z() ) {
+        return lhs.z() < rhs.z();
+    }
+    if( lhs.y() != rhs.y() ) {
+        return lhs.y() < rhs.y();
+    }
+    return lhs.x() < rhs.x();
+}
+
+void sort_tripoints_zyx(std::vector<tripoint_abs_ms> &tiles) {
+    std::sort(tiles.begin(), tiles.end(), tripoint_abs_ms_zyx_less);
+}
+
+} // namespace
 
 camp_locker_policy::camp_locker_policy() { enabled_slots.fill(true); }
 
@@ -468,6 +488,57 @@ collect_camp_locker_candidates(const std::vector<const item *> &items,
     candidates[*slot].push_back(it);
   }
   return candidates;
+}
+
+std::vector<tripoint_abs_ms>
+collect_sorted_camp_patrol_tiles(const tripoint_abs_ms &origin,
+                                 const faction_id &fac,
+                                 int range) {
+    std::unordered_set<tripoint_abs_ms> patrol_tiles =
+        zone_manager::get_manager().get_near(zone_type_CAMP_PATROL, origin, range,
+                                             nullptr, fac);
+    std::vector<tripoint_abs_ms> sorted_tiles(patrol_tiles.begin(), patrol_tiles.end());
+    sort_tripoints_zyx(sorted_tiles);
+    return sorted_tiles;
+}
+
+std::vector<camp_patrol_cluster>
+collect_camp_patrol_clusters(const tripoint_abs_ms &origin,
+                             const faction_id &fac,
+                             int range) {
+    const std::vector<tripoint_abs_ms> patrol_tiles =
+        collect_sorted_camp_patrol_tiles(origin, fac, range);
+    std::unordered_set<tripoint_abs_ms> remaining_tiles(patrol_tiles.begin(),
+                                                        patrol_tiles.end());
+    std::vector<camp_patrol_cluster> clusters;
+
+    for( const tripoint_abs_ms &seed : patrol_tiles ) {
+        if( remaining_tiles.erase(seed) == 0 ) {
+            continue;
+        }
+
+        camp_patrol_cluster cluster;
+        std::vector<tripoint_abs_ms> frontier = { seed };
+
+        while( !frontier.empty() ) {
+            const tripoint_abs_ms current = frontier.back();
+            frontier.pop_back();
+            cluster.push_back(current);
+
+            for( const tripoint &delta :
+                 { tripoint::north, tripoint::east, tripoint::south, tripoint::west } ) {
+                const tripoint_abs_ms neighbor = current + delta;
+                if( remaining_tiles.erase(neighbor) > 0 ) {
+                    frontier.push_back(neighbor);
+                }
+            }
+        }
+
+        sort_tripoints_zyx(cluster);
+        clusters.push_back(std::move(cluster));
+    }
+
+    return clusters;
 }
 
 std::vector<tripoint_abs_ms>
@@ -1015,16 +1086,7 @@ collect_sorted_camp_locker_tiles(const tripoint_abs_ms &origin,
                                            nullptr, fac);
   std::vector<tripoint_abs_ms> sorted_tiles(locker_tiles.begin(),
                                             locker_tiles.end());
-  std::sort(sorted_tiles.begin(), sorted_tiles.end(),
-            [](const tripoint_abs_ms &lhs, const tripoint_abs_ms &rhs) {
-              if (lhs.z() != rhs.z()) {
-                return lhs.z() < rhs.z();
-              }
-              if (lhs.y() != rhs.y()) {
-                return lhs.y() < rhs.y();
-              }
-              return lhs.x() < rhs.x();
-            });
+  sort_tripoints_zyx(sorted_tiles);
   return sorted_tiles;
 }
 

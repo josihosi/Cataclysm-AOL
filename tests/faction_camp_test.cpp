@@ -64,6 +64,7 @@ static const vitamin_id vitamin_mutant_toxin("mutant_toxin");
 static const zone_type_id zone_type_CAMP_FOOD("CAMP_FOOD");
 static const zone_type_id zone_type_CAMP_STORAGE("CAMP_STORAGE");
 static const zone_type_id zone_type_CAMP_LOCKER("CAMP_LOCKER");
+static const zone_type_id zone_type_CAMP_PATROL("CAMP_PATROL");
 
 static std::string find_snapshot_line(const std::string &snapshot,
                                       const std::string &prefix) {
@@ -183,6 +184,73 @@ TEST_CASE("camp_locker_zone_candidate_gathering", "[camp][locker]") {
 
   CHECK(candidates.count(camp_locker_slot::bag) == 0);
   CHECK(candidates.count(camp_locker_slot::helmet) == 0);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_patrol_zone_surface_and_sorted_tiles", "[camp][patrol]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  REQUIRE(zone_manager::get_manager().has_type(zone_type_CAMP_PATROL));
+
+  map &here = get_map();
+  const tripoint_abs_ms tile_a = here.get_abs(tripoint_bub_ms{9, 7, 0});
+  const tripoint_abs_ms tile_b = here.get_abs(tripoint_bub_ms{5, 7, 0});
+  const tripoint_abs_ms tile_c = here.get_abs(tripoint_bub_ms{5, 5, 0});
+
+  create_tile_zone("Patrol C", zone_type_CAMP_PATROL, tile_c);
+  create_tile_zone("Patrol A", zone_type_CAMP_PATROL, tile_a);
+  create_tile_zone("Patrol B", zone_type_CAMP_PATROL, tile_b);
+
+  const std::vector<tripoint_abs_ms> sorted_tiles =
+      collect_sorted_camp_patrol_tiles(tile_a, your_fac);
+
+  REQUIRE(sorted_tiles.size() == 3);
+  CHECK(sorted_tiles[0] == tile_c);
+  CHECK(sorted_tiles[1] == tile_b);
+  CHECK(sorted_tiles[2] == tile_a);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_patrol_zone_clusters_use_4_way_connectivity",
+          "[camp][patrol]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_abs_ms a0 = here.get_abs(tripoint_bub_ms{5, 5, 0});
+  const tripoint_abs_ms a1 = here.get_abs(tripoint_bub_ms{5, 6, 0});
+  const tripoint_abs_ms a2 = here.get_abs(tripoint_bub_ms{6, 6, 0});
+  const tripoint_abs_ms b0 = here.get_abs(tripoint_bub_ms{8, 8, 0});
+  const tripoint_abs_ms c0 = here.get_abs(tripoint_bub_ms{9, 6, 0});
+  const tripoint_abs_ms c1 = here.get_abs(tripoint_bub_ms{10, 6, 0});
+
+  create_tile_zone("Patrol A0", zone_type_CAMP_PATROL, a0);
+  create_tile_zone("Patrol A1", zone_type_CAMP_PATROL, a1);
+  create_tile_zone("Patrol A2", zone_type_CAMP_PATROL, a2);
+  create_tile_zone("Patrol B0", zone_type_CAMP_PATROL, b0);
+  create_tile_zone("Patrol C0", zone_type_CAMP_PATROL, c0);
+  create_tile_zone("Patrol C1", zone_type_CAMP_PATROL, c1);
+
+  const std::vector<camp_patrol_cluster> clusters =
+      collect_camp_patrol_clusters(a0, your_fac);
+
+  REQUIRE(clusters.size() == 3);
+  REQUIRE(clusters[0].size() == 3);
+  CHECK(clusters[0][0] == a0);
+  CHECK(clusters[0][1] == a1);
+  CHECK(clusters[0][2] == a2);
+
+  REQUIRE(clusters[1].size() == 2);
+  CHECK(clusters[1][0] == c0);
+  CHECK(clusters[1][1] == c1);
+
+  REQUIRE(clusters[2].size() == 1);
+  CHECK(clusters[2][0] == b0);
 
   zone_manager::get_manager().clear();
 }
