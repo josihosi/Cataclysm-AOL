@@ -400,6 +400,36 @@ def peekaboo_focus_pid(pid: int) -> None:
     subprocess.run(["peekaboo", "window", "focus", "--pid", str(pid)], check=False, capture_output=True, text=True)
 
 
+def run_peekaboo_interaction(
+    pid: int,
+    cmd: List[str],
+    *,
+    retry_delay_seconds: float = 0.15,
+) -> None:
+    peekaboo_focus_pid(pid)
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError:
+        peekaboo_focus_pid(pid)
+        if retry_delay_seconds > 0:
+            time.sleep(retry_delay_seconds)
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+
+PEEKABOO_KEY_ALIASES = {
+    "esc": "escape",
+    "backspace": "delete",
+    "enter": "return",
+}
+
+
+def normalize_peekaboo_key(raw_key: Any) -> str:
+    key = str(raw_key).strip()
+    if not key:
+        raise SystemExit("Peekaboo key cannot be empty")
+    return PEEKABOO_KEY_ALIASES.get(key.lower(), key)
+
+
 def is_printable_text_key(key: str) -> bool:
     return len(key) == 1 and key.isprintable() and key not in {"\n", "\r", "\t"}
 
@@ -416,13 +446,13 @@ def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> N
         text_buffer.clear()
 
     for raw_key in keys:
-        key = str(raw_key)
+        key = normalize_peekaboo_key(raw_key)
         if is_printable_text_key(key):
             text_buffer.append(key)
             continue
         flush_text_buffer()
         cmd = ["peekaboo", "press", key, "--pid", str(pid), "--delay", str(delay_ms)]
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        run_peekaboo_interaction(pid, cmd)
     flush_text_buffer()
 
 
@@ -430,7 +460,7 @@ def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
     if not text:
         return
     cmd = ["peekaboo", "type", text, "--pid", str(pid), "--delay", str(delay_ms), "--profile", "linear"]
-    subprocess.run(cmd, check=True, capture_output=True, text=True)
+    run_peekaboo_interaction(pid, cmd)
 
 
 def advance_turns(pid: int, count: int) -> None:
