@@ -812,6 +812,26 @@ def load_scenario(name: str) -> Dict[str, Any]:
     return loaded
 
 
+def normalize_string_list(raw_value: Any) -> List[str]:
+    if isinstance(raw_value, str):
+        return [raw_value.strip()] if raw_value.strip() else []
+    if not isinstance(raw_value, list):
+        return []
+    return [str(value).strip() for value in raw_value if str(value).strip()]
+
+
+def scenario_blocker_info(scenario: Dict[str, Any]) -> Dict[str, Any]:
+    status = str(scenario.get("status", "")).strip().lower()
+    blocked_reason = str(scenario.get("blocked_reason", "")).strip()
+    required_helpers = normalize_string_list(scenario.get("required_helpers", []))
+    is_blocked = status == "blocked" or bool(blocked_reason)
+    return {
+        "status": "blocked" if is_blocked else "active",
+        "blocked_reason": blocked_reason,
+        "required_helpers": required_helpers,
+    }
+
+
 def list_scenarios() -> List[Dict[str, Any]]:
     root = scenarios_root()
     if not root.exists():
@@ -821,12 +841,16 @@ def list_scenarios() -> List[Dict[str, Any]]:
         loaded = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(loaded, dict):
             continue
+        blocker_info = scenario_blocker_info(loaded)
         scenarios.append({
             "name": str(loaded.get("name", path.stem)),
             "path": str(path),
             "description": str(loaded.get("description", "")).strip(),
             "artifact_source": str(loaded.get("artifact_source", "debug.log")).strip() or "debug.log",
             "step_count": len(loaded.get("steps", [])) if isinstance(loaded.get("steps"), list) else 0,
+            "status": blocker_info["status"],
+            "blocked_reason": blocker_info["blocked_reason"],
+            "required_helpers": blocker_info["required_helpers"],
         })
     return scenarios
 
@@ -1275,6 +1299,7 @@ def run_json_command(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
 
 def run_probe(args: argparse.Namespace) -> int:
     scenario = load_scenario(args.scenario)
+    blocker_info = scenario_blocker_info(scenario)
     profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
     world = args.world or str(scenario.get("world", ""))
     fixture = args.fixture if args.fixture is not None else str(scenario.get("fixture", ""))
@@ -1297,6 +1322,63 @@ def run_probe(args: argparse.Namespace) -> int:
     recommended_test_command = args.test_command or str(scenario.get("recommended_test_command", "")).strip()
     artifact_source = str(scenario.get("artifact_source", "debug.log")).strip() or "debug.log"
     steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
+
+    if blocker_info["status"] == "blocked":
+        run_dir = create_run_dir(profile)
+        report = {
+            "ok": False,
+            "scenario": str(scenario.get("name", args.scenario)),
+            "contract": {
+                "profile": profile,
+                "world": world,
+                "profile_snapshot": profile_snapshot,
+                "profile_snapshot_profile": profile_snapshot_profile,
+                "fixture": fixture,
+                "fixture_profile": fixture_profile,
+                "replace_existing_worlds": replace_existing_worlds,
+                "advance_turns": advance_count,
+                "settle_seconds": settle_seconds,
+                "artifact_source": artifact_source,
+                "artifact_patterns": artifact_patterns,
+                "steps": steps,
+            },
+            "startup": {
+                "status": "not_run_blocked_scenario",
+                "run_dir": str(run_dir),
+            },
+            "steps": [
+                {
+                    "index": index,
+                    "kind": str(step.get("kind", "")).strip().lower(),
+                    "label": str(step.get("label", f"step_{index:02d}")).strip() or f"step_{index:02d}",
+                    "status": "not_run_blocked_scenario",
+                }
+                for index, step in enumerate(steps, start=1)
+            ],
+            "screen": {
+                "status": "not_run",
+                "before": {},
+                "after": {},
+            },
+            "tests": {
+                "status": "not_run",
+                "recommended_command": recommended_test_command,
+            },
+            "artifacts": {
+                "status": "not_run",
+                "path": "",
+                "source_log": artifact_source,
+                "match_patterns": artifact_patterns,
+                "matches_by_pattern": [],
+                "matched_lines": [],
+                "line_count": 0,
+            },
+            "blocked": blocker_info,
+            "verdict": "blocked_helper_gap",
+        }
+        write_json(run_dir / "probe.report.json", report)
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        return 2
 
     start_cmd = [sys.executable, str(Path(__file__).resolve()), "start", "--profile", profile]
     if world:

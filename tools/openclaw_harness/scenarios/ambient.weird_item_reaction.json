@@ -1,0 +1,48 @@
+{
+  "name": "ambient.weird_item_reaction",
+  "description": "Stage a small uncanny local event near a camp/NPC setup and watch for any ambient reaction path. The contract is packaged now, but it stays honestly blocked until harness staging stops depending on hand-piloted item-drop and NPC-assignment ritual.",
+  "status": "blocked",
+  "blocked_reason": "Current harness setup still lacks stable item-drop plus NPC staging helpers for a repeatable ambient-reaction probe.",
+  "required_helpers": [
+    "drop_item(query_or_slot)",
+    "assign_npc_to_camp(npc_selector, camp_selector) or an equivalent stable camp-staging helper",
+    "assign_npc_to_follower(npc_selector) or an equivalent stable nearby-NPC staging helper"
+  ],
+  "profile": "dev-harness",
+  "world": "Sandy Creek",
+  "profile_snapshot": "basecamp_dev_manual_2026-04-02",
+  "profile_snapshot_profile": "dev",
+  "fixture": "basecamp_dev_manual_2026-04-02",
+  "fixture_profile": "dev",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "ambient",
+    "llm"
+  ],
+  "steps": [
+    {
+      "kind": "debug_spawn_item",
+      "label": "spawn_monster_tooth",
+      "item_query": "monster tooth",
+      "count": 1,
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "drop_item",
+      "label": "drop_monster_tooth",
+      "query": "monster tooth",
+      "count": 1,
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_reaction",
+      "count": 2,
+      "settle_seconds": 1.0,
+      "capture_after": true
+    }
+  ]
+}
