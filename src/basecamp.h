@@ -246,6 +246,20 @@ struct camp_patrol_plan {
     camp_patrol_shift_plan night;
 };
 
+enum class camp_patrol_interrupt_reason : int {
+    routine_chore = 0,
+    combat_threat,
+    severe_injury,
+    collapse_need,
+    explicit_reassignment,
+};
+
+bool camp_patrol_interrupt_is_whitelisted(
+    camp_patrol_interrupt_reason reason);
+bool apply_camp_patrol_guard_interrupt(
+    camp_patrol_shift_plan &plan, const character_id &worker_id,
+    camp_patrol_interrupt_reason reason);
+
 struct camp_locker_slot_plan {
   const item *kept_current = nullptr;
   const item *selected_candidate = nullptr;
@@ -835,6 +849,13 @@ public:
     src_set = tiles;
   }
   bool has_locker_zone() const;
+  bool has_patrol_zone() const;
+  const camp_patrol_shift_plan *get_current_patrol_shift_plan();
+  bool is_worker_on_patrol_shift(const npc &worker);
+  bool interrupt_patrol_worker(
+      const character_id &worker_id,
+      camp_patrol_interrupt_reason reason =
+          camp_patrol_interrupt_reason::explicit_reassignment);
   void mark_camp_locker_dirty(npc &worker, bool high_priority = false);
   bool process_camp_locker_downtime(npc &worker);
   bool service_camp_locker(npc &worker);
@@ -867,6 +888,9 @@ private:
   std::vector<std::string> release_crafting_tools(const recipe &making,
                                                   const mapgen_arguments &args,
                                                   int batch_size);
+  tripoint_abs_ms patrol_origin() const;
+  bool refresh_patrol_shift_cache();
+  void clear_patrol_shift_cache();
 
   // Which faction owns this camp?
   mutable faction_id owner = faction_id::NULL_ID();
@@ -895,6 +919,10 @@ private:
   std::vector<basecamp_resource> resources;    // NOLINT(cata-serialize)
   std::vector<camp_llm_request> camp_requests;
   camp_locker_policy locker_policy;
+  bool patrol_shift_cache_valid = false;
+  int patrol_shift_cache_day = -1;
+  camp_patrol_shift patrol_shift_cache_kind = camp_patrol_shift::day;
+  camp_patrol_shift_plan patrol_shift_cache;
   std::vector<character_id> locker_service_queue;
   time_point locker_next_service_turn = calendar::turn_zero;
   std::vector<camp_locker_reservation> locker_reservations; // NOLINT(cata-serialize)

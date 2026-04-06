@@ -420,6 +420,154 @@ TEST_CASE("camp_patrol_planner_contract", "[camp][patrol]") {
   }
 }
 
+TEST_CASE("camp_patrol_interrupt_contract", "[camp][patrol]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+
+  SECTION("routine chores cannot steal an on-shift guard") {
+    std::vector<camp_patrol_worker> workers;
+    for (int index = 0; index < 10; ++index) {
+      workers.push_back(
+          camp_patrol_worker{character_id(500 + index), 10 - index});
+    }
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here,
+                            {{20, 20, 0}, {21, 20, 0}, {20, 21, 0}, {21, 21, 0}}),
+    };
+
+    camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    REQUIRE(plan.day.active_guards.size() == 4);
+    REQUIRE(plan.day.reserve_guards == std::vector<character_id>({character_id(508)}));
+    CHECK_FALSE(camp_patrol_interrupt_is_whitelisted(
+        camp_patrol_interrupt_reason::routine_chore));
+    CHECK_FALSE(apply_camp_patrol_guard_interrupt(
+        plan.day, character_id(500),
+        camp_patrol_interrupt_reason::routine_chore));
+    CHECK(plan.day.active_guards[0].worker_id == character_id(500));
+    CHECK(plan.day.reserve_guards == std::vector<character_id>({character_id(508)}));
+    CHECK(plan.day.clusters[0].assigned_guards ==
+          std::vector<character_id>({character_id(500), character_id(502),
+                                     character_id(504), character_id(506)}));
+  }
+
+  SECTION("urgent loss backfills from reserve without reshuffling other guards") {
+    std::vector<camp_patrol_worker> workers;
+    for (int index = 0; index < 10; ++index) {
+      workers.push_back(
+          camp_patrol_worker{character_id(600 + index), 10 - index});
+    }
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here,
+                            {{24, 20, 0}, {25, 20, 0}, {24, 21, 0}, {25, 21, 0}}),
+    };
+
+    camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    REQUIRE(plan.day.reserve_guards == std::vector<character_id>({character_id(608)}));
+    CHECK(camp_patrol_interrupt_is_whitelisted(
+        camp_patrol_interrupt_reason::combat_threat));
+    CHECK(apply_camp_patrol_guard_interrupt(
+        plan.day, character_id(600),
+        camp_patrol_interrupt_reason::combat_threat));
+    REQUIRE(plan.day.active_guards.size() == 4);
+    CHECK(plan.day.active_guards[0].worker_id == character_id(608));
+    CHECK(plan.day.active_guards[0].cluster_indices == std::vector<size_t>({0}));
+    CHECK(plan.day.active_guards[1].worker_id == character_id(602));
+    CHECK(plan.day.active_guards[2].worker_id == character_id(604));
+    CHECK(plan.day.active_guards[3].worker_id == character_id(606));
+    CHECK(plan.day.reserve_guards.empty());
+    CHECK(plan.day.clusters[0].assigned_guards ==
+          std::vector<character_id>({character_id(602), character_id(604),
+                                     character_id(606), character_id(608)}));
+  }
+
+  SECTION("urgent loss without reserve leaves a gap instead of reshuffling") {
+    std::vector<camp_patrol_worker> workers;
+    for (int index = 0; index < 8; ++index) {
+      workers.push_back(camp_patrol_worker{character_id(700 + index), 8 - index});
+    }
+    const std::vector<camp_patrol_cluster> clusters = {
+        make_patrol_cluster(here,
+                            {{28, 20, 0}, {29, 20, 0}, {28, 21, 0}, {29, 21, 0}}),
+    };
+
+    camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+    REQUIRE(plan.day.reserve_guards.empty());
+    CHECK(apply_camp_patrol_guard_interrupt(
+        plan.day, character_id(700),
+        camp_patrol_interrupt_reason::explicit_reassignment));
+    REQUIRE(plan.day.active_guards.size() == 3);
+    CHECK(plan.day.active_guards[0].worker_id == character_id(702));
+    CHECK(plan.day.active_guards[1].worker_id == character_id(704));
+    CHECK(plan.day.active_guards[2].worker_id == character_id(706));
+    CHECK(plan.day.clusters[0].assigned_guards ==
+          std::vector<character_id>({character_id(702), character_id(704),
+                                     character_id(706)}));
+  }
+}
+
+TEST_CASE("camp_patrol_shift_roster_latches_until_boundary",
+          "[camp][patrol]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_abs_ms patrol_abs = here.get_abs(tripoint_bub_ms{10, 10, 0});
+  create_tile_zone("Patrol Post", zone_type_CAMP_PATROL, patrol_abs);
+
+  basecamp test_camp("Patrol Camp", project_to<coords::omt>(patrol_abs));
+  test_camp.set_owner(your_fac);
+  test_camp.set_bb_pos(patrol_abs);
+
+  npc &day_guard = spawn_npc(tripoint_bub_ms{6, 5, 0}.xy(), "thug");
+  npc &night_guard = spawn_npc(tripoint_bub_ms{7, 5, 0}.xy(), "thug");
+  npc &replacement_guard = spawn_npc(tripoint_bub_ms{8, 5, 0}.xy(), "thug");
+
+  static const activity_id ACT_CAMP_PATROL("ACT_CAMP_PATROL");
+  REQUIRE(day_guard.job.set_task_priority(ACT_CAMP_PATROL, 9));
+  REQUIRE(night_guard.job.set_task_priority(ACT_CAMP_PATROL, 8));
+  REQUIRE(replacement_guard.job.set_task_priority(ACT_CAMP_PATROL, 0));
+
+  test_camp.add_assignee(day_guard.getID());
+  test_camp.add_assignee(night_guard.getID());
+  test_camp.add_assignee(replacement_guard.getID());
+
+  calendar::turn = sunrise(calendar::turn_zero) + 2_hours;
+  const camp_patrol_shift_plan *day_plan = test_camp.get_current_patrol_shift_plan();
+  REQUIRE(day_plan != nullptr);
+  REQUIRE(day_plan->shift == camp_patrol_shift::day);
+  CHECK(day_plan->roster == std::vector<character_id>({day_guard.getID()}));
+  CHECK(test_camp.is_worker_on_patrol_shift(day_guard));
+  CHECK_FALSE(test_camp.is_worker_on_patrol_shift(replacement_guard));
+
+  REQUIRE(night_guard.job.set_task_priority(ACT_CAMP_PATROL, 0));
+  REQUIRE(replacement_guard.job.set_task_priority(ACT_CAMP_PATROL, 7));
+
+  const camp_patrol_shift_plan *still_day_plan =
+      test_camp.get_current_patrol_shift_plan();
+  REQUIRE(still_day_plan != nullptr);
+  CHECK(still_day_plan->roster == std::vector<character_id>({day_guard.getID()}));
+  CHECK_FALSE(test_camp.is_worker_on_patrol_shift(replacement_guard));
+
+  calendar::turn = sunset(calendar::turn_zero) + 2_hours;
+  const camp_patrol_shift_plan *night_plan =
+      test_camp.get_current_patrol_shift_plan();
+  REQUIRE(night_plan != nullptr);
+  REQUIRE(night_plan->shift == camp_patrol_shift::night);
+  CHECK(night_plan->roster == std::vector<character_id>({replacement_guard.getID()}));
+  CHECK(test_camp.is_worker_on_patrol_shift(replacement_guard));
+  CHECK_FALSE(test_camp.is_worker_on_patrol_shift(day_guard));
+
+  zone_manager::get_manager().clear();
+}
+
 TEST_CASE("camp_locker_zone_candidate_gathering_respects_reservations",
           "[camp][locker]") {
   clear_avatar();

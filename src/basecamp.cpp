@@ -678,6 +678,83 @@ plan_camp_patrol(const std::vector<camp_patrol_worker> &workers,
     return plan;
 }
 
+bool camp_patrol_interrupt_is_whitelisted(
+    camp_patrol_interrupt_reason reason) {
+    switch( reason ) {
+        case camp_patrol_interrupt_reason::routine_chore:
+            return false;
+        case camp_patrol_interrupt_reason::combat_threat:
+        case camp_patrol_interrupt_reason::severe_injury:
+        case camp_patrol_interrupt_reason::collapse_need:
+        case camp_patrol_interrupt_reason::explicit_reassignment:
+            return true;
+    }
+    return false;
+}
+
+bool apply_camp_patrol_guard_interrupt(
+    camp_patrol_shift_plan &plan, const character_id &worker_id,
+    camp_patrol_interrupt_reason reason) {
+    if( !camp_patrol_interrupt_is_whitelisted(reason) ) {
+        return false;
+    }
+
+    const auto active_it = std::find_if(
+        plan.active_guards.begin(), plan.active_guards.end(),
+        [&worker_id]( const camp_patrol_guard_plan &guard_plan ) {
+            return guard_plan.worker_id == worker_id;
+        } );
+    if( active_it != plan.active_guards.end() ) {
+        const std::vector<size_t> cluster_indices = active_it->cluster_indices;
+        for( const size_t cluster_index : cluster_indices ) {
+            if( cluster_index >= plan.clusters.size() ) {
+                continue;
+            }
+            std::vector<character_id> &assigned_guards =
+                plan.clusters[cluster_index].assigned_guards;
+            assigned_guards.erase(
+                std::remove(assigned_guards.begin(), assigned_guards.end(), worker_id),
+                assigned_guards.end());
+        }
+
+        if( !plan.reserve_guards.empty() ) {
+            const character_id replacement_id = plan.reserve_guards.front();
+            plan.reserve_guards.erase(plan.reserve_guards.begin());
+            active_it->worker_id = replacement_id;
+            for( const size_t cluster_index : cluster_indices ) {
+                if( cluster_index >= plan.clusters.size() ) {
+                    continue;
+                }
+                plan.clusters[cluster_index].assigned_guards.push_back(replacement_id);
+            }
+        } else {
+            plan.active_guards.erase(active_it);
+        }
+        return true;
+    }
+
+    const auto reserve_it =
+        std::find(plan.reserve_guards.begin(), plan.reserve_guards.end(), worker_id);
+    if( reserve_it != plan.reserve_guards.end() ) {
+        plan.reserve_guards.erase(reserve_it);
+        return true;
+    }
+
+    return false;
+}
+
+namespace {
+
+int camp_patrol_shift_cache_day(const time_point &turn) {
+    return to_days<int>(turn - calendar::turn_zero);
+}
+
+camp_patrol_shift camp_patrol_shift_for_turn(const time_point &turn) {
+    return is_night(turn) ? camp_patrol_shift::night : camp_patrol_shift::day;
+}
+
+} // namespace
+
 std::vector<tripoint_abs_ms>
 collect_sorted_camp_locker_tiles(const tripoint_abs_ms &origin,
                                  const faction_id &fac,
@@ -2007,6 +2084,8 @@ void basecamp::remove_assignee(character_id id) {
     debugmsg("cant find npc to remove from basecamp, on the overmap_buffer");
     return;
   }
+  interrupt_patrol_worker(id,
+                          camp_patrol_interrupt_reason::explicit_reassignment);
   npc_to_remove->assigned_camp = std::nullopt;
   assigned_npcs.erase(
       std::remove(assigned_npcs.begin(), assigned_npcs.end(), npc_to_remove),
@@ -2023,10 +2102,14 @@ void basecamp::remove_assignee(character_id id) {
 }
 
 void basecamp::validate_assignees() {
+  std::vector<character_id> removed_workers;
   std::vector<npc_ptr>::iterator iter = assigned_npcs.begin();
   while (iter != assigned_npcs.end()) {
     if (!(*iter) || !(*iter)->assigned_camp ||
         *(*iter)->assigned_camp != omt_pos) {
+      if (*iter) {
+        removed_workers.push_back((*iter)->getID());
+      }
       iter = assigned_npcs.erase(iter);
     } else {
       ++iter;
@@ -2050,6 +2133,13 @@ void basecamp::validate_assignees() {
     std::sort( assigned_npcs.begin(), assigned_npcs.end() );
     auto last = std::unique( assigned_npcs.begin(), assigned_npcs.end() );
   assigned_npcs.erase(last, assigned_npcs.end());
+  if( patrol_shift_cache_valid ) {
+    for( const character_id &worker_id : removed_workers ) {
+      apply_camp_patrol_guard_interrupt(
+          patrol_shift_cache, worker_id,
+          camp_patrol_interrupt_reason::explicit_reassignment);
+    }
+  }
 }
 
 std::vector<npc_ptr> basecamp::get_npcs_assigned() {
@@ -2310,6 +2400,7 @@ void basecamp::set_owner(faction_id new_owner) {
   // Absolutely no safety checks, factions don't exist until you've encountered
   // them but we sometimes set the owner before that
   owner = new_owner;
+  clear_patrol_shift_cache();
 }
 
 faction_id basecamp::get_owner() { return owner; }
@@ -2317,6 +2408,88 @@ faction_id basecamp::get_owner() { return owner; }
 bool basecamp::has_locker_zone() const {
   const faction_id fac_id = owner.is_valid() ? owner : your_fac;
   return zone_manager::get_manager().has_defined(zone_type_CAMP_LOCKER, fac_id);
+}
+
+bool basecamp::has_patrol_zone() const {
+  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
+  return zone_manager::get_manager().has_defined(zone_type_CAMP_PATROL, fac_id);
+}
+
+tripoint_abs_ms basecamp::patrol_origin() const {
+  tripoint_abs_ms origin = get_bb_pos_abs();
+  if( origin.raw() == tripoint::zero ) {
+    origin = project_to<coords::ms>(omt_pos);
+  }
+  return origin;
+}
+
+void basecamp::clear_patrol_shift_cache() {
+  patrol_shift_cache_valid = false;
+  patrol_shift_cache_day = -1;
+  patrol_shift_cache_kind = camp_patrol_shift::day;
+  patrol_shift_cache = camp_patrol_shift_plan();
+}
+
+bool basecamp::refresh_patrol_shift_cache() {
+  validate_assignees();
+
+  const int current_day = camp_patrol_shift_cache_day(calendar::turn);
+  const camp_patrol_shift current_shift = camp_patrol_shift_for_turn(calendar::turn);
+  if( patrol_shift_cache_valid && patrol_shift_cache_day == current_day &&
+      patrol_shift_cache_kind == current_shift ) {
+    return !patrol_shift_cache.clusters.empty() &&
+           !patrol_shift_cache.roster.empty();
+  }
+
+  clear_patrol_shift_cache();
+  if( !has_patrol_zone() ) {
+    return false;
+  }
+
+  const faction_id fac_id = owner.is_valid() ? owner : your_fac;
+  const std::vector<camp_patrol_cluster> clusters =
+      collect_camp_patrol_clusters(patrol_origin(), fac_id);
+  if( clusters.empty() ) {
+    return false;
+  }
+
+  const std::vector<camp_patrol_worker> workers =
+      collect_camp_patrol_workers(get_npcs_assigned());
+  const camp_patrol_plan plan = plan_camp_patrol(workers, clusters);
+
+  patrol_shift_cache = current_shift == camp_patrol_shift::night ? plan.night : plan.day;
+  patrol_shift_cache_valid = true;
+  patrol_shift_cache_day = current_day;
+  patrol_shift_cache_kind = current_shift;
+  return !patrol_shift_cache.roster.empty();
+}
+
+const camp_patrol_shift_plan *basecamp::get_current_patrol_shift_plan() {
+  if( !refresh_patrol_shift_cache() ) {
+    return nullptr;
+  }
+  return &patrol_shift_cache;
+}
+
+bool basecamp::is_worker_on_patrol_shift(const npc &worker) {
+  const camp_patrol_shift_plan *plan = get_current_patrol_shift_plan();
+  if( plan == nullptr ) {
+    return false;
+  }
+
+  return std::any_of(plan->active_guards.begin(), plan->active_guards.end(),
+                     [&worker](const camp_patrol_guard_plan &guard_plan) {
+                       return guard_plan.worker_id == worker.getID();
+                     });
+}
+
+bool basecamp::interrupt_patrol_worker(
+    const character_id &worker_id, camp_patrol_interrupt_reason reason) {
+  const camp_patrol_shift_plan *plan = get_current_patrol_shift_plan();
+  if( plan == nullptr ) {
+    return false;
+  }
+  return apply_camp_patrol_guard_interrupt(patrol_shift_cache, worker_id, reason);
 }
 
 void basecamp::mark_camp_locker_dirty(npc &worker, bool high_priority) {
