@@ -62,11 +62,16 @@ These are high-value because they turn repeated debug-menu ritual into reusable 
 - `debug_spawn_follower_npc(template_or_name, location=near_player)`
 - `assign_npc_to_camp(npc_selector, camp_selector)`
 - `assign_npc_to_follower(npc_selector)`
+- `sustain_npc(npc_selector, hunger=None, thirst=None, mode=debug_or_consumption)`
+  - check current hunger/thirst state
+  - if possible, repair via direct debug controls
+  - otherwise stage food/drink consumption through the smallest honest deterministic interaction
 
 These do not all need to land on day one, but they belong on the near harness roadmap because they directly support:
 - locker setup
 - chat setup
 - ambient-reaction setup
+- longer live probes where NPC condition drift would otherwise muddy the result
 - repeatable scenario staging without hand-driving the debug UI every single time
 
 ## First concrete scenarios

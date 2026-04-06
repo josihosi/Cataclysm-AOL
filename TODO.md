@@ -16,9 +16,11 @@ Execution queue:
 2. choose the smallest honest repair
    - new fixture with a real `CAMP_LOCKER` zone, or
    - reproducible restaging step that creates/restores the needed locker state before the probe
-3. rerun `locker.weather_wait` once the fixture path is real
+3. keep expanding the near-term harness helper list where repeated setup pain is obvious
+   - current new candidate: `sustain_npc` for checking/fixing hunger and thirst via debug when possible, or via controlled consumption otherwise
+4. rerun `locker.weather_wait` once the fixture path is real
    - report **screen** / **tests** / **artifacts** separately
-4. keep the story reviewer-clean
+5. keep the story reviewer-clean
    - this is harness/fixture work on existing locker behavior
    - it is **not** the hackathon chat feature
    - it is **not** the hackathon ambient-model feature

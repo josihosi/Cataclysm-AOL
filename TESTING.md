@@ -198,7 +198,9 @@ Meaning:
    - a reproducible restaging step that creates/restores it before the probe
 3. rerun `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait` once the fixture path is real
 4. report the result as separate **screen** / **tests** / **artifacts** evidence
-5. keep the reviewer boundary explicit: this is harness/fixture work on existing locker behavior, not early hackathon feature work
+5. keep expanding the helper wave only where it removes repeated setup mud
+   - new near-term candidate: `sustain_npc` to inspect/fix hunger and thirst via debug if possible, or via controlled food/drink consumption otherwise
+6. keep the reviewer boundary explicit: this is harness/fixture work on existing locker behavior, not early hackathon feature work
 
 **Hackathon-reserved — do not touch before the event:**
 1. **chat interface over dialogue branches**
