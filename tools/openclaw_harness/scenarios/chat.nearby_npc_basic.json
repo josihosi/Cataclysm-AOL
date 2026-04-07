@@ -1,12 +1,12 @@
 {
   "name": "chat.nearby_npc_basic",
-  "description": "Launch the harness-owned Sandy Creek basecamp fixture, exercise the current nearby-NPC/freeform chat path, and capture screen plus llm_intent artifacts separately.",
+  "description": "Launch the harness-owned McWilliams basecamp fixture, exercise the current nearby-NPC/freeform chat path, and capture screen plus llm_intent artifacts separately.",
   "profile": "dev-harness",
-  "world": "Sandy Creek",
-  "profile_snapshot": "basecamp_dev_manual_2026-04-02",
-  "profile_snapshot_profile": "dev",
-  "fixture": "basecamp_dev_manual_2026-04-02",
-  "fixture_profile": "dev",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
   "replace_existing_worlds": true,
   "artifact_source": "llm_intent.log",
   "artifact_patterns": [

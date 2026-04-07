@@ -1,12 +1,12 @@
 {
   "name": "ambient.weird_item_reaction",
-  "description": "Stage a small uncanny local event near the shipped basecamp/NPC fixture and watch for any ambient reaction path. The current fixture already carries nearby follower/camp state, so this contract is runnable today even though stronger restaging helpers would still help future variants.",
+  "description": "Stage a small uncanny local event near the shipped McWilliams basecamp/NPC fixture and watch for any ambient reaction path. The current fixture already carries nearby follower/camp state, so this contract is runnable today even though stronger restaging helpers would still help future variants.",
   "profile": "dev-harness",
-  "world": "Sandy Creek",
-  "profile_snapshot": "basecamp_dev_manual_2026-04-02",
-  "profile_snapshot_profile": "dev",
-  "fixture": "basecamp_dev_manual_2026-04-02",
-  "fixture_profile": "dev",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
   "replace_existing_worlds": true,
   "artifact_source": "llm_intent.log",
   "artifact_patterns": [
