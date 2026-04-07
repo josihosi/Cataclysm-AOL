@@ -13,10 +13,13 @@ Primary auxiliary:
 - `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
 
 Current slice: **Package 1 — harness zone-manager save-path polish**
-1. reproduce the locker-zone / zone-manager flow on the current McWilliams harness path
-2. capture screenshots at each relevant transition so the menu/save sequence stops being folklore
-3. confirm the exact save-confirm path back to gameplay (`Esc` -> prompt -> `Left` -> `Enter` or corrected variant)
-4. fix the text-entry / save-path behavior and package the result cleanly
+1. finish the McWilliams rename handshake:
+  - `locker.zone_manager_save_probe_mcw` already reduced the closeout path to `Esc` -> save prompt -> uppercase `Y` -> gameplay
+  - the remaining miss is name entry: the probe still leaves the default `Basecamp: Locker` name unchanged instead of landing `Probe Locker`
+2. repair the smallest real input/control mistake next:
+  - determine the exact player-visible control that actually opens the rename field from the zone edit surface
+  - then make the harness wait/type at that field, not one beat too early in the edit menu
+3. once the custom name lands and persists on the McWilliams harness path, close Package 1 and move to Package 2 (`basecamp toolcall routing fix`)
 
 Still true:
 - do **not** widen the active slice into Package 2+ while Package 1 is still unresolved

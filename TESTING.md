@@ -52,6 +52,11 @@ Current honest state:
   3. locker outfit engine hardening
   4. locker zone policy + control-surface cleanup
   5. basecamp carried-item support + dump lane
+- Package 1 is now partly reduced on real screenshots instead of guesswork:
+  - repeated `locker.zone_manager_save_probe_mcw` runs proved the closeout path back to gameplay is `Esc` -> save prompt -> uppercase `Y`
+  - the old early-name-entry story was wrong; typing before or during zone-type selection is not the right surface
+  - the remaining honest blocker is narrower now: the harness still leaves the default `Basecamp: Locker` name unchanged because the edit-name handshake is not yet landing on the actual rename field
+  - latest screenshot packet: `.userdata/dev-harness/harness_runs/20260407_234435/`
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -77,10 +82,9 @@ Current honest state:
 ### Active queue
 
 1. **Package 1** on the current McWilliams harness path:
-   - reproduce the locker-zone / Zone Manager flow
-   - capture screenshots at each relevant menu transition
-   - confirm the exact save-confirm path back to gameplay
-   - land the text-entry / save-path fix, or produce an honest blocked report
+   - finish the edit-name handshake so the intended custom zone name actually lands
+   - keep the proven closeout path (`Esc` -> save prompt -> uppercase `Y`) intact while fixing rename timing/control
+   - confirm the renamed zone persists after returning to gameplay
 2. once Package 1 is landed or honestly blocked, move to **Package 2** (`basecamp toolcall routing fix`) as the next isolated slice
 
 Still true:

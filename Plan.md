@@ -56,6 +56,8 @@ Primary auxiliary:
   4. locker zone policy + control-surface cleanup
   5. basecamp carried-item support + dump lane
 - The current active slice is **Package 1**, because better repro/tooling discipline should land before the next basecamp or locker engine widening.
+- Repeated `locker.zone_manager_save_probe_mcw` captures on the current McWilliams harness path have now reduced the closeout sequence: after zone placement, a second `Esc` opens the save prompt and uppercase `Y` returns cleanly to gameplay.
+- The remaining Package 1 blocker is narrower now: the rename/edit-name handshake is still wrong, so the harness keeps leaving the default `Basecamp: Locker` name unchanged instead of reliably landing the intended custom zone name.
 - **Package 2** stays next on purpose. The wrong basecamp snapshot/toolcall route should not be buried under locker feature creep just because the locker notes are louder.
 - Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
 - The active repo rule for this packet is simple:
@@ -65,7 +67,7 @@ Primary auxiliary:
   - no opportunistic side quests while the packet is active
 
 ### Next real state
-1. land **Package 1** (or produce an honest blocked report) on the current McWilliams harness path
+1. finish **Package 1** by fixing the rename/edit-name handshake on the current McWilliams harness path so the custom zone name actually lands and persists
 2. then hand off **Package 2** as the next isolated slice, without blending it into locker outfit / inventory work
 3. only after Packages 1 and 2 are settled, move into locker hardening / control-surface / carried-item follow-through in the queued order from the auxiliary doc
 
