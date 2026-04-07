@@ -8,24 +8,26 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Locker Zone V1 surface/control is reopened.
-Work the smallest real repair first, not the whole bug pile at once.
+Current delivery target: controlled locker / basecamp follow-through packet.
+Primary auxiliary:
+- `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
 
-1. compare the clean harness locker-creation recheck against Josef's reported `McWilliams` live-session failure:
-  - current code now survives a real Zone Manager `CAMP_LOCKER` creation on `basecamp_dev_manual_2026-04-02`
-  - next reduce whether the remaining mismatch is save-specific, fixture-specific, or tied to the still-open live `McWilliams` session
-2. triage the reported visible `S` overlay:
-  - the clean harness recheck still did **not** leave a stuck `S` after closing the zone manager
-  - a synthetic harness probe now shows that explicitly toggling zone display on a `CAMP_LOCKER` zone leaves the expected storage-style `S` overlay visible after the manager closes
-  - the remaining question is whether Josef saw that same latched zone-display state on `McWilliams`, or a real stuck-overlay bug on that save/path
-3. keep the direct-talk wrong-snapshot bug queued, but do not let it interrupt the narrower locker surface slice unless the locker trail stalls
+Current slice: **Package 2 — basecamp toolcall routing fix**
+1. keep the new discriminator narrow:
+  - camp-request routing now requires active `FACTION_CAMP` duty instead of bare `assigned_camp`
+  - do **not** widen this into locker or follower command redesign while validating it
+2. recheck the McWilliams repro on the current harness footing:
+  - confirm the wrong-snapshot/toolcall lane is gone for ordinary followers who merely still have an assigned camp
+  - confirm true camp-duty NPCs still hit the intended basecamp-aware path
+3. if the repro still fails after the duty-gate fix:
+  - trace the next remaining discriminator or payload seam
+  - keep the change isolated to Package 2, without leaking into Package 3+
 
 Still true:
-- the live `McWilliams` / `Zoraida Vick` save is the preferred future manual/harness baseline once it is safely snapshotted after Josef closes the session
-- Hackathon-reserved — do not touch before the event:
+- Package 3 (`locker outfit engine hardening`) stays next once Package 2 is landed or honestly blocked
+- ordinary harness footing should stay on `McWilliams` / `Zoraida Vick`, not drift back to the older default save
+- the debug pass is now packetized; use the auxiliary doc instead of rebuilding the note pile from chat memory
+- hackathon-reserved — do not touch before the event:
   - chat interface over dialogue branches
   - ambient-trigger reaction lane / tiny ambient-trigger NPC model
-- `sustain_npc` is parked as a helper idea until a future live-probe lane actually needs it
-- Smart Zone Manager v1 stays parked while the locker surface reopen is active
-- keep V3 from turning into giant NPC-personality soup
-- keep the finished Basecamp follow-through closed unless Josef explicitly reopens it
+- Smart Zone Manager v1 stays parked while the controlled locker/basecamp packet is active

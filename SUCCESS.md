@@ -15,9 +15,29 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Controlled locker / basecamp follow-through packet
+
+Status: ACTIVE / PACKAGE 1 FIRST
+
+Success state:
+- [x] **Package 1, harness zone-manager save-path polish** is landed with screenshots/artifacts from the current McWilliams harness path.
+- [ ] **Package 2, basecamp toolcall routing fix** is landed or honestly blocked, and the right discriminator is separated from the bad location-only heuristic.
+- [ ] **Package 3, locker outfit engine hardening** is landed or honestly blocked, with the ugliest visible equip/replace conflicts reduced reviewer-cleanly.
+- [ ] **Package 4, locker zone policy + control-surface cleanup** is landed or honestly blocked, with locker-vs-sorting semantics and the first useful settings surface made explicit.
+- [ ] **Package 5, basecamp carried-item support + dump lane** is landed or honestly blocked, without widening into follower-inventory soup.
+- [ ] The package order remains controlled: one slice at a time, revalidated between slices, without opportunistic broadening.
+
+Notes:
+- Canonical package boundaries and acceptance bars live in `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
+- This is the active success-state block that should match `Plan.md`, `TODO.md`, and `TESTING.md`.
+- The point is not to re-open one giant locker/basecamp world. The point is to preserve the working loop while moving through the explicit packet in order.
+- The ordinary harness footing for this packet should stay on `McWilliams` / `Zoraida Vick`, not drift back to the older default save.
+
+---
+
 ## Patrol Zone v1
 
-Status: ACTIVE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] A Zone Manager patrol zone exists and patrol squares are grouped by 4-way connected clusters.
@@ -28,16 +48,38 @@ Success state:
 - [x] Urgent disruption can break patrol, and reserve backfill works without full-roster reshuffle.
 - [x] On-map behavior distinguishes hold-positions vs fixed-loop patrol in the intended simple v1 way.
 - [x] Proportional live proof is recorded with separate screen/tests/artifacts reporting.
-- [ ] The player-legibility bar is met: guard behavior, uncovered posts, connected-vs-disconnected behavior, and reserve/off-shift state are understandable enough to read in play.
+- [x] The player-legibility bar is met: guard behavior, uncovered posts, connected-vs-disconnected behavior, and reserve/off-shift state are understandable enough to read in play.
 - [x] The result stays explainable as simple v1 patrol rather than quietly turning into smart-zone-manager soup.
 
 Notes:
 - Canonical implementation sketch lives in `doc/patrol-zone-v1-patch-plan-2026-04-06.md`.
-- Intended order: zone surface + 4-way clustering -> deterministic planner contract -> sticky roster / interrupt whitelist -> on-map hold-vs-loop -> live proof.
-- The current packaged live proofs are `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_193626/probe.report.json` and `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_194336/probe.report.json`.
-- The remaining honest gap is screen legibility: the artifact logs clearly show loop vs hold, but the current full-window screenshots still do not make that contrast obvious enough on their own.
-- The interrupt whitelist should be nailed down early so the feature does not quietly rot into fake patrol.
+- Intended order stayed: zone surface + 4-way clustering -> deterministic planner contract -> sticky roster / interrupt whitelist -> on-map hold-vs-loop -> live proof -> packet legibility close-out.
+- The current packaged live proofs are `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_230124/probe.report.json` and `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_230552/probe.report.json`.
+- Each current-binary patrol packet now includes readable staffing-pool and zone-topology crops, a tight `runtime_motion_compare.gif` blink helper, and a small `probe.patrol_summary.txt` explainer that states the shift roster, off-shift count, disconnected-vs-connected layout, and why gaps/holds are expected in that snapshot.
+- Keep this lane closed unless later code or runtime evidence shows the deterministic contract or the packaged patrol packet has drifted out of truth.
 - Watch for hallucinations, fake progress, and roadmap prose outrunning code/tests/live proof.
+
+---
+
+## Smart Zone Manager v1
+
+Status: PARKED / NEEDS GREENLIGHT
+
+Success state:
+- [ ] One explicit one-off smart-zoning action exists for Basecamp.
+- [ ] The v1 creates exactly one crafting niche, one food/drink niche, and one equipment niche.
+- [ ] Support placement exists for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
+- [ ] The corrected fire layout is implemented: fire tile = `SOURCE_FIREWOOD`, adjacent `splintered`, nearby wood.
+- [ ] Anchor selection is flag/category-first with floor fallback.
+- [ ] Existing sorting/subcategory machinery is reused by default unless a concrete conflict forces a custom-zone/path override.
+- [ ] Placement is deterministic and non-destructive by default.
+- [ ] Deterministic tests exist for anchor choice / zone choice / no-destructive-overwrite behavior.
+- [ ] Proportional live proof is recorded when the lane becomes active.
+
+Notes:
+- Canonical contract lives at `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`.
+- This lane is a concrete parked option after Patrol Zone v1, not an automatically greenlit follow-on. Plan.md decides when it actually becomes active.
+- Keep this focused on basecamp auto-layout helper behavior, not patrol/locker automation or smart-zone-manager soup.
 
 ---
 
@@ -107,7 +149,7 @@ Notes:
 
 ## Locker Zone V1
 
-Status: REOPENED / SURFACE-CONTROL AUDIT ACTIVE
+Status: PRIOR BASELINE / FOLLOW-THROUGH MOVED TO ACTIVE PACKET
 
 Bundled V1 completion tasks:
 - [ ] **Locker surface/control task** — `CAMP_LOCKER` works as a real Zone Manager zone on the fresh-save path, ordinary sorting does not steal from locker tiles, camp locker policy state exists, the player-facing locker policy menu/control exists, and the current surface is free of the reported zone-creation type-mismatch.
@@ -118,9 +160,9 @@ Bundled V1 completion tasks:
 
 Notes:
 - V1 was reopened on 2026-04-07 because fresh-save manual testing contradicted the old surface/control close-out.
+- That reopened follow-through is now packetized in the active `Controlled locker / basecamp follow-through packet` above instead of staying as one vague reopened blob here.
 - `dirty-trigger follow-through` was the final previously landed V1 chunk, not the name of the whole feature.
 - Locker candidate scanning now uses sorted locker tiles so debug/state summaries stay deterministic enough for dirty-trigger tracking and tests.
-- The first repair slice in this reopen is explicit locker sort protection; the zone-creation type-mismatch and visible `S` overlay are still open until reduced or fixed.
 - If later code or testing disproves any other bundled V1 task, reopen that slice too instead of pretending only the surface changed.
 
 ---

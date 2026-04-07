@@ -37,29 +37,39 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Locker Zone V1 surface/control reopen
+## 1. Current delivery target — controlled locker / basecamp follow-through packet
 
-**Status:** ACTIVE / REOPENED FROM CHECKPOINT
+**Status:** ACTIVE / PACKAGE 2 NOW
 
-The repo is not honestly parked anymore.
-Fresh-save manual testing on Josef's current live build exposed locker surface/control regressions that directly contradict the old closed-state story.
+The repo is not honestly parked anymore, but it also should not be reopened as one giant locker/basecamp soup lane.
+Josef's McWilliams debug pass has now been reduced into a controlled packet: one package at a time, preserve the working loop, and do not let Andi broaden scope by vibes.
+
+Primary auxiliary:
+- `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
 
 ### Current truth
-- `CAMP_LOCKER` still exists as a real Zone Manager zone id, and the locker policy control surface still exists in code.
-- Fresh-save manual evidence from Josef's current live session reopened the lane:
-  - creating `CAMP_LOCKER` threw `Type mismatch in diag_value: requested string, got double`
-  - ordinary sorting should not steal from locker tiles, and that guard now exists with deterministic regression coverage
-  - a visible `S` overlay leaked after basecamp/zone interaction and needs triage instead of hand-waving
-- The reported type-mismatch was reduced to one concrete locker path in current code: the locker downtime skip log was reading numeric `camp_locker_last_service_turn` with `diag_value::str()`. That path now uses `to_string( false )` and has deterministic regression coverage.
-- A fresh harness recheck of the real Zone Manager locker-creation path on `basecamp_dev_manual_2026-04-02` now succeeds on current code with no visible popup and no stuck `S` after closing the zone manager.
-- A second harness probe on that same fixture now shows that an explicit Zone Manager display toggle on a `CAMP_LOCKER` zone leaves the expected storage-style `S` overlay visible after the manager closes. So the reported `S` is at least plausibly a latched zone-display state, not automatically proof of a separate locker-creation leak.
-- Josef's live build hash was `4e3b63650d-dirty`; locker-related code is unchanged between that hash and current `HEAD`, so this was not just a docs-only stale-binary ghost story. The remaining mismatch now looks save/path-specific until disproved.
-- The direct-talk wrong-snapshot bug is real too, but the smallest active slice is still locker surface/control honesty first.
+- Ordinary chat / ambient harness footing now points at the captured `McWilliams` / `Zoraida Vick` save instead of the older Sandy Creek default.
+- The McWilliams debug pass produced a coherent follow-through queue rather than one monolithic rewrite:
+  1. harness zone-manager save-path polish
+  2. basecamp toolcall routing fix
+  3. locker outfit engine hardening
+  4. locker zone policy + control-surface cleanup
+  5. basecamp carried-item support + dump lane
+- **Package 1** is now landed on the current McWilliams harness path: the zone name must be entered at creation time, a single `Esc` opens the save prompt, uppercase `Y` returns cleanly to gameplay, and reopening Zone Manager shows the custom `Probe Locker` name still present.
+- The current active slice is **Package 2**. Its first honest reduction is now in code: camp-request routing no longer keys only off bare `assigned_camp`; it now requires active `FACTION_CAMP` duty before the basecamp-aware route is even eligible.
+- The remaining Package 2 question is now narrower and more honest: after removing the bad location-only/assignment-only discriminator, recheck the current McWilliams repro and confirm whether any wrong snapshot/toolcall route still remains beyond that gate.
+- **Package 3** stays after Package 2 on purpose. The locker outfit hardening queue should not bury the wrong-snapshot question just because the locker notes are louder.
+- Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
+- The active repo rule for this packet is simple:
+  - one package at a time
+  - revalidate before widening
+  - no broad Andi reactivation
+  - no opportunistic side quests while the packet is active
 
 ### Next real state
-1. compare the clean harness result against Josef's reported `McWilliams` live-session failure, then either snapshot/reprobe that save once it is safely closed or build the smallest synthetic reproducer for the remaining mismatch
-2. reduce whether the reported visible `S` on `McWilliams` came from that same latched zone-display state or from some other save/path-specific overlay bug
-3. then return to the queued direct-talk wrong-snapshot bug if the locker trail is no longer the tightest active slice
+1. finish **Package 2** by validating the current McWilliams wrong-snapshot repro against the new `FACTION_CAMP` duty gate and proving the intended basecamp-vs-follower split on the real path
+2. if the repro still fails after that gate, trace the next remaining discriminator or payload seam without widening into locker work
+3. only after Package 2 is settled, move into locker hardening / control-surface / carried-item follow-through in the queued order from the auxiliary doc
 
 ---
 

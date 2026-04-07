@@ -420,6 +420,7 @@ std::optional<parsed_camp_request_reference>
 parse_heard_camp_approval_query(std::string_view utterance);
 std::optional<parsed_camp_request_reference>
 parse_heard_camp_status_query(std::string_view utterance);
+bool uses_basecamp_request_routing( const npc &hearer );
 std::vector<int>
 collect_ready_camp_request_ids(const std::vector<camp_llm_request> &requests);
 std::vector<int>
