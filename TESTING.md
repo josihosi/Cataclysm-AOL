@@ -52,11 +52,15 @@ Current honest state:
   3. locker outfit engine hardening
   4. locker zone policy + control-surface cleanup
   5. basecamp carried-item support + dump lane
-- Package 1 is now partly reduced on real screenshots instead of guesswork:
-  - repeated `locker.zone_manager_save_probe_mcw` runs proved the closeout path back to gameplay is `Esc` -> save prompt -> uppercase `Y`
-  - the old early-name-entry story was wrong; typing before or during zone-type selection is not the right surface
-  - the remaining honest blocker is narrower now: the harness still leaves the default `Basecamp: Locker` name unchanged because the edit-name handshake is not yet landing on the actual rename field
-  - latest screenshot packet: `.userdata/dev-harness/harness_runs/20260407_234435/`
+- **Package 1** is now landed on real screenshots/artifacts instead of guesswork:
+  - the zone name must be entered at creation time, not later through a separate edit-name handshake
+  - the closeout path back to gameplay is a single `Esc` to open the save prompt, then uppercase `Y`
+  - reopening Zone Manager after returning to gameplay still shows the custom `Probe Locker` entry on the current McWilliams path
+  - latest screenshot packet: `.userdata/dev-harness/harness_runs/20260408_005852/`
+- **Package 2** has its first deterministic reduction landed in code:
+  - camp-request routing no longer keys off bare `assigned_camp`
+  - the current gate now requires active `FACTION_CAMP` duty before the basecamp-aware route is eligible
+  - deterministic coverage for that discriminator now lives in `tests/faction_camp_test.cpp`
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -81,15 +85,15 @@ Current honest state:
 
 ### Active queue
 
-1. **Package 1** on the current McWilliams harness path:
-   - finish the edit-name handshake so the intended custom zone name actually lands
-   - keep the proven closeout path (`Esc` -> save prompt -> uppercase `Y`) intact while fixing rename timing/control
-   - confirm the renamed zone persists after returning to gameplay
-2. once Package 1 is landed or honestly blocked, move to **Package 2** (`basecamp toolcall routing fix`) as the next isolated slice
+1. **Package 2** on the current McWilliams harness path:
+   - live-recheck the wrong-snapshot/toolcall repro with the new `FACTION_CAMP` duty gate in place
+   - confirm ordinary followers who merely still have an assigned camp do **not** hit the basecamp-aware route
+   - confirm true camp-duty NPCs still hit the intended basecamp-aware route
+2. if the repro still fails after that gate, isolate the next remaining discriminator or payload seam without widening into locker work
 
 Still true:
 - ordinary chat / ambient harness footing should stay on the captured `McWilliams` / `Zoraida Vick` save, not drift back to the older default fixture
-- Package 2 stays next on purpose, do not bury the wrong-snapshot bug under locker feature creep
+- Package 3 stays next on purpose, do not bury the wrong-snapshot question under locker feature creep
 - `sustain_npc` remains only a helper idea for later probes if some future live packet honestly needs it
 
 ### Anti-hallucination rule for this packet
@@ -116,9 +120,9 @@ If the packet sounds cleaner than the active package boundary or evidence undern
 ### Active-lane handoff block
 
 - **active lane:** controlled locker / basecamp follow-through packet
-- **active slice:** Package 1, harness zone-manager save-path polish
-- **next slice:** Package 2, basecamp toolcall routing fix
-- **last closed lane:** Patrol Zone v1 remains checkpointed, McWilliams patrol clustering now matches the expected 2-cluster save layout
+- **active slice:** Package 2, basecamp toolcall routing fix
+- **next slice:** Package 3, locker outfit engine hardening
+- **last closed lane:** Package 1, harness zone-manager save-path polish, is now landed on the McWilliams harness path; Patrol Zone v1 remains checkpointed
 - **Josef ask:** none right now beyond keeping the packet narrow and one-package-at-a-time
 
 ### Non-blocking Josef notes

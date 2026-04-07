@@ -2511,6 +2511,11 @@ static basecamp_ai::parsed_camp_request_reference finalize_camp_request_referenc
 namespace basecamp_ai
 {
 
+bool uses_basecamp_request_routing( const npc &hearer )
+{
+    return hearer.assigned_camp.has_value() && hearer.companion_mission_role_id == "FACTION_CAMP";
+}
+
 std::string camp_request_subject_for_display( const camp_llm_request &request,
         bool include_resolved_recipe, bool include_request_id )
 {

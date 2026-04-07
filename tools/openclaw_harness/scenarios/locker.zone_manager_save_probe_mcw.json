@@ -1,6 +1,6 @@
 {
   "name": "locker.zone_manager_save_probe_mcw",
-  "description": "Capture the corrected Zone Manager CAMP_LOCKER create flow on the McWilliams harness fixture, including rename and save back to gameplay.",
+  "description": "Package 1 proof scenario for the McWilliams CAMP_LOCKER create flow: name at creation time, single-Esc save prompt closeout, and post-return persistence recheck.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
@@ -37,6 +37,27 @@
       "capture_after": true
     },
     {
+      "kind": "wait",
+      "label": "creation_name_prompt_settle",
+      "seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "clear_creation_zone_name",
+      "keys": ["backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace"],
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "type",
+      "label": "type_creation_zone_name",
+      "text": "Probe Locker",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
       "kind": "press",
       "label": "pick_zone_start",
       "keys": ["enter"],
@@ -58,48 +79,6 @@
     },
     {
       "kind": "press",
-      "label": "open_edit_menu",
-      "keys": ["enter"],
-      "settle_seconds": 0.8,
-      "capture_after": true
-    },
-    {
-      "kind": "press",
-      "label": "choose_edit_name",
-      "keys": ["1"],
-      "settle_seconds": 0.8,
-      "capture_after": true
-    },
-    {
-      "kind": "wait",
-      "label": "rename_prompt_settle",
-      "seconds": 0.8,
-      "capture_after": true
-    },
-    {
-      "kind": "press",
-      "label": "clear_existing_zone_name",
-      "keys": ["backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace", "backspace"],
-      "settle_seconds": 0.5,
-      "capture_after": true
-    },
-    {
-      "kind": "type",
-      "label": "type_zone_name",
-      "text": "Probe Locker",
-      "submit": true,
-      "settle_seconds": 0.8,
-      "capture_after": true
-    },
-    {
-      "kind": "press",
-      "label": "return_to_zone_list",
-      "keys": ["escape"],
-      "settle_seconds": 0.8,
-      "capture_after": true
-    },
-    {
-      "kind": "press",
       "label": "open_save_prompt",
       "keys": ["escape"],
       "settle_seconds": 0.8,
@@ -116,6 +95,13 @@
       "kind": "wait",
       "label": "post_save_gameplay_settle",
       "seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "reopen_zones_manager_for_persistence_check",
+      "keys": ["Y"],
+      "settle_seconds": 1.0,
       "capture_after": true
     }
   ]

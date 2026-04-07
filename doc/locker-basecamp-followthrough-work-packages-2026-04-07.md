@@ -47,9 +47,9 @@ The zone-setting harness flow likely mangles the typed zone name and may fail to
 
 ### Inputs from testing
 - probable lane: locker-zone flow on McWilliams
-- observed weird zone name like `e Locker`
-- likely missing exit/save confirm path
-- current best hypothesis after returning to Zone Manager: `Esc` -> save prompt -> `Left` -> `Enter`
+- the custom zone name must be entered at creation time, not later through a separate edit-name pass
+- closeout after returning to the zone list is a single `Esc` to open the save prompt, then uppercase `Y`
+- the landed McWilliams screenshot packet also reopens Zone Manager after returning to gameplay and still sees `Probe Locker`
 
 ### Deliverable
 Make the harness zone-setting flow reliably:

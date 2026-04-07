@@ -39,7 +39,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## 1. Current delivery target — controlled locker / basecamp follow-through packet
 
-**Status:** ACTIVE / PACKAGE 1 FIRST
+**Status:** ACTIVE / PACKAGE 2 NOW
 
 The repo is not honestly parked anymore, but it also should not be reopened as one giant locker/basecamp soup lane.
 Josef's McWilliams debug pass has now been reduced into a controlled packet: one package at a time, preserve the working loop, and do not let Andi broaden scope by vibes.
@@ -55,10 +55,10 @@ Primary auxiliary:
   3. locker outfit engine hardening
   4. locker zone policy + control-surface cleanup
   5. basecamp carried-item support + dump lane
-- The current active slice is **Package 1**, because better repro/tooling discipline should land before the next basecamp or locker engine widening.
-- Repeated `locker.zone_manager_save_probe_mcw` captures on the current McWilliams harness path have now reduced the closeout sequence: after zone placement, a second `Esc` opens the save prompt and uppercase `Y` returns cleanly to gameplay.
-- The remaining Package 1 blocker is narrower now: the rename/edit-name handshake is still wrong, so the harness keeps leaving the default `Basecamp: Locker` name unchanged instead of reliably landing the intended custom zone name.
-- **Package 2** stays next on purpose. The wrong basecamp snapshot/toolcall route should not be buried under locker feature creep just because the locker notes are louder.
+- **Package 1** is now landed on the current McWilliams harness path: the zone name must be entered at creation time, a single `Esc` opens the save prompt, uppercase `Y` returns cleanly to gameplay, and reopening Zone Manager shows the custom `Probe Locker` name still present.
+- The current active slice is **Package 2**. Its first honest reduction is now in code: camp-request routing no longer keys only off bare `assigned_camp`; it now requires active `FACTION_CAMP` duty before the basecamp-aware route is even eligible.
+- The remaining Package 2 question is now narrower and more honest: after removing the bad location-only/assignment-only discriminator, recheck the current McWilliams repro and confirm whether any wrong snapshot/toolcall route still remains beyond that gate.
+- **Package 3** stays after Package 2 on purpose. The locker outfit hardening queue should not bury the wrong-snapshot question just because the locker notes are louder.
 - Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
 - The active repo rule for this packet is simple:
   - one package at a time
@@ -67,9 +67,9 @@ Primary auxiliary:
   - no opportunistic side quests while the packet is active
 
 ### Next real state
-1. finish **Package 1** by fixing the rename/edit-name handshake on the current McWilliams harness path so the custom zone name actually lands and persists
-2. then hand off **Package 2** as the next isolated slice, without blending it into locker outfit / inventory work
-3. only after Packages 1 and 2 are settled, move into locker hardening / control-surface / carried-item follow-through in the queued order from the auxiliary doc
+1. finish **Package 2** by validating the current McWilliams wrong-snapshot repro against the new `FACTION_CAMP` duty gate and proving the intended basecamp-vs-follower split on the real path
+2. if the repro still fails after that gate, trace the next remaining discriminator or payload seam without widening into locker work
+3. only after Package 2 is settled, move into locker hardening / control-surface / carried-item follow-through in the queued order from the auxiliary doc
 
 ---
 

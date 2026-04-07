@@ -12,18 +12,19 @@ Current delivery target: controlled locker / basecamp follow-through packet.
 Primary auxiliary:
 - `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
 
-Current slice: **Package 1 — harness zone-manager save-path polish**
-1. finish the McWilliams rename handshake:
-  - `locker.zone_manager_save_probe_mcw` already reduced the closeout path to `Esc` -> save prompt -> uppercase `Y` -> gameplay
-  - the remaining miss is name entry: the probe still leaves the default `Basecamp: Locker` name unchanged instead of landing `Probe Locker`
-2. repair the smallest real input/control mistake next:
-  - determine the exact player-visible control that actually opens the rename field from the zone edit surface
-  - then make the harness wait/type at that field, not one beat too early in the edit menu
-3. once the custom name lands and persists on the McWilliams harness path, close Package 1 and move to Package 2 (`basecamp toolcall routing fix`)
+Current slice: **Package 2 — basecamp toolcall routing fix**
+1. keep the new discriminator narrow:
+  - camp-request routing now requires active `FACTION_CAMP` duty instead of bare `assigned_camp`
+  - do **not** widen this into locker or follower command redesign while validating it
+2. recheck the McWilliams repro on the current harness footing:
+  - confirm the wrong-snapshot/toolcall lane is gone for ordinary followers who merely still have an assigned camp
+  - confirm true camp-duty NPCs still hit the intended basecamp-aware path
+3. if the repro still fails after the duty-gate fix:
+  - trace the next remaining discriminator or payload seam
+  - keep the change isolated to Package 2, without leaking into Package 3+
 
 Still true:
-- do **not** widen the active slice into Package 2+ while Package 1 is still unresolved
-- Package 2 (`basecamp toolcall routing fix`) stays next once Package 1 is landed or honestly blocked
+- Package 3 (`locker outfit engine hardening`) stays next once Package 2 is landed or honestly blocked
 - ordinary harness footing should stay on `McWilliams` / `Zoraida Vick`, not drift back to the older default save
 - the debug pass is now packetized; use the auxiliary doc instead of rebuilding the note pile from chat memory
 - hackathon-reserved — do not touch before the event:

@@ -1707,7 +1707,7 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                     std::vector<npc *> llm_hearers;
                     llm_hearers.reserve( hearers.size() );
                     for( npc *guy : hearers ) {
-                        if( guy == nullptr || !guy->assigned_camp ) {
+                        if( guy == nullptr || !basecamp_ai::uses_basecamp_request_routing( *guy ) ) {
                             llm_hearers.push_back( guy );
                             continue;
                         }

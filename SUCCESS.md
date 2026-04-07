@@ -20,7 +20,7 @@ Use this file so completion is explicit instead of vibes-based.
 Status: ACTIVE / PACKAGE 1 FIRST
 
 Success state:
-- [ ] **Package 1, harness zone-manager save-path polish** is landed or honestly blocked with screenshots/artifacts from the current McWilliams harness path.
+- [x] **Package 1, harness zone-manager save-path polish** is landed with screenshots/artifacts from the current McWilliams harness path.
 - [ ] **Package 2, basecamp toolcall routing fix** is landed or honestly blocked, and the right discriminator is separated from the bad location-only heuristic.
 - [ ] **Package 3, locker outfit engine hardening** is landed or honestly blocked, with the ugliest visible equip/replace conflicts reduced reviewer-cleanly.
 - [ ] **Package 4, locker zone policy + control-surface cleanup** is landed or honestly blocked, with locker-vs-sorting semantics and the first useful settings surface made explicit.
