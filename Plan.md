@@ -37,43 +37,47 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Patrol Zone v1
+## 1. Current delivery target — Locker Zone V1 surface/control reopen
 
-**Status:** GREENLIT / ACTIVE
+**Status:** ACTIVE / REOPENED FROM CHECKPOINT
 
-Josef has now greenlit **Patrol Zone v1**.
-This is the next real lane.
+The repo is not honestly parked anymore.
+Fresh-save manual testing on Josef's current live build exposed locker surface/control regressions that directly contradict the old closed-state story.
 
-Current job:
-- implement a Zone Manager patrol zone as a real camp job with deterministic scheduling/coverage behavior
-- follow `doc/patrol-zone-v1-patch-plan-2026-04-06.md`
-- keep the implementation brutally simple, legible, and testable
+### Current truth
+- `CAMP_LOCKER` still exists as a real Zone Manager zone id, and the locker policy control surface still exists in code.
+- Fresh-save manual evidence from Josef's current live session reopened the lane:
+  - creating `CAMP_LOCKER` threw `Type mismatch in diag_value: requested string, got double`
+  - ordinary sorting should not steal from locker tiles, and that guard now exists with deterministic regression coverage
+  - a visible `S` overlay leaked after basecamp/zone interaction and needs triage instead of hand-waving
+- The reported type-mismatch was reduced to one concrete locker path in current code: the locker downtime skip log was reading numeric `camp_locker_last_service_turn` with `diag_value::str()`. That path now uses `to_string( false )` and has deterministic regression coverage.
+- A fresh harness recheck of the real Zone Manager locker-creation path on `basecamp_dev_manual_2026-04-02` now succeeds on current code with no visible popup and no stuck `S` after closing the zone manager.
+- A second harness probe on that same fixture now shows that an explicit Zone Manager display toggle on a `CAMP_LOCKER` zone leaves the expected storage-style `S` overlay visible after the manager closes. So the reported `S` is at least plausibly a latched zone-display state, not automatically proof of a separate locker-creation leak.
+- Josef's live build hash was `4e3b63650d-dirty`; locker-related code is unchanged between that hash and current `HEAD`, so this was not just a docs-only stale-binary ghost story. The remaining mismatch now looks save/path-specific until disproved.
+- The direct-talk wrong-snapshot bug is real too, but the smallest active slice is still locker surface/control honesty first.
 
-### Immediate next move
-- the topology spine, deterministic planner contract, sticky shift-roster / interrupt-whitelist contract, and deterministic on-map hold-vs-loop runtime order are landed:
-  - patrol zone type
-  - 4-way connected clustering
-  - patrol-priority worker pool
-  - day/night shift allocation for the reference staffing cases
-  - shift-latched active roster that routine chores do not steal
-  - urgent patrol breaks/backfill without full-roster reshuffle
-  - fully staffed connected clusters hold distinct squares
-  - understaffed or multi-post assignments walk a fixed 10-minute loop order
-  - off-shift patrol workers fall back to ordinary camp downtime
-- the first honest live patrol packet now exists with separate screen/tests/artifacts reporting for:
-  - lone guard on disconnected posts
-  - staffed connected cluster with distinct holders
-- next tighten the **screen** evidence so the hold-vs-loop contrast reads clearly to a player without needing the artifact log to explain the screenshot
-- keep watching for hallucinations, fake progress, and prose outrunning code/tests/live proof
-- do **not** drift into smart-zone-manager cleverness during v1
-
-### Later discussion topics once Patrol Zone v1 runs dry
-1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
-2. discuss/prototype a **smart zone manager**
+### Next real state
+1. compare the clean harness result against Josef's reported `McWilliams` live-session failure, then either snapshot/reprobe that save once it is safely closed or build the smallest synthetic reproducer for the remaining mismatch
+2. reduce whether the reported visible `S` on `McWilliams` came from that same latched zone-display state or from some other save/path-specific overlay bug
+3. then return to the queued direct-talk wrong-snapshot bug if the locker trail is no longer the tightest active slice
 
 ---
 
-## 2. Checkpointed — Locker-capable harness restaging
+## 2. Checkpointed — Patrol Zone v1
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+This lane is now considered done for now because the bundled success state in `SUCCESS.md` is checked:
+- patrol zone surface + planner + sticky-shift contract exist
+- deterministic hold-vs-loop runtime behavior exists
+- current-binary live proof exists for disconnected-loop and connected-hold cases
+- the packaged patrol packet is now legible enough to explain gaps / off-shift state without leaning on raw trace logs alone
+
+If later code work or runtime evidence shows any one of those claims is false or incomplete, reopen Patrol Zone v1 immediately.
+
+---
+
+## 3. Checkpointed — Locker-capable harness restaging
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -87,7 +91,7 @@ If later fixture drift, harness drift, or locker runtime evidence breaks any one
 
 ---
 
-## 3. Checkpointed — Locker Zone V2
+## 4. Checkpointed — Locker Zone V2
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -101,22 +105,26 @@ If later code work or runtime evidence shows any one of those bundled claims is 
 
 ---
 
-## 4. Checkpointed — Locker Zone V1
+## 5. Reopened context — Locker Zone V1
 
-**Status:** CHECKPOINTED / DONE FOR NOW
+**Status:** REOPENED UNDER SECTION 1
 
-V1 is only considered done because the bundled V1 task set in `SUCCESS.md` is fully checked.
-That bundled close-out is meant to stop false completion:
-- locker surface/control exists as a real zone-manager + camp-policy feature
+Do not treat Locker Zone V1 as closed right now.
+Fresh-save manual testing disproved the old surface/control close-out, so the active V1 reopen now lives in section 1.
+
+Still believed true unless new evidence breaks it:
 - locker outfitting core exists as real planner/service behavior
 - locker maintenance rhythm exists as real dirty/queue/reservation behavior
-- V1 has deterministic + proportional runtime proof recorded
+- earlier deterministic + proportional runtime proof for those non-surface slices still exists
 
-If later code work shows any one of those bundled claims is false or incomplete, reopen V1 immediately.
+What is no longer safe to claim as closed until revalidated:
+- that the locker surface/control is currently solid on the real fresh-save path
+- that ordinary sorting cannot siphon gear out of locker tiles
+- that the current locker zone interaction surface is free of the reported type-mismatch / overlay problems
 
 ---
 
-## 5. Checkpointed — post-Locker-V1 Basecamp follow-through
+## 6. Checkpointed — post-Locker-V1 Basecamp follow-through
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -130,7 +138,7 @@ Keep this closed unless Josef explicitly reopens Basecamp prompt follow-through 
 
 ---
 
-## 6. Checkpointed — LLM-side board snapshot path
+## 7. Checkpointed — LLM-side board snapshot path
 
 **Status:** CHECKPOINTED
 
@@ -144,7 +152,7 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 7. Hackathon-reserved feature lanes — do not touch before the event
+## 8. Hackathon-reserved feature lanes — do not touch before the event
 
 These are intentionally **reserved for the hackathon itself**.
 They should stay visibly separate from the current repo-footing/harness work so reviewers do not mistake scaffolding for early feature implementation.
@@ -160,7 +168,7 @@ Do not start them early, do not half-land them, and do not describe scaffolding 
 
 ---
 
-## 8. Documentation discipline
+## 9. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

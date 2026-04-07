@@ -334,6 +334,7 @@ The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is st
 
 ### Locker Zone roadmap note
 - Locker Zone V1 should be spoken about as a **bundled completed slice**, not as one giant vague blob and not as one tiny lucky sub-patch. Its bundled close-out is: (1) locker surface/control exists (`CAMP_LOCKER` zone + persisted locker policy + player-facing locker policy menu), (2) locker outfitting core exists (classification/gathering/scoring/planning/equip/upgrade/dedupe/return), (3) locker maintenance rhythm exists (dirty triggers + queue + reservations + one-worker-at-a-time servicing), and (4) deterministic + proportional runtime proof exists.
+- Ordinary sorting must treat `CAMP_LOCKER` tiles as protected storage. If a locker tile overlaps an unsorted/source tile, sort should skip it instead of siphoning locker gear into normal loot destinations.
 - The physical locker supply is explicit: a `CAMP_LOCKER` Zone Manager zone, not an invisible camp concept.
 - The camp also now has a persisted locker-policy control surface: the player can toggle which managed slots the camp locker may handle from the basecamp locker-policy UI, while the zone supplies the actual gear.
 - The locker planner is no longer dead paper: deterministic helpers classify locker items, gather zone candidates, keep the best current managed item, mark duplicate current gear for cleanup, and feed a live service path that lets idle assigned-camp NPCs perform an infrequent locker reevaluation during worker downtime.
