@@ -15,6 +15,26 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Controlled locker / basecamp follow-through packet
+
+Status: ACTIVE / PACKAGE 1 FIRST
+
+Success state:
+- [ ] **Package 1, harness zone-manager save-path polish** is landed or honestly blocked with screenshots/artifacts from the current McWilliams harness path.
+- [ ] **Package 2, basecamp toolcall routing fix** is landed or honestly blocked, and the right discriminator is separated from the bad location-only heuristic.
+- [ ] **Package 3, locker outfit engine hardening** is landed or honestly blocked, with the ugliest visible equip/replace conflicts reduced reviewer-cleanly.
+- [ ] **Package 4, locker zone policy + control-surface cleanup** is landed or honestly blocked, with locker-vs-sorting semantics and the first useful settings surface made explicit.
+- [ ] **Package 5, basecamp carried-item support + dump lane** is landed or honestly blocked, without widening into follower-inventory soup.
+- [ ] The package order remains controlled: one slice at a time, revalidated between slices, without opportunistic broadening.
+
+Notes:
+- Canonical package boundaries and acceptance bars live in `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
+- This is the active success-state block that should match `Plan.md`, `TODO.md`, and `TESTING.md`.
+- The point is not to re-open one giant locker/basecamp world. The point is to preserve the working loop while moving through the explicit packet in order.
+- The ordinary harness footing for this packet should stay on `McWilliams` / `Zoraida Vick`, not drift back to the older default save.
+
+---
+
 ## Patrol Zone v1
 
 Status: CHECKPOINTED / DONE FOR NOW
@@ -129,7 +149,7 @@ Notes:
 
 ## Locker Zone V1
 
-Status: REOPENED / SURFACE-CONTROL AUDIT ACTIVE
+Status: PRIOR BASELINE / FOLLOW-THROUGH MOVED TO ACTIVE PACKET
 
 Bundled V1 completion tasks:
 - [ ] **Locker surface/control task** — `CAMP_LOCKER` works as a real Zone Manager zone on the fresh-save path, ordinary sorting does not steal from locker tiles, camp locker policy state exists, the player-facing locker policy menu/control exists, and the current surface is free of the reported zone-creation type-mismatch.
@@ -140,9 +160,9 @@ Bundled V1 completion tasks:
 
 Notes:
 - V1 was reopened on 2026-04-07 because fresh-save manual testing contradicted the old surface/control close-out.
+- That reopened follow-through is now packetized in the active `Controlled locker / basecamp follow-through packet` above instead of staying as one vague reopened blob here.
 - `dirty-trigger follow-through` was the final previously landed V1 chunk, not the name of the whole feature.
 - Locker candidate scanning now uses sorted locker tiles so debug/state summaries stay deterministic enough for dirty-trigger tracking and tests.
-- The first repair slice in this reopen is explicit locker sort protection; the zone-creation type-mismatch and visible `S` overlay are still open until reduced or fixed.
 - If later code or testing disproves any other bundled V1 task, reopen that slice too instead of pretending only the surface changed.
 
 ---
