@@ -129,20 +129,21 @@ Notes:
 
 ## Locker Zone V1
 
-Status: CHECKPOINTED / DONE FOR NOW
+Status: REOPENED / SURFACE-CONTROL AUDIT ACTIVE
 
 Bundled V1 completion tasks:
-- [x] **Locker surface/control task** — `CAMP_LOCKER` exists as a Zone Manager zone, camp locker policy state exists, the player-facing locker policy menu/control exists, and the policy survives save/load.
+- [ ] **Locker surface/control task** — `CAMP_LOCKER` works as a real Zone Manager zone on the fresh-save path, ordinary sorting does not steal from locker tiles, camp locker policy state exists, the player-facing locker policy menu/control exists, and the current surface is free of the reported zone-creation type-mismatch.
 - [x] **Locker outfitting core task** — representative locker item classification, candidate gathering, score helpers, planning, equip/upgrade behavior, duplicate cleanup, and returning replaced managed gear all exist.
 - [x] **Locker maintenance rhythm task** — wake-up dirty, policy-change dirty, new-gear dirty, lost-gear dirty, queue sequencing, and reservation behavior all exist.
 - [x] **Locker V1 proof task** — deterministic coverage plus proportional runtime validation for the same downtime/service path are recorded in `TESTING.md`.
 - [x] Any Josef-specific V1 follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
-- V1 is only considered done because the whole bundled task set above is checked.
-- `dirty-trigger follow-through` was the final V1 chunk landed, not the name of the whole feature.
+- V1 was reopened on 2026-04-07 because fresh-save manual testing contradicted the old surface/control close-out.
+- `dirty-trigger follow-through` was the final previously landed V1 chunk, not the name of the whole feature.
 - Locker candidate scanning now uses sorted locker tiles so debug/state summaries stay deterministic enough for dirty-trigger tracking and tests.
-- If later code or testing disproves any bundled V1 task, reopen V1 immediately.
+- The first repair slice in this reopen is explicit locker sort protection; the zone-creation type-mismatch and visible `S` overlay are still open until reduced or fixed.
+- If later code or testing disproves any other bundled V1 task, reopen that slice too instead of pretending only the surface changed.
 
 ---
 

@@ -55,6 +55,7 @@ static const zone_type_id zone_type_LOOT_FOOD( "LOOT_FOOD" );
 static const zone_type_id zone_type_LOOT_PDRINK( "LOOT_PDRINK" );
 static const zone_type_id zone_type_LOOT_PFOOD( "LOOT_PFOOD" );
 static const zone_type_id zone_type_LOOT_UNSORTED( "LOOT_UNSORTED" );
+static const zone_type_id zone_type_CAMP_LOCKER( "CAMP_LOCKER" );
 static const zone_type_id zone_type_UNLOAD_ALL( "UNLOAD_ALL" );
 
 namespace
@@ -396,6 +397,44 @@ TEST_CASE( "zone_sorting_skips_items_with_unreachable_destinations",
     // Player inventory should not contain the food item
     CHECK( dummy.charges_of( itype_test_apple ) == 0 );
     // Activity should have completed (no hang)
+    CHECK( !dummy.activity );
+}
+
+TEST_CASE( "zone_sorting_leaves_camp_locker_tiles_alone",
+           "[zones][items][activities][sorting][basecamp]" )
+{
+    avatar &dummy = get_avatar();
+    map &here = get_map();
+
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    const tripoint_bub_ms start_pos = tripoint_bub_ms::zero + tripoint::east;
+    const tripoint_abs_ms start_abs = here.get_abs( start_pos );
+    dummy.set_pos_abs_only( start_abs );
+
+    create_tile_zone( "Unsorted", zone_type_LOOT_UNSORTED, start_abs );
+    create_tile_zone( "Camp Locker", zone_type_CAMP_LOCKER, start_abs );
+
+    here.add_item_or_charges( start_pos, item( itype_test_apple ) );
+    REQUIRE( count_items_or_charges( start_pos, itype_test_apple, std::nullopt ) == 1 );
+
+    const tripoint_bub_ms dest_pos = start_pos + tripoint( 5, 0, 0 );
+    const tripoint_abs_ms dest_abs = here.get_abs( dest_pos );
+    here.ter_set( dest_pos, ter_t_floor );
+    create_tile_zone( "Food", zone_type_LOOT_FOOD, dest_abs );
+
+    item test_food( itype_test_apple );
+    zone_manager &zm = zone_manager::get_manager();
+    REQUIRE( zm.get_near_zone_type_for_item( test_food, start_abs ) == zone_type_LOOT_FOOD );
+
+    dummy.assign_activity( zone_sort_activity_actor() );
+    process_activity( dummy );
+
+    CHECK( count_items_or_charges( start_pos, itype_test_apple, std::nullopt ) == 1 );
+    CHECK( count_items_or_charges( dest_pos, itype_test_apple, std::nullopt ) == 0 );
+    CHECK( dummy.charges_of( itype_test_apple ) == 0 );
     CHECK( !dummy.activity );
 }
 

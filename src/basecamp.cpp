@@ -2761,6 +2761,9 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
                                   to_turn<int>(locker_next_service_turn));
     }
     if (worker.get_value(camp_locker_probe_skip_reason_key).str() != skip_reason) {
+      const std::string last_service_turn_text = last_service_turn_value.is_empty()
+                                                 ? "none"
+                                                 : last_service_turn_value.to_string( false );
       DebugLog(D_INFO, DC_ALL)
           << string_format(
                  "camp locker: skip %s reason=%s queue_size=%d worker_in_queue=%s assigned_here=%s valid_workers=%d last_service=%s has_changes=%s now=%d next_turn=%d",
@@ -2769,8 +2772,7 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
                  queued_after_cleanup ? "true" : "false",
                  worker_assigned_here ? "true" : "false",
                  static_cast<int>(valid_workers.size()),
-                 last_service_turn_value.is_empty() ? "none"
-                                                   : last_service_turn_value.str(),
+                 last_service_turn_text,
                  has_state_changes ? "true" : "false",
                  to_turn<int>(calendar::turn),
                  to_turn<int>(locker_next_service_turn));

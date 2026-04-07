@@ -1177,6 +1177,39 @@ TEST_CASE("camp_locker_new_zone_gear_requeues_worker_after_baseline_noop",
   zone_manager::get_manager().clear();
 }
 
+TEST_CASE("camp_locker_skip_probe_handles_numeric_last_service_turn",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(tripoint_bub_ms{5, 5, 0}.xy(), "thug");
+  clear_character(worker, true);
+  test_camp->add_assignee(worker.getID());
+
+  CHECK_FALSE(test_camp->process_camp_locker_downtime(worker));
+
+  bool processed = true;
+  CHECK_NOTHROW(processed = test_camp->process_camp_locker_downtime(worker));
+  CHECK_FALSE(processed);
+
+  zone_manager::get_manager().clear();
+}
+
 TEST_CASE("camp_locker_losing_managed_gear_requeues_worker",
           "[camp][locker]") {
   restore_on_out_of_scope restore_calendar_turn(calendar::turn);

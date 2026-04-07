@@ -39,37 +39,52 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Patrol Zone v1
+### Locker Zone V1 surface/control reopen
 
 Current honest state:
-- Patrol Zone v1 is checkpointed / done for now.
-- the topology spine is real: `CAMP_PATROL` exists and patrol tiles are grouped by 4-way connected clusters
-- the deterministic planner contract is real: patrol workers are the assigned camp NPCs with patrol priority > 0, the planner splits them into day/night rosters, and allocation stays deterministic across the reference disconnected-post and connected-cluster cases
-- the sticky-roster / interrupt-whitelist contract is real too: current shift rosters latch for the whole day/night block, routine chores do not steal active guards mid-shift, and urgent breaks can consume reserve backfill without rebalancing the whole roster
-- deterministic on-map runtime intent is real: a guard with one fully staffed connected cluster holds a distinct tile, while understaffed or multi-post assignments walk a fixed loop that advances every 10 in-game minutes; off-shift patrol workers fall back to ordinary camp downtime instead of clinging to stale posts
-- legacy-save patrol control-surface drift is covered too: old serialized camp-worker job maps can omit newer task keys, so `job_data::deserialize` now reseeds missing default camp jobs and keeps `ACT_CAMP_PATROL` available on older saves/fixtures
-- narrow deterministic coverage lives in `legacy_job_data_load_adds_missing_patrol_priority_surface`, `camp_patrol_zone_surface_and_sorted_tiles`, `camp_patrol_zone_clusters_use_4_way_connectivity`, `camp_patrol_worker_pool_uses_patrol_priority_surface`, `camp_patrol_planner_contract`, `camp_patrol_interrupt_contract`, `camp_patrol_shift_roster_latches_until_boundary`, and `camp_patrol_runtime_contract`
-- latest deterministic evidence is still the repaired fresh `make -j4 tests` plus `./tests/cata_test "[camp][patrol]"` on 2026-04-06 after the save-compat reseed fix
-- current-binary live patrol proof now exists as separate screen/tests/artifacts packets plus a small explainer helper:
-  - `patrol.disconnected_live` -> `.userdata/dev-harness/harness_runs/20260406_230124/probe.report.json` with `verdict: artifacts_matched`, a readable staffing crop, a readable zone-topology crop, `runtime_motion_compare.gif`, and `probe.patrol_summary.txt` explaining why 4 disconnected posts + a 1-guard day roster necessarily leaves gaps between visits
-  - `patrol.connected_live` -> `.userdata/dev-harness/harness_runs/20260406_230552/probe.report.json` with `verdict: artifacts_matched`, a readable staffing crop, a readable zone-topology crop, `runtime_motion_compare.gif`, and `probe.patrol_summary.txt` explaining why 4 patrol-enabled workers still become a 2-guard day roster with 2 off-shift guards and 2 held tiles
-- the stale-binary ambiguity on the earlier helper reruns is gone: the current patrol packet still reports `version_matches_runtime_paths: true` against the current runtime-relevant tree
-- the player-legibility close-out now counts as met for this packet: loop-vs-hold, disconnected-vs-connected layout, uncovered posts, and off-shift counts are all stated directly enough without making the reader mine raw patrol trace logs
+- Locker Zone V1 is reopened from checkpoint because fresh-save manual testing on 2026-04-07 contradicted the old surface/control close-out.
+- Fresh manual evidence from Josef's live `McWilliams` / `Zoraida Vick` session on build `4e3b63650d-dirty` reported three locker-surface problems worth treating as real until disproved:
+  - creating `CAMP_LOCKER` threw `Type mismatch in diag_value: requested string, got double`
+  - ordinary sorting should protect locker tiles, but the code had no explicit `CAMP_LOCKER` source-tile skip
+  - a visible `S` overlay leaked after basecamp/zone interaction and needs triage
+- Locker-related code is unchanged between `4e3b63650d` and current `HEAD`, so this is not a docs-only build mismatch excuse.
+- Current agent-side progress on the smallest slice:
+  - `sort_skip_item` now explicitly refuses to sort items off `CAMP_LOCKER` source tiles
+  - deterministic regression coverage exists as `zone_sorting_leaves_camp_locker_tiles_alone` in `tests/clzones_test.cpp`
+  - the reported `diag_value` crash was reduced to one concrete locker path in current code: locker downtime skip logging was reading numeric `camp_locker_last_service_turn` with `diag_value::str()`
+  - that locker skip path now formats the stored turn with `to_string( false )`, and deterministic regression coverage exists as `camp_locker_skip_probe_handles_numeric_last_service_turn` in `tests/faction_camp_test.cpp`
+  - a fresh harness recheck of the real Zone Manager locker-creation path on `basecamp_dev_manual_2026-04-02` now succeeds on current code (`locker.create_zone_probe`) with no visible popup and no stuck `S` after closing the zone manager
+  - a second live harness probe on that same fixture (`locker.display_toggle_probe`) shows that explicitly toggling zone display on a `CAMP_LOCKER` zone leaves visible storage-style `S` markers after closing the manager, which reduces the overlay report toward latched zone-visibility state rather than an automatic locker-creation leak
+- Latest validation evidence for this reopen:
+  - `git diff --check` passed
+  - `make -j4 tests` passed
+  - `./tests/cata_test "zone_sorting_leaves_camp_locker_tiles_alone"` passed
+  - `./tests/cata_test "camp_locker_skip_probe_handles_numeric_last_service_turn"` passed
+  - `python3 tools/openclaw_harness/startup_harness.py probe locker.create_zone_probe` passed on `profile=dev`, `fixture=basecamp_dev_manual_2026-04-02`
+  - `python3 tools/openclaw_harness/startup_harness.py probe locker.display_toggle_probe` passed on `profile=dev`, `fixture=basecamp_dev_manual_2026-04-02`; **screen:** after explicit display toggle, closing Zone Manager leaves visible `S` markers over the locker tiles, **artifacts/logs:** no dedicated artifact contract, so the packaged report honestly stayed `inconclusive_no_artifact_match`
 
 What counts next:
-- no further patrol probe is queued unless later code or runtime evidence reopens the lane
+- compare the clean harness result against Josef's reported `McWilliams` live-session failure and reduce whether the remaining mismatch is save/path-specific
+- determine whether the reported visible `S` on `McWilliams` came from that same latched zone-visibility state or from a separate rendering/state bug
 
-### Existing baseline that should not be mistaken for patrol proof
+### Patrol Zone v1 baseline
 
-- Locker Zone V1/V2 and locker-capable harness restaging remain checkpointed; do not rerun them by ritual now that Patrol Zone v1 is closed.
-- The repo already has one honest packaged proof format that separates **screen** / **tests** / **artifacts** (for example `locker.weather_wait` at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`). Treat that as a packaging template only, not as Patrol Zone evidence.
-- Current harness scenarios `chat.nearby_npc_basic` and `ambient.weird_item_reaction` remain hackathon-reserved scaffolding. They are not part of Patrol Zone v1.
+Current honest state:
+- Patrol Zone v1 remains checkpointed / done for now.
+- No new patrol probe is queued unless later code or runtime evidence reopens that lane.
+- The current live packets and deterministic proof still stand as the last closed lane, not the active one.
+
+### Existing baseline that should not be mistaken for locker proof
+
+- Earlier locker V1/V2 runtime proof still supports the non-surface outfitting / maintenance spine, but it does **not** cover the newly reported fresh-save locker surface regressions.
+- The repo already has one honest packaged proof format that separates **screen** / **tests** / **artifacts** (for example `locker.weather_wait` at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`). Treat that as a packaging template only, not as proof that the current locker surface is healthy.
+- Current harness scenarios `chat.nearby_npc_basic` and `ambient.weird_item_reaction` remain hackathon-reserved scaffolding. They are not part of this locker-surface reopen.
 
 ### Meaning
 
-- Patrol Zone v1 has now earned the topology, planner, sticky-roster, on-map behavior, live-proof, and player-legibility rows; the lane is closed unless later evidence breaks one of those claims.
-- Zone-type plumbing, prose, and plausible-looking motion do **not** count as success by themselves.
-- If a patrol report sounds cleaner than the code/tests/live packet beneath it, stop and audit before touching the ledgers.
+- The repo is not parked anymore.
+- The active question is locker surface/control honesty on the fresh-save path, not patrol close-out.
+- If the locker story starts sounding cleaner than the current code/tests/live evidence, stop and audit.
 
 ---
 
@@ -77,20 +92,20 @@ What counts next:
 
 ### Active queue
 
-No active validation queue.
-Patrol Zone v1 is closed, and the next lane is waiting on Josef's greenlight.
+1. compare the clean harness locker-creation recheck against Josef's reported `McWilliams` live-session failure
+2. triage whether the reported visible `S` on `McWilliams` came from that same latched zone-visibility state or a separate bug on that save/path
 
 Still true:
-1. keep the helper idea `sustain_npc` available only if a future patrol probe genuinely needs it
+1. the live `McWilliams` save should become the preferred harness/manual baseline only after Josef closes the session and the save can be snapshotted safely
+2. keep the helper idea `sustain_npc` available only if a future live probe genuinely needs it
 
 ### Anti-hallucination rule for this lane
 
 Do not treat any of these as success by themselves:
-- only adding patrol zone-type plumbing
-- only writing a planner without tests
+- only proving the locker planner/service internals while the locker UI surface still misbehaves on the fresh-save path
 - only writing docs/spec text
-- only observing vaguely plausible NPC motion on-screen
-- only claiming the interrupt rules in prose without deterministic proof
+- only adding one narrow code guard without rerunning the relevant regression test once the build allows it
+- only explaining away the `S` overlay without determining whether it is just a mode toggle or a real render/state bug
 
 If the story starts sounding cleaner than the evidence, stop and audit.
 
@@ -100,20 +115,21 @@ If the story starts sounding cleaner than the evidence, stop and audit.
 2. **ambient-trigger reaction lane / tiny ambient-trigger NPC model**
    - current `ambient.weird_item_reaction` evidence is harness-only scaffolding/observability, not feature implementation
 
-**Later discussion topics, not current code lanes:**
-1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice
-2. **smart zone manager**
+**Parked discussion topics, not current code lanes:**
+1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice after the surface/control reopen is closed again
+2. **smart zone manager** after locker surface truth is restored
 
 ### Active-lane handoff block
 
-- **active lane:** none right now; Patrol Zone v1 is closed and the repo is parked for the next greenlight
-- **last closed lane:** Patrol Zone v1 now has deterministic tests, current-binary disconnected/connected live packets, and the tiny `probe.patrol_summary.txt` companion helper for the last legibility questions
-- **Josef ask:** pick the next lane; no patrol-specific follow-up is required for close-out
+- **active lane:** Locker Zone V1 surface/control reopen
+- **active slice:** locker sort protection first, then zone-creation crash audit, then `S` overlay triage
+- **last closed lane:** Patrol Zone v1 still stands as the last closed lane with deterministic + live proof
+- **Josef ask:** none right now; keep working agent-side until a real try-now packet or a genuinely blocked choice appears
 
 ### Non-blocking Josef notes
 
-- None yet for Patrol Zone v1.
-- If a later live packet is worth Josef's eyes, batch the visually important questions together (hold-vs-loop readability, interruption readability, and whether the patrol surface feels legible) instead of drip-feeding tiny asks.
+- No new Josef ask yet for the locker-surface reopen.
+- Once the fresh-save `McWilliams` session is safely closed, snapshot it cleanly for the harness instead of copying a moving live save.
 
 ---
 

@@ -1,0 +1,80 @@
+{
+  "name": "locker.display_toggle_probe",
+  "description": "Create a CAMP_LOCKER zone, toggle its display marker on in Zone Manager, and capture whether the normal view shows the expected storage-style S overlay after closing the manager.",
+  "profile": "dev",
+  "world": "Sandy Creek",
+  "profile_snapshot": "basecamp_dev_manual_2026-04-02",
+  "fixture": "basecamp_dev_manual_2026-04-02",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_zones_manager",
+      "keys": ["Y"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "add_zone",
+      "keys": ["a"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "type",
+      "label": "name_zone",
+      "text": "Display Probe Locker",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "choose_camp_locker_zone_type",
+      "keys": ["down", "down", "down", "enter"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "pick_zone_start",
+      "keys": ["enter"],
+      "settle_seconds": 0.6,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "pick_zone_end",
+      "keys": ["enter"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "toggle_zone_display",
+      "keys": ["t"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "close_zones_manager",
+      "keys": ["escape"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "wait",
+      "label": "post_close_overlay_settle",
+      "seconds": 2,
+      "capture_after": true
+    }
+  ]
+}
