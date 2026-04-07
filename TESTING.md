@@ -39,52 +39,36 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Locker Zone V1 surface/control reopen
+### Controlled locker / basecamp follow-through packet
 
 Current honest state:
-- Locker Zone V1 is reopened from checkpoint because fresh-save manual testing on 2026-04-07 contradicted the old surface/control close-out.
-- Fresh manual evidence from Josef's live `McWilliams` / `Zoraida Vick` session on build `4e3b63650d-dirty` reported three locker-surface problems worth treating as real until disproved:
-  - creating `CAMP_LOCKER` threw `Type mismatch in diag_value: requested string, got double`
-  - ordinary sorting should protect locker tiles, but the code had no explicit `CAMP_LOCKER` source-tile skip
-  - a visible `S` overlay leaked after basecamp/zone interaction and needs triage
-- Locker-related code is unchanged between `4e3b63650d` and current `HEAD`, so this is not a docs-only build mismatch excuse.
-- Current agent-side progress on the smallest slice:
-  - `sort_skip_item` now explicitly refuses to sort items off `CAMP_LOCKER` source tiles
-  - deterministic regression coverage exists as `zone_sorting_leaves_camp_locker_tiles_alone` in `tests/clzones_test.cpp`
-  - the reported `diag_value` crash was reduced to one concrete locker path in current code: locker downtime skip logging was reading numeric `camp_locker_last_service_turn` with `diag_value::str()`
-  - that locker skip path now formats the stored turn with `to_string( false )`, and deterministic regression coverage exists as `camp_locker_skip_probe_handles_numeric_last_service_turn` in `tests/faction_camp_test.cpp`
-  - a fresh harness recheck of the real Zone Manager locker-creation path on `basecamp_dev_manual_2026-04-02` now succeeds on current code (`locker.create_zone_probe`) with no visible popup and no stuck `S` after closing the zone manager
-  - a second live harness probe on that same fixture (`locker.display_toggle_probe`) shows that explicitly toggling zone display on a `CAMP_LOCKER` zone leaves visible storage-style `S` markers after closing the manager, which reduces the overlay report toward latched zone-visibility state rather than an automatic locker-creation leak
-- Latest validation evidence for this reopen:
-  - `git diff --check` passed
-  - `make -j4 tests` passed
-  - `./tests/cata_test "zone_sorting_leaves_camp_locker_tiles_alone"` passed
-  - `./tests/cata_test "camp_locker_skip_probe_handles_numeric_last_service_turn"` passed
-  - `python3 tools/openclaw_harness/startup_harness.py probe locker.create_zone_probe` passed on `profile=dev`, `fixture=basecamp_dev_manual_2026-04-02`
-  - `python3 tools/openclaw_harness/startup_harness.py probe locker.display_toggle_probe` passed on `profile=dev`, `fixture=basecamp_dev_manual_2026-04-02`; **screen:** after explicit display toggle, closing Zone Manager leaves visible `S` markers over the locker tiles, **artifacts/logs:** no dedicated artifact contract, so the packaged report honestly stayed `inconclusive_no_artifact_match`
+- The active lane is now a controlled follow-through packet, not a broad locker/basecamp reopen blob.
+- Ordinary chat / ambient harness footing now points at the captured `McWilliams` / `Zoraida Vick` save instead of the older Sandy Creek default.
+- The current McWilliams debug pass has already been reduced into five explicit packages in:
+  - `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
+- Those packages are:
+  1. harness zone-manager save-path polish
+  2. basecamp toolcall routing fix
+  3. locker outfit engine hardening
+  4. locker zone policy + control-surface cleanup
+  5. basecamp carried-item support + dump lane
+- Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
+- The right current discipline is:
+  - one package at a time
+  - revalidate before widening
+  - do not let Andi or the repo drift into a broad opportunistic locker rewrite
 
-What counts next:
-- compare the clean harness result against Josef's reported `McWilliams` live-session failure and reduce whether the remaining mismatch is save/path-specific
-- determine whether the reported visible `S` on `McWilliams` came from that same latched zone-visibility state or from a separate rendering/state bug
+### Existing baseline that should not be mistaken for the active package
 
-### Patrol Zone v1 baseline
-
-Current honest state:
-- Patrol Zone v1 remains checkpointed / done for now.
-- No new patrol probe is queued unless later code or runtime evidence reopens that lane.
-- The current live packets and deterministic proof still stand as the last closed lane, not the active one.
-
-### Existing baseline that should not be mistaken for locker proof
-
-- Earlier locker V1/V2 runtime proof still supports the non-surface outfitting / maintenance spine, but it does **not** cover the newly reported fresh-save locker surface regressions.
-- The repo already has one honest packaged proof format that separates **screen** / **tests** / **artifacts** (for example `locker.weather_wait` at `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json`). Treat that as a packaging template only, not as proof that the current locker surface is healthy.
-- Current harness scenarios `chat.nearby_npc_basic` and `ambient.weird_item_reaction` remain hackathon-reserved scaffolding. They are not part of this locker-surface reopen.
+- Patrol Zone v1 remains checkpointed, the current McWilliams patrol-cluster check is a sanity confirmation, not a reopened patrol lane.
+- The harness swap to `McWilliams` / `Zoraida Vick` for ordinary chat/ambient probing is real, but it does **not** by itself prove the basecamp toolcall-routing bug is fixed.
+- The debug-intake pass and the Andi work-package draft are useful planning evidence, but neither counts as code/test closeout on their own.
 
 ### Meaning
 
-- The repo is not parked anymore.
-- The active question is locker surface/control honesty on the fresh-save path, not patrol close-out.
-- If the locker story starts sounding cleaner than the current code/tests/live evidence, stop and audit.
+- The active question is not "how do we fix all locker/basecamp weirdness at once".
+- The active question is "what is the next isolated package that honestly improves the system without wrecking the working loop".
+- If a proposed step starts blending harness polish, wrong-snapshot routing, locker outfit hardening, control-surface design, and inventory policy into one blob, split it before coding.
 
 ---
 
@@ -92,22 +76,28 @@ Current honest state:
 
 ### Active queue
 
-1. compare the clean harness locker-creation recheck against Josef's reported `McWilliams` live-session failure
-2. triage whether the reported visible `S` on `McWilliams` came from that same latched zone-visibility state or a separate bug on that save/path
+1. **Package 1** on the current McWilliams harness path:
+   - reproduce the locker-zone / Zone Manager flow
+   - capture screenshots at each relevant menu transition
+   - confirm the exact save-confirm path back to gameplay
+   - land the text-entry / save-path fix, or produce an honest blocked report
+2. once Package 1 is landed or honestly blocked, move to **Package 2** (`basecamp toolcall routing fix`) as the next isolated slice
 
 Still true:
-1. the live `McWilliams` save should become the preferred harness/manual baseline only after Josef closes the session and the save can be snapshotted safely
-2. keep the helper idea `sustain_npc` available only if a future live probe genuinely needs it
+- ordinary chat / ambient harness footing should stay on the captured `McWilliams` / `Zoraida Vick` save, not drift back to the older default fixture
+- Package 2 stays next on purpose, do not bury the wrong-snapshot bug under locker feature creep
+- `sustain_npc` remains only a helper idea for later probes if some future live packet honestly needs it
 
-### Anti-hallucination rule for this lane
+### Anti-hallucination rule for this packet
 
 Do not treat any of these as success by themselves:
-- only proving the locker planner/service internals while the locker UI surface still misbehaves on the fresh-save path
-- only writing docs/spec text
-- only adding one narrow code guard without rerunning the relevant regression test once the build allows it
-- only explaining away the `S` overlay without determining whether it is just a mode toggle or a real render/state bug
+- swapping the ordinary harness fixture to `McWilliams`
+- writing a clean work-package document
+- observing plausible-looking NPC gear motion on-screen once
+- describing a nice locker inventory/outfit policy in prose
+- partially fixing one package while quietly widening two others behind it
 
-If the story starts sounding cleaner than the evidence, stop and audit.
+If the packet sounds cleaner than the active package boundary or evidence underneath it, stop and trim it.
 
 **Hackathon-reserved — do not touch before the event:**
 1. **chat interface over dialogue branches**
@@ -115,21 +105,22 @@ If the story starts sounding cleaner than the evidence, stop and audit.
 2. **ambient-trigger reaction lane / tiny ambient-trigger NPC model**
    - current `ambient.weird_item_reaction` evidence is harness-only scaffolding/observability, not feature implementation
 
-**Parked discussion topics, not current code lanes:**
-1. reopen **Locker Zone V3** for one deliberately narrow next judgment slice after the surface/control reopen is closed again
-2. **smart zone manager** after locker surface truth is restored
+**Later discussion topics, not current code lanes:**
+1. **smart zone manager**
+2. any broader locker/inventory redesign beyond the active package order in the auxiliary doc
 
 ### Active-lane handoff block
 
-- **active lane:** Locker Zone V1 surface/control reopen
-- **active slice:** locker sort protection first, then zone-creation crash audit, then `S` overlay triage
-- **last closed lane:** Patrol Zone v1 still stands as the last closed lane with deterministic + live proof
-- **Josef ask:** none right now; keep working agent-side until a real try-now packet or a genuinely blocked choice appears
+- **active lane:** controlled locker / basecamp follow-through packet
+- **active slice:** Package 1, harness zone-manager save-path polish
+- **next slice:** Package 2, basecamp toolcall routing fix
+- **last closed lane:** Patrol Zone v1 remains checkpointed, McWilliams patrol clustering now matches the expected 2-cluster save layout
+- **Josef ask:** none right now beyond keeping the packet narrow and one-package-at-a-time
 
 ### Non-blocking Josef notes
 
-- No new Josef ask yet for the locker-surface reopen.
-- Once the fresh-save `McWilliams` session is safely closed, snapshot it cleanly for the harness instead of copying a moving live save.
+- The current debug pass already did the hard work of separating real bugs from design requests and future ideas.
+- Keep using that packetized structure. If future notes start piling up again, collect first, then reduce to packages again before handing anything to Andi.
 
 ---
 

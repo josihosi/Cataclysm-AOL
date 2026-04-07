@@ -1,0 +1,209 @@
+# Locker / basecamp follow-through work packages (2026-04-07)
+
+This document turns the current McWilliams debug pass into a controlled follow-through packet.
+
+The point is not to unleash one giant locker/basecamp rewrite.
+The point is to preserve the now-working loop, keep the harness on the right save, and give Andi one coherent slice at a time.
+
+## Operating rule
+
+- **One package at a time.**
+- Do not opportunistically blend packages just because they smell related.
+- Revalidate the current loop before moving to the next package.
+- If one package reveals a larger design problem, stop and report instead of silently widening scope.
+
+## Current baseline
+
+- Ordinary chat/ambient harness footing now points at the captured `McWilliams` / `Zoraida Vick` save instead of the older Sandy Creek default.
+- The debug-intake pass produced a mix of:
+  - one harness polish slice,
+  - one basecamp toolcall-routing slice,
+  - one locker outfit-hardening slice,
+  - one locker policy/control-surface slice,
+  - one deliberately scoped carried-item/support-gear slice.
+- Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity.
+
+## Package order
+
+1. **Harness zone-manager save-path polish**
+2. **Basecamp toolcall routing fix**
+3. **Locker outfit engine hardening**
+4. **Locker zone policy + control-surface cleanup**
+5. **Basecamp carried-item support + dump lane**
+
+Why this order:
+- Package 1 makes the repro/tooling packet less flaky.
+- Package 2 fixes the separate wrong-snapshot bug before broader feature churn.
+- Package 3 addresses the ugliest visible locker nonsense.
+- Package 4 adds player control and explicit locker policy after the engine is less chaotic.
+- Package 5 is the first intentionally scoped inventory/support expansion, not accidental soup.
+
+---
+
+## Package 1. Harness zone-manager save-path polish
+
+### Problem
+The zone-setting harness flow likely mangles the typed zone name and may fail to save zone settings when returning from Zone Manager to gameplay.
+
+### Inputs from testing
+- probable lane: locker-zone flow on McWilliams
+- observed weird zone name like `e Locker`
+- likely missing exit/save confirm path
+- current best hypothesis after returning to Zone Manager: `Esc` -> save prompt -> `Left` -> `Enter`
+
+### Deliverable
+Make the harness zone-setting flow reliably:
+1. enter the intended zone name cleanly
+2. return from Zone Manager to gameplay
+3. confirm saving changes when prompted
+4. leave screenshots/artifacts that prove the exact sequence
+
+### Acceptance bar
+- reproduced on the current McWilliams harness path
+- screenshots at each relevant menu transition
+- zone name no longer comes out mangled
+- created/edited zone persists after returning to gameplay
+
+### Out of scope
+- locker policy semantics
+- outfit logic
+- inventory logic
+
+---
+
+## Package 2. Basecamp toolcall routing fix
+
+### Problem
+The wrong snapshot/toolcall lane may be triggered for basecamp NPCs.
+A naive location-only heuristic is not acceptable because followers can also stand inside basecamp temporarily.
+
+### Requirement
+Basecamp toolcall routing must distinguish:
+- true camp-duty / basecamp-assigned NPC behavior
+from
+- ordinary follower behavior that merely happens near or inside camp
+
+### Deliverable
+Trace and fix the routing discriminator so the basecamp snapshot/toolcall path uses the right duty/state signal rather than simple positional presence.
+
+### Acceptance bar
+- the current McWilliams repro is understood and documented
+- follower-inside-basecamp does **not** automatically imply basecamp toolcall routing
+- true basecamp-assigned NPC path sends the intended basecamp-aware snapshot/toolcall payload
+
+### Out of scope
+- locker outfit settings
+- harness menu polish
+
+---
+
+## Package 3. Locker outfit engine hardening
+
+### Problem
+Current outfit replacement/cleanup is too brittle against random NPC states.
+Observed or suspected issues:
+- shorts + jeans at the same time
+- baseball cap not coming off for soldier helmet
+- damaged backpack not being replaced by a better-condition equivalent
+- undergarment cleanup partly happens, but replacement rules are muddy
+
+### Target behavior
+- conflicting worn items can be removed when needed
+- better-condition equivalent wins over worse-condition equivalent
+- helmet can replace cap when helmet is the better choice
+- one-piece / onesie armor can satisfy multiple regions
+- cleanup should be selective and robust, not a daily full-strip absurdity by default
+
+### Suggested implementation shape
+Think in role buckets / outfit goals, not only isolated item slots:
+- helmet
+- torso armor
+- arm protection
+- leg protection
+- backpack
+- sidearm
+- melee
+- long gun
+
+Trigger stronger cleanup when outfit state is clearly invalid:
+- missing required role item
+- conflicting nonsense worn together
+- obviously inferior/damaged equivalent equipped
+
+### Acceptance bar
+- cap -> helmet replacement works
+- duplicate/conflicting lower-body wear resolves sanely
+- damaged backpack can be replaced by a better-condition equivalent
+- onesie armor is not excluded by over-literal slot logic
+
+### Out of scope
+- full carried-item/pocket system
+- follower inventory preservation rules
+
+---
+
+## Package 4. Locker zone policy + control-surface cleanup
+
+### Problem
+Locker semantics and player controls are underspecified.
+Locker contents are curated by the player and should not quietly collapse back into generic sorting behavior.
+
+### Policy to land
+- locker items are curated stock
+- locker should beat generic sorting semantics
+- for locker, treat `ignore items when sorting in this zone` effectively as **YES**
+- player-facing locker settings should live on the billboard / locker settings surface
+
+### First useful setting set
+- helmets
+- armor
+- backpacks
+- sidearm
+- melee
+- long guns
+
+### Armor interpretation
+- roughly one protective piece for each major region when possible:
+  - torso
+  - arms
+  - legs
+- one-piece / onesie armor should count too
+
+### Acceptance bar
+- locker contents no longer get treated like ordinary unsorted stock
+- player can discover and understand the first useful locker toggles
+- wording is clear enough that behavior is not magical folklore
+
+### Out of scope
+- full pocket/inventory management
+- grenade or advanced consumable logic
+
+---
+
+## Package 5. Basecamp carried-item support + dump lane
+
+### Problem
+Basecamp NPCs probably should not preserve arbitrary miscellaneous carried junk the way followers do, but they still need a small useful carried-item lane.
+
+### Proposed policy
+Treat basecamp NPCs differently from followers:
+- basecamp NPCs may dump miscellaneous non-essential carried items during locker cleanup
+- curated locker stock should not become the dumping ground for misc junk
+- misc dump lane should go to floor / unsorted / cleanup lane outside curated locker stock
+
+### First support / refill items
+- sidearm implies holster support
+- belts are default support gear
+- bandages should refill up to about 10 on the next dirty / locker cycle
+
+### Acceptance bar
+- sidearm lane also seeks appropriate holster support
+- belts are handled as default support gear
+- bandage refill lane exists and tops up after use
+- miscellaneous carried junk does not pollute curated locker stock
+
+### Recommended v1 exclusions
+- grenades
+- general follower-style trinket preservation
+- complicated pocket micromanagement
+- arbitrary player-given-item exception logic unless clearly needed
