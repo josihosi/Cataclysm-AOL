@@ -52,6 +52,7 @@ static const itype_id itype_helmet_bike("helmet_bike");
 static const itype_id itype_jacket_light("jacket_light");
 static const itype_id itype_jeans("jeans");
 static const itype_id itype_knife_combat("knife_combat");
+static const itype_id itype_leggings("leggings");
 static const itype_id itype_pants_cargo("pants_cargo");
 static const itype_id itype_shorts_cargo("shorts_cargo");
 static const itype_id itype_sneakers("sneakers");
@@ -158,6 +159,8 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_sneakers)) ==
         camp_locker_slot::shoes);
   CHECK(classify_camp_locker_item(item(itype_jeans)) ==
+        camp_locker_slot::pants);
+  CHECK(classify_camp_locker_item(item(itype_leggings)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_test_jumpsuit_cotton)) ==
         camp_locker_slot::pants);
@@ -969,6 +972,33 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(pants_plan.has_changes());
   }
 
+  SECTION("hot weather treats leggings as pants-slot duplicates") {
+    item leggings(itype_leggings);
+    item cargo_pants(itype_pants_cargo);
+    item cargo_shorts(itype_shorts_cargo);
+
+    const std::vector<const item *> current_items = {&leggings, &cargo_pants};
+    const std::vector<const item *> locker_items = {&cargo_shorts};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    REQUIRE(pants_plan.kept_current != nullptr);
+    CHECK(pants_plan.kept_current->typeId() == itype_pants_cargo);
+    REQUIRE(pants_plan.duplicate_current.size() == 1);
+    CHECK(pants_plan.duplicate_current.front()->typeId() == itype_leggings);
+    REQUIRE(pants_plan.selected_candidate != nullptr);
+    CHECK(pants_plan.selected_candidate->typeId() == itype_shorts_cargo);
+    CHECK(pants_plan.upgrade_selected);
+    CHECK(pants_plan.has_changes());
+  }
+
   SECTION("hot weather keeps shorts over duplicate jeans") {
     item jeans(itype_jeans);
     item cargo_shorts(itype_shorts_cargo);
@@ -1287,6 +1317,59 @@ TEST_CASE("camp_locker_service_drops_duplicate_jeans_when_shorts_are_already_bes
   }
   CHECK(locker_has_jeans);
   CHECK_FALSE(locker_has_shorts);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_clears_full-leg_underlayers_before_hot_weather_upgrade",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(85));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_leggings), false).has_value());
+  REQUIRE(worker.wear_item(item(itype_pants_cargo), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_shorts_cargo));
+  CHECK_FALSE(worker.is_wearing(itype_pants_cargo));
+  CHECK_FALSE(worker.is_wearing(itype_leggings));
+
+  bool locker_has_shorts = false;
+  bool locker_has_pants = false;
+  bool locker_has_leggings = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts ||
+                        it.typeId() == itype_shorts_cargo;
+    locker_has_pants = locker_has_pants ||
+                       it.typeId() == itype_pants_cargo;
+    locker_has_leggings = locker_has_leggings ||
+                          it.typeId() == itype_leggings;
+  }
+  CHECK_FALSE(locker_has_shorts);
+  CHECK(locker_has_pants);
+  CHECK(locker_has_leggings);
 
   zone_manager::get_manager().clear();
 }

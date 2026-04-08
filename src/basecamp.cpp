@@ -472,6 +472,9 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   const bool covers_head = armor_covers_any(it, {"head"});
   const bool covers_feet = armor_covers_any(it, {"foot_l", "foot_r"});
   const bool covers_legs = armor_covers_any(it, {"leg_l", "leg_r"});
+  const bool covers_lower_legs =
+      armor_specifically_covers_any(it, {"leg_knee_l", "leg_knee_r",
+                                        "leg_lower_l", "leg_lower_r"});
   const bool covers_torso = armor_covers_any(it, {"torso"});
   const bool covers_arms = armor_covers_any(it, {"arm_l", "arm_r"});
   const bool skintight = it.has_layer({layer_level::SKINTIGHT});
@@ -488,7 +491,9 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   if (covers_feet && !covers_legs && !covers_torso && !covers_arms) {
     return skintight ? camp_locker_slot::socks : camp_locker_slot::shoes;
   }
-  if (skintight && (covers_torso || covers_legs || covers_arms || covers_feet)) {
+  if (skintight &&
+      (covers_torso || covers_arms || covers_feet ||
+       (covers_legs && !covers_lower_legs))) {
     return camp_locker_slot::underwear;
   }
   if (covers_torso && covers_legs && (covers_feet || !outer) &&

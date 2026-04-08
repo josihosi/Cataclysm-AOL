@@ -19,6 +19,7 @@
 - Locker candidate gathering now walks sorted locker tiles so debug/state summaries and deterministic tests do not wobble on unordered zone iteration.
 - Same-type bag upgrades now treat condition as a real tie-breaker and a meaningful upgrade signal, so locker service can replace a damaged daypack/backpack with a healthier equivalent even when the raw bag score delta alone would have been too small.
 - Footed/full-body jumpsuits now get treated as lower-body locker gear instead of footwear, so the planner stops misbucketting them as shoes just because they happen to cover feet.
+- Full-leg skintight underlayers that actually reach the knees/lower legs now also ride the pants lane instead of underwear, so hot-weather locker cleanup can strip leggings-like duplicates together with cargo pants before swapping into shorts.
 
 ## Camp locker V3 temperature lanes
 - The first Locker Zone V3 slice is deliberately narrow: local temperature adjusts locker scoring for shirt/vest-slot outerwear that covers both torso and arms.
