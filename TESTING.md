@@ -170,6 +170,12 @@ Current honest state:
   - structured `show_board` / `show_job` / board-follow-through replies no longer dump raw `board=` / `status=` / `approval=` / `next=` payload text into the visible in-game message log; that payload stays in the internal camp-reply log packet while the on-screen path reuses the organic board/status bark
   - `tests/faction_camp_test.cpp` now proves that split for structured `show_board`, structured `job=1`, and archived-request board cleanup without reopening ordinary follower behavior
   - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][basecamp_ai]"` with logs in `build_logs/basecamp_board_log_leak_build_20260408.log` and `build_logs/basecamp_board_log_leak_tests_20260408.log`
+- The matching live observability helper is now landed and re-proved on the current binary:
+  - the assigned-camp probe scenario now captures cropped OCR-backed screen-text artifacts beside `llm_intent.log`, so the player-facing bark can be compared directly with the internal structured camp-reply packet
+  - the first helper rerun honestly exposed stale-binary mismatch, so the real tiles target was rebuilt via `make -j4 TILES=1 cataclysm-tiles` with current log `build_logs/basecamp_board_observability_tiles_rebuild_20260408_retry1.log`
+  - latest current-binary proof packet: `.userdata/dev-harness/harness_runs/20260408_233639/`
+    - internal path: `probe.artifacts.log` still carries the structured assigned-camp handoff (`camp heard Katharina Leach`, `utterance=show_board`, `board=show_board`, `details=show_job=1`, `next=job=1`)
+    - visible path: `wait_for_board_reply.after.screen_text.txt` and `wait_for_job_followup_reply.after.screen_text.txt` now capture OCR text from the on-screen message area, showing organic bark like `check the board.` and `Got it-I'll help you` instead of raw `board=` / `next=` payload text
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -198,18 +204,11 @@ Current honest state:
    - use the now-closed Package 2 routing probe as a baseline and do not quietly reopen routing while continuing locker hardening
    - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, cap -> helmet proof, the hot-weather lower-body cleanup proof, the duplicate-shorts-vs-jeans cleanup proof, the leggings-underlayer cleanup proof, the outer-suit classification proof, the indirect suit-alias one-piece proof, the one-piece torso-strip guard proof, the skintight one-piece no-shorts-overlayer proof, the short-dress torso-coverage proof, the draped-overgarment overlay proof, the new full-length-dress torso-coverage proof, the new sleeved-dress arm-coverage / positive-split proof, the new head-covering full-body protective-suit proof, and the new footed-jumpsuit split-coverage proof closed while choosing the next isolated ugly locker conflict
    - the next missing evidence class is current-path locker behavior for the next visible lower-body oddity beyond those now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, outer-suit-classification, indirect suit-alias one-piece guard, one-piece torso-strip-guard, skintight one-piece no-shorts-overlayer, short-dress torso-coverage, draped-overgarment overlay, full-length-dress torso-coverage, sleeved-dress arm-coverage / positive-split, head-covering full-body protective-suit, and footed-jumpsuit split-coverage paths, not more ceremonial basecamp reruns
-2. **Preserved board/log baseline on the assigned-camp route:**
-   - the deterministic leak fix is now landed, so the missing evidence class is live McWilliams proof that the assigned-camp `show_board` packet still routes correctly while the in-game message log stays organic instead of dumping internal key=value payload text
-   - the current proof requirement is no longer just "does `llm_intent.log` show the right structured call"; it is the side-by-side split: internal structured call remains correct, player-facing message log remains organic
-   - do not treat this as permission to reopen ordinary follower behavior unless the leak can actually be proven to come from that path
-3. **Required observability helper on the same stack:**
-   - when the probe packet captures `llm_intent.log`, it should also capture the last few in-game message-log lines so the player-facing log and internal structured call can be compared side by side
-   - supporting auxiliary: `doc/basecamp-board-log-observability-2026-04-08.md`
-4. **Deterministic locker service-parity battery:**
+2. **Deterministic locker service-parity battery:**
    - expand current Package 3 proof with `doc/locker-service-parity-test-battery-2026-04-08.md` so locker logic is checked across classification, planning, and actual service behavior
    - include at least: full-body protective suits, footed one-pieces, draped one-pieces, positive split counterparts, and bullet-vs-melee armor tradeoff cases
    - for chosen families, deterministic tests should prove that planning and service stay aligned instead of allowing technically legal but practically stupid locker behavior
-5. keep the helper narrow:
+3. keep the helper narrow:
    - do not widen Package 3 into locker policy/control-surface or carried-item support yet
    - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
 

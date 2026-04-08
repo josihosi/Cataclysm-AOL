@@ -18,19 +18,16 @@ Current slice: **Package 3 — locker outfit engine hardening**
   - do not reopen ordinary board/craft routing unless current locker work actually breaks that assigned-camp path
 2. preserve the Package 2 board baseline while Package 3 continues:
   - the narrow deterministic leak fix is now landed: structured `show_board` / `show_job` / board-follow-through payload text stays on the internal camp-reply log path while the visible in-game message log reuses the organic board/status bark
-  - prove that leak fix live on the assigned-camp McWilliams path without touching ordinary follower NPC behavior unless the leak can actually be proven to originate there
-  - use `doc/basecamp-board-log-observability-2026-04-08.md` as the contract for the remaining live-proof shape
-3. required support subtask on the same current stack:
-  - when this path captures `llm_intent.log`, also capture the last few in-game message-log lines so the player-facing organic text can be compared directly with the internal structured call/log path
-  - this observability helper is required for the current bug/proof shape, not optional garnish
-4. expand the deterministic locker proof battery on the same current stack:
+  - the live assigned-camp McWilliams recheck is now packaged at `.userdata/dev-harness/harness_runs/20260408_233639/`, with OCR-backed screen-text artifacts beside `probe.artifacts.log`, so the split is proven side-by-side on the current binary
+  - keep that preserved baseline closed unless current locker work actually breaks it; do not widen into ordinary follower behavior without proof
+3. expand the deterministic locker proof battery on the same current stack:
   - use `doc/locker-service-parity-test-battery-2026-04-08.md` to add service-parity coverage, not just classification coverage
   - cover at least full-body protective suits, footed one-pieces, draped one-pieces, and bullet-vs-melee armor tradeoff seams
   - for the chosen families, planning and service behavior should agree instead of producing technically legal but practically stupid locker behavior
-5. keep the landed Package 3 guardrails intact while extending the acceptance bar one ugly lower-body case at a time:
+4. keep the landed Package 3 guardrails intact while extending the acceptance bar one ugly lower-body case at a time:
   - better-condition bag replacement, jumpsuit-not-shoes, cap -> helmet, hot-weather lower-body cleanup, duplicate-shorts-vs-jeans cleanup, leggings-underlayer cleanup, outer-suit classification, indirect suit-alias one-piece guard, one-piece torso-strip guard, skintight one-piece no-shorts-overlayer proof, short-dress torso-coverage proof, draped-overgarment overlay proof, full-length-dress torso-coverage proof, sleeved-dress arm-coverage / positive-split proof, head-covering full-body protective-suit proof, and footed-jumpsuit split-coverage proof stay closed while the next isolated lower-body oddity is chosen
   - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-closed slices, not a broad outfit-policy rewrite
-6. keep the helper narrow:
+5. keep the helper narrow:
   - do not widen Package 3 into locker policy/control-surface or carried-item support yet
   - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
 
