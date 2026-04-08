@@ -1,6 +1,6 @@
 # Smart Zone Manager v1 — auxiliary plan (2026-04-06)
 
-Status: greenlight-ready future-lane design note. Not the active lane.
+Status: greenlit queued lane after the current locker / basecamp follow-through stack. Not the active lane yet, but no longer waiting for greenlight.
 
 ## Why this exists
 
@@ -26,6 +26,7 @@ If this lane is greenlit, v1 should mean exactly this:
 - furniture/terrain chosen by general anchor flags/categories first, with floor fallback
 - one niche of each type only, never a clever multi-hub layout
 - custom zones allowed for only the currently intended special cases: `rotten`, `dirty`, `splintered`
+- for v1, treat these as blunt custom string filters: the custom word is the basic match rule, nothing cleverer than that
 - non-destructive by default
 - deterministic placement on the same camp layout
 
@@ -138,6 +139,7 @@ Meaning:
 This is the important corrected rule from Josef:
 - the **fireplace/brazier/fire-source tile itself** should be covered by `SOURCE_FIREWOOD`
 - one adjacent tile should get custom **`splintered`**
+- that adjacent `splintered` tile should also be covered by `SOURCE_FIREWOOD`
 - another nearby tile should get **wood** storage
 
 This is deliberately local and physical, not a vague crafting halo.

@@ -63,7 +63,7 @@ Notes:
 
 ## Smart Zone Manager v1
 
-Status: PARKED / NEEDS GREENLIGHT
+Status: GREENLIT / QUEUED AFTER CURRENT STACK
 
 Success state:
 - [ ] One explicit one-off smart-zoning action exists for Basecamp.
@@ -78,7 +78,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`.
-- This lane is a concrete parked option after Patrol Zone v1, not an automatically greenlit follow-on. Plan.md decides when it actually becomes active.
+- This lane is now explicitly greenlit, but it stays queued after the current locker / basecamp follow-through stack instead of interrupting that active packet.
 - Keep this focused on basecamp auto-layout helper behavior, not patrol/locker automation or smart-zone-manager soup.
 
 ---

@@ -22,9 +22,10 @@ Current slice: **Package 3 — locker outfit engine hardening**
   - footed/full-body jumpsuits now stay in the pants lane instead of getting misbucketed as shoes by the feet-first classifier
   - baseball cap -> army helmet replacement now has deterministic planning + service proof on the current path instead of just a debug-pass note
   - the hot-weather `antarvasa` + cargo pants -> cargo shorts cleanup path now also has deterministic planning + service proof instead of living only as debug-pass folklore
-  - deterministic coverage now includes planning + service checks for the bag-condition slice, the cap -> helmet slice, and the new lower-body cleanup slice, plus classification/planning checks for the jumpsuit-not-shoes slice
+  - the hot-weather duplicate `cargo shorts + jeans` conflict now also has deterministic planning + service proof: the locker path keeps the shorts, strips the duplicate jeans, and returns the jeans to locker stock without needing a replacement item from the zone
+  - deterministic coverage now includes planning + service checks for the bag-condition slice, the cap -> helmet slice, the new lower-body cleanup slice, and the duplicate-shorts-vs-jeans cleanup slice, plus classification/planning checks for the jumpsuit-not-shoes slice
 3. pick the next isolated ugly locker conflict, not a whole-barn rewrite:
-  - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-proven hot-weather cleanup path
+  - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-proven hot-weather cleanup and duplicate-shorts-vs-jeans paths
   - do **not** leak into locker policy/control-surface or carried-item work while continuing Package 3
 
 Still true:
@@ -34,4 +35,4 @@ Still true:
 - hackathon-reserved — do not touch before the event:
   - chat interface over dialogue branches
   - ambient-trigger reaction lane / tiny ambient-trigger NPC model
-- Smart Zone Manager v1 stays parked while the controlled locker/basecamp packet is active
+- Smart Zone Manager v1 is now greenlit but stays queued at the bottom of the stack until the current locker/basecamp packet reaches its honest handoff point
