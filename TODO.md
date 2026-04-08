@@ -14,31 +14,21 @@ Primary auxiliary:
 
 Current slice: **Package 3 — locker outfit engine hardening**
 1. keep Package 2 closed unless new code breaks it:
-  - the honest assigned-camp restaging source is the ally dialogue path `C -> t -> 1 -> b -> d -> n -> a -> q -> c`, now also representable as the harness step `assign_nearby_npc_to_camp_dialog`, plus enough settle time for the interim `GUARD_ALLY` state to clear
-  - the current routed live proof is `tools/openclaw_harness/scenarios/basecamp.package2_assign_camp_toolcall_probe_mcw.json` on `.userdata/dev-harness/harness_runs/20260408_083415/`; the debug-menu folklore path `} -> p -> p -> b -> A` is not that seam on current McWilliams
-  - `show_board` -> `job=1` is the honest structured follow-up on that state; do **not** drift back into treating raw `craft 1 bandage` as equivalent proof of Package 2
-2. keep the landed Package 3 slices narrow and true:
-  - same-type bag upgrades now prefer the better-condition equivalent instead of leaving a damaged current bag in place just because the score delta is tiny
-  - footed/full-body jumpsuits now stay in the pants lane instead of getting misbucketed as shoes by the feet-first classifier
-  - baseball cap -> army helmet replacement now has deterministic planning + service proof on the current path instead of just a debug-pass note
-  - the hot-weather `antarvasa` + cargo pants -> cargo shorts cleanup path now also has deterministic planning + service proof instead of living only as debug-pass folklore
-  - the hot-weather duplicate `cargo shorts + jeans` conflict now also has deterministic planning + service proof: the locker path keeps the shorts, strips the duplicate jeans, and returns the jeans to locker stock without needing a replacement item from the zone
-  - full-leg skintight underlayers like `leggings` now also have deterministic planning + service proof: the locker path treats them as pants-lane duplicates instead of sheltering them in underwear, so hot-weather cleanup can strip them alongside cargo pants before landing cargo shorts
-  - jumpsuit-like outer one-piece suits now stay in the pants lane instead of falling into vest logic just because they are marked `OUTER`, so the planner no longer pretends those full-body suits leave the lower-body slot empty
-  - lower-body-only upgrades no longer strip torso coverage from a current one-piece suit unless the same locker pass also supplies a torso replacement, so the locker path stops "upgrading" suits into half-dressed nonsense
-  - skintight full-body one-piece suits like union suits and wetsuits now also stay in the pants lane instead of hiding in underwear, so the locker path no longer tries to layer cargo shorts over them without a torso replacement
-  - indirect suit-alias full-body items like `tux` now also stay in the pants lane instead of falling back into vest logic, so `looks_like: suit` variants keep the same torso-coverage guard instead of reopening the half-dressed split bug through an alias path
-  - short dresses now also keep the same torso-coverage guard as the suit-like cases, so a shorts-only locker candidate leaves the dress in place while a shorts + t-shirt locker packet can still split it cleanly in one service pass
-  - draped-only overgarments like `hakama` now also stay out of the pants-slot conflict bucket, so hot-weather locker cleanup can swap actual pants for cargo shorts without stripping the draped overgarment into locker stock
-  - full-length dresses now also keep the same torso-coverage guard as the short-dress cases, so a shorts-only locker candidate leaves the dress in place while a shorts + t-shirt locker packet can still split it cleanly in one service pass
-  - sleeved dresses now also keep their arm-coverage guard when the only upper-body replacement is torso-only, so the locker path no longer splits them into bare-arm vest-plus-shorts nonsense just because some vest candidate preserves torso coverage on paper
-  - the same sleeved-dress guard now also has explicit positive proof that it still allows a hot-weather shorts split when the same locker pass supplies an arm-covering shirt replacement
-  - head-covering full-body protective suits like `hazmat_suit` now also have deterministic planning + service proof: the locker classifier keeps them in the pants lane instead of misbucketting them as helmets, so a shorts-only hot-weather candidate leaves the full-body suit in place instead of peeling it into ordinary-clothes nonsense
-  - footed full-body jumpsuits now also have deterministic proof for the next split guard beyond the earlier classifier fix: they stay intact unless the same locker pass also supplies replacement footwear, so the locker path no longer "upgrades" them into barefoot shorts + shirt nonsense after finally treating them as pants
-  - deterministic coverage now includes planning + service checks for the bag-condition slice, the cap -> helmet slice, the new lower-body cleanup slice, the duplicate-shorts-vs-jeans cleanup slice, the leggings-underlayer cleanup slice, the new one-piece torso-coverage guard slice, the new skintight one-piece guard slice, the new indirect suit-alias guard slice, the new short-dress guard slice, the new draped-overgarment guard slice, the new full-length-dress guard slice, the new sleeved-dress arm-coverage guard / split-with-arm-covering-shirt slice, the new head-covering full-body protective-suit slice, and the new footed-jumpsuit split-coverage slice, plus classification/planning checks for the jumpsuit-not-shoes slice and the outer-suit classification slice
-3. pick the next isolated ugly locker conflict, not a whole-barn rewrite:
-  - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, outer-suit-classification, indirect suit-alias one-piece guard, one-piece torso-strip-guard, skintight one-piece no-shorts-overlayer, short-dress torso-coverage, draped-overgarment overlay, full-length-dress torso-coverage, sleeved-dress arm-coverage / split-with-arm-covering-shirt, head-covering full-body protective-suit, and footed-jumpsuit split-coverage paths
-  - do **not** leak into locker policy/control-surface or carried-item work while continuing Package 3
+  - the honest assigned-camp restaging source and `show_board` -> `job=1` path remain the preserved routing baseline only, not the active center of the packet
+  - do not reopen ordinary board/craft routing unless current locker work actually breaks that assigned-camp path
+2. preserve the Package 2 board baseline while Package 3 continues:
+  - Josef's live screenshot of raw `board=...` / `status=...` / `next=...` text in the in-game message log now counts as a real regression on that preserved baseline
+  - fix that leak narrowly on the board/basecamp route without touching ordinary follower NPC behavior unless the leak can actually be proven to originate there
+  - use `doc/basecamp-board-log-observability-2026-04-08.md` as the contract for the leak guard + proof shape
+3. required support subtask on the same current stack:
+  - when this path captures `llm_intent.log`, also capture the last few in-game message-log lines so the player-facing organic text can be compared directly with the internal structured call/log path
+  - this observability helper is required for the current bug/proof shape, not optional garnish
+4. keep the landed Package 3 guardrails intact while extending the acceptance bar one ugly lower-body case at a time:
+  - better-condition bag replacement, jumpsuit-not-shoes, cap -> helmet, hot-weather lower-body cleanup, duplicate-shorts-vs-jeans cleanup, leggings-underlayer cleanup, outer-suit classification, indirect suit-alias one-piece guard, one-piece torso-strip guard, skintight one-piece no-shorts-overlayer proof, short-dress torso-coverage proof, draped-overgarment overlay proof, full-length-dress torso-coverage proof, sleeved-dress arm-coverage / positive-split proof, head-covering full-body protective-suit proof, and footed-jumpsuit split-coverage proof stay closed while the next isolated lower-body oddity is chosen
+  - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-closed slices, not a broad outfit-policy rewrite
+5. keep the helper narrow:
+  - do not widen Package 3 into locker policy/control-surface or carried-item support yet
+  - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
 
 Still true:
 - Package 3 (`locker outfit engine hardening`) stays next once Package 2 is landed or honestly blocked

@@ -194,7 +194,14 @@ Current honest state:
    - use the now-closed Package 2 routing probe as a baseline and do not quietly reopen routing while continuing locker hardening
    - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, cap -> helmet proof, the hot-weather lower-body cleanup proof, the duplicate-shorts-vs-jeans cleanup proof, the leggings-underlayer cleanup proof, the outer-suit classification proof, the indirect suit-alias one-piece proof, the one-piece torso-strip guard proof, the skintight one-piece no-shorts-overlayer proof, the short-dress torso-coverage proof, the draped-overgarment overlay proof, the new full-length-dress torso-coverage proof, the new sleeved-dress arm-coverage / positive-split proof, the new head-covering full-body protective-suit proof, and the new footed-jumpsuit split-coverage proof closed while choosing the next isolated ugly locker conflict
    - the next missing evidence class is current-path locker behavior for the next visible lower-body oddity beyond those now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, outer-suit-classification, indirect suit-alias one-piece guard, one-piece torso-strip-guard, skintight one-piece no-shorts-overlayer, short-dress torso-coverage, draped-overgarment overlay, full-length-dress torso-coverage, sleeved-dress arm-coverage / positive-split, head-covering full-body protective-suit, and footed-jumpsuit split-coverage paths, not more ceremonial basecamp reruns
-2. keep the helper narrow:
+2. **Preserved board/log baseline on the assigned-camp route:**
+   - Josef's live screenshot now counts as real regression evidence that structured board/job payload text is leaking into the player-facing in-game message log on the assigned-camp `show_board` path
+   - the current proof requirement is no longer just "does `llm_intent.log` show the right structured call"; the current proof requirement is also that the in-game message log still looks organic/immersive instead of dumping internal key=value payload text
+   - do not treat this as permission to reopen ordinary follower behavior unless the leak can actually be proven to come from that path
+3. **Required observability helper on the same stack:**
+   - when the probe packet captures `llm_intent.log`, it should also capture the last few in-game message-log lines so the player-facing log and internal structured call can be compared side by side
+   - supporting auxiliary: `doc/basecamp-board-log-observability-2026-04-08.md`
+4. keep the helper narrow:
    - do not widen Package 3 into locker policy/control-surface or carried-item support yet
    - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
 
