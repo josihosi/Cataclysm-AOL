@@ -1,5 +1,8 @@
 # Live debug save note (2026-04-07)
 
+Status: **temporary transition note**.
+Keep this until the McWilliams harness footing is fully normalized in the long-lived harness docs/fixtures, then archive or fold it into the harness docs instead of letting it masquerade as permanent canon.
+
 Current live `./cataclysm-tiles` session is using world/save:
 - **World:** `McWilliams`
 - **Character:** `Zoraida Vick` (per Josef)

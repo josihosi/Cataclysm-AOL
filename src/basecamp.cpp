@@ -372,6 +372,12 @@ bool is_better_scored_locker_item(
   if (lhs_score != rhs_score) {
     return lhs_score > rhs_score;
   }
+  if (lhs.damage_level() != rhs.damage_level()) {
+    return lhs.damage_level() < rhs.damage_level();
+  }
+  if (lhs.damage() != rhs.damage()) {
+    return lhs.damage() < rhs.damage();
+  }
   return lhs.typeId().str() < rhs.typeId().str();
 }
 
@@ -479,14 +485,17 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   if (covers_head) {
     return camp_locker_slot::helmet;
   }
-  if (covers_feet) {
+  if (covers_feet && !covers_legs && !covers_torso && !covers_arms) {
     return skintight ? camp_locker_slot::socks : camp_locker_slot::shoes;
   }
-  if (skintight && (covers_torso || covers_legs || covers_arms)) {
+  if (skintight && (covers_torso || covers_legs || covers_arms || covers_feet)) {
     return camp_locker_slot::underwear;
   }
-  if (covers_legs && !covers_feet && !covers_head && !covers_eyes &&
-      !covers_torso) {
+  if (covers_torso && covers_legs && (covers_feet || !outer) &&
+      !covers_head && !covers_eyes) {
+    return camp_locker_slot::pants;
+  }
+  if (covers_legs && !covers_head && !covers_eyes && !covers_torso) {
     return camp_locker_slot::pants;
   }
   if (covers_torso) {
@@ -1001,6 +1010,14 @@ int score_camp_locker_item(
 bool is_camp_locker_candidate_meaningfully_better(
     camp_locker_slot slot, const item &candidate, const item &current,
     const std::optional<units::temperature> &local_temperature) {
+  if (candidate.typeId() == current.typeId()) {
+    if (candidate.damage_level() != current.damage_level()) {
+      return candidate.damage_level() < current.damage_level();
+    }
+    if (candidate.damage() != current.damage()) {
+      return candidate.damage() < current.damage();
+    }
+  }
   return score_camp_locker_item(slot, candidate, local_temperature) >=
          score_camp_locker_item(slot, current, local_temperature) +
              camp_locker_upgrade_threshold(slot);

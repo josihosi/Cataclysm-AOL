@@ -180,7 +180,7 @@ Success state:
 - [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
-- V3 is not the current delivery target. After the stabilization/harness checkpoint, the repo is waiting for Josef to greenlight the next lane instead of quietly drifting back into locker nuance.
+- V3 is not the current delivery target. The active controlled follow-through packet is now moving through Package 3, so keep V3 parked unless Josef explicitly reopens locker nuance.
 - The first landed V3 lane is intentionally narrow: local temperature nudges shirt/vest-slot torso+arm outerwear toward warmer gear in cold weather and lighter gear in hot weather.
 - The next landed V3 lane is still narrow: pants-slot legwear now distinguishes shorts-like coverage from full-length coverage so cold weather prefers full-length legwear and hot weather prefers shorts-like legwear.
 - Outerwear and the currently landed legwear lane now both have proportional runtime proof on the recorded current-binary / current-save path.

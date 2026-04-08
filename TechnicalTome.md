@@ -17,6 +17,8 @@
 - Downtime locker processing now tracks a per-worker state signature built from the worker's managed loadout, current locker candidates, and resulting locker plan.
 - When that actionable state changes, the camp requeues the affected worker even without a fresh sleep/wake or policy toggle.
 - Locker candidate gathering now walks sorted locker tiles so debug/state summaries and deterministic tests do not wobble on unordered zone iteration.
+- Same-type bag upgrades now treat condition as a real tie-breaker and a meaningful upgrade signal, so locker service can replace a damaged daypack/backpack with a healthier equivalent even when the raw bag score delta alone would have been too small.
+- Footed/full-body jumpsuits now get treated as lower-body locker gear instead of footwear, so the planner stops misbucketting them as shoes just because they happen to cover feet.
 
 ## Camp locker V3 temperature lanes
 - The first Locker Zone V3 slice is deliberately narrow: local temperature adjusts locker scoring for shirt/vest-slot outerwear that covers both torso and arms.

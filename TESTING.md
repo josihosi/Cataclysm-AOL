@@ -85,14 +85,29 @@ Current honest state:
   - routing artifacts after `Taking it easy` still showed `assigned_camp=none`, so the board/craft prompts on that state stayed on the ordinary lane
 - The honest assigned-camp restaging source is now proven on the same real McWilliams footing:
   - scenario: `tools/openclaw_harness/scenarios/basecamp.package2_assign_camp_toolcall_probe_mcw.json`
-  - current live restaging path: ally dialogue `C -> t -> 1 -> b -> d -> n -> a`, then exit the job-priority UI and let the stationed camp state settle before probing
+  - current live restaging path: ally dialogue `C -> t -> 1 -> b -> d -> n -> a -> q -> c`, then let the stationed camp state settle before probing
+  - that restaging path is now representable directly in the harness as `assign_nearby_npc_to_camp_dialog` instead of only a pile of raw keypress steps
+  - the debug-menu folklore seam `} -> p -> p -> b -> A` was rechecked and is false on current McWilliams footing: after selecting an NPC, `b` opens bionics and `A` there is CBM install, not camp assignment
+  - the useful debug-editor inspect path after the real restage is `} -> p -> p -> 2 -> Enter` on current McWilliams, which exposes Katharina's post-restage header state on-screen
   - first interim proof at `.userdata/dev-harness/harness_runs/20260408_081903/` showed why one-turn reruns were still lying: `assigned_camp=140,41,0` was written immediately, but Katharina still sat in interim `mission=6` / `GUARD_ALLY`, so routing honestly remained ordinary there
   - after about 100 turns of settling, `.userdata/dev-harness/harness_runs/20260408_082344/` showed the intended stationed state on the real save: Katharina logged `uses_basecamp=yes`, `camp_found=yes`, `assigned_camp=140,41,0`, `mission=8`, and `reason=camp_grouped`
   - latest exact-token live proof at `.userdata/dev-harness/harness_runs/20260408_083415/` now reaches the routed camp lane cleanly:
     - `show_board` logs `camp heard Katharina Leach`, `heard=show_board`, `board=show_board`, and emits the reviewer-clean board follow-through with `job=1 ... next=job=1`
+  - visible state-inspection support scenario: `tools/openclaw_harness/scenarios/basecamp.package2_assign_camp_state_probe_mcw.json`
     - the follow-up `job=1` token also rides the same camp-aware lane on that real assigned-camp state
     - nearby ordinary hearer Robbie can still chirp on-screen at the same time, so mixed visible bark is now understood as a nearby-hearer overlap detail, not as proof that the assigned-camp route failed
   - the raw freeform `craft 1 bandage` phrasing is now demoted as the wrong live follow-up shape for this packet. On the true assigned-camp path the honest routed follow-up is the structured `job=1` token coming back from `show_board`, not another raw craft phrase.
+- The first narrow Package 3 hardening slice is now landed in deterministic code/tests:
+  - same-type bag upgrades now prefer the better-condition equivalent instead of leaving a damaged current bag equipped just because the raw score delta is below the normal bag-upgrade threshold
+  - new deterministic coverage lives in `tests/faction_camp_test.cpp` for both the planner and direct locker service path
+  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_bag_condition_build_20260408.log` and `build_logs/package3_bag_condition_tests_20260408.log`
+- A second narrow Package 3 hardening slice is now landed in deterministic code/tests:
+  - footed/full-body jumpsuits no longer get classified as shoes just because they cover feet; the locker planner now keeps them in the pants lane on the current logic instead of excluding them through the footwear bucket
+  - new deterministic coverage in `tests/faction_camp_test.cpp` checks both direct classification and planner retention for the jumpsuit case
+  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_onesie_build_20260408.log` and `build_logs/package3_onesie_tests_20260408.log`
+- A third narrow Package 3 acceptance-bar slice is now closed in deterministic proof:
+  - baseball cap -> army helmet replacement already works on the current locker path, and `tests/faction_camp_test.cpp` now proves both the planner swap decision and the direct locker-service swap/return path
+  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_cap_helmet_build_20260408.log` and `build_logs/package3_cap_helmet_tests_20260408.log`
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -118,9 +133,9 @@ Current honest state:
 ### Active queue
 
 1. **Package 3** on the current McWilliams / fresh-save locker path:
-   - use the now-closed Package 2 routing probe as a baseline and do not quietly reopen routing while starting locker hardening
-   - reduce the current ugly locker conflicts to one first hardening slice instead of bundling cap/helmet, lower-body cleanup, backpack replacement, onesies, locker policy, and carried-item work into one mudball
-   - the next missing evidence class is current-path locker behavior, not more ceremonial basecamp reruns
+   - use the now-closed Package 2 routing probe as a baseline and do not quietly reopen routing while continuing locker hardening
+   - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, and cap -> helmet proof closed while choosing the next isolated ugly locker conflict: broader lower-body cleanup
+   - the next missing evidence class is current-path locker behavior for that remaining visible failure, not more ceremonial basecamp reruns
 2. keep the helper narrow:
    - do not widen Package 3 into locker policy/control-surface or carried-item support yet
    - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too

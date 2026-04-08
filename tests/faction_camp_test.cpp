@@ -45,6 +45,8 @@ static const itype_id itype_duffelbag("duffelbag");
 static const itype_id itype_glasses_eye("glasses_eye");
 static const itype_id itype_glock_19("glock_19");
 static const itype_id itype_glockmag("glockmag");
+static const itype_id itype_hat_ball("hat_ball");
+static const itype_id itype_helmet_army("helmet_army");
 static const itype_id itype_helmet_bike("helmet_bike");
 static const itype_id itype_jacket_light("jacket_light");
 static const itype_id itype_jeans("jeans");
@@ -56,6 +58,7 @@ static const itype_id itype_socks("socks");
 static const itype_id itype_test_100_kcal("test_100_kcal");
 static const itype_id itype_test_200_kcal("test_200_kcal");
 static const itype_id itype_test_500_kcal("test_500_kcal");
+static const itype_id itype_test_jumpsuit_cotton("test_jumpsuit_cotton");
 static const itype_id itype_tshirt("tshirt");
 static const itype_id itype_vest("vest");
 
@@ -150,11 +153,17 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
         camp_locker_slot::shoes);
   CHECK(classify_camp_locker_item(item(itype_jeans)) ==
         camp_locker_slot::pants);
+  CHECK(classify_camp_locker_item(item(itype_test_jumpsuit_cotton)) ==
+        camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_tshirt)) ==
         camp_locker_slot::shirt);
   CHECK(classify_camp_locker_item(item(itype_vest)) == camp_locker_slot::vest);
   CHECK(classify_camp_locker_item(item(itype_armor_lc_plate)) ==
         camp_locker_slot::body_armor);
+  CHECK(classify_camp_locker_item(item(itype_hat_ball)) ==
+        camp_locker_slot::helmet);
+  CHECK(classify_camp_locker_item(item(itype_helmet_army)) ==
+        camp_locker_slot::helmet);
   CHECK(classify_camp_locker_item(item(itype_helmet_bike)) ==
         camp_locker_slot::helmet);
   CHECK(classify_camp_locker_item(item(itype_glasses_eye)) ==
@@ -953,6 +962,62 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(pants_plan.upgrade_selected);
     CHECK(pants_plan.has_changes());
   }
+
+  SECTION("better-condition equivalent bags replace damaged current bags") {
+    item damaged_daypack(itype_daypack);
+    damaged_daypack.set_damage(std::max(1, damaged_daypack.max_damage() / 2));
+    item fresh_daypack(itype_daypack);
+
+    const std::vector<const item *> current_items = {&damaged_daypack};
+    const std::vector<const item *> locker_items = {&fresh_daypack};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy());
+
+    REQUIRE(plan.count(camp_locker_slot::bag) == 1);
+    const camp_locker_slot_plan &bag_plan = plan.at(camp_locker_slot::bag);
+    CHECK(bag_plan.kept_current == &damaged_daypack);
+    CHECK(bag_plan.selected_candidate == &fresh_daypack);
+    CHECK(bag_plan.upgrade_selected);
+    CHECK(bag_plan.has_changes());
+  }
+
+  SECTION("army helmets replace weaker caps") {
+    item baseball_cap(itype_hat_ball);
+    item army_helmet(itype_helmet_army);
+
+    const std::vector<const item *> current_items = {&baseball_cap};
+    const std::vector<const item *> locker_items = {&army_helmet};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy());
+
+    REQUIRE(plan.count(camp_locker_slot::helmet) == 1);
+    const camp_locker_slot_plan &helmet_plan =
+        plan.at(camp_locker_slot::helmet);
+    CHECK(helmet_plan.kept_current == &baseball_cap);
+    CHECK(helmet_plan.selected_candidate == &army_helmet);
+    CHECK(helmet_plan.upgrade_selected);
+    CHECK(helmet_plan.has_changes());
+  }
+
+  SECTION("one-piece jumpsuits satisfy the pants slot instead of shoes") {
+    item cotton_jumpsuit(itype_test_jumpsuit_cotton);
+    const std::vector<const item *> current_items = {&cotton_jumpsuit};
+    const camp_locker_candidate_map locker_candidates;
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy());
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    CHECK(pants_plan.kept_current == &cotton_jumpsuit);
+    CHECK_FALSE(pants_plan.has_changes());
+    CHECK(plan.count(camp_locker_slot::shoes) == 0);
+  }
 }
 
 TEST_CASE("camp_locker_service_equips_upgrades_and_returns_replaced_gear",
@@ -995,6 +1060,107 @@ TEST_CASE("camp_locker_service_equips_upgrades_and_returns_replaced_gear",
   }
   CHECK(locker_has_daypack);
   CHECK_FALSE(locker_has_duffelbag);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_swaps_in_better_condition_equivalent_bags",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_daypack));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  item damaged_daypack(itype_daypack);
+  damaged_daypack.set_damage(std::max(1, damaged_daypack.max_damage() / 2));
+  REQUIRE(worker.wear_item(damaged_daypack, false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_daypack));
+
+  item *worn_daypack = worker.item_worn_with_id(itype_daypack);
+  REQUIRE(worn_daypack != nullptr);
+  CHECK(worn_daypack->damage() == 0);
+
+  int damaged_daypacks_in_locker = 0;
+  int fresh_daypacks_in_locker = 0;
+  for (const item &it : here.i_at(locker_local)) {
+    if (it.typeId() != itype_daypack) {
+      continue;
+    }
+    if (it.damage() == 0) {
+      fresh_daypacks_in_locker++;
+    } else {
+      damaged_daypacks_in_locker++;
+    }
+  }
+  CHECK(damaged_daypacks_in_locker == 1);
+  CHECK(fresh_daypacks_in_locker == 0);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_swaps_caps_for_army_helmets",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_helmet_army));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_hat_ball), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_helmet_army));
+  CHECK_FALSE(worker.is_wearing(itype_hat_ball));
+
+  bool locker_has_baseball_cap = false;
+  bool locker_has_army_helmet = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_baseball_cap = locker_has_baseball_cap ||
+                              it.typeId() == itype_hat_ball;
+    locker_has_army_helmet = locker_has_army_helmet ||
+                             it.typeId() == itype_helmet_army;
+  }
+  CHECK(locker_has_baseball_cap);
+  CHECK_FALSE(locker_has_army_helmet);
 
   zone_manager::get_manager().clear();
 }

@@ -59,12 +59,15 @@ Primary auxiliary:
 - **Package 2** is now landed on the real McWilliams path instead of on the fake nearby-activity detour:
   - the deterministic reduction stays the same in code: camp-request routing no longer keys only off bare `assigned_camp`; idle stationed camp assignees in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards are basecamp-eligible, while walking-with-player companion states and `GUARD_ALLY` still stay out
   - the nearby activity-menu probe at `tools/openclaw_harness/scenarios/basecamp.package2_activity_menu_probe_mcw.json` remains a useful negative result, not the restaging source: after `Taking it easy`, Katharina/Robbie still kept `assigned_camp=none`
-  - the honest restaging source is the ally dialogue path on McWilliams: `C -> t -> 1 -> b -> d -> n -> a`, then exit the job-priority UI and let the camp state settle
+  - the honest restaging source is the ally dialogue path on McWilliams: `C -> t -> 1 -> b -> d -> n -> a -> q -> c`, now also representable as the harness step `assign_nearby_npc_to_camp_dialog`, then let the camp state settle
   - the first recheck on `.userdata/dev-harness/harness_runs/20260408_081903/` proved the missing intermediate truth: `assign_camp` writes `assigned_camp=140,41,0` immediately, but one-turn evidence still leaves Katharina in interim `mission=6` / `GUARD_ALLY`, so the route honestly stays ordinary at that point
   - after roughly 100 turns of settling, `.userdata/dev-harness/harness_runs/20260408_082344/` shows the intended stationed state on the same real save: Katharina logs `uses_basecamp=yes`, `camp_found=yes`, `assigned_camp=140,41,0`, `mission=8`, and `reason=camp_grouped`
   - the latest exact-token live packet at `tools/openclaw_harness/scenarios/basecamp.package2_assign_camp_toolcall_probe_mcw.json`, run `.userdata/dev-harness/harness_runs/20260408_083415/`, proves the actual routed path: `show_board` now logs `camp heard Katharina Leach`, `heard=show_board`, `board=show_board`, and emits the board follow-through with `job=1 ... next=job=1`; the follow-up `job=1` token also rides the same camp-aware lane
   - the earlier freeform `craft 1 bandage` phrasing is now demoted as the wrong live-proof shape for this packet. On the true assigned-camp state the honest routed follow-up is the structured `job=1` token coming back from `show_board`, not another raw craft phrase.
 - **Package 3** is now the active slice on purpose. The locker outfit hardening queue should not bury the now-settled Package 2 truth under more routing churn.
+- The first narrow Package 3 hardening slice is now landed in deterministic code/tests: same-type locker bags prefer the better-condition equivalent instead of shrugging at a damaged current bag just because the score delta is small.
+- A second narrow Package 3 hardening slice is now landed in deterministic code/tests: footed/full-body jumpsuits no longer get bucketed as shoes just because the classifier sees feet first, so the planner now keeps them in the pants lane instead of excluding them through the footwear bucket.
+- A third narrow Package 3 acceptance-bar slice is now closed in deterministic planning/service tests: baseball cap -> army helmet replacement already works on the current path, and the repo now has explicit proof instead of only debug-pass folklore.
 - Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
 - The active repo rule for this packet is still simple:
   - one package at a time
@@ -73,8 +76,8 @@ Primary auxiliary:
   - no opportunistic side quests while the packet is active
 
 ### Next real state
-1. start **Package 3** by reducing the ugliest current locker outfit failures on the real path into one first hardening slice, not a grab-bag rewrite
-2. keep the first Package 3 push narrow around the already named acceptance bar: cap -> helmet replacement, conflicting lower-body wear cleanup, damaged-backpack replacement, and onesie coverage handling where it is obviously mis-scored or skipped
+1. keep **Package 3** narrow after the landed bag-condition, jumpsuit-classification, and cap -> helmet proof slices: the next honest hardening target is broader lower-body conflict cleanup, not a grab-bag rewrite
+2. preserve the landed better-condition bag swap behavior, the new jumpsuit-not-shoes behavior, and the cap -> helmet swap path while extending the acceptance bar one visible failure mode at a time
 3. preserve the new Package 2 assigned-camp probe as the routing baseline and only reopen routing if Package 3 work actually breaks it
 
 ---

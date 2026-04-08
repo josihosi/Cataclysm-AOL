@@ -4,8 +4,9 @@ This document is the detailed auxiliary patch plan for the greenlit Locker Zone 
 It is intentionally implementation-shaped.
 The goal is to make future work concrete enough that the cron/workloop can advance it without rediscovering the same design every night.
 
-Status: **greenlit design, not the current top queue item**.
-Current queue still finishes the active Basecamp bark/feel pass first.
+Status: **historical locker-design auxiliary, not the active execution packet**.
+For the current reopened follow-through queue, use `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
+Keep this file as background design/reference for locker semantics and later package work, not as the current source of truth for execution order.
 
 ---
 

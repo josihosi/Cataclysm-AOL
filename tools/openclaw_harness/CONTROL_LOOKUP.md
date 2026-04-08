@@ -22,6 +22,7 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 | Goal | Keys | Notes |
 |---|---|---|
 | Talk to nearby NPC | `C`, `t` | First practical target in the current save is Ricky Broughton. |
+| Assign nearby NPC to camp (current McWilliams Katharina restage) | `C`, `t`, `1`, `b`, `d`, `n`, `a`, `q`, `c` | Current Package 2 restaging helper path. This is the real nearby-hearer camp-assignment seam on the McWilliams fixture today. `1` is branch/save-order specific. |
 | Open freeform player utterance | `C`, `b` | Type utterance, then `Enter`, then usually `Tab` x1-2 to let the response inject. |
 | Open ruleset window from chat UI | `a` (sometimes `a`, then `a` again) | Quest-first chat variants may consume the first `a`; if so, press `a` again to reach the ruleset window. |
 | Drop item from inventory | `d` | Harness helper path for `drop_item`. Current helper opens the normal drop inventory, then either selects a one-character inventory slot directly or uses the inventory filter (`/` + query), confirms the amount prompt, and exits back to gameplay. Queries should match visible item text; one-character selectors are treated as raw inventory slots. |
@@ -30,6 +31,11 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 | Spawn random follower NPC from debug path | `}`, `s`, `f` | Landed harness helper path (`debug_spawn_follower_npc`). Spawns a random follower near the player with current debug-menu hotkeys. |
 | Force temperature from debug path | `}`, `m`, `T`, `Down`, `Enter` | Landed harness helper path (`debug_force_temperature`). The current submenu lists `Reset` first and `Set` second, so the harness explicitly moves to `Set` before filling the numeric prompt. The shipped dev/dev-harness probe path currently assumes Fahrenheit. |
 | Spawn Rubik from debug path | `}`, `s`, `p`, `O` | Current remembered path only; treat as provisional until reverified in automation. |
+
+### Debug-menu caution for Package 2
+- The shorthand `}`, `p`, `p`, `b`, `A` is **not** the current camp-state seam on the McWilliams fixture.
+- After selecting an NPC in the debug editor, `b` currently opens **bionics**, and `A` there is CBM install, not camp assignment.
+- For visible post-restage state inspection, the useful current debug-editor path is `}`, `p`, `p`, `2`, `Enter` on McWilliams (Katharina-specific index), which exposes the header with attitude / mission / faction after the real dialogue-side camp assignment path above.
 
 ## Important caveats learned live
 

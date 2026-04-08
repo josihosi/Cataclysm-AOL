@@ -828,6 +828,32 @@ def debug_force_temperature(
     )
 
 
+def assign_nearby_npc_to_camp_dialog(
+    pid: int,
+    *,
+    npc_selector: str,
+    interaction_keys: Optional[List[str]] = None,
+    lets_talk_key: str = "b",
+    assignment_keys: Optional[List[str]] = None,
+    exit_dialog_keys: Optional[List[str]] = None,
+    delay_ms: int = 200,
+    stage_settle_seconds: float = 0.8,
+) -> None:
+    interaction_path = interaction_keys or ["C", "t"]
+    assignment_path = assignment_keys or ["d", "n", "a"]
+    exit_path = exit_dialog_keys or ["q", "c"]
+
+    for keys in [
+        interaction_path,
+        [npc_selector],
+        [lets_talk_key],
+        assignment_path,
+        exit_path,
+    ]:
+        peekaboo_press_sequence(pid, keys, delay_ms=delay_ms)
+        time.sleep(stage_settle_seconds)
+
+
 def copy_file_if_exists(src: Path, dst: Path) -> None:
     if src.exists():
         ensure_dir(dst.parent)
@@ -1743,6 +1769,58 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 "prompt_settle_seconds": prompt_settle_seconds,
                 "debug_menu_path": ["}", "m", "T"],
                 "selection_path": ["down", "enter"],
+            })
+        elif kind == "assign_nearby_npc_to_camp_dialog":
+            npc_selector = str(step.get("npc_selector") or step.get("selector") or "").strip()
+            if not npc_selector:
+                raise SystemExit(f"Scenario step '{label}' needs npc_selector/selector")
+            raw_interaction_keys = step.get("interaction_keys", ["C", "t"])
+            if isinstance(raw_interaction_keys, str):
+                interaction_keys = [raw_interaction_keys] if raw_interaction_keys.strip() else []
+            elif isinstance(raw_interaction_keys, list):
+                interaction_keys = [str(key) for key in raw_interaction_keys if str(key).strip()]
+            else:
+                interaction_keys = []
+            if not interaction_keys:
+                raise SystemExit(f"Scenario step '{label}' needs interaction_keys")
+            lets_talk_key = str(step.get("lets_talk_key", "b") or "b").strip() or "b"
+            raw_assignment_keys = step.get("assignment_keys", ["d", "n", "a"])
+            if isinstance(raw_assignment_keys, str):
+                assignment_keys = [raw_assignment_keys] if raw_assignment_keys.strip() else []
+            elif isinstance(raw_assignment_keys, list):
+                assignment_keys = [str(key) for key in raw_assignment_keys if str(key).strip()]
+            else:
+                assignment_keys = []
+            if not assignment_keys:
+                raise SystemExit(f"Scenario step '{label}' needs assignment_keys")
+            raw_exit_dialog_keys = step.get("exit_dialog_keys", ["q", "c"])
+            if isinstance(raw_exit_dialog_keys, str):
+                exit_dialog_keys = [raw_exit_dialog_keys] if raw_exit_dialog_keys.strip() else []
+            elif isinstance(raw_exit_dialog_keys, list):
+                exit_dialog_keys = [str(key) for key in raw_exit_dialog_keys if str(key).strip()]
+            else:
+                exit_dialog_keys = []
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            stage_settle_seconds = float(step.get("stage_settle_seconds", 0.8) or 0.8)
+            assign_nearby_npc_to_camp_dialog(
+                pid,
+                npc_selector=npc_selector,
+                interaction_keys=interaction_keys,
+                lets_talk_key=lets_talk_key,
+                assignment_keys=assignment_keys,
+                exit_dialog_keys=exit_dialog_keys,
+                delay_ms=delay_ms,
+                stage_settle_seconds=stage_settle_seconds,
+            )
+            report.update({
+                "npc_selector": npc_selector,
+                "interaction_keys": interaction_keys,
+                "lets_talk_key": lets_talk_key,
+                "assignment_keys": assignment_keys,
+                "exit_dialog_keys": exit_dialog_keys,
+                "delay_ms": delay_ms,
+                "stage_settle_seconds": stage_settle_seconds,
+                "dialog_path": interaction_keys + [npc_selector, lets_talk_key] + assignment_keys + exit_dialog_keys,
             })
         elif kind == "drop_item":
             query_or_slot = str(

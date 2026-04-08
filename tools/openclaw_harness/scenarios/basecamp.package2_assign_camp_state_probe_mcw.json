@@ -1,6 +1,6 @@
 {
-  "name": "basecamp.package2_assign_camp_toolcall_probe_mcw",
-  "description": "Restage Katharina into a true camp-assigned state through ally dialogue, wait long enough for the stationed camp state to settle, then probe exact structured board and board-follow-up job tokens on the real McWilliams path.",
+  "name": "basecamp.package2_assign_camp_state_probe_mcw",
+  "description": "Package 2 support probe on the McWilliams fixture: use the current ally-dialogue restaging path to put Katharina into true camp-assigned state, let it settle, then open the debug NPC editor to capture the visible post-restage state header.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "mcwilliams_live_debug_2026-04-07",
@@ -8,8 +8,6 @@
   "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
   "profile_snapshot_profile": "live-debug",
   "replace_existing_worlds": true,
-  "artifact_source": "llm_intent.log",
-  "artifact_pattern": "camp routing check|camp heard|player utterance:|prompt Katharina Leach|response Katharina Leach|response Robbie Knox|show_board|job=1|next=",
   "steps": [
     {
       "kind": "wait",
@@ -43,7 +41,7 @@
       "label": "settle_after_assignment_1",
       "count": 20,
       "settle_seconds": 0.8,
-      "capture_after": false
+      "capture_after": true
     },
     {
       "kind": "advance_turns",
@@ -75,51 +73,55 @@
     },
     {
       "kind": "press",
-      "label": "open_freeform_chat_for_board",
+      "label": "open_debug_menu",
       "keys": [
-        "C",
-        "b"
+        "}"
       ],
-      "settle_seconds": 0.5,
-      "capture_after": true
-    },
-    {
-      "kind": "type",
-      "label": "ask_for_structured_board",
-      "text": "show_board",
-      "submit": true,
-      "settle_seconds": 1.2,
-      "capture_after": true
-    },
-    {
-      "kind": "advance_turns",
-      "label": "wait_for_board_reply",
-      "count": 2,
       "settle_seconds": 1.0,
       "capture_after": true
     },
     {
       "kind": "press",
-      "label": "open_freeform_chat_for_job_followup",
+      "label": "open_player_npc_menu",
       "keys": [
-        "C",
-        "b"
+        "p"
       ],
-      "settle_seconds": 0.5,
+      "settle_seconds": 1.0,
       "capture_after": true
     },
     {
-      "kind": "type",
-      "label": "ask_for_structured_job_followup",
-      "text": "job=1",
-      "submit": true,
-      "settle_seconds": 1.2,
+      "kind": "press",
+      "label": "open_choose_character_menu",
+      "keys": [
+        "p"
+      ],
+      "settle_seconds": 1.0,
       "capture_after": true
     },
     {
-      "kind": "advance_turns",
-      "label": "wait_for_job_followup_reply",
-      "count": 2,
+      "kind": "press",
+      "label": "highlight_katharina",
+      "keys": [
+        "2"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "enter_katharina_editor",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_attitude_editor",
+      "keys": [
+        "A"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true
     }
