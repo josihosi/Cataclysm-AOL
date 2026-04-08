@@ -23,6 +23,7 @@
 - Full-body suits that only reach `jumpsuit` through an indirect `looks_like` chain, like tuxedos via `suit -> jumpsuit`, now also stay in the pants lane, so the locker path does not quietly reintroduce vest-style half-dressed nonsense for those variants.
 - Full-leg skintight underlayers that actually reach the knees/lower legs now also ride the pants lane instead of underwear, so hot-weather locker cleanup can strip leggings-like duplicates together with cargo pants before swapping into shorts.
 - Pants-lane upgrades now explicitly refuse to strip torso coverage from a current one-piece suit unless the same locker pass also keeps or equips some separate torso-covering item, so suit splitting only happens when the replacement packet is actually complete.
+- That same pants-lane guard now also refuses to strip arm coverage from sleeved one-piece garments unless the same locker pass still keeps or equips some separate arm-covering upper-body item, so sleeved dresses stop "upgrading" into bare-arm vest-plus-shorts nonsense.
 - Skintight full-body one-piece suits like union suits and wetsuits now also stay in the pants lane instead of hiding in underwear, so the locker path stops layering shorts over them unless some separate torso replacement exists in the same pass.
 
 ## Camp locker V3 temperature lanes
