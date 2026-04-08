@@ -1,0 +1,129 @@
+{
+  "name": "basecamp.package2_assign_camp_state_probe_mcw",
+  "description": "Package 2 support probe on the McWilliams fixture: use the current ally-dialogue restaging path to put Katharina into true camp-assigned state, let it settle, then open the debug NPC editor to capture the visible post-restage state header.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "assign_nearby_npc_to_camp_dialog",
+      "label": "assign_katharina_to_camp_dialog",
+      "npc_selector": "1",
+      "interaction_keys": [
+        "C",
+        "t"
+      ],
+      "lets_talk_key": "b",
+      "assignment_keys": [
+        "d",
+        "n",
+        "a"
+      ],
+      "exit_dialog_keys": [
+        "q",
+        "c"
+      ],
+      "stage_settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_1",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_2",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_3",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_4",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "advance_turns",
+      "label": "settle_after_assignment_5",
+      "count": 20,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_debug_menu",
+      "keys": [
+        "}"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_player_npc_menu",
+      "keys": [
+        "p"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_choose_character_menu",
+      "keys": [
+        "p"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "highlight_katharina",
+      "keys": [
+        "2"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "enter_katharina_editor",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_attitude_editor",
+      "keys": [
+        "A"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    }
+  ]
+}
