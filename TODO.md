@@ -17,9 +17,9 @@ Current slice: **Package 3 — locker outfit engine hardening**
   - the honest assigned-camp restaging source and `show_board` -> `job=1` path remain the preserved routing baseline only, not the active center of the packet
   - do not reopen ordinary board/craft routing unless current locker work actually breaks that assigned-camp path
 2. preserve the Package 2 board baseline while Package 3 continues:
-  - Josef's live screenshot of raw `board=...` / `status=...` / `next=...` text in the in-game message log now counts as a real regression on that preserved baseline
-  - fix that leak narrowly on the board/basecamp route without touching ordinary follower NPC behavior unless the leak can actually be proven to originate there
-  - use `doc/basecamp-board-log-observability-2026-04-08.md` as the contract for the leak guard + proof shape
+  - the narrow deterministic leak fix is now landed: structured `show_board` / `show_job` / board-follow-through payload text stays on the internal camp-reply log path while the visible in-game message log reuses the organic board/status bark
+  - prove that leak fix live on the assigned-camp McWilliams path without touching ordinary follower NPC behavior unless the leak can actually be proven to originate there
+  - use `doc/basecamp-board-log-observability-2026-04-08.md` as the contract for the remaining live-proof shape
 3. required support subtask on the same current stack:
   - when this path captures `llm_intent.log`, also capture the last few in-game message-log lines so the player-facing organic text can be compared directly with the internal structured call/log path
   - this observability helper is required for the current bug/proof shape, not optional garnish

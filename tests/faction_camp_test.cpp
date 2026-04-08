@@ -3781,22 +3781,14 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
         Messages::recent_messages(0);
     REQUIRE_FALSE(messages.empty());
     const std::string structured_reply = messages.back().second;
-    CAPTURE(structured_reply);
-    CHECK(structured_reply.find("board=show_board\nplanner_move=stay | move_omt dx=<signed_int> dy=<signed_int>\novermap:\n") !=
-          std::string::npos);
-    CHECK(structured_reply.find("  c camp\n") != std::string::npos);
-    CHECK(structured_reply.find("  uppercase = horde present\n") !=
-          std::string::npos);
-    CHECK(structured_reply.find("active=1\narchived=0\n") !=
-          std::string::npos);
-    CHECK(structured_reply.find("job=1 subject=5 × bandages") !=
-          std::string::npos);
-    CHECK(structured_reply.find("status=awaiting_approval") !=
-          std::string::npos);
-    CHECK(structured_reply.find("approval=waiting_player worker=") !=
-          std::string::npos);
-    CHECK(structured_reply.find("details=show_job=1 next=job=1") !=
-          std::string::npos);
+    CAPTURE( structured_reply );
+    CHECK( structured_reply.find( "Board's got" ) != std::string::npos );
+    CHECK( structured_reply.find( "bandages" ) != std::string::npos );
+    CHECK( structured_reply.find( "board=show_board" ) == std::string::npos );
+    CHECK( structured_reply.find( "status=awaiting_approval" ) == std::string::npos );
+    CHECK( structured_reply.find( "approval=waiting_player" ) == std::string::npos );
+    CHECK( structured_reply.find( "details=show_job=1" ) == std::string::npos );
+    CHECK( structured_reply.find( "next=job=1" ) == std::string::npos );
 
     Messages::clear_messages();
     REQUIRE(camp->handle_heard_camp_request(listener, "show me the board"));
@@ -3894,11 +3886,11 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     REQUIRE_FALSE( messages.empty() );
     const std::string followup_reply = messages.back().second;
     CAPTURE( followup_reply );
-    CHECK( followup_reply.find( "board=show_board\ndetails=show_job=1\nid=1\n" ) != std::string::npos );
-    CHECK( followup_reply.find( "query=bandages\n" ) != std::string::npos );
-    CHECK( followup_reply.find( "source=craft 5 bandages\n" ) != std::string::npos );
-    CHECK( followup_reply.find( "next=job=1\n" ) != std::string::npos );
-    CHECK( followup_reply.find( "planner_move=" ) == std::string::npos );
+    CHECK( followup_reply.find( "bandages" ) != std::string::npos );
+    CHECK( followup_reply.find( "board=show_board" ) == std::string::npos );
+    CHECK( followup_reply.find( "details=show_job=1" ) == std::string::npos );
+    CHECK( followup_reply.find( "next=job=1" ) == std::string::npos );
+    CHECK( followup_reply.find( "status=blocked" ) == std::string::npos );
     CHECK( followup_reply.find( "Got it." ) == std::string::npos );
 
     Messages::clear_messages();
@@ -3945,10 +3937,10 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     REQUIRE_FALSE( messages.empty() );
     const std::string clear_reply = messages.back().second;
     CAPTURE( clear_reply );
-    CHECK( clear_reply.find( "board=show_board\nplanner_move=stay | move_omt dx=<signed_int> dy=<signed_int>\novermap:\n" ) !=
-           std::string::npos );
-    CHECK( clear_reply.find( "active=0\narchived=0\njobs=none\n" ) != std::string::npos );
+    CHECK( clear_reply.find( camp_board_status_bark( {} ) ) != std::string::npos );
+    CHECK( clear_reply.find( "board=show_board" ) == std::string::npos );
     CHECK( clear_reply.find( "job=1" ) == std::string::npos );
+    CHECK( clear_reply.find( "active=0" ) == std::string::npos );
     CHECK( clear_reply.find( "Cleared old" ) == std::string::npos );
 
     Messages::clear_messages();

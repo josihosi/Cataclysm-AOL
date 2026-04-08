@@ -4026,17 +4026,18 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         return true;
     };
 
-    const auto emit_structured_board_reply = [&]() {
+    const auto emit_structured_board_reply = [&]( const std::string &spoken_reply ) {
         const std::string board_reply =
             basecamp_ai::camp_board_handoff_snapshot( camp_omt_pos(), camp_requests );
-        add_camp_request_bark( listener, board_reply );
+        add_camp_request_bark( listener, spoken_reply );
         log_camp_request_reply( listener, utterance, "board", board_reply );
         return true;
     };
 
-    const auto emit_structured_job_reply = [&]( const camp_llm_request &request ) {
+    const auto emit_structured_job_reply = [&]( const camp_llm_request &request,
+                                                const std::string &spoken_reply ) {
         const std::string job_reply = basecamp_ai::camp_request_handoff_snapshot( request );
-        add_camp_request_bark( listener, job_reply );
+        add_camp_request_bark( listener, spoken_reply );
         log_camp_request_reply( listener, utterance, "job", job_reply );
         return true;
     };
@@ -4044,7 +4045,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
     if( const std::optional<basecamp_ai::parsed_camp_job_token> structured_job =
             basecamp_ai::parse_structured_camp_job_token( utterance ) ) {
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::show_board ) {
-            return emit_structured_board_reply();
+            return emit_structured_board_reply( basecamp_ai::camp_board_status_bark( camp_requests ) );
         }
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::launch_ready_jobs ) {
             return handle_batch_launch( false );
@@ -4059,35 +4060,41 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         camp_llm_request *request = find_camp_request( structured_job->request_id );
         if( request == nullptr ) {
             const std::string missing_reply = string_format( "missing_job=%d", structured_job->request_id );
-            add_camp_request_bark( listener, missing_reply );
+            add_camp_request_bark( listener,
+                                   string_format( _( "No crafting request #%d on the board." ),
+                                                  structured_job->request_id ) );
             log_camp_request_reply( listener, utterance, "job", missing_reply );
             return true;
         }
 
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::show_job ) {
-            return emit_structured_job_reply( *request );
+            return emit_structured_job_reply( *request,
+                                              basecamp_ai::camp_request_spoken_status_bark( *request ) );
         }
 
         if( structured_job->kind == basecamp_ai::camp_job_token_kind::delete_job ) {
             if( camp_request_is_archived( *request ) ) {
                 clear_camp_request( request->request_id );
-                return emit_structured_board_reply();
+                return emit_structured_board_reply( basecamp_ai::camp_board_status_bark( camp_requests ) );
             }
-            return emit_structured_job_reply( *request );
+            return emit_structured_job_reply( *request,
+                                              basecamp_ai::camp_request_spoken_status_bark( *request ) );
         }
 
         if( camp_request_is_archived( *request ) || request->status == "in_progress" ) {
-            return emit_structured_job_reply( *request );
+            return emit_structured_job_reply( *request,
+                                              basecamp_ai::camp_request_spoken_status_bark( *request ) );
         }
 
         const int request_id = request->request_id;
         approve_crafting_request( request_id );
         request = find_camp_request( request_id );
         if( request == nullptr ) {
-            return emit_structured_board_reply();
+            return emit_structured_board_reply( basecamp_ai::camp_board_status_bark( camp_requests ) );
         }
 
-        return emit_structured_job_reply( *request );
+        return emit_structured_job_reply( *request,
+                                          basecamp_ai::camp_request_spoken_status_bark( *request ) );
     }
 
     if( const std::optional<basecamp_ai::parsed_camp_craft_order> structured_craft =
