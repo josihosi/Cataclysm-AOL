@@ -26,6 +26,7 @@
 - That same pants-lane guard now also refuses to strip arm coverage from sleeved one-piece garments unless the same locker pass still keeps or equips some separate arm-covering upper-body item, so sleeved dresses stop "upgrading" into bare-arm vest-plus-shorts nonsense.
 - Skintight full-body one-piece suits like union suits and wetsuits now also stay in the pants lane instead of hiding in underwear, so the locker path stops layering shorts over them unless some separate torso replacement exists in the same pass.
 - Head-covering full-body protective suits like hazmat suits now also stay in the pants lane instead of falling into helmet logic, so shorts-only locker cleanup leaves the suit intact instead of peeling it into ordinary clothes just because the classifier saw the hood first.
+- Full helmets that also cover eyes, like great helms, now stay in the helmet lane instead of being misbucketed as glasses just because the classifier saw eye coverage first, so the locker planner can compare real helmet tradeoffs instead of silently skipping them.
 - Pants-lane split guards now preserve any extra non-leg coverage that the current one-piece item owns, not just torso and arms. In practice that means a footed jumpsuit only splits when the same locker pass also provides shoes, and a hazmat-style full-body suit no longer splits just because a shirt replacement exists while head or face coverage would be lost.
 
 ## Camp locker V3 temperature lanes

@@ -571,11 +571,11 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
       (covers_feet || !outer || is_camp_locker_jumpsuit_like(it))) {
     return camp_locker_slot::pants;
   }
-  if (covers_eyes) {
-    return camp_locker_slot::glasses;
-  }
   if (covers_head) {
     return camp_locker_slot::helmet;
+  }
+  if (covers_eyes) {
+    return camp_locker_slot::glasses;
   }
   if (covers_feet && !covers_legs && !covers_torso && !covers_arms) {
     return skintight ? camp_locker_slot::socks : camp_locker_slot::shoes;
