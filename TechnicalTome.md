@@ -25,6 +25,7 @@
 - Pants-lane upgrades now explicitly refuse to strip torso coverage from a current one-piece suit unless the same locker pass also keeps or equips some separate torso-covering item, so suit splitting only happens when the replacement packet is actually complete.
 - That same pants-lane guard now also refuses to strip arm coverage from sleeved one-piece garments unless the same locker pass still keeps or equips some separate arm-covering upper-body item, so sleeved dresses stop "upgrading" into bare-arm vest-plus-shorts nonsense.
 - Skintight full-body one-piece suits like union suits and wetsuits now also stay in the pants lane instead of hiding in underwear, so the locker path stops layering shorts over them unless some separate torso replacement exists in the same pass.
+- Head-covering full-body protective suits like hazmat suits now also stay in the pants lane instead of falling into helmet logic, so shorts-only locker cleanup leaves the suit intact instead of peeling it into ordinary clothes just because the classifier saw the hood first.
 
 ## Camp locker V3 temperature lanes
 - The first Locker Zone V3 slice is deliberately narrow: local temperature adjusts locker scoring for shirt/vest-slot outerwear that covers both torso and arms.

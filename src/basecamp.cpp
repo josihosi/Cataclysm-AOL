@@ -557,6 +557,10 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
       it.has_layer({layer_level::OUTER}) || it.has_flag(flag_OUTER);
   const units::volume storage = it.get_volume_capacity();
 
+  if (covers_torso && covers_legs &&
+      (covers_feet || !outer || is_camp_locker_jumpsuit_like(it))) {
+    return camp_locker_slot::pants;
+  }
   if (covers_eyes) {
     return camp_locker_slot::glasses;
   }
@@ -565,11 +569,6 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   }
   if (covers_feet && !covers_legs && !covers_torso && !covers_arms) {
     return skintight ? camp_locker_slot::socks : camp_locker_slot::shoes;
-  }
-  if (covers_torso && covers_legs &&
-      (covers_feet || !outer || is_camp_locker_jumpsuit_like(it)) &&
-      !covers_head && !covers_eyes) {
-    return camp_locker_slot::pants;
   }
   if (skintight &&
       (covers_torso || covers_arms || covers_feet ||

@@ -47,6 +47,7 @@ static const itype_id itype_glasses_eye("glasses_eye");
 static const itype_id itype_glock_19("glock_19");
 static const itype_id itype_glockmag("glockmag");
 static const itype_id itype_hakama("hakama");
+static const itype_id itype_hazmat_suit("hazmat_suit");
 static const itype_id itype_hakama_gi("hakama_gi");
 static const itype_id itype_hat_ball("hat_ball");
 static const itype_id itype_helmet_army("helmet_army");
@@ -178,6 +179,8 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_long_dress_sleeved)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_short_dress)) ==
+        camp_locker_slot::pants);
+  CHECK(classify_camp_locker_item(item(itype_hazmat_suit)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_suit)) ==
         camp_locker_slot::pants);
@@ -1194,6 +1197,30 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
   }
 
   SECTION(
+      "full-body head-covering suits stay in the pants lane for shorts-only upgrades") {
+    item hazmat_suit(itype_hazmat_suit);
+    item cargo_shorts(itype_shorts_cargo);
+
+    const std::vector<const item *> current_items = {&hazmat_suit};
+    const std::vector<const item *> locker_items = {&cargo_shorts};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    CHECK(pants_plan.kept_current == &hazmat_suit);
+    CHECK(pants_plan.selected_candidate == nullptr);
+    CHECK_FALSE(pants_plan.upgrade_selected);
+    CHECK_FALSE(pants_plan.has_changes());
+    CHECK(plan.count(camp_locker_slot::helmet) == 0);
+  }
+
+  SECTION(
       "one-piece suits can split into shirt and pants when both replacements exist") {
     item suit(itype_suit);
     item cargo_shorts(itype_shorts_cargo);
@@ -1783,6 +1810,54 @@ TEST_CASE(
   }
   CHECK(locker_has_shorts);
   CHECK_FALSE(locker_has_suit);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE(
+    "camp_locker_service_keeps_head-covering_full-body_suits_when_shorts_upgrade_would_split_them",
+    "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(85));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_hazmat_suit), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  CHECK_FALSE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_hazmat_suit));
+  CHECK_FALSE(worker.is_wearing(itype_shorts_cargo));
+
+  bool locker_has_shorts = false;
+  bool locker_has_hazmat_suit = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts ||
+                        it.typeId() == itype_shorts_cargo;
+    locker_has_hazmat_suit = locker_has_hazmat_suit ||
+                             it.typeId() == itype_hazmat_suit;
+  }
+  CHECK(locker_has_shorts);
+  CHECK_FALSE(locker_has_hazmat_suit);
 
   zone_manager::get_manager().clear();
 }
