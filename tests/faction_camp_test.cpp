@@ -55,6 +55,7 @@ static const itype_id itype_jacket_light("jacket_light");
 static const itype_id itype_jeans("jeans");
 static const itype_id itype_knife_combat("knife_combat");
 static const itype_id itype_leggings("leggings");
+static const itype_id itype_long_dress("long_dress");
 static const itype_id itype_pants_cargo("pants_cargo");
 static const itype_id itype_short_dress("short_dress");
 static const itype_id itype_shorts_cargo("shorts_cargo");
@@ -170,6 +171,8 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_leggings)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_test_jumpsuit_cotton)) ==
+        camp_locker_slot::pants);
+  CHECK(classify_camp_locker_item(item(itype_long_dress)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_short_dress)) ==
         camp_locker_slot::pants);
@@ -1273,6 +1276,61 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(shirt_plan.missing_current);
     CHECK(shirt_plan.has_changes());
   }
+
+  SECTION(
+      "full-length dresses do not strip torso coverage for shorts-only upgrades") {
+    item long_dress(itype_long_dress);
+    item cargo_shorts(itype_shorts_cargo);
+
+    const std::vector<const item *> current_items = {&long_dress};
+    const std::vector<const item *> locker_items = {&cargo_shorts};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    CHECK(pants_plan.kept_current == &long_dress);
+    CHECK(pants_plan.selected_candidate == nullptr);
+    CHECK_FALSE(pants_plan.upgrade_selected);
+    CHECK_FALSE(pants_plan.has_changes());
+  }
+
+  SECTION(
+      "full-length dresses can split into shirt and pants when both replacements exist") {
+    item long_dress(itype_long_dress);
+    item cargo_shorts(itype_shorts_cargo);
+    item tshirt(itype_tshirt);
+
+    const std::vector<const item *> current_items = {&long_dress};
+    const std::vector<const item *> locker_items = {&cargo_shorts, &tshirt};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    CHECK(pants_plan.kept_current == &long_dress);
+    REQUIRE(pants_plan.selected_candidate != nullptr);
+    CHECK(pants_plan.selected_candidate->typeId() == itype_shorts_cargo);
+    CHECK(pants_plan.upgrade_selected);
+
+    REQUIRE(plan.count(camp_locker_slot::shirt) == 1);
+    const camp_locker_slot_plan &shirt_plan = plan.at(camp_locker_slot::shirt);
+    CHECK(shirt_plan.kept_current == nullptr);
+    REQUIRE(shirt_plan.selected_candidate != nullptr);
+    CHECK(shirt_plan.selected_candidate->typeId() == itype_tshirt);
+    CHECK(shirt_plan.missing_current);
+    CHECK(shirt_plan.has_changes());
+  }
 }
 
 TEST_CASE("camp_locker_service_equips_upgrades_and_returns_replaced_gear",
@@ -1813,6 +1871,107 @@ TEST_CASE(
   CHECK_FALSE(locker_has_shorts);
   CHECK_FALSE(locker_has_tshirt);
   CHECK(locker_has_short_dress);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE(
+    "camp_locker_service_does_not_strip_full-length_dresses_for_shorts_only_upgrades",
+    "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(85));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_long_dress), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  CHECK_FALSE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_long_dress));
+  CHECK_FALSE(worker.is_wearing(itype_shorts_cargo));
+
+  bool locker_has_shorts = false;
+  bool locker_has_long_dress = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts ||
+                        it.typeId() == itype_shorts_cargo;
+    locker_has_long_dress = locker_has_long_dress ||
+                            it.typeId() == itype_long_dress;
+  }
+  CHECK(locker_has_shorts);
+  CHECK_FALSE(locker_has_long_dress);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE(
+    "camp_locker_service_can_split_full-length_dresses_when_torso_replacement_exists",
+    "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(85));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+  here.add_item_or_charges(locker_local, item(itype_tshirt));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_long_dress), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+  CHECK_FALSE(worker.is_wearing(itype_long_dress));
+  CHECK(worker.is_wearing(itype_shorts_cargo));
+  CHECK(worker.is_wearing(itype_tshirt));
+
+  bool locker_has_shorts = false;
+  bool locker_has_tshirt = false;
+  bool locker_has_long_dress = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts ||
+                        it.typeId() == itype_shorts_cargo;
+    locker_has_tshirt = locker_has_tshirt || it.typeId() == itype_tshirt;
+    locker_has_long_dress = locker_has_long_dress ||
+                            it.typeId() == itype_long_dress;
+  }
+  CHECK_FALSE(locker_has_shorts);
+  CHECK_FALSE(locker_has_tshirt);
+  CHECK(locker_has_long_dress);
 
   zone_manager::get_manager().clear();
 }
