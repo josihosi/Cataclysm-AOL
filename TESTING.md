@@ -111,6 +111,11 @@ Current honest state:
 - A fourth narrow Package 3 lower-body slice is now closed in deterministic proof:
   - the hot-weather `antarvasa` + cargo pants -> cargo shorts cleanup path now has explicit planner + direct locker-service proof, so that specific lower-body conflict no longer lives only as debug-pass memory
   - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_lower_body_conflict_build_20260408.log` and `build_logs/package3_lower_body_conflict_suite_20260408.log`
+- A fifth narrow Package 3 lower-body slice is now closed in deterministic proof:
+  - the hot-weather duplicate `cargo shorts + jeans` conflict now has explicit planner + direct locker-service proof, so the old visible "wearing shorts and jeans at once" eyesore is no longer relying on debug-pass folklore either
+  - the planner proof keeps the already-worn cargo shorts as the best current pants item in heat and marks the jeans as duplicate current wear rather than pretending a fresh locker candidate is required first
+  - the direct locker-service proof shows the duplicate jeans being removed and returned to locker stock while the already-worn shorts stay equipped
+  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_shorts_jeans_build_20260408.log` and `build_logs/package3_shorts_jeans_tests_20260408.log`
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -137,8 +142,8 @@ Current honest state:
 
 1. **Package 3** on the current McWilliams / fresh-save locker path:
    - use the now-closed Package 2 routing probe as a baseline and do not quietly reopen routing while continuing locker hardening
-   - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, cap -> helmet proof, and the new hot-weather lower-body cleanup proof closed while choosing the next isolated ugly locker conflict
-   - the next missing evidence class is current-path locker behavior for the next visible lower-body oddity beyond that now-proven cleanup path, not more ceremonial basecamp reruns
+   - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, cap -> helmet proof, the hot-weather lower-body cleanup proof, and the duplicate-shorts-vs-jeans cleanup proof closed while choosing the next isolated ugly locker conflict
+   - the next missing evidence class is current-path locker behavior for the next visible lower-body oddity beyond those now-proven hot-weather cleanup paths, not more ceremonial basecamp reruns
 2. keep the helper narrow:
    - do not widen Package 3 into locker policy/control-surface or carried-item support yet
    - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
