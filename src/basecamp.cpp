@@ -542,15 +542,15 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   if (covers_feet && !covers_legs && !covers_torso && !covers_arms) {
     return skintight ? camp_locker_slot::socks : camp_locker_slot::shoes;
   }
-  if (skintight &&
-      (covers_torso || covers_arms || covers_feet ||
-       (covers_legs && !covers_lower_legs))) {
-    return camp_locker_slot::underwear;
-  }
   if (covers_torso && covers_legs &&
       (covers_feet || !outer || is_camp_locker_jumpsuit_like(it)) &&
       !covers_head && !covers_eyes) {
     return camp_locker_slot::pants;
+  }
+  if (skintight &&
+      (covers_torso || covers_arms || covers_feet ||
+       (covers_legs && !covers_lower_legs))) {
+    return camp_locker_slot::underwear;
   }
   if (covers_legs && !covers_head && !covers_eyes && !covers_torso) {
     return camp_locker_slot::pants;
