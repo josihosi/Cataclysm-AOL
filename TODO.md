@@ -14,16 +14,16 @@ Primary auxiliary:
 
 Current slice: **Package 2 — basecamp toolcall routing fix**
 1. keep the landed discriminator narrow:
-  - camp-request routing now distinguishes bare `assigned_camp` from real camp-duty state
-  - explicit `FACTION_CAMP` role-id workers and stationed camp guards/patrol guards are currently basecamp-eligible, while `GUARD_ALLY` hold/follower state stays out
+  - camp-request routing now distinguishes bare `assigned_camp` from actual stationed-camp state
+  - idle assigned-camp hearers in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards are currently basecamp-eligible
+  - walking-with-player companion states and `GUARD_ALLY` still stay out
   - do **not** widen this into locker or follower command redesign while closing the packet
 2. keep the McWilliams live proof honest:
-  - the current live save already gives us nearby hearers `Katharina Leach` and `Robbie Knox`
-  - a fresh literal `show_board` probe on the rebuilt McWilliams binary still sent both hearers through the ordinary nearby-hearer LLM prompt path instead of emitting a camp board reply
-  - current evidence packet: `.userdata/dev-harness/harness_runs/20260408_033437/`
+  - the old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` is now demoted beyond mere follower contamination
+  - fresh hearer-routing instrumentation on `.userdata/dev-harness/harness_runs/20260408_053336/` shows nearby hearers `Katharina Leach` / `Robbie Knox` currently have `assigned_camp=none`, so those ordinary-hearer replies never exercised the real Package 2 state
 3. next smallest honest step for Package 2:
-  - inspect why the current nearby-hearer/runtime-state path still leaves `Robbie Knox` on the ordinary LLM side of the split
-  - only add a new staging helper if that runtime/grouping audit proves the live save truly lacks a qualifying camp hearer
+  - add the smallest McWilliams restaging helper that creates one nearby non-following assigned-camp hearer
+  - rerun the live board/craft probe on that restaged hearer state
   - keep the work isolated to Package 2, without leaking into Package 3+
 
 Still true:

@@ -56,9 +56,9 @@ Primary auxiliary:
   4. locker zone policy + control-surface cleanup
   5. basecamp carried-item support + dump lane
 - **Package 1** is now landed on the current McWilliams harness path: the zone name must be entered at creation time, a single `Esc` opens the save prompt, uppercase `Y` returns cleanly to gameplay, and reopening Zone Manager shows the custom `Probe Locker` name still present.
-- The current active slice is **Package 2**. Its first honest reduction is now in code: camp-request routing no longer keys only off bare `assigned_camp`; explicit `FACTION_CAMP` role-id workers and stationed camp guards/patrol guards are basecamp-eligible, while `GUARD_ALLY` hold/follower state still stays out.
-- The current McWilliams live repro is now narrower in a different way than the docs were claiming: the save already gives us nearby hearers `Katharina Leach` and `Robbie Knox`, and a fresh literal `show_board` probe still sent both through the ordinary nearby-hearer LLM path instead of emitting a camp board reply.
-- That means the next Package 2 seam is no longer "find a staged camp-duty hearer". The real question is which runtime hearer-state/grouping discriminator still leaves the current nearby McWilliams path on the wrong side of the camp route.
+- The current active slice is **Package 2**. Its deterministic reduction is now broader and more honest in code: camp-request routing no longer keys only off bare `assigned_camp`; idle stationed camp assignees in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards are basecamp-eligible, while walking-with-player companion states and `GUARD_ALLY` still stay out.
+- The old literal `show_board` McWilliams packet at `.userdata/dev-harness/harness_runs/20260408_033437/` was oversold and is now demoted harder than before: follower contamination was real, but fresh hearer-routing instrumentation on `.userdata/dev-harness/harness_runs/20260408_053336/` shows the nearby McWilliams hearers are not assigned-camp workers at all. Katharina/Robbie currently hit the ordinary LLM lane because `assigned_camp=none`, so that packet never touched the intended Package 2 state.
+- That means the next Package 2 seam is no longer "inspect why Robbie Knox stayed ordinary on the current save". The real next step is to add the smallest honest restaging helper that creates a nearby non-following assigned-camp hearer on the McWilliams footing, then recheck the basecamp-aware route cleanly.
 - **Package 3** stays after Package 2 on purpose. The locker outfit hardening queue should not bury the wrong-snapshot question just because the locker notes are louder.
 - Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
 - The active repo rule for this packet is simple:
@@ -68,8 +68,8 @@ Primary auxiliary:
   - no opportunistic side quests while the packet is active
 
 ### Next real state
-1. finish **Package 2** by tracing the current McWilliams nearby-hearer/runtime-state seam and proving the intended basecamp-vs-follower split on the real path
-2. keep the follow-up narrow: do not restage a fake hearer unless the runtime/grouping audit proves the live save truly lacks a qualifying camp hearer
+1. finish **Package 2** by creating the smallest honest McWilliams restaging helper for a nearby non-following assigned-camp hearer, then rerunning live proof on that state and proving the intended stationed-basecamp-vs-walking-with-player split on the real path
+2. keep the follow-up narrow: do not widen the helper past what is needed to restore one clean assigned-camp hearer state for the probe
 3. only after Package 2 is settled, move into locker hardening / control-surface / carried-item follow-through in the queued order from the auxiliary doc
 
 ---

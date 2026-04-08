@@ -1,0 +1,47 @@
+{
+  "name": "basecamp.package2_dialog_rules_probe_mcw",
+  "description": "Probe the current McWilliams ally dialogue/rules UI so Package 2 can restage a non-following assigned-camp hearer without guessing menu keys.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_interaction_menu",
+      "keys": ["C"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "choose_talk_to",
+      "keys": ["1"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_rules_window_first_try",
+      "keys": ["a"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_rules_window_second_try",
+      "keys": ["a"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    }
+  ]
+}
