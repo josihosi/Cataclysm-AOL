@@ -14,13 +14,16 @@ Primary auxiliary:
 
 Current slice: **Package 2 — basecamp toolcall routing fix**
 1. keep the landed discriminator narrow:
-  - camp-request routing now requires active `FACTION_CAMP` duty instead of bare `assigned_camp`
+  - camp-request routing now distinguishes bare `assigned_camp` from real camp-duty state
+  - explicit `FACTION_CAMP` role-id workers and stationed camp guards/patrol guards are currently basecamp-eligible, while `GUARD_ALLY` hold/follower state stays out
   - do **not** widen this into locker or follower command redesign while closing the packet
 2. keep the McWilliams live proof honest:
-  - current freeform-hearer repro no longer shows the old wrong-snapshot/toolcall lane for the nearby ordinary hearers on the live save
-  - next capture a real `FACTION_CAMP`-duty hearer on the current save, or stage the smallest honest equivalent, and confirm the intended basecamp-aware path still lands
-3. if the live camp-duty proof still cannot be reached cleanly:
-  - improve the probe path or add the smallest temporary instrumentation/staging that exposes the real hearer state
+  - the current live save already gives us nearby hearers `Katharina Leach` and `Robbie Knox`
+  - a fresh literal `show_board` probe on the rebuilt McWilliams binary still sent both hearers through the ordinary nearby-hearer LLM prompt path instead of emitting a camp board reply
+  - current evidence packet: `.userdata/dev-harness/harness_runs/20260408_033437/`
+3. next smallest honest step for Package 2:
+  - inspect why the current nearby-hearer/runtime-state path still leaves `Robbie Knox` on the ordinary LLM side of the split
+  - only add a new staging helper if that runtime/grouping audit proves the live save truly lacks a qualifying camp hearer
   - keep the work isolated to Package 2, without leaking into Package 3+
 
 Still true:

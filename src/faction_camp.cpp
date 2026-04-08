@@ -2513,7 +2513,16 @@ namespace basecamp_ai
 
 bool uses_basecamp_request_routing( const npc &hearer )
 {
-    return hearer.assigned_camp.has_value() && hearer.companion_mission_role_id == "FACTION_CAMP";
+    if( !hearer.assigned_camp.has_value() ) {
+        return false;
+    }
+
+    if( hearer.companion_mission_role_id == "FACTION_CAMP" ) {
+        return true;
+    }
+
+    return hearer.mission == NPC_MISSION_GUARD ||
+           hearer.mission == NPC_MISSION_GUARD_PATROL;
 }
 
 std::string camp_request_subject_for_display( const camp_llm_request &request,

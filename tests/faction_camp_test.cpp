@@ -2296,7 +2296,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     overmap_buffer.clear_mongroups();
   }
 
-  SECTION( "camp request routing requires active FACTION_CAMP duty, not just assigned_camp" ) {
+  SECTION( "camp request routing requires real camp-duty state, not just assigned_camp" ) {
     clear_avatar();
     clear_map_without_vision();
 
@@ -2304,12 +2304,25 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     npc &listener = spawn_npc( tripoint_bub_ms{ 6, 6, 0 }.xy(), "thug" );
     clear_character( listener, true );
     listener.assigned_camp = origin;
+    listener.mission = NPC_MISSION_NULL;
+    listener.companion_mission_role_id.clear();
 
     CHECK_FALSE( basecamp_ai::uses_basecamp_request_routing( listener ) );
 
     listener.companion_mission_role_id = "SCAVENGER";
     CHECK_FALSE( basecamp_ai::uses_basecamp_request_routing( listener ) );
 
+    listener.companion_mission_role_id.clear();
+    listener.mission = NPC_MISSION_GUARD_ALLY;
+    CHECK_FALSE( basecamp_ai::uses_basecamp_request_routing( listener ) );
+
+    listener.mission = NPC_MISSION_GUARD;
+    CHECK( basecamp_ai::uses_basecamp_request_routing( listener ) );
+
+    listener.mission = NPC_MISSION_GUARD_PATROL;
+    CHECK( basecamp_ai::uses_basecamp_request_routing( listener ) );
+
+    listener.mission = NPC_MISSION_NULL;
     listener.companion_mission_role_id = "FACTION_CAMP";
     CHECK( basecamp_ai::uses_basecamp_request_routing( listener ) );
 
