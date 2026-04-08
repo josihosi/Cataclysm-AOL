@@ -56,8 +56,9 @@ Primary auxiliary:
   4. locker zone policy + control-surface cleanup
   5. basecamp carried-item support + dump lane
 - **Package 1** is now landed on the current McWilliams harness path: the zone name must be entered at creation time, a single `Esc` opens the save prompt, uppercase `Y` returns cleanly to gameplay, and reopening Zone Manager shows the custom `Probe Locker` name still present.
-- The current active slice is **Package 2**. Its first honest reduction is now in code: camp-request routing no longer keys only off bare `assigned_camp`; it now requires active `FACTION_CAMP` duty before the basecamp-aware route is even eligible.
-- The remaining Package 2 question is now narrower and more honest: after removing the bad location-only/assignment-only discriminator, recheck the current McWilliams repro and confirm whether any wrong snapshot/toolcall route still remains beyond that gate.
+- The current active slice is **Package 2**. Its first honest reduction is now in code: camp-request routing no longer keys only off bare `assigned_camp`; explicit `FACTION_CAMP` role-id workers and stationed camp guards/patrol guards are basecamp-eligible, while `GUARD_ALLY` hold/follower state still stays out.
+- The current McWilliams live repro is now narrower in a different way than the docs were claiming: the save already gives us nearby hearers `Katharina Leach` and `Robbie Knox`, and a fresh literal `show_board` probe still sent both through the ordinary nearby-hearer LLM path instead of emitting a camp board reply.
+- That means the next Package 2 seam is no longer "find a staged camp-duty hearer". The real question is which runtime hearer-state/grouping discriminator still leaves the current nearby McWilliams path on the wrong side of the camp route.
 - **Package 3** stays after Package 2 on purpose. The locker outfit hardening queue should not bury the wrong-snapshot question just because the locker notes are louder.
 - Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
 - The active repo rule for this packet is simple:
@@ -67,8 +68,8 @@ Primary auxiliary:
   - no opportunistic side quests while the packet is active
 
 ### Next real state
-1. finish **Package 2** by validating the current McWilliams wrong-snapshot repro against the new `FACTION_CAMP` duty gate and proving the intended basecamp-vs-follower split on the real path
-2. if the repro still fails after that gate, trace the next remaining discriminator or payload seam without widening into locker work
+1. finish **Package 2** by tracing the current McWilliams nearby-hearer/runtime-state seam and proving the intended basecamp-vs-follower split on the real path
+2. keep the follow-up narrow: do not restage a fake hearer unless the runtime/grouping audit proves the live save truly lacks a qualifying camp hearer
 3. only after Package 2 is settled, move into locker hardening / control-surface / carried-item follow-through in the queued order from the auxiliary doc
 
 ---
