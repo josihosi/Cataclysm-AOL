@@ -137,6 +137,10 @@ Current honest state:
   - full-body `looks_like: suit` variants like `tux` no longer fall back into vest logic just because they only reach `jumpsuit` through the suit alias; the locker planner now keeps them in the pants lane so lower-body-only upgrades do not quietly strip torso coverage through that alias path
   - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both the direct classification/planning result and the direct locker-service guard on the current logic: a shorts-only locker candidate leaves the current tuxedo in place instead of layering shorts under it or stripping it into half-dressed nonsense
   - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_indirect_jumpsuit_build_20260408_retry1.log` and `build_logs/package3_indirect_jumpsuit_tests_20260408_retry1.log`
+- An eleventh narrow Package 3 short-dress slice is now closed in deterministic proof:
+  - ordinary one-piece civilian dresses like `short_dress` now have explicit planning + direct locker-service proof for the same torso-coverage guard as the suit-like cases, so a shorts-only locker candidate leaves the dress in place while a shorts + t-shirt locker packet can still split it cleanly in one service pass
+  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides on the current logic: direct classification/planning keeps `short_dress` in the pants lane, shorts-only upgrades do not strip it into half-dressed nonsense, and a paired shirt replacement still lets the split happen deliberately
+  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_short_dress_build_20260408.log` and `build_logs/package3_short_dress_tests_20260408.log`
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -163,8 +167,8 @@ Current honest state:
 
 1. **Package 3** on the current McWilliams / fresh-save locker path:
    - use the now-closed Package 2 routing probe as a baseline and do not quietly reopen routing while continuing locker hardening
-   - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, cap -> helmet proof, the hot-weather lower-body cleanup proof, the duplicate-shorts-vs-jeans cleanup proof, the leggings-underlayer cleanup proof, the outer-suit classification proof, the indirect suit-alias one-piece proof, the one-piece torso-strip guard proof, and the skintight one-piece no-shorts-overlayer proof closed while choosing the next isolated ugly locker conflict
-   - the next missing evidence class is current-path locker behavior for the next visible lower-body oddity beyond those now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, outer-suit-classification, indirect suit-alias one-piece guard, one-piece torso-strip-guard, and skintight one-piece no-shorts-overlayer paths, not more ceremonial basecamp reruns
+   - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, cap -> helmet proof, the hot-weather lower-body cleanup proof, the duplicate-shorts-vs-jeans cleanup proof, the leggings-underlayer cleanup proof, the outer-suit classification proof, the indirect suit-alias one-piece proof, the one-piece torso-strip guard proof, the skintight one-piece no-shorts-overlayer proof, and the short-dress torso-coverage proof closed while choosing the next isolated ugly locker conflict
+   - the next missing evidence class is current-path locker behavior for the next visible lower-body oddity beyond those now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, outer-suit-classification, indirect suit-alias one-piece guard, one-piece torso-strip-guard, skintight one-piece no-shorts-overlayer, and short-dress torso-coverage paths, not more ceremonial basecamp reruns
 2. keep the helper narrow:
    - do not widen Package 3 into locker policy/control-surface or carried-item support yet
    - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
