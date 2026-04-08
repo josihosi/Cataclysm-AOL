@@ -421,6 +421,12 @@ bool is_camp_locker_short_legwear(const item &it) {
              it, {"leg_knee_l", "leg_knee_r", "leg_lower_l", "leg_lower_r"});
 }
 
+bool is_camp_locker_jumpsuit_like(const item &it) {
+  static const itype_id itype_jumpsuit("jumpsuit");
+  return it.typeId() == itype_jumpsuit ||
+         it.typeId()->looks_like == itype_jumpsuit;
+}
+
 int camp_locker_outerwear_temperature_adjustment(
     camp_locker_slot slot, const item &it,
     const std::optional<units::temperature> &local_temperature) {
@@ -496,7 +502,8 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
        (covers_legs && !covers_lower_legs))) {
     return camp_locker_slot::underwear;
   }
-  if (covers_torso && covers_legs && (covers_feet || !outer) &&
+  if (covers_torso && covers_legs &&
+      (covers_feet || !outer || is_camp_locker_jumpsuit_like(it)) &&
       !covers_head && !covers_eyes) {
     return camp_locker_slot::pants;
   }

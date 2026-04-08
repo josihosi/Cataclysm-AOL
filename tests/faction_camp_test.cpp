@@ -57,6 +57,7 @@ static const itype_id itype_pants_cargo("pants_cargo");
 static const itype_id itype_shorts_cargo("shorts_cargo");
 static const itype_id itype_sneakers("sneakers");
 static const itype_id itype_socks("socks");
+static const itype_id itype_suit("suit");
 static const itype_id itype_test_100_kcal("test_100_kcal");
 static const itype_id itype_test_200_kcal("test_200_kcal");
 static const itype_id itype_test_500_kcal("test_500_kcal");
@@ -163,6 +164,8 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_leggings)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_test_jumpsuit_cotton)) ==
+        camp_locker_slot::pants);
+  CHECK(classify_camp_locker_item(item(itype_suit)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_tshirt)) ==
         camp_locker_slot::shirt);
@@ -1075,6 +1078,20 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(pants_plan.kept_current == &cotton_jumpsuit);
     CHECK_FALSE(pants_plan.has_changes());
     CHECK(plan.count(camp_locker_slot::shoes) == 0);
+  }
+
+  SECTION("jumpsuit-like outer suits satisfy the pants slot instead of vest") {
+    item suit(itype_suit);
+    const std::vector<const item *> current_items = {&suit};
+    const camp_locker_candidate_map locker_candidates;
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy());
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    CHECK(pants_plan.kept_current == &suit);
+    CHECK_FALSE(pants_plan.has_changes());
+    CHECK(plan.count(camp_locker_slot::vest) == 0);
   }
 }
 
