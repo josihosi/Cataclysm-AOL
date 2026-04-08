@@ -280,11 +280,18 @@ int average_armor_coverage(const item &it) {
   return average_armor_portion_stat(it, &armor_portion_data::coverage);
 }
 
+units::volume utility_storage_capacity(const item &it) {
+  return it.get_volume_capacity([](const item_pocket &pocket) {
+    return item_pocket::ok_default_containers(pocket) && !pocket.is_ablative();
+  });
+}
+
 int storage_score(const item &it, int milliliters_per_point) {
   if (milliliters_per_point <= 0) {
     return 0;
   }
-  return units::to_milliliter(it.get_volume_capacity()) / milliliters_per_point;
+  return units::to_milliliter(utility_storage_capacity(it)) /
+         milliliters_per_point;
 }
 
 int protection_score(const item &it, int bash_weight, int cut_weight,
@@ -565,7 +572,7 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   const bool skintight = it.has_layer({layer_level::SKINTIGHT});
   const bool outer =
       it.has_layer({layer_level::OUTER}) || it.has_flag(flag_OUTER);
-  const units::volume storage = it.get_volume_capacity();
+  const units::volume storage = utility_storage_capacity(it);
 
   if (covers_torso && covers_legs &&
       (covers_feet || !outer || is_camp_locker_jumpsuit_like(it))) {

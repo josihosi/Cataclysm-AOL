@@ -5,6 +5,9 @@
 - Companion follow/lead/wait states still stay out of the camp-request lane, and `NPC_MISSION_GUARD_ALLY` still stays on the ordinary follower side even inside camp.
 - In practice: assigned-camp alone is too loose, current active mission alone is too narrow, so the routing check now keys on stationed-assignee state while explicitly excluding walking-with-the-player companion modes.
 
+## Locker classifier spine
+- Locker storage heuristics should ignore `ablative` armor-plate pockets when deciding whether worn armor is a utility vest/bag or real body armor. Otherwise ballistic vests like `ballistic_vest_esapi` get flattened into the ordinary vest lane just because ESAPI slots look like cargo storage, which breaks both classification and bullet-vs-melee body-armor tradeoff planning.
+
 ## Patrol Zone v1 planner spine
 - Patrol now has its own camp-job priority surface (`ACT_CAMP_PATROL`), and the deterministic patrol worker pool is exactly the assigned camp NPCs with patrol priority > 0.
 - The v1 planner splits that patrol pool into day/night rosters by sorted priority order, gives every patrol cluster at least one route owner before stacking extra guards onto larger clusters, and caps per-shift active guards at the total patrol-tile count.
