@@ -14,16 +14,16 @@ Primary auxiliary:
 
 Current slice: **Package 2 — basecamp toolcall routing fix**
 1. keep the landed discriminator narrow:
-  - camp-request routing now distinguishes bare `assigned_camp` from real camp-duty state
-  - explicit `FACTION_CAMP` role-id workers and stationed camp guards/patrol guards are currently basecamp-eligible, while `GUARD_ALLY` hold/follower state stays out
+  - camp-request routing now distinguishes bare `assigned_camp` from actual stationed-camp state
+  - idle assigned-camp hearers in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards are currently basecamp-eligible
+  - walking-with-player companion states and `GUARD_ALLY` still stay out
   - do **not** widen this into locker or follower command redesign while closing the packet
 2. keep the McWilliams live proof honest:
-  - the current live save already gives us nearby hearers `Katharina Leach` and `Robbie Knox`
-  - a fresh literal `show_board` probe on the rebuilt McWilliams binary still sent both hearers through the ordinary nearby-hearer LLM prompt path instead of emitting a camp board reply
-  - current evidence packet: `.userdata/dev-harness/harness_runs/20260408_033437/`
+  - the old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` is now demoted as follower-contaminated
+  - the current McWilliams save still has player followers `[2, 3]`, so Katharina/Robbie ordinary-hearer replies on that packet do **not** prove a remaining camp-routing failure
 3. next smallest honest step for Package 2:
-  - inspect why the current nearby-hearer/runtime-state path still leaves `Robbie Knox` on the ordinary LLM side of the split
-  - only add a new staging helper if that runtime/grouping audit proves the live save truly lacks a qualifying camp hearer
+  - repair the live probe path so it targets a non-following assigned-camp hearer on the McWilliams footing
+  - only add a new staging helper if the live save still cannot present that hearer state honestly
   - keep the work isolated to Package 2, without leaking into Package 3+
 
 Still true:

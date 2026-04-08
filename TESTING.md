@@ -57,27 +57,27 @@ Current honest state:
   - the closeout path back to gameplay is a single `Esc` to open the save prompt, then uppercase `Y`
   - reopening Zone Manager after returning to gameplay still shows the custom `Probe Locker` entry on the current McWilliams path
   - latest screenshot packet: `.userdata/dev-harness/harness_runs/20260408_005852/`
-- **Package 2** has its first deterministic reduction landed in code:
+- **Package 2** has its current deterministic reduction landed in code:
   - camp-request routing no longer keys off bare `assigned_camp`
-  - the current gate now accepts explicit `FACTION_CAMP` role-id workers and stationed camp guards/patrol guards, while still rejecting `GUARD_ALLY` hold/follower state
+  - the current gate now accepts idle assigned-camp hearers in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards
+  - walking-with-player companion states and `GUARD_ALLY` still stay on the ordinary follower side
   - deterministic coverage for that discriminator lives in `tests/faction_camp_test.cpp`
-  - current deterministic recheck passed on this Mac via `./tests/cata_test "[camp][basecamp_ai]"`
+  - current deterministic recheck passed on this Mac after the fresh `make -j4 tests` rebuild in `build_logs/package2_idle_assignee_routing_20260408.log`, via `./tests/cata_test "[camp][basecamp_ai]"`
 - The current McWilliams live probe path needed one honest harness fix before it could be trusted again:
   - startup on the McWilliams save was still declaring success while the window sat on the lingering load screen
   - the harness now sends the same post-load `Enter` continuation key that cleared the real window into gameplay on this path
   - fresh live-debug startup proof now reaches gameplay at `.userdata/live-debug/harness_runs/20260408_020648/success.png`
-- With that live path repaired, the ordinary-hearer repro is no longer showing the old wrong-snapshot/toolcall behavior on the current save:
+- With that live path repaired, the old ordinary-hearer packet is now understood more honestly:
   - manual live captures after startup are recorded in `.userdata/live-debug/harness_runs/20260408_020648/`
   - nearby hearers `Katharina Leach` / `Robbie Knox` answered in ordinary spoken bark form for freeform `show me the board` and `craft 1 bandage`
-  - those captures did **not** show structured board/toolcall payload text such as `board=show_board`, `planner_move=`, `overmap:`, `details=`, or `next=`
+  - that result is now treated as follower-side behavior on the current save, not as proof that stationed basecamp routing is still wrong
 - Stale-binary suspicion on the same live path was real and is now cleared:
   - an initial Package 2 talk-menu probe came back `inconclusive_version_mismatch`, so the current tiles binary was rebuilt from repo HEAD
   - fresh rebuild log: `build_logs/package2_live_rebuild_20260408_retry1.log`
-- The old "no nearby camp-duty hearer" read was too optimistic about the problem shape:
-  - the current live save already gives us nearby hearers `Katharina Leach` and `Robbie Knox`
-  - a fresh literal `show_board` probe at `.userdata/dev-harness/harness_runs/20260408_033437/` still sent both hearers through the ordinary nearby-hearer LLM prompt path
-  - that run did **not** emit a deterministic camp board reply artifact such as `camp board reply`, `board=show_board`, or `planner_move=`
-  - the current live gap is therefore beyond the first routing gate: the next seam is the runtime hearer-state/grouping split, not missing access to any nearby hearer at all
+- The old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` was oversold and is now demoted:
+  - the current McWilliams save still has player followers `[2, 3]`
+  - that means the Katharina/Robbie ordinary-hearer result is follower-contaminated evidence, not a clean stationed-camp repro
+  - the next missing evidence class is therefore a repaired live probe on a non-following assigned-camp hearer, not another argument over the contaminated packet
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -103,10 +103,10 @@ Current honest state:
 ### Active queue
 
 1. **Package 2** on the current McWilliams harness path:
-   - ordinary nearby-hearer live recheck is still in hand: the current freeform-hearer repro no longer shows the old wrong-snapshot/toolcall lane for ordinary hearers on the live save
-   - the current literal `show_board` live probe is also in hand, and it still leaves both nearby hearers on the ordinary LLM path instead of emitting a camp board reply
-   - the next step is to inspect the runtime hearer-state/grouping seam that still keeps `Robbie Knox` out of the basecamp-aware route on this path
-2. if that runtime-state audit still fails or exposes a new seam, isolate that next discriminator or payload seam without widening into locker work or inventing fake staging too early
+   - deterministic routing now covers the intended stationed-assignee vs walking-with-player split
+   - the old literal `show_board` live packet is demoted because the current save hearers are followers, not a clean stationed-camp repro
+   - the next step is to repair or minimally restage the live probe so it hits a non-following assigned-camp hearer on the McWilliams footing
+2. if the current live save still cannot present that state honestly, isolate the smallest staging/probe helper that creates it without widening into locker work or fake broad restaging
 
 Still true:
 - ordinary chat / ambient harness footing should stay on the captured `McWilliams` / `Zoraida Vick` save, not drift back to the older default fixture
