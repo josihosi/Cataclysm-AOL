@@ -427,6 +427,51 @@ bool is_camp_locker_jumpsuit_like(const item &it) {
          it.typeId()->looks_like == itype_jumpsuit;
 }
 
+bool camp_locker_plan_slot_retains_torso_coverage(
+    const camp_locker_plan &plan, camp_locker_slot slot) {
+  const auto found = plan.find(slot);
+  if (found == plan.end()) {
+    return false;
+  }
+  const camp_locker_slot_plan &slot_plan = found->second;
+  const item *retained_item = slot_plan.selected_candidate != nullptr
+                                  ? slot_plan.selected_candidate
+                                  : slot_plan.kept_current;
+  return retained_item != nullptr &&
+         armor_covers_any(*retained_item, {"torso"});
+}
+
+bool camp_locker_plan_has_other_torso_coverage(const camp_locker_plan &plan) {
+  return camp_locker_plan_slot_retains_torso_coverage(plan,
+                                                      camp_locker_slot::shirt) ||
+         camp_locker_plan_slot_retains_torso_coverage(plan,
+                                                      camp_locker_slot::vest) ||
+         camp_locker_plan_slot_retains_torso_coverage(
+             plan, camp_locker_slot::body_armor);
+}
+
+void prevent_torso_stripping_pants_upgrades(camp_locker_plan &plan) {
+  const auto pants_it = plan.find(camp_locker_slot::pants);
+  if (pants_it == plan.end()) {
+    return;
+  }
+
+  camp_locker_slot_plan &pants_plan = pants_it->second;
+  if (pants_plan.kept_current == nullptr ||
+      pants_plan.selected_candidate == nullptr || !pants_plan.upgrade_selected) {
+    return;
+  }
+
+  if (!armor_covers_any(*pants_plan.kept_current, {"torso"}) ||
+      armor_covers_any(*pants_plan.selected_candidate, {"torso"}) ||
+      camp_locker_plan_has_other_torso_coverage(plan)) {
+    return;
+  }
+
+  pants_plan.selected_candidate = nullptr;
+  pants_plan.upgrade_selected = false;
+}
+
 int camp_locker_outerwear_temperature_adjustment(
     camp_locker_slot slot, const item &it,
     const std::optional<units::temperature> &local_temperature) {
@@ -1093,6 +1138,8 @@ plan_camp_locker_loadout(
       plan.emplace(slot, std::move(slot_plan));
     }
   }
+
+  prevent_torso_stripping_pants_upgrades(plan);
 
   return plan;
 }
