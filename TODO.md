@@ -21,9 +21,13 @@ Current slice: **Package 3 — locker outfit engine hardening**
   - same-type bag upgrades now prefer the better-condition equivalent instead of leaving a damaged current bag in place just because the score delta is tiny
   - footed/full-body jumpsuits now stay in the pants lane instead of getting misbucketed as shoes by the feet-first classifier
   - baseball cap -> army helmet replacement now has deterministic planning + service proof on the current path instead of just a debug-pass note
-  - deterministic coverage now includes planning + service checks for the bag-condition slice and the cap -> helmet slice, plus classification/planning checks for the jumpsuit-not-shoes slice
+  - the hot-weather `antarvasa` + cargo pants -> cargo shorts cleanup path now also has deterministic planning + service proof instead of living only as debug-pass folklore
+  - the hot-weather duplicate `cargo shorts + jeans` conflict now also has deterministic planning + service proof: the locker path keeps the shorts, strips the duplicate jeans, and returns the jeans to locker stock without needing a replacement item from the zone
+  - full-leg skintight underlayers like `leggings` now also have deterministic planning + service proof: the locker path treats them as pants-lane duplicates instead of sheltering them in underwear, so hot-weather cleanup can strip them alongside cargo pants before landing cargo shorts
+  - jumpsuit-like outer one-piece suits now stay in the pants lane instead of falling into vest logic just because they are marked `OUTER`, so the planner no longer pretends those full-body suits leave the lower-body slot empty
+  - deterministic coverage now includes planning + service checks for the bag-condition slice, the cap -> helmet slice, the new lower-body cleanup slice, the duplicate-shorts-vs-jeans cleanup slice, and the leggings-underlayer cleanup slice, plus classification/planning checks for the jumpsuit-not-shoes slice and the new outer-suit classification slice
 3. pick the next isolated ugly locker conflict, not a whole-barn rewrite:
-  - conflicting lower-body wear cleanup still needs the next honest current-path audit
+  - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, and outer-suit-classification paths
   - do **not** leak into locker policy/control-surface or carried-item work while continuing Package 3
 
 Still true:
@@ -33,4 +37,4 @@ Still true:
 - hackathon-reserved — do not touch before the event:
   - chat interface over dialogue branches
   - ambient-trigger reaction lane / tiny ambient-trigger NPC model
-- Smart Zone Manager v1 stays parked while the controlled locker/basecamp packet is active
+- Smart Zone Manager v1 is now greenlit but stays queued at the bottom of the stack until the current locker/basecamp packet reaches its honest handoff point
