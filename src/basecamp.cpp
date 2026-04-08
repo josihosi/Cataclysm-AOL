@@ -440,12 +440,18 @@ bool is_camp_locker_leg_accessory(const item &it) {
   const bool covers_upper_leg =
       armor_specifically_covers_any(it, {"leg_hip_l", "leg_hip_r",
                                          "leg_upper_l", "leg_upper_r"});
-  const bool covers_lower_leg_or_feet =
+  const bool covers_lower_leg =
       armor_specifically_covers_any(it, {"leg_knee_l", "leg_knee_r",
-                                         "leg_lower_l", "leg_lower_r",
-                                         "foot_l", "foot_r"});
-  return covers_upper_leg && !covers_lower_leg_or_feet &&
-         (it.has_flag(flag_BELTED) || it.has_flag(flag_BELT_CLIP));
+                                         "leg_lower_l", "leg_lower_r"});
+  const bool covers_feet =
+      armor_specifically_covers_any(it, {"foot_l", "foot_r"});
+
+  if (covers_upper_leg && !covers_lower_leg && !covers_feet &&
+      (it.has_flag(flag_BELTED) || it.has_flag(flag_BELT_CLIP))) {
+    return true;
+  }
+
+  return covers_lower_leg && !covers_upper_leg && !covers_feet;
 }
 
 bool is_camp_locker_jumpsuit_like(const item &it) {
