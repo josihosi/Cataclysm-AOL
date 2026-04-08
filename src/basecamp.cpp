@@ -421,6 +421,14 @@ bool is_camp_locker_short_legwear(const item &it) {
              it, {"leg_knee_l", "leg_knee_r", "leg_lower_l", "leg_lower_r"});
 }
 
+bool is_camp_locker_draped_only_legwear(const item &it) {
+  return armor_specifically_covers_any(it, {"leg_draped_l", "leg_draped_r"}) &&
+         !armor_specifically_covers_any(
+             it, {"leg_hip_l", "leg_hip_r", "leg_upper_l", "leg_upper_r",
+                  "leg_knee_l", "leg_knee_r", "leg_lower_l", "leg_lower_r",
+                  "foot_l", "foot_r"});
+}
+
 bool is_camp_locker_jumpsuit_like(const item &it) {
   static const itype_id itype_jumpsuit("jumpsuit");
   static const itype_id itype_suit("suit");
@@ -554,7 +562,8 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
        (covers_legs && !covers_lower_legs))) {
     return camp_locker_slot::underwear;
   }
-  if (covers_legs && !covers_head && !covers_eyes && !covers_torso) {
+  if (covers_legs && !covers_head && !covers_eyes && !covers_torso &&
+      !is_camp_locker_draped_only_legwear(it)) {
     return camp_locker_slot::pants;
   }
   if (covers_torso) {
