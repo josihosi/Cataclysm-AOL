@@ -201,7 +201,11 @@ Current honest state:
 3. **Required observability helper on the same stack:**
    - when the probe packet captures `llm_intent.log`, it should also capture the last few in-game message-log lines so the player-facing log and internal structured call can be compared side by side
    - supporting auxiliary: `doc/basecamp-board-log-observability-2026-04-08.md`
-4. keep the helper narrow:
+4. **Deterministic locker service-parity battery:**
+   - expand current Package 3 proof with `doc/locker-service-parity-test-battery-2026-04-08.md` so locker logic is checked across classification, planning, and actual service behavior
+   - include at least: full-body protective suits, footed one-pieces, draped one-pieces, positive split counterparts, and bullet-vs-melee armor tradeoff cases
+   - for chosen families, deterministic tests should prove that planning and service stay aligned instead of allowing technically legal but practically stupid locker behavior
+5. keep the helper narrow:
    - do not widen Package 3 into locker policy/control-surface or carried-item support yet
    - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
 
