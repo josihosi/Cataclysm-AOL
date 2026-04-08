@@ -1,0 +1,29 @@
+{
+  "name": "basecamp.package2_activity_menu_probe_mcw",
+  "description": "Package 2 live probe on the McWilliams fixture: use the nearby activity menu to flip a hearer into a non-following work state, then probe board and craft requests while capturing the routing artifacts. This is an activity-menu probe, not proof of a real assigned-camp hearer.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "llm_intent.log",
+  "artifact_pattern": "camp routing check|player utterance:|response .+\\(req_",
+  "steps": [
+    {"kind": "wait", "label": "wait_for_gameplay_settle", "seconds": 12, "capture_after": true},
+    {"kind": "press", "label": "open_interaction_menu", "keys": ["C"], "settle_seconds": 0.5, "capture_after": true},
+    {"kind": "press", "label": "open_work_assignment_menu", "keys": ["DOWN", "ENTER"], "settle_seconds": 0.6, "capture_after": true},
+    {"kind": "press", "label": "move_to_taking_it_easy", "keys": ["DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN", "DOWN"], "settle_seconds": 0.4, "capture_after": true},
+    {"kind": "press", "label": "choose_taking_it_easy", "keys": ["ENTER"], "settle_seconds": 0.8, "capture_after": true},
+    {"kind": "press", "label": "mark_katharina", "keys": ["1"], "settle_seconds": 0.4, "capture_after": true},
+    {"kind": "press", "label": "finish_assignment_selection", "keys": ["f"], "settle_seconds": 1.0, "capture_after": true},
+    {"kind": "advance_turns", "label": "settle_after_assignment", "count": 1, "settle_seconds": 0.8, "capture_after": true},
+    {"kind": "press", "label": "open_freeform_chat_for_board", "keys": ["C", "b"], "settle_seconds": 0.5, "capture_after": true},
+    {"kind": "type", "label": "ask_for_board", "text": "show me the board please", "submit": true, "settle_seconds": 1.2, "capture_after": true},
+    {"kind": "advance_turns", "label": "wait_for_board_reply", "count": 2, "settle_seconds": 1.0, "capture_after": true},
+    {"kind": "press", "label": "open_freeform_chat_for_bandages", "keys": ["C", "b"], "settle_seconds": 0.5, "capture_after": true},
+    {"kind": "type", "label": "ask_for_bandages", "text": "craft 1 bandage", "submit": true, "settle_seconds": 1.2, "capture_after": true},
+    {"kind": "advance_turns", "label": "wait_for_craft_reply", "count": 2, "settle_seconds": 1.0, "capture_after": true}
+  ]
+}

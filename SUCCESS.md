@@ -17,11 +17,11 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Controlled locker / basecamp follow-through packet
 
-Status: ACTIVE / PACKAGE 2 NOW
+Status: ACTIVE / PACKAGE 3 NOW
 
 Success state:
 - [x] **Package 1, harness zone-manager save-path polish** is landed with screenshots/artifacts from the current McWilliams harness path.
-- [ ] **Package 2, basecamp toolcall routing fix** is landed or honestly blocked, and the right discriminator is separated from the bad location-only heuristic.
+- [x] **Package 2, basecamp toolcall routing fix** is landed or honestly blocked, and the right discriminator is separated from the bad location-only heuristic.
 - [ ] **Package 3, locker outfit engine hardening** is landed or honestly blocked, with the ugliest visible equip/replace conflicts reduced reviewer-cleanly.
 - [ ] **Package 4, locker zone policy + control-surface cleanup** is landed or honestly blocked, with locker-vs-sorting semantics and the first useful settings surface made explicit.
 - [ ] **Package 5, basecamp carried-item support + dump lane** is landed or honestly blocked, without widening into follower-inventory soup.

@@ -57,9 +57,9 @@ Current honest state:
   - the closeout path back to gameplay is a single `Esc` to open the save prompt, then uppercase `Y`
   - reopening Zone Manager after returning to gameplay still shows the custom `Probe Locker` entry on the current McWilliams path
   - latest screenshot packet: `.userdata/dev-harness/harness_runs/20260408_005852/`
-- **Package 2** has its current deterministic reduction landed in code:
+- **Package 2** is now landed with both deterministic and real-path live proof:
   - camp-request routing no longer keys off bare `assigned_camp`
-  - the current gate now accepts idle assigned-camp hearers in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards
+  - the current gate accepts idle assigned-camp hearers in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards
   - walking-with-player companion states and `GUARD_ALLY` still stay on the ordinary follower side
   - deterministic coverage for that discriminator lives in `tests/faction_camp_test.cpp`
   - current deterministic recheck passed on this Mac after the fresh `make -j4 tests` rebuild in `build_logs/package2_idle_assignee_routing_20260408.log`, via `./tests/cata_test "[camp][basecamp_ai]"`
@@ -74,11 +74,25 @@ Current honest state:
 - Stale-binary suspicion on the same live path was real and is now cleared:
   - an initial Package 2 talk-menu probe came back `inconclusive_version_mismatch`, so the current tiles binary was rebuilt from repo HEAD
   - fresh rebuild log: `build_logs/package2_live_rebuild_20260408_retry1.log`
-- The old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` was oversold and is now demoted harder than before:
+- The old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` is now demoted harder than before:
   - the current McWilliams save still has player followers `[2, 3]`
-  - fresh hearer-routing instrumentation plus rebuilt live rechecks now live at `.userdata/dev-harness/harness_runs/20260408_053336/`
-  - those logs show nearby hearers `Katharina Leach` / `Robbie Knox` currently hit the ordinary LLM lane with `assigned_camp=none`, so the packet was not only follower-contaminated, it also never exercised a real assigned-camp hearer state
-  - the current McWilliams save fixture search found no serialized non-null `assigned_camp` entries at all, so the next missing evidence class is a minimal restaging helper, not another direct rerun on the unmodified snapshot
+  - fresh hearer-routing instrumentation plus rebuilt live rechecks at `.userdata/dev-harness/harness_runs/20260408_053336/` showed nearby hearers `Katharina Leach` / `Robbie Knox` hitting the ordinary lane with `assigned_camp=none`, so that packet never exercised a real assigned-camp hearer state
+  - the current McWilliams save fixture search found no serialized non-null `assigned_camp` entries at all, so the real missing evidence class was a restaging source, not another rerun on the unmodified snapshot
+- The nearby activity-menu probe stays landed as a **negative** helper, not as the restaging source:
+  - scenario: `tools/openclaw_harness/scenarios/basecamp.package2_activity_menu_probe_mcw.json`
+  - latest run: `.userdata/dev-harness/harness_runs/20260408_065958/`
+  - this probe can flip the McWilliams hearers out of the simple walking-with-player state, but it still does **not** create the intended Package 2 state
+  - routing artifacts after `Taking it easy` still showed `assigned_camp=none`, so the board/craft prompts on that state stayed on the ordinary lane
+- The honest assigned-camp restaging source is now proven on the same real McWilliams footing:
+  - scenario: `tools/openclaw_harness/scenarios/basecamp.package2_assign_camp_toolcall_probe_mcw.json`
+  - current live restaging path: ally dialogue `C -> t -> 1 -> b -> d -> n -> a`, then exit the job-priority UI and let the stationed camp state settle before probing
+  - first interim proof at `.userdata/dev-harness/harness_runs/20260408_081903/` showed why one-turn reruns were still lying: `assigned_camp=140,41,0` was written immediately, but Katharina still sat in interim `mission=6` / `GUARD_ALLY`, so routing honestly remained ordinary there
+  - after about 100 turns of settling, `.userdata/dev-harness/harness_runs/20260408_082344/` showed the intended stationed state on the real save: Katharina logged `uses_basecamp=yes`, `camp_found=yes`, `assigned_camp=140,41,0`, `mission=8`, and `reason=camp_grouped`
+  - latest exact-token live proof at `.userdata/dev-harness/harness_runs/20260408_083415/` now reaches the routed camp lane cleanly:
+    - `show_board` logs `camp heard Katharina Leach`, `heard=show_board`, `board=show_board`, and emits the reviewer-clean board follow-through with `job=1 ... next=job=1`
+    - the follow-up `job=1` token also rides the same camp-aware lane on that real assigned-camp state
+    - nearby ordinary hearer Robbie can still chirp on-screen at the same time, so mixed visible bark is now understood as a nearby-hearer overlap detail, not as proof that the assigned-camp route failed
+  - the raw freeform `craft 1 bandage` phrasing is now demoted as the wrong live follow-up shape for this packet. On the true assigned-camp path the honest routed follow-up is the structured `job=1` token coming back from `show_board`, not another raw craft phrase.
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -103,13 +117,13 @@ Current honest state:
 
 ### Active queue
 
-1. **Package 2** on the current McWilliams harness path:
-   - deterministic routing now covers the intended stationed-assignee vs walking-with-player split
-   - the old literal `show_board` live packet is demoted because the current save hearers are not clean stationed-camp workers at all: rebuilt hearer-routing logs on `.userdata/dev-harness/harness_runs/20260408_053336/` show nearby Katharina/Robbie currently have `assigned_camp=none`
-   - the next step is to add the smallest honest restaging helper that creates one nearby non-following assigned-camp hearer on the McWilliams footing, then rerun the board/craft live probe on that state
+1. **Package 3** on the current McWilliams / fresh-save locker path:
+   - use the now-closed Package 2 routing probe as a baseline and do not quietly reopen routing while starting locker hardening
+   - reduce the current ugly locker conflicts to one first hardening slice instead of bundling cap/helmet, lower-body cleanup, backpack replacement, onesies, locker policy, and carried-item work into one mudball
+   - the next missing evidence class is current-path locker behavior, not more ceremonial basecamp reruns
 2. keep the helper narrow:
-   - do not widen it into locker work, follower command redesign, or broad fixture replacement
-   - only restore the missing assigned-camp hearer state needed for Package 2 proof
+   - do not widen Package 3 into locker policy/control-surface or carried-item support yet
+   - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
 
 Still true:
 - ordinary chat / ambient harness footing should stay on the captured `McWilliams` / `Zoraida Vick` save, not drift back to the older default fixture
@@ -140,10 +154,10 @@ If the packet sounds cleaner than the active package boundary or evidence undern
 ### Active-lane handoff block
 
 - **active lane:** controlled locker / basecamp follow-through packet
-- **active slice:** Package 2, basecamp toolcall routing fix
-- **next slice:** Package 3, locker outfit engine hardening
-- **last closed lane:** Package 1, harness zone-manager save-path polish, is now landed on the McWilliams harness path; Patrol Zone v1 remains checkpointed
-- **current blocker shape:** the captured McWilliams fixture does not currently serialize a nearby assigned-camp hearer, so live proof needs a tiny restaging helper before another honest rerun
+- **active slice:** Package 3, locker outfit engine hardening
+- **next slice:** Package 4, locker zone policy + control-surface cleanup
+- **last closed lane:** Package 2, basecamp toolcall routing fix, is now landed on the McWilliams assigned-camp probe path; Patrol Zone v1 remains checkpointed
+- **current blocker shape:** none on Package 2 anymore. The honest next work is now Package 3 locker hardening, kept narrow against the newly closed routing baseline
 - **Josef ask:** none right now beyond keeping the packet narrow and one-package-at-a-time
 
 ### Non-blocking Josef notes

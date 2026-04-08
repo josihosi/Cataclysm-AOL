@@ -12,19 +12,20 @@ Current delivery target: controlled locker / basecamp follow-through packet.
 Primary auxiliary:
 - `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
 
-Current slice: **Package 2 — basecamp toolcall routing fix**
-1. keep the landed discriminator narrow:
-  - camp-request routing now distinguishes bare `assigned_camp` from actual stationed-camp state
-  - idle assigned-camp hearers in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards are currently basecamp-eligible
-  - walking-with-player companion states and `GUARD_ALLY` still stay out
-  - do **not** widen this into locker or follower command redesign while closing the packet
-2. keep the McWilliams live proof honest:
-  - the old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` is now demoted beyond mere follower contamination
-  - fresh hearer-routing instrumentation on `.userdata/dev-harness/harness_runs/20260408_053336/` shows nearby hearers `Katharina Leach` / `Robbie Knox` currently have `assigned_camp=none`, so those ordinary-hearer replies never exercised the real Package 2 state
-3. next smallest honest step for Package 2:
-  - add the smallest McWilliams restaging helper that creates one nearby non-following assigned-camp hearer
-  - rerun the live board/craft probe on that restaged hearer state
-  - keep the work isolated to Package 2, without leaking into Package 3+
+Current slice: **Package 3 — locker outfit engine hardening**
+1. keep Package 2 closed unless new code breaks it:
+  - the honest assigned-camp restaging source is the ally dialogue path `C -> t -> 1 -> b -> d -> n -> a`, plus enough settle time for the interim `GUARD_ALLY` state to clear
+  - the current routed live proof is `tools/openclaw_harness/scenarios/basecamp.package2_assign_camp_toolcall_probe_mcw.json` on `.userdata/dev-harness/harness_runs/20260408_083415/`
+  - `show_board` -> `job=1` is the honest structured follow-up on that state; do **not** drift back into treating raw `craft 1 bandage` as equivalent proof of Package 2
+2. start Package 3 with the smallest ugly real locker conflict, not a whole-barn rewrite:
+  - cap -> helmet replacement still needs an honest current-path audit
+  - conflicting lower-body wear cleanup still needs an honest current-path audit
+  - damaged-backpack replacement still needs an honest current-path audit
+  - onesie/full-coverage armor handling still needs an honest current-path audit
+3. choose one first hardening slice and keep it isolated:
+  - trace the current scorer / replacement / conflict cleanup path
+  - land the smallest fix that clearly reduces one visible failure mode
+  - do **not** leak into locker policy/control-surface or carried-item work while opening Package 3
 
 Still true:
 - Package 3 (`locker outfit engine hardening`) stays next once Package 2 is landed or honestly blocked
