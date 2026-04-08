@@ -208,6 +208,7 @@ def load_profile_config(profile: str) -> Dict[str, Any]:
             "timeout_seconds": 90.0,
             "max_popup_dismissals": 6,
             "post_lastworld_wait_seconds": 0.0,
+            "post_lastworld_continue_keys": [],
         },
     }
 
@@ -1997,6 +1998,10 @@ def run_startup(args: argparse.Namespace) -> int:
             if post_lastworld_wait > 0:
                 time.sleep(post_lastworld_wait)
                 peekaboo_focus_pid(proc.pid)
+            post_lastworld_continue_keys = startup_cfg.get("post_lastworld_continue_keys", [])
+            if isinstance(post_lastworld_continue_keys, list) and post_lastworld_continue_keys:
+                peekaboo_press_sequence(proc.pid, [str(key) for key in post_lastworld_continue_keys])
+                time.sleep(float(startup_cfg["post_input_wait_seconds"]))
             screen = capture_screenshot(proc.pid, run_dir, "success")
             copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")

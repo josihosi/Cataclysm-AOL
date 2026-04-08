@@ -17,7 +17,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Controlled locker / basecamp follow-through packet
 
-Status: ACTIVE / PACKAGE 1 FIRST
+Status: ACTIVE / PACKAGE 2 NOW
 
 Success state:
 - [x] **Package 1, harness zone-manager save-path polish** is landed with screenshots/artifacts from the current McWilliams harness path.

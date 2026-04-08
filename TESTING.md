@@ -61,6 +61,15 @@ Current honest state:
   - camp-request routing no longer keys off bare `assigned_camp`
   - the current gate now requires active `FACTION_CAMP` duty before the basecamp-aware route is eligible
   - deterministic coverage for that discriminator now lives in `tests/faction_camp_test.cpp`
+  - current deterministic recheck still passes on this Mac via `./tests/cata_test "[camp][basecamp_ai]"`
+- The current McWilliams live probe path needed one honest harness fix before it could be trusted again:
+  - startup on the McWilliams save was still declaring success while the window sat on the lingering load screen
+  - the harness now sends the same post-load `Enter` continuation key that cleared the real window into gameplay on this path
+  - fresh live-debug startup proof now reaches gameplay at `.userdata/live-debug/harness_runs/20260408_020648/success.png`
+- With that live path repaired, the ordinary-hearer repro is no longer showing the old wrong-snapshot/toolcall behavior on the current save:
+  - manual live captures after startup are recorded in `.userdata/live-debug/harness_runs/20260408_020648/`
+  - nearby hearers `Katharina Leach` / `Robbie Knox` answered in ordinary spoken bark form for freeform `show me the board` and `craft 1 bandage`
+  - those captures did **not** show structured board/toolcall payload text such as `board=show_board`, `planner_move=`, `overmap:`, `details=`, or `next=`
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -86,10 +95,9 @@ Current honest state:
 ### Active queue
 
 1. **Package 2** on the current McWilliams harness path:
-   - live-recheck the wrong-snapshot/toolcall repro with the new `FACTION_CAMP` duty gate in place
-   - confirm ordinary followers who merely still have an assigned camp do **not** hit the basecamp-aware route
-   - confirm true camp-duty NPCs still hit the intended basecamp-aware route
-2. if the repro still fails after that gate, isolate the next remaining discriminator or payload seam without widening into locker work
+   - ordinary nearby-hearer live recheck is now in hand: the current freeform-hearer repro no longer shows the old wrong-snapshot/toolcall lane on the live save
+   - next capture a true `FACTION_CAMP`-duty hearer on the current save, or stage the smallest honest equivalent, and confirm the intended basecamp-aware path still lands
+2. if the live camp-duty proof still fails or exposes a new seam, isolate that next discriminator or payload seam without widening into locker work
 
 Still true:
 - ordinary chat / ambient harness footing should stay on the captured `McWilliams` / `Zoraida Vick` save, not drift back to the older default fixture

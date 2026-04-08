@@ -8,6 +8,7 @@
     "poll_seconds": 2.0,
     "timeout_seconds": 90.0,
     "max_popup_dismissals": 6,
-    "post_lastworld_wait_seconds": 8.0
+    "post_lastworld_wait_seconds": 8.0,
+    "post_lastworld_continue_keys": ["return"]
   }
 }
