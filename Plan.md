@@ -70,6 +70,7 @@ Primary auxiliary:
 - A third narrow Package 3 acceptance-bar slice is now closed in deterministic planning/service tests: baseball cap -> army helmet replacement already works on the current path, and the repo now has explicit proof instead of only debug-pass folklore.
 - A fourth narrow Package 3 lower-body slice is now closed in deterministic planning/service tests: the hot-weather `antarvasa` + cargo pants conflict now has explicit proof that the locker path cleans up the duplicate lower-body wear and lands the cargo-shorts swap in one service pass.
 - A fifth narrow Package 3 lower-body acceptance-bar slice is now closed in deterministic planning/service tests: when an NPC is already wearing cargo shorts plus duplicate jeans in hot weather, the locker path keeps the shorts, strips the duplicate jeans, and returns the jeans to locker stock without requiring a fresh replacement item.
+- A sixth narrow Package 3 lower-body slice is now closed in deterministic planning/service tests: full-leg skintight underlayers like leggings now ride the pants lane instead of being sheltered in underwear, so hot-weather locker cleanup can strip them alongside cargo pants before landing the cargo-shorts swap.
 - Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
 - The active repo rule for this packet is still simple:
   - one package at a time
@@ -78,8 +79,8 @@ Primary auxiliary:
   - no opportunistic side quests while the packet is active
 
 ### Next real state
-1. keep **Package 3** narrow after the landed bag-condition, jumpsuit-classification, cap -> helmet, lower-body cleanup, and shorts-vs-jeans duplicate-cleanup proof slices: the next honest hardening target is the next current-path lower-body oddity, not a grab-bag rewrite
-2. preserve the landed better-condition bag swap behavior, the new jumpsuit-not-shoes behavior, the cap -> helmet swap path, the lower-body cleanup path, and the shorts-vs-jeans duplicate cleanup while extending the acceptance bar one visible failure mode at a time
+1. keep **Package 3** narrow after the landed bag-condition, jumpsuit-classification, cap -> helmet, lower-body cleanup, shorts-vs-jeans duplicate-cleanup, and leggings-underlayer cleanup proof slices: the next honest hardening target is the next current-path lower-body oddity, not a grab-bag rewrite
+2. preserve the landed better-condition bag swap behavior, the new jumpsuit-not-shoes behavior, the cap -> helmet swap path, the lower-body cleanup path, the shorts-vs-jeans duplicate cleanup, and the leggings-underlayer cleanup while extending the acceptance bar one visible failure mode at a time
 3. preserve the new Package 2 assigned-camp probe as the routing baseline and only reopen routing if Package 3 work actually breaks it
 4. once the current locker / basecamp stack reaches its honest bottom-of-stack handoff point, continue into the already-greenlit **Smart Zone Manager v1** one-off zone-stamping lane from `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md` without interrupting the active packet early
 
