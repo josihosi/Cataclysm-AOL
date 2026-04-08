@@ -2296,7 +2296,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     overmap_buffer.clear_mongroups();
   }
 
-  SECTION( "camp request routing requires real camp-duty state, not just assigned_camp" ) {
+  SECTION( "camp request routing accepts stationed camp assignees, but keeps follower states out" ) {
     clear_avatar();
     clear_map_without_vision();
 
@@ -2306,13 +2306,23 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     listener.assigned_camp = origin;
     listener.mission = NPC_MISSION_NULL;
     listener.companion_mission_role_id.clear();
+    listener.set_attitude( NPCATT_NULL );
 
-    CHECK_FALSE( basecamp_ai::uses_basecamp_request_routing( listener ) );
+    CHECK( basecamp_ai::uses_basecamp_request_routing( listener ) );
 
     listener.companion_mission_role_id = "SCAVENGER";
+    CHECK( basecamp_ai::uses_basecamp_request_routing( listener ) );
+
+    listener.set_attitude( NPCATT_FOLLOW );
     CHECK_FALSE( basecamp_ai::uses_basecamp_request_routing( listener ) );
 
-    listener.companion_mission_role_id.clear();
+    listener.set_attitude( NPCATT_WAIT );
+    CHECK_FALSE( basecamp_ai::uses_basecamp_request_routing( listener ) );
+
+    listener.set_attitude( NPCATT_LEAD );
+    CHECK_FALSE( basecamp_ai::uses_basecamp_request_routing( listener ) );
+
+    listener.set_attitude( NPCATT_NULL );
     listener.mission = NPC_MISSION_GUARD_ALLY;
     CHECK_FALSE( basecamp_ai::uses_basecamp_request_routing( listener ) );
 

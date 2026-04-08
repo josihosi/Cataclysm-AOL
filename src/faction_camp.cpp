@@ -2517,11 +2517,16 @@ bool uses_basecamp_request_routing( const npc &hearer )
         return false;
     }
 
+    if( hearer.is_walking_with() || hearer.mission == NPC_MISSION_GUARD_ALLY ) {
+        return false;
+    }
+
     if( hearer.companion_mission_role_id == "FACTION_CAMP" ) {
         return true;
     }
 
-    return hearer.mission == NPC_MISSION_GUARD ||
+    return hearer.mission == NPC_MISSION_NULL ||
+           hearer.mission == NPC_MISSION_GUARD ||
            hearer.mission == NPC_MISSION_GUARD_PATROL;
 }
 
