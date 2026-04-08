@@ -63,7 +63,9 @@ static const itype_id itype_test_200_kcal("test_200_kcal");
 static const itype_id itype_test_500_kcal("test_500_kcal");
 static const itype_id itype_test_jumpsuit_cotton("test_jumpsuit_cotton");
 static const itype_id itype_tshirt("tshirt");
+static const itype_id itype_union_suit("union_suit");
 static const itype_id itype_vest("vest");
+static const itype_id itype_wetsuit("wetsuit");
 
 static const vitamin_id vitamin_mutagen("mutagen");
 static const vitamin_id vitamin_mutant_toxin("mutant_toxin");
@@ -166,6 +168,10 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_test_jumpsuit_cotton)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_suit)) ==
+        camp_locker_slot::pants);
+  CHECK(classify_camp_locker_item(item(itype_union_suit)) ==
+        camp_locker_slot::pants);
+  CHECK(classify_camp_locker_item(item(itype_wetsuit)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_tshirt)) ==
         camp_locker_slot::shirt);
@@ -1095,6 +1101,21 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
   }
 
   SECTION(
+      "skintight full-body suits satisfy the pants slot instead of underwear") {
+    item wetsuit(itype_wetsuit);
+    const std::vector<const item *> current_items = {&wetsuit};
+    const camp_locker_candidate_map locker_candidates;
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy());
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    CHECK(pants_plan.kept_current == &wetsuit);
+    CHECK_FALSE(pants_plan.has_changes());
+    CHECK(plan.count(camp_locker_slot::underwear) == 0);
+  }
+
+  SECTION(
       "lower-body upgrades do not strip torso coverage from one-piece suits") {
     item suit(itype_suit);
     item cargo_shorts(itype_shorts_cargo);
@@ -1541,6 +1562,53 @@ TEST_CASE(
   CHECK_FALSE(locker_has_shorts);
   CHECK_FALSE(locker_has_tshirt);
   CHECK(locker_has_suit);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE(
+    "camp_locker_service_keeps_skintight_one-piece_suits_when_pants_upgrade_would_strip_torso",
+    "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(85));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_wetsuit), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  CHECK_FALSE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_wetsuit));
+  CHECK_FALSE(worker.is_wearing(itype_shorts_cargo));
+
+  bool locker_has_shorts = false;
+  bool locker_has_wetsuit = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts ||
+                        it.typeId() == itype_shorts_cargo;
+    locker_has_wetsuit = locker_has_wetsuit || it.typeId() == itype_wetsuit;
+  }
+  CHECK(locker_has_shorts);
+  CHECK_FALSE(locker_has_wetsuit);
 
   zone_manager::get_manager().clear();
 }
