@@ -9,7 +9,17 @@
   "profile_snapshot_profile": "live-debug",
   "replace_existing_worlds": true,
   "artifact_source": "llm_intent.log",
-  "artifact_pattern": "camp routing check|camp heard|player utterance:|prompt Katharina Leach|response Katharina Leach|response Robbie Knox|show_board|job=1|next=",
+  "artifact_patterns": [
+    "camp routing check",
+    "camp heard",
+    "player utterance:",
+    "prompt Katharina Leach",
+    "response Katharina Leach",
+    "response Robbie Knox",
+    "show_board",
+    "job=1",
+    "next="
+  ],
   "steps": [
     {
       "kind": "wait",
@@ -96,7 +106,15 @@
       "label": "wait_for_board_reply",
       "count": 2,
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "capture_after_crop": {
+        "x": 2120,
+        "y": 220,
+        "width": 430,
+        "height": 920
+      },
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 12
     },
     {
       "kind": "press",
@@ -121,7 +139,15 @@
       "label": "wait_for_job_followup_reply",
       "count": 2,
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "capture_after_crop": {
+        "x": 2120,
+        "y": 220,
+        "width": 430,
+        "height": 920
+      },
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 12
     }
   ]
 }

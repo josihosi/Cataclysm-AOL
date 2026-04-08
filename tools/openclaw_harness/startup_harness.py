@@ -1330,6 +1330,101 @@ def capture_screenshot(
     return payload
 
 
+def run_screen_ocr(image_path: Path) -> Dict[str, Any]:
+    script_path = repo_root() / "tools" / "openclaw_harness" / "ocr_image.swift"
+    if not script_path.exists():
+        return {
+            "ok": False,
+            "error": f"OCR helper script not found: {script_path}",
+            "image_path": str(image_path),
+        }
+
+    swift_cmd = shutil.which("swift")
+    if not swift_cmd:
+        return {
+            "ok": False,
+            "error": "swift executable not found in PATH",
+            "image_path": str(image_path),
+        }
+
+    proc = subprocess.run(
+        [swift_cmd, str(script_path), "--image", str(image_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return {
+            "ok": False,
+            "error": (proc.stderr or proc.stdout).strip() or f"swift exited with {proc.returncode}",
+            "image_path": str(image_path),
+        }
+
+    try:
+        payload = json.loads(proc.stdout)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"failed to parse OCR JSON: {exc}",
+            "image_path": str(image_path),
+            "stdout": proc.stdout,
+        }
+
+    if not isinstance(payload, dict):
+        return {
+            "ok": False,
+            "error": "OCR helper did not return a JSON object",
+            "image_path": str(image_path),
+        }
+    return payload
+
+
+def capture_screen_text_artifact(
+    run_dir: Path,
+    label: str,
+    capture: Dict[str, Any],
+    tail_lines: int = 8,
+) -> Dict[str, Any]:
+    screen_summary = capture.get("screen_summary", {}) if isinstance(capture.get("screen_summary"), dict) else {}
+    png_path_value = str(screen_summary.get("png_path", "")).strip()
+    if not png_path_value:
+        return {
+            "kind": "screen_text_capture",
+            "label": label,
+            "ok": False,
+            "error": "capture did not include a png_path",
+        }
+
+    png_path = Path(png_path_value)
+    ocr_payload = run_screen_ocr(png_path)
+    text_json_path = run_dir / f"{label}.screen_text.json"
+    text_txt_path = run_dir / f"{label}.screen_text.txt"
+    text_json_path.write_text(json.dumps(ocr_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    raw_lines = ocr_payload.get("lines", []) if isinstance(ocr_payload, dict) else []
+    if isinstance(raw_lines, list):
+        lines = [str(line).strip() for line in raw_lines if str(line).strip()]
+    else:
+        lines = []
+    tail = lines[-max(1, int(tail_lines)):] if lines else []
+    text_txt_path.write_text("\n".join(tail).rstrip() + ("\n" if tail else ""), encoding="utf-8")
+
+    result = {
+        "kind": "screen_text_capture",
+        "label": label,
+        "ok": bool(ocr_payload.get("ok")),
+        "source_png": str(png_path),
+        "json_path": str(text_json_path),
+        "text_path": str(text_txt_path),
+        "line_count": len(lines),
+        "tail_line_count": len(tail),
+        "tail_lines": tail,
+    }
+    if not ocr_payload.get("ok"):
+        result["error"] = str(ocr_payload.get("error", "OCR failed"))
+    return result
+
+
 def render_blink_compare(
     run_dir: Path,
     label: str,
@@ -1861,6 +1956,13 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             )
             capture = capture_screenshot(pid, run_dir, label, crop=capture_crop)
             report["screen"] = capture.get("screen_summary", {})
+            if bool(step.get("extract_text", False)):
+                report["screen_text"] = capture_screen_text_artifact(
+                    run_dir,
+                    label,
+                    capture,
+                    tail_lines=int(step.get("extract_text_tail_lines", 8) or 8),
+                )
         else:
             raise SystemExit(f"Unsupported scenario step kind: {kind or '<empty>'}")
         if settle_seconds > 0:
@@ -1871,6 +1973,13 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             )
             capture = capture_screenshot(pid, run_dir, f"{label}.after", crop=capture_after_crop)
             report["screen_after"] = capture.get("screen_summary", {})
+            if bool(step.get("extract_text_after_capture", False)):
+                report["screen_after_text"] = capture_screen_text_artifact(
+                    run_dir,
+                    f"{label}.after",
+                    capture,
+                    tail_lines=int(step.get("extract_text_tail_lines", step.get("extract_text_after_capture_tail_lines", 8)) or 8),
+                )
         reports.append(report)
     return reports
 
@@ -2372,6 +2481,11 @@ def run_probe(args: argparse.Namespace) -> int:
         all_matched_lines.extend(lines)
 
     companion_helpers: List[Dict[str, Any]] = []
+    for step_report in step_reports:
+        for helper_key in ("screen_text", "screen_after_text"):
+            helper = step_report.get(helper_key)
+            if isinstance(helper, dict):
+                companion_helpers.append(helper)
     patrol_summary = summarize_patrol_artifacts(str(scenario.get("name", args.scenario)), all_matched_lines)
     if patrol_summary is not None:
         companion_helpers.append(write_patrol_summary(run_dir, patrol_summary))
