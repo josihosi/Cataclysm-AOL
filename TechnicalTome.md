@@ -475,3 +475,7 @@ Upstream portability note:
 - The meaningful manual merge seam was `src/npctalk.cpp`.
 - A fork-local `Plan.md` docs conflict was irrelevant noise and not part of the code story.
 - Treat this section as reference archaeology, not as proof of an upstream-ready public patch.
+
+## Camp locker classifier notes
+
+- Belted leg accessories like hip holsters should stay out of the pants slot. They are support gear, not legwear, so hot-weather shorts cleanup must not strip or locker-store them as duplicate pants.
