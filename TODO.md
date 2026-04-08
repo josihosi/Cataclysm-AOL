@@ -21,9 +21,10 @@ Current slice: **Package 3 — locker outfit engine hardening**
   - same-type bag upgrades now prefer the better-condition equivalent instead of leaving a damaged current bag in place just because the score delta is tiny
   - footed/full-body jumpsuits now stay in the pants lane instead of getting misbucketed as shoes by the feet-first classifier
   - baseball cap -> army helmet replacement now has deterministic planning + service proof on the current path instead of just a debug-pass note
-  - deterministic coverage now includes planning + service checks for the bag-condition slice and the cap -> helmet slice, plus classification/planning checks for the jumpsuit-not-shoes slice
+  - the hot-weather `antarvasa` + cargo pants -> cargo shorts cleanup path now also has deterministic planning + service proof instead of living only as debug-pass folklore
+  - deterministic coverage now includes planning + service checks for the bag-condition slice, the cap -> helmet slice, and the new lower-body cleanup slice, plus classification/planning checks for the jumpsuit-not-shoes slice
 3. pick the next isolated ugly locker conflict, not a whole-barn rewrite:
-  - conflicting lower-body wear cleanup still needs the next honest current-path audit
+  - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-proven hot-weather cleanup path
   - do **not** leak into locker policy/control-surface or carried-item work while continuing Package 3
 
 Still true:

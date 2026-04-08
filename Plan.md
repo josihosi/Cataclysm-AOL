@@ -68,6 +68,7 @@ Primary auxiliary:
 - The first narrow Package 3 hardening slice is now landed in deterministic code/tests: same-type locker bags prefer the better-condition equivalent instead of shrugging at a damaged current bag just because the score delta is small.
 - A second narrow Package 3 hardening slice is now landed in deterministic code/tests: footed/full-body jumpsuits no longer get bucketed as shoes just because the classifier sees feet first, so the planner now keeps them in the pants lane instead of excluding them through the footwear bucket.
 - A third narrow Package 3 acceptance-bar slice is now closed in deterministic planning/service tests: baseball cap -> army helmet replacement already works on the current path, and the repo now has explicit proof instead of only debug-pass folklore.
+- A fourth narrow Package 3 lower-body slice is now closed in deterministic planning/service tests: the hot-weather `antarvasa` + cargo pants conflict now has explicit proof that the locker path cleans up the duplicate lower-body wear and lands the cargo-shorts swap in one service pass.
 - Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
 - The active repo rule for this packet is still simple:
   - one package at a time
@@ -76,8 +77,8 @@ Primary auxiliary:
   - no opportunistic side quests while the packet is active
 
 ### Next real state
-1. keep **Package 3** narrow after the landed bag-condition, jumpsuit-classification, and cap -> helmet proof slices: the next honest hardening target is broader lower-body conflict cleanup, not a grab-bag rewrite
-2. preserve the landed better-condition bag swap behavior, the new jumpsuit-not-shoes behavior, and the cap -> helmet swap path while extending the acceptance bar one visible failure mode at a time
+1. keep **Package 3** narrow after the landed bag-condition, jumpsuit-classification, cap -> helmet, and lower-body cleanup proof slices: the next honest hardening target is the next current-path lower-body oddity, not a grab-bag rewrite
+2. preserve the landed better-condition bag swap behavior, the new jumpsuit-not-shoes behavior, the cap -> helmet swap path, and the lower-body cleanup path while extending the acceptance bar one visible failure mode at a time
 3. preserve the new Package 2 assigned-camp probe as the routing baseline and only reopen routing if Package 3 work actually breaks it
 
 ---

@@ -33,6 +33,7 @@
 #include "type_id.h"
 #include "units.h"
 #include "value_ptr.h"
+#include "weather.h"
 
 static const itype_id itype_9mm("9mm");
 static const itype_id itype_armor_lc_plate("armor_lc_plate");
@@ -94,6 +95,11 @@ static void create_tile_zone(const std::string &name,
                              const tripoint_abs_ms &pos) {
   zone_manager::get_manager().add(name, zone_type, your_fac, false, true, pos,
                                   pos, nullptr, false);
+}
+
+static void set_map_temperature(units::temperature new_temperature) {
+  get_weather().temperature = new_temperature;
+  get_weather().clear_temp_cache();
 }
 
 static camp_patrol_cluster make_patrol_cluster(
@@ -1161,6 +1167,59 @@ TEST_CASE("camp_locker_service_swaps_caps_for_army_helmets",
   }
   CHECK(locker_has_baseball_cap);
   CHECK_FALSE(locker_has_army_helmet);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_clears_conflicting_legwear_before_hot_weather_upgrade",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(85));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_id("antarvasa")), false).has_value());
+  REQUIRE(worker.wear_item(item(itype_pants_cargo), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_shorts_cargo));
+  CHECK_FALSE(worker.is_wearing(itype_pants_cargo));
+  CHECK_FALSE(worker.is_wearing(itype_id("antarvasa")));
+
+  bool locker_has_shorts = false;
+  bool locker_has_pants = false;
+  bool locker_has_antarvasa = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts ||
+                        it.typeId() == itype_shorts_cargo;
+    locker_has_pants = locker_has_pants ||
+                       it.typeId() == itype_pants_cargo;
+    locker_has_antarvasa = locker_has_antarvasa ||
+                           it.typeId() == itype_id("antarvasa");
+  }
+  CHECK_FALSE(locker_has_shorts);
+  CHECK(locker_has_pants);
+  CHECK(locker_has_antarvasa);
 
   zone_manager::get_manager().clear();
 }
