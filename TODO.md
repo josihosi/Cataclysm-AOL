@@ -24,9 +24,9 @@ Current slice: **Package 3 — locker outfit engine hardening**
   - use `doc/locker-service-parity-test-battery-2026-04-08.md` to add service-parity coverage, not just classification coverage
   - cover at least full-body protective suits, footed one-pieces, draped one-pieces, and bullet-vs-melee armor tradeoff seams
   - for the chosen families, planning and service behavior should agree instead of producing technically legal but practically stupid locker behavior
-4. keep the landed Package 3 guardrails intact while extending the acceptance bar one ugly lower-body case at a time:
-  - better-condition bag replacement, jumpsuit-not-shoes, cap -> helmet, hot-weather lower-body cleanup, duplicate-shorts-vs-jeans cleanup, leggings-underlayer cleanup, outer-suit classification, indirect suit-alias one-piece guard, one-piece torso-strip guard, skintight one-piece no-shorts-overlayer proof, short-dress torso-coverage proof, draped-overgarment overlay proof, full-length-dress torso-coverage proof, sleeved-dress arm-coverage / positive-split proof, head-covering full-body protective-suit proof, and footed-jumpsuit split-coverage proof stay closed while the next isolated lower-body oddity is chosen
-  - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-closed slices, not a broad outfit-policy rewrite
+4. keep the landed Package 3 guardrails intact while extending the acceptance bar one ugly case at a time:
+  - better-condition bag replacement, jumpsuit-not-shoes, cap -> helmet, hot-weather lower-body cleanup, duplicate-shorts-vs-jeans cleanup, leggings-underlayer cleanup, outer-suit classification, indirect suit-alias one-piece guard, one-piece torso-strip guard, skintight one-piece no-shorts-overlayer proof, short-dress torso-coverage proof, draped-overgarment overlay proof, full-length-dress torso-coverage proof, sleeved-dress arm-coverage / positive-split proof, head-covering full-body protective-suit proof, footed-jumpsuit split-coverage proof, and full-helmet-vs-glasses / ballistic-helmet tradeoff proof stay closed while the next isolated body-armor or lower-body oddity is chosen
+  - the next honest Package 3 question is the next current-path body-armor or lower-body oddity beyond the now-closed slices, not a broad outfit-policy rewrite
 5. keep the helper narrow:
   - do not widen Package 3 into locker policy/control-surface or carried-item support yet
   - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
