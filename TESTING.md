@@ -129,6 +129,10 @@ Current honest state:
   - lower-body-only upgrades no longer strip torso coverage from a current one-piece suit unless the same locker pass also supplies a torso replacement, so the locker path stops "upgrading" suits into half-dressed nonsense
   - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides of that guard on the current logic: a lower-body-only shorts candidate leaves the suit in place, while a shorts + t-shirt locker packet can still split the suit cleanly in one service pass
   - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_onepiece_guard_build_20260408.log` and `build_logs/package3_onepiece_guard_tests_20260408.log`
+- A ninth narrow Package 3 skintight one-piece slice is now closed in deterministic proof:
+  - skintight full-body one-piece suits like `union_suit` and `wetsuit` no longer hide in underwear; the locker planner now keeps them in the pants lane instead of pretending the lower-body slot is empty while shorts pile on top
+  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both the direct classification/planning result and the direct locker-service guard on the current logic: a shorts-only locker candidate leaves the current wetsuit in place instead of layering shorts over it
+  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_skintight_onepiece_build_20260408.log`, `build_logs/package3_skintight_onepiece_tests_20260408.log`, and `build_logs/package3_skintight_onepiece_diffcheck_20260408.log`
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -155,8 +159,8 @@ Current honest state:
 
 1. **Package 3** on the current McWilliams / fresh-save locker path:
    - use the now-closed Package 2 routing probe as a baseline and do not quietly reopen routing while continuing locker hardening
-   - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, cap -> helmet proof, the hot-weather lower-body cleanup proof, the duplicate-shorts-vs-jeans cleanup proof, the leggings-underlayer cleanup proof, the outer-suit classification proof, and the one-piece torso-strip guard proof closed while choosing the next isolated ugly locker conflict
-   - the next missing evidence class is current-path locker behavior for the next visible lower-body oddity beyond those now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, outer-suit-classification, and one-piece torso-strip-guard paths, not more ceremonial basecamp reruns
+   - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, cap -> helmet proof, the hot-weather lower-body cleanup proof, the duplicate-shorts-vs-jeans cleanup proof, the leggings-underlayer cleanup proof, the outer-suit classification proof, the one-piece torso-strip guard proof, and the skintight one-piece no-shorts-overlayer proof closed while choosing the next isolated ugly locker conflict
+   - the next missing evidence class is current-path locker behavior for the next visible lower-body oddity beyond those now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, outer-suit-classification, one-piece torso-strip-guard, and skintight one-piece no-shorts-overlayer paths, not more ceremonial basecamp reruns
 2. keep the helper narrow:
    - do not widen Package 3 into locker policy/control-surface or carried-item support yet
    - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
