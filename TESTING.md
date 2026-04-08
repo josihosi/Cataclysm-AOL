@@ -74,10 +74,11 @@ Current honest state:
 - Stale-binary suspicion on the same live path was real and is now cleared:
   - an initial Package 2 talk-menu probe came back `inconclusive_version_mismatch`, so the current tiles binary was rebuilt from repo HEAD
   - fresh rebuild log: `build_logs/package2_live_rebuild_20260408_retry1.log`
-- The old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` was oversold and is now demoted:
+- The old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` was oversold and is now demoted harder than before:
   - the current McWilliams save still has player followers `[2, 3]`
-  - that means the Katharina/Robbie ordinary-hearer result is follower-contaminated evidence, not a clean stationed-camp repro
-  - the next missing evidence class is therefore a repaired live probe on a non-following assigned-camp hearer, not another argument over the contaminated packet
+  - fresh hearer-routing instrumentation plus rebuilt live rechecks now live at `.userdata/dev-harness/harness_runs/20260408_053336/`
+  - those logs show nearby hearers `Katharina Leach` / `Robbie Knox` currently hit the ordinary LLM lane with `assigned_camp=none`, so the packet was not only follower-contaminated, it also never exercised a real assigned-camp hearer state
+  - the current McWilliams save fixture search found no serialized non-null `assigned_camp` entries at all, so the next missing evidence class is a minimal restaging helper, not another direct rerun on the unmodified snapshot
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -104,9 +105,11 @@ Current honest state:
 
 1. **Package 2** on the current McWilliams harness path:
    - deterministic routing now covers the intended stationed-assignee vs walking-with-player split
-   - the old literal `show_board` live packet is demoted because the current save hearers are followers, not a clean stationed-camp repro
-   - the next step is to repair or minimally restage the live probe so it hits a non-following assigned-camp hearer on the McWilliams footing
-2. if the current live save still cannot present that state honestly, isolate the smallest staging/probe helper that creates it without widening into locker work or fake broad restaging
+   - the old literal `show_board` live packet is demoted because the current save hearers are not clean stationed-camp workers at all: rebuilt hearer-routing logs on `.userdata/dev-harness/harness_runs/20260408_053336/` show nearby Katharina/Robbie currently have `assigned_camp=none`
+   - the next step is to add the smallest honest restaging helper that creates one nearby non-following assigned-camp hearer on the McWilliams footing, then rerun the board/craft live probe on that state
+2. keep the helper narrow:
+   - do not widen it into locker work, follower command redesign, or broad fixture replacement
+   - only restore the missing assigned-camp hearer state needed for Package 2 proof
 
 Still true:
 - ordinary chat / ambient harness footing should stay on the captured `McWilliams` / `Zoraida Vick` save, not drift back to the older default fixture
@@ -140,6 +143,7 @@ If the packet sounds cleaner than the active package boundary or evidence undern
 - **active slice:** Package 2, basecamp toolcall routing fix
 - **next slice:** Package 3, locker outfit engine hardening
 - **last closed lane:** Package 1, harness zone-manager save-path polish, is now landed on the McWilliams harness path; Patrol Zone v1 remains checkpointed
+- **current blocker shape:** the captured McWilliams fixture does not currently serialize a nearby assigned-camp hearer, so live proof needs a tiny restaging helper before another honest rerun
 - **Josef ask:** none right now beyond keeping the packet narrow and one-package-at-a-time
 
 ### Non-blocking Josef notes

@@ -1706,16 +1706,44 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                     std::vector<camp_hearer_group> camp_groups;
                     std::vector<npc *> llm_hearers;
                     llm_hearers.reserve( hearers.size() );
+                    const bool debug_llm_log = get_option<bool>( "DEBUG_LLM_INTENT_LOG" );
+                    const auto log_camp_routing_state = [&]( const npc & guy, const char *reason,
+                    bool uses_basecamp, bool camp_found ) {
+                        if( !debug_llm_log ) {
+                            return;
+                        }
+                        const std::string assigned_camp = guy.assigned_camp.has_value() ?
+                                                          string_format( "%d,%d,%d", guy.assigned_camp->x(),
+                                                                         guy.assigned_camp->y(), guy.assigned_camp->z() ) : "none";
+                        llm_intent::log_event( string_format(
+                                                   "camp routing check npc=\"%s\" id=%d uses_basecamp=%s camp_found=%s assigned_camp=%s attitude=%s mission=%d walking_with=%s player_ally=%s role=%s reason=%s",
+                                                   guy.get_name(), guy.getID().get_value(), uses_basecamp ? "yes" : "no",
+                                                   camp_found ? "yes" : "no", assigned_camp,
+                                                   npc_attitude_name( guy.get_attitude() ), static_cast<int>( guy.mission ),
+                                                   guy.is_walking_with() ? "yes" : "no",
+                                                   guy.is_player_ally() ? "yes" : "no",
+                                                   guy.companion_mission_role_id.empty() ? "<empty>" : guy.companion_mission_role_id,
+                                                   reason ) );
+                    };
                     for( npc *guy : hearers ) {
-                        if( guy == nullptr || !basecamp_ai::uses_basecamp_request_routing( *guy ) ) {
+                        if( guy == nullptr ) {
+                            llm_hearers.push_back( guy );
+                            continue;
+                        }
+                        const bool uses_basecamp = basecamp_ai::uses_basecamp_request_routing( *guy );
+                        if( !uses_basecamp ) {
+                            log_camp_routing_state( *guy, "ordinary_llm_hearer", false, false );
                             llm_hearers.push_back( guy );
                             continue;
                         }
                         std::optional<basecamp *> camp = overmap_buffer.find_camp( guy->assigned_camp->xy() );
-                        if( !camp || *camp == nullptr ) {
+                        const bool camp_found = camp.has_value() && *camp != nullptr;
+                        if( !camp_found ) {
+                            log_camp_routing_state( *guy, "assigned_camp_without_live_basecamp", true, false );
                             llm_hearers.push_back( guy );
                             continue;
                         }
+                        log_camp_routing_state( *guy, "camp_grouped", true, true );
                         auto it = std::find_if( camp_groups.begin(), camp_groups.end(), [&]( const camp_hearer_group & group ) {
                             return group.camp_omt == *guy->assigned_camp;
                         } );

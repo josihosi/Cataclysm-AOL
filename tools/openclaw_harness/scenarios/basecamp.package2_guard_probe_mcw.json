@@ -1,0 +1,89 @@
+{
+  "name": "basecamp.package2_guard_probe_mcw",
+  "description": "Package 2 live proof probe on the McWilliams fixture: flip current followers to guard/hold on the real save, then recheck whether freeform board/craft utterances route through the basecamp-aware camp packet instead of ordinary follower chat.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "llm_intent.log",
+  "artifact_patterns": [
+    "camp heard ",
+    "camp board reply ",
+    "camp craft reply ",
+    "heard=show_board",
+    "board=show_board",
+    "heard=craft",
+    "craft=",
+    "prompt "
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "tell_team_to_guard",
+      "keys": ["C", "g"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "let_guard_command_resolve",
+      "count": 1,
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_freeform_chat_for_board",
+      "keys": ["C", "b"],
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "type",
+      "label": "ask_for_board",
+      "text": "show me the board please",
+      "submit": true,
+      "settle_seconds": 1.5,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_board_reply",
+      "count": 2,
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_freeform_chat_for_craft",
+      "keys": ["C", "b"],
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "type",
+      "label": "ask_for_bandages",
+      "text": "craft 1 bandage",
+      "submit": true,
+      "settle_seconds": 1.5,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_craft_reply",
+      "count": 2,
+      "settle_seconds": 1.0,
+      "capture_after": true
+    }
+  ],
+  "recommended_test_command": "./tests/cata_test \"[camp][basecamp_ai]\""
+}

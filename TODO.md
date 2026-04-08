@@ -19,11 +19,11 @@ Current slice: **Package 2 — basecamp toolcall routing fix**
   - walking-with-player companion states and `GUARD_ALLY` still stay out
   - do **not** widen this into locker or follower command redesign while closing the packet
 2. keep the McWilliams live proof honest:
-  - the old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` is now demoted as follower-contaminated
-  - the current McWilliams save still has player followers `[2, 3]`, so Katharina/Robbie ordinary-hearer replies on that packet do **not** prove a remaining camp-routing failure
+  - the old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` is now demoted beyond mere follower contamination
+  - fresh hearer-routing instrumentation on `.userdata/dev-harness/harness_runs/20260408_053336/` shows nearby hearers `Katharina Leach` / `Robbie Knox` currently have `assigned_camp=none`, so those ordinary-hearer replies never exercised the real Package 2 state
 3. next smallest honest step for Package 2:
-  - repair the live probe path so it targets a non-following assigned-camp hearer on the McWilliams footing
-  - only add a new staging helper if the live save still cannot present that hearer state honestly
+  - add the smallest McWilliams restaging helper that creates one nearby non-following assigned-camp hearer
+  - rerun the live board/craft probe on that restaged hearer state
   - keep the work isolated to Package 2, without leaking into Package 3+
 
 Still true:
