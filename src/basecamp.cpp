@@ -437,7 +437,7 @@ bool is_camp_locker_jumpsuit_like(const item &it) {
          it.typeId()->looks_like == itype_suit;
 }
 
-bool camp_locker_plan_slot_retains_upper_body_coverage(
+bool camp_locker_plan_slot_retains_coverage(
     const camp_locker_plan &plan, camp_locker_slot slot,
     std::initializer_list<std::string_view> parts) {
   const auto found = plan.find(slot);
@@ -451,15 +451,15 @@ bool camp_locker_plan_slot_retains_upper_body_coverage(
   return retained_item != nullptr && armor_covers_any(*retained_item, parts);
 }
 
-bool camp_locker_plan_has_other_upper_body_coverage(
+bool camp_locker_plan_has_other_coverage(
     const camp_locker_plan &plan,
-    std::initializer_list<std::string_view> parts) {
-  return camp_locker_plan_slot_retains_upper_body_coverage(
-             plan, camp_locker_slot::shirt, parts) ||
-         camp_locker_plan_slot_retains_upper_body_coverage(
-             plan, camp_locker_slot::vest, parts) ||
-         camp_locker_plan_slot_retains_upper_body_coverage(
-             plan, camp_locker_slot::body_armor, parts);
+    std::initializer_list<std::string_view> parts,
+    std::initializer_list<camp_locker_slot> slots) {
+  return std::any_of(slots.begin(), slots.end(),
+                     [&](const camp_locker_slot slot) {
+                       return camp_locker_plan_slot_retains_coverage(
+                           plan, slot, parts);
+                     });
 }
 
 void prevent_upper_body_stripping_pants_upgrades(camp_locker_plan &plan) {
@@ -475,20 +475,30 @@ void prevent_upper_body_stripping_pants_upgrades(camp_locker_plan &plan) {
     return;
   }
 
-  const bool current_covers_torso =
-      armor_covers_any(*pants_plan.kept_current, {"torso"});
-  const bool current_covers_arms =
-      armor_covers_any(*pants_plan.kept_current, {"arm_l", "arm_r"});
-  const bool torso_preserved =
-      !current_covers_torso ||
-      armor_covers_any(*pants_plan.selected_candidate, {"torso"}) ||
-      camp_locker_plan_has_other_upper_body_coverage(plan, {"torso"});
-  const bool arm_preserved =
-      !current_covers_arms ||
-      armor_covers_any(*pants_plan.selected_candidate, {"arm_l", "arm_r"}) ||
-      camp_locker_plan_has_other_upper_body_coverage(plan,
-                                                     {"arm_l", "arm_r"});
-  if (torso_preserved && arm_preserved) {
+  auto coverage_preserved =
+      [&](std::initializer_list<std::string_view> parts,
+          std::initializer_list<camp_locker_slot> fallback_slots) {
+        return !armor_covers_any(*pants_plan.kept_current, parts) ||
+               armor_covers_any(*pants_plan.selected_candidate, parts) ||
+               camp_locker_plan_has_other_coverage(plan, parts,
+                                                   fallback_slots);
+      };
+
+  if (coverage_preserved({"torso"}, {camp_locker_slot::shirt,
+                                      camp_locker_slot::vest,
+                                      camp_locker_slot::body_armor}) &&
+      coverage_preserved({"arm_l", "arm_r"},
+                         {camp_locker_slot::shirt, camp_locker_slot::vest,
+                          camp_locker_slot::body_armor}) &&
+      coverage_preserved({"head"}, {camp_locker_slot::helmet}) &&
+      coverage_preserved({"eyes"},
+                         {camp_locker_slot::helmet,
+                          camp_locker_slot::glasses}) &&
+      coverage_preserved({"mouth"}, {camp_locker_slot::helmet}) &&
+      coverage_preserved({"hand_l", "hand_r"}, {}) &&
+      coverage_preserved({"foot_l", "foot_r"},
+                         {camp_locker_slot::socks,
+                          camp_locker_slot::shoes})) {
     return;
   }
 
