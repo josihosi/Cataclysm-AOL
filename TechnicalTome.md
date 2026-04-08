@@ -1,5 +1,10 @@
 # Technical Tome
 
+## Basecamp request routing spine
+- Basecamp-aware freeform/request routing now treats an NPC as a camp hearer when they are assigned to a camp and stationed there in an idle/null mission state, not only while a `FACTION_CAMP` role-id or guard mission is actively set.
+- Companion follow/lead/wait states still stay out of the camp-request lane, and `NPC_MISSION_GUARD_ALLY` still stays on the ordinary follower side even inside camp.
+- In practice: assigned-camp alone is too loose, current active mission alone is too narrow, so the routing check now keys on stationed-assignee state while explicitly excluding walking-with-the-player companion modes.
+
 ## Patrol Zone v1 planner spine
 - Patrol now has its own camp-job priority surface (`ACT_CAMP_PATROL`), and the deterministic patrol worker pool is exactly the assigned camp NPCs with patrol priority > 0.
 - The v1 planner splits that patrol pool into day/night rosters by sorted priority order, gives every patrol cluster at least one route owner before stacking extra guards onto larger clusters, and caps per-shift active guards at the total patrol-tile count.
