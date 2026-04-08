@@ -423,8 +423,10 @@ bool is_camp_locker_short_legwear(const item &it) {
 
 bool is_camp_locker_jumpsuit_like(const item &it) {
   static const itype_id itype_jumpsuit("jumpsuit");
+  static const itype_id itype_suit("suit");
   return it.typeId() == itype_jumpsuit ||
-         it.typeId()->looks_like == itype_jumpsuit;
+         it.typeId()->looks_like == itype_jumpsuit ||
+         it.typeId()->looks_like == itype_suit;
 }
 
 bool camp_locker_plan_slot_retains_torso_coverage(
