@@ -25,9 +25,10 @@ Current slice: **Package 3 — locker outfit engine hardening**
   - the hot-weather duplicate `cargo shorts + jeans` conflict now also has deterministic planning + service proof: the locker path keeps the shorts, strips the duplicate jeans, and returns the jeans to locker stock without needing a replacement item from the zone
   - full-leg skintight underlayers like `leggings` now also have deterministic planning + service proof: the locker path treats them as pants-lane duplicates instead of sheltering them in underwear, so hot-weather cleanup can strip them alongside cargo pants before landing cargo shorts
   - jumpsuit-like outer one-piece suits now stay in the pants lane instead of falling into vest logic just because they are marked `OUTER`, so the planner no longer pretends those full-body suits leave the lower-body slot empty
-  - deterministic coverage now includes planning + service checks for the bag-condition slice, the cap -> helmet slice, the new lower-body cleanup slice, the duplicate-shorts-vs-jeans cleanup slice, and the leggings-underlayer cleanup slice, plus classification/planning checks for the jumpsuit-not-shoes slice and the new outer-suit classification slice
+  - lower-body-only upgrades no longer strip torso coverage from a current one-piece suit unless the same locker pass also supplies a torso replacement, so the locker path stops "upgrading" suits into half-dressed nonsense
+  - deterministic coverage now includes planning + service checks for the bag-condition slice, the cap -> helmet slice, the new lower-body cleanup slice, the duplicate-shorts-vs-jeans cleanup slice, the leggings-underlayer cleanup slice, and the new one-piece torso-coverage guard slice, plus classification/planning checks for the jumpsuit-not-shoes slice and the outer-suit classification slice
 3. pick the next isolated ugly locker conflict, not a whole-barn rewrite:
-  - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, and outer-suit-classification paths
+  - the next honest Package 3 question is the next current-path lower-body oddity beyond the now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, outer-suit-classification, and one-piece torso-strip-guard paths
   - do **not** leak into locker policy/control-surface or carried-item work while continuing Package 3
 
 Still true:
