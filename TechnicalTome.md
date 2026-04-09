@@ -31,6 +31,7 @@
 - Head-covering full-body protective suits like hazmat suits now also stay in the pants lane instead of falling into helmet logic, so shorts-only locker cleanup leaves the suit intact instead of peeling it into ordinary clothes just because the classifier saw the hood first.
 - Full helmets that also cover eyes, like great helms, now stay in the helmet lane instead of being misbucketed as glasses just because the classifier saw eye coverage first, so the locker planner can compare real helmet tradeoffs instead of silently skipping them.
 - Pants-lane split guards now preserve any extra non-leg coverage that the current one-piece item owns, not just torso and arms. In practice that means a footed jumpsuit only splits when the same locker pass also provides shoes, and a hazmat-style full-body suit no longer splits just because a shirt replacement exists while head or face coverage would be lost.
+- Rigid leg-only armor pieces that cover both upper and lower legs without acting like real trousers, like `legguard_hard`, now stay out of the pants lane, so hot-weather locker cleanup can swap cargo pants for cargo shorts without stripping those guards into locker stock as fake duplicate legwear.
 
 ## Camp locker V3 temperature lanes
 - The first Locker Zone V3 slice is deliberately narrow: local temperature adjusts locker scoring for shirt/vest-slot outerwear that covers both torso and arms.
