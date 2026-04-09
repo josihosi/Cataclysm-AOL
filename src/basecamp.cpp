@@ -3112,10 +3112,23 @@ bool basecamp::service_camp_locker(npc &worker) {
   std::vector<item> displaced_items;
   bool applied_changes = false;
 
-  for (const auto &[slot, slot_plan] : plan) {
-    if (slot_plan.selected_candidate == nullptr) {
-      continue;
+  std::vector<const std::pair<const camp_locker_slot, camp_locker_slot_plan> *>
+      apply_entries;
+  apply_entries.reserve(plan.size());
+  for (const auto &entry : plan) {
+    if (entry.second.selected_candidate != nullptr) {
+      apply_entries.push_back(&entry);
     }
+  }
+  std::stable_sort(
+      apply_entries.begin(), apply_entries.end(),
+      [](const auto *lhs, const auto *rhs) {
+        return lhs->second.upgrade_selected && !rhs->second.upgrade_selected;
+      });
+
+  for (const auto *entry : apply_entries) {
+    const camp_locker_slot slot = entry->first;
+    const camp_locker_slot_plan &slot_plan = entry->second;
 
     item candidate =
         take_camp_locker_candidate(locker_tiles, slot_plan.selected_candidate);

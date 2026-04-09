@@ -36,6 +36,7 @@
 - Hip-only outer armored skirts that cover the waist and upper thighs without acting like real trousers, like `legguard_metal_sheets_hip`, now also stay out of the pants lane, so hot-weather locker cleanup can swap cargo pants for cargo shorts without stripping those armored overlays into locker stock as fake duplicate pants.
 - Full-body body armor that still lives in the `body_armor` lane for armor tradeoff scoring, like `armor_lc_plate`, now suppresses missing-current pants fill when it already covers the legs, so locker cleanup stops stuffing filler shorts under full-body plate armor just because the pants slot looked empty.
 - Armored full-body utility suits with real storage and protection, like `survivor_suit`, now refuse hot-weather shorts splits unless the replacement is itself another armored full-body suit, so the pants-lane one-piece guard no longer "upgrades" them into ordinary `shorts_cargo + tshirt` clothes just because the weather is hot.
+- Locker service now applies upgrade-selected slots before missing-current fill-ins instead of trusting raw slot enum order, so coverage-dependent splits can free the replaced item first. In practice that fixes footed lower-body gear like `fishing_waders`, where the planned `boots` should land only after the replaced waders have actually been taken off.
 
 ## Camp locker V3 temperature lanes
 - The first Locker Zone V3 slice is deliberately narrow: local temperature adjusts locker scoring for shirt/vest-slot outerwear that covers both torso and arms.
