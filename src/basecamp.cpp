@@ -462,6 +462,19 @@ bool is_camp_locker_leg_accessory(const item &it) {
     return true;
   }
 
+  const bool covers_non_leg_regions =
+      armor_specifically_covers_any(it, {"torso_upper", "torso_lower",
+                                         "arm_upper_l", "arm_upper_r",
+                                         "arm_lower_l", "arm_lower_r",
+                                         "hand_l", "hand_r", "head",
+                                         "eye_l", "eye_r", "mouth"});
+
+  if (covers_lower_leg && covers_only_upper_leg && !covers_feet &&
+      !support_storage && !it.is_holster() && !covers_non_leg_regions &&
+      it.has_flag(flag_BLOCK_WHILE_WORN)) {
+    return true;
+  }
+
   return covers_lower_leg && !covers_upper_leg && !covers_feet;
 }
 
