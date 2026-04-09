@@ -222,3 +222,20 @@ Success state:
 
 Notes:
 - Retained here so the closed slice stays visible without drifting back into active work.
+
+
+---
+
+## Organic bulletin-board speech polish
+
+Status: PARKED / FUTURE POLISH
+
+Success state:
+- [ ] Bulletin-board / camp-job requests can be triggered through natural player-facing phrasing instead of exposed machine wording.
+- [ ] Ordinary spoken answers no longer expose `job=<id>` / `show_board` / `show_job` style routing tokens.
+- [ ] Internal routing/debug structure can still exist where needed without leaking into normal in-world speech.
+- [ ] The visible answer tone sounds rough, practical, and in-world, like poor survivors making it work for another day while the dead and worse roam outside.
+
+Notes:
+- Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
+- This is parked future polish, not part of the current freeze-closeout requirement unless the visible wording becomes a release blocker.
