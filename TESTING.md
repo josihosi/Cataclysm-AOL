@@ -219,16 +219,21 @@ Current honest state:
   - fitted shoulder-covering one-piece garments like `cheongsam` now have explicit planning + direct locker-service parity proof, so the locker path keeps them intact when a shorts packet would drop their upper-body coverage but still allows a clean `shorts_cargo + tshirt` split when the same pass supplies an arm-covering shirt replacement
   - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides on the current logic: planning keeps `cheongsam` in the pants lane for the blocked shorts + vest packet while still selecting the deliberate shorts + shirt split, and direct locker service mirrors that same keep-vs-split result on the worker path
   - fresh recheck on this Mac passed after `make -j4 tests`, then the full `./tests/cata_test "[camp][locker]"` suite, with logs in `build_logs/package3_cheongsam_build_20260409.log` and `build_logs/package3_cheongsam_suite_20260409.log`
+- A thirty-first narrow Package 3 outer one-piece civilian-clothing slice is now closed in deterministic proof:
+  - light outer full-body garments like `abaya` no longer fall back into shirt logic just because they are marked `OUTER`; the locker path now keeps them in the pants lane so shorts-only or shorts + vest packets do not strip their built-in arm coverage by accident
+  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides on the current logic: planning keeps `abaya` in the pants lane for the blocked shorts + vest packet while still selecting the deliberate shorts + `tshirt` split, and direct locker service mirrors that same keep-vs-split result on the worker path
+  - fresh recheck on this Mac passed after `make -j4 tests`, then the full `./tests/cata_test "[camp][locker]"` suite, with logs in `build_logs/package3_abaya_outer_onepiece_build_20260409_retry1.log` and `build_logs/package3_abaya_outer_onepiece_suite_20260409_retry1.log`
 - The preserved Package 2 board/log leak guard is now landed in deterministic code/tests:
   - structured `show_board` / `show_job` / board-follow-through replies no longer dump raw `board=` / `status=` / `approval=` / `next=` payload text into the visible in-game message log; that payload stays in the internal camp-reply log packet while the on-screen path reuses the organic board/status bark
   - `tests/faction_camp_test.cpp` now proves that split for structured `show_board`, structured `job=1`, and archived-request board cleanup without reopening ordinary follower behavior
   - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][basecamp_ai]"` with logs in `build_logs/basecamp_board_log_leak_build_20260408.log` and `build_logs/basecamp_board_log_leak_tests_20260408.log`
 - The matching live observability helper is now landed and re-proved on the current binary:
   - the assigned-camp probe scenario now captures cropped OCR-backed screen-text artifacts beside `llm_intent.log`, so the player-facing bark can be compared directly with the internal structured camp-reply packet
-  - the first helper rerun honestly exposed stale-binary mismatch, so the real tiles target was rebuilt via `make -j4 TILES=1 cataclysm-tiles` with current log `build_logs/basecamp_board_observability_tiles_rebuild_20260408_retry1.log`
-  - latest current-binary proof packet: `.userdata/dev-harness/harness_runs/20260408_233639/`
-    - internal path: `probe.artifacts.log` still carries the structured assigned-camp handoff (`camp heard Katharina Leach`, `utterance=show_board`, `board=show_board`, `details=show_job=1`, `next=job=1`)
-    - visible path: `wait_for_board_reply.after.screen_text.txt` and `wait_for_job_followup_reply.after.screen_text.txt` now capture OCR text from the on-screen message area, showing organic bark like `check the board.` and `Got it-I'll help you` instead of raw `board=` / `next=` payload text
+  - the earlier helper rerun honestly exposed stale-binary mismatch, so the real tiles target had already been rebuilt via `make -j4 TILES=1 cataclysm-tiles` with log `build_logs/basecamp_board_observability_tiles_rebuild_20260408_retry1.log`
+  - after the current `basecamp.cpp` locker change, the first live rerun again honestly exposed stale-binary mismatch, so the real tiles target was rebuilt again via `make -j4 TILES=1 cataclysm-tiles` with current log `build_logs/package3_board_log_observability_tiles_rebuild_20260409.log`
+  - latest current-binary proof packet: `.userdata/dev-harness/harness_runs/20260409_100447/`
+    - internal path: `probe.artifacts.log` still carries the structured assigned-camp handoff (`board=show_board`, `details=show_job=1`, `status=blocked`, `next=job=1`)
+    - visible path: `wait_for_board_reply.after.screen_text.txt` and `wait_for_job_followup_reply.after.screen_text.txt` still do **not** show raw `board=` / `details=` / `next=` key-value leakage in the OCR capture, so the board/log split remains intact on the rebuilt current binary even though the spoken `job=1` follow-up bark is still product-weird
 - Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
 - The right current discipline is:
   - one package at a time
@@ -243,9 +248,9 @@ Current honest state:
 
 ### Meaning
 
-- The active question is not "how do we fix all locker/basecamp weirdness at once".
-- The active question is "what is the next isolated package that honestly improves the system without wrecking the working loop".
-- If a proposed step starts blending harness polish, wrong-snapshot routing, locker outfit hardening, control-surface design, and inventory policy into one blob, split it before coding.
+- The active question is no longer "what is the next clothing edge case".
+- The active question is whether the already-required packet is honestly strong enough to freeze soon.
+- If a proposed step starts widening back into open-ended locker taxonomy, cut it.
 
 ---
 
@@ -253,21 +258,17 @@ Current honest state:
 
 ### Active queue
 
-1. **Package 3** on the current McWilliams / fresh-save locker path:
-   - use the now-closed Package 2 routing probe as a baseline and do not quietly reopen routing while continuing locker hardening
-   - keep the landed better-condition bag slice, jumpsuit-not-shoes slice, cap -> helmet proof, the hot-weather lower-body cleanup proof, the duplicate-shorts-vs-jeans cleanup proof, the leggings-underlayer cleanup proof, the outer-suit classification proof, the indirect suit-alias one-piece proof, the one-piece torso-strip guard proof, the skintight one-piece no-shorts-overlayer proof, the short-dress torso-coverage proof, the draped-overgarment overlay proof, the new full-length-dress torso-coverage proof, the new sleeved-dress arm-coverage / positive-split proof, the new head-covering full-body protective-suit proof, the new footed-jumpsuit split-coverage proof, the new footed lower-body split-order proof, the new full-helmet-vs-glasses / ballistic-helmet tradeoff proof, the new ballistic-body-armor-vs-plate proof, the new full-body plate-armor no-filler-pants proof, the new leg-holster support-gear proof, the new knee-pad lower-leg-support-armor proof, the new partial-leg support-storage proof, the new full-leg hard-guard support-armor proof, the new full-leg outer-greaves-without-hips support-armor proof, the new hip-only armored-skirt overlay proof, the new draped waist-apron overlay proof, the new cheongsam-style one-piece parity proof, and the new armored full-body utility-suit no-downgrade proof closed while choosing the next isolated ugly locker conflict
-   - the next missing evidence class is current-path locker behavior for the next visible body-armor or lower-body oddity beyond those now-proven hot-weather cleanup, duplicate-shorts-vs-jeans, leggings-underlayer, outer-suit-classification, indirect suit-alias one-piece guard, one-piece torso-strip-guard, skintight one-piece no-shorts-overlayer, short-dress torso-coverage, draped-overgarment overlay, full-length-dress torso-coverage, sleeved-dress arm-coverage / positive-split, head-covering full-body protective-suit, footed-jumpsuit split-coverage, footed lower-body split-order, full-helmet-vs-glasses / ballistic-helmet tradeoff, ballistic-body-armor-vs-plate, full-body plate-armor no-filler-pants, leg-holster support-gear, knee-pad lower-leg-support-armor, partial-leg support-storage, full-leg hard-guard support-armor, full-leg outer-greaves-without-hips support-armor, hip-only armored-skirt overlay, draped waist-apron overlay, cheongsam-style one-piece parity, and armored full-body utility-suit no-downgrade paths, not more ceremonial basecamp reruns
-2. **Deterministic locker service-parity battery:**
-   - expand current Package 3 proof with `doc/locker-service-parity-test-battery-2026-04-08.md` so locker logic is checked across classification, planning, and actual service behavior
-   - the footed one-piece, footed lower-body split-coverage/service-order, draped waist-apron overlay, and cheongsam-style one-piece seams are now covered; the next battery additions should focus on the remaining draped one-piece families plus the remaining bullet-vs-melee armor tradeoff cases beyond the now-covered helmet and body-armor seams
-   - for chosen families, deterministic tests should prove that planning and service stay aligned instead of allowing technically legal but practically stupid locker behavior
-3. keep the helper narrow:
-   - do not widen Package 3 into locker policy/control-surface or carried-item support yet
-   - do not treat raw freeform craft phrasing as a routing regression unless the exact `show_board` -> `job=1` assigned-camp probe breaks too
+1. no new clothing-case expansion unless an already-packaged required case directly fails
+2. keep the preserved Package 2 board/log split closed unless future code touching `basecamp.cpp` or the board/log path changes again
+   - if that happens, rerun the assigned-camp McWilliams probe on the real current binary and compare OCR-visible message-log text against the internal structured artifact packet
+3. smallest honest remainder currently visible:
+   - the raw structured `board=` / `details=` / `next=` leak is fixed
+   - the spoken `job=1` follow-up is still product-weird, but that is a later polish question, not a reason to reopen scope right now
+4. do not widen into locker policy/control-surface or carried-item support until Josef explicitly freezes or parks the current packet
 
 Still true:
 - ordinary chat / ambient harness footing should stay on the captured `McWilliams` / `Zoraida Vick` save, not drift back to the older default fixture
-- Package 3 stays next on purpose, do not bury the wrong-snapshot question under locker feature creep
+- the current packet is in closeout, not discovery mode
 - `sustain_npc` remains only a helper idea for later probes if some future live packet honestly needs it
 
 ### Anti-hallucination rule for this packet

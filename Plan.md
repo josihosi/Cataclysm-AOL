@@ -39,7 +39,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## 1. Current delivery target — controlled locker / basecamp follow-through packet
 
-**Status:** ACTIVE / PACKAGE 3 NOW
+**Status:** ACTIVE / PACKAGE 3 CLOSEOUT
 
 The repo is not honestly parked anymore, but it also should not be reopened as one giant locker/basecamp soup lane.
 Josef's McWilliams debug pass has now been reduced into a controlled packet: one package at a time, preserve the working loop, and do not let Andi broaden scope by vibes.
@@ -95,14 +95,16 @@ Primary auxiliary:
 - A twenty-eighth narrow Package 3 footed lower-body split-order slice is now closed in deterministic planning/service proof: footed lower-body gear like `fishing_waders` no longer leaves the replacement `boots` stranded in locker stock just because locker service tried missing-current shoes before removing the replaced waders, so the planner now keeps shorts-only packets blocked while the service path can still land the clean `shorts_cargo + tshirt + boots` split once the full replacement set exists.
 - A twenty-ninth narrow Package 3 draped-waist overlay slice is now closed in deterministic planning/service proof: draped waist overlays like `waist_apron_long` no longer get flattened into the pants lane just because they cover torso waist plus draped legs, so hot-weather locker cleanup can swap actual pants for `shorts_cargo` without stripping the apron into locker stock as fake legwear.
 - A thirtieth narrow Package 3 cheongsam-style one-piece slice is now closed in deterministic planning/service proof: fitted shoulder-covering one-piece garments like `cheongsam` now have explicit parity proof that the locker path keeps them intact when a shorts packet would drop their upper-body coverage, while still allowing a clean `shorts_cargo + tshirt` split when the same pass supplies an arm-covering shirt replacement.
+- A thirty-first narrow Package 3 outer one-piece civilian-clothing slice is now closed in deterministic planning/service proof: light outer full-body garments like `abaya` no longer fall back into shirt logic just because they are marked `OUTER`, so the locker path now keeps them in the pants lane, preserves their arm-coverage guard against `shorts_cargo + vest` nonsense, and still allows a deliberate `shorts_cargo + tshirt` split when the same pass supplies an arm-covering shirt replacement.
 - The current-packet preserved-baseline regression guard is now landed in deterministic code/tests because Josef caught a live player-facing leak on the Package 2 board path:
   - structured board/job payload text like `board=show_board`, `status=blocked`, `approval=waiting_player`, and `next=job=1` had appeared in the in-game message log instead of staying on the internal path
   - the narrow fix now keeps those structured board/job payloads on the internal camp-reply log path while the visible in-game message log reuses the organic board/status bark, without reopening ordinary follower behavior
   - supporting auxiliary for the live-proof shape: `doc/basecamp-board-log-observability-2026-04-08.md`
 - The matching observability helper is now landed on the same stack:
   - the assigned-camp board probe now captures OCR-backed screen-text artifacts alongside `llm_intent.log`, so the visible message-log bark can be compared directly with the internal structured camp-reply packet
-  - latest current-binary side-by-side live proof: `.userdata/dev-harness/harness_runs/20260408_233639/` (`probe.report.json`, `probe.artifacts.log`, `wait_for_board_reply.after.screen_text.txt`, `wait_for_job_followup_reply.after.screen_text.txt`)
-  - on that run the visible screen-text packet stays organic (`check the board`, `Got it-I'll help you`) while the internal artifact packet still carries the structured `board=show_board`, `details=show_job=1`, and `next=job=1` payloads
+  - earlier side-by-side live proof remains at `.userdata/dev-harness/harness_runs/20260408_233639/` (`probe.report.json`, `probe.artifacts.log`, `wait_for_board_reply.after.screen_text.txt`, `wait_for_job_followup_reply.after.screen_text.txt`)
+  - latest post-locker-change current-binary recheck is `.userdata/dev-harness/harness_runs/20260409_100447/`, after the honest tiles rebuild in `build_logs/package3_board_log_observability_tiles_rebuild_20260409.log`
+  - on the latest run the visible OCR packet still does **not** show raw `board=` / `details=` / `next=` key-value leakage, while the internal artifact packet still carries the structured `board=show_board`, `details=show_job=1`, `status=blocked`, and `next=job=1` payloads
 - Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
 - The active repo rule for this packet is still simple:
   - one package at a time
@@ -111,10 +113,15 @@ Primary auxiliary:
   - no opportunistic side quests while the packet is active
 
 ### Next real state
-1. keep **Package 3** narrow now that the preserved board/log split is re-proved live: after the landed bag-condition, jumpsuit-classification, cap -> helmet, lower-body cleanup, shorts-vs-jeans duplicate-cleanup, leggings-underlayer cleanup, outer-suit classification, indirect suit-alias one-piece, skintight one-piece classification, short-dress torso-coverage proof, draped-overgarment overlay proof, full-length-dress torso-coverage proof, head-covering full-body protective-suit proof, footed-jumpsuit split-coverage proof, full-helmet-vs-glasses classification / ballistic-helmet tradeoff proof, ballistic-body-armor-vs-plate proof, leg-holster support-gear proof, lower-leg support-armor proof, partial-leg support-storage proof, full-leg hard-guard support-armor proof, full-leg outer-greaves-without-hips support-armor proof, hip-only armored-skirt overlay proof, draped-waist overlay proof, and armored full-body utility-suit no-downgrade proof slices, plus the new cheongsam-style one-piece parity proof, the next honest hardening target is the next current-path body-armor or lower-body oddity, not a grab-bag rewrite
-2. expand the current Package 3 deterministic proof battery via `doc/locker-service-parity-test-battery-2026-04-08.md` so locker logic is checked across classification, planning, and actual service behavior for full-body suits, footed one-pieces, the remaining draped one-piece families beyond the now-covered draped waist-apron and cheongsam-style seams, full-leg outer greaves without hip coverage, and the remaining bullet-vs-melee armor tradeoff cases beyond the now-covered helmet and body-armor seams
-3. preserve the landed better-condition bag swap behavior, the new jumpsuit-not-shoes behavior, the cap -> helmet swap path, the lower-body cleanup path, the shorts-vs-jeans duplicate cleanup, the leggings-underlayer cleanup, the outer-suit classification fix, the indirect suit-alias one-piece fix, the skintight one-piece no-shorts-over-wetsuits guard, the short-dress torso-coverage guard, the draped-overgarment no-strip guard, the new full-length-dress torso-coverage guard, the new sleeved-dress arm-coverage guard, the new sleeved-dress split-with-arm-covering-shirt proof, the new head-covering full-body suit classification / shorts-only guard, the new footed-jumpsuit split-only-with-footwear guard, the new footed-lower-body split-order guard, the new full-helmet-vs-glasses / ballistic-helmet tradeoff guard, the new ballistic-body-armor-vs-plate guard, the new full-body plate-armor no-filler-pants guard, the new leg-holster support-gear guard, the new knee-pad lower-leg-support-armor guard, the new partial-leg support-storage guard, the new full-leg hard-guard support-armor guard, the new full-leg outer-greaves-without-hips support-armor guard, the new hip-only armored-skirt overlay guard, the new draped-waist overlay guard, the new cheongsam-style one-piece parity proof, and the new armored full-body utility-suit no-downgrade guard while extending the acceptance bar one visible failure mode at a time
-4. once the current locker / basecamp stack reaches its honest bottom-of-stack handoff point, continue into the already-greenlit **Smart Zone Manager v1** one-off zone-stamping lane from `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md` without interrupting the active packet early
+1. finish the current locker / basecamp packet honestly and stop widening it:
+   - the weird board/log leak fix is re-proved live on the rebuilt current tiles binary
+   - the in-game-log + `llm_intent.log` observability helper is landed and exercised on the same live probe path
+   - the currently required Package 3 deterministic / service-parity canon is landed cleanly enough for pre-freeze closeout
+2. smallest honest remainder for this packet:
+   - the old raw `board=` / `details=` / `next=` leak is fixed, but the visible spoken follow-up around `job=1` is still product-weird and may deserve a later polish slice
+   - that is not permission to reopen follower behavior or resume open-ended clothing-case collection now
+3. if no already-packaged required case fails, stop here and treat this stack as ready to freeze soon
+4. once Josef explicitly freezes or parks this stack, continue into the already-greenlit **Smart Zone Manager v1** one-off zone-stamping lane from `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`
 
 ---
 

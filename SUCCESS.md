@@ -17,21 +17,23 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Controlled locker / basecamp follow-through packet
 
-Status: ACTIVE / PACKAGE 3 NOW
+Status: ACTIVE / PACKAGE 3 CLOSEOUT
 
 Success state:
 - [x] **Package 1, harness zone-manager save-path polish** is landed with screenshots/artifacts from the current McWilliams harness path.
 - [x] **Package 2, basecamp toolcall routing fix** is landed or honestly blocked, and the right discriminator is separated from the bad location-only heuristic.
-- [ ] **Package 3, locker outfit engine hardening** is landed or honestly blocked, with the ugliest visible equip/replace conflicts reduced reviewer-cleanly.
+- [x] **Package 3, locker outfit engine hardening** is now landed for the current required closeout slice: the weird board/log leak stays re-proved live on the rebuilt current tiles binary, the in-game-log plus `llm_intent.log` observability helper is exercised on that same live probe path, and the required deterministic/service-parity canon is closed through the outer one-piece civilian-garment seam (`abaya`) without reopening open-ended clothing-case collection.
+- [ ] **Josef freeze/park gate** — Josef explicitly freezes or parks this stack so the repo can stop pretending there is still another unblocked Package 3 coding slice hiding in the walls.
 - [ ] **Package 4, locker zone policy + control-surface cleanup** is landed or honestly blocked, with locker-vs-sorting semantics and the first useful settings surface made explicit.
 - [ ] **Package 5, basecamp carried-item support + dump lane** is landed or honestly blocked, without widening into follower-inventory soup.
-- [ ] The package order remains controlled: one slice at a time, revalidated between slices, without opportunistic broadening.
+- [x] The package order remains controlled: one slice at a time, revalidated between slices, without opportunistic broadening.
 
 Notes:
 - Canonical package boundaries and acceptance bars live in `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
 - This is the active success-state block that should match `Plan.md`, `TODO.md`, and `TESTING.md`.
 - The point is not to re-open one giant locker/basecamp world. The point is to preserve the working loop while moving through the explicit packet in order.
 - The ordinary harness footing for this packet should stay on `McWilliams` / `Zoraida Vick`, not drift back to the older default save.
+- Until Josef explicitly freezes or parks this stack, do **not** mechanically jump to Package 4 just because it is the next unchecked implementation row.
 
 ---
 

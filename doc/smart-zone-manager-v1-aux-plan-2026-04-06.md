@@ -1,6 +1,6 @@
 # Smart Zone Manager v1 — auxiliary plan (2026-04-06)
 
-Status: greenlit queued lane after the current locker / basecamp follow-through stack. Not the active lane yet, but no longer waiting for greenlight.
+Status: greenlit queued lane after the current locker / basecamp follow-through stack. Bottom-of-stack only, do not preempt the active packet, and wait for the current stack's honest handoff point before opening this lane.
 
 ## Why this exists
 
@@ -12,7 +12,9 @@ This document exists so the later lane starts from a concrete product shape inst
 
 Recommended v1 surface:
 - explicit one-off action such as **Auto-place basecamp zones**
-- optionally also offered right after placing the Basecamp inventory zone
+- when the player draws the Basecamp inventory zone, ask once whether to run smart zoning now
+- if the player says yes, stamp the layout once and stop
+- later manual edits belong to ordinary Zone Manager, not an ongoing smart-zoning nanny
 - deterministic result
 - non-destructive by default
 - no ongoing auto-rearrangement after placement
@@ -294,7 +296,7 @@ This table is intentionally conservative until the full in-game sorting/loot beh
 ## Deterministic test ideas
 - same basecamp layout => same chosen anchors and same zone placement
 - fire source tile gets `SOURCE_FIREWOOD`, not just nearby placement
-- splintered tile lands adjacent to fire source when possible
+- the adjacent custom `splintered` tile also gets `SOURCE_FIREWOOD`, not a separate blunt string filter that breaks the simple v1 firewood rule
 - wood lands nearby but distinct from source-firewood/splintered
 - fridge produces food/drink niche
 - equipment table produces guns tile + adjacent ammo/mags tile
@@ -303,6 +305,15 @@ This table is intentionally conservative until the full in-game sorting/loot beh
 - unsorted area is larger than niche support tiles
 - no existing zones overwritten in default non-destructive mode
 - bed coverage for blanket/quilt applies only to beds inside Basecamp inventory zone
+
+## Future live test packet when this lane becomes active
+- load `McWilliams`
+- delete all zones
+- drag a larger Basecamp inventory zone over the intended area
+- trigger smart zoning once
+- verify the stamped layout looks sensible on-screen
+- capture screenshots
+- ideally quit without saving
 
 ## Player-legibility bar
 The feature succeeds only if the player can look at the result and immediately think:
