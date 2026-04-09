@@ -230,7 +230,25 @@ Do not start them early, do not half-land them, and do not describe scaffolding 
 
 ---
 
-## 9. Documentation discipline
+## 9. Parked future polish — organic bulletin-board speech
+
+**Status:** PARKED / FUTURE POLISH
+
+The raw structured board/job payload leak is fixed, but one aesthetic remainder is still visible on the bulletin-board path: the surviving `job=1`-style follow-up wording still sounds like internal routing glue instead of organic in-world speech.
+
+This lane is parked for later because the current freeze-closeout packet only needs the path to be stable and non-catastrophic, not fully beautiful.
+
+What this future polish item should do:
+- support organic player-facing triggers for bulletin-board / camp-job requests (for example ordinary requests like "craft" in a sentence)
+- keep internal routing/debug tokens available where useful without surfacing them as normal speech
+- make visible answers sound like poor survivors in a dump making it work for another day while the dead and worse roam outside
+- eliminate remaining visible `job=<id>` / `show_board` / `show_job`-style machine phrasing from ordinary in-world output
+
+Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
+
+---
+
+## 10. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute
