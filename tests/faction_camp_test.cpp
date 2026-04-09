@@ -1193,6 +1193,27 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(armor_plan.has_changes());
   }
 
+  SECTION("full-body body armor does not invite filler pants underneath it") {
+    item plate_armor(itype_armor_lc_plate);
+    item cargo_shorts(itype_shorts_cargo);
+
+    const std::vector<const item *> current_items = {&plate_armor};
+    const std::vector<const item *> locker_items = {&cargo_shorts};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::body_armor) == 1);
+    const camp_locker_slot_plan &armor_plan =
+        plan.at(camp_locker_slot::body_armor);
+    CHECK(armor_plan.kept_current == &plate_armor);
+    CHECK_FALSE(armor_plan.has_changes());
+    CHECK(plan.count(camp_locker_slot::pants) == 0);
+  }
+
   SECTION("one-piece jumpsuits satisfy the pants slot instead of shoes") {
     item cotton_jumpsuit(itype_test_jumpsuit_cotton);
     const std::vector<const item *> current_items = {&cotton_jumpsuit};
@@ -2036,6 +2057,49 @@ TEST_CASE("camp_locker_service_upgrades_plate_to_ballistic_body_armor",
   }
   CHECK_FALSE(locker_has_ballistic_vest);
   CHECK(locker_has_plate_armor);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE(
+    "camp_locker_service_does_not_add_filler_shorts_under_full-body_plate_armor",
+    "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_armor_lc_plate), false).has_value());
+
+  set_map_temperature(units::from_fahrenheit(85));
+
+  CHECK_FALSE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_armor_lc_plate));
+  CHECK_FALSE(worker.is_wearing(itype_shorts_cargo));
+
+  bool locker_has_shorts = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts || it.typeId() == itype_shorts_cargo;
+  }
+  CHECK(locker_has_shorts);
 
   zone_manager::get_manager().clear();
 }

@@ -555,6 +555,27 @@ void prevent_upper_body_stripping_pants_upgrades(camp_locker_plan &plan) {
   pants_plan.upgrade_selected = false;
 }
 
+void prevent_missing_pants_fill_under_full_body_body_armor(
+    camp_locker_plan &plan) {
+  if (!camp_locker_plan_slot_retains_coverage(
+          plan, camp_locker_slot::body_armor, {"leg_l", "leg_r"})) {
+    return;
+  }
+
+  const auto pants_it = plan.find(camp_locker_slot::pants);
+  if (pants_it == plan.end()) {
+    return;
+  }
+
+  camp_locker_slot_plan &pants_plan = pants_it->second;
+  if (pants_plan.kept_current != nullptr || pants_plan.selected_candidate == nullptr ||
+      !pants_plan.missing_current || !pants_plan.duplicate_current.empty()) {
+    return;
+  }
+
+  plan.erase(pants_it);
+}
+
 int camp_locker_outerwear_temperature_adjustment(
     camp_locker_slot slot, const item &it,
     const std::optional<units::temperature> &local_temperature) {
@@ -1225,6 +1246,7 @@ plan_camp_locker_loadout(
     }
   }
 
+  prevent_missing_pants_fill_under_full_body_body_armor(plan);
   prevent_upper_body_stripping_pants_upgrades(plan);
 
   return plan;
