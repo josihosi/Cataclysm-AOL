@@ -450,6 +450,8 @@ bool is_camp_locker_leg_accessory(const item &it) {
   const bool covers_feet =
       armor_specifically_covers_any(it, {"foot_l", "foot_r"});
   const bool covers_only_partial_upper_leg = covers_only_upper_leg != covers_hips;
+  const bool full_leg_without_hips =
+      covers_only_upper_leg && covers_lower_leg && !covers_hips;
   const bool support_storage = utility_storage_capacity(it) > 0_ml;
   const bool outer =
       it.has_layer({layer_level::OUTER}) || it.has_flag(flag_OUTER);
@@ -480,6 +482,11 @@ bool is_camp_locker_leg_accessory(const item &it) {
   if (covers_lower_leg && covers_only_upper_leg && !covers_feet &&
       !support_storage && !it.is_holster() && !covers_non_leg_regions &&
       it.has_flag(flag_BLOCK_WHILE_WORN)) {
+    return true;
+  }
+
+  if (full_leg_without_hips && !covers_feet && !support_storage &&
+      !it.is_holster() && !covers_non_leg_regions && outer) {
     return true;
   }
 
