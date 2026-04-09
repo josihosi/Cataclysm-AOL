@@ -436,6 +436,17 @@ bool is_camp_locker_draped_only_legwear(const item &it) {
                   "foot_l", "foot_r"});
 }
 
+bool is_camp_locker_draped_overlay_onepiece(const item &it) {
+  return armor_specifically_covers_any(it, {"torso_waist"}) &&
+         armor_specifically_covers_any(it, {"leg_draped_l", "leg_draped_r"}) &&
+         !armor_specifically_covers_any(
+             it, {"torso_upper", "torso_lower", "arm_upper_l", "arm_upper_r",
+                  "arm_lower_l", "arm_lower_r", "hand_l", "hand_r",
+                  "leg_hip_l", "leg_hip_r", "leg_upper_l", "leg_upper_r",
+                  "leg_knee_l", "leg_knee_r", "leg_lower_l", "leg_lower_r",
+                  "foot_l", "foot_r", "head", "eye_l", "eye_r", "mouth"});
+}
+
 bool is_camp_locker_leg_accessory(const item &it) {
   const bool covers_hips =
       armor_specifically_covers_any(it, {"leg_hip_l", "leg_hip_r"});
@@ -668,6 +679,9 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
       it.has_layer({layer_level::OUTER}) || it.has_flag(flag_OUTER);
   const units::volume storage = utility_storage_capacity(it);
 
+  if (is_camp_locker_draped_overlay_onepiece(it)) {
+    return std::nullopt;
+  }
   if (covers_torso && covers_legs &&
       (covers_feet || !outer || is_camp_locker_jumpsuit_like(it))) {
     return camp_locker_slot::pants;
