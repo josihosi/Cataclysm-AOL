@@ -45,6 +45,7 @@ static const itype_id itype_briefs("briefs");
 static const itype_id itype_coat_winter("coat_winter");
 static const itype_id itype_daypack("daypack");
 static const itype_id itype_duffelbag("duffelbag");
+static const itype_id itype_fishing_waders("fishing_waders");
 static const itype_id itype_glasses_eye("glasses_eye");
 static const itype_id itype_glock_19("glock_19");
 static const itype_id itype_glockmag("glockmag");
@@ -181,6 +182,8 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
   CHECK(classify_camp_locker_item(item(itype_jeans)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_leggings)) ==
+        camp_locker_slot::pants);
+  CHECK(classify_camp_locker_item(item(itype_fishing_waders)) ==
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_test_jumpsuit_cotton)) ==
         camp_locker_slot::pants);
@@ -1432,6 +1435,67 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     REQUIRE(plan.count(camp_locker_slot::pants) == 1);
     const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
     CHECK(pants_plan.kept_current == &cotton_jumpsuit);
+    REQUIRE(pants_plan.selected_candidate != nullptr);
+    CHECK(pants_plan.selected_candidate->typeId() == itype_shorts_cargo);
+    CHECK(pants_plan.upgrade_selected);
+
+    REQUIRE(plan.count(camp_locker_slot::shirt) == 1);
+    const camp_locker_slot_plan &shirt_plan = plan.at(camp_locker_slot::shirt);
+    CHECK(shirt_plan.kept_current == nullptr);
+    REQUIRE(shirt_plan.selected_candidate != nullptr);
+    CHECK(shirt_plan.selected_candidate->typeId() == itype_tshirt);
+
+    REQUIRE(plan.count(camp_locker_slot::shoes) == 1);
+    const camp_locker_slot_plan &shoes_plan = plan.at(camp_locker_slot::shoes);
+    CHECK(shoes_plan.kept_current == nullptr);
+    REQUIRE(shoes_plan.selected_candidate != nullptr);
+    CHECK(shoes_plan.selected_candidate->typeId() == itype_boots);
+  }
+
+  SECTION(
+      "footed lower-body gear keeps built-in torso and footwear unless replacements exist") {
+    item fishing_waders(itype_fishing_waders);
+    item cargo_shorts(itype_shorts_cargo);
+
+    const std::vector<const item *> current_items = {&fishing_waders};
+    const std::vector<const item *> locker_items = {&cargo_shorts};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    CHECK(pants_plan.kept_current == &fishing_waders);
+    CHECK(pants_plan.selected_candidate == nullptr);
+    CHECK_FALSE(pants_plan.upgrade_selected);
+    CHECK_FALSE(pants_plan.has_changes());
+  }
+
+  SECTION(
+      "footed lower-body gear can split when torso and shoes replacements exist") {
+    item fishing_waders(itype_fishing_waders);
+    item cargo_shorts(itype_shorts_cargo);
+    item tshirt(itype_tshirt);
+    item hiking_boots(itype_boots);
+
+    const std::vector<const item *> current_items = {&fishing_waders};
+    const std::vector<const item *> locker_items = {&cargo_shorts, &tshirt,
+                                                    &hiking_boots};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    CHECK(pants_plan.kept_current == &fishing_waders);
     REQUIRE(pants_plan.selected_candidate != nullptr);
     CHECK(pants_plan.selected_candidate->typeId() == itype_shorts_cargo);
     CHECK(pants_plan.upgrade_selected);
@@ -3301,6 +3365,109 @@ TEST_CASE(
   CHECK_FALSE(locker_has_tshirt);
   CHECK_FALSE(locker_has_boots);
   CHECK(locker_has_jumpsuit);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE(
+    "camp_locker_service_keeps_footed_lower-body_gear_when_split_would_strip_torso_or_footwear",
+    "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(85));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_fishing_waders), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  CHECK_FALSE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_fishing_waders));
+  CHECK_FALSE(worker.is_wearing(itype_shorts_cargo));
+  CHECK_FALSE(worker.is_wearing(itype_boots));
+
+  bool locker_has_shorts = false;
+  bool locker_has_waders = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts || it.typeId() == itype_shorts_cargo;
+    locker_has_waders = locker_has_waders || it.typeId() == itype_fishing_waders;
+  }
+  CHECK(locker_has_shorts);
+  CHECK_FALSE(locker_has_waders);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE(
+    "camp_locker_service_can_split_footed_lower-body_gear_when_torso_and_shoes_exist",
+    "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(85));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+  here.add_item_or_charges(locker_local, item(itype_tshirt));
+  here.add_item_or_charges(locker_local, item(itype_boots));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_fishing_waders), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+  CHECK_FALSE(worker.is_wearing(itype_fishing_waders));
+  CHECK(worker.is_wearing(itype_shorts_cargo));
+  CHECK(worker.is_wearing(itype_tshirt));
+  CHECK(worker.is_wearing(itype_boots));
+
+  bool locker_has_shorts = false;
+  bool locker_has_tshirt = false;
+  bool locker_has_boots = false;
+  bool locker_has_waders = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts || it.typeId() == itype_shorts_cargo;
+    locker_has_tshirt = locker_has_tshirt || it.typeId() == itype_tshirt;
+    locker_has_boots = locker_has_boots || it.typeId() == itype_boots;
+    locker_has_waders = locker_has_waders || it.typeId() == itype_fishing_waders;
+  }
+  CHECK_FALSE(locker_has_shorts);
+  CHECK_FALSE(locker_has_tshirt);
+  CHECK_FALSE(locker_has_boots);
+  CHECK(locker_has_waders);
 
   zone_manager::get_manager().clear();
 }
