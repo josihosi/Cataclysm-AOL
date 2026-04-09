@@ -521,6 +521,18 @@ bool is_camp_locker_armored_full_body_suit(const item &it) {
          protection_score(it, 1, 2, 2) >= 80;
 }
 
+bool is_camp_locker_outer_onepiece_garment(const item &it) {
+  const bool outer =
+      it.has_layer({layer_level::OUTER}) || it.has_flag(flag_OUTER);
+  return outer && it.weight() < 1500_gram &&
+         utility_storage_capacity(it) < 500_ml &&
+         armor_covers_any(it, {"torso"}) &&
+         armor_covers_any(it, {"arm_l", "arm_r"}) &&
+         armor_covers_any(it, {"leg_l", "leg_r"}) &&
+         !armor_covers_any(it, {"head", "eyes", "mouth", "hand_l",
+                                "hand_r", "foot_l", "foot_r"});
+}
+
 bool camp_locker_plan_slot_retains_coverage(
     const camp_locker_plan &plan, camp_locker_slot slot,
     std::initializer_list<std::string_view> parts) {
@@ -683,7 +695,8 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
     return std::nullopt;
   }
   if (covers_torso && covers_legs &&
-      (covers_feet || !outer || is_camp_locker_jumpsuit_like(it))) {
+      (covers_feet || !outer || is_camp_locker_jumpsuit_like(it) ||
+       is_camp_locker_outer_onepiece_garment(it))) {
     return camp_locker_slot::pants;
   }
   if (covers_head) {
