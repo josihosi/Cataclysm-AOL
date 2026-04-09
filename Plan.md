@@ -189,7 +189,35 @@ Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
 
 ---
 
-## 10. Documentation discipline
+## 10. Parked future tooling — Plan/Aux pipeline helper
+
+**Status:** PARKED / FUTURE TOOLING
+
+Josef explicitly wants a small helper for the `Plan.md` / auxiliary-doc pipeline because greenlighting already-existing lanes should not require slow manual file carpentry every time.
+
+What this future tool should do:
+- take a proposed item, greenlight, or parked-lane request
+- print the contract back for verification
+- collect corrections before touching canon files
+- ask the final classification question (active, parked, or bottom-of-stack)
+- patch the relevant canon files consistently:
+  - `Plan.md`
+  - `TODO.md`
+  - `SUCCESS.md`
+  - `TESTING.md` when needed
+  - the auxiliary doc itself
+- optionally generate the Andi handoff packet too
+
+The point is leverage and consistency, not ceremony:
+- preserve the frozen intake/classification/packaging workflow
+- reduce slow manual canon edits
+- make parked-vs-active-vs-bottom-of-stack updates faster and less error-prone
+
+Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
+
+---
+
+## 11. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

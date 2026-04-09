@@ -239,3 +239,20 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
 - This is parked future polish, not part of the current freeze-closeout requirement unless the visible wording becomes a release blocker.
+
+---
+
+## Plan/Aux pipeline helper
+
+Status: PARKED / FUTURE TOOLING
+
+Success state:
+- [ ] A small helper can take a proposed item/greenlight and print the contract back for verification before canon files are changed.
+- [ ] The helper can collect corrections and then classify the item cleanly as active, parked, or bottom-of-stack.
+- [ ] The helper can update the relevant canon files consistently (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md` when needed, plus the auxiliary doc).
+- [ ] The helper reduces manual file carpentry for already-understood greenlights without bypassing the frozen workflow.
+- [ ] The helper can optionally generate the Andi handoff packet from the same classified contract.
+
+Notes:
+- Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
+- This is parked future tooling meant to improve workflow speed and consistency, not a current-lane feature.
