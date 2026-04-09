@@ -1,5 +1,12 @@
 # Technical Tome
 
+## Smart Zone Manager v1 spine
+- Smart Zone Manager v1 is a one-off Basecamp helper, not an always-on rearrangement goblin: Zone Manager offers the prompt when a `CAMP_STORAGE` zone is first placed and again when that Basecamp zone is later repositioned/stretched.
+- The current v1 packet is deliberately narrow: one crafting niche, one food/drink niche, one equipment niche, plus support zones for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
+- The corrected fire knot is explicit and local: the fire-source tile itself gets `SOURCE_FIREWOOD`, one adjacent tile gets custom `splintered` plus `SOURCE_FIREWOOD`, and separate nearby wood storage stays distinct from that knot.
+- Rotten placement now searches outward for an outdoor passable tile instead of assuming the first ring outside the Basecamp rectangle is usable, so simple wall rings do not dump the rotten zone onto indoor or impassable junk.
+- Default posture is deterministic and non-destructive: reuse built-in loot/custom zone machinery where it fits, refuse to overwrite non-basecamp zones, and fall back to ordinary floor tiles instead of failing just because the furniture is ugly.
+
 ## Basecamp request routing spine
 - Basecamp-aware freeform/request routing now treats an NPC as a camp hearer when they are assigned to a camp and stationed there in an idle/null mission state, not only while a `FACTION_CAMP` role-id or guard mission is actively set.
 - Companion follow/lead/wait states still stay out of the camp-request lane, and `NPC_MISSION_GUARD_ALLY` still stays on the ordinary follower side even inside camp.

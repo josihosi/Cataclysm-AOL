@@ -739,6 +739,16 @@ class zone_manager_ui
                                              bool show_all_zones, const input_context &ctxt, int width );
 };
 
+struct basecamp_smart_zone_result {
+        bool success = false;
+        std::string message;
+        int placed_zones = 0;
+};
+
+basecamp_smart_zone_result auto_place_basecamp_smart_zones(
+    const tripoint_abs_ms &start, const tripoint_abs_ms &end,
+    const faction_id &fac = your_fac, map *pmap = nullptr );
+
 void mapgen_place_zone( tripoint_abs_ms const &start, tripoint_abs_ms const &end,
                         zone_type_id const &type,
                         faction_id const &fac = your_fac, std::string const &name = {},
