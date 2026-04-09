@@ -480,3 +480,4 @@ Upstream portability note:
 
 - Belted leg accessories like hip holsters should stay out of the pants slot. They are support gear, not legwear, so hot-weather shorts cleanup must not strip or locker-store them as duplicate pants.
 - Lower-leg armor accessories like knee pads should also stay out of the pants slot. They are protective add-ons, not substitute pants, so hot-weather shorts cleanup must not strip them or dump them into locker stock as fake duplicate legwear.
+- Partial leg-mounted support storage like deep concealment holsters or small drop-leg bags should also stay out of both the underwear and pants slots. If a leg item only covers hips or upper thighs and mainly behaves like support storage / a holster, locker cleanup should keep it equipped while swapping real pants instead of treating it as fake clothing.

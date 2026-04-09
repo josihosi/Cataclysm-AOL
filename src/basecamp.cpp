@@ -437,17 +437,28 @@ bool is_camp_locker_draped_only_legwear(const item &it) {
 }
 
 bool is_camp_locker_leg_accessory(const item &it) {
+  const bool covers_hips =
+      armor_specifically_covers_any(it, {"leg_hip_l", "leg_hip_r"});
   const bool covers_upper_leg =
       armor_specifically_covers_any(it, {"leg_hip_l", "leg_hip_r",
                                          "leg_upper_l", "leg_upper_r"});
+  const bool covers_only_upper_leg =
+      armor_specifically_covers_any(it, {"leg_upper_l", "leg_upper_r"});
   const bool covers_lower_leg =
       armor_specifically_covers_any(it, {"leg_knee_l", "leg_knee_r",
                                          "leg_lower_l", "leg_lower_r"});
   const bool covers_feet =
       armor_specifically_covers_any(it, {"foot_l", "foot_r"});
+  const bool covers_only_partial_upper_leg = covers_only_upper_leg != covers_hips;
+  const bool support_storage = utility_storage_capacity(it) > 0_ml;
 
   if (covers_upper_leg && !covers_lower_leg && !covers_feet &&
       (it.has_flag(flag_BELTED) || it.has_flag(flag_BELT_CLIP))) {
+    return true;
+  }
+
+  if (!covers_lower_leg && !covers_feet && covers_only_partial_upper_leg &&
+      (support_storage || it.is_holster())) {
     return true;
   }
 
@@ -605,13 +616,15 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   if (covers_feet && !covers_legs && !covers_torso && !covers_arms) {
     return skintight ? camp_locker_slot::socks : camp_locker_slot::shoes;
   }
+  if (is_camp_locker_leg_accessory(it)) {
+    return std::nullopt;
+  }
   if (skintight &&
       (covers_torso || covers_arms || covers_feet ||
        (covers_legs && !covers_lower_legs))) {
     return camp_locker_slot::underwear;
   }
   if (covers_legs && !covers_head && !covers_eyes && !covers_torso &&
-      !is_camp_locker_leg_accessory(it) &&
       !is_camp_locker_draped_only_legwear(it)) {
     return camp_locker_slot::pants;
   }
