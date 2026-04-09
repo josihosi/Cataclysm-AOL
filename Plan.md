@@ -40,12 +40,16 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 ## Current status
 
 There is **no active greenlit implementation lane right now**.
-Smart Zone Manager v1 reached the honest pre-freeze checkpoint, so the repo should stop inventing more zoning work until Josef picks the next lane explicitly.
+Smart Zone Manager v1 reached the honest pre-freeze checkpoint, and the fresh 2026-04-09 rebuild + smoke rerun kept that claim honest.
 
-Best concrete next-lane options for Josef:
-1. explicitly freeze/park the leftover locker/basecamp follow-through stack so `SUCCESS.md` stops pretending that packet is still the active queue
-2. explicitly reopen **Locker Package 4, locker zone policy + control-surface cleanup**, if more locker work is actually wanted before freeze
-3. pull one parked future lane, most plausibly **organic bulletin-board speech polish** or the **Plan/Aux pipeline helper**
+During Josef's last debug-round prep window, do **not** open Package 4 or 5.
+Use remaining time only for freeze-prep, smoke/support rechecks, reviewer-packet cleanup, and the smallest needed merge/freeze paperwork.
+
+Best concrete next decisions for Josef after the debug round:
+1. explicitly freeze `dev -> master` if the current packet survives the round cleanly
+2. either keep the leftover locker/basecamp follow-through stack parked after freeze, or consciously reopen it instead of letting it drift back into a fake active queue
+3. explicitly reopen **Locker Package 4, locker zone policy + control-surface cleanup**, if more locker work is still wanted after freeze prep
+4. pull one parked future lane, most plausibly **organic bulletin-board speech polish** or the **Plan/Aux pipeline helper**
 
 ---
 
@@ -112,10 +116,10 @@ If later code work or runtime evidence shows any one of those bundled claims is 
 
 ## 5. Reopened context — Locker Zone V1
 
-**Status:** REOPENED UNDER SECTION 1
+**Status:** REOPENED BASELINE / FROZEN FOR PRE-FREEZE
 
-Do not treat Locker Zone V1 as closed right now.
-Fresh-save manual testing disproved the old surface/control close-out, so the active V1 reopen now lives in section 1.
+Do not treat Locker Zone V1 as fully closed right now.
+Fresh-save manual testing disproved the old surface/control close-out, but that reopen is currently preserved only as future-reopen context during freeze prep, not as an active coding queue.
 
 Still believed true unless new evidence breaks it:
 - locker outfitting core exists as real planner/service behavior

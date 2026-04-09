@@ -1,6 +1,6 @@
 # Smart Zone Manager v1 — auxiliary plan (2026-04-06)
 
-Status: active current lane. Josef explicitly opened this lane now; finish it narrowly enough for the pre-freeze goal and do not let it expand into a new testing cult.
+Status: checkpointed current contract. The lane is no longer active; keep this document as the product/validation contract for the landed v1 packet and only reopen it if later runtime evidence breaks that claim.
 
 ## Why this exists
 

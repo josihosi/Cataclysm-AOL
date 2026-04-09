@@ -42,58 +42,74 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ### Smart Zone Manager v1
 
 Current honest state:
-- the one-off Smart Zone Manager v1 code is real in the tree, not aux-doc theater
-- the Basecamp inventory-zone prompt path exists in both honest UI seams:
+- the one-off Smart Zone Manager v1 code remains real in the tree, not aux-doc theater
+- the Basecamp inventory-zone prompt path still exists in both honest UI seams:
   - initial `CAMP_STORAGE` placement in Zone Manager
   - later position/stretch edits of that same Basecamp zone
-- the current planner stamps the intended v1 niche/support packet in deterministic code, including:
-  - one crafting niche
-  - one food/drink niche
-  - one equipment niche
-  - support placement for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds
-  - the corrected fire knot: fire tile `SOURCE_FIREWOOD`, adjacent `splintered`, nearby wood
-- the anchor/reuse audit is now closed honestly:
-  - fire/food/equipment anchors are flag-first where the map exposes real signals
-  - clothing storage and bed support still rely on small explicit id allowlists where the map does not expose a clean category signal
-  - ordinary floor fallback stays in place instead of clever failure
-  - built-in loot/custom zone machinery remains the default packet, with only `splintered`, `dirty`, `rotten`, `blanket`, and `quilt` as deliberate custom filters
-- the rotten dump search is no longer limited to the first ring outside the Basecamp rectangle; it searches outward until it finds an outdoor passable tile, so ordinary one-tile wall rings do not trap the rotten zone on indoor/wall junk
-- the deterministic proof lives in `tests/clzones_test.cpp` and still covers the active honest packet:
+- the deterministic proof still covers the active honest packet in `tests/clzones_test.cpp`, including:
   - expected stamped layout on a representative indoor basecamp fixture
   - outdoor rotten placement beyond a simple wall ring
   - too-small-zone failure
   - non-destructive refusal when a required bed tile is already occupied by a non-basecamp zone
   - repeatability on the same layout
-- current deterministic recheck on this Mac passed after `make -j4 tests`, via:
+- fresh current-head rebuild on 2026-04-09 succeeded:
+  - `make -j4 tests` -> `build_logs/freeze_prep_tests_20260409.log`
+  - `make -j4 TILES=1 cataclysm-tiles` -> `build_logs/freeze_prep_tiles_20260409.log`
+- fresh deterministic recheck on rebuilt current HEAD passed:
   - `./tests/cata_test "[zones][smart_zone][basecamp]"`
-  - build log: `build_logs/smart_zone_build_20260409.log`
-  - diff check: `build_logs/smart_zone_diffcheck_20260409.log`
-  - test log: `build_logs/smart_zone_tests_20260409.log`
-- stale-binary suspicion was real on the old McWilliams harness start, so the tiles binary was rebuilt before live proof:
-  - tiles rebuild log: `build_logs/smart_zone_tiles_20260409.log`
-  - follow-up diff check log: `build_logs/smart_zone_diffcheck_20260409_2.log`
-- proportional live proof now exists on the rebuilt current binary at `.userdata/dev-harness/harness_runs/20260409_132407/`:
-  - prepared-save seam: reinstall the McWilliams fixture into `dev-harness`, clear existing zone files, then run `tools/openclaw_harness/scenarios/smart_zone.live_probe_mcw_prepped.json`
-  - live restage: spawn/wield/apply a brazier, deploy it east, pass one turn, open Zone Manager, filter zone type to `Basecamp: Storage`, place the zone, accept the Smart Zone Manager prompt, save, and reopen Zone Manager
-  - screen evidence: the prompt fired on the real UI path, the stamped layout appeared in Zone Manager, and the saved/reopened zone list showed `Basecamp: Storage` plus the smart-zoned niche/support entries
-  - artifacts/logs: no `llm_intent.log` packet is expected here; the live proof is a screen/UI packet backed by harness screenshots rather than LLM artifacts
+  - log: `build_logs/freeze_prep_smart_zone_tests_20260409.log`
+  - result: `All tests passed (2825 assertions in 4 test cases)`
+- the too-small-zone failure path is therefore **implemented and presently re-verified**; it is not a hand-wavy TODO
+- fresh proportional live proof now exists on rebuilt current HEAD `fce15a6c5a` at `.userdata/dev-harness/harness_runs/20260409_140439/`:
+  - prepared-save seam: reinstall the McWilliams fixture into `dev-harness`, move existing `*zones*.json` out of the save, then run `smart_zone.live_probe_mcw_prepped`
+  - prompt screenshot: `.userdata/dev-harness/harness_runs/20260409_140439/confirm_zone_end.after.png`
+  - saved/reopened layout screenshot: `.userdata/dev-harness/harness_runs/20260409_140439/reopen_zones_manager_for_layout_capture.after.png`
+  - screen evidence: the Smart Zone Manager prompt fired on the real UI path, and the saved/reopened Zone Manager list still showed `Basecamp: Storage` plus the expected stamped smart-zone entries
+  - artifacts/logs: the harness verdict is `inconclusive_no_new_artifacts`, which is expected here because this proof class is screen/UI evidence rather than `llm_intent.log` output
 
 ### Meaning
 
-- Smart Zone Manager v1 is no longer missing a real live packet
+- Smart Zone Manager v1 still survives a fresh rebuild + live rerun on current HEAD
 - the lane is good enough for the current pre-freeze goal and should stay closed unless code/runtime evidence breaks it
-- the next action is not more smart-zone archaeology; it is Josef choosing the next lane
+- the next action is not more smart-zone archaeology; it is Josef's debug round and then a freeze decision
+
+### Assigned-camp board/log leak recheck
+
+Current honest state:
+- the preserved-baseline assigned-camp board/log fix still holds on rebuilt current HEAD
+- fresh deterministic recheck passed:
+  - `./tests/cata_test "[camp][basecamp_ai]"`
+  - log: `build_logs/freeze_prep_basecamp_ai_tests_20260409.log`
+  - result: `All tests passed (332 assertions in 1 test case)`
+- fresh live assigned-camp probe now exists on rebuilt current HEAD `fce15a6c5a` at `.userdata/dev-harness/harness_runs/20260409_140655/` via `basecamp.package2_assign_camp_toolcall_probe_mcw`
+- screen evidence:
+  - screenshot: `.userdata/dev-harness/harness_runs/20260409_140655/wait_for_job_followup_reply.after.png`
+  - visible in-game replies stay organic on the player-facing message log
+  - the old raw leak shape does **not** appear on-screen: no visible `board=show_board`, `details=show_job=1`, or `next=job=1`
+  - the player's own typed structured probe text `job=1` still appears as the player utterance, which is expected for this harnessed internal-path check
+- artifacts/logs:
+  - artifact log: `.userdata/dev-harness/harness_runs/20260409_140655/probe.artifacts.log`
+  - the internal structured path still records `board=show_board`, `details=show_job=1`, `approval=waiting_player`, and `next=job=1`, which is the intended observability split
+- known weird-but-non-blocking remainder:
+  - the same artifact packet still records a nearby Robbie Knox response after the Katharina exchange
+  - that is recipient/chatter noise on the live probe, not the old raw player-log leak returning
+
+### Meaning
+
+- the assigned-camp board/log leak fix still survives a fresh rebuilt-current-head live check
+- current truth is the intended split: organic player-facing message log, structured internal artifact log
+- do not reopen follower/basecamp routing work from this packet unless Josef's final round disproves one of those claims
 
 ---
 
 ## Pending probes
 
-None for Smart Zone Manager v1 right now.
+None right now.
 
-Do not rerun the live packet as ritual.
-Only reopen this if:
-- code affecting smart zoning changes
-- a reviewer disputes the prepared-save seam or live packet
+Do not rerun these packets as ritual.
+Only reopen them if:
+- code affecting smart zoning or assigned-camp board routing changes
+- a reviewer disputes the prepared-save seam or the assigned-camp live probe shape
 - runtime evidence disproves one of the current claims
 
 ---
@@ -111,13 +127,19 @@ Use these when they are actually the missing evidence, not as ritual.
 ### Smart-zone deterministic check
 - `./tests/cata_test "[zones][smart_zone][basecamp]"`
 
+### Basecamp routing deterministic check
+- `./tests/cata_test "[camp][basecamp_ai]"`
+
 ### Startup/load smoke for later live proof
 - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
 
 ### Current smart-zone live probe
 - `python3 tools/openclaw_harness/startup_harness.py install-fixture mcwilliams_live_debug_2026-04-07 --profile dev-harness --fixture-profile live-debug --replace`
-- clear the installed McWilliams zone files in `.userdata/dev-harness/save/McWilliams/`
+- move the installed McWilliams `*zones*.json` files out of `.userdata/dev-harness/save/McWilliams/`
 - `python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_probe_mcw_prepped`
+
+### Current assigned-camp board/log recheck
+- `python3 tools/openclaw_harness/startup_harness.py probe basecamp.package2_assign_camp_toolcall_probe_mcw`
 
 ## Local build caveat
 
