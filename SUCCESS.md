@@ -17,7 +17,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Controlled locker / basecamp follow-through packet
 
-Status: ACTIVE / PACKAGE 3 CLOSEOUT
+Status: FROZEN / NEEDS EXPLICIT REOPEN IF RESUMED
 
 Success state:
 - [x] **Package 1, harness zone-manager save-path polish** is landed with screenshots/artifacts from the current McWilliams harness path.
@@ -30,8 +30,8 @@ Success state:
 
 Notes:
 - Canonical package boundaries and acceptance bars live in `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
-- This is the active success-state block that should match `Plan.md`, `TODO.md`, and `TESTING.md`.
-- The point is not to re-open one giant locker/basecamp world. The point is to preserve the working loop while moving through the explicit packet in order.
+- This is **not** the active queue right now. If Josef explicitly reopens locker/basecamp work, pick a concrete next slice instead of treating this whole packet as an always-live blob.
+- The point is not to re-open one giant locker/basecamp world. The point is to preserve the working loop while moving through explicit slices only when they are actually greenlit.
 - The ordinary harness footing for this packet should stay on `McWilliams` / `Zoraida Vick`, not drift back to the older default save.
 - Until Josef explicitly freezes or parks this stack, do **not** mechanically jump to Package 4 just because it is the next unchecked implementation row.
 
@@ -65,23 +65,24 @@ Notes:
 
 ## Smart Zone Manager v1
 
-Status: ACTIVE / CURRENT LANE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] One explicit one-off smart-zoning action exists for Basecamp.
 - [x] The v1 creates exactly one crafting niche, one food/drink niche, and one equipment niche.
 - [x] Support placement exists for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
 - [x] The corrected fire layout is implemented: fire tile = `SOURCE_FIREWOOD`, adjacent `splintered`, nearby wood.
-- [ ] Anchor selection is flag/category-first with floor fallback.
-- [ ] Existing sorting/subcategory machinery is reused by default unless a concrete conflict forces a custom-zone/path override.
+- [x] Anchor selection is honest about the current shape: flag-first where the map exposes real signals, small explicit id allowlists where those signals are thin, and floor fallback instead of clever failure.
+- [x] Existing sorting/subcategory machinery is reused by default, with only the deliberate v1 custom filters (`splintered`, `dirty`, `rotten`, `blanket`, `quilt`) kept as explicit exceptions.
 - [x] Placement is deterministic and non-destructive by default.
 - [x] Deterministic tests exist for anchor choice / zone choice / no-destructive-overwrite behavior.
-- [ ] Proportional live proof is recorded when the lane becomes active.
+- [x] Proportional live proof is recorded on the rebuilt current tiles binary.
 
 Notes:
 - Canonical contract lives at `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`.
-- This lane is now the active current delivery target. The locker / basecamp follow-through packet is good enough for now; Smart Zone Manager v1 should now be finished narrowly enough to support the pre-freeze goal without widening into a giant zoning doctrine project.
+- Current live packet: `.userdata/dev-harness/harness_runs/20260409_132407/` via `tools/openclaw_harness/scenarios/smart_zone.live_probe_mcw_prepped.json` after the narrow prepared-save restage described in `TESTING.md`.
 - Keep this focused on basecamp auto-layout helper behavior, not patrol/locker automation or smart-zone-manager soup.
+- Keep this lane closed unless later code or runtime evidence disproves one of the bundled claims.
 
 ---
 

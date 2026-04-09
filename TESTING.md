@@ -42,18 +42,23 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ### Smart Zone Manager v1
 
 Current honest state:
-- the one-off Smart Zone Manager v1 code is now real in the tree, not just aux-doc theater
-- the Basecamp inventory-zone prompt path now exists in two honest places:
+- the one-off Smart Zone Manager v1 code is real in the tree, not aux-doc theater
+- the Basecamp inventory-zone prompt path exists in both honest UI seams:
   - initial `CAMP_STORAGE` placement in Zone Manager
   - later position/stretch edits of that same Basecamp zone
-- the current planner stamps the v1 niche/support packet in deterministic code, including:
+- the current planner stamps the intended v1 niche/support packet in deterministic code, including:
   - one crafting niche
   - one food/drink niche
   - one equipment niche
   - support placement for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds
   - the corrected fire knot: fire tile `SOURCE_FIREWOOD`, adjacent `splintered`, nearby wood
-- the rotten dump search is no longer limited to the first ring outside the Basecamp rectangle; it now searches outward until it finds an outdoor passable tile, so ordinary one-tile wall rings do not trap the rotten zone on indoor/wall junk
-- the current deterministic proof now lives in `tests/clzones_test.cpp` and covers the active honest packet:
+- the anchor/reuse audit is now closed honestly:
+  - fire/food/equipment anchors are flag-first where the map exposes real signals
+  - clothing storage and bed support still rely on small explicit id allowlists where the map does not expose a clean category signal
+  - ordinary floor fallback stays in place instead of clever failure
+  - built-in loot/custom zone machinery remains the default packet, with only `splintered`, `dirty`, `rotten`, `blanket`, and `quilt` as deliberate custom filters
+- the rotten dump search is no longer limited to the first ring outside the Basecamp rectangle; it searches outward until it finds an outdoor passable tile, so ordinary one-tile wall rings do not trap the rotten zone on indoor/wall junk
+- the deterministic proof lives in `tests/clzones_test.cpp` and still covers the active honest packet:
   - expected stamped layout on a representative indoor basecamp fixture
   - outdoor rotten placement beyond a simple wall ring
   - too-small-zone failure
@@ -64,33 +69,32 @@ Current honest state:
   - build log: `build_logs/smart_zone_build_20260409.log`
   - diff check: `build_logs/smart_zone_diffcheck_20260409.log`
   - test log: `build_logs/smart_zone_tests_20260409.log`
+- stale-binary suspicion was real on the old McWilliams harness start, so the tiles binary was rebuilt before live proof:
+  - tiles rebuild log: `build_logs/smart_zone_tiles_20260409.log`
+  - follow-up diff check log: `build_logs/smart_zone_diffcheck_20260409_2.log`
+- proportional live proof now exists on the rebuilt current binary at `.userdata/dev-harness/harness_runs/20260409_132407/`:
+  - prepared-save seam: reinstall the McWilliams fixture into `dev-harness`, clear existing zone files, then run `tools/openclaw_harness/scenarios/smart_zone.live_probe_mcw_prepped.json`
+  - live restage: spawn/wield/apply a brazier, deploy it east, pass one turn, open Zone Manager, filter zone type to `Basecamp: Storage`, place the zone, accept the Smart Zone Manager prompt, save, and reopen Zone Manager
+  - screen evidence: the prompt fired on the real UI path, the stamped layout appeared in Zone Manager, and the saved/reopened zone list showed `Basecamp: Storage` plus the smart-zoned niche/support entries
+  - artifacts/logs: no `llm_intent.log` packet is expected here; the live proof is a screen/UI packet backed by harness screenshots rather than LLM artifacts
 
 ### Meaning
 
-- the active question is no longer whether Smart Zone Manager v1 exists at all
-- the active question is whether the remaining contract seams are honest enough and whether one proportional live packet can close the lane without reopening scope
-- if a proposed next step starts inventing new zoning doctrine instead of finishing the current narrow packet, cut it
+- Smart Zone Manager v1 is no longer missing a real live packet
+- the lane is good enough for the current pre-freeze goal and should stay closed unless code/runtime evidence breaks it
+- the next action is not more smart-zone archaeology; it is Josef choosing the next lane
 
 ---
 
 ## Pending probes
 
-### Active queue
+None for Smart Zone Manager v1 right now.
 
-1. **Contract seam audit:**
-   - confirm the current anchor-selection story is honest about where the code is truly flag/category-first and where it still relies on narrow fallback heuristics
-   - confirm the current built-in loot/custom zone reuse is still the narrowest sane v1 shape
-2. **Live proof:**
-   - prove Smart Zone Manager v1 on a realistic McWilliams basecamp setup
-   - McWilliams still lacks a ready fire-source anchor, so the live packet may need a narrow harness/restaging step to place and activate a brazier or equivalent fire-source anchor before the crafting niche can be proved honestly
-3. **Stop condition:**
-   - once one honest live packet exists beside the deterministic proof, stop
-   - do not turn this into another endless zone-edge-case collection run
-
-### Meaning
-
-- the missing evidence class is now live behavior, not another ceremonial deterministic rerun
-- the remaining work should stay narrowly about finishing Smart Zone Manager v1, not drifting back into locker/basecamp archaeology
+Do not rerun the live packet as ritual.
+Only reopen this if:
+- code affecting smart zoning changes
+- a reviewer disputes the prepared-save seam or live packet
+- runtime evidence disproves one of the current claims
 
 ---
 
@@ -109,6 +113,11 @@ Use these when they are actually the missing evidence, not as ritual.
 
 ### Startup/load smoke for later live proof
 - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+
+### Current smart-zone live probe
+- `python3 tools/openclaw_harness/startup_harness.py install-fixture mcwilliams_live_debug_2026-04-07 --profile dev-harness --fixture-profile live-debug --replace`
+- clear the installed McWilliams zone files in `.userdata/dev-harness/save/McWilliams/`
+- `python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_probe_mcw_prepped`
 
 ## Local build caveat
 

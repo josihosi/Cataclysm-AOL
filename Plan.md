@@ -37,32 +37,34 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — Smart Zone Manager v1
+## Current status
 
-**Status:** ACTIVE / CURRENT LANE
+There is **no active greenlit implementation lane right now**.
+Smart Zone Manager v1 reached the honest pre-freeze checkpoint, so the repo should stop inventing more zoning work until Josef picks the next lane explicitly.
 
-Josef explicitly greenlit Smart Zone Manager v1 as the next active lane.
-The locker / basecamp follow-through packet is good enough for now and should not keep expanding just because more clothing weirdness exists.
+Best concrete next-lane options for Josef:
+1. explicitly freeze/park the leftover locker/basecamp follow-through stack so `SUCCESS.md` stops pretending that packet is still the active queue
+2. explicitly reopen **Locker Package 4, locker zone policy + control-surface cleanup**, if more locker work is actually wanted before freeze
+3. pull one parked future lane, most plausibly **organic bulletin-board speech polish** or the **Plan/Aux pipeline helper**
 
-Current truth:
-- the current job is now **Smart Zone Manager v1**, using `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md` as the canonical product contract
-- the one-off Smart Zone Manager v1 surface is now wired on Basecamp inventory-zone placement plus later position/stretch edits, so the lane is no longer blocked on the basic action existing at all
-- the current deterministic packet now proves the main stamped layout, the corrected firewood/splintered/wood knot, too-small-zone failure, outdoor rotten placement beyond simple wall rings, non-destructive refusal on pre-zoned bed tiles, and repeatability on the same layout
-- this lane should still optimize for **works, does not break the game, and saves player clicks**, not for endless edge-case archaeology or giant map-planner ambition
-- anti-testing-madness rule still applies: the remaining work is to close the honest contract gaps and get the live packet, not to turn Smart Zone Manager into another proof cult
+---
 
-Current required shape:
-- preserve the already-agreed zone layout contract from the Smart Zone Manager v1 auxiliary doc
-- keep anchor choice flag/category-first where the map exposes real signals, with floor fallback instead of clever failure
-- keep placement deterministic and non-destructive by default
-- do not widen into patrol/locker/general camp automation
-- McWilliams currently has no ready fire-source anchor, so the harness/live proof may need a narrow restaging step to place/activate a brazier or equivalent fire-source anchor before the crafting niche can be proved honestly
+## 1. Checkpointed — Smart Zone Manager v1
 
-### Next real state
-1. close the remaining contract seams around anchor-selection/reuse wording instead of pretending the lane is already fully reviewer-clean
-2. prove the main discussed zone layout honestly on a live McWilliams-style setup, including a real fire-source anchor path for the crafting niche
-3. keep the evidence packet narrow: current deterministic proof plus one proportional live packet, not a new garden of edge cases
-4. once Smart Zone Manager v1 is stable enough for the pre-freeze goal, stop and return to freeze discipline instead of farming extra zoning nuance
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+Smart Zone Manager v1 is now good enough for the current pre-freeze goal.
+The lane should stay closed unless later code/runtime evidence disproves the claimed state.
+
+Current honest state:
+- the one-off Smart Zone Manager v1 surface is real on both Basecamp inventory-zone creation and later position/stretch edits
+- the deterministic packet still proves the main stamped layout, the corrected firewood/splintered/wood knot, too-small-zone failure, outdoor rotten placement beyond a simple wall ring, non-destructive refusal on pre-zoned bed tiles, and repeatability on the same layout
+- the contract seam audit is now closed honestly: fire/food/equipment anchors are flag-first where the map exposes real signals, clothing/bed support still use small explicit id allowlists where the map does not expose a clean category signal, and ordinary floor fallback stays in place instead of clever failure
+- existing built-in loot/custom zone machinery is still the default shape; the only current deliberate custom filters in the v1 packet are `splintered`, `dirty`, `rotten`, `blanket`, and `quilt`
+- a proportional live McWilliams proof now exists on the rebuilt current tiles binary via `tools/openclaw_harness/scenarios/smart_zone.live_probe_mcw_prepped.json`, using a narrow prepared-save restage (clear existing zones, spawn/deploy a brazier, place `Basecamp: Storage`, accept the smart-zoning prompt, save, reopen Zone Manager)
+- the live packet stayed narrow: it proved the real prompt path plus the saved stamped layout without reopening zone-doctrine archaeology
+
+Keep this lane out of the active queue unless later work breaks one of those claims.
 
 ---
 
