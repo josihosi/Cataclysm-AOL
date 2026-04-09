@@ -494,6 +494,15 @@ bool is_camp_locker_jumpsuit_like(const item &it) {
          it.typeId()->looks_like == itype_suit;
 }
 
+bool is_camp_locker_armored_full_body_suit(const item &it) {
+  return utility_storage_capacity(it) >= 4_liter &&
+         armor_covers_any(it, {"torso"}) &&
+         armor_covers_any(it, {"arm_l", "arm_r"}) &&
+         armor_covers_any(it, {"leg_l", "leg_r"}) &&
+         !it.has_layer({layer_level::SKINTIGHT}) &&
+         protection_score(it, 1, 2, 2) >= 80;
+}
+
 bool camp_locker_plan_slot_retains_coverage(
     const camp_locker_plan &plan, camp_locker_slot slot,
     std::initializer_list<std::string_view> parts) {
@@ -529,6 +538,13 @@ void prevent_upper_body_stripping_pants_upgrades(camp_locker_plan &plan) {
   if (pants_plan.kept_current == nullptr ||
       pants_plan.selected_candidate == nullptr ||
       !pants_plan.upgrade_selected) {
+    return;
+  }
+
+  if (is_camp_locker_armored_full_body_suit(*pants_plan.kept_current) &&
+      !is_camp_locker_armored_full_body_suit(*pants_plan.selected_candidate)) {
+    pants_plan.selected_candidate = nullptr;
+    pants_plan.upgrade_selected = false;
     return;
   }
 
