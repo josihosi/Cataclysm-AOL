@@ -79,7 +79,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`.
-- Current live packet: `.userdata/dev-harness/harness_runs/20260409_132407/` via `tools/openclaw_harness/scenarios/smart_zone.live_probe_mcw_prepped.json` after the narrow prepared-save restage described in `TESTING.md`.
+- Current live packet: `.userdata/dev-harness/harness_runs/20260409_140439/` via `tools/openclaw_harness/scenarios/smart_zone.live_probe_mcw_prepped.json` after the narrow prepared-save restage described in `TESTING.md`.
 - Keep this focused on basecamp auto-layout helper behavior, not patrol/locker automation or smart-zone-manager soup.
 - Keep this lane closed unless later code or runtime evidence disproves one of the bundled claims.
 
