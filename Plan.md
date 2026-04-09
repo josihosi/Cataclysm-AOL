@@ -223,7 +223,25 @@ Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
 ---
 
-## 11. Documentation discipline
+## 11. Parked future direction — combat-oriented locker policy
+
+**Status:** PARKED / FUTURE DIRECTION
+
+Josef wants future locker development to lean harder toward sensible guard/combat outfits instead of spending disproportionate energy on weird artisanal clothing edge cases.
+
+This future direction should:
+- keep the already-earned weird-garment safety wins
+- add common useful gear emphasis (gloves, belts, masks, holsters, sensible normal outfit pieces)
+- support a bulletin-board bulletproof toggle
+- support explicit ballistic vest / plate handling
+- prefer clearly superior full-body battle suits when appropriate
+- bias future deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
+
+Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
+
+---
+
+## 12. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

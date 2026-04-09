@@ -242,6 +242,23 @@ Notes:
 
 ---
 
+## Combat-oriented locker policy
+
+Status: PARKED / FUTURE DIRECTION
+
+Success state:
+- [ ] Future locker behavior strongly supports sensible common guard/combat gear: gloves, belts, masks, holsters, and the usual practical clothing/loadout pieces.
+- [ ] A bulletin-board / locker-surface bulletproof toggle exists and meaningfully shifts outfit preference toward ballistic gear.
+- [ ] Ballistic vest and plate handling becomes explicit enough to replace damaged (`XX`) ballistic components sensibly.
+- [ ] Clearly superior full-body battle/protective suits are preferred when appropriate instead of being split into worse piecemeal junk.
+- [ ] Future deterministic tests lean more toward combat/guard outfit behavior and less toward endlessly widening exotic garment edge-case law.
+
+Notes:
+- Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
+- This future direction preserves the current weird-garment safety work instead of replacing it.
+
+---
+
 ## Plan/Aux pipeline helper
 
 Status: PARKED / FUTURE TOOLING
