@@ -1,0 +1,188 @@
+{
+  "name": "smart_zone.live_probe_mcw_prepped",
+  "description": "Smart Zone Manager v1 live proof on a freshly prepared McWilliams save: deploy a brazier fire-source anchor, add a Basecamp storage zone over the camp area, accept the one-shot smart-zoning prompt, and capture the resulting stamped layout. Requires the McWilliams dev-harness save to be prepped with existing zones cleared before launch.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "artifact_pattern": "Smart Zone Manager",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 10,
+      "capture_after": true
+    },
+    {
+      "kind": "debug_spawn_item",
+      "label": "spawn_brazier_item",
+      "item_query": "brazier",
+      "count": 1,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_wield_inventory",
+      "keys": ["w"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "filter_wield_inventory",
+      "keys": ["/"],
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "type",
+      "label": "type_brazier_filter",
+      "text": "brazier",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "select_filtered_brazier",
+      "keys": ["enter"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "apply_wielded_brazier",
+      "keys": ["A"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "place_brazier_east",
+      "keys": ["right"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "pass_turn_after_brazier",
+      "keys": ["."],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_zones_manager",
+      "keys": ["Y"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "add_zone",
+      "keys": ["a"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "filter_zone_type_picker",
+      "keys": ["/"],
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "type",
+      "label": "type_storage_zone_filter",
+      "text": "Basecamp: Storage",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "select_filtered_storage_zone_type",
+      "keys": ["enter"],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 20
+    },
+    {
+      "kind": "press",
+      "label": "accept_default_storage_zone_name",
+      "keys": ["enter"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "pick_zone_start",
+      "keys": ["left", "left", "left", "left", "left", "left", "left", "up", "up", "up", "up", "up", "up", "enter"],
+      "delay_ms": 120,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "move_to_zone_end",
+      "keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down"],
+      "delay_ms": 120,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_zone_end",
+      "keys": ["enter"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 20
+    },
+    {
+      "kind": "press",
+      "label": "accept_smart_zone_prompt",
+      "keys": ["Y"],
+      "settle_seconds": 1.2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 20
+    },
+    {
+      "kind": "wait",
+      "label": "post_smart_zone_settle",
+      "seconds": 2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 20
+    },
+    {
+      "kind": "press",
+      "label": "exit_zones_manager",
+      "keys": ["escape"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_changes",
+      "keys": ["Y"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "wait",
+      "label": "post_save_gameplay_settle",
+      "seconds": 2,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "reopen_zones_manager_for_layout_capture",
+      "keys": ["Y"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 24
+    }
+  ]
+}
