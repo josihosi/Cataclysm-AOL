@@ -68,14 +68,14 @@ Notes:
 Status: ACTIVE / CURRENT LANE
 
 Success state:
-- [ ] One explicit one-off smart-zoning action exists for Basecamp.
-- [ ] The v1 creates exactly one crafting niche, one food/drink niche, and one equipment niche.
-- [ ] Support placement exists for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
-- [ ] The corrected fire layout is implemented: fire tile = `SOURCE_FIREWOOD`, adjacent `splintered`, nearby wood.
+- [x] One explicit one-off smart-zoning action exists for Basecamp.
+- [x] The v1 creates exactly one crafting niche, one food/drink niche, and one equipment niche.
+- [x] Support placement exists for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
+- [x] The corrected fire layout is implemented: fire tile = `SOURCE_FIREWOOD`, adjacent `splintered`, nearby wood.
 - [ ] Anchor selection is flag/category-first with floor fallback.
 - [ ] Existing sorting/subcategory machinery is reused by default unless a concrete conflict forces a custom-zone/path override.
-- [ ] Placement is deterministic and non-destructive by default.
-- [ ] Deterministic tests exist for anchor choice / zone choice / no-destructive-overwrite behavior.
+- [x] Placement is deterministic and non-destructive by default.
+- [x] Deterministic tests exist for anchor choice / zone choice / no-destructive-overwrite behavior.
 - [ ] Proportional live proof is recorded when the lane becomes active.
 
 Notes:

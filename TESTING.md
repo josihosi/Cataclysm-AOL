@@ -39,218 +39,37 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Controlled locker / basecamp follow-through packet
+### Smart Zone Manager v1
 
 Current honest state:
-- The active lane is now a controlled follow-through packet, not a broad locker/basecamp reopen blob.
-- Ordinary chat / ambient harness footing now points at the captured `McWilliams` / `Zoraida Vick` save instead of the older Sandy Creek default.
-- The current McWilliams debug pass has already been reduced into five explicit packages in:
-  - `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
-- Those packages are:
-  1. harness zone-manager save-path polish
-  2. basecamp toolcall routing fix
-  3. locker outfit engine hardening
-  4. locker zone policy + control-surface cleanup
-  5. basecamp carried-item support + dump lane
-- **Package 1** is now landed on real screenshots/artifacts instead of guesswork:
-  - the zone name must be entered at creation time, not later through a separate edit-name handshake
-  - the closeout path back to gameplay is a single `Esc` to open the save prompt, then uppercase `Y`
-  - reopening Zone Manager after returning to gameplay still shows the custom `Probe Locker` entry on the current McWilliams path
-  - latest screenshot packet: `.userdata/dev-harness/harness_runs/20260408_005852/`
-- **Package 2** is now landed with both deterministic and real-path live proof:
-  - camp-request routing no longer keys off bare `assigned_camp`
-  - the current gate accepts idle assigned-camp hearers in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards
-  - walking-with-player companion states and `GUARD_ALLY` still stay on the ordinary follower side
-  - deterministic coverage for that discriminator lives in `tests/faction_camp_test.cpp`
-  - current deterministic recheck passed on this Mac after the fresh `make -j4 tests` rebuild in `build_logs/package2_idle_assignee_routing_20260408.log`, via `./tests/cata_test "[camp][basecamp_ai]"`
-- The current McWilliams live probe path needed one honest harness fix before it could be trusted again:
-  - startup on the McWilliams save was still declaring success while the window sat on the lingering load screen
-  - the harness now sends the same post-load `Enter` continuation key that cleared the real window into gameplay on this path
-  - fresh live-debug startup proof now reaches gameplay at `.userdata/live-debug/harness_runs/20260408_020648/success.png`
-- With that live path repaired, the old ordinary-hearer packet is now understood more honestly:
-  - manual live captures after startup are recorded in `.userdata/live-debug/harness_runs/20260408_020648/`
-  - nearby hearers `Katharina Leach` / `Robbie Knox` answered in ordinary spoken bark form for freeform `show me the board` and `craft 1 bandage`
-  - that result is now treated as follower-side behavior on the current save, not as proof that stationed basecamp routing is still wrong
-- Stale-binary suspicion on the same live path was real and is now cleared:
-  - an initial Package 2 talk-menu probe came back `inconclusive_version_mismatch`, so the current tiles binary was rebuilt from repo HEAD
-  - fresh rebuild log: `build_logs/package2_live_rebuild_20260408_retry1.log`
-- The old literal `show_board` packet at `.userdata/dev-harness/harness_runs/20260408_033437/` is now demoted harder than before:
-  - the current McWilliams save still has player followers `[2, 3]`
-  - fresh hearer-routing instrumentation plus rebuilt live rechecks at `.userdata/dev-harness/harness_runs/20260408_053336/` showed nearby hearers `Katharina Leach` / `Robbie Knox` hitting the ordinary lane with `assigned_camp=none`, so that packet never exercised a real assigned-camp hearer state
-  - the current McWilliams save fixture search found no serialized non-null `assigned_camp` entries at all, so the real missing evidence class was a restaging source, not another rerun on the unmodified snapshot
-- The nearby activity-menu probe stays landed as a **negative** helper, not as the restaging source:
-  - scenario: `tools/openclaw_harness/scenarios/basecamp.package2_activity_menu_probe_mcw.json`
-  - latest run: `.userdata/dev-harness/harness_runs/20260408_065958/`
-  - this probe can flip the McWilliams hearers out of the simple walking-with-player state, but it still does **not** create the intended Package 2 state
-  - routing artifacts after `Taking it easy` still showed `assigned_camp=none`, so the board/craft prompts on that state stayed on the ordinary lane
-- The honest assigned-camp restaging source is now proven on the same real McWilliams footing:
-  - scenario: `tools/openclaw_harness/scenarios/basecamp.package2_assign_camp_toolcall_probe_mcw.json`
-  - current live restaging path: ally dialogue `C -> t -> 1 -> b -> d -> n -> a -> q -> c`, then let the stationed camp state settle before probing
-  - that restaging path is now representable directly in the harness as `assign_nearby_npc_to_camp_dialog` instead of only a pile of raw keypress steps
-  - the debug-menu folklore seam `} -> p -> p -> b -> A` was rechecked and is false on current McWilliams footing: after selecting an NPC, `b` opens bionics and `A` there is CBM install, not camp assignment
-  - the useful debug-editor inspect path after the real restage is `} -> p -> p -> 2 -> Enter` on current McWilliams, which exposes Katharina's post-restage header state on-screen
-  - first interim proof at `.userdata/dev-harness/harness_runs/20260408_081903/` showed why one-turn reruns were still lying: `assigned_camp=140,41,0` was written immediately, but Katharina still sat in interim `mission=6` / `GUARD_ALLY`, so routing honestly remained ordinary there
-  - after about 100 turns of settling, `.userdata/dev-harness/harness_runs/20260408_082344/` showed the intended stationed state on the real save: Katharina logged `uses_basecamp=yes`, `camp_found=yes`, `assigned_camp=140,41,0`, `mission=8`, and `reason=camp_grouped`
-  - latest exact-token live proof at `.userdata/dev-harness/harness_runs/20260408_083415/` now reaches the routed camp lane cleanly:
-    - `show_board` logs `camp heard Katharina Leach`, `heard=show_board`, `board=show_board`, and emits the reviewer-clean board follow-through with `job=1 ... next=job=1`
-  - visible state-inspection support scenario: `tools/openclaw_harness/scenarios/basecamp.package2_assign_camp_state_probe_mcw.json`
-    - the follow-up `job=1` token also rides the same camp-aware lane on that real assigned-camp state
-    - nearby ordinary hearer Robbie can still chirp on-screen at the same time, so mixed visible bark is now understood as a nearby-hearer overlap detail, not as proof that the assigned-camp route failed
-  - the raw freeform `craft 1 bandage` phrasing is now demoted as the wrong live follow-up shape for this packet. On the true assigned-camp path the honest routed follow-up is the structured `job=1` token coming back from `show_board`, not another raw craft phrase.
-- The first narrow Package 3 hardening slice is now landed in deterministic code/tests:
-  - same-type bag upgrades now prefer the better-condition equivalent instead of leaving a damaged current bag equipped just because the raw score delta is below the normal bag-upgrade threshold
-  - new deterministic coverage lives in `tests/faction_camp_test.cpp` for both the planner and direct locker service path
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_bag_condition_build_20260408.log` and `build_logs/package3_bag_condition_tests_20260408.log`
-- A second narrow Package 3 hardening slice is now landed in deterministic code/tests:
-  - footed/full-body jumpsuits no longer get classified as shoes just because they cover feet; the locker planner now keeps them in the pants lane on the current logic instead of excluding them through the footwear bucket
-  - new deterministic coverage in `tests/faction_camp_test.cpp` checks both direct classification and planner retention for the jumpsuit case
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_onesie_build_20260408.log` and `build_logs/package3_onesie_tests_20260408.log`
-- A third narrow Package 3 acceptance-bar slice is now closed in deterministic proof:
-  - baseball cap -> army helmet replacement already works on the current locker path, and `tests/faction_camp_test.cpp` now proves both the planner swap decision and the direct locker-service swap/return path
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_cap_helmet_build_20260408.log` and `build_logs/package3_cap_helmet_tests_20260408.log`
-- A fourth narrow Package 3 lower-body slice is now closed in deterministic proof:
-  - the hot-weather `antarvasa` + cargo pants -> cargo shorts cleanup path now has explicit planner + direct locker-service proof, so that specific lower-body conflict no longer lives only as debug-pass memory
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_lower_body_conflict_build_20260408.log` and `build_logs/package3_lower_body_conflict_suite_20260408.log`
-- A fifth narrow Package 3 lower-body slice is now closed in deterministic proof:
-  - the hot-weather duplicate `cargo shorts + jeans` conflict now has explicit planner + direct locker-service proof, so the old visible "wearing shorts and jeans at once" eyesore is no longer relying on debug-pass folklore either
-  - the planner proof keeps the already-worn cargo shorts as the best current pants item in heat and marks the jeans as duplicate current wear rather than pretending a fresh locker candidate is required first
-  - the direct locker-service proof shows the duplicate jeans being removed and returned to locker stock while the already-worn shorts stay equipped
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_shorts_jeans_build_20260408.log` and `build_logs/package3_shorts_jeans_tests_20260408.log`
-- A sixth narrow Package 3 lower-body slice is now closed in deterministic proof:
-  - full-leg skintight underlayers like `leggings` no longer hide in the underwear lane; they now classify into the pants lane so hot-weather locker cleanup can treat them as duplicate legwear instead of layering them under the final shorts swap
-  - the planner proof keeps cargo pants as the best current full-length legwear, marks `leggings` as duplicate current wear, and still lands the cargo-shorts upgrade in heat
-  - the direct locker-service proof shows the duplicate leggings being removed and returned to locker stock while the final cargo-shorts swap still lands in the same service pass
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_leggings_build_20260408.log` and `build_logs/package3_leggings_tests_20260408.log`
-- A seventh narrow Package 3 lower-body classification slice is now closed in deterministic proof:
-  - jumpsuit-like outer one-piece suits no longer fall into vest logic just because they are marked `OUTER`; the locker classifier now keeps those full-body suit items in the pants lane with the existing one-piece/jumpsuit behavior instead of pretending the lower-body slot is empty
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both the direct `suit` classification result and the no-vest/no-empty-pants planning result on the current logic
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_suit_build_20260408.log` and `build_logs/package3_suit_tests_20260408.log`
-- An eighth narrow Package 3 one-piece acceptance-bar slice is now closed in deterministic proof:
-  - lower-body-only upgrades no longer strip torso coverage from a current one-piece suit unless the same locker pass also supplies a torso replacement, so the locker path stops "upgrading" suits into half-dressed nonsense
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides of that guard on the current logic: a lower-body-only shorts candidate leaves the suit in place, while a shorts + t-shirt locker packet can still split the suit cleanly in one service pass
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_onepiece_guard_build_20260408.log` and `build_logs/package3_onepiece_guard_tests_20260408.log`
-- A ninth narrow Package 3 skintight one-piece slice is now closed in deterministic proof:
-  - skintight full-body one-piece suits like `union_suit` and `wetsuit` no longer hide in underwear; the locker planner now keeps them in the pants lane instead of pretending the lower-body slot is empty while shorts pile on top
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both the direct classification/planning result and the direct locker-service guard on the current logic: a shorts-only locker candidate leaves the current wetsuit in place instead of layering shorts over it
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_skintight_onepiece_build_20260408.log`, `build_logs/package3_skintight_onepiece_tests_20260408.log`, and `build_logs/package3_skintight_onepiece_diffcheck_20260408.log`
-- A tenth narrow Package 3 indirect suit-alias slice is now closed in deterministic proof:
-  - full-body `looks_like: suit` variants like `tux` no longer fall back into vest logic just because they only reach `jumpsuit` through the suit alias; the locker planner now keeps them in the pants lane so lower-body-only upgrades do not quietly strip torso coverage through that alias path
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both the direct classification/planning result and the direct locker-service guard on the current logic: a shorts-only locker candidate leaves the current tuxedo in place instead of layering shorts under it or stripping it into half-dressed nonsense
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_indirect_jumpsuit_build_20260408_retry1.log` and `build_logs/package3_indirect_jumpsuit_tests_20260408_retry1.log`
-- An eleventh narrow Package 3 short-dress slice is now closed in deterministic proof:
-  - ordinary one-piece civilian dresses like `short_dress` now have explicit planning + direct locker-service proof for the same torso-coverage guard as the suit-like cases, so a shorts-only locker candidate leaves the dress in place while a shorts + t-shirt locker packet can still split it cleanly in one service pass
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides on the current logic: direct classification/planning keeps `short_dress` in the pants lane, shorts-only upgrades do not strip it into half-dressed nonsense, and a paired shirt replacement still lets the split happen deliberately
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_short_dress_build_20260408.log` and `build_logs/package3_short_dress_tests_20260408.log`
-- A twelfth narrow Package 3 draped-overgarment slice is now closed in deterministic proof:
-  - draped-only lower-body overgarments like `hakama` no longer get misbucketed as real pants-slot conflicts, so hot-weather locker cleanup can keep the draped overgarment on while swapping actual cargo pants for cargo shorts
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves the current logic at three levels: direct classification leaves `hakama` out of the locker slot model, planning still upgrades the real pants item without inventing a duplicate-current conflict, and direct locker service keeps the `hakama` equipped while returning only the replaced cargo pants to locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_draped_legwear_build_20260408.log`, `build_logs/package3_draped_legwear_tests_20260408.log`, and `build_logs/package3_draped_legwear_diffcheck_20260408.log`
-- A thirteenth narrow Package 3 full-length-dress slice is now closed in deterministic proof:
-  - full-length dresses like `long_dress` now have explicit planning + direct locker-service proof for the same torso-coverage guard as the short-dress cases, so a shorts-only locker candidate leaves the dress in place while a shorts + t-shirt locker packet can still split it cleanly in one service pass
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides on the current logic: direct classification/planning keeps `long_dress` in the pants lane, shorts-only upgrades do not strip it into half-dressed nonsense, and a paired shirt replacement still lets the split happen deliberately
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_long_dress_build_20260408.log` and `build_logs/package3_long_dress_tests_20260408.log`
-- A fourteenth narrow Package 3 sleeved-dress upper-body-coverage slice is now closed in deterministic proof:
-  - sleeved dresses like `long_dress_sleeved` no longer split into bare-arm vest-plus-shorts nonsense just because a torso-only upper-body replacement exists; the pants-lane guard now keeps the current dress unless the same locker pass still preserves the stripped arm coverage too
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both layers on the current logic: classification/planning still keeps `long_dress_sleeved` in the pants lane, blocks the shorts split when the only upper-body replacement is torso-only `vest`, and direct locker service keeps the current sleeved dress equipped while the blocked shorts remain in locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_sleeved_dress_arm_guard_build_20260408.log`, `build_logs/package3_sleeved_dress_arm_guard_tests_20260408.log`, and `build_logs/package3_sleeved_dress_arm_guard_diffcheck_20260408.log`
-- A fifteenth narrow Package 3 sleeved-dress positive-split slice is now closed in deterministic proof:
-  - the new sleeved-dress arm-coverage guard is not overblocking the hot-weather path; when the locker also supplies an arm-covering `tshirt`, the same `long_dress_sleeved` packet still splits cleanly into `shorts_cargo` plus shirt instead of freezing the whole upgrade
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both layers on the current logic: planning still selects the shorts + shirt packet when that shirt preserves arm coverage, and direct locker service equips the shorts and `tshirt` while returning the replaced sleeved dress to locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_sleeved_dress_split_build_20260408.log`, `build_logs/package3_sleeved_dress_split_tests_20260408.log`, and `build_logs/package3_sleeved_dress_split_diffcheck_20260408.log`
-- A sixteenth narrow Package 3 full-body protective-suit slice is now closed in deterministic proof:
-  - head-covering full-body suits like `hazmat_suit` no longer fall into helmet logic just because the classifier sees head coverage first; the locker planner now keeps them in the pants lane so shorts-only hot-weather candidates stop peeling them into ordinary-clothes nonsense
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both layers on the current logic: direct classification/planning keeps `hazmat_suit` in the pants lane with no phantom helmet slot, and direct locker service leaves the hazmat suit equipped while the blocked cargo shorts remain in locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_hazmat_build_20260408.log`, `build_logs/package3_hazmat_tests_20260408.log`, and `build_logs/package3_hazmat_diffcheck_20260408.log`
-- A seventeenth narrow Package 3 split-coverage slice is now closed in deterministic proof:
-  - footed full-body jumpsuits no longer split into shorts + shirt just because the torso half of the replacement exists; the pants-lane split guard now requires the same locker pass to preserve the built-in footwear too
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides on the current logic: planning + direct locker service keep `test_jumpsuit_cotton` intact when the locker only offers cargo shorts + `tshirt`, while the same packet still splits cleanly once replacement `boots` are also present
-  - the same planning coverage now also anchors the head/face side of the generic extra-coverage guard: `hazmat_suit` no longer plans a shorts + shirt split when that would drop the suit's non-leg coverage
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_split_coverage_build_20260408.log` and `build_logs/package3_split_coverage_tests_20260408.log`
-- An eighteenth narrow Package 3 helmet-tradeoff slice is now closed in deterministic proof:
-  - full helmets that also cover eyes, like `helmet_plate`, no longer get misbucketed as glasses just because the classifier sees eye coverage first; they now stay in the helmet lane so the locker planner can compare the real helmet candidates instead of silently treating a great helm as eyewear
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `helmet_army` stays put when locker stock only offers a melee-skewed `helmet_plate`, while the same lane still upgrades a worn great helm into the ballistic army helmet when that better helmet is what the locker actually holds
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]" "*helmet*"` with logs in `build_logs/package3_ballistic_helmet_parity_build_20260408_retry1.log` and `build_logs/package3_ballistic_helmet_parity_tests_20260408_retry1.log`
-- A nineteenth narrow Package 3 body-armor tradeoff slice is now closed in deterministic proof:
-  - ballistic torso armor with ablative plate pockets, like `ballistic_vest_esapi`, no longer gets flattened into the ordinary vest lane just because those plate pockets look like storage; locker classification and scoring now ignore ablative pockets when deciding whether an armor item is really utility wear or real body armor
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `ballistic_vest_esapi` stays put when locker stock only offers melee-skewed `armor_lc_plate`, while the same lane still upgrades a worn plate harness into the ballistic vest when that better armor is what the locker actually holds
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_ballistic_body_armor_build_20260409_retry1.log`, `build_logs/package3_ballistic_body_armor_tests_20260409_retry1.log`, and `build_logs/package3_ballistic_body_armor_diffcheck_20260409_retry1.log`
-- A twentieth narrow Package 3 lower-body support-gear slice is now closed in deterministic proof:
-  - belted leg accessories like `holster` no longer get flattened into the pants lane just because they cover the upper leg, so hot-weather locker cleanup can treat them as support gear instead of fake duplicate pants
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `holster` stays equipped while the planner still upgrades `pants_cargo` into `shorts_cargo`, and direct locker service returns only the replaced cargo pants to locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]" "*holster*"` plus a full `./tests/cata_test "[camp][locker]"` suite recheck, with logs in `build_logs/package3_leg_holster_build_20260409.log`, `build_logs/package3_leg_holster_tests_20260409.log`, `build_logs/package3_leg_holster_suite_20260409.log`, and `build_logs/package3_leg_holster_diffcheck_20260409.log`
-- A twenty-first narrow Package 3 lower-leg support-armor slice is now closed in deterministic proof:
-  - lower-leg armor accessories like `knee_pads` no longer get flattened into the pants lane just because they cover knees or shins, so hot-weather locker cleanup can treat them as support armor instead of fake duplicate pants
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `knee_pads` stays equipped while the planner still upgrades `pants_cargo` into `shorts_cargo`, and direct locker service returns only the replaced cargo pants to locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_knee_pads_build_20260409.log` and `build_logs/package3_knee_pads_tests_20260409.log`
-- A twenty-second narrow Package 3 partial-leg support-storage slice is now closed in deterministic proof:
-  - partial leg-mounted support gear like the deep concealment `bholster` and `leg_small_bag` no longer gets misbucketed as underwear or pants just because it covers only hips or upper thighs, so hot-weather locker cleanup can keep that support gear equipped while still swapping real pants for `shorts_cargo`
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `bholster` / `leg_small_bag` stays out of the underwear and pants slots, the planner still upgrades `pants_cargo` into `shorts_cargo`, and direct locker service returns only the replaced cargo pants to locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][locker]"` with logs in `build_logs/package3_partial_leg_support_storage_build_20260409.log` and `build_logs/package3_partial_leg_support_storage_tests_20260409.log`
-- A twenty-third narrow Package 3 full-leg rigid-support-armor slice is now closed in deterministic proof:
-  - hard no-storage full-leg guards like `legguard_hard` no longer get flattened into the pants lane just because they cover both upper and lower legs, so hot-weather locker cleanup can keep those guards equipped while still swapping real pants for `shorts_cargo`
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `legguard_hard` stays out of the pants slot, the planner still upgrades `pants_cargo` into `shorts_cargo`, and direct locker service returns only the replaced cargo pants to locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, then `./tests/cata_test "[camp][locker]"`, with logs in `build_logs/package3_full_leg_greaves_build_20260409.log`, `build_logs/package3_full_leg_greaves_suite_20260409.log`, and `build_logs/package3_full_leg_greaves_diffcheck_20260409.log`
-- A twenty-fourth narrow Package 3 full-leg outer-greaves support-armor slice is now closed in deterministic proof:
-  - full-leg outer greaves without hip coverage, like `legguard_lc_brigandine`, no longer get flattened into the pants lane just because they cover both upper and lower legs, so hot-weather locker cleanup can keep those standalone greaves equipped while still swapping real pants for `shorts_cargo`
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `legguard_lc_brigandine` stays out of the pants slot, the planner still upgrades `pants_cargo` into `shorts_cargo`, and direct locker service returns only the replaced cargo pants to locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, then `./tests/cata_test "[camp][locker]"`, with logs in `build_logs/package3_full_leg_outer_greaves_build_20260409.log`, `build_logs/package3_full_leg_outer_greaves_tests_20260409.log`, and `build_logs/package3_full_leg_outer_greaves_diffcheck_20260409.log`
-- A twenty-fifth narrow Package 3 full-body body-armor occupancy slice is now closed in deterministic proof:
-  - full-body body armor like `armor_lc_plate` no longer leaves the pants slot looking empty just because it is still classified in the body-armor lane for armor tradeoff scoring, so hot-weather locker cleanup stops adding filler `shorts_cargo` underneath it
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `armor_lc_plate` suppresses missing-current pants fill in planning, and direct locker service leaves the plate armor alone while the cargo shorts stay in locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, then `./tests/cata_test "[camp][locker]"`, with logs in `build_logs/package3_full_body_plate_guard_build_20260409.log`, `build_logs/package3_full_body_plate_guard_tests_20260409.log`, and `build_logs/package3_full_body_plate_guard_diffcheck_20260409.log`
-- A twenty-sixth narrow Package 3 hip-only armored-skirt overlay slice is now closed in deterministic proof:
-  - hip-only outer armored skirts like `legguard_metal_sheets_hip` no longer get flattened into the pants lane just because they cover the waist and upper thighs, so hot-weather locker cleanup can treat them as support armor instead of fake duplicate pants
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `legguard_metal_sheets_hip` stays equipped while the planner still upgrades `pants_cargo` into `shorts_cargo`, and direct locker service returns only the replaced cargo pants to locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, then `./tests/cata_test "[camp][locker]"`, with logs in `build_logs/package3_hip_armored_skirt_build_20260409.log`, `build_logs/package3_hip_armored_skirt_tests_20260409.log`, and `build_logs/package3_hip_armored_skirt_diffcheck_20260409.log`
-- A twenty-seventh narrow Package 3 armored full-body utility-suit slice is now closed in deterministic proof:
-  - armored full-body utility suits with real storage and protection, like `survivor_suit`, no longer split into ordinary hot-weather `shorts_cargo + tshirt` packets just because the one-piece logic sees torso/arm coverage and the weather scorer likes shorts
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `survivor_suit` stays equipped while hot-weather locker service may still add a separate `tshirt`, but it no longer strips the suit into ordinary shorts-and-shirt clothing
-  - fresh recheck on this Mac passed after `make -j4 tests`, then `./tests/cata_test "[camp][locker]"`, with logs in `build_logs/package3_survivor_suit_guard_build_20260409_retry1.log`, `build_logs/package3_survivor_suit_guard_tests_20260409_retry1.log`, and `build_logs/package3_survivor_suit_guard_diffcheck_20260409_retry1.log`
-- A twenty-eighth narrow Package 3 footed lower-body split-order slice is now closed in deterministic proof:
-  - footed lower-body gear like `fishing_waders` no longer leaves replacement `boots` stranded in locker stock just because locker service tried missing-current footwear before removing the replaced waders
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a shorts-only locker packet leaves the current waders equipped, while a `shorts_cargo + tshirt + boots` packet now splits them cleanly and returns the waders to locker stock
-  - the first recheck exposed the real service-order bug on the positive path, so the landed fix now applies upgrade-selected slots before missing-current fill-ins during locker service instead of trusting slot enum order to be sane
-  - fresh recheck on this Mac passed after `make -j4 tests`, then `./tests/cata_test "[camp][locker]" "*footed*"`, then the full `./tests/cata_test "[camp][locker]"` suite, with logs in `build_logs/package3_fishing_waders_build_20260409.log`, `build_logs/package3_fishing_waders_tests_20260409.log`, `build_logs/package3_fishing_waders_suite_20260409.log`, and `build_logs/package3_fishing_waders_diffcheck_20260409.log`
-- A twenty-ninth narrow Package 3 draped-waist overlay slice is now closed in deterministic proof:
-  - draped waist overlays like `waist_apron_long` no longer get flattened into the pants lane just because they cover torso waist plus draped legs, so hot-weather locker cleanup can treat them as overlays instead of fake legwear
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both planning and direct locker-service parity on the current logic: a worn `waist_apron_long` stays equipped while the planner still upgrades `pants_cargo` into `shorts_cargo`, and direct locker service returns only the replaced cargo pants to locker stock
-  - fresh recheck on this Mac passed after `make -j4 tests`, then the full `./tests/cata_test "[camp][locker]"` suite, with logs in `build_logs/package3_waist_apron_build_20260409.log` and `build_logs/package3_waist_apron_tests_20260409.log`
-- A thirtieth narrow Package 3 cheongsam-style one-piece slice is now closed in deterministic proof:
-  - fitted shoulder-covering one-piece garments like `cheongsam` now have explicit planning + direct locker-service parity proof, so the locker path keeps them intact when a shorts packet would drop their upper-body coverage but still allows a clean `shorts_cargo + tshirt` split when the same pass supplies an arm-covering shirt replacement
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides on the current logic: planning keeps `cheongsam` in the pants lane for the blocked shorts + vest packet while still selecting the deliberate shorts + shirt split, and direct locker service mirrors that same keep-vs-split result on the worker path
-  - fresh recheck on this Mac passed after `make -j4 tests`, then the full `./tests/cata_test "[camp][locker]"` suite, with logs in `build_logs/package3_cheongsam_build_20260409.log` and `build_logs/package3_cheongsam_suite_20260409.log`
-- A thirty-first narrow Package 3 outer one-piece civilian-clothing slice is now closed in deterministic proof:
-  - light outer full-body garments like `abaya` no longer fall back into shirt logic just because they are marked `OUTER`; the locker path now keeps them in the pants lane so shorts-only or shorts + vest packets do not strip their built-in arm coverage by accident
-  - the new deterministic coverage in `tests/faction_camp_test.cpp` proves both sides on the current logic: planning keeps `abaya` in the pants lane for the blocked shorts + vest packet while still selecting the deliberate shorts + `tshirt` split, and direct locker service mirrors that same keep-vs-split result on the worker path
-  - fresh recheck on this Mac passed after `make -j4 tests`, then the full `./tests/cata_test "[camp][locker]"` suite, with logs in `build_logs/package3_abaya_outer_onepiece_build_20260409_retry1.log` and `build_logs/package3_abaya_outer_onepiece_suite_20260409_retry1.log`
-- The preserved Package 2 board/log leak guard is now landed in deterministic code/tests:
-  - structured `show_board` / `show_job` / board-follow-through replies no longer dump raw `board=` / `status=` / `approval=` / `next=` payload text into the visible in-game message log; that payload stays in the internal camp-reply log packet while the on-screen path reuses the organic board/status bark
-  - `tests/faction_camp_test.cpp` now proves that split for structured `show_board`, structured `job=1`, and archived-request board cleanup without reopening ordinary follower behavior
-  - fresh recheck on this Mac passed after `make -j4 tests`, via `./tests/cata_test "[camp][basecamp_ai]"` with logs in `build_logs/basecamp_board_log_leak_build_20260408.log` and `build_logs/basecamp_board_log_leak_tests_20260408.log`
-- The matching live observability helper is now landed and re-proved on the current binary:
-  - the assigned-camp probe scenario now captures cropped OCR-backed screen-text artifacts beside `llm_intent.log`, so the player-facing bark can be compared directly with the internal structured camp-reply packet
-  - the earlier helper rerun honestly exposed stale-binary mismatch, so the real tiles target had already been rebuilt via `make -j4 TILES=1 cataclysm-tiles` with log `build_logs/basecamp_board_observability_tiles_rebuild_20260408_retry1.log`
-  - after the current `basecamp.cpp` locker change, the first live rerun again honestly exposed stale-binary mismatch, so the real tiles target was rebuilt again via `make -j4 TILES=1 cataclysm-tiles` with current log `build_logs/package3_board_log_observability_tiles_rebuild_20260409.log`
-  - latest current-binary proof packet: `.userdata/dev-harness/harness_runs/20260409_100447/`
-    - internal path: `probe.artifacts.log` still carries the structured assigned-camp handoff (`board=show_board`, `details=show_job=1`, `status=blocked`, `next=job=1`)
-    - visible path: `wait_for_board_reply.after.screen_text.txt` and `wait_for_job_followup_reply.after.screen_text.txt` still do **not** show raw `board=` / `details=` / `next=` key-value leakage in the OCR capture, so the board/log split remains intact on the rebuilt current binary even though the spoken `job=1` follow-up bark is still product-weird
-- Patrol sanity on the current McWilliams save is already checked: the serialized patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note no longer belongs in the active mystery pile.
-- The right current discipline is:
-  - one package at a time
-  - revalidate before widening
-  - do not let Andi or the repo drift into a broad opportunistic locker rewrite
-
-### Existing baseline that should not be mistaken for the active package
-
-- Patrol Zone v1 remains checkpointed, the current McWilliams patrol-cluster check is a sanity confirmation, not a reopened patrol lane.
-- The harness swap to `McWilliams` / `Zoraida Vick` for ordinary chat/ambient probing is real, but it does **not** by itself prove the basecamp toolcall-routing bug is fixed.
-- The debug-intake pass and the Andi work-package draft are useful planning evidence, but neither counts as code/test closeout on their own.
+- the one-off Smart Zone Manager v1 code is now real in the tree, not just aux-doc theater
+- the Basecamp inventory-zone prompt path now exists in two honest places:
+  - initial `CAMP_STORAGE` placement in Zone Manager
+  - later position/stretch edits of that same Basecamp zone
+- the current planner stamps the v1 niche/support packet in deterministic code, including:
+  - one crafting niche
+  - one food/drink niche
+  - one equipment niche
+  - support placement for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds
+  - the corrected fire knot: fire tile `SOURCE_FIREWOOD`, adjacent `splintered`, nearby wood
+- the rotten dump search is no longer limited to the first ring outside the Basecamp rectangle; it now searches outward until it finds an outdoor passable tile, so ordinary one-tile wall rings do not trap the rotten zone on indoor/wall junk
+- the current deterministic proof now lives in `tests/clzones_test.cpp` and covers the active honest packet:
+  - expected stamped layout on a representative indoor basecamp fixture
+  - outdoor rotten placement beyond a simple wall ring
+  - too-small-zone failure
+  - non-destructive refusal when a required bed tile is already occupied by a non-basecamp zone
+  - repeatability on the same layout
+- current deterministic recheck on this Mac passed after `make -j4 tests`, via:
+  - `./tests/cata_test "[zones][smart_zone][basecamp]"`
+  - build log: `build_logs/smart_zone_build_20260409.log`
+  - diff check: `build_logs/smart_zone_diffcheck_20260409.log`
+  - test log: `build_logs/smart_zone_tests_20260409.log`
 
 ### Meaning
 
-- The active question is no longer "what is the next clothing edge case".
-- The active question is whether the already-required packet is honestly strong enough to freeze soon.
-- If a proposed step starts widening back into open-ended locker taxonomy, cut it.
+- the active question is no longer whether Smart Zone Manager v1 exists at all
+- the active question is whether the remaining contract seams are honest enough and whether one proportional live packet can close the lane without reopening scope
+- if a proposed next step starts inventing new zoning doctrine instead of finishing the current narrow packet, cut it
 
 ---
 
@@ -258,25 +77,20 @@ Current honest state:
 
 ### Active queue
 
-1. **Smart Zone Manager v1** on a realistic basecamp setup:
-   - prove the one-off trigger on Basecamp inventory zone placement/stretch
-   - prove the discussed zone layout stamps deterministically and non-destructively
-   - prove the feature does not break the game while trying to save clicks
-2. **Failure path:**
-   - if the Basecamp inventory zone is too small to support the required layout, the feature should error out cleanly instead of placing broken layout junk
-3. **Live proof discipline:**
-   - McWilliams currently lacks a ready fire-source anchor, so the live packet may need a narrow harness/restaging step to place and activate a brazier or equivalent fire-source anchor before the crafting niche can be proved honestly
-   - once the feature is proved honestly on a realistic live setup, stop; do not keep collecting gratuitous zone edge cases
-4. **Testing discipline:**
-   - use the minimum deterministic/live proof that shows the feature works, stays deterministic, and does not break the game
-   - do not let this lane become another endless proof spiral
+1. **Contract seam audit:**
+   - confirm the current anchor-selection story is honest about where the code is truly flag/category-first and where it still relies on narrow fallback heuristics
+   - confirm the current built-in loot/custom zone reuse is still the narrowest sane v1 shape
+2. **Live proof:**
+   - prove Smart Zone Manager v1 on a realistic McWilliams basecamp setup
+   - McWilliams still lacks a ready fire-source anchor, so the live packet may need a narrow harness/restaging step to place and activate a brazier or equivalent fire-source anchor before the crafting niche can be proved honestly
+3. **Stop condition:**
+   - once one honest live packet exists beside the deterministic proof, stop
+   - do not turn this into another endless zone-edge-case collection run
 
 ### Meaning
 
-
-- The active question is no longer "what is the next clothing edge case".
-- The active question is whether the already-required packet is honestly strong enough to freeze soon.
-- If a proposed step starts widening back into open-ended locker taxonomy, cut it.
+- the missing evidence class is now live behavior, not another ceremonial deterministic rerun
+- the remaining work should stay narrowly about finishing Smart Zone Manager v1, not drifting back into locker/basecamp archaeology
 
 ---
 
@@ -290,10 +104,10 @@ Use these when they are actually the missing evidence, not as ritual.
 ### Fresh tiles relink on this Mac
 - `make -j4 TILES=1 cataclysm-tiles`
 
-### Patrol-focused deterministic check
-- once patrol tests exist, run the narrowest patrol-specific `cata_test` filter or named case instead of the whole suite
+### Smart-zone deterministic check
+- `./tests/cata_test "[zones][smart_zone][basecamp]"`
 
-### Startup/load smoke for later live patrol proof
+### Startup/load smoke for later live proof
 - `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
 
 ## Local build caveat

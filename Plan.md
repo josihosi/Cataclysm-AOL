@@ -46,23 +46,23 @@ The locker / basecamp follow-through packet is good enough for now and should no
 
 Current truth:
 - the current job is now **Smart Zone Manager v1**, using `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md` as the canonical product contract
-- the point is simple: when the player places or stretches the Basecamp inventory zone, offer one one-off smart-zoning pass that stamps the discussed useful zones and then gets out of the way
-- this lane should optimize for **works, does not break the game, and saves player clicks**, not for endless edge-case archaeology or giant map-planner ambition
-- anti-testing-madness rule: add the minimum honest deterministic/live proof needed for stability, then stop; do not let this turn into another infinite proof cult
+- the one-off Smart Zone Manager v1 surface is now wired on Basecamp inventory-zone placement plus later position/stretch edits, so the lane is no longer blocked on the basic action existing at all
+- the current deterministic packet now proves the main stamped layout, the corrected firewood/splintered/wood knot, too-small-zone failure, outdoor rotten placement beyond simple wall rings, non-destructive refusal on pre-zoned bed tiles, and repeatability on the same layout
+- this lane should still optimize for **works, does not break the game, and saves player clicks**, not for endless edge-case archaeology or giant map-planner ambition
+- anti-testing-madness rule still applies: the remaining work is to close the honest contract gaps and get the live packet, not to turn Smart Zone Manager into another proof cult
 
 Current required shape:
 - preserve the already-agreed zone layout contract from the Smart Zone Manager v1 auxiliary doc
-- if the Basecamp inventory zone is too small to support the required layout, error out cleanly instead of spraying nonsense
+- keep anchor choice flag/category-first where the map exposes real signals, with floor fallback instead of clever failure
 - keep placement deterministic and non-destructive by default
 - do not widen into patrol/locker/general camp automation
 - McWilliams currently has no ready fire-source anchor, so the harness/live proof may need a narrow restaging step to place/activate a brazier or equivalent fire-source anchor before the crafting niche can be proved honestly
 
 ### Next real state
-1. land the one-off Smart Zone Manager v1 action on Basecamp inventory zone placement/stretch
-2. handle the too-small-zone failure path cleanly instead of placing broken layout junk
-3. prove the main discussed zone layout honestly on a live McWilliams-style setup, including a real fire-source anchor path for the crafting niche
-4. add only the minimum deterministic/live proof needed to show the feature works and does not break the game
-5. once Smart Zone Manager v1 is stable enough for the pre-freeze goal, stop and return to freeze discipline instead of farming extra zoning edge cases
+1. close the remaining contract seams around anchor-selection/reuse wording instead of pretending the lane is already fully reviewer-clean
+2. prove the main discussed zone layout honestly on a live McWilliams-style setup, including a real fire-source anchor path for the crafting niche
+3. keep the evidence packet narrow: current deterministic proof plus one proportional live packet, not a new garden of edge cases
+4. once Smart Zone Manager v1 is stable enough for the pre-freeze goal, stop and return to freeze discipline instead of farming extra zoning nuance
 
 ---
 
