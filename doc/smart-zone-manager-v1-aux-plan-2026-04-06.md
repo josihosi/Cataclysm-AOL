@@ -1,6 +1,6 @@
 # Smart Zone Manager v1 — auxiliary plan (2026-04-06)
 
-Status: greenlit queued lane after the current locker / basecamp follow-through stack. Bottom-of-stack only, do not preempt the active packet, and wait for the current stack's honest handoff point before opening this lane.
+Status: active current lane. Josef explicitly opened this lane now; finish it narrowly enough for the pre-freeze goal and do not let it expand into a new testing cult.
 
 ## Why this exists
 
@@ -33,6 +33,12 @@ If this lane is greenlit, v1 should mean exactly this:
 - deterministic placement on the same camp layout
 
 If the implementation starts drifting toward patrol/locker automation, room-classification magic, or continuous self-rearrangement, that is out of v1 and should be cut or deferred.
+
+## New current-lane constraints from Josef
+
+- If the Basecamp inventory zone is too small to support the required layout, error out cleanly instead of spraying nonsense.
+- McWilliams does not currently have a ready fireplace/fire-source setup, so honest live proof may need a narrow harness/restaging step to place and activate a brazier or equivalent fire-source anchor.
+- Testing discipline matters here: add the minimum honest deterministic/live proof needed to show the feature works and does not break the game, then stop. Do not regress into testing madness.
 
 ## High-level v1 shape
 

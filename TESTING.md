@@ -258,53 +258,25 @@ Current honest state:
 
 ### Active queue
 
-1. no new clothing-case expansion unless an already-packaged required case directly fails
-2. keep the preserved Package 2 board/log split closed unless future code touching `basecamp.cpp` or the board/log path changes again
-   - if that happens, rerun the assigned-camp McWilliams probe on the real current binary and compare OCR-visible message-log text against the internal structured artifact packet
-3. smallest honest remainder currently visible:
-   - the raw structured `board=` / `details=` / `next=` leak is fixed
-   - the spoken `job=1` follow-up is still product-weird, but that is a later polish question, not a reason to reopen scope right now
-4. do not widen into locker policy/control-surface or carried-item support until Josef explicitly freezes or parks the current packet
+1. **Smart Zone Manager v1** on a realistic basecamp setup:
+   - prove the one-off trigger on Basecamp inventory zone placement/stretch
+   - prove the discussed zone layout stamps deterministically and non-destructively
+   - prove the feature does not break the game while trying to save clicks
+2. **Failure path:**
+   - if the Basecamp inventory zone is too small to support the required layout, the feature should error out cleanly instead of placing broken layout junk
+3. **Live proof discipline:**
+   - McWilliams currently lacks a ready fire-source anchor, so the live packet may need a narrow harness/restaging step to place and activate a brazier or equivalent fire-source anchor before the crafting niche can be proved honestly
+   - once the feature is proved honestly on a realistic live setup, stop; do not keep collecting gratuitous zone edge cases
+4. **Testing discipline:**
+   - use the minimum deterministic/live proof that shows the feature works, stays deterministic, and does not break the game
+   - do not let this lane become another endless proof spiral
 
-Still true:
-- ordinary chat / ambient harness footing should stay on the captured `McWilliams` / `Zoraida Vick` save, not drift back to the older default fixture
-- the current packet is in closeout, not discovery mode
-- `sustain_npc` remains only a helper idea for later probes if some future live packet honestly needs it
+### Meaning
 
-### Anti-hallucination rule for this packet
 
-Do not treat any of these as success by themselves:
-- swapping the ordinary harness fixture to `McWilliams`
-- writing a clean work-package document
-- observing plausible-looking NPC gear motion on-screen once
-- describing a nice locker inventory/outfit policy in prose
-- partially fixing one package while quietly widening two others behind it
-
-If the packet sounds cleaner than the active package boundary or evidence underneath it, stop and trim it.
-
-**Hackathon-reserved — do not touch before the event:**
-1. **chat interface over dialogue branches**
-   - current `chat.nearby_npc_basic` evidence is harness-only scaffolding, not feature implementation
-2. **ambient-trigger reaction lane / tiny ambient-trigger NPC model**
-   - current `ambient.weird_item_reaction` evidence is harness-only scaffolding/observability, not feature implementation
-
-**Later discussion topics, not current code lanes:**
-1. **smart zone manager**
-2. any broader locker/inventory redesign beyond the active package order in the auxiliary doc
-
-### Active-lane handoff block
-
-- **active lane:** controlled locker / basecamp follow-through packet
-- **active slice:** Package 3, locker outfit engine hardening
-- **next slice:** Package 4, locker zone policy + control-surface cleanup
-- **last closed lane:** Package 2, basecamp toolcall routing fix, is now landed on the McWilliams assigned-camp probe path; Patrol Zone v1 remains checkpointed
-- **current blocker shape:** none on Package 2 anymore. The honest next work is now Package 3 locker hardening, kept narrow against the newly closed routing baseline
-- **Josef ask:** none right now beyond keeping the packet narrow and one-package-at-a-time
-
-### Non-blocking Josef notes
-
-- The current debug pass already did the hard work of separating real bugs from design requests and future ideas.
-- Keep using that packetized structure. If future notes start piling up again, collect first, then reduce to packages again before handing anything to Andi.
+- The active question is no longer "what is the next clothing edge case".
+- The active question is whether the already-required packet is honestly strong enough to freeze soon.
+- If a proposed step starts widening back into open-ended locker taxonomy, cut it.
 
 ---
 
