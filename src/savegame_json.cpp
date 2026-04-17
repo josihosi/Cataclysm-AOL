@@ -2098,6 +2098,11 @@ void job_data::deserialize( const JsonValue &jv )
         jo.allow_omitted_members();
         jo.read( "task_priorities", task_priorities );
         jo.read( "fetch_history", fetch_history );
+
+        const job_data default_job;
+        for( const auto &entry : default_job.task_priorities ) {
+            task_priorities.emplace( entry.first, entry.second );
+        }
     }
 }
 
@@ -4429,6 +4434,101 @@ static void deserialize( quality_requirement &value, const JsonObject &jo )
     jo.read( "level", value.level );
 }
 
+static void serialize( const camp_llm_note &value, JsonOut &jsout )
+{
+    jsout.start_object();
+    jsout.member( "kind", value.kind );
+    jsout.member( "text", value.text );
+    jsout.member( "created_turn", value.created_turn );
+    jsout.end_object();
+}
+
+static void deserialize( camp_llm_note &value, const JsonObject &jo )
+{
+    jo.allow_omitted_members();
+    jo.read( "kind", value.kind );
+    jo.read( "text", value.text );
+    jo.read( "created_turn", value.created_turn );
+}
+
+static void serialize( const camp_llm_request &value, JsonOut &jsout )
+{
+    jsout.start_object();
+    jsout.member( "request_id", value.request_id );
+    jsout.member( "request_kind", value.request_kind );
+    jsout.member( "source_utterance", value.source_utterance );
+    jsout.member( "requested_item_query", value.requested_item_query );
+    jsout.member( "requested_count", value.requested_count );
+    jsout.member( "chosen_recipe_id", value.chosen_recipe_id );
+    jsout.member( "chosen_recipe_name", value.chosen_recipe_name );
+    jsout.member( "status", value.status );
+    jsout.member( "approval_state", value.approval_state );
+    jsout.member( "active_mission_id", value.active_mission_id );
+    jsout.member( "heard_by_npc_id", value.heard_by_npc_id );
+    jsout.member( "assigned_worker_npc_id", value.assigned_worker_npc_id );
+    jsout.member( "assigned_worker_name", value.assigned_worker_name );
+    jsout.member( "created_turn", value.created_turn );
+    jsout.member( "updated_turn", value.updated_turn );
+    jsout.member( "eta_turn", value.eta_turn );
+    jsout.member( "blockers", value.blockers );
+    jsout.member( "notes", value.notes );
+    jsout.end_object();
+}
+
+static void deserialize( camp_llm_request &value, const JsonObject &jo )
+{
+    jo.allow_omitted_members();
+    jo.read( "request_id", value.request_id );
+    jo.read( "request_kind", value.request_kind );
+    jo.read( "source_utterance", value.source_utterance );
+    jo.read( "requested_item_query", value.requested_item_query );
+    jo.read( "requested_count", value.requested_count );
+    jo.read( "chosen_recipe_id", value.chosen_recipe_id );
+    jo.read( "chosen_recipe_name", value.chosen_recipe_name );
+    jo.read( "status", value.status );
+    jo.read( "approval_state", value.approval_state );
+    jo.read( "active_mission_id", value.active_mission_id );
+    jo.read( "heard_by_npc_id", value.heard_by_npc_id );
+    jo.read( "assigned_worker_npc_id", value.assigned_worker_npc_id );
+    jo.read( "assigned_worker_name", value.assigned_worker_name );
+    jo.read( "created_turn", value.created_turn );
+    jo.read( "updated_turn", value.updated_turn );
+    jo.read( "eta_turn", value.eta_turn );
+    jo.read( "blockers", value.blockers );
+    jo.read( "notes", value.notes );
+}
+
+static void serialize( const camp_locker_policy &value, JsonOut &jsout )
+{
+    jsout.start_object();
+    jsout.member( "enabled_slots" );
+    jsout.start_array();
+    for( const camp_locker_slot slot : all_camp_locker_slots() ) {
+        if( value.is_enabled( slot ) ) {
+            jsout.write( camp_locker_slot_id( slot ) );
+        }
+    }
+    jsout.end_array();
+    jsout.end_object();
+}
+
+static void deserialize( camp_locker_policy &value, const JsonObject &jo )
+{
+    jo.allow_omitted_members();
+    std::vector<std::string> enabled_slot_ids;
+    if( jo.read( "enabled_slots", enabled_slot_ids ) ) {
+        for( const camp_locker_slot slot : all_camp_locker_slots() ) {
+            value.set_enabled( slot, false );
+        }
+        for( const std::string &slot_id : enabled_slot_ids ) {
+            const std::optional<camp_locker_slot> slot = camp_locker_slot_from_id( slot_id );
+            if( slot.has_value() ) {
+                value.set_enabled( *slot, true );
+            }
+        }
+    }
+}
+
 // basecamp
 void basecamp::serialize( JsonOut &json ) const
 {
@@ -4440,6 +4540,11 @@ void basecamp::serialize( JsonOut &json ) const
         json.member( "bb_pos", bb_pos );
         json.member( "dumping_spot", dumping_spot );
         json.member( "liquid_dumping_spots", liquid_dumping_spots );
+        json.member( "camp_requests", camp_requests );
+        json.member( "locker_policy", locker_policy );
+        json.member( "locker_service_queue", locker_service_queue );
+        json.member( "locker_next_service_turn", locker_next_service_turn );
+        json.member( "next_camp_request_id", next_camp_request_id );
         json.member( "hidden_missions" );
         json.start_array();
         for( const std::vector<ui_mission_id> &list : hidden_missions ) {
@@ -4529,6 +4634,14 @@ void basecamp::deserialize( const JsonObject &data )
     data.read( "bb_pos", bb_pos );
     data.read( "dumping_spot", dumping_spot );
     data.read( "liquid_dumping_spots", liquid_dumping_spots );
+    data.read( "camp_requests", camp_requests );
+    data.read( "locker_policy", locker_policy );
+    data.read( "locker_service_queue", locker_service_queue );
+    data.read( "locker_next_service_turn", locker_next_service_turn );
+    data.read( "next_camp_request_id", next_camp_request_id );
+    for( const camp_llm_request &request : camp_requests ) {
+        next_camp_request_id = std::max( next_camp_request_id, request.request_id + 1 );
+    }
     for( int tab_num = base_camps::TAB_MAIN; tab_num <= base_camps::TAB_NW; tab_num++ ) {
         std::vector<ui_mission_id> temp;
         hidden_missions.push_back( temp );

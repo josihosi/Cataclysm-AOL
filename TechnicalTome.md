@@ -1,5 +1,58 @@
 # Technical Tome
 
+## Smart Zone Manager v1 spine
+- Smart Zone Manager v1 is a one-off Basecamp helper, not an always-on rearrangement goblin: Zone Manager offers the prompt when a `CAMP_STORAGE` zone is first placed and again when that Basecamp zone is later repositioned/stretched.
+- The current v1 packet is deliberately narrow: one crafting niche, one food/drink niche, one equipment niche, plus support zones for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
+- The corrected fire knot is explicit and local: the fire-source tile itself gets `SOURCE_FIREWOOD`, one adjacent tile gets custom `splintered` plus `SOURCE_FIREWOOD`, and separate nearby wood storage stays distinct from that knot.
+- Rotten placement now searches outward for an outdoor passable tile instead of assuming the first ring outside the Basecamp rectangle is usable, so simple wall rings do not dump the rotten zone onto indoor or impassable junk.
+- Default posture is deterministic and non-destructive: reuse built-in loot/custom zone machinery where it fits, refuse to overwrite non-basecamp zones, and fall back to ordinary floor tiles instead of failing just because the furniture is ugly.
+
+## Basecamp request routing spine
+- Basecamp-aware freeform/request routing now treats an NPC as a camp hearer when they are assigned to a camp and stationed there in an idle/null mission state, not only while a `FACTION_CAMP` role-id or guard mission is actively set.
+- Companion follow/lead/wait states still stay out of the camp-request lane, and `NPC_MISSION_GUARD_ALLY` still stays on the ordinary follower side even inside camp.
+- In practice: assigned-camp alone is too loose, current active mission alone is too narrow, so the routing check now keys on stationed-assignee state while explicitly excluding walking-with-the-player companion modes.
+
+## Locker classifier spine
+- Locker storage heuristics should ignore `ablative` armor-plate pockets when deciding whether worn armor is a utility vest/bag or real body armor. Otherwise ballistic vests like `ballistic_vest_esapi` get flattened into the ordinary vest lane just because ESAPI slots look like cargo storage, which breaks both classification and bullet-vs-melee body-armor tradeoff planning.
+
+## Patrol Zone v1 planner spine
+- Patrol now has its own camp-job priority surface (`ACT_CAMP_PATROL`), and the deterministic patrol worker pool is exactly the assigned camp NPCs with patrol priority > 0.
+- The v1 planner splits that patrol pool into day/night rosters by sorted priority order, gives every patrol cluster at least one route owner before stacking extra guards onto larger clusters, and caps per-shift active guards at the total patrol-tile count.
+- In the current planner contract, one guard may own multiple disconnected posts on a shift, while extra guards beyond one-per-cluster stack onto larger connected clusters for the later hold-vs-loop behavior.
+- The current shift roster now latches for the whole day/night block instead of being recomputed every job tick: routine chores must not steal active guards mid-shift, while the interrupt whitelist only allows combat/severe-need/player-reassignment breaks and backfills from reserve without rebalancing the whole shift.
+- On-map Patrol Zone v1 stays deliberately simple: each on-shift guard gets a deterministic runtime order from the cached shift plan. A guard with one fully staffed connected cluster holds a distinct tile; otherwise the guard walks a fixed loop over the tiles from their assigned cluster(s), advancing one tile every 10 in-game minutes. Off-shift patrol workers drop back into ordinary camp downtime instead of pretending to hold stale patrol posts.
+- Legacy camp-worker saves can deserialize without newly added job-priority keys. `job_data::deserialize` now reseeds missing default camp jobs after loading so new control-surface tasks like `ACT_CAMP_PATROL` still appear and respond to `Set all priorities` on older fixtures/saves.
+
+## Camp locker dirty-trigger follow-through
+- Downtime locker processing now tracks a per-worker state signature built from the worker's managed loadout, current locker candidates, and resulting locker plan.
+- When that actionable state changes, the camp requeues the affected worker even without a fresh sleep/wake or policy toggle.
+- Locker candidate gathering now walks sorted locker tiles so debug/state summaries and deterministic tests do not wobble on unordered zone iteration.
+- Same-type bag upgrades now treat condition as a real tie-breaker and a meaningful upgrade signal, so locker service can replace a damaged daypack/backpack with a healthier equivalent even when the raw bag score delta alone would have been too small.
+- Footed/full-body jumpsuits now get treated as lower-body locker gear instead of footwear, so the planner stops misbucketting them as shoes just because they happen to cover feet.
+- Jumpsuit-like outer one-piece suits now also stay in the pants lane instead of falling into vest logic, so the locker planner stops pretending a full-body suit leaves the lower-body slot empty just because the item is marked `OUTER`.
+- Full-body suits that only reach `jumpsuit` through an indirect `looks_like` chain, like tuxedos via `suit -> jumpsuit`, now also stay in the pants lane, so the locker path does not quietly reintroduce vest-style half-dressed nonsense for those variants.
+- Full-leg skintight underlayers that actually reach the knees/lower legs now also ride the pants lane instead of underwear, so hot-weather locker cleanup can strip leggings-like duplicates together with cargo pants before swapping into shorts.
+- Pants-lane upgrades now explicitly refuse to strip torso coverage from a current one-piece suit unless the same locker pass also keeps or equips some separate torso-covering item, so suit splitting only happens when the replacement packet is actually complete.
+- That same pants-lane guard now also refuses to strip arm coverage from sleeved one-piece garments unless the same locker pass still keeps or equips some separate arm-covering upper-body item, so sleeved dresses stop "upgrading" into bare-arm vest-plus-shorts nonsense.
+- Skintight full-body one-piece suits like union suits and wetsuits now also stay in the pants lane instead of hiding in underwear, so the locker path stops layering shorts over them unless some separate torso replacement exists in the same pass.
+- Head-covering full-body protective suits like hazmat suits now also stay in the pants lane instead of falling into helmet logic, so shorts-only locker cleanup leaves the suit intact instead of peeling it into ordinary clothes just because the classifier saw the hood first.
+- Full helmets that also cover eyes, like great helms, now stay in the helmet lane instead of being misbucketed as glasses just because the classifier saw eye coverage first, so the locker planner can compare real helmet tradeoffs instead of silently skipping them.
+- Pants-lane split guards now preserve any extra non-leg coverage that the current one-piece item owns, not just torso and arms. In practice that means a footed jumpsuit only splits when the same locker pass also provides shoes, and a hazmat-style full-body suit no longer splits just because a shirt replacement exists while head or face coverage would be lost.
+- Rigid leg-only armor pieces that cover both upper and lower legs without acting like real trousers, like `legguard_hard`, now stay out of the pants lane, so hot-weather locker cleanup can swap cargo pants for cargo shorts without stripping those guards into locker stock as fake duplicate legwear.
+- Full-leg outer greaves that cover upper and lower legs but not the hips, like `legguard_lc_brigandine`, now also stay out of the pants lane, so hot-weather locker cleanup does not mistake those standalone greaves for real trousers and strip them into locker stock during a shorts swap.
+- Hip-only outer armored skirts that cover the waist and upper thighs without acting like real trousers, like `legguard_metal_sheets_hip`, now also stay out of the pants lane, so hot-weather locker cleanup can swap cargo pants for cargo shorts without stripping those armored overlays into locker stock as fake duplicate pants.
+- Full-body body armor that still lives in the `body_armor` lane for armor tradeoff scoring, like `armor_lc_plate`, now suppresses missing-current pants fill when it already covers the legs, so locker cleanup stops stuffing filler shorts under full-body plate armor just because the pants slot looked empty.
+- Armored full-body utility suits with real storage and protection, like `survivor_suit`, now refuse hot-weather shorts splits unless the replacement is itself another armored full-body suit, so the pants-lane one-piece guard no longer "upgrades" them into ordinary `shorts_cargo + tshirt` clothes just because the weather is hot.
+- Light outer full-body civilian garments like `abaya` now also stay in the pants lane instead of falling back into shirt logic just because they are marked `OUTER`, so the same one-piece coverage guard can block `shorts_cargo + vest` nonsense while still allowing a deliberate `shorts_cargo + tshirt` split.
+- Locker service now applies upgrade-selected slots before missing-current fill-ins instead of trusting raw slot enum order, so coverage-dependent splits can free the replaced item first. In practice that fixes footed lower-body gear like `fishing_waders`, where the planned `boots` should land only after the replaced waders have actually been taken off.
+
+## Camp locker V3 temperature lanes
+- The first Locker Zone V3 slice is deliberately narrow: local temperature adjusts locker scoring for shirt/vest-slot outerwear that covers both torso and arms.
+- Cold weather (<= 50 F) boosts warmth-heavy outerwear in that lane; hot weather (>= 75 F) penalizes it, so the same planner/service path can swap between warm and light jackets without touching ranged-readiness or the broader V1/V2 spine.
+- The next V3 slice applies the same kind of deliberate weather bias to pants-slot legwear, but only for the short-vs-full-length question: shorts-like legwear that stops above knees/lower legs is favored in heat, while full-length legwear is favored in cold.
+- That legwear lane intentionally keys off actual sub-bodypart coverage instead of item names, so cargo shorts vs cargo pants can flip through the normal locker planner without dragging in blanket logic or per-NPC fashion personality.
+- This still does **not** cover blankets or per-NPC clothing personality; those remain later V3 follow-ups.
+
 ## Background Summarizer (tools/llm_runner/background_summarizer.py)
 The summarizer now has **two modes**:
 
@@ -123,12 +176,27 @@ Run the named-NPC smoke harness without invoking the model:
 Run the named-NPC smoke harness through the normal runner pipe:
 - `python3 tools/llm_runner/npc_harness.py --scenario tools/llm_runner/scenarios/rubik_trade.json --backend ollama --ollama-model mistral`
 
+Check structured action-status output from `llm_intent.log`:
+- `python3 tools/llm_runner/action_status_check.py --log-file config/llm_intent.log --npc "Marlene Pike" --kind attack_target --terminal-phase blocked --terminal-reason attack.target_missing`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_attack_target_missing.txt --expect-file tools/llm_runner/fixtures/action_status_attack_target_missing.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_pickup_item_missing.txt --expect-file tools/llm_runner/fixtures/action_status_pickup_item_missing.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_inventory_cannot_wield.txt --expect-file tools/llm_runner/fixtures/action_status_inventory_cannot_wield.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_attack_morale_or_panic_block.txt --expect-file tools/llm_runner/fixtures/action_status_attack_morale_or_panic_block.expect.json --json`
+- `python3 tools/llm_runner/action_status_check.py --log-file tools/llm_runner/fixtures/action_status_pickup_panic_override.txt --expect-file tools/llm_runner/fixtures/action_status_pickup_panic_override.expect.json --json`
+- `python3 tools/llm_runner/run_action_status_fixtures.py`
+
+The checker also supports `phase_sequence` expectations so a fixture can assert on ordered lifecycle progression, not just whether a phase appeared somewhere eventually.
+
 The smoke harness intentionally tests three layers together:
 - selector resolution (manual vs generated precedence)
 - snapshot/prompt assembly for one named NPC
 - runner I/O + response parsing using game-like pipe-separated action-line validation
 
 ## LLM Intent Actions (Behavior Notes)
+- Structured deterministic `show_board` / `show_job` replies now have an explicit artifact sink: when `DEBUG_LLM_INTENT_LOG` is enabled, they append dedicated `camp board reply` / `camp job reply` blocks to `config/llm_intent.log` even if no normal LLM prompt/response block is involved. Those packets now fence the exact handoff text between `reply_begin` / `reply_end`, so the live artifact is easier to eyeball and compare against the deterministic snapshot proof.
+- Direct deterministic `show_board` handling can still produce a real in-game reply without a normal prompt/response block in `config/llm_intent.log`; use the explicit camp-reply block as the artifact sink first. If that block is missing, treat it as an instrumentation/config question rather than automatic proof that `show_board` failed.
+- Structured/internal board/job follow-through tokens now stay in the internal camp-reply log packet while the visible in-game message log gets the corresponding organic board/status bark. If raw `board=` / `status=` / `next=` payload text shows up on-screen, that is a regression on the assigned-camp board path, not intended behavior.
+- Important current path split: the richer planner snapshot (`planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` + overmap block) is confirmed on the structured/internal `show_board` handoff token path, while live natural speech like `show me the board` currently still uses the older concise board-summary bark path.
 - `look_around` requests up to three nearby item names for pickup targeting.
 - `look_inventory` supports `wear`, `wield`, `act`, and `drop` sections.
 - `panic_on` sets a forced flee state for about 20 turns and bumps panic while active.
@@ -256,6 +324,70 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
 - For each topic, `dialogue::dynamic_line()` calls `json_talk_topic::get_dynamic_line()` and `dialogue::gen_responses()` calls `json_talk_topic::gen_responses()` to build visible player responses from JSON, filtering by dialogue conditions and attaching effects/trials.
 - The response's effect sets the next topic; the loop continues until `TALK_DONE`, with `TALK_NONE` popping the stack. This is the central hook if we ever want to intercept or rewrite dialogue selection globally.
 
+## Project Execution Workflow (Current)
+
+### Status language
+Use one shared status vocabulary across `Plan.md`, `TODO.md`, and `TESTING.md`:
+- `DISCUSS` — not specified enough yet; do not implement autonomously.
+- `GREEN` — structure agreed; implementation can proceed autonomously.
+- `AGENT TESTING` — Schani should run deterministic checks / compile / startup-load verification.
+- `JOSEF TESTING` — human gameplay/feel validation is pending.
+- `TWEAK` — known fixup round from testing.
+- `DONE` — only after the agreed finish line, not when a patch merely exists.
+
+### Autonomous work-loop rule
+The cron/autonomous loop should:
+- continue only `GREEN` work,
+- stop and ask when only `DISCUSS` work remains,
+- prepare deterministic tests whenever behavior is supposed to be deterministic,
+- ping Josef on meaningful progress, blockers, or ready-for-testing states.
+
+Narrow recon subagents are fine for `GREEN` work.
+Do not use subagents to invent architecture for `DISCUSS` work.
+
+## Basecamp Command Architecture (Current Direction)
+- Prefer **deterministic first-pass recognition** whenever the player is expressing a clear structured intent.
+- Use richer LLM/snapshot handling only when the problem is genuinely interpretive, ambiguous, or open-ended.
+
+### Deterministic-first rule
+Current intended examples:
+- `craft ...`
+- later board/job references such as `delete_job=<id>` and `job=<id>`
+- other obvious structured camp commands as they become real
+
+The key architectural rule is:
+1. deterministic recognizer extracts/normalizes intent first,
+2. deterministic code resolves legal candidates / blockers / action tokens,
+3. only then should a richer snapshot/LLM layer add interpretation or personality on top.
+
+Do not force the model to rediscover deterministic facts we already know how to compute cheaply.
+
+### Basecamp-specific note
+For the upstreamable deterministic slice, the spoken craft path should stay fully deterministic and human-reviewable.
+The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is stable and cleanly separable.
+
+### Locker Zone roadmap note
+- Locker Zone V1 should be spoken about as a **bundled completed slice**, not as one giant vague blob and not as one tiny lucky sub-patch. Its bundled close-out is: (1) locker surface/control exists (`CAMP_LOCKER` zone + persisted locker policy + player-facing locker policy menu), (2) locker outfitting core exists (classification/gathering/scoring/planning/equip/upgrade/dedupe/return), (3) locker maintenance rhythm exists (dirty triggers + queue + reservations + one-worker-at-a-time servicing), and (4) deterministic + proportional runtime proof exists.
+- Ordinary sorting must treat `CAMP_LOCKER` tiles as protected storage. If a locker tile overlaps an unsorted/source tile, sort should skip it instead of siphoning locker gear into normal loot destinations.
+- The physical locker supply is explicit: a `CAMP_LOCKER` Zone Manager zone, not an invisible camp concept.
+- The camp also now has a persisted locker-policy control surface: the player can toggle which managed slots the camp locker may handle from the basecamp locker-policy UI, while the zone supplies the actual gear.
+- The locker planner is no longer dead paper: deterministic helpers classify locker items, gather zone candidates, keep the best current managed item, mark duplicate current gear for cleanup, and feed a live service path that lets idle assigned-camp NPCs perform an infrequent locker reevaluation during worker downtime.
+- That downtime path has wake/dirty queue plumbing and temporary reservation filtering too, with deterministic coverage for reservation-aware candidate gathering and one-worker-at-a-time first-service sequencing.
+- The natural dirty triggers are in place for V1: adding an assignee, wake-up dirty, locker-policy changes, newly available eligible locker gear, and losing/dropping important managed gear all feed the locker queue.
+- Post-V1 expansion is explicit now, not fuzzy: V2 is ranged readiness / magazine + reload support from locker supply; V3 is seasonal dressing and per-NPC nuance. Do not quietly mix V3 nuance into V2.
+- The V2 magazine cap counts the weapon’s currently inserted compatible magazine as part of the two-magazine readiness budget. In other words: a managed gun with one mag in the weapon should only grab one more compatible locker mag, and locker ammo may be used to fill those selected magazines before reloading the weapon itself.
+
+### Patrol Zone roadmap note
+- Patrol Zone V1 starts with explicit `CAMP_PATROL` tiles from Zone Manager, not invisible camp metadata.
+- The topology spine groups patrol tiles by 4-way connected components only. Diagonal touching does not merge posts, so the later planner can speak in simple cluster terms instead of fuzzy area heuristics.
+- The current intended v1 center is deliberately narrow: two shifts only, one-per-cluster coverage first, sticky on-shift roster, routine chores do not steal active guards, urgent disruption can, and hold-vs-loop behavior should stay readable enough that the player can tell why guards are standing, walking, uncovered, or off-shift.
+- Patrol Zone v1 still needs a few explicit small constants pinned down in code/spec instead of vibes: exact day/night cut, loop dwell time, reserve backfill timing, and off-shift posture.
+
+### Follower-NPC caveat
+Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.
+Follower command parsing can become more deterministic over time, but followers must still be able to remain reluctant, weird, characteristic, defiant, or hostile.
+That topic stays design-sensitive and should not be treated as settled just because Basecamp command routing is becoming more structured.
+
 ## Hierarchical LLM Control (Planned, Compute-Lean)
 - Design goal: keep high strategic agency while minimizing LLM calls by using deterministic execution for most behavior.
 
@@ -269,14 +401,54 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
   - Existing AI executes pathing, combat, inventory, and local reactions.
   - LLM is only escalated on context gates.
 
-### Overmap movement contract
-- Planned minimal parser contract for overmap planner output:
-  - `Stay`
-  - `Move <dir>`
-  - `Move <dir> <dir>`
-  - `Move <dir> <dir> <dir>`
-- Allowed directions: `N NE E SE S SW W NW`.
-- Any malformed output resolves to `Stay` (no side effects).
+### Movement contract
+#### Local tactical follower movement
+- Replace only the **LLM-facing coordinate expression**, not the underlying movement system.
+- Current intended replacement:
+  - old shape: `move: E E E E hold_position`
+  - new shape: `move=<dx>,<dy> <state>`
+- Example outputs:
+  - `move=4,0 hold_position`
+  - `move=0,4 wait_here`
+  - `move=-2,1 hold_position`
+- Keep the existing post-move state suffixes exactly:
+  - `wait_here`
+  - `hold_position`
+- Keep deterministic pathing / target-tile resolution intact.
+- In other words: the model should express a destination offset, while deterministic code still performs route selection and execution.
+- Any malformed output should fail safely rather than producing side effects.
+
+#### Overmap movement / planner output
+- Use the same relative signed-delta idea for overmap-targeted planning/job selection.
+- Current intended shape:
+  - `stay`
+  - `move_omt dx=<signed_int> dy=<signed_int>`
+- Coordinate meaning:
+  - positive `x` = east / right
+  - negative `x` = west / left
+  - positive `y` = north / up
+  - negative `y` = south / down
+- Overmap context should be shown as a small **5x5 or 6x6 grid** plus a **present-only legend**, in the same general spirit as the follower snapshot.
+- Use collapsed terrain symbols rather than raw overmap tile names.
+- Lowercase symbols = normal terrain; uppercase symbols = the same terrain with a **horde present**.
+- Current preferred symbol vocabulary:
+  - `c` camp
+  - `h` house
+  - `r` road
+  - `m` meadow/grass
+  - `f` field
+  - `t` forest
+  - `s` swamp
+  - `w` water
+  - optional extended set when useful: `b` bridge, `u` urban, `p` point of interest, `k` shop, `n` riverbank/shore
+- The legend should list only symbols actually present in the current snapshot, not the entire symbol table.
+- Current helper contract: a centered radius-2 snapshot emits a 5x5 grid with a `dx` header row and `dy` row labels using the same signed-axis convention as `move_omt`.
+- The camp symbol should mark only the actual camp OMT, not every tile that merely falls inside the camp lookup radius.
+- Uppercase is shown only in the grid itself; the legend stays lowercase/present-only and adds a single note when any horde-marked tile appears.
+- Out-of-contract snapshot radii fail safely instead of inventing a malformed grid.
+- The first live consumer is the structured Basecamp board handoff (`show_board`): when a real camp origin is available it prepends `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` plus the shared `overmap:` block so prompt text and helper tests stay in sync.
+- Update prompt/snapshot explanation accordingly; lightweight axis/grid hints may help if the model needs better offset orientation.
+- Any malformed output resolves to `stay` (no side effects).
 
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:
@@ -291,3 +463,35 @@ C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\
   - then clear intent and continue with local deterministic AI.
 - If planner is unavailable or parse fails:
   - keep gameplay stable by using non-LLM defaults.
+
+## Basecamp Request-Board Reference Commits
+
+For the first deterministic Basecamp request-board / spoken-camp-control slice on `dev`, the main reference commits are:
+
+- `ddd0b8fdad` — Add camp request board scaffolding
+- `3d0575715e` — Add board approval flow for camp craft requests
+- `1f534b2f87` — basecamp: batch-report work order launch results
+- `70bb56a9ce` — Teach camp crafts to reclaim hoarded tools
+- `8c7b502910` — Basecamp requests retry with alternate crafters
+- `8d8a51fd62` — Handle spoken camp craft orders via request board
+- `f38e5d0c06` — Add spoken camp request board controls
+- `9ff5455588` — Basecamp board speech supports request numbers
+- `d9362c8087` — Harden basecamp request board speech handling
+
+Supporting harness/debug-validation cleanup from the same pass:
+
+- `a53cf4be0d` — harness: filter benign attack_vector startup noise
+- `b7c84cb9c8` — harness: ignore pack load timing noise
+- `985128da47` — Capture dev basecamp testing baseline
+
+Upstream portability note:
+- A scratch squash/transplant check onto `upstream/master` showed the deterministic slice is mostly portable, but not yet a clean public patch.
+- The meaningful manual merge seam was `src/npctalk.cpp`.
+- A fork-local `Plan.md` docs conflict was irrelevant noise and not part of the code story.
+- Treat this section as reference archaeology, not as proof of an upstream-ready public patch.
+
+## Camp locker classifier notes
+
+- Belted leg accessories like hip holsters should stay out of the pants slot. They are support gear, not legwear, so hot-weather shorts cleanup must not strip or locker-store them as duplicate pants.
+- Lower-leg armor accessories like knee pads should also stay out of the pants slot. They are protective add-ons, not substitute pants, so hot-weather shorts cleanup must not strip them or dump them into locker stock as fake duplicate legwear.
+- Partial leg-mounted support storage like deep concealment holsters or small drop-leg bags should also stay out of both the underwear and pants slots. If a leg item only covers hips or upper thighs and mainly behaves like support storage / a holster, locker cleanup should keep it equipped while swapping real pants instead of treating it as fake clothing.

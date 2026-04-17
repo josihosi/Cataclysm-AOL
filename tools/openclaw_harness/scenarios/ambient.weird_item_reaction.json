@@ -1,0 +1,41 @@
+{
+  "name": "ambient.weird_item_reaction",
+  "description": "Stage a small uncanny local event near the shipped McWilliams basecamp/NPC fixture and watch for any ambient reaction path. The current fixture already carries nearby follower/camp state, so this contract is runnable today even though stronger restaging helpers would still help future variants.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "llm_intent.log",
+  "artifact_patterns": [
+    "ambient target ",
+    "ambient response "
+  ],
+  "steps": [
+    {
+      "kind": "debug_spawn_item",
+      "label": "spawn_monster_tooth",
+      "item_query": "monster tooth",
+      "count": 1,
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "drop_item",
+      "label": "drop_monster_tooth",
+      "query": "monster tooth",
+      "count": 1,
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_reaction",
+      "count": 2,
+      "settle_seconds": 1.0,
+      "capture_after": true
+    }
+  ]
+}

@@ -513,6 +513,20 @@ void DynamicDataLoader::initialize()
 #endif
 }
 
+namespace
+{
+bool should_skip_nonruntime_json_file( const cata_path &file )
+{
+    const std::string filename = file.get_unrelative_path().filename().generic_u8string();
+    if( filename == "summary_registry.json" ) {
+        return true;
+    }
+    const std::string full_path = file.get_unrelative_path().generic_u8string();
+    return full_path.find( "npcs/Backgrounds/Summaries_short/" ) != std::string::npos ||
+           full_path.find( "npcs/Backgrounds/Summaries_extra/" ) != std::string::npos;
+}
+} // namespace
+
 void DynamicDataLoader::load_data_from_path( const cata_path &path, const std::string &src )
 {
     cata_assert( !finalized &&
@@ -533,6 +547,9 @@ void DynamicDataLoader::load_data_from_path( const cata_path &path, const std::s
 
     // iterate over each file
     for( const cata_path &file : files ) {
+        if( should_skip_nonruntime_json_file( file ) ) {
+            continue;
+        }
         try {
             // parse it
             JsonValue jsin = json_loader::from_path( file );
@@ -566,6 +583,9 @@ void DynamicDataLoader::load_mod_data_from_path( const cata_path &path, const st
 
     // iterate over each file
     for( const cata_path &file : files ) {
+        if( should_skip_nonruntime_json_file( file ) ) {
+            continue;
+        }
         try {
             // parse it
             JsonValue jsin = json_loader::from_path( file );

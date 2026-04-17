@@ -1,0 +1,241 @@
+{
+  "name": "patrol.connected_live",
+  "description": "Load the connected-cluster patrol probe fixture, arm four camp workers with patrol priority 1, capture a tighter runtime crop after the two day-shift guards settle onto their hold tiles, then capture a second dwell-later crop and package the pair as a blink-comparison GIF plus a small `probe.patrol_summary.txt` explainer so the hold posture and off-shift count stay readable without spelunking raw patrol trace logs.",
+  "profile": "dev-harness",
+  "world": "Sandy Creek",
+  "profile_snapshot": "basecamp_dev_manual_2026-04-02",
+  "profile_snapshot_profile": "dev",
+  "fixture": "patrol_connected_dev_2026-04-06",
+  "fixture_profile": "dev",
+  "replace_existing_worlds": true,
+  "settle_seconds": 1.0,
+  "artifact_pattern": "camp patrol:",
+  "steps": [
+    {
+      "kind": "press",
+      "label": "open_base_missions",
+      "keys": ["e"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "highlight_assign_jobs",
+      "keys": ["down", "down", "down", "down", "down", "down", "down", "down", "down"],
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_assign_jobs",
+      "keys": ["enter"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_bruno_priorities",
+      "keys": ["enter"],
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "choose_set_all_priorities_bruno",
+      "keys": ["S"],
+      "settle_seconds": 0.3
+    },
+    {
+      "kind": "type",
+      "label": "set_bruno_priorities_to_one",
+      "text": "1",
+      "submit": true,
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "close_bruno_priorities",
+      "keys": ["escape"],
+      "settle_seconds": 0.4
+    },
+    {
+      "kind": "press",
+      "label": "select_ricky",
+      "keys": ["down"],
+      "settle_seconds": 0.3,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_ricky_priorities",
+      "keys": ["enter"],
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "press",
+      "label": "choose_set_all_priorities_ricky",
+      "keys": ["S"],
+      "settle_seconds": 0.3
+    },
+    {
+      "kind": "type",
+      "label": "set_ricky_priorities_to_one",
+      "text": "1",
+      "submit": true,
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "close_ricky_priorities",
+      "keys": ["escape"],
+      "settle_seconds": 0.4
+    },
+    {
+      "kind": "press",
+      "label": "select_patty",
+      "keys": ["down"],
+      "settle_seconds": 0.3,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_patty_priorities",
+      "keys": ["enter"],
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "press",
+      "label": "choose_set_all_priorities_patty",
+      "keys": ["S"],
+      "settle_seconds": 0.3
+    },
+    {
+      "kind": "type",
+      "label": "set_patty_priorities_to_one",
+      "text": "1",
+      "submit": true,
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "close_patty_priorities",
+      "keys": ["escape"],
+      "settle_seconds": 0.4
+    },
+    {
+      "kind": "press",
+      "label": "select_milo",
+      "keys": ["down"],
+      "settle_seconds": 0.3,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_milo_priorities",
+      "keys": ["enter"],
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "press",
+      "label": "choose_set_all_priorities_milo",
+      "keys": ["S"],
+      "settle_seconds": 0.3
+    },
+    {
+      "kind": "type",
+      "label": "set_milo_priorities_to_one",
+      "text": "1",
+      "submit": true,
+      "settle_seconds": 0.5,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "close_milo_priorities",
+      "keys": ["escape"],
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "capture_after_crop": {
+        "height": 700,
+        "width": 900,
+        "offset_y": 950,
+        "offset_x": 700
+      }
+    },
+    {
+      "kind": "press",
+      "label": "close_assign_jobs",
+      "keys": ["escape"],
+      "settle_seconds": 0.4
+    },
+    {
+      "kind": "press",
+      "label": "close_base_missions",
+      "keys": ["escape"],
+      "settle_seconds": 0.6,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "close_main_menu",
+      "keys": ["escape"],
+      "settle_seconds": 0.6,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_patrol_runtime",
+      "count": 200,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "capture_after_crop": {
+        "height": 576,
+        "width": 589,
+        "offset_y": 950,
+        "offset_x": 666
+      }
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_patrol_runtime_one_dwell_later",
+      "count": 600,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "capture_after_crop": {
+        "height": 576,
+        "width": 589,
+        "offset_y": 950,
+        "offset_x": 666
+      }
+    },
+    {
+      "kind": "press",
+      "label": "open_zones_manager",
+      "keys": ["Y"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "capture_after_crop": {
+        "height": 1000,
+        "width": 400,
+        "offset_y": 0,
+        "offset_x": 2100
+      }
+    }
+  ],
+  "derived_screens": [
+    {
+      "kind": "blink_compare",
+      "label": "runtime_motion_compare",
+      "frames": [
+        "wait_for_patrol_runtime.after.png",
+        "wait_for_patrol_runtime_one_dwell_later.after.png"
+      ],
+      "scale": 2,
+      "frame_delay_ms": 450
+    }
+  ],
+  "recommended_test_command": "./tests/cata_test \"[camp][patrol]\""
+}

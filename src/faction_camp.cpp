@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <climits>
 #include <cmath>
 #include <functional>
@@ -57,6 +58,8 @@
 #include "itype.h"
 #include "kill_tracker.h"
 #include "list.h"
+#include "llm_intent.h"
+#include "llm_prompt_templates.h"
 #include "localized_comparator.h"
 #include "map.h"
 #include "map_iterator.h"
@@ -84,6 +87,7 @@
 #include "player_activity.h"
 #include "point.h"
 #include "recipe.h"
+#include "recipe_dictionary.h"
 #include "recipe_groups.h"
 #include "requirements.h"
 #include "ret_val.h"
@@ -94,6 +98,7 @@
 #include "string_formatter.h"
 #include "translation.h"
 #include "translations.h"
+#include "try_parse_integer.h"
 #include "type_id.h"
 #include "uilist.h"
 #include "ui_manager.h"
@@ -104,9 +109,14 @@
 #include "vpart_position.h"
 #include "weather.h"
 
+using basecamp_ai::parsed_camp_craft_order;
+using basecamp_ai::parsed_camp_request_reference;
+
 static const addiction_id addiction_alcohol( "alcohol" );
 
 static const efftype_id effect_HACK_camp_vision_for_npc( "HACK_camp_vision_for_npc" );
+
+static const zone_type_id zone_type_CAMP_LOCKER( "CAMP_LOCKER" );
 
 static const faction_mission_id faction_mission_camp_clearcut( "camp_clearcut" );
 static const faction_mission_id faction_mission_camp_collect_firewood( "camp_collect_firewood" );
@@ -374,6 +384,12 @@ static std::string mission_ui_activity_of( const mission_id &miss_id )
 
         case Camp_Have_Meal:
             return _( "Have A Meal" );
+
+        case Camp_Requests:
+            return _( "Crafting Requests" );
+
+        case Camp_Locker_Policy:
+            return _( "Locker Policy" );
 
         case Camp_Hide_Mission:
             return _( "Hide Mission(s)" );
@@ -1346,6 +1362,46 @@ void basecamp::get_available_missions( mission_data &mission_key, map &here )
                              entry );
         }
         {
+            const mission_id miss_id = { Camp_Requests, "", {}, base_dir };
+            int active_requests = 0;
+            int archived_requests = 0;
+            for( const camp_llm_request &request : camp_requests ) {
+                if( request.status == "completed" || request.status == "cancelled" ) {
+                    archived_requests++;
+                } else {
+                    active_requests++;
+                }
+            }
+            entry = string_format( _( "Notes:\n"
+                                      "Review the bulletin-board scratchpad for camp crafting requests.\n"
+                                      "Effects:\n"
+                                      "> Inspect request details, recent notes, and assignment state\n"
+                                      "> Recall an active crafter directly from the board\n"
+                                      "> Clear cancelled requests from the board if needed\n\n"
+                                      "Active requests: %d\n"
+                                      "Archived requests: %d\n"
+                                      "Risk: None\n" ),
+                                   active_requests, archived_requests );
+            mission_key.add( { miss_id, false }, name_display_of( miss_id ),
+                             entry );
+        }
+        {
+            const mission_id miss_id = { Camp_Locker_Policy, "", {}, base_dir };
+            entry = string_format( _( "Notes:\n"
+                                      "Choose which loadout slots the camp locker may manage.\n"
+                                      "The locker zone provides the actual gear; this menu only says what kinds of gear are allowed.\n"
+                                      "Effects:\n"
+                                      "> Toggle managed slots like socks, pants, armor, bag, or weapons\n"
+                                      "> Policy survives save/load for this camp\n\n"
+                                      "Enabled slots: %d / %d\n"
+                                      "Locker zone: %s\n"
+                                      "Risk: None\n" ),
+                                   locker_policy.enabled_count(),
+                                   static_cast<int>( all_camp_locker_slots().size() ),
+                                   has_locker_zone() ? _( "defined" ) : _( "not defined yet" ) );
+            mission_key.add( { miss_id, false }, name_display_of( miss_id ), entry );
+        }
+        {
             validate_assignees();
             const mission_id miss_id = { Camp_Assign_Jobs, "", {}, base_dir };
             entry = string_format( _( "Notes:\n"
@@ -1531,6 +1587,3070 @@ void basecamp::player_eats_meal()
     feed_workers( you, dinner, true );
 }
 
+static std::string camp_request_status_label( const camp_llm_request &request )
+{
+    if( request.status == "in_progress" ) {
+        return _( "in progress" );
+    }
+    if( request.status == "completed" ) {
+        return _( "completed" );
+    }
+    if( request.status == "cancelled" ) {
+        return _( "cancelled" );
+    }
+    if( request.status == "blocked" ) {
+        return _( "blocked" );
+    }
+    if( request.status == "awaiting_approval" ) {
+        return _( "awaiting approval" );
+    }
+    return request.status;
+}
+
+static std::string camp_request_approval_label( const camp_llm_request &request )
+{
+    if( request.approval_state == "approved" ) {
+        return _( "approved" );
+    }
+    if( request.approval_state == "waiting_player" ) {
+        return _( "waiting for player" );
+    }
+    if( request.approval_state == "suggested_auto" ) {
+        return _( "suggested auto-start" );
+    }
+    if( request.approval_state == "rejected" ) {
+        return _( "rejected" );
+    }
+    if( request.approval_state == "not_needed" ) {
+        return _( "not needed" );
+    }
+    return request.approval_state;
+}
+
+static std::string camp_request_kind_label( const camp_llm_request &request )
+{
+    if( request.request_kind == "craft_request" ) {
+        return _( "crafting request" );
+    }
+    return request.request_kind;
+}
+
+static std::string camp_request_subject( const camp_llm_request &request )
+{
+    return basecamp_ai::camp_request_subject_for_display( request );
+}
+
+static std::string camp_request_bark_subject( const camp_llm_request &request )
+{
+    return basecamp_ai::camp_request_subject_for_display( request, false, true );
+}
+
+static std::string camp_request_summary_subject( const camp_llm_request &request )
+{
+    return basecamp_ai::camp_request_subject_for_display( request, true );
+}
+
+static std::string camp_request_subject_list( const std::vector<std::string> &subjects );
+
+static std::string camp_request_summary( const camp_llm_request &request )
+{
+    std::string summary = string_format( "#%d %s — %s", request.request_id,
+                                         camp_request_summary_subject( request ),
+                                         camp_request_status_label( request ) );
+    if( !request.assigned_worker_name.empty() ) {
+        summary += string_format( _( " (%s)" ), request.assigned_worker_name );
+    }
+    return summary;
+}
+
+static std::string camp_request_spoken_status( const camp_llm_request &request )
+{
+    return basecamp_ai::camp_request_spoken_status_bark( request );
+}
+
+static void add_camp_request_bark( const npc &speaker, const std::string &text )
+{
+    if( text.empty() ) {
+        return;
+    }
+    add_msg( _( "%1$s says, \"%2$s\"" ), speaker.disp_name(), text );
+}
+
+static void log_camp_request_heard( const npc &speaker, const std::string &utterance )
+{
+    if( utterance.empty() || !get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+        return;
+    }
+    llm_intent::log_event( string_format( "camp heard %1$s (%2$d)\nutterance=%3$s",
+                          speaker.disp_name(), speaker.getID().get_value(), utterance ) );
+}
+
+static void log_camp_request_reply( const npc &speaker, std::string_view utterance,
+                                    std::string_view reply_kind, const std::string &reply_text )
+{
+    if( reply_text.empty() || !get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+        return;
+    }
+    llm_intent::log_event( basecamp_ai::format_camp_reply_log_packet(
+                              reply_kind, utterance, speaker.disp_name(),
+                              speaker.getID().get_value(), reply_text ) );
+}
+
+[[maybe_unused]] static std::string camp_request_queue_bark( const camp_llm_request &request )
+{
+    return string_format( _( "Got it.  Pinned %s." ), camp_request_bark_subject( request ) );
+}
+
+[[maybe_unused]] static std::string camp_request_blocked_bark( const camp_llm_request &request )
+{
+    const bool has_resolved_recipe = !request.chosen_recipe_name.empty() &&
+                                     request.chosen_recipe_name != request.requested_item_query;
+    if( !request.blockers.empty() ) {
+        if( has_resolved_recipe ) {
+            return string_format( _( "Heard you.  %1$s matched %2$s, but it's blocked: %3$s" ),
+                                  camp_request_bark_subject( request ), request.chosen_recipe_name,
+                                  request.blockers.front() );
+        }
+        return string_format( _( "Heard you, but %1$s is blocked: %2$s" ),
+                              camp_request_bark_subject( request ), request.blockers.front() );
+    }
+    if( has_resolved_recipe ) {
+        return string_format( _( "Heard you.  %1$s matched %2$s, but it cannot start yet." ),
+                              camp_request_bark_subject( request ), request.chosen_recipe_name );
+    }
+    return string_format( _( "Heard you, but %s cannot start yet." ),
+                          camp_request_bark_subject( request ) );
+}
+
+[[maybe_unused]] static std::string camp_request_launch_bark( const camp_llm_request &request )
+{
+    return string_format( _( "Got it.  %1$s is crafting %2$s now." ),
+                          request.assigned_worker_name, camp_request_subject( request ) );
+}
+
+static std::string camp_request_cancel_bark( const camp_llm_request &request )
+{
+    return string_format( _( "All right.  Took %s off the board." ), camp_request_bark_subject( request ) );
+}
+
+static std::string camp_request_clear_bark( const camp_llm_request &request )
+{
+    return string_format( _( "Cleared old %s off the board." ), camp_request_bark_subject( request ) );
+}
+
+static std::string camp_request_not_archived_bark( const camp_llm_request &request )
+{
+    return string_format( _( "%1$s is still %2$s.  Cancel it or let it finish first." ),
+                          camp_request_bark_subject( request ), camp_request_status_label( request ) );
+}
+
+[[maybe_unused]] static std::string camp_request_archived_bark( const camp_llm_request &request )
+{
+    return string_format( _( "%1$s is already %2$s.  Clear it if you want it off the board." ),
+                          camp_request_bark_subject( request ), camp_request_status_label( request ) );
+}
+
+static std::string camp_request_ambiguous_bark( std::string_view query,
+        const std::vector<std::string> &matches )
+{
+    return string_format( _( "Need a clearer target for \"%1$s\": %2$s." ),
+                          std::string( query ), camp_request_subject_list( matches ) );
+}
+
+static std::string camp_craft_ambiguous_bark( std::string_view query,
+        const std::vector<std::string> &matches )
+{
+    return string_format( _( "Need a clearer craft order for \"%1$s\": %2$s." ),
+                          std::string( query ), camp_request_subject_list( matches ) );
+}
+
+static std::string camp_craft_no_match_bark( std::string_view query )
+{
+    return string_format( _( "Heard craft order for \"%s\", but the camp could not match it to a known recipe." ),
+                          std::string( query ) );
+}
+
+static std::string camp_craft_resolution_outcome_name(
+    const basecamp_ai::camp_craft_resolution_outcome outcome )
+{
+    switch( outcome ) {
+        case basecamp_ai::camp_craft_resolution_outcome::MATCH_START:
+            return "MATCH_START";
+        case basecamp_ai::camp_craft_resolution_outcome::MATCH_BLOCKED:
+            return "MATCH_BLOCKED";
+        case basecamp_ai::camp_craft_resolution_outcome::MATCH_AMBIGUOUS:
+            return "MATCH_AMBIGUOUS";
+        case basecamp_ai::camp_craft_resolution_outcome::NO_MATCH:
+            break;
+    }
+    return "NO_MATCH";
+}
+
+static void log_camp_craft_trace( const std::string &utterance,
+                                  const basecamp_ai::parsed_camp_craft_order &parsed,
+                                  const size_t known_recipe_count,
+                                  const size_t search_recipe_count,
+                                  const basecamp_ai::camp_craft_resolution &resolution,
+                                  const basecamp_ai::camp_craft_resolution_outcome outcome,
+                                  const std::string &resolved_recipe = std::string(),
+                                  const std::vector<std::string> &blockers = {},
+                                  const int request_id = -1,
+                                  const std::string &request_status = std::string() )
+{
+    const auto join_trace = []( const std::vector<std::string> &parts ) {
+        std::string joined;
+        for( size_t i = 0; i < parts.size(); ++i ) {
+            if( i > 0 ) {
+                joined += " | ";
+            }
+            joined += parts[i];
+        }
+        return joined.empty() ? std::string( "none" ) : joined;
+    };
+
+    const std::string top_matches = join_trace( resolution.match.score_notes );
+    const std::string blocker_text = join_trace( blockers );
+    DebugLog( D_INFO, DC_ALL ) << string_format(
+        "camp_craft_trace heard=\"%1$s\" parsed_query=\"%2$s\" count=%3$d known_recipe_count=%4$d search_recipe_count=%5$d fallback_query=\"%6$s\" top_matches=%7$s resolved_recipe=\"%8$s\" outcome=%9$s blockers=%10$s request_id=%11$d request_status=\"%12$s\"",
+        utterance, parsed.item_query, parsed.count,
+        static_cast<int>( known_recipe_count ), static_cast<int>( search_recipe_count ),
+        resolution.match.fallback_query.empty() ? "none" : resolution.match.fallback_query,
+        top_matches,
+        resolved_recipe.empty() && resolution.choice.has_value() ? resolution.choice->subject : resolved_recipe,
+        camp_craft_resolution_outcome_name( outcome ), blocker_text, request_id,
+        request_status.empty() ? "none" : request_status );
+}
+
+static std::string camp_request_not_found_bark( std::string_view query )
+{
+    return string_format( _( "Nothing on the board matches \"%s\"." ), std::string( query ) );
+}
+
+static std::string camp_request_details( const camp_llm_request &request )
+{
+    std::string details = string_format( _( "Crafting request #%1$d\n"
+                                           "Kind: %2$s\n"
+                                           "Craft order: %3$s\n"
+                                           "Status: %4$s\n" ),
+                                         request.request_id,
+                                         camp_request_kind_label( request ),
+                                         camp_request_subject( request ),
+                                         camp_request_status_label( request ) );
+    if( request.approval_state != "not_needed" ) {
+        details += string_format( _( "Approval: %s\n" ), camp_request_approval_label( request ) );
+    }
+    if( !request.source_utterance.empty() ) {
+        details += string_format( _( "Source utterance: %s\n" ), request.source_utterance );
+    }
+    if( !request.requested_item_query.empty() ) {
+        details += string_format( _( "Heard request: %s\n" ), request.requested_item_query );
+    }
+    if( !request.chosen_recipe_name.empty() ) {
+        details += string_format( _( "Resolved recipe: %s\n" ), request.chosen_recipe_name );
+    }
+    if( !request.chosen_recipe_id.is_empty() ) {
+        details += string_format( _( "Recipe id: %s\n" ), request.chosen_recipe_id.str() );
+    }
+    if( !request.assigned_worker_name.empty() ) {
+        details += string_format( _( "Assigned worker: %s\n" ), request.assigned_worker_name );
+    }
+    if( request.eta_turn > calendar::turn ) {
+        details += string_format( _( "ETA: %s\n" ), to_string( request.eta_turn - calendar::turn ) );
+    }
+    if( !request.blockers.empty() ) {
+        details += _( "Blockers:\n" );
+        for( const std::string &blocker : request.blockers ) {
+            details += string_format( "- %s\n", blocker );
+        }
+    }
+    if( const std::string handoff = basecamp_ai::camp_request_handoff_snapshot( request ); !handoff.empty() ) {
+        details += _( "Deterministic handoff:\n" );
+        details += handoff;
+    }
+    if( !request.notes.empty() ) {
+        details += _( "Recent notes:\n" );
+        const size_t start = request.notes.size() > 4 ? request.notes.size() - 4 : 0;
+        for( size_t idx = start; idx < request.notes.size(); ++idx ) {
+            details += string_format( "- %s\n", request.notes[idx].text );
+        }
+    }
+    return details;
+}
+
+static std::string camp_request_subject_list( const std::vector<std::string> &subjects )
+{
+    constexpr size_t max_listed_subjects = 3;
+    std::string joined;
+    for( size_t idx = 0; idx < subjects.size() && idx < max_listed_subjects; ++idx ) {
+        if( idx > 0 ) {
+            joined += ", ";
+        }
+        joined += subjects[idx];
+    }
+    if( subjects.size() > max_listed_subjects ) {
+        joined += string_format( _( ", and %d more" ), static_cast<int>( subjects.size() - max_listed_subjects ) );
+    }
+    return joined;
+}
+
+static npc_ptr recall_crafting_request_worker( basecamp &camp, const camp_llm_request &request )
+{
+    const comp_list matching_workers = camp.get_mission_workers( request.active_mission_id );
+    const auto worker_it = std::find_if( matching_workers.begin(), matching_workers.end(),
+    [&]( const npc_ptr & comp ) {
+        return comp != nullptr &&
+               basecamp_ai::matches_assigned_camp_request_worker( request, comp->getID(), comp->disp_name() );
+    } );
+    if( worker_it == matching_workers.end() ) {
+        popup( _( "That crafter is no longer available for recall." ) );
+        return nullptr;
+    }
+
+    const npc_ptr &comp = *worker_it;
+    const mission_id active_mission = comp->get_companion_mission().miss_id;
+    const std::string return_msg = _( "responds to the emergency recall…" );
+    camp.finish_return( *comp, false, return_msg, skill_menial.str(), 0, true );
+    camp.cancel_crafting_request( active_mission, *comp,
+                                  string_format( _( "%s was recalled before the craft order was finished." ),
+                                          comp->disp_name() ) );
+    return comp;
+}
+
+struct camp_craft_risk_snapshot {
+    time_duration work_days = 0_turns;
+    int kcal_cost = 0;
+    int kcal_available = 0;
+    int food_days = 0;
+    std::string food_state = "comfortable";
+    bool food_risky = false;
+    bool suggested_auto = false;
+};
+
+static std::string camp_food_margin_state( int food_days )
+{
+    if( food_days <= 0 ) {
+        return "critical";
+    }
+    if( food_days <= 1 ) {
+        return "anxious";
+    }
+    if( food_days <= 3 ) {
+        return "lean";
+    }
+    if( food_days <= 7 ) {
+        return "watchful";
+    }
+    return "comfortable";
+}
+
+static camp_craft_risk_snapshot describe_camp_craft_risk( basecamp &camp, const recipe &making,
+        const npc &worker, int batch_size )
+{
+    camp_craft_risk_snapshot snapshot;
+    snapshot.work_days = base_camps::to_workdays( making.batch_duration( worker, batch_size ) );
+    snapshot.kcal_cost = camp.time_to_food( snapshot.work_days, making.exertion_level() );
+    snapshot.food_days = camp.camp_food_supply_days( NO_EXERCISE );
+    snapshot.kcal_available = snapshot.food_days * camp.time_to_food( 24_hours, NO_EXERCISE );
+    snapshot.food_state = camp_food_margin_state( snapshot.food_days );
+    snapshot.food_risky = snapshot.food_state == "critical" || snapshot.food_state == "anxious";
+
+    const bool short_job = snapshot.work_days <= 8_hours;
+    const bool small_food_draw = snapshot.kcal_cost > 0 &&
+                                 snapshot.kcal_cost * 8 <= std::max( snapshot.kcal_available, 1 );
+    snapshot.suggested_auto = making.result()->phase == phase_id::SOLID &&
+                              !snapshot.food_risky && short_job && small_food_draw;
+    return snapshot;
+}
+
+static std::string camp_craft_food_note( const camp_craft_risk_snapshot &snapshot )
+{
+    if( snapshot.food_state == "critical" ) {
+        return _( "Feasible on paper, but the pantry is about one bad sneeze from empty.  Better to leave this pinned until the food problem eases." );
+    }
+    if( snapshot.food_state == "anxious" ) {
+        return _( "Can do it, but the camp is running anxious on rations.  Best not launch too many comfort jobs blind." );
+    }
+    if( snapshot.food_state == "lean" ) {
+        return _( "Can do it, though the pantry is running lean enough to merit a second look before launch." );
+    }
+    return std::string();
+}
+
+static std::string camp_craft_approval_note( const camp_craft_risk_snapshot &snapshot )
+{
+    if( snapshot.suggested_auto ) {
+        return _( "Routine enough that this one could probably be auto-started without much ceremony." );
+    }
+    if( snapshot.food_risky ) {
+        return _( "Worth keeping on the board for approval first; camp food is already tight." );
+    }
+    if( snapshot.work_days > 8_hours ) {
+        return _( "Big enough job that keeping it pinned for approval first is the sane option." );
+    }
+    return _( "Pinned for approval before anyone burns tools, ingredients, and calories on it." );
+}
+
+struct camp_request_launch_result {
+    std::vector<std::string> started;
+    std::vector<std::string> blocked;
+    std::vector<std::string> pinned;
+};
+
+static std::string camp_request_launch_feedback( const std::vector<std::string> &started,
+        const std::vector<std::string> &blocked,
+        const std::vector<std::string> &pinned )
+{
+    std::string feedback;
+    if( !started.empty() ) {
+        feedback += string_format( _( "Started %1$d: %2$s\n" ), static_cast<int>( started.size() ),
+                                   camp_request_subject_list( started ) );
+    }
+    if( !blocked.empty() ) {
+        feedback += string_format( _( "Blocked %1$d: %2$s\n" ), static_cast<int>( blocked.size() ),
+                                   camp_request_subject_list( blocked ) );
+    }
+    if( !pinned.empty() ) {
+        feedback += string_format( _( "Still pinned %1$d: %2$s\n" ), static_cast<int>( pinned.size() ),
+                                   camp_request_subject_list( pinned ) );
+    }
+    if( feedback.empty() ) {
+        feedback = _( "Nothing changed on the board." );
+    }
+    return feedback;
+}
+
+static camp_request_launch_result attempt_camp_request_launches( const std::vector<int> &launch_ids,
+        const std::function<camp_llm_request *( int )> &find_request,
+        const std::function<void( int )> &approve_request )
+{
+    camp_request_launch_result result;
+    result.started.reserve( launch_ids.size() );
+    result.blocked.reserve( launch_ids.size() );
+    result.pinned.reserve( launch_ids.size() );
+
+    for( const int launch_id : launch_ids ) {
+        camp_llm_request *request = find_request( launch_id );
+        if( request == nullptr ) {
+            continue;
+        }
+        const std::string subject = camp_request_subject( *request );
+        approve_request( launch_id );
+        request = find_request( launch_id );
+        if( request == nullptr ) {
+            continue;
+        }
+        if( request->status == "in_progress" ) {
+            result.started.push_back( subject );
+        } else if( request->status == "blocked" ) {
+            result.blocked.push_back( subject );
+        } else {
+            result.pinned.push_back( subject );
+        }
+    }
+
+    return result;
+}
+
+static bool camp_request_is_archived( const camp_llm_request &request )
+{
+    return request.status == "completed" || request.status == "cancelled";
+}
+
+camp_llm_request *basecamp::find_camp_request( int request_id )
+{
+    auto it = std::find_if( camp_requests.begin(), camp_requests.end(), [request_id]( const camp_llm_request & request ) {
+        return request.request_id == request_id;
+    } );
+    return it == camp_requests.end() ? nullptr : &*it;
+}
+
+camp_llm_request *basecamp::find_active_crafting_request( const mission_id &miss_id,
+        const character_id &worker_id )
+{
+    auto it = std::find_if( camp_requests.rbegin(), camp_requests.rend(), [&]( const camp_llm_request & request ) {
+        return request.status == "in_progress" && request.assigned_worker_npc_id == worker_id &&
+               is_equal( request.active_mission_id, miss_id );
+    } );
+    return it == camp_requests.rend() ? nullptr : &*it;
+}
+
+void basecamp::add_camp_request_note( camp_llm_request &request, const std::string &kind,
+                                      const std::string &text )
+{
+    request.updated_turn = calendar::turn;
+    if( text.empty() ) {
+        return;
+    }
+    request.notes.push_back( camp_llm_note{ kind, text, calendar::turn } );
+}
+
+bool basecamp::can_assign_crafting_worker( const npc &worker, const recipe &making,
+        bool require_available, std::string *reason ) const
+{
+    const auto fail = [&]( const std::string & msg ) {
+        if( reason != nullptr ) {
+            *reason = msg;
+        }
+        return false;
+    };
+
+    if( require_available && worker.has_companion_mission() ) {
+        return fail( _( "is already working on something else" ) );
+    }
+    if( !making.skill_used.is_null() &&
+        worker.get_skill_level( making.skill_used ) < making.get_difficulty( worker ) ) {
+        return fail( _( "lacks necessary skills" ) );
+    }
+    if( !making.character_has_required_proficiencies( worker ) ) {
+        return fail( _( "lacks necessary proficiencies" ) );
+    }
+
+    if( reason != nullptr ) {
+        reason->clear();
+    }
+    return true;
+}
+
+npc_ptr basecamp::resolve_crafting_worker( const recipe &making, int batch_size,
+        const character_id &preferred_worker_id, const std::string &preferred_worker_name,
+        std::string *resolution_note, std::vector<std::string> *blockers )
+{
+    if( resolution_note != nullptr ) {
+        resolution_note->clear();
+    }
+    if( blockers != nullptr ) {
+        blockers->clear();
+    }
+
+    validate_assignees();
+
+    struct worker_candidate {
+        npc_ptr worker;
+        time_duration duration;
+        bool preferred = false;
+    };
+
+    std::vector<worker_candidate> candidates;
+    std::vector<std::string> rejection_reasons;
+    bool preferred_seen = false;
+    bool preferred_eligible = false;
+    std::string preferred_name = preferred_worker_name;
+
+    const auto append_reason = [&]( const std::string & reason ) {
+        if( reason.empty() ) {
+            return;
+        }
+        if( std::find( rejection_reasons.begin(), rejection_reasons.end(), reason ) == rejection_reasons.end() ) {
+            rejection_reasons.push_back( reason );
+        }
+    };
+
+    for( const npc_ptr &guy : assigned_npcs ) {
+        if( guy == nullptr ) {
+            continue;
+        }
+
+        const bool preferred = preferred_worker_id.is_valid() && guy->getID() == preferred_worker_id;
+        if( preferred ) {
+            preferred_seen = true;
+            preferred_name = guy->disp_name();
+        }
+
+        std::string reason;
+        if( !can_assign_crafting_worker( *guy, making, true, &reason ) ) {
+            append_reason( string_format( _( "%1$s %2$s." ), guy->disp_name(), reason ) );
+            continue;
+        }
+
+        candidates.push_back( { guy, base_camps::to_workdays( making.batch_duration( *guy, batch_size ) ), preferred } );
+        preferred_eligible = preferred_eligible || preferred;
+    }
+
+    if( candidates.empty() ) {
+        if( preferred_worker_id.is_valid() && !preferred_seen ) {
+            if( preferred_name.empty() ) {
+                append_reason( _( "Assigned worker is no longer stationed at this camp." ) );
+            } else {
+                append_reason( string_format( _( "%s is no longer stationed at this camp." ), preferred_name ) );
+            }
+        }
+        if( rejection_reasons.empty() ) {
+            rejection_reasons.push_back( _( "No stationed worker can take this recipe right now." ) );
+        }
+        if( blockers != nullptr ) {
+            *blockers = rejection_reasons;
+        }
+        return nullptr;
+    }
+
+    if( preferred_eligible ) {
+        auto preferred_it = std::find_if( candidates.begin(), candidates.end(), []( const worker_candidate & candidate ) {
+            return candidate.preferred;
+        } );
+        if( preferred_it != candidates.end() ) {
+            return preferred_it->worker;
+        }
+    }
+
+    auto best_it = std::min_element( candidates.begin(), candidates.end(), []( const worker_candidate & lhs,
+    const worker_candidate & rhs ) {
+        if( lhs.duration != rhs.duration ) {
+            return lhs.duration < rhs.duration;
+        }
+        return lhs.worker->disp_name() < rhs.worker->disp_name();
+    } );
+
+    if( best_it == candidates.end() ) {
+        return nullptr;
+    }
+
+    if( preferred_worker_id.is_valid() && resolution_note != nullptr ) {
+        if( !preferred_seen ) {
+            if( preferred_name.empty() ) {
+                *resolution_note = string_format( _( "%s took over the work order." ), best_it->worker->disp_name() );
+            } else {
+                *resolution_note = string_format( _( "%1$s was gone, so %2$s took over the work order." ),
+                                                  preferred_name, best_it->worker->disp_name() );
+            }
+        } else if( !preferred_name.empty() ) {
+            *resolution_note = string_format( _( "%1$s could not take the order, so %2$s picked it up instead." ),
+                                              preferred_name, best_it->worker->disp_name() );
+        }
+    }
+
+    return best_it->worker;
+}
+
+std::vector<std::string> basecamp::release_crafting_tools( const recipe &making,
+        const mapgen_arguments &args, int batch_size )
+{
+    map &target_map = get_camp_map();
+    form_storage_zones( target_map, bb_pos );
+    form_crafting_inventory( target_map );
+
+    const auto filter = is_crafting_component;
+    avatar &player_character = get_avatar();
+    const requirement_data *req = nullptr;
+    if( making.is_blueprint() ) {
+        const std::unordered_map<mapgen_arguments, build_reqs> &reqs_map =
+            making.blueprint_build_reqs().reqs_by_parameters;
+        auto req_it = reqs_map.find( args );
+        if( req_it == reqs_map.end() ) {
+            return {};
+        }
+        req = &req_it->second.consolidated_reqs;
+    } else {
+        req = making.deduped_requirements().select_alternative( player_character, _inv, filter, batch_size );
+    }
+    if( req == nullptr ) {
+        return {};
+    }
+
+    const auto drop_abs_pos = get_dumping_spot().raw() == tripoint::zero ? bb_pos : get_dumping_spot();
+    const tripoint_bub_ms drop_pos = target_map.get_bub( drop_abs_pos );
+    std::vector<std::string> released_notes;
+    bool released_any = false;
+
+    while( true ) {
+        std::set<itype_id> missing_tools;
+        for( const std::vector<tool_comp> &alternatives : req->get_tools() ) {
+            const bool satisfied = std::any_of( alternatives.begin(), alternatives.end(),
+            [&]( const tool_comp & tool ) {
+                return tool.has( _inv, filter, batch_size );
+            } );
+            if( satisfied ) {
+                continue;
+            }
+            for( const tool_comp &tool : alternatives ) {
+                if( !tool.type.is_empty() ) {
+                    missing_tools.insert( tool.type );
+                }
+            }
+        }
+
+        std::vector<quality_requirement> missing_qualities;
+        for( const std::vector<quality_requirement> &alternatives : req->get_qualities() ) {
+            const bool satisfied = std::any_of( alternatives.begin(), alternatives.end(),
+            [&]( const quality_requirement & quality ) {
+                return quality.has( _inv, filter, batch_size );
+            } );
+            if( !satisfied ) {
+                missing_qualities.insert( missing_qualities.end(), alternatives.begin(), alternatives.end() );
+            }
+        }
+
+        if( missing_tools.empty() && missing_qualities.empty() ) {
+            break;
+        }
+
+        bool released_this_round = false;
+        validate_assignees();
+        for( const npc_ptr &guy : assigned_npcs ) {
+            if( guy == nullptr || guy->has_companion_mission() ) {
+                continue;
+            }
+
+            auto matches_missing_tool = [&]( const item & candidate ) {
+                if( missing_tools.find( candidate.typeId() ) != missing_tools.end() ) {
+                    return true;
+                }
+                if( !candidate.is_tool() && !candidate.is_container() ) {
+                    return false;
+                }
+                return std::any_of( missing_qualities.begin(), missing_qualities.end(),
+                [&]( const quality_requirement & quality ) {
+                    return candidate.get_quality( quality.type ) >= quality.level;
+                } );
+            };
+
+            std::vector<item *> carried = guy->inv_dump();
+            auto carried_it = std::find_if( carried.begin(), carried.end(), [&]( item * candidate ) {
+                return candidate != nullptr && matches_missing_tool( *candidate );
+            } );
+            if( carried_it == carried.end() ) {
+                continue;
+            }
+
+            item released = guy->remove_item( **carried_it );
+            const std::string released_name = released.tname();
+            target_map.add_item_or_charges( drop_pos, std::move( released ) );
+            released_notes.push_back( string_format( _( "%1$s turned over %2$s to camp stock." ),
+                                                     guy->disp_name(), released_name ) );
+            released_any = true;
+            released_this_round = true;
+            form_crafting_inventory( target_map );
+            break;
+        }
+
+        if( !released_this_round ) {
+            break;
+        }
+    }
+
+    if( released_any ) {
+        target_map.save();
+        form_crafting_inventory( target_map );
+    }
+
+    return released_notes;
+}
+
+namespace
+{
+
+static std::string normalize_camp_request_text( std::string_view text )
+{
+    std::string out;
+    out.reserve( text.size() );
+    bool last_space = true;
+    for( const char ch : text ) {
+        const unsigned char uch = static_cast<unsigned char>( ch );
+        if( std::isalnum( uch ) ) {
+            out.push_back( static_cast<char>( std::tolower( uch ) ) );
+            last_space = false;
+        } else if( !last_space ) {
+            out.push_back( ' ' );
+            last_space = true;
+        }
+    }
+    while( !out.empty() && out.back() == ' ' ) {
+        out.pop_back();
+    }
+    if( !out.empty() && out.front() == ' ' ) {
+        out.erase( 0, out.find_first_not_of( ' ' ) );
+    }
+    return out;
+}
+
+static bool consume_camp_request_prefix( std::string &text, const std::string_view prefix )
+{
+    if( text.size() < prefix.size() || text.compare( 0, prefix.size(), prefix ) != 0 ) {
+        return false;
+    }
+    text.erase( 0, prefix.size() );
+    while( !text.empty() && text.front() == ' ' ) {
+        text.erase( text.begin() );
+    }
+    return true;
+}
+
+static bool strip_camp_request_suffix( std::string &text, const std::string_view suffix )
+{
+    if( text.size() < suffix.size() || text.compare( text.size() - suffix.size(), suffix.size(), suffix ) != 0 ) {
+        return false;
+    }
+    text.erase( text.size() - suffix.size() );
+    while( !text.empty() && text.back() == ' ' ) {
+        text.pop_back();
+    }
+    return true;
+}
+
+static void strip_camp_request_articles( std::string &text )
+{
+    while( consume_camp_request_prefix( text, "the " ) ||
+           consume_camp_request_prefix( text, "some " ) ||
+           consume_camp_request_prefix( text, "a " ) ||
+           consume_camp_request_prefix( text, "an " ) ) {
+    }
+}
+
+static int parse_camp_count_word( std::string_view token )
+{
+    static const std::vector<std::pair<std::string_view, int>> word_numbers = {
+        { "one", 1 }, { "two", 2 },   { "three", 3 }, { "four", 4 }, { "five", 5 },
+        { "six", 6 }, { "seven", 7 }, { "eight", 8 }, { "nine", 9 }, { "ten", 10 }
+    };
+    const auto it = std::find_if( word_numbers.begin(), word_numbers.end(), [&]( const auto & entry ) {
+        return entry.first == token;
+    } );
+    return it == word_numbers.end() ? 0 : it->second;
+}
+
+static void strip_camp_request_polite_prefixes( std::string &text )
+{
+    while( consume_camp_request_prefix( text, "please " ) ||
+           consume_camp_request_prefix( text, "hey " ) ||
+           consume_camp_request_prefix( text, "ok " ) ||
+           consume_camp_request_prefix( text, "okay " ) ) {
+    }
+}
+
+static void strip_camp_request_leading_prompt( std::string &text )
+{
+    bool changed = true;
+    while( changed ) {
+        const std::string before = text;
+        strip_camp_request_polite_prefixes( text );
+        consume_camp_request_prefix( text, "can you " ) ||
+        consume_camp_request_prefix( text, "could you " ) ||
+        consume_camp_request_prefix( text, "would you " ) ||
+        consume_camp_request_prefix( text, "will you " );
+        changed = text != before;
+    }
+}
+
+static void strip_camp_request_board_reference( std::string &text )
+{
+    while( consume_camp_request_prefix( text, "that " ) ||
+           consume_camp_request_prefix( text, "the " ) ) {
+    }
+    while( consume_camp_request_prefix( text, "plan for " ) ||
+           consume_camp_request_prefix( text, "work order for " ) ||
+           consume_camp_request_prefix( text, "order for " ) ||
+           consume_camp_request_prefix( text, "request for " ) ||
+           consume_camp_request_prefix( text, "job for " ) ||
+           consume_camp_request_prefix( text, "plan " ) ||
+           consume_camp_request_prefix( text, "work order " ) ||
+           consume_camp_request_prefix( text, "order " ) ||
+           consume_camp_request_prefix( text, "request " ) ||
+           consume_camp_request_prefix( text, "job " ) ) {
+    }
+    strip_camp_request_articles( text );
+}
+
+static std::optional<int> parse_camp_request_id_reference( std::string text )
+{
+    while( consume_camp_request_prefix( text, "number " ) ||
+           consume_camp_request_prefix( text, "id " ) ) {
+    }
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+    if( !std::all_of( text.begin(), text.end(), []( const char ch ) {
+        return std::isdigit( static_cast<unsigned char>( ch ) );
+    } ) ) {
+        return std::nullopt;
+    }
+    return std::stoi( text );
+}
+
+static std::optional<int> parse_camp_signed_int( std::string_view raw_text )
+{
+    const std::string text = trim( raw_text );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    const ret_val<int> parsed = try_parse_integer<int>( text, false );
+    if( !parsed.success() ) {
+        return std::nullopt;
+    }
+    return parsed.value();
+}
+
+static basecamp_ai::parsed_camp_request_reference finalize_camp_request_reference( std::string text,
+        bool allow_all_requests )
+{
+    strip_camp_request_board_reference( text );
+    strip_camp_request_suffix( text, " please" );
+
+    basecamp_ai::parsed_camp_request_reference result;
+    if( allow_all_requests && ( text == "all" || text == "them" || text == "everything" ||
+                                text == "all of them" || text == "all work orders" ||
+                                text == "all requests" || text == "all jobs" ||
+                                text == "all ready work orders" ||
+                                text == "all ready orders" ||
+                                text == "all ready requests" ||
+                                text == "all ready jobs" ) ) {
+        result.all_requests = true;
+        return result;
+    }
+
+    if( const std::optional<int> request_id = parse_camp_request_id_reference( text ) ) {
+        result.request_id = *request_id;
+        result.has_request_id = true;
+    } else {
+        result.query = text;
+    }
+    return result;
+}
+
+} // namespace
+
+namespace basecamp_ai
+{
+
+bool uses_basecamp_request_routing( const npc &hearer )
+{
+    if( !hearer.assigned_camp.has_value() ) {
+        return false;
+    }
+
+    if( hearer.is_walking_with() || hearer.mission == NPC_MISSION_GUARD_ALLY ) {
+        return false;
+    }
+
+    if( hearer.companion_mission_role_id == "FACTION_CAMP" ) {
+        return true;
+    }
+
+    return hearer.mission == NPC_MISSION_NULL ||
+           hearer.mission == NPC_MISSION_GUARD ||
+           hearer.mission == NPC_MISSION_GUARD_PATROL;
+}
+
+std::string camp_request_subject_for_display( const camp_llm_request &request,
+        bool include_resolved_recipe, bool include_request_id )
+{
+    const std::string item_name = !request.requested_item_query.empty() ? request.requested_item_query :
+                                  request.chosen_recipe_name;
+    std::string subject;
+    if( item_name.empty() ) {
+        subject = _( "crafting request" );
+    } else if( request.requested_count > 0 ) {
+        subject = string_format( _( "%1$d × %2$s" ), request.requested_count, item_name );
+    } else {
+        subject = item_name;
+    }
+
+    if( include_resolved_recipe && !request.requested_item_query.empty() &&
+        !request.chosen_recipe_name.empty() && request.chosen_recipe_name != request.requested_item_query ) {
+        subject += string_format( _( " (matched %s)" ), request.chosen_recipe_name );
+    }
+
+    if( include_request_id && request.request_id > 0 ) {
+        subject += string_format( _( " (#%d)" ), request.request_id );
+    }
+
+    return subject;
+}
+
+static constexpr const char *basecamp_craft_handoff_snapshot_filename =
+    "basecamp_craft_handoff_snapshot.txt";
+static constexpr const char *basecamp_board_handoff_snapshot_filename =
+    "basecamp_board_handoff_snapshot.txt";
+static constexpr const char *basecamp_board_handoff_job_line_filename =
+    "basecamp_board_handoff_job_line.txt";
+static constexpr const char *llm_prompt_readme_filename = "README.txt";
+static constexpr int basecamp_board_snapshot_radius = 2;
+
+static bool camp_request_is_archived_for_handoff( const camp_llm_request &request )
+{
+    return request.status == "completed" || request.status == "cancelled";
+}
+
+static std::string camp_request_next_token( const camp_llm_request &request )
+{
+    if( request.request_id <= 0 ) {
+        return "none";
+    }
+    return string_format( camp_request_is_archived_for_handoff( request ) ? "delete_job=%d" : "job=%d",
+                          request.request_id );
+}
+
+static std::string camp_request_details_token( const camp_llm_request &request )
+{
+    return request.request_id > 0 ? string_format( "show_job=%d", request.request_id ) : "none";
+}
+
+static std::string default_basecamp_craft_handoff_snapshot_template()
+{
+    return R"(board=show_board
+details={{details_token}}
+id={{request_id}}
+query={{query}}
+count={{count}}
+source={{source_utterance}}
+request={{request_subject}}
+recipe={{resolved_recipe}}
+status={{status}}
+approval={{approval_state}}
+worker={{worker}}
+blockers={{blockers}}
+next={{next_token}}
+)";
+}
+
+static std::string default_basecamp_board_handoff_snapshot_template()
+{
+    return R"(active={{active_count}}
+archived={{archived_count}}
+{{jobs}})";
+}
+
+static std::string basecamp_board_planning_snapshot( const tripoint_abs_omt &origin )
+{
+    std::string overmap_snapshot;
+    std::string error;
+    if( !format_overmap_snapshot( origin, basecamp_board_snapshot_radius, overmap_snapshot, error ) ) {
+        return string_format( "planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>\novermap=unavailable (%s)\n",
+                              error );
+    }
+
+    return string_format( "planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>\novermap:\n%s",
+                          overmap_snapshot );
+}
+
+static std::string default_basecamp_board_handoff_job_line_template()
+{
+    return R"(job={{job_id}} subject={{request_subject}} status={{status}} approval={{approval_state}} worker={{worker}} details={{details_token}} next={{next_token}}
+)";
+}
+
+std::string camp_request_handoff_snapshot( const camp_llm_request &request )
+{
+    if( request.request_kind != "craft_request" ) {
+        return std::string();
+    }
+
+    const auto join_fields = []( const std::vector<std::string> &parts ) {
+        std::string joined;
+        for( size_t idx = 0; idx < parts.size(); ++idx ) {
+            if( idx > 0 ) {
+                joined += "; ";
+            }
+            joined += parts[idx];
+        }
+        return joined;
+    };
+
+    const std::string query = request.requested_item_query.empty() ? "none" :
+                              request.requested_item_query;
+    const std::string source_utterance = request.source_utterance.empty() ? "none" :
+                                         request.source_utterance;
+    const std::string request_subject = camp_request_subject_for_display( request );
+    const std::string resolved_recipe = request.chosen_recipe_name.empty() ? "none" :
+                                        request.chosen_recipe_name;
+    const std::string worker = request.assigned_worker_name.empty() ? "none" :
+                               request.assigned_worker_name;
+    const std::string blockers = request.blockers.empty() ? "none" :
+                                 join_fields( request.blockers );
+    const std::string details_token = camp_request_details_token( request );
+    const std::string next_token = camp_request_next_token( request );
+
+    const std::string templ = llm_prompt_templates::load( basecamp_craft_handoff_snapshot_filename,
+                              default_basecamp_craft_handoff_snapshot_template(),
+    { "{{request_id}}", "{{details_token}}", "{{query}}", "{{count}}",
+      "{{source_utterance}}", "{{request_subject}}", "{{resolved_recipe}}",
+      "{{status}}", "{{approval_state}}", "{{worker}}", "{{blockers}}",
+      "{{next_token}}" },
+    { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
+      basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
+
+    return llm_prompt_templates::render( templ,
+    {
+        { "{{request_id}}", std::to_string( request.request_id ) },
+        { "{{details_token}}", details_token },
+        { "{{query}}", query },
+        { "{{count}}", std::to_string( request.requested_count ) },
+        { "{{source_utterance}}", source_utterance },
+        { "{{request_subject}}", request_subject },
+        { "{{resolved_recipe}}", resolved_recipe },
+        { "{{status}}", request.status },
+        { "{{approval_state}}", request.approval_state },
+        { "{{worker}}", worker },
+        { "{{blockers}}", blockers },
+        { "{{next_token}}", next_token }
+    } );
+}
+
+std::string camp_request_spoken_status_bark( const camp_llm_request &request )
+{
+    const bool include_matched_recipe = request.status == "blocked" &&
+                                        !request.chosen_recipe_name.empty() &&
+                                        request.chosen_recipe_name != request.requested_item_query;
+    const std::string subject = camp_request_subject_for_display( request, include_matched_recipe, true );
+
+    if( request.status == "blocked" ) {
+        if( !request.blockers.empty() ) {
+            return string_format( _( "%1$s is blocked — %2$s" ), subject, request.blockers.front() );
+        }
+        return string_format( _( "%s is blocked for now." ), subject );
+    }
+    if( request.status == "in_progress" ) {
+        std::string spoken = request.assigned_worker_name.empty() ?
+                             string_format( _( "%s is underway." ), subject ) :
+                             string_format( _( "%1$s is underway with %2$s." ), subject,
+                                     request.assigned_worker_name );
+        if( request.eta_turn > calendar::turn ) {
+            spoken += string_format( _( " ETA %s." ), to_string( request.eta_turn - calendar::turn ) );
+        }
+        return spoken;
+    }
+    if( request.status == "awaiting_approval" && request.approval_state == "suggested_auto" ) {
+        return string_format( _( "%s is pinned and looks routine." ), subject );
+    }
+    if( request.status == "awaiting_approval" ) {
+        return string_format( _( "%s is pinned, waiting on your go-ahead." ), subject );
+    }
+    if( request.status == "completed" ) {
+        return string_format( _( "%s is done." ), subject );
+    }
+    if( request.status == "cancelled" ) {
+        return string_format( _( "%s is cancelled." ), subject );
+    }
+    if( request.status.empty() ) {
+        return string_format( _( "%s is still on the board." ), subject );
+    }
+    return string_format( _( "%1$s is %2$s." ), subject, request.status );
+}
+
+std::string camp_board_status_bark( const std::vector<camp_llm_request> &requests )
+{
+    if( requests.empty() ) {
+        return _( "Board's empty." );
+    }
+
+    std::vector<std::string> active_subjects;
+    active_subjects.reserve( requests.size() );
+    int archived_requests = 0;
+    for( const camp_llm_request &request : requests ) {
+        if( camp_request_is_archived_for_handoff( request ) ) {
+            ++archived_requests;
+        } else {
+            active_subjects.push_back( camp_request_subject_for_display( request ) );
+        }
+    }
+
+    if( active_subjects.empty() ) {
+        return string_format( _( "Board's quiet — nothing live, %d old requests still hanging there." ),
+                              archived_requests );
+    }
+
+    return string_format( _( "Board's got %1$d live and %2$d old — %3$s." ),
+                          static_cast<int>( active_subjects.size() ), archived_requests,
+                          camp_request_subject_list( active_subjects ) );
+}
+
+static std::string camp_board_handoff_snapshot_body( const std::vector<camp_llm_request> &requests )
+{
+    const std::string board_templ = llm_prompt_templates::load( basecamp_board_handoff_snapshot_filename,
+                                    default_basecamp_board_handoff_snapshot_template(),
+    { "{{planning_snapshot}}", "{{active_count}}", "{{archived_count}}", "{{jobs}}" },
+    { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
+      basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
+    const std::string job_templ = llm_prompt_templates::load( basecamp_board_handoff_job_line_filename,
+                                  default_basecamp_board_handoff_job_line_template(),
+    { "{{job_id}}", "{{request_subject}}", "{{status}}", "{{approval_state}}",
+      "{{worker}}", "{{details_token}}", "{{next_token}}" },
+    { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
+      basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
+
+    int active_requests = 0;
+    int archived_requests = 0;
+    std::string jobs;
+    for( const camp_llm_request &request : requests ) {
+        if( request.request_kind != "craft_request" ) {
+            continue;
+        }
+
+        if( camp_request_is_archived_for_handoff( request ) ) {
+            ++archived_requests;
+        } else {
+            ++active_requests;
+        }
+
+        jobs += llm_prompt_templates::render( job_templ,
+        {
+            { "{{job_id}}", std::to_string( request.request_id ) },
+            { "{{request_subject}}", camp_request_subject_for_display( request, true ) },
+            { "{{status}}", request.status },
+            { "{{approval_state}}", request.approval_state },
+            { "{{worker}}", request.assigned_worker_name.empty() ? "none" : request.assigned_worker_name },
+            { "{{details_token}}", camp_request_details_token( request ) },
+            { "{{next_token}}", camp_request_next_token( request ) }
+        } );
+    }
+
+    return llm_prompt_templates::render( board_templ,
+    {
+        { "{{planning_snapshot}}", std::string() },
+        { "{{active_count}}", std::to_string( active_requests ) },
+        { "{{archived_count}}", std::to_string( archived_requests ) },
+        { "{{jobs}}", jobs.empty() ? "jobs=none\n" : jobs }
+    } );
+}
+
+std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &requests )
+{
+    return string_format( "board=show_board\n%s", camp_board_handoff_snapshot_body( requests ) );
+}
+
+std::string camp_board_handoff_snapshot( const tripoint_abs_omt &origin,
+        const std::vector<camp_llm_request> &requests )
+{
+    return string_format( "board=show_board\n%s%s", basecamp_board_planning_snapshot( origin ),
+                          camp_board_handoff_snapshot_body( requests ) );
+}
+
+std::string format_camp_reply_log_packet( std::string_view reply_kind,
+        std::string_view heard_token, std::string_view speaker_name,
+        int speaker_id, const std::string &reply_text )
+{
+    std::string packet = string_format( "camp %1$s reply %2$s (%3$d)\nheard=%4$s\nreply_begin\n",
+                                        std::string( reply_kind ),
+                                        std::string( speaker_name ),
+                                        speaker_id,
+                                        std::string( heard_token ) );
+    packet += reply_text;
+    if( packet.empty() || packet.back() != '\n' ) {
+        packet += '\n';
+    }
+    packet += "reply_end";
+    return packet;
+}
+
+static std::optional<parsed_camp_craft_order> parse_camp_craft_order_payload( std::string text )
+{
+    strip_camp_request_articles( text );
+    strip_camp_request_suffix( text, " please" );
+
+    int count = 1;
+    size_t token_end = text.find( ' ' );
+    const std::string first_token = token_end == std::string::npos ? text : text.substr( 0, token_end );
+    bool consumed_count = false;
+    if( !first_token.empty() && std::all_of( first_token.begin(), first_token.end(), []( const char ch ) {
+        return std::isdigit( static_cast<unsigned char>( ch ) );
+    } ) ) {
+        count = std::max( std::stoi( first_token ), 1 );
+        consumed_count = true;
+    } else {
+        const int parsed_count = parse_camp_count_word( first_token );
+        if( parsed_count > 0 ) {
+            count = parsed_count;
+            consumed_count = true;
+        }
+    }
+    if( consumed_count ) {
+        text = token_end == std::string::npos ? std::string() : text.substr( token_end + 1 );
+    }
+
+    strip_camp_request_articles( text );
+    strip_camp_request_suffix( text, " please" );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+    return basecamp_ai::parsed_camp_craft_order{ text, count };
+}
+
+std::optional<parsed_camp_craft_order> parse_heard_camp_craft_order( std::string_view utterance )
+{
+    std::string text = normalize_camp_request_text( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_leading_prompt( text );
+
+    bool matched_prefix = false;
+    for( const std::string_view prefix : {
+             std::string_view( "craft " ),
+             std::string_view( "can you craft " ), std::string_view( "could you craft " ),
+             std::string_view( "would you craft " ), std::string_view( "will you craft " ) } ) {
+        if( consume_camp_request_prefix( text, prefix ) ) {
+            matched_prefix = true;
+            break;
+        }
+    }
+    if( !matched_prefix ) {
+        return std::nullopt;
+    }
+
+    while( consume_camp_request_prefix( text, "me " ) ||
+           consume_camp_request_prefix( text, "us " ) ||
+           consume_camp_request_prefix( text, "for me " ) ||
+           consume_camp_request_prefix( text, "for us " ) ) {
+    }
+
+    return parse_camp_craft_order_payload( text );
+}
+
+std::optional<parsed_camp_craft_order> parse_structured_camp_craft_order( std::string_view utterance )
+{
+    std::string text = trim( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+    std::transform( text.begin(), text.end(), text.begin(), []( unsigned char ch ) {
+        return static_cast<char>( std::tolower( ch ) );
+    } );
+
+    static constexpr std::string_view craft_prefix = "craft=";
+    if( text.compare( 0, craft_prefix.size(), craft_prefix ) != 0 ) {
+        return std::nullopt;
+    }
+
+    return parse_camp_craft_order_payload( trim( std::string_view( text ).substr( craft_prefix.size() ) ) );
+}
+
+std::optional<parsed_camp_job_token> parse_structured_camp_job_token( std::string_view utterance )
+{
+    std::string text = trim( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+    std::transform( text.begin(), text.end(), text.begin(), []( unsigned char ch ) {
+        return static_cast<char>( std::tolower( ch ) );
+    } );
+
+    if( text == "show_board" ) {
+        return parsed_camp_job_token{ camp_job_token_kind::show_board, 0 };
+    }
+    if( text == "launch_ready_jobs" ) {
+        return parsed_camp_job_token{ camp_job_token_kind::launch_ready_jobs, 0 };
+    }
+    if( text == "retry_blocked_jobs" ) {
+        return parsed_camp_job_token{ camp_job_token_kind::retry_blocked_jobs, 0 };
+    }
+    if( text == "clear_archived_jobs" ) {
+        return parsed_camp_job_token{ camp_job_token_kind::clear_archived_jobs, 0 };
+    }
+
+    static constexpr std::string_view show_prefix = "show_job=";
+    static constexpr std::string_view job_prefix = "job=";
+    static constexpr std::string_view delete_prefix = "delete_job=";
+    camp_job_token_kind kind;
+    std::string_view id_text;
+    if( text.compare( 0, show_prefix.size(), show_prefix ) == 0 ) {
+        kind = camp_job_token_kind::show_job;
+        id_text = std::string_view( text ).substr( show_prefix.size() );
+    } else if( text.compare( 0, delete_prefix.size(), delete_prefix ) == 0 ) {
+        kind = camp_job_token_kind::delete_job;
+        id_text = std::string_view( text ).substr( delete_prefix.size() );
+    } else if( text.compare( 0, job_prefix.size(), job_prefix ) == 0 ) {
+        kind = camp_job_token_kind::act_on_job;
+        id_text = std::string_view( text ).substr( job_prefix.size() );
+    } else {
+        return std::nullopt;
+    }
+
+    const std::optional<int> request_id = parse_camp_signed_int( id_text );
+    if( !request_id.has_value() || *request_id <= 0 ) {
+        return std::nullopt;
+    }
+
+    return parsed_camp_job_token{ kind, *request_id };
+}
+
+std::optional<parsed_camp_request_reference> parse_heard_camp_clear_query( std::string_view utterance )
+{
+    std::string text = normalize_camp_request_text( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_leading_prompt( text );
+
+    bool matched_prefix = false;
+    for( const std::string_view prefix : {
+             std::string_view( "clear " ), std::string_view( "erase " ),
+             std::string_view( "remove " ), std::string_view( "clean up " ),
+             std::string_view( "can you clear " ), std::string_view( "could you clear " ),
+             std::string_view( "would you clear " ), std::string_view( "will you clear " ),
+             std::string_view( "can you erase " ), std::string_view( "could you erase " ),
+             std::string_view( "would you erase " ), std::string_view( "will you erase " ),
+             std::string_view( "can you remove " ), std::string_view( "could you remove " ),
+             std::string_view( "would you remove " ), std::string_view( "will you remove " ) } ) {
+        if( consume_camp_request_prefix( text, prefix ) ) {
+            matched_prefix = true;
+            break;
+        }
+    }
+    if( !matched_prefix ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_suffix( text, " please" );
+
+    std::string archive_target = text;
+    strip_camp_request_articles( archive_target );
+    if( archive_target == "archived requests" || archive_target == "archived work orders" ||
+        archive_target == "archived jobs" || archive_target == "completed requests" ||
+        archive_target == "completed work orders" || archive_target == "completed jobs" ||
+        archive_target == "cancelled requests" || archive_target == "cancelled work orders" ||
+        archive_target == "cancelled jobs" || archive_target == "old paperwork" ||
+        archive_target == "archived paperwork" || archive_target == "completed paperwork" ||
+        archive_target == "cancelled paperwork" || archive_target == "paperwork" ) {
+        basecamp_ai::parsed_camp_request_reference result;
+        result.all_requests = true;
+        return result;
+    }
+
+    basecamp_ai::parsed_camp_request_reference result = finalize_camp_request_reference( text, false );
+    if( !result.has_request_id && result.query.empty() ) {
+        return std::nullopt;
+    }
+    return result;
+}
+
+std::optional<parsed_camp_request_reference> parse_heard_camp_cancel_query( std::string_view utterance )
+{
+    std::string text = normalize_camp_request_text( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_leading_prompt( text );
+
+    bool matched_prefix = false;
+    for( const std::string_view prefix : {
+             std::string_view( "cancel " ), std::string_view( "scrap " ),
+             std::string_view( "drop " ), std::string_view( "forget " ),
+             std::string_view( "can you cancel " ), std::string_view( "could you cancel " ),
+             std::string_view( "would you cancel " ), std::string_view( "will you cancel " ) } ) {
+        if( consume_camp_request_prefix( text, prefix ) ) {
+            matched_prefix = true;
+            break;
+        }
+    }
+    if( !matched_prefix ) {
+        return std::nullopt;
+    }
+
+    basecamp_ai::parsed_camp_request_reference result = finalize_camp_request_reference( text, false );
+    if( !result.has_request_id && result.query.empty() ) {
+        return std::nullopt;
+    }
+    return result;
+}
+
+std::optional<parsed_camp_request_reference> parse_heard_camp_approval_query( std::string_view utterance )
+{
+    std::string text = normalize_camp_request_text( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_leading_prompt( text );
+
+    bool matched_prefix = false;
+    for( const std::string_view prefix : {
+             std::string_view( "approve " ), std::string_view( "launch " ),
+             std::string_view( "retry " ), std::string_view( "resume " ),
+             std::string_view( "kick off " ), std::string_view( "go ahead with " ),
+             std::string_view( "go ahead on " ), std::string_view( "can you approve " ),
+             std::string_view( "could you approve " ), std::string_view( "would you approve " ),
+             std::string_view( "will you approve " ), std::string_view( "can you launch " ),
+             std::string_view( "could you launch " ), std::string_view( "would you launch " ),
+             std::string_view( "will you launch " ), std::string_view( "can you retry " ),
+             std::string_view( "could you retry " ), std::string_view( "would you retry " ),
+             std::string_view( "will you retry " ) } ) {
+        if( consume_camp_request_prefix( text, prefix ) ) {
+            matched_prefix = true;
+            break;
+        }
+    }
+    if( !matched_prefix ) {
+        return std::nullopt;
+    }
+
+    std::string batch_target = text;
+    strip_camp_request_suffix( batch_target, " please" );
+    strip_camp_request_articles( batch_target );
+    if( batch_target == "all blocked work orders" || batch_target == "all blocked orders" ||
+        batch_target == "all blocked requests" || batch_target == "all blocked jobs" ) {
+        basecamp_ai::parsed_camp_request_reference result;
+        result.all_blocked_requests = true;
+        return result;
+    }
+
+    basecamp_ai::parsed_camp_request_reference result = finalize_camp_request_reference( text, true );
+    if( !result.all_requests && !result.all_blocked_requests && !result.has_request_id &&
+        result.query.empty() ) {
+        return std::nullopt;
+    }
+    return result;
+}
+
+std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std::string_view utterance )
+{
+    std::string text = normalize_camp_request_text( utterance );
+    if( text.empty() ) {
+        return std::nullopt;
+    }
+
+    strip_camp_request_leading_prompt( text );
+
+    for( const std::string_view exact : {
+             std::string_view( "what s on the board" ),
+             std::string_view( "what is on the board" ),
+             std::string_view( "what s on the request board" ),
+             std::string_view( "what is on the request board" ),
+             std::string_view( "show the board" ),
+             std::string_view( "show me the board" ),
+             std::string_view( "check the board" ),
+             std::string_view( "read the board" ),
+             std::string_view( "board status" ),
+             std::string_view( "camp board status" ),
+             std::string_view( "any work orders" ),
+             std::string_view( "any requests" ),
+             std::string_view( "what requests do we have" ),
+             std::string_view( "do we have any work orders" ) } ) {
+        if( text == exact ) {
+            basecamp_ai::parsed_camp_request_reference result;
+            result.all_requests = true;
+            return result;
+        }
+    }
+
+    bool matched_prefix = false;
+    for( const std::string_view prefix : {
+             std::string_view( "status of " ), std::string_view( "status for " ),
+             std::string_view( "what s the status of " ),
+             std::string_view( "what is the status of " ),
+             std::string_view( "show me the status of " ),
+             std::string_view( "show the status of " ),
+             std::string_view( "read off the status of " ) } ) {
+        if( consume_camp_request_prefix( text, prefix ) ) {
+            matched_prefix = true;
+            break;
+        }
+    }
+    if( !matched_prefix ) {
+        return std::nullopt;
+    }
+
+    basecamp_ai::parsed_camp_request_reference result = finalize_camp_request_reference( text, false );
+    if( !result.has_request_id && result.query.empty() ) {
+        result.all_requests = true;
+    }
+    return result;
+}
+
+std::vector<int> collect_ready_camp_request_ids( const std::vector<camp_llm_request> &requests )
+{
+    std::vector<int> ready_ids;
+    ready_ids.reserve( requests.size() );
+    for( const camp_llm_request &request : requests ) {
+        if( request.status == "awaiting_approval" ) {
+            ready_ids.push_back( request.request_id );
+        }
+    }
+    return ready_ids;
+}
+
+std::vector<int> collect_blocked_camp_request_ids( const std::vector<camp_llm_request> &requests )
+{
+    std::vector<int> blocked_ids;
+    blocked_ids.reserve( requests.size() );
+    for( const camp_llm_request &request : requests ) {
+        if( request.status == "blocked" ) {
+            blocked_ids.push_back( request.request_id );
+        }
+    }
+    return blocked_ids;
+}
+
+std::vector<int> collect_archived_camp_request_ids( const std::vector<camp_llm_request> &requests )
+{
+    std::vector<int> archived_ids;
+    archived_ids.reserve( requests.size() );
+    for( const camp_llm_request &request : requests ) {
+        if( request.status == "completed" || request.status == "cancelled" ) {
+            archived_ids.push_back( request.request_id );
+        }
+    }
+    return archived_ids;
+}
+
+bool matches_assigned_camp_request_worker( const camp_llm_request &request,
+        const character_id &worker_id, std::string_view worker_name )
+{
+    if( request.assigned_worker_npc_id.is_valid() ) {
+        return request.assigned_worker_npc_id == worker_id;
+    }
+    if( !request.assigned_worker_name.empty() ) {
+        return request.assigned_worker_name == worker_name;
+    }
+    return false;
+}
+
+bool parse_relative_omt_delta( std::string_view dx_text, std::string_view dy_text,
+                               point_rel_omt &delta, std::string &error )
+{
+    delta = point_rel_omt::zero;
+    error.clear();
+
+    const std::optional<int> parsed_dx = parse_camp_signed_int( dx_text );
+    if( !parsed_dx.has_value() ) {
+        error = "Overmap delta dx is invalid.";
+        return false;
+    }
+
+    const std::optional<int> parsed_dy = parse_camp_signed_int( dy_text );
+    if( !parsed_dy.has_value() ) {
+        error = "Overmap delta dy is invalid.";
+        return false;
+    }
+
+    delta = point_rel_omt( *parsed_dx, *parsed_dy );
+    return true;
+}
+
+bool parse_overmap_movement_token( std::string_view token,
+                                   parsed_overmap_movement_intent &intent,
+                                   std::string &error )
+{
+    intent = parsed_overmap_movement_intent{};
+    error.clear();
+
+    const std::string text = trim( token );
+    if( text == "stay" ) {
+        return true;
+    }
+
+    static constexpr std::string_view format_error =
+        "Overmap move token must use 'stay' or 'move_omt dx=<signed_int> dy=<signed_int>'.";
+    static constexpr std::string_view prefix = "move_omt";
+    if( text.size() <= prefix.size() || text.compare( 0, prefix.size(), prefix ) != 0 ||
+        !std::isspace( static_cast<unsigned char>( text[prefix.size()] ) ) ) {
+        error = std::string( format_error );
+        return false;
+    }
+
+    const std::string fields = trim( std::string_view( text ).substr( prefix.size() ) );
+    static constexpr std::string_view dx_prefix = "dx=";
+    static constexpr std::string_view dy_prefix = "dy=";
+    std::optional<std::string_view> dx_text;
+    std::optional<std::string_view> dy_text;
+
+    size_t pos = 0;
+    while( pos < fields.size() ) {
+        while( pos < fields.size() && std::isspace( static_cast<unsigned char>( fields[pos] ) ) ) {
+            ++pos;
+        }
+        if( pos >= fields.size() ) {
+            break;
+        }
+
+        size_t end = pos;
+        while( end < fields.size() && !std::isspace( static_cast<unsigned char>( fields[end] ) ) ) {
+            ++end;
+        }
+
+        const std::string_view field( fields.data() + pos, end - pos );
+        if( field.compare( 0, dx_prefix.size(), dx_prefix ) == 0 ) {
+            if( dx_text.has_value() ) {
+                error = std::string( format_error );
+                return false;
+            }
+            dx_text = field.substr( dx_prefix.size() );
+        } else if( field.compare( 0, dy_prefix.size(), dy_prefix ) == 0 ) {
+            if( dy_text.has_value() ) {
+                error = std::string( format_error );
+                return false;
+            }
+            dy_text = field.substr( dy_prefix.size() );
+        } else {
+            error = std::string( format_error );
+            return false;
+        }
+
+        pos = end;
+    }
+
+    if( !dx_text.has_value() || !dy_text.has_value() || dx_text->empty() || dy_text->empty() ) {
+        error = std::string( format_error );
+        return false;
+    }
+
+    point_rel_omt delta = point_rel_omt::zero;
+    if( !parse_relative_omt_delta( *dx_text, *dy_text, delta, error ) ) {
+        return false;
+    }
+
+    intent.stay = false;
+    intent.delta = delta;
+    return true;
+}
+
+tripoint_abs_omt resolve_overmap_movement_target( const tripoint_abs_omt &origin,
+        const parsed_overmap_movement_intent &intent )
+{
+    if( intent.stay ) {
+        return origin;
+    }
+
+    return tripoint_abs_omt( origin.x() + intent.delta.x(),
+                             origin.y() - intent.delta.y(),
+                             origin.z() );
+}
+
+bool format_overmap_movement_token( const tripoint_abs_omt &origin,
+                                    const tripoint_abs_omt &target,
+                                    std::string &token,
+                                    std::string &error )
+{
+    token.clear();
+    error.clear();
+
+    if( origin.z() != target.z() ) {
+        error = "Overmap move token cannot encode z-level changes.";
+        return false;
+    }
+
+    const int dx = target.x() - origin.x();
+    const int dy = origin.y() - target.y();
+    if( dx == 0 && dy == 0 ) {
+        token = "stay";
+        return true;
+    }
+
+    token = string_format( "move_omt dx=%+d dy=%+d", dx, dy );
+    return true;
+}
+
+struct overmap_snapshot_symbol {
+    char symbol = 'p';
+    const char *legend = "point of interest";
+};
+
+static bool overmap_snapshot_matches( const oter_id &terrain, std::string_view token )
+{
+    const std::string &type = terrain->get_type_id().str();
+    const std::string &id = terrain.id().str();
+    return string_starts_with( type, token ) || string_starts_with( id, token ) ||
+           type.find( token ) != std::string::npos || id.find( token ) != std::string::npos;
+}
+
+static overmap_snapshot_symbol classify_overmap_snapshot_tile( const tripoint_abs_omt &tile )
+{
+    if( const std::optional<basecamp *> camp = overmap_buffer.find_camp( tile.xy() );
+        camp && ( *camp )->camp_omt_pos() == tile ) {
+        return { 'c', "camp" };
+    }
+
+    const oter_id &terrain = overmap_buffer.ter( tile );
+    if( overmap_snapshot_matches( terrain, "bridge" ) ) {
+        return { 'b', "bridge" };
+    }
+    if( overmap_snapshot_matches( terrain, "road" ) || overmap_snapshot_matches( terrain, "trail" ) ) {
+        return { 'r', "road" };
+    }
+    if( overmap_snapshot_matches( terrain, "shore" ) || overmap_snapshot_matches( terrain, "riverbank" ) ||
+        overmap_snapshot_matches( terrain, "river_bank" ) ) {
+        return { 'n', "riverbank/shore" };
+    }
+    if( overmap_snapshot_matches( terrain, "lake" ) || overmap_snapshot_matches( terrain, "river" ) ||
+        overmap_snapshot_matches( terrain, "ocean" ) || overmap_snapshot_matches( terrain, "water" ) ||
+        overmap_snapshot_matches( terrain, "canal" ) ) {
+        return { 'w', "water" };
+    }
+    if( overmap_snapshot_matches( terrain, "swamp" ) ) {
+        return { 's', "swamp" };
+    }
+    if( overmap_snapshot_matches( terrain, "forest" ) || overmap_snapshot_matches( terrain, "woods" ) ) {
+        return { 't', "forest" };
+    }
+    if( overmap_snapshot_matches( terrain, "field" ) || overmap_snapshot_matches( terrain, "meadow" ) ||
+        overmap_snapshot_matches( terrain, "grass" ) ) {
+        return { 'f', "field" };
+    }
+    if( overmap_snapshot_matches( terrain, "house" ) || overmap_snapshot_matches( terrain, "cabin" ) ) {
+        return { 'h', "house" };
+    }
+    if( overmap_snapshot_matches( terrain, "shop" ) || overmap_snapshot_matches( terrain, "store" ) ) {
+        return { 'k', "shop" };
+    }
+    if( overmap_snapshot_matches( terrain, "apartment" ) || overmap_snapshot_matches( terrain, "office" ) ||
+        overmap_snapshot_matches( terrain, "school" ) || overmap_snapshot_matches( terrain, "hospital" ) ||
+        overmap_snapshot_matches( terrain, "garage" ) || overmap_snapshot_matches( terrain, "warehouse" ) ||
+        overmap_snapshot_matches( terrain, "church" ) || overmap_snapshot_matches( terrain, "station" ) ) {
+        return { 'u', "urban" };
+    }
+    return { 'p', "point of interest" };
+}
+
+bool format_overmap_snapshot( const tripoint_abs_omt &origin,
+                              int radius,
+                              std::string &snapshot,
+                              std::string &error )
+{
+    snapshot.clear();
+    error.clear();
+
+    if( radius < 1 || radius > 2 ) {
+        error = "Overmap snapshot radius must stay between 1 and 2 tiles.";
+        return false;
+    }
+
+    std::map<char, std::string> legend_entries;
+    bool saw_horde = false;
+
+    snapshot += "overmap snapshot centered on dx=0 dy=0 (+x east/right, +y north/up)\n";
+    snapshot += "      dx";
+    for( int dx = -radius; dx <= radius; ++dx ) {
+        snapshot += string_format( " %+d", dx );
+    }
+    snapshot += "\n";
+
+    for( int dy = radius; dy >= -radius; --dy ) {
+        snapshot += string_format( "dy=%+d", dy );
+        for( int dx = -radius; dx <= radius; ++dx ) {
+            const tripoint_abs_omt tile( origin.x() + dx, origin.y() - dy, origin.z() );
+            const overmap_snapshot_symbol base = classify_overmap_snapshot_tile( tile );
+            char rendered_symbol = base.symbol;
+            if( std::isalpha( static_cast<unsigned char>( rendered_symbol ) ) &&
+                overmap_buffer.get_horde_size( tile ) > 0 ) {
+                rendered_symbol = static_cast<char>( std::toupper( static_cast<unsigned char>( rendered_symbol ) ) );
+                saw_horde = true;
+            }
+            legend_entries.emplace( base.symbol, base.legend );
+            snapshot += string_format( "  %c", rendered_symbol );
+        }
+        snapshot += "\n";
+    }
+
+    snapshot += "legend:\n";
+    for( const std::pair<const char, std::string> &entry : legend_entries ) {
+        snapshot += string_format( "  %c %s\n", entry.first, entry.second );
+    }
+    if( saw_horde ) {
+        snapshot += "  uppercase = horde present\n";
+    }
+
+    return true;
+}
+
+} // namespace basecamp_ai
+
+namespace
+{
+
+static std::vector<std::string_view> split_camp_request_words( const std::string &text )
+{
+    std::vector<std::string_view> words;
+    size_t word_start = 0;
+    while( word_start < text.size() ) {
+        const size_t word_end = text.find( ' ', word_start );
+        if( word_end == std::string::npos ) {
+            words.emplace_back( text.data() + word_start, text.size() - word_start );
+            break;
+        }
+        words.emplace_back( text.data() + word_start, word_end - word_start );
+        word_start = word_end + 1;
+    }
+    return words;
+}
+
+static bool contains_camp_request_phrase( std::string_view text, std::string_view phrase )
+{
+    if( text.size() < phrase.size() ) {
+        return false;
+    }
+    size_t pos = text.find( phrase );
+    while( pos != std::string::npos ) {
+        const bool start_boundary = pos == 0 || text[pos - 1] == ' ';
+        const size_t end_pos = pos + phrase.size();
+        const bool end_boundary = end_pos == text.size() || text[end_pos] == ' ';
+        if( start_boundary && end_boundary ) {
+            return true;
+        }
+        pos = text.find( phrase, pos + 1 );
+    }
+    return false;
+}
+
+static std::string singularize_final_camp_request_word( std::string_view query )
+{
+    const std::string normalized_query = normalize_camp_request_text( query );
+    if( normalized_query.empty() ) {
+        return std::string();
+    }
+
+    const size_t last_space = normalized_query.rfind( ' ' );
+    const size_t word_start = last_space == std::string::npos ? 0 : last_space + 1;
+    const size_t word_length = normalized_query.size() - word_start;
+    if( word_length <= 1 || normalized_query.back() != 's' ) {
+        return std::string();
+    }
+
+    std::string singularized = normalized_query;
+    singularized.pop_back();
+    return singularized;
+}
+
+static int score_camp_request_text_match( std::string_view candidate, std::string_view query );
+
+struct scored_camp_recipe_query {
+    int score = 0;
+    std::string fallback_query;
+    bool used_fallback = false;
+};
+
+static scored_camp_recipe_query score_camp_recipe_query_details( const recipe &making,
+        std::string_view query )
+{
+    const auto score_query = [&]( std::string_view candidate_query ) {
+        int score = 0;
+        score = std::max( score, score_camp_request_text_match( making.result_name(), candidate_query ) );
+        score = std::max( score, score_camp_request_text_match( making.result()->nname( 1 ), candidate_query ) );
+        score = std::max( score, score_camp_request_text_match( making.result()->nname( 2 ), candidate_query ) );
+        return score;
+    };
+
+    scored_camp_recipe_query result;
+    result.score = score_query( query );
+    if( result.score >= 650 ) {
+        return result;
+    }
+
+    result.fallback_query = singularize_final_camp_request_word( query );
+    if( result.fallback_query.empty() ) {
+        return result;
+    }
+
+    const int fallback_score = score_query( result.fallback_query );
+    if( fallback_score > result.score ) {
+        result.score = fallback_score;
+        result.used_fallback = true;
+    }
+    return result;
+}
+
+static const std::unordered_set<recipe_id> &all_camp_craft_recipe_ids()
+{
+    static const std::unordered_set<recipe_id> all_recipes = []() {
+        std::unordered_set<recipe_id> result;
+        for( auto it = recipe_dict.begin(); it != recipe_dict.end(); ++it ) {
+            const recipe &making = it->second;
+            if( making.is_practice() || making.is_nested() || making.is_blueprint() ) {
+                continue;
+            }
+            result.insert( it->first );
+        }
+        return result;
+    }();
+    return all_recipes;
+}
+
+static bool camp_request_words_match_in_order( const std::vector<std::string_view> &candidate_words,
+        const std::vector<std::string_view> &query_words )
+{
+    if( candidate_words.empty() || query_words.empty() ) {
+        return false;
+    }
+    size_t query_index = 0;
+    for( const std::string_view candidate_word : candidate_words ) {
+        if( candidate_word == query_words[query_index] ) {
+            query_index++;
+            if( query_index == query_words.size() ) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static int score_camp_request_text_match( std::string_view candidate, std::string_view query )
+{
+    const std::string normalized_candidate = normalize_camp_request_text( candidate );
+    const std::string normalized_query = normalize_camp_request_text( query );
+    if( normalized_candidate.empty() || normalized_query.empty() ) {
+        return 0;
+    }
+    if( normalized_candidate == normalized_query ) {
+        return 1000;
+    }
+    if( normalized_candidate.size() > normalized_query.size() &&
+        normalized_candidate.compare( 0, normalized_query.size(), normalized_query ) == 0 &&
+        normalized_candidate[normalized_query.size()] == ' ' ) {
+        return 920;
+    }
+    if( contains_camp_request_phrase( normalized_candidate, normalized_query ) ) {
+        return 880;
+    }
+
+    const std::vector<std::string_view> candidate_words = split_camp_request_words( normalized_candidate );
+    const std::vector<std::string_view> query_words = split_camp_request_words( normalized_query );
+    if( camp_request_words_match_in_order( candidate_words, query_words ) ) {
+        return 800 + static_cast<int>( query_words.size() * 20 );
+    }
+    if( contains_camp_request_phrase( normalized_query, normalized_candidate ) ) {
+        return 740;
+    }
+    return 0;
+}
+
+} // namespace
+
+int basecamp_ai::score_camp_recipe_query( const recipe &making, std::string_view query )
+{
+    return score_camp_recipe_query_details( making, query ).score;
+}
+
+basecamp_ai::camp_craft_recipe_match basecamp_ai::match_camp_craft_query(
+    const std::unordered_set<recipe_id> &available_recipes, std::string_view query )
+{
+    camp_craft_recipe_match result;
+    std::unordered_map<recipe_id, scored_camp_recipe_query> top_scores;
+
+    for( const recipe_id &known_recipe : available_recipes ) {
+        if( known_recipe.is_empty() ) {
+            continue;
+        }
+        const recipe &making = *known_recipe;
+        const scored_camp_recipe_query scored = score_camp_recipe_query_details( making, query );
+        if( scored.score <= 0 ) {
+            continue;
+        }
+        if( scored.score > result.score ) {
+            result.score = scored.score;
+            result.recipe_ids = { known_recipe };
+            top_scores.clear();
+            top_scores.emplace( known_recipe, scored );
+        } else if( scored.score == result.score ) {
+            result.recipe_ids.push_back( known_recipe );
+            top_scores.emplace( known_recipe, scored );
+        }
+    }
+
+    if( result.score < 650 ) {
+        result.score = 0;
+        result.recipe_ids.clear();
+        return result;
+    }
+
+    std::sort( result.recipe_ids.begin(), result.recipe_ids.end(), []( const recipe_id & lhs,
+    const recipe_id & rhs ) {
+        const recipe &left_recipe = *lhs;
+        const recipe &right_recipe = *rhs;
+        if( left_recipe.result_name() != right_recipe.result_name() ) {
+            return left_recipe.result_name() < right_recipe.result_name();
+        }
+        return lhs.str() < rhs.str();
+    } );
+
+    for( const recipe_id &matched_recipe : result.recipe_ids ) {
+        const std::string subject = matched_recipe->result_name();
+        if( std::find( result.subjects.begin(), result.subjects.end(), subject ) == result.subjects.end() ) {
+            result.subjects.push_back( subject );
+        }
+
+        const auto score_it = top_scores.find( matched_recipe );
+        if( score_it != top_scores.end() ) {
+            const scored_camp_recipe_query &scored = score_it->second;
+            if( scored.used_fallback && result.fallback_query.empty() ) {
+                result.fallback_query = scored.fallback_query;
+            }
+            result.score_notes.push_back( string_format( "%1$s score=%2$d via %3$s", subject,
+                                          scored.score,
+                                          scored.used_fallback ?
+                                          string_format( "fallback \"%s\"", scored.fallback_query ) :
+                                          "original query" ) );
+        }
+    }
+
+    return result;
+}
+
+basecamp_ai::camp_craft_resolution basecamp_ai::resolve_camp_craft_query(
+    const std::unordered_set<recipe_id> &available_recipes, std::string_view query,
+    const std::function<camp_craft_recipe_candidate( const recipe & )> &evaluate_recipe )
+{
+    camp_craft_resolution result;
+    result.match = match_camp_craft_query( available_recipes, query );
+
+    if( result.match.recipe_ids.empty() ) {
+        result.outcome = camp_craft_resolution_outcome::NO_MATCH;
+        return result;
+    }
+    if( result.match.subjects.size() > 1 ) {
+        result.outcome = camp_craft_resolution_outcome::MATCH_AMBIGUOUS;
+        return result;
+    }
+
+    for( const recipe_id &matched_recipe : result.match.recipe_ids ) {
+        const recipe &making = *matched_recipe;
+        const camp_craft_recipe_candidate candidate = evaluate_recipe( making );
+        const bool has_worker = candidate.worker != nullptr;
+
+        const bool better = !result.choice.has_value() ||
+                            ( has_worker && result.choice->candidate.worker == nullptr ) ||
+                            ( has_worker && result.choice->candidate.worker != nullptr &&
+                              ( result.choice->candidate.duration == 0_turns ||
+                                candidate.duration < result.choice->candidate.duration ) ) ||
+                            ( has_worker == ( result.choice->candidate.worker != nullptr ) &&
+                              candidate.duration == result.choice->candidate.duration &&
+                              making.result_name() < result.choice->subject ) ||
+                            ( has_worker == ( result.choice->candidate.worker != nullptr ) &&
+                              candidate.duration == result.choice->candidate.duration &&
+                              making.result_name() == result.choice->subject &&
+                              matched_recipe.str() < result.choice->recipe_id.str() );
+        if( better ) {
+            result.choice = resolved_camp_craft_recipe{ matched_recipe, making.result_name(), candidate };
+        }
+    }
+
+    if( !result.choice.has_value() || result.choice->candidate.worker == nullptr ) {
+        result.outcome = camp_craft_resolution_outcome::MATCH_BLOCKED;
+    } else {
+        result.outcome = camp_craft_resolution_outcome::MATCH_START;
+    }
+
+    return result;
+}
+
+namespace
+{
+
+static int score_camp_board_request_match( const camp_llm_request &request, std::string_view query )
+{
+    int subject_score = 0;
+    subject_score = std::max( subject_score, score_camp_request_text_match( request.requested_item_query, query ) );
+    subject_score = std::max( subject_score, score_camp_request_text_match( request.chosen_recipe_name, query ) );
+    subject_score = std::max( subject_score, score_camp_request_text_match( request.source_utterance, query ) );
+
+    int metadata_score = 0;
+    metadata_score = std::max( metadata_score,
+                               score_camp_request_text_match( request.assigned_worker_name, query ) );
+    metadata_score = std::max( metadata_score,
+                               score_camp_request_text_match( camp_request_status_label( request ), query ) );
+    if( request.approval_state != "not_needed" ) {
+        metadata_score = std::max( metadata_score,
+                                   score_camp_request_text_match( camp_request_approval_label( request ), query ) );
+    }
+
+    return std::max( subject_score, metadata_score ) +
+           ( subject_score > 0 && metadata_score > 0 ? metadata_score : 0 );
+}
+
+} // namespace
+
+basecamp_ai::camp_request_match_result basecamp_ai::match_camp_request_reference(
+    const std::vector<camp_llm_request> &requests,
+    const parsed_camp_request_reference &reference,
+    const std::function<bool( const camp_llm_request & )> &predicate )
+{
+    camp_request_match_result result;
+    if( reference.all_requests ) {
+        return result;
+    }
+    if( reference.has_request_id ) {
+        const auto it = std::find_if( requests.begin(), requests.end(), [&]( const camp_llm_request & request ) {
+            return request.request_id == reference.request_id && predicate( request );
+        } );
+        if( it != requests.end() ) {
+            result.request_id = it->request_id;
+            result.found = true;
+            result.score = 1000;
+        }
+        return result;
+    }
+    if( reference.query.empty() ) {
+        return result;
+    }
+
+    for( const camp_llm_request &request : requests ) {
+        if( !predicate( request ) ) {
+            continue;
+        }
+        const int score = score_camp_board_request_match( request, reference.query );
+        if( score > result.score ) {
+            result.score = score;
+            result.request_id = request.request_id;
+            result.found = true;
+            result.ambiguous_matches = { camp_request_summary( request ) };
+        } else if( score == result.score && score >= 650 ) {
+            result.ambiguous_matches.push_back( camp_request_summary( request ) );
+        }
+    }
+
+    if( result.score < 650 ) {
+        result = camp_request_match_result{};
+    } else if( result.ambiguous_matches.size() > 1 ) {
+        result.found = false;
+    } else {
+        result.ambiguous_matches.clear();
+    }
+    return result;
+}
+
+int basecamp::add_crafting_request( const recipe &making, int batch_size, const mission_id &miss_id,
+                                    const npc &worker, const std::string &source_utterance,
+                                    const std::string &requested_item_query,
+                                    const character_id &heard_by_npc_id )
+{
+    camp_llm_request request;
+    request.request_id = next_camp_request_id++;
+    request.source_utterance = source_utterance;
+    request.requested_item_query = requested_item_query.empty() ? making.result_name() : requested_item_query;
+    request.requested_count = batch_size;
+    request.chosen_recipe_id = making.ident();
+    request.chosen_recipe_name = making.result_name();
+    request.status = "in_progress";
+    request.approval_state = "not_needed";
+    request.active_mission_id = miss_id;
+    request.heard_by_npc_id = heard_by_npc_id;
+    request.assigned_worker_npc_id = worker.getID();
+    request.assigned_worker_name = worker.disp_name();
+    request.created_turn = calendar::turn;
+    request.updated_turn = calendar::turn;
+    request.eta_turn = worker.companion_mission_time_ret;
+    add_camp_request_note( request, "plan",
+                           string_format( _( "%1$s started crafting %2$d × %3$s." ),
+                                          worker.disp_name(), batch_size, making.result_name() ) );
+    camp_requests.push_back( request );
+    return request.request_id;
+}
+
+int basecamp::queue_crafting_request( const recipe &making, int batch_size, const npc &worker,
+                                      const std::string &source_utterance,
+                                      const std::string &requested_item_query,
+                                      const character_id &heard_by_npc_id )
+{
+    camp_llm_request request;
+    request.request_id = next_camp_request_id++;
+    request.source_utterance = source_utterance;
+    request.requested_item_query = requested_item_query.empty() ? making.result_name() : requested_item_query;
+    request.requested_count = batch_size;
+    request.chosen_recipe_id = making.ident();
+    request.chosen_recipe_name = making.result_name();
+    request.status = "awaiting_approval";
+    request.approval_state = "waiting_player";
+    request.heard_by_npc_id = heard_by_npc_id;
+    request.assigned_worker_npc_id = worker.getID();
+    request.assigned_worker_name = worker.disp_name();
+    request.created_turn = calendar::turn;
+    request.updated_turn = calendar::turn;
+    add_camp_request_note( request, "plan",
+                           string_format( _( "%1$s pinned crafting request #%2$d for %3$d × %4$s." ),
+                                          worker.disp_name(), request.request_id, batch_size,
+                                          making.result_name() ) );
+    camp_requests.push_back( request );
+    return request.request_id;
+}
+
+bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utterance )
+{
+    if( !listener.assigned_camp || listener.assigned_camp->xy() != omt_pos.xy() ) {
+        return false;
+    }
+
+    log_camp_request_heard( listener, utterance );
+
+    const auto handle_craft_order = [&]( const basecamp_ai::parsed_camp_craft_order &parsed ) {
+        const std::unordered_set<recipe_id> known_camp_recipes = recipe_deck_all();
+        const std::unordered_set<recipe_id> &search_recipes = all_camp_craft_recipe_ids();
+        const basecamp_ai::camp_craft_resolution craft_resolution =
+            basecamp_ai::resolve_camp_craft_query( search_recipes, parsed.item_query,
+        [&]( const recipe & making ) {
+            basecamp_ai::camp_craft_recipe_candidate candidate;
+            candidate.worker = resolve_crafting_worker( making, parsed.count, listener.getID(), listener.disp_name(),
+                               &candidate.resolution_note, &candidate.blockers );
+            if( candidate.worker != nullptr ) {
+                candidate.duration = base_camps::to_workdays( making.batch_duration( *candidate.worker, parsed.count ) );
+            }
+            return candidate;
+        } );
+        if( craft_resolution.outcome == basecamp_ai::camp_craft_resolution_outcome::NO_MATCH ) {
+            log_camp_craft_trace( utterance, parsed, known_camp_recipes.size(), search_recipes.size(),
+                                  craft_resolution, basecamp_ai::camp_craft_resolution_outcome::NO_MATCH );
+            add_camp_request_bark( listener, camp_craft_no_match_bark( parsed.item_query ) );
+            return true;
+        }
+        if( craft_resolution.outcome == basecamp_ai::camp_craft_resolution_outcome::MATCH_AMBIGUOUS ) {
+            log_camp_craft_trace( utterance, parsed, known_camp_recipes.size(), search_recipes.size(),
+                                  craft_resolution, basecamp_ai::camp_craft_resolution_outcome::MATCH_AMBIGUOUS );
+            add_camp_request_bark( listener, camp_craft_ambiguous_bark( parsed.item_query,
+                                   craft_resolution.match.subjects ) );
+            return true;
+        }
+        if( !craft_resolution.choice.has_value() ) {
+            log_camp_craft_trace( utterance, parsed, known_camp_recipes.size(), search_recipes.size(),
+                                  craft_resolution, craft_resolution.outcome );
+            return true;
+        }
+
+        const recipe *best_recipe = &*craft_resolution.choice->recipe_id;
+        const npc_ptr &best_worker = craft_resolution.choice->candidate.worker;
+        const std::string &best_resolution_note = craft_resolution.choice->candidate.resolution_note;
+        const std::vector<std::string> &best_blockers = craft_resolution.choice->candidate.blockers;
+
+        const npc &board_worker = best_worker != nullptr ? *best_worker : listener;
+        const int request_id = queue_crafting_request( *best_recipe, parsed.count, board_worker, utterance,
+                               parsed.item_query, listener.getID() );
+        camp_llm_request *request = find_camp_request( request_id );
+        if( request == nullptr ) {
+            return true;
+        }
+
+        request->requested_item_query = parsed.item_query;
+        request->heard_by_npc_id = listener.getID();
+        add_camp_request_note( *request, "trace",
+                               string_format( _( "Resolved \"%1$s\" to recipe \"%2$s\"." ),
+                                              parsed.item_query, best_recipe->result_name() ) );
+        if( !craft_resolution.match.fallback_query.empty() ) {
+            add_camp_request_note( *request, "trace",
+                                   string_format( _( "Fallback query used: \"%s\"." ),
+                                                  craft_resolution.match.fallback_query ) );
+        }
+        if( !craft_resolution.match.score_notes.empty() ) {
+            std::string top_matches;
+            for( size_t i = 0; i < craft_resolution.match.score_notes.size(); ++i ) {
+                if( i > 0 ) {
+                    top_matches += " | ";
+                }
+                top_matches += craft_resolution.match.score_notes[i];
+            }
+            add_camp_request_note( *request, "trace",
+                                   string_format( _( "Top matches: %s." ), top_matches ) );
+        }
+        if( best_worker == nullptr ) {
+            request->status = "blocked";
+            request->assigned_worker_npc_id = character_id();
+            request->assigned_worker_name.clear();
+            request->blockers = best_blockers;
+            add_camp_request_note( *request, "blocked",
+                                   best_blockers.empty() ?
+                                   _( "The camp heard the order, but nobody can take it right now." ) :
+                                   best_blockers.front() );
+            log_camp_craft_trace( utterance, parsed, known_camp_recipes.size(), search_recipes.size(),
+                                  craft_resolution, basecamp_ai::camp_craft_resolution_outcome::MATCH_BLOCKED,
+                                  best_recipe->result_name(), request->blockers, request->request_id,
+                                  request->status );
+            add_camp_request_bark( listener, camp_request_blocked_bark( *request ) );
+        } else {
+            const camp_craft_risk_snapshot risk = describe_camp_craft_risk( *this, *best_recipe, *best_worker,
+                                                  parsed.count );
+            if( risk.suggested_auto ) {
+                request->approval_state = "suggested_auto";
+            }
+            if( !best_resolution_note.empty() ) {
+                add_camp_request_note( *request, "plan", best_resolution_note );
+            }
+            if( const std::string food_note = camp_craft_food_note( risk ); !food_note.empty() ) {
+                add_camp_request_note( *request, "plan", food_note );
+            }
+            add_camp_request_note( *request, "plan", camp_craft_approval_note( risk ) );
+
+            const bool started = approve_crafting_request( request_id );
+            request = find_camp_request( request_id );
+            if( request == nullptr ) {
+                return true;
+            }
+            const basecamp_ai::camp_craft_resolution_outcome final_outcome =
+                request->status == "blocked" ?
+                basecamp_ai::camp_craft_resolution_outcome::MATCH_BLOCKED :
+                basecamp_ai::camp_craft_resolution_outcome::MATCH_START;
+            log_camp_craft_trace( utterance, parsed, known_camp_recipes.size(), search_recipes.size(),
+                                  craft_resolution, final_outcome, best_recipe->result_name(),
+                                  request->blockers, request->request_id, request->status );
+            if( started && request->status == "in_progress" ) {
+                add_camp_request_bark( listener, camp_request_launch_bark( *request ) );
+            } else if( request->status == "blocked" ) {
+                add_camp_request_bark( listener, camp_request_blocked_bark( *request ) );
+            } else {
+                add_camp_request_bark( listener, camp_request_queue_bark( *request ) );
+            }
+        }
+        return true;
+    };
+
+    const auto handle_batch_launch = [&]( const bool retrying_blocked ) {
+        const std::vector<int> launch_ids = retrying_blocked ?
+                                            basecamp_ai::collect_blocked_camp_request_ids( camp_requests ) :
+                                            basecamp_ai::collect_ready_camp_request_ids( camp_requests );
+        if( launch_ids.empty() ) {
+            add_camp_request_bark( listener,
+                                   retrying_blocked ?
+                                   _( "Nothing's sitting blocked for another try." ) :
+                                   _( "Nothing's ready to start." ) );
+            return true;
+        }
+
+        const camp_request_launch_result launch_result = attempt_camp_request_launches( launch_ids,
+                                                       [this]( const int request_id ) {
+            return find_camp_request( request_id );
+        },
+        [this]( const int request_id ) {
+            approve_crafting_request( request_id );
+        } );
+        add_camp_request_bark( listener,
+                               retrying_blocked ?
+                               string_format( _( "Went through the blocked pile: started %1$d, still stuck %2$d, left pinned %3$d." ),
+                                       static_cast<int>( launch_result.started.size() ),
+                                       static_cast<int>( launch_result.blocked.size() ),
+                                       static_cast<int>( launch_result.pinned.size() ) ) :
+                               string_format( _( "Went through the board: started %1$d, hit blockers on %2$d, left pinned %3$d." ),
+                                       static_cast<int>( launch_result.started.size() ),
+                                       static_cast<int>( launch_result.blocked.size() ),
+                                       static_cast<int>( launch_result.pinned.size() ) ) );
+        return true;
+    };
+
+    const auto handle_clear_archived = [&]() {
+        const size_t before = camp_requests.size();
+        camp_requests.erase( std::remove_if( camp_requests.begin(), camp_requests.end(),
+        []( const camp_llm_request &request ) {
+            return request.status == "completed" || request.status == "cancelled";
+        } ), camp_requests.end() );
+        const int cleared = static_cast<int>( before - camp_requests.size() );
+        if( cleared > 0 ) {
+            add_camp_request_bark( listener,
+                                   string_format( _( "Cleared %d old crafting requests off the board." ), cleared ) );
+        } else {
+            add_camp_request_bark( listener, _( "No old crafting requests cluttering the board." ) );
+        }
+        return true;
+    };
+
+    const auto emit_structured_board_reply = [&]( const std::string &spoken_reply ) {
+        const std::string board_reply =
+            basecamp_ai::camp_board_handoff_snapshot( camp_omt_pos(), camp_requests );
+        add_camp_request_bark( listener, spoken_reply );
+        log_camp_request_reply( listener, utterance, "board", board_reply );
+        return true;
+    };
+
+    const auto emit_structured_job_reply = [&]( const camp_llm_request &request,
+                                                const std::string &spoken_reply ) {
+        const std::string job_reply = basecamp_ai::camp_request_handoff_snapshot( request );
+        add_camp_request_bark( listener, spoken_reply );
+        log_camp_request_reply( listener, utterance, "job", job_reply );
+        return true;
+    };
+
+    if( const std::optional<basecamp_ai::parsed_camp_job_token> structured_job =
+            basecamp_ai::parse_structured_camp_job_token( utterance ) ) {
+        if( structured_job->kind == basecamp_ai::camp_job_token_kind::show_board ) {
+            return emit_structured_board_reply( basecamp_ai::camp_board_status_bark( camp_requests ) );
+        }
+        if( structured_job->kind == basecamp_ai::camp_job_token_kind::launch_ready_jobs ) {
+            return handle_batch_launch( false );
+        }
+        if( structured_job->kind == basecamp_ai::camp_job_token_kind::retry_blocked_jobs ) {
+            return handle_batch_launch( true );
+        }
+        if( structured_job->kind == basecamp_ai::camp_job_token_kind::clear_archived_jobs ) {
+            return handle_clear_archived();
+        }
+
+        camp_llm_request *request = find_camp_request( structured_job->request_id );
+        if( request == nullptr ) {
+            const std::string missing_reply = string_format( "missing_job=%d", structured_job->request_id );
+            add_camp_request_bark( listener,
+                                   string_format( _( "No crafting request #%d on the board." ),
+                                                  structured_job->request_id ) );
+            log_camp_request_reply( listener, utterance, "job", missing_reply );
+            return true;
+        }
+
+        if( structured_job->kind == basecamp_ai::camp_job_token_kind::show_job ) {
+            return emit_structured_job_reply( *request,
+                                              basecamp_ai::camp_request_spoken_status_bark( *request ) );
+        }
+
+        if( structured_job->kind == basecamp_ai::camp_job_token_kind::delete_job ) {
+            if( camp_request_is_archived( *request ) ) {
+                clear_camp_request( request->request_id );
+                return emit_structured_board_reply( basecamp_ai::camp_board_status_bark( camp_requests ) );
+            }
+            return emit_structured_job_reply( *request,
+                                              basecamp_ai::camp_request_spoken_status_bark( *request ) );
+        }
+
+        if( camp_request_is_archived( *request ) || request->status == "in_progress" ) {
+            return emit_structured_job_reply( *request,
+                                              basecamp_ai::camp_request_spoken_status_bark( *request ) );
+        }
+
+        const int request_id = request->request_id;
+        approve_crafting_request( request_id );
+        request = find_camp_request( request_id );
+        if( request == nullptr ) {
+            return emit_structured_board_reply( basecamp_ai::camp_board_status_bark( camp_requests ) );
+        }
+
+        return emit_structured_job_reply( *request,
+                                          basecamp_ai::camp_request_spoken_status_bark( *request ) );
+    }
+
+    if( const std::optional<basecamp_ai::parsed_camp_craft_order> structured_craft =
+            basecamp_ai::parse_structured_camp_craft_order( utterance ) ) {
+        return handle_craft_order( *structured_craft );
+    }
+
+    if( const std::optional<basecamp_ai::parsed_camp_request_reference> status_query =
+            basecamp_ai::parse_heard_camp_status_query( utterance ) ) {
+        if( status_query->all_requests ) {
+            add_camp_request_bark( listener, basecamp_ai::camp_board_status_bark( camp_requests ) );
+            return true;
+        }
+
+        const basecamp_ai::camp_request_match_result lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *status_query,
+        []( const camp_llm_request & ) {
+            return true;
+        } );
+        camp_llm_request *matched_request = lookup.found ? find_camp_request( lookup.request_id ) : nullptr;
+        if( matched_request != nullptr ) {
+            add_camp_request_bark( listener, camp_request_spoken_status( *matched_request ) );
+        } else if( !lookup.ambiguous_matches.empty() ) {
+            add_camp_request_bark( listener,
+                                   camp_request_ambiguous_bark( status_query->query, lookup.ambiguous_matches ) );
+        } else if( status_query->has_request_id ) {
+            add_camp_request_bark( listener,
+                                   string_format( _( "No crafting request #%d on the board." ),
+                                           status_query->request_id ) );
+        } else {
+            add_camp_request_bark( listener, camp_request_not_found_bark( status_query->query ) );
+        }
+        return true;
+    }
+
+    if( const std::optional<basecamp_ai::parsed_camp_request_reference> clear_query =
+            basecamp_ai::parse_heard_camp_clear_query( utterance ) ) {
+        if( clear_query->all_requests ) {
+            return handle_clear_archived();
+        }
+
+        const basecamp_ai::camp_request_match_result archived_lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *clear_query,
+        []( const camp_llm_request &request ) {
+            return request.status == "completed" || request.status == "cancelled";
+        } );
+        if( archived_lookup.found ) {
+            camp_llm_request *request = find_camp_request( archived_lookup.request_id );
+            if( request != nullptr ) {
+                const std::string bark = camp_request_clear_bark( *request );
+                clear_camp_request( request->request_id );
+                add_camp_request_bark( listener, bark );
+            }
+            return true;
+        }
+        if( !archived_lookup.ambiguous_matches.empty() ) {
+            add_camp_request_bark( listener,
+                                   camp_request_ambiguous_bark( clear_query->query, archived_lookup.ambiguous_matches ) );
+            return true;
+        }
+
+        if( clear_query->has_request_id ) {
+            if( camp_llm_request *request = find_camp_request( clear_query->request_id ) ) {
+                add_camp_request_bark( listener, camp_request_not_archived_bark( *request ) );
+            } else {
+                add_camp_request_bark( listener,
+                                       string_format( _( "No crafting request #%d on the board." ),
+                                               clear_query->request_id ) );
+            }
+            return true;
+        }
+
+        const basecamp_ai::camp_request_match_result live_lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *clear_query,
+        []( const camp_llm_request &request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        if( live_lookup.found ) {
+            if( camp_llm_request *request = find_camp_request( live_lookup.request_id ) ) {
+                add_camp_request_bark( listener, camp_request_not_archived_bark( *request ) );
+            }
+        } else if( !live_lookup.ambiguous_matches.empty() ) {
+            add_camp_request_bark( listener,
+                                   camp_request_ambiguous_bark( clear_query->query, live_lookup.ambiguous_matches ) );
+        } else {
+            add_camp_request_bark( listener, camp_request_not_found_bark( clear_query->query ) );
+        }
+        return true;
+    }
+
+    if( const std::optional<basecamp_ai::parsed_camp_request_reference> cancel_query =
+            basecamp_ai::parse_heard_camp_cancel_query( utterance ) ) {
+        const basecamp_ai::camp_request_match_result lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *cancel_query,
+        []( const camp_llm_request &request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        camp_llm_request *best_request = lookup.found ? find_camp_request( lookup.request_id ) : nullptr;
+        if( best_request != nullptr ) {
+            if( best_request->status == "in_progress" ) {
+                recall_crafting_request_worker( *this, *best_request );
+            } else {
+                best_request->status = "cancelled";
+                best_request->approval_state = "rejected";
+                best_request->active_mission_id = mission_id();
+                best_request->eta_turn = calendar::turn_zero;
+                best_request->blockers.clear();
+                add_camp_request_note( *best_request, "blocked",
+                                       _( "Cancelled after a spoken order from camp staff." ) );
+            }
+            add_camp_request_bark( listener, camp_request_cancel_bark( *best_request ) );
+        } else if( !lookup.ambiguous_matches.empty() ) {
+            add_camp_request_bark( listener,
+                                   camp_request_ambiguous_bark( cancel_query->query, lookup.ambiguous_matches ) );
+        } else if( cancel_query->has_request_id ) {
+            add_camp_request_bark( listener,
+                                   string_format( _( "No live crafting request #%d." ), cancel_query->request_id ) );
+        } else {
+            add_camp_request_bark( listener, camp_request_not_found_bark( cancel_query->query ) );
+        }
+        return true;
+    }
+
+    if( const std::optional<basecamp_ai::parsed_camp_request_reference> approval_query =
+            basecamp_ai::parse_heard_camp_approval_query( utterance ) ) {
+        if( approval_query->all_requests || approval_query->all_blocked_requests ) {
+            return handle_batch_launch( approval_query->all_blocked_requests );
+        }
+
+        const basecamp_ai::camp_request_match_result lookup =
+            basecamp_ai::match_camp_request_reference( camp_requests, *approval_query,
+        []( const camp_llm_request &request ) {
+            return request.status != "completed" && request.status != "cancelled";
+        } );
+        if( !lookup.found ) {
+            if( !lookup.ambiguous_matches.empty() ) {
+                add_camp_request_bark( listener,
+                                       camp_request_ambiguous_bark( approval_query->query, lookup.ambiguous_matches ) );
+            } else if( approval_query->has_request_id ) {
+                add_camp_request_bark( listener,
+                                       string_format( _( "No crafting request #%d on the board." ),
+                                               approval_query->request_id ) );
+            } else {
+                add_camp_request_bark( listener, camp_request_not_found_bark( approval_query->query ) );
+            }
+            return true;
+        }
+        camp_llm_request *best_request = find_camp_request( lookup.request_id );
+        if( best_request == nullptr ) {
+            return true;
+        }
+        if( best_request->status == "in_progress" ) {
+            add_camp_request_bark( listener,
+                                   string_format( _( "%s is already underway." ),
+                                           camp_request_bark_subject( *best_request ) ) );
+            return true;
+        }
+
+        const int request_id = best_request->request_id;
+        const std::string subject = camp_request_bark_subject( *best_request );
+        approve_crafting_request( request_id );
+        best_request = find_camp_request( request_id );
+        if( best_request == nullptr ) {
+            return true;
+        }
+
+        if( best_request->status == "in_progress" ) {
+            add_camp_request_bark( listener, camp_request_launch_bark( *best_request ) );
+        } else if( best_request->status == "blocked" ) {
+            add_camp_request_bark( listener, camp_request_blocked_bark( *best_request ) );
+        } else {
+            add_camp_request_bark( listener,
+                                   string_format( _( "Leaving %s pinned for now." ), subject ) );
+        }
+        return true;
+    }
+
+    const std::optional<basecamp_ai::parsed_camp_craft_order> parsed =
+        basecamp_ai::parse_heard_camp_craft_order( utterance );
+    if( !parsed ) {
+        return false;
+    }
+
+    return handle_craft_order( *parsed );
+}
+
+bool basecamp::approve_crafting_request( int request_id )
+{
+    camp_llm_request *request = find_camp_request( request_id );
+    if( request == nullptr ) {
+        return false;
+    }
+    if( request->status == "in_progress" || request->status == "completed" ||
+        request->status == "cancelled" ) {
+        return false;
+    }
+    if( request->chosen_recipe_id.is_empty() || !request->chosen_recipe_id.is_valid() ) {
+        request->status = "blocked";
+        request->blockers = { _( "Chosen recipe is no longer valid." ) };
+        add_camp_request_note( *request, "blocked", _( "The crafting request no longer points at a valid recipe." ) );
+        return false;
+    }
+
+    const recipe &making = *request->chosen_recipe_id;
+    const int batch_size = std::max( request->requested_count, 1 );
+
+    std::string worker_resolution_note;
+    std::vector<std::string> worker_blockers;
+    npc_ptr guy_to_send = resolve_crafting_worker( making, batch_size,
+                          request->assigned_worker_npc_id, request->assigned_worker_name,
+                          &worker_resolution_note, &worker_blockers );
+    if( guy_to_send == nullptr ) {
+        request->status = "blocked";
+        request->blockers = !worker_blockers.empty() ? worker_blockers :
+                            std::vector<std::string>{ _( "No stationed worker can take this recipe right now." ) };
+        if( !request->assigned_worker_name.empty() ) {
+            add_camp_request_note( *request, "blocked",
+                                   string_format( _( "%s could not take the order and nobody else was ready, so it stays pinned." ),
+                                                  request->assigned_worker_name ) );
+        } else {
+            add_camp_request_note( *request, "blocked",
+                                   _( "Nobody at camp could take that order right now, so it stays pinned." ) );
+        }
+        return false;
+    }
+
+    request->status = "awaiting_approval";
+    request->blockers.clear();
+    if( !worker_resolution_note.empty() ) {
+        add_camp_request_note( *request, "plan", worker_resolution_note );
+    }
+    validate_sort_points();
+    form_storage_zones( get_camp_map(), bb_pos );
+    form_crafting_inventory( get_camp_map() );
+
+    if( making.result()->phase != phase_id::SOLID && get_liquid_dumping_spot().empty() ) {
+        std::string query_msg = string_format(
+                                    _( "You don't have anything in which to store %s and may have to pour it out as soon as it is prepared!  Proceed?" ),
+                                    making.result()->nname( batch_size ) );
+        query_msg += "\n\n";
+        query_msg +=
+            _( "Eligible locations must be a terrain OR furniture (not item) that can contain liquid, and does not already have any items on its tile." );
+        if( !query_yn( query_msg ) ) {
+            add_camp_request_note( *request, "plan",
+                                   _( "You left the order pinned until there is somewhere sensible to dump the liquid." ) );
+            return false;
+        }
+    }
+
+    mapgen_arguments arg;
+    std::unique_ptr<basecamp_action_components> components =
+        std::make_unique<basecamp_action_components>( making, arg, batch_size, *this );
+    bool have_components = components->choose_components();
+    std::vector<std::string> released_tool_notes;
+    if( !have_components ) {
+        released_tool_notes = release_crafting_tools( making, arg, batch_size );
+        if( !released_tool_notes.empty() ) {
+            components = std::make_unique<basecamp_action_components>( making, arg, batch_size, *this );
+            have_components = components->choose_components();
+        }
+    }
+    for( const std::string &note : released_tool_notes ) {
+        add_camp_request_note( *request, "plan", note );
+    }
+    if( !have_components ) {
+        request->status = "blocked";
+        if( request->blockers.empty() ) {
+            request->blockers = { _( "Camp storage could not supply the needed ingredients or tools." ) };
+        }
+        add_camp_request_note( *request, "blocked",
+                               _( "The camp could not gather everything needed, so the crafting request stayed pinned." ) );
+        return false;
+    }
+
+    time_duration work_days = base_camps::to_workdays( making.batch_duration( *guy_to_send,
+                              batch_size ) );
+    const int kcal_consumed = time_to_food( work_days, making.exertion_level() );
+    const int kcal_have = fac()->food_supply().kcal();
+
+    if( !query_yn( _( "This will cost %i kcal (you have %i stored), is that acceptable?" ),
+                   kcal_consumed, kcal_have ) ) {
+        add_camp_request_note( *request, "plan",
+                               _( "You decided not to spend the camp rations on that order yet." ) );
+        return false;
+    }
+
+    if( kcal_consumed > kcal_have ) {
+        request->status = "blocked";
+        request->blockers = { _( "Not enough stored food." ) };
+        add_camp_request_note( *request, "blocked",
+                               _( "The pantry is too thin to cover that job right now." ) );
+        return false;
+    }
+
+    making.apply_all_morale_mods( *guy_to_send );
+
+    const mission_id actual_id = { Camp_Crafting, making.ident().str(), {}, base_camps::base_dir };
+    npc_ptr comp = start_mission( actual_id, work_days, true,
+                                  _( "begins to work…" ), false, {}, making.required_skills,
+                                  making.exertion_level(), 0_hours, guy_to_send );
+    if( comp == nullptr ) {
+        request->status = "blocked";
+        request->blockers = { _( "Could not start the assigned craft mission." ) };
+        add_camp_request_note( *request, "blocked",
+                               _( "Tried to kick off the job, but the camp machinery still said no." ) );
+        return false;
+    }
+
+    components->consume_components();
+    item_components used = components->consumed_components();
+    for( const item &results : making.create_results( batch_size, &used ) ) {
+        comp->companion_mission_inv.add_item( results );
+    }
+    for( const item &byproducts : making.create_byproducts( batch_size ) ) {
+        comp->companion_mission_inv.add_item( byproducts );
+    }
+
+    request->status = "in_progress";
+    request->approval_state = "approved";
+    request->active_mission_id = actual_id;
+    request->assigned_worker_npc_id = comp->getID();
+    request->assigned_worker_name = comp->disp_name();
+    request->eta_turn = comp->companion_mission_time_ret;
+    request->requested_count = batch_size;
+    request->updated_turn = calendar::turn;
+    request->blockers.clear();
+    add_camp_request_note( *request, "plan",
+                           string_format( _( "%1$s pulled request #%2$d off the board and started crafting %3$d × %4$s." ),
+                                          comp->disp_name(), request->request_id,
+                                          batch_size, making.result_name() ) );
+    return true;
+}
+
+bool basecamp::complete_crafting_request( const mission_id &miss_id, const npc &worker,
+        const std::string &note_text )
+{
+    camp_llm_request *request = find_active_crafting_request( miss_id, worker.getID() );
+    if( request == nullptr ) {
+        return false;
+    }
+    request->status = "completed";
+    request->eta_turn = calendar::turn_zero;
+    request->active_mission_id = mission_id();
+    add_camp_request_note( *request, "completion",
+                           note_text.empty() ? string_format( _( "%s returned with the finished job." ),
+                                                   worker.disp_name() ) : note_text );
+    return true;
+}
+
+bool basecamp::cancel_crafting_request( const mission_id &miss_id, const npc &worker,
+                                        const std::string &note_text )
+{
+    camp_llm_request *request = find_active_crafting_request( miss_id, worker.getID() );
+    if( request == nullptr ) {
+        return false;
+    }
+    request->status = "cancelled";
+    request->eta_turn = calendar::turn_zero;
+    request->active_mission_id = mission_id();
+    add_camp_request_note( *request, "blocked",
+                           note_text.empty() ? string_format( _( "%s was recalled before finishing the job." ),
+                                                   worker.disp_name() ) : note_text );
+    return true;
+}
+
+bool basecamp::clear_camp_request( int request_id )
+{
+    auto it = std::remove_if( camp_requests.begin(), camp_requests.end(), [request_id]( const camp_llm_request & request ) {
+        return request.request_id == request_id;
+    } );
+    if( it == camp_requests.end() ) {
+        return false;
+    }
+    camp_requests.erase( it, camp_requests.end() );
+    return true;
+}
+
+void basecamp::locker_policy_ui()
+{
+    const std::vector<camp_locker_slot> slots = all_camp_locker_slots();
+    while( true ) {
+        uilist menu;
+        menu.title = _( "Locker Policy" );
+        menu.text = has_locker_zone() ?
+                    _( "Choose which loadout slots the camp locker may manage.  The locker zone supplies the actual gear." ) :
+                    _( "Choose which loadout slots the camp locker may manage.  Define a Basecamp: Locker zone in the Zone Manager to supply the actual gear." );
+
+        int entry_index = 0;
+        for( const camp_locker_slot slot : slots ) {
+            const bool enabled = is_locker_slot_enabled( slot );
+            menu.addentry( entry_index++, true, MENU_AUTOASSIGN,
+                           string_format( "%s %s", enabled ? "[x]" : "[ ]",
+                                          camp_locker_slot_name( slot ).translated() ) );
+        }
+        const int done_entry = entry_index;
+        menu.addentry( done_entry, true, 'q', _( "Done" ) );
+        menu.query();
+
+        if( menu.ret < 0 || menu.ret == done_entry ) {
+            return;
+        }
+
+        if( static_cast<size_t>( menu.ret ) < slots.size() ) {
+            const camp_locker_slot slot = slots[menu.ret];
+            set_locker_slot_enabled( slot, !is_locker_slot_enabled( slot ) );
+        }
+    }
+}
+
+void basecamp::camp_request_ui()
+{
+    if( camp_requests.empty() ) {
+        popup( _( "The bulletin-board scratchpad is empty." ) );
+        return;
+    }
+
+    while( true ) {
+        uilist menu;
+        menu.title = _( "Crafting Requests" );
+        menu.text = _( "Inspect the board, review crafting details, retry blocked work, recall an active crafter, or clear archived requests." );
+
+        std::vector<int> request_ids;
+        request_ids.reserve( camp_requests.size() );
+        int entry_index = 0;
+        bool has_archived_requests = false;
+        bool has_launchable_requests = false;
+        bool has_blocked_requests = false;
+        for( const camp_llm_request &request : camp_requests ) {
+            request_ids.push_back( request.request_id );
+            menu.addentry( entry_index++, true, MENU_AUTOASSIGN, camp_request_summary( request ) );
+            if( request.status == "completed" || request.status == "cancelled" ) {
+                has_archived_requests = true;
+            }
+            if( request.status == "awaiting_approval" ) {
+                has_launchable_requests = true;
+            }
+            if( request.status == "blocked" ) {
+                has_blocked_requests = true;
+            }
+        }
+
+        const int launch_ready_entry = entry_index++;
+        menu.addentry( launch_ready_entry, has_launchable_requests, 'a', _( "Start all ready crafting requests" ) );
+        const int retry_blocked_entry = entry_index++;
+        menu.addentry( retry_blocked_entry, has_blocked_requests, 'r', _( "Retry all blocked crafting requests" ) );
+        const int clear_archived_entry = entry_index;
+        menu.addentry( clear_archived_entry, has_archived_requests, 'c', _( "Clear archived crafting requests" ) );
+        menu.query();
+
+        if( menu.ret < 0 ) {
+            return;
+        }
+
+        if( menu.ret == launch_ready_entry || menu.ret == retry_blocked_entry ) {
+            const std::vector<int> launch_ids = menu.ret == retry_blocked_entry ?
+                                                basecamp_ai::collect_blocked_camp_request_ids( camp_requests ) :
+                                                basecamp_ai::collect_ready_camp_request_ids( camp_requests );
+            const camp_request_launch_result launch_result = attempt_camp_request_launches( launch_ids,
+                                                           [this]( const int request_id ) {
+                return find_camp_request( request_id );
+            },
+            [this]( const int request_id ) {
+                approve_crafting_request( request_id );
+            } );
+            popup( camp_request_launch_feedback( launch_result.started,
+                                                 launch_result.blocked,
+                                                 launch_result.pinned ) );
+            if( camp_requests.empty() ) {
+                popup( _( "The board is empty again." ) );
+                return;
+            }
+            continue;
+        }
+
+        if( menu.ret == clear_archived_entry ) {
+            for( const int request_id : basecamp_ai::collect_archived_camp_request_ids( camp_requests ) ) {
+                clear_camp_request( request_id );
+            }
+            if( camp_requests.empty() ) {
+                popup( _( "The board is empty again." ) );
+                return;
+            }
+            continue;
+        }
+
+        if( static_cast<size_t>( menu.ret ) >= request_ids.size() ) {
+            continue;
+        }
+
+        const int request_id = request_ids[menu.ret];
+        while( true ) {
+            camp_llm_request *request = find_camp_request( request_id );
+            if( request == nullptr ) {
+                break;
+            }
+
+            const bool archived = request->status == "completed" || request->status == "cancelled";
+            const bool can_recall = request->status == "in_progress" &&
+                                    request->active_mission_id.id == Camp_Crafting;
+            const bool can_approve = request->status == "awaiting_approval" || request->status == "blocked";
+            const bool can_cancel_pending = can_approve;
+            const std::string approve_label = request->status == "blocked" ?
+                                              _( "Retry and start crafting request" ) :
+                                              _( "Start crafting request" );
+
+            uilist action_menu;
+            action_menu.title = camp_request_summary( *request );
+            action_menu.text = camp_request_details( *request );
+            action_menu.addentry( 0, true, 'b', _( "Back" ) );
+            action_menu.addentry( 1, can_approve, 'a', approve_label );
+            action_menu.addentry( 2, can_recall, 'r', _( "Emergency recall crafter" ) );
+            action_menu.addentry( 3, can_cancel_pending, 'c', _( "Cancel this crafting request" ) );
+            action_menu.addentry( 4, archived, 'x', _( "Clear this crafting request" ) );
+            action_menu.query();
+
+            if( action_menu.ret <= 0 ) {
+                break;
+            }
+
+            if( action_menu.ret == 1 ) {
+                approve_crafting_request( request_id );
+                break;
+            }
+
+            if( action_menu.ret == 2 ) {
+                if( query_yn( _( "Recall %s and cancel this crafting request?  Spent materials stay spent." ),
+                              request->assigned_worker_name ) ) {
+                    recall_crafting_request_worker( *this, *request );
+                }
+                break;
+            }
+
+            if( action_menu.ret == 3 ) {
+                request->status = "cancelled";
+                request->approval_state = "rejected";
+                request->active_mission_id = mission_id();
+                request->eta_turn = calendar::turn_zero;
+                request->blockers.clear();
+                add_camp_request_note( *request, "blocked",
+                                       _( "You cancelled the queued crafting request before it left the board." ) );
+                break;
+            }
+
+            if( action_menu.ret == 4 ) {
+                clear_camp_request( request_id );
+                break;
+            }
+        }
+
+        if( camp_requests.empty() ) {
+            popup( _( "The board is empty again." ) );
+            return;
+        }
+    }
+}
+
 bool basecamp::handle_mission( const ui_mission_id &miss_id )
 {
     if( miss_id.id.id == No_Mission ) {
@@ -1551,6 +4671,14 @@ bool basecamp::handle_mission( const ui_mission_id &miss_id )
 
         case Camp_Have_Meal:
             player_eats_meal();
+            break;
+
+        case Camp_Requests:
+            camp_request_ui();
+            break;
+
+        case Camp_Locker_Policy:
+            locker_policy_ui();
             break;
 
         case Camp_Hide_Mission:
@@ -3315,8 +6443,8 @@ void basecamp::start_crafting( const mission_id &miss_id )
     dummy.add_effect( effect_HACK_camp_vision_for_npc, 1_turns, true );
 
     validate_sort_points();
+    form_storage_zones( get_camp_map(), bb_pos );
     form_crafting_inventory( get_camp_map() );
-
 
     std::pair<Character *, const recipe *> crafter_recipe_pair = select_crafter_and_crafting_recipe(
                 num_to_make, recipe_id(), &dummy, "", true, &_inv );
@@ -3341,43 +6469,101 @@ void basecamp::start_crafting( const mission_id &miss_id )
         }
     }
 
+    struct crafting_worker_choice {
+        npc_ptr worker;
+        bool can_be_picked = false;
+        time_duration duration = 0_turns;
+        std::string detail;
+    };
+
+    std::vector<crafting_worker_choice> worker_choices;
+    worker_choices.reserve( assigned_npcs.size() );
+    for( const npc_ptr &guy : assigned_npcs ) {
+        if( guy == nullptr ) {
+            continue;
+        }
+
+        std::string refusal_reason;
+        const bool can_be_picked = can_assign_crafting_worker( *guy, *making, true, &refusal_reason );
+        crafting_worker_choice choice;
+        choice.worker = guy;
+        choice.can_be_picked = can_be_picked;
+        if( can_be_picked ) {
+            choice.duration = base_camps::to_workdays( making->batch_duration( *guy, num_to_make ) );
+            choice.detail = to_string( choice.duration );
+        } else {
+            choice.detail = string_format( "<color_red>%s</color>", refusal_reason );
+        }
+        worker_choices.push_back( std::move( choice ) );
+    }
+
+    std::sort( worker_choices.begin(), worker_choices.end(), []( const crafting_worker_choice & lhs,
+    const crafting_worker_choice & rhs ) {
+        if( lhs.can_be_picked != rhs.can_be_picked ) {
+            return lhs.can_be_picked > rhs.can_be_picked;
+        }
+        if( lhs.can_be_picked && lhs.duration != rhs.duration ) {
+            return lhs.duration < rhs.duration;
+        }
+        return lhs.worker->disp_name() < rhs.worker->disp_name();
+    } );
+
+    if( worker_choices.empty() ) {
+        return;
+    }
+
     uilist choose_crafter;
     choose_crafter.title = _( "Choose a companion to craft" );
     int i = 0;
-    for( const npc_ptr &guy : assigned_npcs ) {
-        if( guy.get() ) {
-            bool has_skills = making->skill_used.is_null() ||
-                              guy->get_skill_level( making->skill_used ) >= making->get_difficulty( *guy );
-            bool has_profs = making->character_has_required_proficiencies( *guy );
-            bool is_available_for_work = !guy->has_companion_mission();
-            bool can_be_picked = has_skills && has_profs && is_available_for_work;
-            std::string refusal_reason;
-            if( !has_skills ) {
-                refusal_reason = _( "lacks necessary skills" );
-            } else if( !has_profs ) {
-                refusal_reason = _( "lacks necessary proficiencies" );
-            } else if( !is_available_for_work ) {
-                refusal_reason = _( "already working on something else" );
-            }
-            // FIXME: Isn't there a smarter way to do this??
-            std::string refuse_string = string_format( "<color_red>%s</color>", refusal_reason );
-            choose_crafter.addentry_col( i, can_be_picked, input_event(), guy->disp_name(), refuse_string );
-            i++;
-        }
+    for( const crafting_worker_choice &choice : worker_choices ) {
+        choose_crafter.addentry_col( i++, choice.can_be_picked, input_event(),
+                                     choice.worker->disp_name(), choice.detail );
     }
 
     choose_crafter.query();
 
-    if( choose_crafter.ret < 0 || static_cast<size_t>( choose_crafter.ret ) >= assigned_npcs.size() ) {
+    if( choose_crafter.ret < 0 || static_cast<size_t>( choose_crafter.ret ) >= worker_choices.size() ) {
         return; // player aborted selection
     }
 
-    npc_ptr guy_to_send = assigned_npcs[choose_crafter.ret];
+    npc_ptr guy_to_send = worker_choices[choose_crafter.ret].worker;
+
+    uilist handling_menu;
+    handling_menu.title = _( "Craft order handling" );
+    handling_menu.text = string_format( _( "%1$s is ready to tackle %2$d × %3$s." ),
+                                        guy_to_send->disp_name(), num_to_make, making->result_name() );
+    handling_menu.addentry( 0, true, 's', _( "Start now" ) );
+    handling_menu.addentry( 1, true, 'q', _( "Queue as a crafting request" ) );
+    handling_menu.addentry( 2, true, 'b', _( "Back" ) );
+    handling_menu.query();
+
+    if( handling_menu.ret == 1 ) {
+        queue_crafting_request( *making, num_to_make, *guy_to_send );
+        popup( _( "Pinned that crafting request to the board for later approval." ) );
+        return;
+    }
+    if( handling_menu.ret != 0 ) {
+        return;
+    }
 
     mapgen_arguments arg;  //  Created with a default value.
-    basecamp_action_components components( *making, arg, num_to_make, *this );
-    if( !components.choose_components() ) {
+    std::unique_ptr<basecamp_action_components> components =
+        std::make_unique<basecamp_action_components>( *making, arg, num_to_make, *this );
+    bool have_components = components->choose_components();
+    std::vector<std::string> released_tool_notes;
+    if( !have_components ) {
+        released_tool_notes = release_crafting_tools( *making, arg, num_to_make );
+        if( !released_tool_notes.empty() ) {
+            components = std::make_unique<basecamp_action_components>( *making, arg, num_to_make, *this );
+            have_components = components->choose_components();
+        }
+    }
+    if( !have_components ) {
         return;
+    }
+
+    for( const std::string &note : released_tool_notes ) {
+        add_msg( m_info, "%s", note );
     }
 
     time_duration work_days = base_camps::to_workdays( making->batch_duration( *guy_to_send,
@@ -3406,14 +6592,15 @@ void basecamp::start_crafting( const mission_id &miss_id )
                                   _( "begins to work…" ), false, {}, making->required_skills, making->exertion_level(),
                                   0_hours, guy_to_send );
     if( comp != nullptr ) {
-        components.consume_components();
-        item_components used = components.consumed_components();
+        components->consume_components();
+        item_components used = components->consumed_components();
         for( const item &results : making->create_results( num_to_make, &used ) ) {
             comp->companion_mission_inv.add_item( results );
         }
         for( const item &byproducts : making->create_byproducts( num_to_make ) ) {
             comp->companion_mission_inv.add_item( byproducts );
         }
+        add_crafting_request( *making, num_to_make, actual_id, *comp );
     }
 }
 
@@ -3755,6 +6942,9 @@ npc_ptr basecamp::crafting_mission_return( const mission_id &miss_id, const std:
     npc_ptr comp = companion_crafting_choose_return( miss_id );
     if( comp != nullptr ) {
         finish_return( *comp, false, return_msg, skill, difficulty );
+        complete_crafting_request( miss_id, *comp,
+                                   string_format( _( "%s returned with the finished craft order." ),
+                                           comp->disp_name() ) );
     }
     return comp;
 }
@@ -3764,6 +6954,7 @@ npc_ptr basecamp::emergency_recall( const mission_id &miss_id )
     npc_ptr comp = talk_function::companion_choose_return( omt_pos, base_camps::id, miss_id,
                    calendar::turn - 24_hours, false );
     if( comp != nullptr ) {
+        const mission_id active_mission = comp->get_companion_mission().miss_id;
 
         //  Special handing for camp upgrades. If multiple companions are assigned, the remaining time
         //  is divided between the remaining workers. Note that this logic relies on there being only
@@ -3790,6 +6981,11 @@ npc_ptr basecamp::emergency_recall( const mission_id &miss_id )
         const std::string return_msg = _( "responds to the emergency recall…" );
         // FIXME this might charge food for someone who was already fed?
         finish_return( *comp, false, return_msg, skill_menial.str(), 0, true );
+        if( active_mission.id == Camp_Crafting ) {
+            cancel_crafting_request( active_mission, *comp,
+                                     string_format( _( "%s was recalled before the craft order was finished." ),
+                                             comp->disp_name() ) );
+        }
     }
     return comp;
 
@@ -5952,6 +9148,8 @@ std::string basecamp::name_display_of( const mission_id &miss_id )
         case Camp_Distribute_Food:
         case Camp_Determine_Leadership:
         case Camp_Have_Meal:
+        case Camp_Requests:
+        case Camp_Locker_Policy:
         case Camp_Hide_Mission:
         case Camp_Reveal_Mission:
         case Camp_Assign_Jobs:

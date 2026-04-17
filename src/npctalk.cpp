@@ -26,6 +26,7 @@
 #include "action.h"
 #include "auto_pickup.h"
 #include "avatar.h"
+#include "basecamp.h"
 #include "bionics.h"
 #include "bodypart.h"
 #include "calendar.h"
@@ -1696,6 +1697,72 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                 }
                 const std::string utterance = !yell_msg.empty() ? yell_msg : message;
                 if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                    struct camp_hearer_group {
+                        tripoint_abs_omt camp_omt;
+                        basecamp *camp = nullptr;
+                        std::vector<npc *> hearers;
+                    };
+
+                    std::vector<camp_hearer_group> camp_groups;
+                    std::vector<npc *> llm_hearers;
+                    llm_hearers.reserve( hearers.size() );
+                    const bool debug_llm_log = get_option<bool>( "DEBUG_LLM_INTENT_LOG" );
+                    const auto log_camp_routing_state = [&]( const npc & guy, const char *reason,
+                    bool uses_basecamp, bool camp_found ) {
+                        if( !debug_llm_log ) {
+                            return;
+                        }
+                        const std::string assigned_camp = guy.assigned_camp.has_value() ?
+                                                          string_format( "%d,%d,%d", guy.assigned_camp->x(),
+                                                                         guy.assigned_camp->y(), guy.assigned_camp->z() ) : "none";
+                        llm_intent::log_event( string_format(
+                                                   "camp routing check npc=\"%s\" id=%d uses_basecamp=%s camp_found=%s assigned_camp=%s attitude=%s mission=%d walking_with=%s player_ally=%s role=%s reason=%s",
+                                                   guy.get_name(), guy.getID().get_value(), uses_basecamp ? "yes" : "no",
+                                                   camp_found ? "yes" : "no", assigned_camp,
+                                                   npc_attitude_name( guy.get_attitude() ), static_cast<int>( guy.mission ),
+                                                   guy.is_walking_with() ? "yes" : "no",
+                                                   guy.is_player_ally() ? "yes" : "no",
+                                                   guy.companion_mission_role_id.empty() ? "<empty>" : guy.companion_mission_role_id,
+                                                   reason ) );
+                    };
+                    for( npc *guy : hearers ) {
+                        if( guy == nullptr ) {
+                            llm_hearers.push_back( guy );
+                            continue;
+                        }
+                        const bool uses_basecamp = basecamp_ai::uses_basecamp_request_routing( *guy );
+                        if( !uses_basecamp ) {
+                            log_camp_routing_state( *guy, "ordinary_llm_hearer", false, false );
+                            llm_hearers.push_back( guy );
+                            continue;
+                        }
+                        std::optional<basecamp *> camp = overmap_buffer.find_camp( guy->assigned_camp->xy() );
+                        const bool camp_found = camp.has_value() && *camp != nullptr;
+                        if( !camp_found ) {
+                            log_camp_routing_state( *guy, "assigned_camp_without_live_basecamp", true, false );
+                            llm_hearers.push_back( guy );
+                            continue;
+                        }
+                        log_camp_routing_state( *guy, "camp_grouped", true, true );
+                        auto it = std::find_if( camp_groups.begin(), camp_groups.end(), [&]( const camp_hearer_group & group ) {
+                            return group.camp_omt == *guy->assigned_camp;
+                        } );
+                        if( it == camp_groups.end() ) {
+                            camp_groups.push_back( { *guy->assigned_camp, *camp, { guy } } );
+                        } else {
+                            it->hearers.push_back( guy );
+                        }
+                    }
+
+                    for( camp_hearer_group &group : camp_groups ) {
+                        if( group.camp != nullptr && !group.hearers.empty() &&
+                            group.camp->handle_heard_camp_request( *group.hearers.front(), utterance ) ) {
+                            continue;
+                        }
+                        llm_hearers.insert( llm_hearers.end(), group.hearers.begin(), group.hearers.end() );
+                    }
+
+                    hearers = std::move( llm_hearers );
                     llm_intent::enqueue_requests( hearers, utterance );
                     if( ambient_target != nullptr ) {
                         llm_intent::log_event( string_format( "ambient target %s (%d) for utterance\n%s",

@@ -1,7 +1,16 @@
 # Agents
 Follow all instructions in this file.
-Read Plan.md and keep it up to date. Whenever something is finished, tick it off, or remove it completely.
-When you added a new complicated mechanic, add a brief explanation to TechnicalTome.md.
+Read `Plan.md` first and treat it as the canonical roadmap.
+Then read `SUCCESS.md` for the explicit exit criteria of the current roadmap item.
+The first unchecked row in the active success-state block is the default next target; do not invent a different chunk unless you first update the ledger to explain why.
+Keep `Plan.md`, `SUCCESS.md`, `TODO.md`, and `TESTING.md` aligned with reality, but keep them lean:
+- `Plan.md` = roadmap / active target
+- `SUCCESS.md` = success-state ledger / crossed-off exit criteria
+- `TODO.md` = short current execution queue only
+- `TESTING.md` = current validation policy, latest relevant evidence, pending probes
+- remove finished fluff from `TODO.md` / `TESTING.md` instead of building a graveyard of crossed-off chores
+Read and follow `COMMIT_POLICY.md` so the repo does not turn into one giant dirty-tree soup.
+When you add a new complicated mechanic, add a brief durable explanation to `TechnicalTome.md`.
 
 ### Code style
 - Code style is enforced by `astyle`.
@@ -73,14 +82,21 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
   - LLM sleepiness snapshot code may need branch-safe fallback if `sleepiness` APIs diverge.
 
 ## Tests and in-game verification
+- Use the **smallest honest validation** for the change. Do not compile or smoke-test by ritual.
 - Use unit tests where applicable.
-- For gameplay changes, use the in-game debug menu to reproduce conditions.
-- Validate builds with `just_build.cmd > debug.txt 2>&1` and `just_build_linux.cmd > debug.txt 2>&1` when touching code or build scripts.
+- For gameplay changes, use the in-game debug menu, harness tools, or direct agent-side probing first.
+- Josef should be asked for product judgment / feel / priority calls or genuinely human-only interaction, not for tiny technical checks the agent can do.
+- Josef being unavailable is not a stop-work order; move to the next best unblocked target from `Plan.md`.
+- For code or build-script changes, choose validation proportional to risk:
+  - docs-only -> no compile
+  - small local code change -> narrow relevant compile/test only
+  - broader/riskier integration -> broader rebuild and relevant smoke
+- Validate builds with `just_build.cmd > debug.txt 2>&1` and `just_build_linux.cmd > debug.txt 2>&1` only when that broader build evidence is actually needed.
 - Fast compile check (changed files only):
   - Windows/MSYS2: `make -j8 RELEASE=1 MSYS2=1 DYNAMIC_LINKING=1 SDL=1 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 objwin/tiles/llm_intent.o objwin/tiles/npc.o objwin/tiles/npcmove.o`
   - Linux/WSL: `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o obj/tiles/npc.o obj/tiles/npcmove.o`
 - For LLM runner changes, run `tools/llm_runner/runner.py --self-test` from your venv.
-- After certain changes, you can give me tasks to test new features in-game
+- Batch Josef playtest asks where practical instead of drip-feeding tiny single-purpose pings.
 
 ## Build (MSYS2 UCRT64)
 - Josef needs to use the MSYS2 UCRT64 shell for Windows builds.

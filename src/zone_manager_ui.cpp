@@ -13,6 +13,7 @@
 #include "line.h"
 #include "input_context.h"
 #include "map.h"
+#include "messages.h"
 #include "options.h"
 #include "output.h"
 #include "overmap_ui.h"
@@ -24,7 +25,26 @@
 #include "uilist.h"
 #include "ui_manager.h"
 
+static const zone_type_id zone_type_CAMP_STORAGE( "CAMP_STORAGE" );
 static const zone_type_id zone_type_LOOT_CUSTOM( "LOOT_CUSTOM" );
+
+namespace
+{
+void maybe_offer_basecamp_smart_zoning( const tripoint_abs_ms &start,
+                                        const tripoint_abs_ms &end,
+                                        const faction_id &fac )
+{
+    if( !query_yn( _( "Run Smart Zone Manager v1 for this Basecamp inventory zone now?" ) ) ) {
+        return;
+    }
+    const basecamp_smart_zone_result result = auto_place_basecamp_smart_zones( start, end, fac );
+    if( result.success ) {
+        add_msg( m_good, "%s", result.message );
+    } else {
+        popup( result.message, PF_NONE );
+    }
+}
+}
 
 shared_ptr_fast<game::draw_callback_t> zone_manager_ui::create_zone_callback(
     const std::optional<tripoint_bub_ms> &zone_start,
@@ -545,6 +565,10 @@ void zone_manager_ui::display_zone_manager()
 
                 mgr.add( name, id, get_player_character().get_faction()->id, false, true,
                          position->first, position->second, options );
+                if( id == zone_type_CAMP_STORAGE ) {
+                    maybe_offer_basecamp_smart_zoning( position->first, position->second,
+                                                       get_player_character().get_faction()->id );
+                }
 
                 zones = get_zones();
                 active_index = zone_cnt - 1;
@@ -745,6 +769,11 @@ void zone_manager_ui::display_zone_manager()
                                 zone.set_position( std::make_pair( new_start_point_rl, new_end_point_rl ) );
                             } else {
                                 zone.set_position( std::make_pair( new_start_point, new_end_point ) );
+                            }
+                            if( zone.get_type() == zone_type_CAMP_STORAGE ) {
+                                maybe_offer_basecamp_smart_zoning( zone.get_start_point(),
+                                                                   zone.get_end_point(),
+                                                                   zone.get_faction() );
                             }
                             stuff_changed = true;
                         }

@@ -145,6 +145,7 @@ static const zone_type_id zone_type_CONSTRUCTION_BLUEPRINT( "CONSTRUCTION_BLUEPR
 static const zone_type_id zone_type_DISASSEMBLE( "DISASSEMBLE" );
 static const zone_type_id zone_type_FARM_PLOT( "FARM_PLOT" );
 static const zone_type_id zone_type_FISHING_SPOT( "FISHING_SPOT" );
+static const zone_type_id zone_type_CAMP_LOCKER( "CAMP_LOCKER" );
 static const zone_type_id zone_type_LOOT_CORPSE( "LOOT_CORPSE" );
 static const zone_type_id zone_type_LOOT_CUSTOM( "LOOT_CUSTOM" );
 static const zone_type_id zone_type_LOOT_IGNORE( "LOOT_IGNORE" );
@@ -919,6 +920,9 @@ bool sort_skip_item( Character &you, const item *it,
     }
 
     const faction_id fac_id = _fac_id( you );
+    if( mgr.has( zone_type_CAMP_LOCKER, src, fac_id ) ) {
+        return true;
+    }
     const zone_type_id zt_id = mgr.get_near_zone_type_for_item( *it, you.pos_abs(),
                                MAX_VIEW_DISTANCE, fac_id );
     // Skip items already at their destination regardless of whether the zone

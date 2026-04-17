@@ -50,6 +50,7 @@
 #include "itype.h"
 #include "iuse.h"
 #include "iuse_actor.h"
+#include "llm_intent.h"
 #include "magic.h"
 #include "map.h"
 #include "map_iterator.h"
@@ -262,17 +263,310 @@ npc::npc()
 
 std::map<character_id, npc::llm_intent_state> &npc::llm_intent_state_map()
 {
-    static std::map<character_id, llm_intent_state> state_map;
-    return state_map;
+    // Keep the state map alive until process exit. NPC teardown can still touch this during
+    // global destruction, and a normal function-local static risks dying before the final npc
+    // destructors run (which showed up as a post-success cata_test teardown crash on macOS).
+    static std::map<character_id, llm_intent_state> *state_map =
+        new std::map<character_id, llm_intent_state>();
+    return *state_map;
 }
+
+namespace
+{
+constexpr size_t max_recent_llm_action_statuses = 8;
+
+std::string llm_action_kind_name( npc::llm_action_kind kind )
+{
+    switch( kind ) {
+        case npc::llm_action_kind::none:
+            return "none";
+        case npc::llm_action_kind::look_around_pickup:
+            return "look_around_pickup";
+        case npc::llm_action_kind::look_inventory:
+            return "look_inventory";
+        case npc::llm_action_kind::attack_target:
+            return "attack_target";
+    }
+    return "unknown";
+}
+
+std::string llm_action_phase_name( npc::llm_action_phase phase )
+{
+    switch( phase ) {
+        case npc::llm_action_phase::none:
+            return "none";
+        case npc::llm_action_phase::requested:
+            return "requested";
+        case npc::llm_action_phase::precheck:
+            return "precheck";
+        case npc::llm_action_phase::executing:
+            return "executing";
+        case npc::llm_action_phase::waiting:
+            return "waiting";
+        case npc::llm_action_phase::completed:
+            return "completed";
+        case npc::llm_action_phase::blocked:
+            return "blocked";
+        case npc::llm_action_phase::failed:
+            return "failed";
+        case npc::llm_action_phase::cancelled:
+            return "cancelled";
+    }
+    return "unknown";
+}
+
+std::string join_debug_facts( const std::vector<std::string> &facts )
+{
+    std::ostringstream out;
+    for( size_t i = 0; i < facts.size(); ++i ) {
+        if( i > 0 ) {
+            out << "; ";
+        }
+        out << facts[i];
+    }
+    return out.str();
+}
+
+bool is_terminal_llm_action_phase( npc::llm_action_phase phase )
+{
+    switch( phase ) {
+        case npc::llm_action_phase::completed:
+        case npc::llm_action_phase::blocked:
+        case npc::llm_action_phase::failed:
+        case npc::llm_action_phase::cancelled:
+            return true;
+        case npc::llm_action_phase::none:
+        case npc::llm_action_phase::requested:
+        case npc::llm_action_phase::precheck:
+        case npc::llm_action_phase::executing:
+        case npc::llm_action_phase::waiting:
+            return false;
+    }
+    return false;
+}
+} // namespace
 
 npc::llm_intent_state &npc::llm_intent_state_for( const npc &guy )
 {
-    static llm_intent_state invalid_state;
+    static llm_intent_state *invalid_state = new llm_intent_state();
     if( !guy.getID().is_valid() ) {
-        return invalid_state;
+        return *invalid_state;
     }
     return llm_intent_state_map()[guy.getID()];
+}
+
+void npc::begin_llm_action( llm_action_kind kind,
+                            const std::string &target_hint,
+                            const std::string &target_name,
+                            const std::optional<tripoint_abs_ms> &target_pos,
+                            const std::string &request_id_override ) const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.active_status.kind != llm_action_kind::none ) {
+        if( !is_terminal_llm_action_phase( state.active_status.phase ) ) {
+            state.active_status.phase = llm_action_phase::cancelled;
+            if( state.active_status.reason_code.empty() ) {
+                state.active_status.reason_code = "intent.superseded";
+            }
+        }
+        state.active_status.updated_turn = calendar::turn;
+        state.recent_statuses.push_back( state.active_status );
+        while( state.recent_statuses.size() > max_recent_llm_action_statuses ) {
+            state.recent_statuses.pop_front();
+        }
+    }
+
+    state.active_status = llm_action_status{};
+    if( kind == llm_action_kind::none ) {
+        return;
+    }
+    state.active_status.kind = kind;
+    state.active_status.phase = llm_action_phase::requested;
+    state.active_status.request_id = request_id_override.empty() ? state.request_id : request_id_override;
+    state.active_status.serial = state.next_action_serial++;
+    state.active_status.target_hint = target_hint;
+    state.active_status.target_name = target_name;
+    state.active_status.target_pos = target_pos ? *target_pos : tripoint_abs_ms::invalid;
+    state.active_status.started_turn = calendar::turn;
+    state.active_status.updated_turn = calendar::turn;
+    emit_llm_action_status( state.active_status );
+}
+
+void npc::update_llm_action_phase( llm_action_phase phase,
+                                   const std::string &reason_code,
+                                   std::vector<std::string> debug_facts ) const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.active_status.kind == llm_action_kind::none || phase == llm_action_phase::none ) {
+        return;
+    }
+    const bool changed = state.active_status.phase != phase ||
+                         ( !reason_code.empty() && state.active_status.reason_code != reason_code );
+    state.active_status.phase = phase;
+    if( !reason_code.empty() ) {
+        state.active_status.reason_code = reason_code;
+    }
+    state.active_status.updated_turn = calendar::turn;
+    if( !debug_facts.empty() ) {
+        state.active_status.debug_facts = std::move( debug_facts );
+    }
+    ++state.active_status.attempts;
+    if( changed ) {
+        emit_llm_action_status( state.active_status );
+    }
+}
+
+void npc::finish_llm_action( llm_action_phase terminal_phase,
+                             const std::string &reason_code,
+                             std::vector<std::string> debug_facts ) const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.active_status.kind == llm_action_kind::none ||
+        !is_terminal_llm_action_phase( terminal_phase ) ) {
+        return;
+    }
+    state.active_status.phase = terminal_phase;
+    if( !reason_code.empty() ) {
+        state.active_status.reason_code = reason_code;
+    }
+    state.active_status.updated_turn = calendar::turn;
+    if( !debug_facts.empty() ) {
+        state.active_status.debug_facts = std::move( debug_facts );
+    }
+    ++state.active_status.attempts;
+    emit_llm_action_status( state.active_status );
+    state.recent_statuses.push_back( state.active_status );
+    while( state.recent_statuses.size() > max_recent_llm_action_statuses ) {
+        state.recent_statuses.pop_front();
+    }
+    state.active_status = llm_action_status{};
+}
+
+void npc::clear_llm_action_status() const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    state.active_status = llm_action_status{};
+    state.recent_statuses.clear();
+    state.next_action_serial = 1;
+}
+
+bool npc::has_active_llm_action_status() const
+{
+    const llm_intent_state &state = llm_intent_state_for( *this );
+    return state.active_status.kind != llm_action_kind::none;
+}
+
+std::string npc::llm_action_bark_for_reason( const std::string &reason_code )
+{
+    if( reason_code == "pickup.no_inventory_space" ) {
+        return _( "No room for that." );
+    }
+    if( reason_code == "pickup.too_heavy" ) {
+        return _( "Too heavy." );
+    }
+    if( reason_code == "pickup.no_path" ) {
+        return _( "Can't reach it." );
+    }
+    if( reason_code == "pickup.hostile_threat_nearby" ) {
+        return _( "Not while we're under threat." );
+    }
+    if( reason_code == "pickup.panic_override" ) {
+        return _( "Nope, not doing that." );
+    }
+    if( reason_code == "pickup.item_missing" ) {
+        return _( "It's gone." );
+    }
+    if( reason_code == "pickup.rule_disallows" ) {
+        return _( "You told me not to." );
+    }
+    if( reason_code == "pickup.zone_forbidden" ) {
+        return _( "Not from there." );
+    }
+    if( reason_code == "pickup.situation_changed" ) {
+        return _( "Situation changed." );
+    }
+    if( reason_code == "inventory.item_missing" ) {
+        return _( "Don't have it." );
+    }
+    if( reason_code == "inventory.cannot_wield" ) {
+        return _( "Can't wield that." );
+    }
+    if( reason_code == "inventory.cannot_wear" ) {
+        return _( "Can't wear that." );
+    }
+    if( reason_code == "inventory.cannot_activate" ) {
+        return _( "Can't use that." );
+    }
+    if( reason_code == "inventory.wear_failed" ) {
+        return _( "Wouldn't go on." );
+    }
+    if( reason_code == "inventory.wield_failed" ) {
+        return _( "Wouldn't stay in hand." );
+    }
+    if( reason_code == "attack.target_not_visible" ) {
+        return _( "Can't see the target." );
+    }
+    if( reason_code == "attack.target_missing" ) {
+        return _( "Lost the target." );
+    }
+    if( reason_code == "attack.no_clear_shot" ) {
+        return _( "No clear shot." );
+    }
+    if( reason_code == "attack.no_viable_attack" ) {
+        return _( "Can't make that attack." );
+    }
+    if( reason_code == "attack.morale_or_panic_block" ) {
+        return _( "Nope, not doing that." );
+    }
+    if( reason_code == "attack.target_invalid" ) {
+        return _( "That target makes no sense." );
+    }
+    if( reason_code == "attack.cannot_attack" ) {
+        return _( "Can't fight like this." );
+    }
+    if( reason_code == "attack.cannot_move" ) {
+        return _( "Can't get there." );
+    }
+    if( reason_code == "pickup.obtain_failed" ) {
+        return _( "Couldn't get it." );
+    }
+    return std::string();
+}
+
+void npc::emit_llm_action_status( llm_action_status &status ) const
+{
+    if( status.kind == llm_action_kind::none || status.phase == llm_action_phase::none ) {
+        return;
+    }
+    const std::string facts = join_debug_facts( status.debug_facts );
+    llm_intent::log_event( string_format(
+                              "action_status npc=\"%s\" kind=\"%s\" phase=\"%s\" reason=\"%s\" request=\"%s\" target_hint=\"%s\" target=\"%s\" facts=\"%s\"",
+                              get_name(), llm_action_kind_name( status.kind ),
+                              llm_action_phase_name( status.phase ), status.reason_code,
+                              status.request_id, status.target_hint, status.target_name, facts ) );
+
+    if( get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ) {
+        std::string ui = string_format( "LLM %s %s", llm_action_kind_name( status.kind ),
+                                        llm_action_phase_name( status.phase ) );
+        if( !status.reason_code.empty() ) {
+            ui += string_format( ": %s", status.reason_code );
+        }
+        if( !status.target_name.empty() ) {
+            ui += string_format( " (%s)", status.target_name );
+        } else if( !status.target_hint.empty() ) {
+            ui += string_format( " (%s)", status.target_hint );
+        }
+        add_msg( "%s", ui );
+    }
+
+    if( ( status.phase == llm_action_phase::blocked || status.phase == llm_action_phase::failed ) &&
+        !status.bark_sent ) {
+        const std::string bark = llm_action_bark_for_reason( status.reason_code );
+        if( !bark.empty() ) {
+            say( bark );
+            status.bark_sent = true;
+        }
+    }
 }
 
 standard_npc::standard_npc( const std::string &name, const tripoint_bub_ms &pos,
@@ -2561,6 +2855,9 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
                                   const std::string &request_id,
                                   const std::string &target_hint ) const
 {
+    if( has_active_llm_action_status() ) {
+        finish_llm_action( llm_action_phase::cancelled, "intent.superseded" );
+    }
     llm_intent_state &state = llm_intent_state_for( *this );
     state.queue.clear();
     for( llm_intent_action action : actions ) {
@@ -2593,6 +2890,9 @@ void npc::set_llm_intent_actions( const std::vector<llm_intent_action> &actions,
 
 void npc::clear_llm_intent_actions()
 {
+    if( has_active_llm_action_status() ) {
+        finish_llm_action( llm_action_phase::cancelled, "intent.cleared" );
+    }
     llm_intent_state &state = llm_intent_state_for( *this );
     state.queue.clear();
     state.active = llm_intent_action::none;
@@ -2643,6 +2943,10 @@ void npc::set_llm_intent_legend_map( const std::string &request_id,
 void npc::set_llm_intent_item_targets( const std::vector<llm_item_target> &targets ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
+    if( state.active_status.kind == llm_action_kind::look_around_pickup &&
+        !is_terminal_llm_action_phase( state.active_status.phase ) ) {
+        finish_llm_action( llm_action_phase::cancelled, "intent.targets_reset" );
+    }
     state.look_around_targets.clear();
     state.look_around_active_target = npc::llm_item_target{};
     for( const llm_item_target &target : targets ) {

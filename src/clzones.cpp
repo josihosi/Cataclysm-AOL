@@ -60,19 +60,30 @@ static const itype_id itype_disassembly( "disassembly" );
 static const zone_type_id zone_type_AUTO_DRINK( "AUTO_DRINK" );
 static const zone_type_id zone_type_AUTO_EAT( "AUTO_EAT" );
 static const zone_type_id zone_type_CAMP_FOOD( "CAMP_FOOD" );
+static const zone_type_id zone_type_CAMP_STORAGE( "CAMP_STORAGE" );
 static const zone_type_id zone_type_CONSTRUCTION_BLUEPRINT( "CONSTRUCTION_BLUEPRINT" );
 static const zone_type_id zone_type_DISASSEMBLE( "DISASSEMBLE" );
 static const zone_type_id zone_type_FARM_PLOT( "FARM_PLOT" );
+static const zone_type_id zone_type_LOOT_AMMO( "LOOT_AMMO" );
+static const zone_type_id zone_type_LOOT_BOOKS( "LOOT_BOOKS" );
+static const zone_type_id zone_type_LOOT_CHEMICAL( "LOOT_CHEMICAL" );
+static const zone_type_id zone_type_LOOT_CLOTHING( "LOOT_CLOTHING" );
+static const zone_type_id zone_type_LOOT_CONTAINERS( "LOOT_CONTAINERS" );
 static const zone_type_id zone_type_LOOT_CORPSE( "LOOT_CORPSE" );
 static const zone_type_id zone_type_LOOT_CUSTOM( "LOOT_CUSTOM" );
 static const zone_type_id zone_type_LOOT_DEFAULT( "LOOT_DEFAULT" );
 static const zone_type_id zone_type_LOOT_DRINK( "LOOT_DRINK" );
+static const zone_type_id zone_type_LOOT_DRUGS( "LOOT_DRUGS" );
 static const zone_type_id zone_type_LOOT_FOOD( "LOOT_FOOD" );
+static const zone_type_id zone_type_LOOT_GUNS( "LOOT_GUNS" );
 static const zone_type_id zone_type_LOOT_IGNORE( "LOOT_IGNORE" );
 static const zone_type_id zone_type_LOOT_ITEM_GROUP( "LOOT_ITEM_GROUP" );
+static const zone_type_id zone_type_LOOT_MAGAZINES( "LOOT_MAGAZINES" );
 static const zone_type_id zone_type_LOOT_PDRINK( "LOOT_PDRINK" );
 static const zone_type_id zone_type_LOOT_PFOOD( "LOOT_PFOOD" );
 static const zone_type_id zone_type_LOOT_SEEDS( "LOOT_SEEDS" );
+static const zone_type_id zone_type_LOOT_SPARE_PARTS( "LOOT_SPARE_PARTS" );
+static const zone_type_id zone_type_LOOT_TOOLS( "LOOT_TOOLS" );
 static const zone_type_id zone_type_LOOT_UNSORTED( "LOOT_UNSORTED" );
 static const zone_type_id zone_type_LOOT_WOOD( "LOOT_WOOD" );
 static const zone_type_id zone_type_NO_AUTO_PICKUP( "NO_AUTO_PICKUP" );
@@ -2006,6 +2017,485 @@ void mapgen_place_zone( tripoint_abs_ms const &start, tripoint_abs_ms const &end
         }
     }
     mgr.add( name, type, fac, false, true, s_, e_, options, true, pmap );
+}
+
+namespace
+{
+struct smart_zone_plan_entry {
+    tripoint_abs_ms start;
+    tripoint_abs_ms end;
+    zone_type_id type;
+    std::string name;
+    std::string filter;
+};
+
+struct smart_zone_plan_context {
+    map &here;
+    zone_manager &mgr;
+    faction_id fac;
+    tripoint_abs_ms start;
+    tripoint_abs_ms end;
+    tripoint_abs_ms center;
+    std::unordered_set<tripoint_abs_ms> reserved;
+    std::vector<smart_zone_plan_entry> planned;
+    std::vector<tripoint_abs_ms> main_anchors;
+};
+
+int smart_zone_manhattan_dist( const tripoint_abs_ms &a, const tripoint_abs_ms &b )
+{
+    return std::abs( a.x() - b.x() ) + std::abs( a.y() - b.y() ) + std::abs( a.z() - b.z() );
+}
+
+std::string smart_zone_tile_id( const map &here, const tripoint_abs_ms &p )
+{
+    const tripoint_bub_ms local = here.get_bub( p );
+    const furn_id furn = here.furn( local );
+    if( furn != furn_str_id( "f_null" ) ) {
+        return furn.obj().id.str();
+    }
+    return here.ter( local ).obj().id.str();
+}
+
+bool smart_zone_id_has_any( const std::string &id,
+                            const std::initializer_list<const char *> &needles )
+{
+    return std::any_of( needles.begin(), needles.end(), [&id]( const char *needle ) {
+        return id.find( needle ) != std::string::npos;
+    } );
+}
+
+bool smart_zone_has_non_storage_zone_at( zone_manager &mgr, const faction_id &fac,
+        const tripoint_abs_ms &p )
+{
+    for( const zone_manager::ref_const_zone_data zone_ref : mgr.get_zones( fac ) ) {
+        const zone_data &zone = zone_ref.get();
+        if( zone.get_type() != zone_type_CAMP_STORAGE && zone.has_inside( p ) ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool smart_zone_is_inside( const smart_zone_plan_context &ctx, const tripoint_abs_ms &p )
+{
+    return p.x() >= ctx.start.x() && p.x() <= ctx.end.x() &&
+           p.y() >= ctx.start.y() && p.y() <= ctx.end.y() &&
+           p.z() == ctx.start.z();
+}
+
+bool smart_zone_tile_is_claimable( const smart_zone_plan_context &ctx, const tripoint_abs_ms &p )
+{
+    return smart_zone_is_inside( ctx, p ) && !ctx.reserved.count( p ) &&
+           !smart_zone_has_non_storage_zone_at( ctx.mgr, ctx.fac, p );
+}
+
+void smart_zone_reserve_tile( smart_zone_plan_context &ctx, const tripoint_abs_ms &p )
+{
+    ctx.reserved.insert( p );
+}
+
+void smart_zone_reserve_rect( smart_zone_plan_context &ctx,
+                              const tripoint_abs_ms &start, const tripoint_abs_ms &end )
+{
+    for( int y = start.y(); y <= end.y(); ++y ) {
+        for( int x = start.x(); x <= end.x(); ++x ) {
+            ctx.reserved.emplace( tripoint_abs_ms( x, y, start.z() ) );
+        }
+    }
+}
+
+void smart_zone_plan_single( smart_zone_plan_context &ctx, const zone_type_id &type,
+                             const tripoint_abs_ms &p, const std::string &name,
+                             const std::string &filter = {} )
+{
+    ctx.planned.push_back( { p, p, type, name, filter } );
+}
+
+void smart_zone_plan_rect( smart_zone_plan_context &ctx, const zone_type_id &type,
+                           const tripoint_abs_ms &start, const tripoint_abs_ms &end,
+                           const std::string &name, const std::string &filter = {} )
+{
+    ctx.planned.push_back( { start, end, type, name, filter } );
+}
+
+std::vector<tripoint_abs_ms> smart_zone_sorted_points( const smart_zone_plan_context &ctx )
+{
+    std::vector<tripoint_abs_ms> points;
+    points.reserve( ( ctx.end.x() - ctx.start.x() + 1 ) * ( ctx.end.y() - ctx.start.y() + 1 ) );
+    for( int y = ctx.start.y(); y <= ctx.end.y(); ++y ) {
+        for( int x = ctx.start.x(); x <= ctx.end.x(); ++x ) {
+            points.emplace_back( x, y, ctx.start.z() );
+        }
+    }
+    return points;
+}
+
+std::optional<tripoint_abs_ms> smart_zone_pick_point( const smart_zone_plan_context &ctx,
+        const std::function<std::tuple<int, int, int, int>( const tripoint_abs_ms & )> &score_fn )
+{
+    std::vector<std::pair<std::tuple<int, int, int, int>, tripoint_abs_ms>> candidates;
+    for( const tripoint_abs_ms &p : smart_zone_sorted_points( ctx ) ) {
+        if( !smart_zone_tile_is_claimable( ctx, p ) ) {
+            continue;
+        }
+        candidates.emplace_back( score_fn( p ), p );
+    }
+    if( candidates.empty() ) {
+        return std::nullopt;
+    }
+    std::sort( candidates.begin(), candidates.end(),
+    []( const auto &lhs, const auto &rhs ) {
+        return lhs.first < rhs.first;
+    } );
+    return candidates.front().second;
+}
+
+std::optional<tripoint_abs_ms> smart_zone_pick_adjacent( const smart_zone_plan_context &ctx,
+        const tripoint_abs_ms &origin )
+{
+    static const std::array<tripoint, 4> directions = {
+        tripoint::east, tripoint::south, tripoint::west, tripoint::north
+    };
+    for( const tripoint &dir : directions ) {
+        const tripoint_abs_ms p = origin + dir;
+        if( smart_zone_tile_is_claimable( ctx, p ) ) {
+            return p;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<tripoint_abs_ms> smart_zone_pick_near( const smart_zone_plan_context &ctx,
+        const tripoint_abs_ms &origin, int min_dist,
+        const std::function<bool( const tripoint_abs_ms & )> &extra_pred = nullptr )
+{
+    return smart_zone_pick_point( ctx, [&]( const tripoint_abs_ms &p ) {
+        const int dist = smart_zone_manhattan_dist( origin, p );
+        const int min_penalty = dist < min_dist ? 1000 : 0;
+        const int pred_penalty = extra_pred && !extra_pred( p ) ? 1000 : 0;
+        return std::make_tuple( min_penalty + pred_penalty, dist, p.y(), p.x() );
+    } );
+}
+
+std::optional<std::pair<tripoint_abs_ms, tripoint_abs_ms>> smart_zone_pick_unsorted_rect(
+    const smart_zone_plan_context &ctx )
+{
+    struct candidate_rect {
+        tripoint_abs_ms start;
+        tripoint_abs_ms end;
+        int shape_order;
+        int anchor_dist;
+    };
+    std::vector<candidate_rect> candidates;
+    auto rect_ok = [&]( const tripoint_abs_ms &rect_start, const tripoint_abs_ms &rect_end ) {
+        for( int y = rect_start.y(); y <= rect_end.y(); ++y ) {
+            for( int x = rect_start.x(); x <= rect_end.x(); ++x ) {
+                if( !smart_zone_tile_is_claimable( ctx, tripoint_abs_ms( x, y, rect_start.z() ) ) ) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+    auto push_candidate = [&]( const tripoint_abs_ms &rect_start, const tripoint_abs_ms &rect_end,
+    int shape_order ) {
+        if( !rect_ok( rect_start, rect_end ) ) {
+            return;
+        }
+        const tripoint_abs_ms rect_center( ( rect_start.x() + rect_end.x() ) / 2,
+                                           ( rect_start.y() + rect_end.y() ) / 2,
+                                           rect_start.z() );
+        int anchor_dist = 0;
+        if( !ctx.main_anchors.empty() ) {
+            anchor_dist = INT_MAX;
+            for( const tripoint_abs_ms &anchor : ctx.main_anchors ) {
+                anchor_dist = std::min( anchor_dist, smart_zone_manhattan_dist( rect_center, anchor ) );
+            }
+        }
+        candidates.push_back( { rect_start, rect_end, shape_order, anchor_dist } );
+    };
+
+    for( int y = ctx.start.y(); y <= ctx.end.y(); ++y ) {
+        for( int x = ctx.start.x(); x + 8 <= ctx.end.x(); ++x ) {
+            push_candidate( tripoint_abs_ms( x, y, ctx.start.z() ),
+                            tripoint_abs_ms( x + 8, y, ctx.start.z() ), 0 );
+        }
+    }
+    for( int y = ctx.start.y(); y + 8 <= ctx.end.y(); ++y ) {
+        for( int x = ctx.start.x(); x <= ctx.end.x(); ++x ) {
+            push_candidate( tripoint_abs_ms( x, y, ctx.start.z() ),
+                            tripoint_abs_ms( x, y + 8, ctx.start.z() ), 1 );
+        }
+    }
+    for( int y = ctx.start.y(); y + 2 <= ctx.end.y(); ++y ) {
+        for( int x = ctx.start.x(); x + 2 <= ctx.end.x(); ++x ) {
+            push_candidate( tripoint_abs_ms( x, y, ctx.start.z() ),
+                            tripoint_abs_ms( x + 2, y + 2, ctx.start.z() ), 2 );
+        }
+    }
+
+    if( candidates.empty() ) {
+        return std::nullopt;
+    }
+    std::sort( candidates.begin(), candidates.end(),
+    []( const candidate_rect &lhs, const candidate_rect &rhs ) {
+        if( lhs.anchor_dist != rhs.anchor_dist ) {
+            return lhs.anchor_dist > rhs.anchor_dist;
+        }
+        if( lhs.shape_order != rhs.shape_order ) {
+            return lhs.shape_order < rhs.shape_order;
+        }
+        if( lhs.start.y() != rhs.start.y() ) {
+            return lhs.start.y() > rhs.start.y();
+        }
+        return lhs.start.x() < rhs.start.x();
+    } );
+    return std::make_pair( candidates.front().start, candidates.front().end );
+}
+
+std::optional<tripoint_abs_ms> smart_zone_pick_outside_rotten( const smart_zone_plan_context &ctx )
+{
+    constexpr int max_search_radius = 6;
+    for( int radius = 1; radius <= max_search_radius; ++radius ) {
+        std::vector<tripoint_abs_ms> candidates;
+        for( int x = ctx.start.x() - radius; x <= ctx.end.x() + radius; ++x ) {
+            candidates.emplace_back( x, ctx.start.y() - radius, ctx.start.z() );
+        }
+        for( int y = ctx.start.y() - radius + 1; y <= ctx.end.y() + radius; ++y ) {
+            candidates.emplace_back( ctx.end.x() + radius, y, ctx.start.z() );
+        }
+        for( int x = ctx.end.x() + radius - 1; x >= ctx.start.x() - radius; --x ) {
+            candidates.emplace_back( x, ctx.end.y() + radius, ctx.start.z() );
+        }
+        for( int y = ctx.end.y() + radius - 1; y > ctx.start.y() - radius; --y ) {
+            candidates.emplace_back( ctx.start.x() - radius, y, ctx.start.z() );
+        }
+        for( const tripoint_abs_ms &p : candidates ) {
+            if( !ctx.here.inbounds( p ) ) {
+                continue;
+            }
+            const tripoint_bub_ms local = ctx.here.get_bub( p );
+            if( !ctx.here.is_outside( local ) || ctx.here.impassable( local ) ) {
+                continue;
+            }
+            if( smart_zone_has_non_storage_zone_at( ctx.mgr, ctx.fac, p ) ) {
+                continue;
+            }
+            return p;
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<tripoint_abs_ms> smart_zone_beds_inside( const smart_zone_plan_context &ctx )
+{
+    std::vector<tripoint_abs_ms> beds;
+    for( const tripoint_abs_ms &p : smart_zone_sorted_points( ctx ) ) {
+        const std::string id = smart_zone_tile_id( ctx.here, p );
+        if( smart_zone_id_has_any( id, { "bed", "cot", "mattress", "bunk" } ) ) {
+            beds.push_back( p );
+        }
+    }
+    return beds;
+}
+}
+
+basecamp_smart_zone_result auto_place_basecamp_smart_zones(
+    const tripoint_abs_ms &start, const tripoint_abs_ms &end,
+    const faction_id &fac, map *pmap )
+{
+    map &here = pmap == nullptr ? get_map() : *pmap;
+    zone_manager &mgr = zone_manager::get_manager();
+    const tripoint_abs_ms start_point = std::min( start, end );
+    const tripoint_abs_ms end_point = std::max( start, end );
+    smart_zone_plan_context ctx {
+        here,
+        mgr,
+        fac,
+        start_point,
+        end_point,
+        tripoint_abs_ms( ( start_point.x() + end_point.x() ) / 2,
+                         ( start_point.y() + end_point.y() ) / 2,
+                         start_point.z() ),
+        {},
+        {},
+        {}
+    };
+
+    const auto pick_fire_anchor = [&]( const tripoint_abs_ms &p ) {
+        const tripoint_bub_ms local = here.get_bub( p );
+        const std::string id = smart_zone_tile_id( here, p );
+        const int rank = here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_FIRE_CONTAINER, local ) ||
+                         here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_USABLE_FIRE, local ) ? 0 :
+                         smart_zone_id_has_any( id, { "brazier", "fireplace", "woodstove", "firepit" } ) ? 1 : 10;
+        return std::make_tuple( rank, smart_zone_manhattan_dist( ctx.center, p ), p.y(), p.x() );
+    };
+    const auto pick_food_anchor = [&]( const tripoint_abs_ms &p ) {
+        const tripoint_bub_ms local = here.get_bub( p );
+        const std::string id = smart_zone_tile_id( here, p );
+        const int rank = here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_NO_SPOIL, local ) ? 0 :
+                         smart_zone_id_has_any( id, { "fridge", "freezer", "refrigerator", "cooler" } ) ? 1 : 10;
+        return std::make_tuple( rank, smart_zone_manhattan_dist( ctx.center, p ), p.y(), p.x() );
+    };
+    const auto pick_equipment_anchor = [&]( const tripoint_abs_ms &p ) {
+        const tripoint_bub_ms local = here.get_bub( p );
+        const std::string id = smart_zone_tile_id( here, p );
+        const int rank = here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_FLAT_SURF, local ) ? 0 :
+                         smart_zone_id_has_any( id, { "table", "counter", "workbench", "desk" } ) ? 1 : 10;
+        return std::make_tuple( rank, smart_zone_manhattan_dist( ctx.center, p ), p.y(), p.x() );
+    };
+    const auto pick_clothing_anchor = [&]( const tripoint_abs_ms &p ) {
+        const tripoint_bub_ms local = here.get_bub( p );
+        const std::string id = smart_zone_tile_id( here, p );
+        const int rank = smart_zone_id_has_any( id, { "dresser", "wardrobe", "cupboard", "closet", "locker", "cabinet" } ) ? 0 :
+                         here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_CONTAINER, local ) ? 1 :
+                         here.has_flag_ter_or_furn( ter_furn_flag::TFLAG_CAN_SIT, local ) ? 2 : 10;
+        return std::make_tuple( rank, smart_zone_manhattan_dist( ctx.center, p ), p.y(), p.x() );
+    };
+
+    const std::optional<tripoint_abs_ms> fire_anchor = smart_zone_pick_point( ctx, pick_fire_anchor );
+    if( !fire_anchor ) {
+        return { false, _( "Smart zoning could not find a usable crafting anchor inside the Basecamp inventory zone." ), 0 };
+    }
+    smart_zone_reserve_tile( ctx, *fire_anchor );
+    ctx.main_anchors.push_back( *fire_anchor );
+
+    const std::optional<tripoint_abs_ms> splintered_tile = smart_zone_pick_adjacent( ctx, *fire_anchor );
+    if( !splintered_tile ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
+    smart_zone_reserve_tile( ctx, *splintered_tile );
+
+    const std::optional<tripoint_abs_ms> wood_tile = smart_zone_pick_near( ctx, *fire_anchor, 1 );
+    const std::optional<tripoint_abs_ms> tools_tile = wood_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> parts_tile = tools_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> books_tile = parts_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> containers_tile = books_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> magazines_tile = containers_tile ? smart_zone_pick_near( ctx, *fire_anchor, 1 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> chemical_tile = magazines_tile ? smart_zone_pick_near( ctx, *fire_anchor, 2 ) : std::nullopt;
+    const std::optional<tripoint_abs_ms> drugs_tile = chemical_tile ? smart_zone_pick_near( ctx, *fire_anchor, 2 ) : std::nullopt;
+    if( !wood_tile || !tools_tile || !parts_tile || !books_tile || !containers_tile ||
+        !magazines_tile || !chemical_tile || !drugs_tile ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
+    for( const tripoint_abs_ms &p : { *wood_tile, *tools_tile, *parts_tile, *books_tile,
+                                      *containers_tile, *magazines_tile, *chemical_tile,
+                                      *drugs_tile } ) {
+        smart_zone_reserve_tile( ctx, p );
+    }
+
+    const std::optional<tripoint_abs_ms> food_anchor = smart_zone_pick_point( ctx, pick_food_anchor );
+    if( !food_anchor ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
+    smart_zone_reserve_tile( ctx, *food_anchor );
+    ctx.main_anchors.push_back( *food_anchor );
+    const std::optional<tripoint_abs_ms> drink_tile = smart_zone_pick_near( ctx, *food_anchor, 1 );
+    if( !drink_tile ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
+    smart_zone_reserve_tile( ctx, *drink_tile );
+
+    const std::optional<tripoint_abs_ms> equipment_anchor = smart_zone_pick_point( ctx, pick_equipment_anchor );
+    if( !equipment_anchor ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
+    smart_zone_reserve_tile( ctx, *equipment_anchor );
+    ctx.main_anchors.push_back( *equipment_anchor );
+    const std::optional<tripoint_abs_ms> ammo_tile = smart_zone_pick_near( ctx, *equipment_anchor, 1 );
+    if( !ammo_tile ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
+    smart_zone_reserve_tile( ctx, *ammo_tile );
+
+    const std::optional<tripoint_abs_ms> clothing_anchor = smart_zone_pick_point( ctx, pick_clothing_anchor );
+    if( !clothing_anchor ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
+    smart_zone_reserve_tile( ctx, *clothing_anchor );
+    ctx.main_anchors.push_back( *clothing_anchor );
+    const std::optional<tripoint_abs_ms> dirty_tile = smart_zone_pick_near( ctx, *clothing_anchor, 1 );
+    if( !dirty_tile ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
+    smart_zone_reserve_tile( ctx, *dirty_tile );
+
+    const std::vector<tripoint_abs_ms> beds = smart_zone_beds_inside( ctx );
+    for( const tripoint_abs_ms &bed : beds ) {
+        if( smart_zone_has_non_storage_zone_at( ctx.mgr, ctx.fac, bed ) ) {
+            return { false, _( "Smart zoning would overwrite existing non-basecamp zones, so it was cancelled." ), 0 };
+        }
+    }
+
+    const auto unsorted_rect = smart_zone_pick_unsorted_rect( ctx );
+    if( !unsorted_rect ) {
+        return { false, _( "Basecamp inventory zone is too small for Smart Zone Manager v1." ), 0 };
+    }
+    smart_zone_reserve_rect( ctx, unsorted_rect->first, unsorted_rect->second );
+
+    const std::optional<tripoint_abs_ms> rotten_tile = smart_zone_pick_outside_rotten( ctx );
+    if( !rotten_tile ) {
+        return { false, _( "Smart zoning could not find a clean outside tile for the rotten dump zone." ), 0 };
+    }
+
+    smart_zone_plan_single( ctx, zone_type_SOURCE_FIREWOOD, *fire_anchor,
+                            _( "Basecamp fire source" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, *splintered_tile,
+                            _( "Basecamp splintered wood" ), "splintered" );
+    smart_zone_plan_single( ctx, zone_type_SOURCE_FIREWOOD, *splintered_tile,
+                            _( "Basecamp kindling" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_WOOD, *wood_tile,
+                            _( "Basecamp wood" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_TOOLS, *tools_tile,
+                            _( "Basecamp tools" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_SPARE_PARTS, *parts_tile,
+                            _( "Basecamp spare parts" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_BOOKS, *books_tile,
+                            _( "Basecamp books" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_CONTAINERS, *containers_tile,
+                            _( "Basecamp containers" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_MAGAZINES, *magazines_tile,
+                            _( "Basecamp magazines" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_CHEMICAL, *chemical_tile,
+                            _( "Basecamp chemicals" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_DRUGS, *drugs_tile,
+                            _( "Basecamp drugs" ) );
+
+    smart_zone_plan_single( ctx, zone_type_LOOT_FOOD, *food_anchor,
+                            _( "Basecamp food" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_DRINK, *drink_tile,
+                            _( "Basecamp drinks" ) );
+
+    smart_zone_plan_single( ctx, zone_type_LOOT_GUNS, *equipment_anchor,
+                            _( "Basecamp guns" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_AMMO, *ammo_tile,
+                            _( "Basecamp ammo" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_MAGAZINES, *ammo_tile,
+                            _( "Basecamp weapon magazines" ) );
+
+    smart_zone_plan_single( ctx, zone_type_LOOT_CLOTHING, *clothing_anchor,
+                            _( "Basecamp clothing" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, *dirty_tile,
+                            _( "Basecamp dirty clothing" ), "dirty" );
+    smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, *rotten_tile,
+                            _( "Basecamp rotten dump" ), "rotten" );
+    smart_zone_plan_rect( ctx, zone_type_LOOT_UNSORTED,
+                          unsorted_rect->first, unsorted_rect->second,
+                          _( "Basecamp unsorted" ) );
+
+    for( const tripoint_abs_ms &bed : beds ) {
+        smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, bed,
+                                _( "Basecamp blankets" ), "blanket" );
+        smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, bed,
+                                _( "Basecamp quilts" ), "quilt" );
+    }
+
+    for( const smart_zone_plan_entry &entry : ctx.planned ) {
+        mapgen_place_zone( entry.start, entry.end, entry.type, ctx.fac,
+                           entry.name, entry.filter, &ctx.here );
+    }
+    return { true, _( "Smart Zone Manager v1 placed the Basecamp helper layout." ),
+             static_cast<int>( ctx.planned.size() ) };
 }
 
 std::unique_ptr<talker> get_talker_for( zone_data &me )

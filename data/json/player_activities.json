@@ -502,6 +502,13 @@
     "based_on": "neither"
   },
   {
+    "id": "ACT_CAMP_PATROL",
+    "type": "activity_type",
+    "activity_level": "NO_EXERCISE",
+    "verb": "patrolling the camp",
+    "based_on": "time"
+  },
+  {
     "id": "ACT_UNLOAD_LOOT",
     "type": "activity_type",
     "activity_level": "MODERATE_EXERCISE",

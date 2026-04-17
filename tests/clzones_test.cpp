@@ -1,3 +1,4 @@
+#include <array>
 #include <climits>
 #include <functional>
 #include <initializer_list>
@@ -55,6 +56,7 @@ static const zone_type_id zone_type_LOOT_FOOD( "LOOT_FOOD" );
 static const zone_type_id zone_type_LOOT_PDRINK( "LOOT_PDRINK" );
 static const zone_type_id zone_type_LOOT_PFOOD( "LOOT_PFOOD" );
 static const zone_type_id zone_type_LOOT_UNSORTED( "LOOT_UNSORTED" );
+static const zone_type_id zone_type_CAMP_LOCKER( "CAMP_LOCKER" );
 static const zone_type_id zone_type_UNLOAD_ALL( "UNLOAD_ALL" );
 
 namespace
@@ -396,6 +398,44 @@ TEST_CASE( "zone_sorting_skips_items_with_unreachable_destinations",
     // Player inventory should not contain the food item
     CHECK( dummy.charges_of( itype_test_apple ) == 0 );
     // Activity should have completed (no hang)
+    CHECK( !dummy.activity );
+}
+
+TEST_CASE( "zone_sorting_leaves_camp_locker_tiles_alone",
+           "[zones][items][activities][sorting][basecamp]" )
+{
+    avatar &dummy = get_avatar();
+    map &here = get_map();
+
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    const tripoint_bub_ms start_pos = tripoint_bub_ms::zero + tripoint::east;
+    const tripoint_abs_ms start_abs = here.get_abs( start_pos );
+    dummy.set_pos_abs_only( start_abs );
+
+    create_tile_zone( "Unsorted", zone_type_LOOT_UNSORTED, start_abs );
+    create_tile_zone( "Camp Locker", zone_type_CAMP_LOCKER, start_abs );
+
+    here.add_item_or_charges( start_pos, item( itype_test_apple ) );
+    REQUIRE( count_items_or_charges( start_pos, itype_test_apple, std::nullopt ) == 1 );
+
+    const tripoint_bub_ms dest_pos = start_pos + tripoint( 5, 0, 0 );
+    const tripoint_abs_ms dest_abs = here.get_abs( dest_pos );
+    here.ter_set( dest_pos, ter_t_floor );
+    create_tile_zone( "Food", zone_type_LOOT_FOOD, dest_abs );
+
+    item test_food( itype_test_apple );
+    zone_manager &zm = zone_manager::get_manager();
+    REQUIRE( zm.get_near_zone_type_for_item( test_food, start_abs ) == zone_type_LOOT_FOOD );
+
+    dummy.assign_activity( zone_sort_activity_actor() );
+    process_activity( dummy );
+
+    CHECK( count_items_or_charges( start_pos, itype_test_apple, std::nullopt ) == 1 );
+    CHECK( count_items_or_charges( dest_pos, itype_test_apple, std::nullopt ) == 0 );
+    CHECK( dummy.charges_of( itype_test_apple ) == 0 );
     CHECK( !dummy.activity );
 }
 
@@ -2214,5 +2254,246 @@ TEST_CASE( "route_cache_invalidation_on_mass_change",
     dummy.grab( object_type::NONE );
     zone_manager::get_manager().clear();
     clear_map_without_vision();
+}
+
+namespace
+{
+static const zone_type_id zone_type_LOOT_AMMO( "LOOT_AMMO" );
+static const zone_type_id zone_type_LOOT_BOOKS( "LOOT_BOOKS" );
+static const zone_type_id zone_type_LOOT_CHEMICAL( "LOOT_CHEMICAL" );
+static const zone_type_id zone_type_LOOT_CLOTHING( "LOOT_CLOTHING" );
+static const zone_type_id zone_type_LOOT_CONTAINERS( "LOOT_CONTAINERS" );
+static const zone_type_id zone_type_LOOT_CUSTOM( "LOOT_CUSTOM" );
+static const zone_type_id zone_type_LOOT_DRUGS( "LOOT_DRUGS" );
+static const zone_type_id zone_type_LOOT_GUNS( "LOOT_GUNS" );
+static const zone_type_id zone_type_LOOT_MAGAZINES( "LOOT_MAGAZINES" );
+static const zone_type_id zone_type_LOOT_SPARE_PARTS( "LOOT_SPARE_PARTS" );
+static const zone_type_id zone_type_LOOT_TOOLS( "LOOT_TOOLS" );
+static const zone_type_id zone_type_LOOT_WOOD( "LOOT_WOOD" );
+static const zone_type_id zone_type_SOURCE_FIREWOOD( "SOURCE_FIREWOOD" );
+
+struct smart_zone_fixture {
+    tripoint_abs_ms start;
+    tripoint_abs_ms end;
+    tripoint_abs_ms fire_anchor;
+    tripoint_abs_ms food_anchor;
+    tripoint_abs_ms equipment_anchor;
+    tripoint_abs_ms clothing_anchor;
+    tripoint_abs_ms bed_tile;
+};
+
+smart_zone_fixture build_basecamp_smart_zone_fixture()
+{
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    map &here = get_map();
+    const tripoint_bub_ms center = get_avatar().pos_bub();
+    const auto bub = [&]( int dx, int dy ) {
+        return tripoint_bub_ms( center.x() + dx, center.y() + dy, center.z() );
+    };
+    const auto abs = [&]( int dx, int dy ) {
+        return here.get_abs( bub( dx, dy ) );
+    };
+
+    for( int y = -6; y <= 8; ++y ) {
+        for( int x = -6; x <= 8; ++x ) {
+            REQUIRE( here.ter_set( bub( x, y ), ter_id( "t_dirt" ) ) );
+            REQUIRE( here.furn_set( bub( x, y ), furn_id( "f_null" ) ) );
+        }
+    }
+
+    for( int y = -4; y <= 6; ++y ) {
+        for( int x = -4; x <= 6; ++x ) {
+            const bool wall = x == -4 || x == 6 || y == -4 || y == 6;
+            REQUIRE( here.ter_set( bub( x, y ), ter_id( wall ? "t_wall" : "t_floor" ) ) );
+            REQUIRE( here.furn_set( bub( x, y ), furn_id( "f_null" ) ) );
+        }
+    }
+
+    REQUIRE( here.furn_set( bub( -2, -2 ), furn_id( "f_brazier" ) ) );
+    REQUIRE( here.furn_set( bub( 0, -2 ), furn_id( "f_fridge" ) ) );
+    REQUIRE( here.furn_set( bub( 2, -2 ), furn_id( "f_table" ) ) );
+    REQUIRE( here.furn_set( bub( 4, -2 ), furn_id( "f_dresser" ) ) );
+    REQUIRE( here.furn_set( bub( 4, 4 ), furn_id( "f_bed" ) ) );
+
+    return {
+        abs( -3, -3 ),
+        abs( 5, 5 ),
+        abs( -2, -2 ),
+        abs( 0, -2 ),
+        abs( 2, -2 ),
+        abs( 4, -2 ),
+        abs( 4, 4 )
+    };
+}
+
+const zone_data *find_zone_at( const zone_type_id &type, const tripoint_abs_ms &p,
+                               const std::string &filter = {} )
+{
+    const zone_data *found = nullptr;
+    for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
+        const zone_data &zone = zone_ref.get();
+        if( zone.get_type() != type || !zone.has_inside( p ) ) {
+            continue;
+        }
+        if( !filter.empty() ) {
+            const auto *loot = dynamic_cast<const loot_options *>( &zone.get_options() );
+            if( loot == nullptr || loot->get_mark() != filter ) {
+                continue;
+            }
+        }
+        if( found != nullptr ) {
+            return nullptr;
+        }
+        found = &zone;
+    }
+    return found;
+}
+
+const zone_data *find_single_zone( const zone_type_id &type, const std::string &filter = {} )
+{
+    const zone_data *found = nullptr;
+    for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
+        const zone_data &zone = zone_ref.get();
+        if( zone.get_type() != type ) {
+            continue;
+        }
+        if( !filter.empty() ) {
+            const auto *loot = dynamic_cast<const loot_options *>( &zone.get_options() );
+            if( loot == nullptr || loot->get_mark() != filter ) {
+                continue;
+            }
+        }
+        if( found != nullptr ) {
+            return nullptr;
+        }
+        found = &zone;
+    }
+    return found;
+}
+
+std::vector<std::string> snapshot_zone_layout()
+{
+    std::vector<std::string> snapshot;
+    for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
+        const zone_data &zone = zone_ref.get();
+        std::string filter;
+        if( const auto *loot = dynamic_cast<const loot_options *>( &zone.get_options() ) ) {
+            filter = loot->get_mark();
+        }
+        snapshot.push_back( zone.get_type().str() + "|" + filter + "|" +
+                            std::to_string( zone.get_start_point().x() ) + "," +
+                            std::to_string( zone.get_start_point().y() ) + "," +
+                            std::to_string( zone.get_end_point().x() ) + "," +
+                            std::to_string( zone.get_end_point().y() ) );
+    }
+    std::sort( snapshot.begin(), snapshot.end() );
+    return snapshot;
+}
+} // namespace
+
+TEST_CASE( "basecamp_smart_zoning_places_expected_layout", "[zones][smart_zone][basecamp]" )
+{
+    const smart_zone_fixture fixture = build_basecamp_smart_zone_fixture();
+    map &here = get_map();
+
+    const basecamp_smart_zone_result result = auto_place_basecamp_smart_zones( fixture.start, fixture.end );
+    REQUIRE( result.success );
+
+    CHECK( find_zone_at( zone_type_SOURCE_FIREWOOD, fixture.fire_anchor ) != nullptr );
+    CHECK( find_zone_at( zone_type_LOOT_FOOD, fixture.food_anchor ) != nullptr );
+    CHECK( find_zone_at( zone_type_LOOT_GUNS, fixture.equipment_anchor ) != nullptr );
+    CHECK( find_zone_at( zone_type_LOOT_CLOTHING, fixture.clothing_anchor ) != nullptr );
+    CHECK( find_zone_at( zone_type_LOOT_CUSTOM, fixture.bed_tile, "blanket" ) != nullptr );
+    CHECK( find_zone_at( zone_type_LOOT_CUSTOM, fixture.bed_tile, "quilt" ) != nullptr );
+
+    const auto has_zone_adjacent = [&]( const tripoint_abs_ms &origin, const zone_type_id &type,
+    const std::string &filter = {} ) {
+        static const std::array<tripoint, 4> dirs = {
+            tripoint::east, tripoint::south, tripoint::west, tripoint::north
+        };
+        for( const tripoint &dir : dirs ) {
+            if( find_zone_at( type, origin + dir, filter ) != nullptr ) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    CHECK( has_zone_adjacent( fixture.fire_anchor, zone_type_LOOT_CUSTOM, "splintered" ) );
+    CHECK( has_zone_adjacent( fixture.fire_anchor, zone_type_SOURCE_FIREWOOD ) );
+    CHECK( has_zone_adjacent( fixture.food_anchor, zone_type_LOOT_DRINK ) );
+    CHECK( has_zone_adjacent( fixture.equipment_anchor, zone_type_LOOT_AMMO ) );
+    CHECK( has_zone_adjacent( fixture.equipment_anchor, zone_type_LOOT_MAGAZINES ) );
+    CHECK( has_zone_adjacent( fixture.clothing_anchor, zone_type_LOOT_CUSTOM, "dirty" ) );
+
+    CHECK( find_single_zone( zone_type_LOOT_WOOD ) != nullptr );
+    CHECK( find_single_zone( zone_type_LOOT_TOOLS ) != nullptr );
+    CHECK( find_single_zone( zone_type_LOOT_SPARE_PARTS ) != nullptr );
+    CHECK( find_single_zone( zone_type_LOOT_BOOKS ) != nullptr );
+    CHECK( find_single_zone( zone_type_LOOT_CONTAINERS ) != nullptr );
+    CHECK( find_single_zone( zone_type_LOOT_CHEMICAL ) != nullptr );
+    CHECK( find_single_zone( zone_type_LOOT_DRUGS ) != nullptr );
+
+    const zone_data *unsorted = find_single_zone( zone_type_LOOT_UNSORTED );
+    REQUIRE( unsorted != nullptr );
+    CHECK( unsorted->get_start_point() != unsorted->get_end_point() );
+
+    const zone_data *rotten = find_single_zone( zone_type_LOOT_CUSTOM, "rotten" );
+    REQUIRE( rotten != nullptr );
+    const tripoint_abs_ms rotten_point = rotten->get_center_point();
+    const bool rotten_outside_basecamp = rotten_point.x() < fixture.start.x() ||
+                                         rotten_point.x() > fixture.end.x() ||
+                                         rotten_point.y() < fixture.start.y() ||
+                                         rotten_point.y() > fixture.end.y();
+    CHECK( rotten_outside_basecamp );
+    CHECK( here.is_outside( here.get_bub( rotten_point ) ) );
+    CHECK( here.ter( here.get_bub( rotten_point ) ) == ter_id( "t_dirt" ) );
+}
+
+TEST_CASE( "basecamp_smart_zoning_is_deterministic_on_the_same_layout",
+           "[zones][smart_zone][basecamp]" )
+{
+    const smart_zone_fixture first_fixture = build_basecamp_smart_zone_fixture();
+    REQUIRE( auto_place_basecamp_smart_zones( first_fixture.start, first_fixture.end ).success );
+    const std::vector<std::string> first_snapshot = snapshot_zone_layout();
+
+    const smart_zone_fixture second_fixture = build_basecamp_smart_zone_fixture();
+    REQUIRE( auto_place_basecamp_smart_zones( second_fixture.start, second_fixture.end ).success );
+    const std::vector<std::string> second_snapshot = snapshot_zone_layout();
+
+    CHECK( second_snapshot == first_snapshot );
+}
+
+TEST_CASE( "basecamp_smart_zoning_rejects_too_small_zone", "[zones][smart_zone][basecamp]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    map &here = get_map();
+    const tripoint_bub_ms center = get_avatar().pos_bub();
+    REQUIRE( here.ter_set( center, ter_id( "t_floor" ) ) );
+    REQUIRE( here.furn_set( center, furn_id( "f_brazier" ) ) );
+
+    const basecamp_smart_zone_result result = auto_place_basecamp_smart_zones( here.get_abs( center ),
+                                                                               here.get_abs( center ) );
+    CHECK( !result.success );
+    CHECK( result.placed_zones == 0 );
+    CHECK( find_single_zone( zone_type_SOURCE_FIREWOOD ) == nullptr );
+}
+
+TEST_CASE( "basecamp_smart_zoning_stays_non_destructive_when_bed_is_already_zoned",
+           "[zones][smart_zone][basecamp]" )
+{
+    const smart_zone_fixture fixture = build_basecamp_smart_zone_fixture();
+    create_tile_zone( "Already sorted", zone_type_LOOT_FOOD, fixture.bed_tile );
+
+    const basecamp_smart_zone_result result = auto_place_basecamp_smart_zones( fixture.start, fixture.end );
+    CHECK( !result.success );
+    CHECK( find_zone_at( zone_type_LOOT_FOOD, fixture.bed_tile ) != nullptr );
+    CHECK( find_zone_at( zone_type_SOURCE_FIREWOOD, fixture.fire_anchor ) == nullptr );
 }
 
