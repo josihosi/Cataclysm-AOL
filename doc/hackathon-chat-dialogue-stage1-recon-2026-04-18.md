@@ -144,17 +144,66 @@ Recommendation:
   - fallback turns are clearly logged,
   - and authored fallback text is not masking normal chat failures during playtest.
 
-### 0.8 Recommended follow-up order
+### 0.8 Trade refusal despite chat working
+
+Observed behavior:
+- The NPC can still refuse to trade even when the chat flow itself feels good.
+
+Likely causes:
+- the model saw a legal trade-capable hidden action but chose freeform text with `tool=""`
+- the current topic on that turn did not actually expose a trade-capable hidden action
+- fallback or topic drift interfered with the expected trade moment
+
+Recommendation:
+- Treat this as a log-first issue before changing behavior blindly.
+- On the next debug pass, inspect:
+  - the legal hidden actions on the trade request turn
+  - the raw model output
+  - whether the result used a tool or stayed purely freeform
+
+### 0.9 Speaker colors
+
+Observed behavior:
+- The current transcript is atmospheric, but the speaker separation can be clearer.
+
+Requested direction:
+- player text should stay gray
+- NPC speech should read in white
+
+Recommendation:
+- Keep the change narrow and visual only.
+- Do not redesign the whole dialogue palette; just make speaker ownership easier to scan.
+
+### 0.10 Chat-history UX
+
+Observed behavior:
+- A history action can open unexpectedly in chat input.
+- The current history flow does not close cleanly enough.
+- `d: delete history` reads like tooling, not in-world dialogue UX.
+
+Requested direction:
+- history can exist, but it should feel intentional
+- if delete wording remains visible, it should be phrased more naturally, e.g. `We started off on the wrong foot. Let's rewind`
+
+Recommendation:
+- Decide whether the right fix is:
+  - keep history but make it intentional and better-worded
+  - or simplify history access so accidental opening stops happening
+- Prefer the simplest behavior that still feels good in play.
+
+### 0.11 Recommended follow-up order
 
 1. Confirm the run-phase segfault is reproducible and classify when it happens.
-2. Re-test the response-area input:
+2. Review the next trade-refusal logs as their own debug session.
+3. Rework the response-area UX:
    - `?` input
-   - no floating overlap on trade
-3. Re-test prompt and memory behavior:
+   - speaker colors
+   - chat history behavior
+4. Re-test prompt and memory behavior:
    - reduced repeated warnings
    - more honest work or quest wording
-4. Re-test topic-change feel after hidden actions.
-5. Review fallback rate in `config/llm_dialogue_chat.log`.
+5. Re-test topic-change feel after hidden actions.
+6. Review fallback rate in `config/llm_dialogue_chat.log`.
 
 ## 1. Scope Rule For Stage 1
 

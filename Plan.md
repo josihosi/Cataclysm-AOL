@@ -51,6 +51,9 @@ Current target:
 - at most one hidden real dialogue action per player turn
 - dedicated prompt file and dedicated chat log
 - prompt/tool/memory hardening for repeated lines and fake work or quest wording
+- clearer player/NPC speaker colors in the transcript
+- cleaner chat-history UX in the response-area input
+- a log-first debug pass on trade refusal before changing trade behavior blindly
 - one coherent compile checkpoint for the follow-up fix slice
 - classify the reported run-phase segfault if it reproduces again
 

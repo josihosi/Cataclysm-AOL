@@ -156,11 +156,15 @@ Current honest state:
 ## Pending probes
 
 Hackathon chat dialogue Stage 1:
+- review the next `config/llm_dialogue_chat.log` packet as a dedicated trade-refusal debug session
 - classify the reported `build_and_run.cmd` segfault as startup, runtime, or exit-time
 - verify that `?` input now works in the response-area chat entry
 - verify that trade or another tool-backed UI no longer overlaps a floating chat popup
+- verify that speaker colors clearly separate player gray from NPC white
+- verify that chat-history behavior feels intentional and closes cleanly
 - verify that repeated warning lines are reduced in real turns
 - verify that work or quest wording stays honest unless a real legal hidden action exists
+- verify whether trade refusal is caused by missing legal tools, model choice, or fallback/topic drift
 - verify that topic-changing hidden actions now feel readable with the opener reset
 - then do the next playtest build
 
