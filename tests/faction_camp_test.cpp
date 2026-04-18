@@ -39,6 +39,7 @@ static const itype_id itype_9mm("9mm");
 static const itype_id itype_abaya("abaya");
 static const itype_id itype_armor_lc_plate("armor_lc_plate");
 static const itype_id itype_ballistic_vest_esapi("ballistic_vest_esapi");
+static const itype_id itype_bandages("bandages");
 static const itype_id itype_backpack("backpack");
 static const itype_id itype_bholster("bholster");
 static const itype_id itype_boots("boots");
@@ -3964,6 +3965,126 @@ TEST_CASE(
   }
   CHECK(locker_has_shorts);
   CHECK_FALSE(locker_has_wetsuit);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE(
+    "camp_locker_service_dumps_carried_junk_outside_curated_locker_stock",
+    "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms storage_abs = here.get_abs(tripoint_bub_ms{4, 5, 0});
+  const tripoint_bub_ms storage_local = here.get_bub(storage_abs);
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Storage", zone_type_CAMP_STORAGE, storage_abs);
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(storage_local);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_duffelbag));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_daypack), false).has_value());
+  REQUIRE(worker.i_add(item(itype_bandages)));
+  REQUIRE(worker.i_add(item(itype_glockmag)));
+  REQUIRE(worker.i_add(item(itype_9mm, calendar::turn_zero, 10)));
+  REQUIRE(worker.i_add(item(itype_knife_combat)));
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_duffelbag));
+  CHECK_FALSE(worker.is_wearing(itype_daypack));
+
+  bool worker_has_bandages = false;
+  bool worker_has_magazine = false;
+  bool worker_has_ammo = false;
+  bool worker_has_knife = false;
+  worker.visit_items([&](item *node, item *) {
+    if (node == nullptr) {
+      return VisitResponse::NEXT;
+    }
+    worker_has_bandages = worker_has_bandages || node->typeId() == itype_bandages;
+    worker_has_magazine = worker_has_magazine || node->typeId() == itype_glockmag;
+    worker_has_ammo = worker_has_ammo || node->typeId() == itype_9mm;
+    worker_has_knife = worker_has_knife || node->typeId() == itype_knife_combat;
+    return VisitResponse::NEXT;
+  });
+  CHECK(worker_has_bandages);
+  CHECK(worker_has_magazine);
+  CHECK(worker_has_ammo);
+  CHECK_FALSE(worker_has_knife);
+
+  bool locker_has_daypack = false;
+  bool locker_has_knife = false;
+  bool locker_has_bandages = false;
+  bool locker_recursive_has_bandages = false;
+  bool locker_recursive_has_magazine = false;
+  bool locker_recursive_has_ammo = false;
+  bool locker_recursive_has_knife = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_daypack = locker_has_daypack || it.typeId() == itype_daypack;
+    locker_has_knife = locker_has_knife || it.typeId() == itype_knife_combat;
+    locker_has_bandages = locker_has_bandages || it.typeId() == itype_bandages;
+    for (const item *nested : it.all_items_top()) {
+      locker_recursive_has_bandages = locker_recursive_has_bandages || nested->typeId() == itype_bandages;
+      locker_recursive_has_magazine = locker_recursive_has_magazine || nested->typeId() == itype_glockmag;
+      locker_recursive_has_ammo = locker_recursive_has_ammo || nested->typeId() == itype_9mm;
+      locker_recursive_has_knife = locker_recursive_has_knife || nested->typeId() == itype_knife_combat;
+    }
+  }
+  INFO("locker recursive bandages=" << locker_recursive_has_bandages
+                                     << " mag=" << locker_recursive_has_magazine
+                                     << " ammo=" << locker_recursive_has_ammo
+                                     << " knife=" << locker_recursive_has_knife);
+  CHECK(locker_has_daypack);
+  CHECK_FALSE(locker_has_knife);
+  CHECK_FALSE(locker_has_bandages);
+
+  bool storage_has_knife = false;
+  bool storage_has_bandages = false;
+  bool storage_has_magazine = false;
+  bool storage_has_ammo = false;
+  for (const item &it : here.i_at(storage_local)) {
+    storage_has_knife = storage_has_knife || it.typeId() == itype_knife_combat;
+    storage_has_bandages = storage_has_bandages || it.typeId() == itype_bandages;
+    storage_has_magazine = storage_has_magazine || it.typeId() == itype_glockmag;
+    storage_has_ammo = storage_has_ammo || it.typeId() == itype_9mm;
+  }
+  const tripoint_bub_ms worker_floor_local = here.get_bub(worker.pos_abs());
+  bool worker_floor_has_knife = false;
+  bool worker_floor_has_bandages = false;
+  bool worker_floor_has_magazine = false;
+  bool worker_floor_has_ammo = false;
+  for (const item &it : here.i_at(worker_floor_local)) {
+    worker_floor_has_knife = worker_floor_has_knife || it.typeId() == itype_knife_combat;
+    worker_floor_has_bandages = worker_floor_has_bandages || it.typeId() == itype_bandages;
+    worker_floor_has_magazine = worker_floor_has_magazine || it.typeId() == itype_glockmag;
+    worker_floor_has_ammo = worker_floor_has_ammo || it.typeId() == itype_9mm;
+  }
+  INFO("storage knife=" << storage_has_knife << " bandages=" << storage_has_bandages
+                         << " mag=" << storage_has_magazine << " ammo=" << storage_has_ammo);
+  INFO("worker floor knife=" << worker_floor_has_knife
+                              << " bandages=" << worker_floor_has_bandages
+                              << " mag=" << worker_floor_has_magazine
+                              << " ammo=" << worker_floor_has_ammo);
+  CHECK(storage_has_knife);
+  CHECK_FALSE(storage_has_bandages);
+  CHECK_FALSE(storage_has_magazine);
+  CHECK_FALSE(storage_has_ammo);
 
   zone_manager::get_manager().clear();
 }

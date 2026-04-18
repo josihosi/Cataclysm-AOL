@@ -44,11 +44,28 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 Current honest state:
 - still believed true from earlier work: locker outfitting core exists, locker maintenance rhythm exists, and earlier deterministic/runtime proof for those non-carried-item slices still stands unless new evidence disproves it
 - locker ranged-readiness support already has honest ammo / magazine grounding on the curated locker side
-- not yet safe to claim:
-  - ordinary carried misc junk is dumped automatically as part of the locker dressing cycle
-  - `bandages`, `ammo`, and `magazines` are the only carried classes deliberately kept through that cleanup
-  - the dump behavior stays out of curated locker stock
-  - the result behaves like a basecamp policy rather than follower-style pocket preservation
+- Package 5 code is now landed in the tree:
+  - ordinary carried misc junk is removed during locker dressing instead of being preserved follower-style
+  - the deliberately kept carried lane is explicitly limited to `bandages`, `ammo`, and `magazines`
+  - dumped carried junk is sent to a non-locker cleanup/drop tile instead of being folded back into curated locker stock
+- fresh deterministic proof on current HEAD passed:
+  - `./tests/cata_test "camp_locker_service_dumps_carried_junk_outside_curated_locker_stock"`
+  - log: `build_logs/package5_carried_dump_test_20260418.log`
+  - result: `All tests passed (22 assertions in 1 test case)`
+- fresh broader locker regression packet also passed:
+  - `./tests/cata_test "[camp][locker]"`
+  - log: `build_logs/package5_locker_suite_20260418.log`
+  - result: `All tests passed (955 assertions in 51 test cases)`
+- fresh tiles rebuild for live proof succeeded after clearing the stale tiles PCH:
+  - `make -j4 TILES=1 cataclysm-tiles`
+  - log: `build_logs/package5_tiles_build_20260418.log`
+- fresh live locker proof now exists on rebuilt current HEAD `6952308b74` at `.userdata/dev-harness/harness_runs/20260418_231138/` via `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
+  - screen: runtime-compatible harness launch reached gameplay and completed the locker wait path; this packet did not surface direct on-screen locker text, so the proof class here is mainly artifact/log rather than visible UI text
+  - tests: `not_run` by the harness packet itself; the deterministic evidence above is the paired test packet
+  - artifacts/logs: `probe.artifacts.log` captured the real locker service dumping ordinary carried junk for Ricky Broughton (`small plastic bag`, `dried lentils`, `bullpup shotgun`, `stone axe`) while the post-service locker state only showed the pants-lane items, not the dumped junk
+- not yet safe to claim the whole Package 5 acceptance bar is closed:
+  - the current live fixture/probe proves the junk-dump path and non-polluting locker target on the real locker route
+  - it does **not** yet explicitly exercise the kept `bandages` / `ammo` / `magazines` lane on that same live path
 - the current slice should stay on the `McWilliams` / `Zoraida Vick` footing and the real locker/live path, not wander back into Package 4 surface cleanup or unrelated future lanes
 
 ### Meaning
@@ -121,9 +138,8 @@ Current honest state:
 
 ## Pending probes
 
-- the narrowest deterministic check(s) for carried keep-vs-dump behavior during the locker dressing cycle
-- a packaged live locker proof on the correct McWilliams / `CAMP_LOCKER` footing showing ordinary junk gets dumped while `bandages`, `ammo`, and `magazines` stay carried
-- confirmation that the dump target stays outside curated locker stock instead of polluting the locker zone
+- a packaged live locker proof on the correct McWilliams / `CAMP_LOCKER` footing that explicitly includes the kept `bandages` / `ammo` / `magazines` lane, not only the dumped-junk side
+- if the current locker fixture cannot show those kept classes honestly, the narrowest harness restage/helper that makes that live proof possible without reopening Package 4 work
 
 ---
 

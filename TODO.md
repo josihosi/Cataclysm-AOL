@@ -11,10 +11,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 Active lane: **Locker Package 5, basecamp carried-item dump lane**.
 
 Current target:
-1. make the locker dressing cycle dump ordinary carried misc junk instead of preserving follower-style pocket clutter
-2. keep only the deliberately tiny carried lane: `bandages`, `ammo`, `magazines`
-3. make sure the dump result stays out of curated locker stock
-4. keep the slice narrow instead of accidentally blending in Package 4 surface/control work
+1. package the remaining live locker proof that explicitly shows both sides of Package 5 on the right McWilliams / `CAMP_LOCKER` footing:
+   - ordinary carried junk gets dumped
+   - `bandages`, `ammo`, and `magazines` stay carried
+2. if the current harness fixture cannot exercise those kept classes cleanly, land the narrowest harness restage/helper that makes that proof possible
+3. once that proof exists, close the Package 5 ledgers without wandering into Package 4 surface/control cleanup
 
 Out of scope right now:
 - finishing Package 4 in the same patch

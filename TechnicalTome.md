@@ -45,6 +45,8 @@
 - Armored full-body utility suits with real storage and protection, like `survivor_suit`, now refuse hot-weather shorts splits unless the replacement is itself another armored full-body suit, so the pants-lane one-piece guard no longer "upgrades" them into ordinary `shorts_cargo + tshirt` clothes just because the weather is hot.
 - Light outer full-body civilian garments like `abaya` now also stay in the pants lane instead of falling back into shirt logic just because they are marked `OUTER`, so the same one-piece coverage guard can block `shorts_cargo + vest` nonsense while still allowing a deliberate `shorts_cargo + tshirt` split.
 - Locker service now applies upgrade-selected slots before missing-current fill-ins instead of trusting raw slot enum order, so coverage-dependent splits can free the replaced item first. In practice that fixes footed lower-body gear like `fishing_waders`, where the planned `boots` should land only after the replaced waders have actually been taken off.
+- Locker dressing now also performs a basecamp-specific carried-item cleanup pass: ordinary carried miscellany gets dumped to a non-locker cleanup tile during service, while only `bandages`, `ammo`, and `magazines` are deliberately preserved as the tiny kept carried lane.
+- When locker service removes a replaced or duplicate worn container, it now splits that container's contents too: the kept carried items go back to the worker, and the dumped miscellany follows the same non-locker cleanup path instead of silently polluting curated locker stock.
 
 ## Camp locker V3 temperature lanes
 - The first Locker Zone V3 slice is deliberately narrow: local temperature adjusts locker scoring for shirt/vest-slot outerwear that covers both torso and arms.

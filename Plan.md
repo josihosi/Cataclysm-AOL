@@ -48,9 +48,9 @@ Current target:
 - do **not** silently blend this with Package 4 surface-control cleanup, bandit/overmap-threat design, or hackathon feature lanes
 
 Best concrete next states for this lane:
-1. isolate where the locker dressing cycle should purge ordinary carried miscellany
-2. land the narrowest keep-vs-dump policy that preserves `bandages`, `ammo`, and `magazines`
-3. revalidate the carried-item result on the right locker/live path without pretending Package 4 was secretly finished too
+1. keep the landed Package 5 code/test packet honest in the docs: ordinary carried junk now dumps on the locker service path, and the deterministic keep-vs-dump policy is intentionally limited to `bandages`, `ammo`, and `magazines`
+2. package the remaining live proof on the right locker footing so the real McWilliams / `CAMP_LOCKER` path explicitly shows the kept carried lane too, not only the junk-dump side
+3. close the slice only after that live packet exists, without pretending Package 4 was secretly finished too
 
 Explicit greenlit backlog behind the current slice:
 - **Package 4, locker zone policy + control-surface cleanup**
@@ -147,6 +147,13 @@ Current required close-out for this slice:
   - magazines
 - dump behavior does **not** pollute curated locker stock
 - the result behaves as a basecamp-specific policy instead of follower-style inventory preservation
+
+Current honest state:
+- the locker service code now strips ordinary carried junk during locker dressing instead of preserving generic follower-style pocket clutter
+- the kept carried lane is explicitly narrow in code and deterministic coverage: `bandages`, `ammo`, and `magazines`
+- replaced/duplicate container contents now get split so kept carried items return to the worker while dumped miscellany goes to a non-locker cleanup tile
+- fresh runtime-compatible `locker.weather_wait` artifact proof on 2026-04-18 shows the live locker path really dumping ordinary carried junk outside curated locker stock
+- the remaining gap is that the current live locker fixture proved the junk-dump side but did **not** explicitly exercise the kept `bandages` / `ammo` / `magazines` lane yet, so Package 5 is not honestly closed
 
 Greenlit backlog, not erased:
 - Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice and is now explicitly greenlit, just not the current active queue
