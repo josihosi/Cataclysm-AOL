@@ -39,17 +39,18 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now **one active greenlit implementation lane**: **Locker Package 4, locker zone policy + control-surface cleanup**.
+There is now **one active greenlit implementation lane**: **Locker Package 5, basecamp carried-item dump lane**.
 
 Current target:
-- finish the remaining locker/basecamp surface so curated locker stock, locker policy semantics, and player-facing locker settings behave sanely on the real fresh-save path
-- keep the working locker/basecamp loop on the current `McWilliams` / `Zoraida Vick` footing instead of reopening the whole world
-- do **not** widen into Package 5 carried-item support, bandit/overmap-threat design, or hackathon feature lanes during this slice
+- make basecamp NPCs dump ordinary carried junk before or during locker dressing instead of preserving follower-style pocket clutter
+- keep only a deliberately tiny carried lane for now: `bandages`, `ammo`, and `magazines`
+- keep the dump behavior out of curated locker stock and on the current `McWilliams` / `Zoraida Vick` footing
+- do **not** silently blend this with Package 4 surface-control cleanup, bandit/overmap-threat design, or hackathon feature lanes
 
 Best concrete next states for this lane:
-1. reproduce and isolate the fresh-save surface/control failures cleanly
-2. land the smallest policy/control-surface slice that keeps locker stock out of generic sorting and makes the first useful locker settings discoverable
-3. revalidate the current loop on the right harness/save path before considering Package 5 or any later threat work
+1. isolate where the locker dressing cycle should purge ordinary carried miscellany
+2. land the narrowest keep-vs-dump policy that preserves `bandages`, `ammo`, and `magazines`
+3. revalidate the carried-item result on the right locker/live path without pretending Package 4 was secretly finished too
 
 ---
 
@@ -114,32 +115,34 @@ If later code work or runtime evidence shows any one of those bundled claims is 
 
 ---
 
-## 5. Active — Locker Zone V1 surface/control cleanup
+## 5. Active — Basecamp carried-item dump lane
 
 **Status:** ACTIVE / GREENLIT
 
-Locker Zone V1 is not fully closed. The current active slice is **Package 4, locker zone policy + control-surface cleanup** from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
+The current active slice is **Package 5, basecamp carried-item dump lane** from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
 
 Still believed true unless new evidence breaks it:
 - locker outfitting core exists as real planner/service behavior
 - locker maintenance rhythm exists as real dirty/queue/reservation behavior
-- earlier deterministic + proportional runtime proof for those non-surface slices still exists
+- locker ranged-readiness support already covers ammo / magazine use from curated locker stock
+- earlier deterministic + proportional runtime proof for those non-carried-item slices still exists
 
 Current required close-out for this slice:
-- locker items remain curated stock instead of quietly collapsing back into generic sorting behavior
-- for locker semantics, `ignore items when sorting in this zone` is effectively treated as **YES**
-- player-facing locker settings live on the billboard / locker settings surface and expose the first useful toggles:
-  - helmets
-  - armor
-  - backpacks
-  - sidearm
-  - melee
-  - long guns
-- one-piece / onesie armor still counts for major protective regions where appropriate
-- the fresh-save locker zone surface is free of the reported zone-creation type-mismatch / overlay problems
+- basecamp NPCs dump ordinary carried misc junk before or during the locker dressing cycle
+- the kept carried lane is intentionally tiny and explicit:
+  - bandages
+  - ammo
+  - magazines
+- dump behavior does **not** pollute curated locker stock
+- the result behaves as a basecamp-specific policy instead of follower-style inventory preservation
+
+Parked but not erased:
+- Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice, just not the current queue
 
 Out of scope for this slice:
-- Package 5 carried-item / dump-lane expansion
+- finishing Package 4 as part of the same patch just because it is nearby
+- grenades or broader consumable logic
+- complex pocket micromanagement
 - bandit / overmap-threat design
 - hackathon feature lanes
 

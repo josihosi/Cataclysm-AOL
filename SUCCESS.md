@@ -17,22 +17,22 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Controlled locker / basecamp follow-through packet
 
-Status: ACTIVE / PACKAGE 4
+Status: ACTIVE / PACKAGE 5
 
 Success state:
 - [x] **Package 1, harness zone-manager save-path polish** is landed with screenshots/artifacts from the current McWilliams harness path.
 - [x] **Package 2, basecamp toolcall routing fix** is landed or honestly blocked, and the right discriminator is separated from the bad location-only heuristic.
 - [x] **Package 3, locker outfit engine hardening** is now landed for the current required closeout slice: the weird board/log leak stays re-proved live on the rebuilt current tiles binary, the in-game-log plus `llm_intent.log` observability helper is exercised on that same live probe path, and the required deterministic/service-parity canon is closed through the outer one-piece civilian-garment seam (`abaya`) without reopening open-ended clothing-case collection.
-- [ ] **Package 4, locker zone policy + control-surface cleanup** is landed: locker contents no longer collapse into ordinary unsorted stock, the first useful locker policy toggles are discoverable and legible on the player-facing control surface, and the fresh-save locker zone surface is free of the reported type-mismatch / overlay failure.
-- [ ] The package order stays controlled: revalidate the current loop after Package 4, with no opportunistic broadening into Package 5 or unrelated future lanes.
+- [ ] **Package 5, basecamp carried-item dump lane** is landed: ordinary carried junk gets dumped during locker dressing, the kept carried lane is intentionally limited to `bandages`, `ammo`, and `magazines`, and curated locker stock is not polluted by the dump behavior.
+- [ ] The queue stays controlled: Package 5 is the current explicit slice, Package 4 remains a separate parked follow-through item unless consciously reopened again, and no opportunistic broadening happens into bandit/threat or hackathon lanes.
 
 Notes:
 - Canonical package boundaries and acceptance bars live in `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
-- Package 5 remains a defined future reopen slice in that auxiliary doc. It is **not** part of the current exit criteria.
+- Package 4 remains a defined unfinished slice in that auxiliary doc and in the `Locker Zone V1` ledger below. It is **not** the current queue.
 - This **is** the active queue right now. Keep the slice bounded instead of treating the whole locker/basecamp world as open season.
 - The point is not to re-open one giant locker/basecamp world. The point is to preserve the working loop while moving through explicit slices only when they are actually greenlit.
 - The ordinary harness footing for this packet should stay on `McWilliams` / `Zoraida Vick`, not drift back to the older default save.
-- Do **not** mechanically widen into Package 5 just because Package 4 is now active.
+- Do **not** quietly blend Package 4 and Package 5 just because both touch locker behavior.
 
 ---
 
@@ -151,7 +151,7 @@ Notes:
 
 ## Locker Zone V1
 
-Status: ACTIVE FOLLOW-THROUGH / PACKAGE 4
+Status: PARKED / UNFINISHED FOLLOW-THROUGH
 
 Bundled V1 completion tasks:
 - [ ] **Locker surface/control task** — `CAMP_LOCKER` works as a real Zone Manager zone on the fresh-save path, ordinary sorting does not steal from locker tiles, camp locker policy state exists, the player-facing locker policy menu/control exists, and the current surface is free of the reported zone-creation type-mismatch.
@@ -163,7 +163,7 @@ Bundled V1 completion tasks:
 Notes:
 - V1 was reopened on 2026-04-07 because fresh-save manual testing contradicted the old surface/control close-out.
 - That reopened follow-through is now packetized in the active `Controlled locker / basecamp follow-through packet` above instead of staying as one vague reopened blob here.
-- The current active V1 slice is the surface/control task via Package 4.
+- Package 4 surface/control cleanup is currently parked by explicit reprioritization while Package 5 runs.
 - `dirty-trigger follow-through` was the final previously landed V1 chunk, not the name of the whole feature.
 - Locker candidate scanning now uses sorted locker tiles so debug/state summaries stay deterministic enough for dirty-trigger tracking and tests.
 - If later code or testing disproves any other bundled V1 task, reopen that slice too instead of pretending only the surface changed.
@@ -183,7 +183,7 @@ Success state:
 - [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
-- V3 is not the current delivery target. The active controlled follow-through packet is now moving through Package 4, so keep V3 parked unless Josef explicitly reopens locker nuance.
+- V3 is not the current delivery target. The active controlled follow-through packet is now moving through Package 5, so keep V3 parked unless Josef explicitly reopens locker nuance.
 - The first landed V3 lane is intentionally narrow: local temperature nudges shirt/vest-slot torso+arm outerwear toward warmer gear in cold weather and lighter gear in hot weather.
 - The next landed V3 lane is still narrow: pants-slot legwear now distinguishes shorts-like coverage from full-length coverage so cold weather prefers full-length legwear and hot weather prefers shorts-like legwear.
 - Outerwear and the currently landed legwear lane now both have proportional runtime proof on the recorded current-binary / current-save path.

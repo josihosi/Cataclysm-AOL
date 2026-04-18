@@ -20,18 +20,24 @@ The point is to preserve the now-working loop, keep the harness on the right sav
   - one basecamp toolcall-routing slice,
   - one locker outfit-hardening slice,
   - one locker policy/control-surface slice,
-  - one deliberately scoped carried-item/support-gear slice.
+  - one deliberately scoped carried-item dump slice.
 - Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity.
 
 ## Package order
 
+Default order:
 1. **Harness zone-manager save-path polish**
 2. **Basecamp toolcall routing fix**
 3. **Locker outfit engine hardening**
 4. **Locker zone policy + control-surface cleanup**
-5. **Basecamp carried-item support + dump lane**
+5. **Basecamp carried-item dump lane**
 
-Why this order:
+Current explicit override:
+- Josef has now greenlit **Package 5** directly as the active lane.
+- **Package 4** remains a known follow-through slice, but it is not the current queue.
+- still do **one package at a time**; this is a conscious reprioritization, not permission to blend 4 and 5 into one blob.
+
+Why the original order existed:
 - Package 1 makes the repro/tooling packet less flaky.
 - Package 2 fixes the separate wrong-snapshot bug before broader feature churn.
 - Package 3 addresses the ugliest visible locker nonsense.
@@ -180,30 +186,33 @@ Locker contents are curated by the player and should not quietly collapse back i
 
 ---
 
-## Package 5. Basecamp carried-item support + dump lane
+## Package 5. Basecamp carried-item dump lane
 
 ### Problem
-Basecamp NPCs probably should not preserve arbitrary miscellaneous carried junk the way followers do, but they still need a small useful carried-item lane.
+Basecamp NPCs should not keep follower-style pocket junk while running the locker dressing cycle.
+They should mostly empty their carried miscellany first, while preserving only a very small useful carried lane.
 
-### Proposed policy
+### Greenlit policy
 Treat basecamp NPCs differently from followers:
-- basecamp NPCs may dump miscellaneous non-essential carried items during locker cleanup
-- curated locker stock should not become the dumping ground for misc junk
-- misc dump lane should go to floor / unsorted / cleanup lane outside curated locker stock
-
-### First support / refill items
-- sidearm implies holster support
-- belts are default support gear
-- bandages should refill up to about 10 on the next dirty / locker cycle
+- before or during locker dressing, basecamp NPCs dump ordinary carried misc junk out of their pockets
+- curated locker stock must **not** become the dumping ground for that junk
+- the dump target should be a floor / unsorted / cleanup lane outside curated locker stock
+- the kept carried lane is intentionally tiny:
+  - bandages
+  - ammo
+  - magazines
 
 ### Acceptance bar
-- sidearm lane also seeks appropriate holster support
-- belts are handled as default support gear
-- bandage refill lane exists and tops up after use
-- miscellaneous carried junk does not pollute curated locker stock
+- the carried-item cleanup runs as part of the locker dressing cycle instead of requiring separate player babysitting
+- ordinary misc carried junk is dumped instead of being preserved follower-style
+- bandages are kept instead of being dumped with the junk
+- ammo and magazines are kept instead of being dumped with the junk
+- curated locker stock does not get polluted by the dump behavior
 
 ### Recommended v1 exclusions
 - grenades
+- broad consumable logic beyond bandages
 - general follower-style trinket preservation
 - complicated pocket micromanagement
 - arbitrary player-given-item exception logic unless clearly needed
+- turning this into a full support-gear or utility-belt planning system

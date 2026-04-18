@@ -39,23 +39,23 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Locker zone policy + control-surface cleanup (active)
+### Basecamp carried-item dump lane (active)
 
 Current honest state:
-- fresh-save manual testing previously reopened the old locker surface/control close-out
-- still believed true from earlier work: locker outfitting core exists, locker maintenance rhythm exists, and earlier deterministic/runtime proof for those non-surface slices still stands unless new evidence disproves it
+- still believed true from earlier work: locker outfitting core exists, locker maintenance rhythm exists, and earlier deterministic/runtime proof for those non-carried-item slices still stands unless new evidence disproves it
+- locker ranged-readiness support already has honest ammo / magazine grounding on the curated locker side
 - not yet safe to claim:
-  - `CAMP_LOCKER` is fully solid on the real fresh-save path
-  - ordinary sorting cannot siphon curated locker stock
-  - the player-facing locker policy/control surface is clear and discoverable
-  - the reported locker zone creation type-mismatch / overlay issue is gone
-- the current slice should stay on the `McWilliams` / `Zoraida Vick` footing and the real fresh-save surface, not wander into Package 5 or unrelated future lanes
+  - ordinary carried misc junk is dumped automatically as part of the locker dressing cycle
+  - `bandages`, `ammo`, and `magazines` are the only carried classes deliberately kept through that cleanup
+  - the dump behavior stays out of curated locker stock
+  - the result behaves like a basecamp policy rather than follower-style pocket preservation
+- the current slice should stay on the `McWilliams` / `Zoraida Vick` footing and the real locker/live path, not wander back into Package 4 surface cleanup or unrelated future lanes
 
 ### Meaning
 
-- the active delivery target is Package 4 from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
-- the next evidence should be the smallest honest mix of narrow code proof plus the right fresh-save / live locker repro, not more freeze-prep ritual
-- keep Smart Zone Manager, board routing, hackathon features, and future threat design closed or out of scope while this slice is active
+- the active delivery target is Package 5 from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
+- the next evidence should be the smallest honest mix of narrow code proof plus the right locker/live repro for keep-vs-dump carried behavior
+- keep Smart Zone Manager, board routing, Package 4 surface cleanup, hackathon features, and future threat design closed or out of scope while this slice is active
 
 ### Smart Zone Manager v1
 
@@ -88,7 +88,7 @@ Current honest state:
 ### Meaning
 
 - Smart Zone Manager v1 still survives a fresh rebuild + live rerun on current HEAD
-- the lane should stay closed while Package 4 is active unless code/runtime evidence breaks it
+- the lane should stay closed while Package 5 is active unless code/runtime evidence breaks it
 
 ### Assigned-camp board/log leak recheck
 
@@ -115,15 +115,15 @@ Current honest state:
 
 - the assigned-camp board/log leak fix still survives a fresh rebuilt-current-head live check
 - current truth is the intended split: organic player-facing message log, structured internal artifact log
-- keep this out of the active queue while Package 4 is running unless later code or runtime evidence breaks one of those claims
+- keep this out of the active queue while Package 5 is running unless later code or runtime evidence breaks one of those claims
 
 ---
 
 ## Pending probes
 
-- fresh-save repro of the locker zone creation/control-surface failure on the current active path, with screen / tests / artifacts kept separate
-- the narrowest deterministic check(s) needed once locker sorting-protection or control-surface behavior changes
-- a packaged live locker proof on the correct McWilliams / `CAMP_LOCKER` footing showing curated locker stock survives and the player-facing settings surface is understandable
+- the narrowest deterministic check(s) for carried keep-vs-dump behavior during the locker dressing cycle
+- a packaged live locker proof on the correct McWilliams / `CAMP_LOCKER` footing showing ordinary junk gets dumped while `bandages`, `ammo`, and `magazines` stay carried
+- confirmation that the dump target stays outside curated locker stock instead of polluting the locker zone
 
 ---
 

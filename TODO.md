@@ -8,15 +8,16 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Locker Package 4, locker zone policy + control-surface cleanup**.
+Active lane: **Locker Package 5, basecamp carried-item dump lane**.
 
 Current target:
-1. reproduce the fresh-save locker surface/control failures cleanly on the right save/harness footing
-2. land the smallest policy/control changes that keep curated locker stock out of generic sorting behavior
-3. expose the first useful player-facing locker toggles clearly on the billboard / locker settings surface (`helmets`, `armor`, `backpacks`, `sidearm`, `melee`, `long guns`)
-4. close the reported locker zone creation type-mismatch / overlay problem without widening into Package 5
+1. make the locker dressing cycle dump ordinary carried misc junk instead of preserving follower-style pocket clutter
+2. keep only the deliberately tiny carried lane: `bandages`, `ammo`, `magazines`
+3. make sure the dump result stays out of curated locker stock
+4. keep the slice narrow instead of accidentally blending in Package 4 surface/control work
 
 Out of scope right now:
-- Package 5 basecamp carried-item support + dump lane
+- finishing Package 4 in the same patch
+- grenades or broader consumable logic
 - bandit / overmap-threat design
 - hackathon feature lanes
