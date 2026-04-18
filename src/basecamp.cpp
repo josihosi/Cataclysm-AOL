@@ -1148,6 +1148,18 @@ camp_locker_candidate_map collect_camp_locker_zone_candidates(
 std::vector<const item *> collect_camp_locker_zone_items(
     const std::vector<tripoint_abs_ms> &locker_tiles,
     const std::vector<camp_locker_reservation> &reservations,
+    const character_id &requesting_worker);
+int score_camp_locker_item(
+    camp_locker_slot slot, const item &it,
+    const std::optional<units::temperature> &local_temperature);
+bool is_camp_locker_candidate_meaningfully_better(
+    camp_locker_slot slot, const item &candidate, const item &current,
+    const std::optional<units::temperature> &local_temperature);
+std::vector<const item *> collect_camp_locker_current_items(npc &worker);
+std::vector<const item *> collect_camp_locker_worker_items(npc &worker);
+std::vector<const item *> collect_camp_locker_zone_items(
+    const std::vector<tripoint_abs_ms> &locker_tiles,
+    const std::vector<camp_locker_reservation> &reservations,
     const character_id &requesting_worker) {
   map &here = get_map();
   std::vector<const item *> items;
@@ -1322,10 +1334,41 @@ std::vector<const item *> collect_camp_locker_current_items(npc &worker) {
   return current_items;
 }
 
+std::vector<tripoint_abs_ms>
+collect_sorted_camp_locker_tiles(const tripoint_abs_ms &origin,
+                                 const faction_id &fac,
+                                 int range);
+bool is_camp_locker_managed_ranged_weapon(const item &it,
+                                          const camp_locker_policy &policy);
+int camp_locker_magazine_total_capacity(const item &magazine);
+bool is_better_camp_locker_magazine(const item &lhs, const item &rhs);
+void sort_camp_locker_magazines(std::vector<const item *> &magazines);
+std::vector<const item *> collect_camp_locker_compatible_magazines(
+    const std::vector<const item *> &items, const item &weapon);
+std::vector<item_location> collect_camp_locker_compatible_magazine_locations(
+    npc &worker, const item &weapon);
+const item *select_best_camp_locker_ammo_candidate(
+    const std::vector<const item *> &items, const item &target);
+bool reload_camp_locker_target_from_zone(
+    npc &worker, const item_location &target,
+    const std::vector<tripoint_abs_ms> &locker_tiles,
+    const tripoint_abs_ms &locker_drop_tile);
+item_location select_best_loaded_camp_locker_magazine(
+    const std::vector<item_location> &magazines);
+std::optional<tripoint_abs_ms> find_camp_locker_item_tile(
+    const std::vector<tripoint_abs_ms> &locker_tiles, const item *target);
+item remove_worker_equipped_item(npc &worker, const item *target);
 item take_camp_locker_candidate(
     const std::vector<tripoint_abs_ms> &locker_tiles, const item *target);
+bool equip_camp_locker_item(npc &worker, camp_locker_slot slot, item &it);
 void store_camp_locker_item(const tripoint_abs_ms &locker_tile, item moved);
 std::string camp_locker_item_debug_label(const item &it);
+std::string
+camp_locker_candidate_debug_summary(const camp_locker_candidate_map &candidates);
+std::string
+camp_locker_item_debug_summary(const std::vector<const item *> &items,
+                               const camp_locker_policy &policy);
+std::string camp_locker_plan_debug_summary(const camp_locker_plan &plan);
 
 std::vector<const item *> collect_camp_locker_worker_items(npc &worker) {
   std::vector<const item *> worker_items;
@@ -1513,6 +1556,16 @@ struct camp_locker_ranged_readiness_state {
            weapon_needs_reload;
   }
 };
+
+camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_state(
+    npc &worker, const camp_locker_policy &policy,
+    const std::vector<const item *> &worker_items,
+    const std::vector<const item *> &locker_items);
+std::string camp_locker_ranged_readiness_debug_summary(
+    const camp_locker_ranged_readiness_state &readiness);
+bool service_camp_locker_ranged_readiness(
+    npc &worker, const std::vector<tripoint_abs_ms> &locker_tiles,
+    const tripoint_abs_ms &locker_drop_tile, const camp_locker_policy &policy);
 
 camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_state(
     npc &worker, const camp_locker_policy &policy,
@@ -1774,7 +1827,8 @@ void store_camp_locker_item(const tripoint_abs_ms &locker_tile, item moved) {
   here.add_item_or_charges(local, std::move(moved));
 }
 
-std::string join_camp_locker_debug_parts(const std::vector<std::string> &parts) {
+static std::string
+join_camp_locker_debug_parts(const std::vector<std::string> &parts) {
   if (parts.empty()) {
     return "none";
   }
