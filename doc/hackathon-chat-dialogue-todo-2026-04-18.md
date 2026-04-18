@@ -11,8 +11,8 @@ Delete completed clutter instead of turning this into a graveyard.
 Active follow-up after first playtest:
 - Review the next chat logs as a dedicated debug session, especially around trade refusal.
 - Investigate the `build_and_run.cmd` / run-phase segmentation fault report and determine whether it is a startup crash, exit-time crash, or helper-script/runtime issue.
-- Verify that `?` input now works in the response-area chat entry.
-- Verify that tool-backed UI such as trade no longer overlaps a floating chat popup.
+- Verify that `?` input now works in the response-area chat entry. <WORKS>
+- Verify that tool-backed UI such as trade no longer overlaps a floating chat popup. <NPC REFUSES TO TRADE>
 - Rework speaker colors so player text stays gray and NPC speech reads clearly in white.
 - Clean up chat-history UX in the response-area input so it feels intentional and closes cleanly.
 - Verify that repeated lines like `keep your hands where I can see them` are reduced by the prompt/memory hardening.

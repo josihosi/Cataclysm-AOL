@@ -137,8 +137,14 @@ void dialogue_window::set_up_scrolling( input_context &ctxt ) const
 void dialogue_window::add_to_history( const std::string &text, const std::string &speaker_name,
                                       nc_color speaker_color )
 {
+    add_to_history( text, speaker_name, speaker_color, default_color() );
+}
+
+void dialogue_window::add_to_history( const std::string &text, const std::string &speaker_name,
+                                      nc_color speaker_color, nc_color text_color )
+{
     add_to_history( speaker_name, speaker_color );
-    add_to_history( text );
+    add_to_history( text, text_color );
 }
 
 void dialogue_window::add_to_history( const std::string &text )
@@ -161,13 +167,14 @@ void dialogue_window::add_history_separator()
 std::optional<std::string> dialogue_window::query_llm_chat_input()
 {
     werase( resp_win );
-    mvwprintz( resp_win, point( 0, 0 ), c_light_blue, _( "You:" ) );
+    mvwprintz( resp_win, point( 0, 0 ), c_light_gray, _( "You:" ) );
     wnoutrefresh( resp_win );
 
     string_input_popup popup;
     popup.window( resp_win, point( 5, 0 ), std::max( 6, getmaxx( resp_win ) - 2 ) );
     popup.identifier( "dialogue_chat" );
-    popup.string_color( c_light_blue );
+    popup.hist_use_uilist( false );
+    popup.string_color( c_light_gray );
     popup.cursor_color( h_light_gray );
     popup.underscore_color( c_light_gray );
     popup.query();

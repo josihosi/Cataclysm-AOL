@@ -39,6 +39,9 @@ class dialogue_window
         /** Adds a message to the conversation history for a given speaker. */
         void add_to_history( const std::string &text, const std::string &speaker_name,
                              nc_color speaker_color );
+        /** Adds a message to the conversation history with explicit speaker and text colors. */
+        void add_to_history( const std::string &text, const std::string &speaker_name,
+                             nc_color speaker_color, nc_color text_color );
         /** Adds a separator to the conversation history. */
         void add_history_separator();
         /** Prompts for LLM chat input inside the response area. */

@@ -3445,7 +3445,7 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
     }
 
     d_win.add_history_separator();
-    d_win.add_to_history( *player_utterance, _( "You" ), c_light_blue );
+    d_win.add_to_history( *player_utterance, _( "You" ), c_light_gray, c_light_gray );
 
     const std::vector<llm_intent::dialogue_chat_tool> tools = build_dialogue_chat_tools( d, d_win );
     llm_intent::dialogue_chat_result reply = llm_intent::request_dialogue_chat(
@@ -3648,7 +3648,7 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
     } while( !okay );
 
     d_win.add_history_separator();
-    d_win.add_to_history( response_lines[response_ind].text, _( "You" ), c_light_blue );
+    d_win.add_to_history( response_lines[response_ind].text, _( "You" ), c_light_gray, c_light_gray );
 
     talk_response chosen = responses[response_ind];
     if( chosen.mission_selected != nullptr ) {
