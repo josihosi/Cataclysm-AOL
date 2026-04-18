@@ -34,7 +34,7 @@ Default order:
 
 Current explicit override:
 - Josef has now greenlit **Package 5** directly as the active lane.
-- **Package 4** remains a known follow-through slice, but it is not the current queue.
+- **Package 4** remains a known follow-through slice and is also explicitly greenlit backlog, but it is not the current queue.
 - still do **one package at a time**; this is a conscious reprioritization, not permission to blend 4 and 5 into one blob.
 
 Why the original order existed:

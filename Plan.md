@@ -52,6 +52,18 @@ Best concrete next states for this lane:
 2. land the narrowest keep-vs-dump policy that preserves `bandages`, `ammo`, and `magazines`
 3. revalidate the carried-item result on the right locker/live path without pretending Package 4 was secretly finished too
 
+Explicit greenlit backlog behind the current slice:
+- **Package 4, locker zone policy + control-surface cleanup**
+- **Organic bulletin-board speech polish**
+- **Combat-oriented locker policy**
+- **Plan/Aux pipeline helper**
+
+Meaning:
+- these items are defined enough and explicitly greenlit
+- they do **not** need another permission round
+- they are **not** all active at once
+- Andi should still be judged against one chosen current slice, not allowed to freestyle across the buffet
+
 ---
 
 ## 1. Checkpointed — Smart Zone Manager v1
@@ -136,8 +148,8 @@ Current required close-out for this slice:
 - dump behavior does **not** pollute curated locker stock
 - the result behaves as a basecamp-specific policy instead of follower-style inventory preservation
 
-Parked but not erased:
-- Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice, just not the current queue
+Greenlit backlog, not erased:
+- Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice and is now explicitly greenlit, just not the current active queue
 
 Out of scope for this slice:
 - finishing Package 4 as part of the same patch just because it is nearby
@@ -193,13 +205,13 @@ Do not describe adjacent harness or UI work as partial completion of those featu
 
 ---
 
-## 9. Parked future polish — organic bulletin-board speech
+## 9. Greenlit backlog — organic bulletin-board speech
 
-**Status:** PARKED / FUTURE POLISH
+**Status:** GREENLIT / BACKLOG
 
 The raw structured board/job payload leak is fixed, but one aesthetic remainder is still visible on the bulletin-board path: the surviving `job=1`-style follow-up wording still sounds like internal routing glue instead of organic in-world speech.
 
-This lane is parked for later because the current freeze-closeout packet only needs the path to be stable and non-catastrophic, not fully beautiful.
+This lane is greenlit for later because the path is already stable enough to leave alone for now, but the remaining player-facing machine-speech ugliness is a real defined item.
 
 What this future polish item should do:
 - support organic player-facing triggers for bulletin-board / camp-job requests (for example ordinary requests like "craft" in a sentence)
@@ -211,9 +223,9 @@ Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
 
 ---
 
-## 10. Parked future tooling — Plan/Aux pipeline helper
+## 10. Greenlit backlog — Plan/Aux pipeline helper
 
-**Status:** PARKED / FUTURE TOOLING
+**Status:** GREENLIT / BACKLOG TOOLING
 
 Josef explicitly wants a small helper for the `Plan.md` / auxiliary-doc pipeline because greenlighting already-existing lanes should not require slow manual file carpentry every time.
 
@@ -239,9 +251,9 @@ Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
 ---
 
-## 11. Parked future direction — combat-oriented locker policy
+## 11. Greenlit backlog — combat-oriented locker policy
 
-**Status:** PARKED / FUTURE DIRECTION
+**Status:** GREENLIT / BACKLOG
 
 Josef wants future locker development to lean harder toward sensible guard/combat outfits instead of spending disproportionate energy on weird artisanal clothing edge cases.
 

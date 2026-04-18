@@ -24,11 +24,11 @@ Success state:
 - [x] **Package 2, basecamp toolcall routing fix** is landed or honestly blocked, and the right discriminator is separated from the bad location-only heuristic.
 - [x] **Package 3, locker outfit engine hardening** is now landed for the current required closeout slice: the weird board/log leak stays re-proved live on the rebuilt current tiles binary, the in-game-log plus `llm_intent.log` observability helper is exercised on that same live probe path, and the required deterministic/service-parity canon is closed through the outer one-piece civilian-garment seam (`abaya`) without reopening open-ended clothing-case collection.
 - [ ] **Package 5, basecamp carried-item dump lane** is landed: ordinary carried junk gets dumped during locker dressing, the kept carried lane is intentionally limited to `bandages`, `ammo`, and `magazines`, and curated locker stock is not polluted by the dump behavior.
-- [ ] The queue stays controlled: Package 5 is the current explicit slice, Package 4 remains a separate parked follow-through item unless consciously reopened again, and no opportunistic broadening happens into bandit/threat or hackathon lanes.
+- [ ] The queue stays controlled: Package 5 is the current explicit slice, the other well-defined items remain greenlit backlog instead of forbidden, and no opportunistic broadening happens into bandit/threat or hackathon lanes.
 
 Notes:
 - Canonical package boundaries and acceptance bars live in `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
-- Package 4 remains a defined unfinished slice in that auxiliary doc and in the `Locker Zone V1` ledger below. It is **not** the current queue.
+- Package 4 remains a defined unfinished slice in that auxiliary doc and in the `Locker Zone V1` ledger below. It is **greenlit backlog**, not the current queue.
 - This **is** the active queue right now. Keep the slice bounded instead of treating the whole locker/basecamp world as open season.
 - The point is not to re-open one giant locker/basecamp world. The point is to preserve the working loop while moving through explicit slices only when they are actually greenlit.
 - The ordinary harness footing for this packet should stay on `McWilliams` / `Zoraida Vick`, not drift back to the older default save.
@@ -151,7 +151,7 @@ Notes:
 
 ## Locker Zone V1
 
-Status: PARKED / UNFINISHED FOLLOW-THROUGH
+Status: GREENLIT / BACKLOG FOLLOW-THROUGH
 
 Bundled V1 completion tasks:
 - [ ] **Locker surface/control task** — `CAMP_LOCKER` works as a real Zone Manager zone on the fresh-save path, ordinary sorting does not steal from locker tiles, camp locker policy state exists, the player-facing locker policy menu/control exists, and the current surface is free of the reported zone-creation type-mismatch.
@@ -163,7 +163,7 @@ Bundled V1 completion tasks:
 Notes:
 - V1 was reopened on 2026-04-07 because fresh-save manual testing contradicted the old surface/control close-out.
 - That reopened follow-through is now packetized in the active `Controlled locker / basecamp follow-through packet` above instead of staying as one vague reopened blob here.
-- Package 4 surface/control cleanup is currently parked by explicit reprioritization while Package 5 runs.
+- Package 4 surface/control cleanup is currently greenlit backlog by explicit reprioritization while Package 5 runs.
 - `dirty-trigger follow-through` was the final previously landed V1 chunk, not the name of the whole feature.
 - Locker candidate scanning now uses sorted locker tiles so debug/state summaries stay deterministic enough for dirty-trigger tracking and tests.
 - If later code or testing disproves any other bundled V1 task, reopen that slice too instead of pretending only the surface changed.
@@ -229,7 +229,7 @@ Notes:
 
 ## Organic bulletin-board speech polish
 
-Status: PARKED / FUTURE POLISH
+Status: GREENLIT / BACKLOG
 
 Success state:
 - [ ] Bulletin-board / camp-job requests can be triggered through natural player-facing phrasing instead of exposed machine wording.
@@ -239,13 +239,13 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
-- This is parked future polish, not part of the current freeze-closeout requirement unless the visible wording becomes a release blocker.
+- This is greenlit backlog, not the current active lane.
 
 ---
 
 ## Combat-oriented locker policy
 
-Status: PARKED / FUTURE DIRECTION
+Status: GREENLIT / BACKLOG
 
 Success state:
 - [ ] Future locker behavior strongly supports sensible common guard/combat gear: gloves, belts, masks, holsters, and the usual practical clothing/loadout pieces.
@@ -262,7 +262,7 @@ Notes:
 
 ## Plan/Aux pipeline helper
 
-Status: PARKED / FUTURE TOOLING
+Status: GREENLIT / BACKLOG TOOLING
 
 Success state:
 - [ ] A small helper can take a proposed item/greenlight and print the contract back for verification before canon files are changed.
@@ -273,4 +273,4 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
-- This is parked future tooling meant to improve workflow speed and consistency, not a current-lane feature.
+- This is greenlit backlog tooling meant to improve workflow speed and consistency, not a current-lane feature.

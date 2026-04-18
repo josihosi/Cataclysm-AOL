@@ -1,6 +1,6 @@
 # Plan/Aux pipeline helper (2026-04-09)
 
-Status: parked future tooling
+Status: greenlit backlog tooling item
 
 This packages Josef's request for a small helper around the `Plan.md` / auxiliary-doc workflow.
 

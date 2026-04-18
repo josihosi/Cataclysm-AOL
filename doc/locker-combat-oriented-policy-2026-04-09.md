@@ -1,6 +1,6 @@
 # Locker combat-oriented policy direction (2026-04-09)
 
-Status: parked future contract
+Status: greenlit backlog contract
 
 This packages Josef's correction to the locker direction after the heavy weird-garment safety work.
 
