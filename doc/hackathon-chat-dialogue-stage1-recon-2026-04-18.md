@@ -50,44 +50,38 @@ Recommendation:
 ### 0.2 Chat entry rejects `?`
 
 Observed behavior:
-- The popup chat entry appears to reject `?`.
+- The first floating popup chat entry appeared to reject `?`.
 
-Likely seam:
-- Stage 1 uses `string_input_popup_imgui`.
-- The current dialogue/input stack may still be eating some punctuation or rebinding it before the popup keeps it.
+Current follow-up state:
+- The popup path has now been replaced with response-area input using `string_input_popup`.
+- This likely fixes the punctuation issue as part of the same seam change, but it still needs real playtest confirmation.
 
 Recommendation:
-- Reproduce with a few punctuation characters, not just `?`.
-- Check whether this is:
-  - a popup widget filtering issue,
-  - an input-context keybinding issue,
-  - or layout-specific behavior in the dialogue screen.
+- Re-test with `?` and a few other punctuation characters during the next playtest.
 
 ### 0.3 Trade or other tool UI overlaps the chat window
 
 Observed behavior:
 - When trade opens, the chat UI stays on screen and overlaps the other UI.
 
-What this likely means:
-- The Stage 1 popup input path is not being dismissed or suppressed before a tool-backed dialogue response opens another window.
+Current follow-up state:
+- The floating popup input path has been removed.
+- Chat entry now lives in the response area, which should eliminate the overlapping popup problem.
 
 Recommendation:
-- Before executing a tool-backed response such as trade, close or suspend the chat entry UI.
-- Prefer a simple Stage 1 rule:
-  - if a hidden tool opens its own UI, chat input should not remain floating above it.
+- Re-test trade and any other tool-backed UI during the next play session to confirm the overlap is gone.
 
 ### 0.4 Chat entry should live under `Your response:`
 
 Observed behavior:
 - The floating popup works, but the right visual home is the existing `Your response:` area in the dialogue window.
 
-Recommendation:
-- Promote this from a vague Stage 2 polish item to an active Stage 1 follow-up if the seam is reasonably local.
-- The popup was the correct fast first landing, but it is not the preferred steady-state Stage 1 presentation.
+Current follow-up state:
+- This is now implemented.
+- Chat entry is rendered in the dialogue response area via `dialogue_window`.
 
 Engineering caution:
-- Do not overbuild a whole streaming chat editor just to fix placement.
-- The goal is simply to move entry into the existing dialogue response area if that can be done without destabilizing the talk UI.
+- Do not overbuild a whole streaming chat editor just because the input is now placed correctly.
 
 ### 0.5 Repeated signature line problem
 
@@ -102,9 +96,10 @@ Current log evidence:
 Recommendation:
 - Tighten the prompt so repeated stock lines are discouraged unless the immediate situation truly changes.
 - Consider reducing or deduplicating the recent-memory packet before prompt assembly.
-- Keep the fix simple first:
-  - prompt rule against repeating the same warning every turn,
-  - then memory trimming only if prompt tuning is not enough.
+- Current follow-up state:
+  - a prompt rule against repeated warning or catchphrase lines is now in the chat prompt
+  - near-identical NPC chat lines are now deduplicated before being added back into memory
+- This still needs real playtest confirmation.
 
 ### 0.6 Work or quest hallucination versus real backend action
 
@@ -131,6 +126,11 @@ Conclusion:
 Recommendation:
 - Tighten the prompt so work or quest flavor must stay vague unless a real current hidden action supports it.
 - The model can still sound useful and atmospheric, but it should not imply `quest accepted` or `go do X for me` when no backend tool exists.
+- Current follow-up state:
+  - the chat prompt now explicitly forbids fake assignment or quest-log language without a real legal hidden action
+  - the hidden tool packet now includes simple semantic hints such as `trade` or `work_help`
+  - topic-changing hidden actions now reset the opener so the next state can speak first
+- This still needs real playtest confirmation.
 
 ### 0.7 Fallback review
 
@@ -147,14 +147,14 @@ Recommendation:
 ### 0.8 Recommended follow-up order
 
 1. Confirm the run-phase segfault is reproducible and classify when it happens.
-2. Fix the obvious UI bugs:
+2. Re-test the response-area input:
    - `?` input
-   - trade overlap
-   - chat entry placement
-3. Tighten prompt and memory so repetition drops.
-4. Tighten the work or quest prompt rule so fake job acceptance does not happen.
-5. Run the next narrow honest compile/test pass.
-6. Then do the next in-game playtest.
+   - no floating overlap on trade
+3. Re-test prompt and memory behavior:
+   - reduced repeated warnings
+   - more honest work or quest wording
+4. Re-test topic-change feel after hidden actions.
+5. Review fallback rate in `config/llm_dialogue_chat.log`.
 
 ## 1. Scope Rule For Stage 1
 

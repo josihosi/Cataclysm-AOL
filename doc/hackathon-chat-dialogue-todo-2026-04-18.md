@@ -10,13 +10,13 @@ Delete completed clutter instead of turning this into a graveyard.
 
 Active follow-up after first playtest:
 - Investigate the `build_and_run.cmd` / run-phase segmentation fault report and determine whether it is a startup crash, exit-time crash, or helper-script/runtime issue.
-- Fix `?` input behavior in chat entry.
-- Close or suspend the chat UI correctly when a tool opens another UI such as trade.
-- Move chat entry under `Your response:` instead of floating over the transcript.
-- Tighten the prompt and/or memory so repeated lines like `keep your hands where I can see them` do not dominate every answer.
-- Fix job/quest behavior so the NPC does not improvise fake work when the real dialogue state does not support it.
+- Verify that `?` input now works in the response-area chat entry.
+- Verify that tool-backed UI such as trade no longer overlaps a floating chat popup.
+- Verify that repeated lines like `keep your hands where I can see them` are reduced by the prompt/memory hardening.
+- Verify that work/quest wording now stays honest unless a real legal hidden action exists.
+- Verify that real topic changes now get a fresh opener instead of dropping into silent blank-slate input.
 - Review fallback behavior and make sure chat does not silently default to authored fallback more than necessary.
-- Run the next narrow honest compile/test pass for the follow-up slice.
+- Run the next playtest on the hardened slice.
 
 Trash pile / already landed:
 - `[LLM]` dialogue-mode toggle exists: `branches` vs `chat`.
@@ -28,6 +28,10 @@ Trash pile / already landed:
 - Dedicated chat prompt file exists.
 - Dedicated chat log file exists separate from `config/llm_intent.log`.
 - First coherent compile checkpoint is done.
+- Chat input now renders in the dialogue response area instead of a floating popup.
+- Prompt/tool/memory hardening landed for repeated-line control and work/quest honesty.
+- Topic-changing hidden actions now reset the opener so the next state can speak first.
+- The follow-up narrow compile checkpoint is done.
 
 ## 2. Stage 2 - Quality Pass
 

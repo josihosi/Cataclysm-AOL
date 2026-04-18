@@ -45,7 +45,7 @@ Current honest state:
 - Stage 1 implementation is now in progress on the hackathon branch.
 - The active code slice currently targets:
   - `[LLM]` toggle
-  - popup chat input
+  - response-area chat input
   - LLM opener
   - freeform reply
   - one hidden dialogue action
@@ -79,6 +79,16 @@ Current honest state:
 - Additional run note from Josef:
   - `build_and_run.cmd` later reported `/usr/bin/bash: line 1: 434 Segmentation fault ./$RUN_EX`
   - current `config/debug.log` does not yet pin this to startup, in-chat runtime, or exit
+- A follow-up narrow fix pass compiled cleanly on `2026-04-18` after landing:
+  - response-area chat input in `dialogue_window`
+  - prompt hardening for repeated lines and fake work or quest wording
+  - hidden-tool hinting in the chat packet
+  - chat-memory dedupe for near-identical NPC replies
+  - opener reset on real topic changes triggered by hidden actions
+  - command:
+    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/npctalk.o obj/tiles/llm_intent.o`
+  - log:
+    `build_logs/hackathon_chat_stage1_fixpass_narrow_20260418.log`
 
 ### Smart Zone Manager v1
 
@@ -147,12 +157,11 @@ Current honest state:
 
 Hackathon chat dialogue Stage 1:
 - classify the reported `build_and_run.cmd` segfault as startup, runtime, or exit-time
-- fix `?` input behavior
-- fix chat overlap when trade or another tool-backed UI opens
-- move chat entry under `Your response:` if the seam is acceptably local
-- tighten prompt and/or memory so repeated warning lines do not dominate
-- tighten work or quest wording so the NPC does not imply real job acceptance without a real legal hidden action
-- after those follow-up edits, run the next narrow honest compile/test pass
+- verify that `?` input now works in the response-area chat entry
+- verify that trade or another tool-backed UI no longer overlaps a floating chat popup
+- verify that repeated warning lines are reduced in real turns
+- verify that work or quest wording stays honest unless a real legal hidden action exists
+- verify that topic-changing hidden actions now feel readable with the opener reset
 - then do the next playtest build
 
 Older frozen packets:

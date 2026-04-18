@@ -3332,6 +3332,64 @@ std::optional<size_t> resolve_dialogue_chat_tool( const std::vector<llm_intent::
     return std::nullopt;
 }
 
+std::string normalize_dialogue_chat_memory_text( const std::string &text )
+{
+    std::string normalized;
+    normalized.reserve( text.size() );
+    bool last_space = true;
+    for( const char ch : to_lower_case( text ) ) {
+        if( std::isalnum( static_cast<unsigned char>( ch ) ) != 0 ) {
+            normalized.push_back( ch );
+            last_space = false;
+        } else if( !last_space ) {
+            normalized.push_back( ' ' );
+            last_space = true;
+        }
+    }
+    while( !normalized.empty() && normalized.back() == ' ' ) {
+        normalized.pop_back();
+    }
+    return normalized;
+}
+
+bool should_store_dialogue_chat_memory( npc &listener, const std::string &npc_response )
+{
+    if( npc_response.empty() ) {
+        return true;
+    }
+    const std::vector<npc::llm_intent_memory_entry> memory = listener.get_llm_intent_memory();
+    if( memory.empty() ) {
+        return true;
+    }
+    const std::string current = normalize_dialogue_chat_memory_text( npc_response );
+    if( current.empty() ) {
+        return true;
+    }
+    const std::string previous = normalize_dialogue_chat_memory_text( memory.back().npc_response );
+    if( previous.empty() ) {
+        return true;
+    }
+    if( current == previous ) {
+        return false;
+    }
+    if( current.size() >= 24 && previous.find( current ) != std::string::npos ) {
+        return false;
+    }
+    if( previous.size() >= 24 && current.find( previous ) != std::string::npos ) {
+        return false;
+    }
+    return true;
+}
+
+void remember_dialogue_chat_turn( npc &listener, const std::string &player_utterance,
+                                  const std::string &npc_response )
+{
+    if( !should_store_dialogue_chat_memory( listener, npc_response ) ) {
+        return;
+    }
+    listener.add_llm_intent_memory( player_utterance, npc_response, {} );
+}
+
 std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
         dialogue_window &d_win, const talk_topic &topic )
 {
@@ -3356,13 +3414,14 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
     }
 
     d_win.clear_history_highlights();
+    d_win.set_responses( {} );
     if( !d_win.llm_chat_started ) {
         llm_intent::dialogue_chat_result opener = llm_intent::request_dialogue_chat(
                     *d.actor( true )->get_npc(), "", challenge, {}, true );
         if( opener.ok && !opener.say.empty() ) {
             d_win.add_to_history( opener.say, d.actor( true )->disp_name(),
                                   d.actor( true )->get_npc()->basic_symbol_color() );
-            d.actor( true )->get_npc()->add_llm_intent_memory( "", opener.say, {} );
+            remember_dialogue_chat_turn( *d.actor( true )->get_npc(), "", opener.say );
             d_win.llm_chat_started = true;
         } else if( !d_win.llm_chat_started ) {
             return std::nullopt;
@@ -3376,40 +3435,39 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
     } );
     ui_manager::redraw();
 
-    string_input_popup_imgui popup( FULL_SCREEN_WIDTH / 2, "", _( "Chat" ) );
-    popup.set_identifier( "dialogue_chat" );
-    popup.set_label( _( "You:" ), c_light_blue );
-    popup.set_description( _( "Type what you want to say." ) );
-
-    std::string player_utterance;
+    std::optional<std::string> player_utterance;
     do {
-        player_utterance = popup.query();
-    } while( !popup.cancelled() && is_blank_input( player_utterance ) );
+        player_utterance = d_win.query_llm_chat_input();
+    } while( player_utterance && is_blank_input( *player_utterance ) );
 
-    if( popup.cancelled() ) {
+    if( !player_utterance ) {
         return talk_topic( "TALK_DONE" );
     }
 
     d_win.add_history_separator();
-    d_win.add_to_history( player_utterance, _( "You" ), c_light_blue );
+    d_win.add_to_history( *player_utterance, _( "You" ), c_light_blue );
 
     const std::vector<llm_intent::dialogue_chat_tool> tools = build_dialogue_chat_tools( d, d_win );
     llm_intent::dialogue_chat_result reply = llm_intent::request_dialogue_chat(
-                *d.actor( true )->get_npc(), player_utterance, challenge, tools, false );
+                *d.actor( true )->get_npc(), *player_utterance, challenge, tools, false );
 
     if( !reply.ok || is_blank_input( reply.say ) ) {
         add_challenge_to_history( d, d_win, challenge );
-        d.actor( true )->get_npc()->add_llm_intent_memory( player_utterance, challenge, {} );
+        remember_dialogue_chat_turn( *d.actor( true )->get_npc(), *player_utterance, challenge );
         return talk_topic( llm_dialogue_chat_continue_topic );
     }
 
     d_win.add_to_history( reply.say, d.actor( true )->disp_name(),
                           d.actor( true )->get_npc()->basic_symbol_color() );
-    d.actor( true )->get_npc()->add_llm_intent_memory( player_utterance, reply.say, {} );
+    remember_dialogue_chat_turn( *d.actor( true )->get_npc(), *player_utterance, reply.say );
 
     if( const std::optional<size_t> response_ind = resolve_dialogue_chat_tool( tools, reply.tool ) ) {
         if( confirm_dialogue_response( d, *response_ind ) ) {
-            return apply_dialogue_response( d, *response_ind );
+            talk_topic next_topic = apply_dialogue_response( d, *response_ind );
+            if( next_topic.id != topic.id && next_topic.id != llm_dialogue_chat_continue_topic ) {
+                d_win.llm_chat_started = false;
+            }
+            return next_topic;
         }
     }
 

@@ -1,6 +1,8 @@
 #include "dialogue_win.h"
 
+#include <algorithm>
 #include <array>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -9,6 +11,7 @@
 #include "input_context.h"
 #include "output.h"
 #include "point.h"
+#include "string_input_popup.h"
 #include "translations.h"
 #include "ui_manager.h"
 
@@ -153,6 +156,25 @@ void dialogue_window::add_to_history( const std::string &text, nc_color color )
 void dialogue_window::add_history_separator()
 {
     add_to_history( "", default_color() );
+}
+
+std::optional<std::string> dialogue_window::query_llm_chat_input()
+{
+    werase( resp_win );
+    mvwprintz( resp_win, point( 0, 0 ), c_light_blue, _( "You:" ) );
+    wnoutrefresh( resp_win );
+
+    string_input_popup popup;
+    popup.window( resp_win, point( 5, 0 ), std::max( 6, getmaxx( resp_win ) - 2 ) );
+    popup.identifier( "dialogue_chat" );
+    popup.string_color( c_light_blue );
+    popup.cursor_color( h_light_gray );
+    popup.underscore_color( c_light_gray );
+    popup.query();
+    if( popup.canceled() ) {
+        return std::nullopt;
+    }
+    return popup.text();
 }
 
 void dialogue_window::clear_history_highlights()

@@ -3,6 +3,7 @@
 #define CATA_SRC_DIALOGUE_WIN_H
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -40,6 +41,8 @@ class dialogue_window
                              nc_color speaker_color );
         /** Adds a separator to the conversation history. */
         void add_history_separator();
+        /** Prompts for LLM chat input inside the response area. */
+        std::optional<std::string> query_llm_chat_input();
 
         void set_responses( const std::vector<talk_data> &responses );
 

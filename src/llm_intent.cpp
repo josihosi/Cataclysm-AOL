@@ -2436,12 +2436,15 @@ Visible reply rules:
 - Do not bloat. Make every sentence count.
 - No assistant tone, no meta explanation, no bullet points, no menu wording.
 - Do not copy the authored line verbatim unless it would sound natural.
+- Do not repeat the same warning, catchphrase, or signature line from recent conversation unless the immediate danger clearly changed.
 
 Hidden action rules:
 - "tool" must be either one exact tool id from the list or an empty string.
 - Only choose a tool when the player's request clearly matches a currently legal hidden action.
 - Never invent unavailable actions, quests, trade, or promises.
 - Use at most one tool.
+- If the player asks for jobs, work, tasks, or how to help and a legal action hint suggests work or help, use that tool instead of improvising a fake assignment.
+- If no legal hidden action supports trade, work, or quest progress, keep the reply cautious and vague. Do not act like a quest was offered, accepted, rewarded, or added to a log.
 
 Priority guidance for this demo:
 - identity, trade, and work or quest-style asks matter most
@@ -2516,10 +2519,35 @@ std::string build_dialogue_chat_tool_block( const std::vector<llm_intent::dialog
     if( tools.empty() ) {
         return "(none)";
     }
+    const auto tool_hint = []( const std::string &label ) {
+        const std::string lower = to_lower_case( label );
+        if( lower.find( "trade" ) != std::string::npos || lower.find( "swap" ) != std::string::npos ) {
+            return "trade";
+        }
+        if( lower.find( "job" ) != std::string::npos || lower.find( "work" ) != std::string::npos ||
+            lower.find( "quest" ) != std::string::npos || lower.find( "anything for you" ) != std::string::npos ||
+            lower.find( "help you" ) != std::string::npos ) {
+            return "work_help";
+        }
+        if( lower.find( "who are you" ) != std::string::npos || lower.find( "name" ) != std::string::npos ) {
+            return "identity";
+        }
+        if( lower.find( "tip" ) != std::string::npos || lower.find( "advice" ) != std::string::npos ) {
+            return "advice";
+        }
+        if( lower.find( "travel with me" ) != std::string::npos || lower.find( "follow" ) != std::string::npos ) {
+            return "follow";
+        }
+        if( lower.find( "take care" ) != std::string::npos || lower.find( "bye" ) != std::string::npos ) {
+            return "goodbye";
+        }
+        return "general";
+    };
     std::ostringstream out;
     for( const llm_intent::dialogue_chat_tool &tool : tools ) {
         out << "- id=" << tool.id
             << " available=" << ( tool.available ? "true" : "false" )
+            << " hint=\"" << tool_hint( tool.label ) << "\""
             << " label=\"" << sanitize_text( tool.label ) << "\"";
         if( !tool.available && !tool.unavailable_reason.empty() ) {
             out << " reason=\"" << sanitize_text( tool.unavailable_reason ) << "\"";

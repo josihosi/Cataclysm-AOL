@@ -17,17 +17,20 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Hackathon chat dialogue Stage 1
 
-Status: ACTIVE
+Status: ACTIVE HARDENING
 
 Success state:
-- [ ] `[LLM]` dialogue toggle exists for `branches` vs `chat`.
-- [ ] Chat mode can open a normal NPC conversation without breaking ordinary branch dialogue fallback.
-- [ ] Chat mode uses popup-based freeform player input instead of visible branch selection.
-- [ ] The conversation opens with an LLM-generated opening beat.
-- [ ] Each player line can produce a freeform NPC reply plus at most one hidden real dialogue action.
-- [ ] A dedicated inspectable prompt file exists for chat mode in `data/llm_prompts/`.
-- [ ] A dedicated `config/llm_dialogue_chat.log` path records raw chat-pipeline input/output.
-- [ ] One coherent Stage 1 compile checkpoint is recorded in `TESTING.md`.
+- [x] `[LLM]` dialogue toggle exists for `branches` vs `chat`.
+- [x] Chat mode can open a normal NPC conversation without breaking ordinary branch dialogue fallback.
+- [x] Chat mode uses freeform player input instead of visible branch selection.
+- [x] The conversation opens with an LLM-generated opening beat.
+- [x] Each player line can produce a freeform NPC reply plus at most one hidden real dialogue action.
+- [x] A dedicated inspectable prompt file exists for chat mode in `data/llm_prompts/`.
+- [x] A dedicated `config/llm_dialogue_chat.log` path records raw chat-pipeline input/output.
+- [x] One coherent Stage 1 compile checkpoint is recorded in `TESTING.md`.
+- [ ] The response-area chat input survives the next playtest without the old floating-popup overlap and with normal punctuation entry.
+- [ ] Prompt/tool/memory hardening keeps repeated warning lines and fake work or quest wording under control in play.
+- [ ] The reported run-phase segfault is classified as startup, runtime, exit-time, or non-repro.
 
 Notes:
 - Stage 1 demo priorities are identity, trade, and work or quest-style asks.

@@ -45,12 +45,14 @@ There is one active greenlit implementation lane on this branch:
 Current target:
 - `[LLM]` dialogue toggle for `branches` vs `chat`
 - safe fallback to ordinary branch dialogue
-- popup-based freeform player input
+- freeform player input in the dialogue response area
 - LLM opener
 - freeform NPC replies
 - at most one hidden real dialogue action per player turn
 - dedicated prompt file and dedicated chat log
-- one coherent compile checkpoint only after the full Stage 1 vertical slice exists
+- prompt/tool/memory hardening for repeated lines and fake work or quest wording
+- one coherent compile checkpoint for the follow-up fix slice
+- classify the reported run-phase segfault if it reproduces again
 
 Keep the first pass narrow.
 Do not broaden Stage 1 into follower control, streaming UI, or wider retrieval/memory polish before the first checkpoint works.
