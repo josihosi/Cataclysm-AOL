@@ -37,83 +37,51 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ---
 
-## 1. Current delivery target — controlled locker / basecamp follow-through packet
+## Current status
 
-**Status:** ACTIVE / PACKAGE 3 NOW
+There is now **one active greenlit implementation lane**: **Locker Package 5, basecamp carried-item dump lane**.
 
-The repo is not honestly parked anymore, but it also should not be reopened as one giant locker/basecamp soup lane.
-Josef's McWilliams debug pass has now been reduced into a controlled packet: one package at a time, preserve the working loop, and do not let Andi broaden scope by vibes.
+Current target:
+- make basecamp NPCs dump ordinary carried junk before or during locker dressing instead of preserving follower-style pocket clutter
+- keep only a deliberately tiny carried lane for now: `bandages`, `ammo`, and `magazines`
+- keep the dump behavior out of curated locker stock and on the current `McWilliams` / `Zoraida Vick` footing
+- do **not** silently blend this with Package 4 surface-control cleanup, bandit/overmap-threat design, or hackathon feature lanes
 
-Primary auxiliary:
-- `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
+Best concrete next states for this lane:
+1. keep the landed Package 5 code/test packet honest in the docs: ordinary carried junk now dumps on the locker service path, and the deterministic keep-vs-dump policy is intentionally limited to `bandages`, `ammo`, and `magazines`
+2. package the remaining live proof on the right locker footing so the real McWilliams / `CAMP_LOCKER` path explicitly shows the kept carried lane too, not only the junk-dump side
+3. close the slice only after that live packet exists, without pretending Package 4 was secretly finished too
 
-### Current truth
-- Ordinary chat / ambient harness footing now points at the captured `McWilliams` / `Zoraida Vick` save instead of the older Sandy Creek default.
-- The McWilliams debug pass produced a coherent follow-through queue rather than one monolithic rewrite:
-  1. harness zone-manager save-path polish
-  2. basecamp toolcall routing fix
-  3. locker outfit engine hardening
-  4. locker zone policy + control-surface cleanup
-  5. basecamp carried-item support + dump lane
-- **Package 1** is landed on the current McWilliams harness path: the zone name must be entered at creation time, a single `Esc` opens the save prompt, uppercase `Y` returns cleanly to gameplay, and reopening Zone Manager shows the custom `Probe Locker` name still present.
-- **Package 2** is now landed on the real McWilliams path instead of on the fake nearby-activity detour:
-  - the deterministic reduction stays the same in code: camp-request routing no longer keys only off bare `assigned_camp`; idle stationed camp assignees in `NPC_MISSION_NULL`, explicit `FACTION_CAMP` role-id workers, and stationed camp guards/patrol guards are basecamp-eligible, while walking-with-player companion states and `GUARD_ALLY` still stay out
-  - the nearby activity-menu probe at `tools/openclaw_harness/scenarios/basecamp.package2_activity_menu_probe_mcw.json` remains a useful negative result, not the restaging source: after `Taking it easy`, Katharina/Robbie still kept `assigned_camp=none`
-  - the honest restaging source is the ally dialogue path on McWilliams: `C -> t -> 1 -> b -> d -> n -> a -> q -> c`, now also representable as the harness step `assign_nearby_npc_to_camp_dialog`, then let the camp state settle
-  - the first recheck on `.userdata/dev-harness/harness_runs/20260408_081903/` proved the missing intermediate truth: `assign_camp` writes `assigned_camp=140,41,0` immediately, but one-turn evidence still leaves Katharina in interim `mission=6` / `GUARD_ALLY`, so the route honestly stays ordinary at that point
-  - after roughly 100 turns of settling, `.userdata/dev-harness/harness_runs/20260408_082344/` shows the intended stationed state on the same real save: Katharina logs `uses_basecamp=yes`, `camp_found=yes`, `assigned_camp=140,41,0`, `mission=8`, and `reason=camp_grouped`
-  - the latest exact-token live packet at `tools/openclaw_harness/scenarios/basecamp.package2_assign_camp_toolcall_probe_mcw.json`, run `.userdata/dev-harness/harness_runs/20260408_083415/`, proves the actual routed path: `show_board` now logs `camp heard Katharina Leach`, `heard=show_board`, `board=show_board`, and emits the board follow-through with `job=1 ... next=job=1`; the follow-up `job=1` token also rides the same camp-aware lane
-  - the earlier freeform `craft 1 bandage` phrasing is now demoted as the wrong live-proof shape for this packet. On the true assigned-camp state the honest routed follow-up is the structured `job=1` token coming back from `show_board`, not another raw craft phrase.
-- **Package 3** is now the active slice on purpose. The locker outfit hardening queue should not bury the now-settled Package 2 truth under more routing churn.
-- The first narrow Package 3 hardening slice is now landed in deterministic code/tests: same-type locker bags prefer the better-condition equivalent instead of shrugging at a damaged current bag just because the score delta is small.
-- A second narrow Package 3 hardening slice is now landed in deterministic code/tests: footed/full-body jumpsuits no longer get bucketed as shoes just because the classifier sees feet first, so the planner now keeps them in the pants lane instead of excluding them through the footwear bucket.
-- A third narrow Package 3 acceptance-bar slice is now closed in deterministic planning/service tests: baseball cap -> army helmet replacement already works on the current path, and the repo now has explicit proof instead of only debug-pass folklore.
-- A fourth narrow Package 3 lower-body slice is now closed in deterministic planning/service tests: the hot-weather `antarvasa` + cargo pants conflict now has explicit proof that the locker path cleans up the duplicate lower-body wear and lands the cargo-shorts swap in one service pass.
-- A fifth narrow Package 3 lower-body acceptance-bar slice is now closed in deterministic planning/service tests: when an NPC is already wearing cargo shorts plus duplicate jeans in hot weather, the locker path keeps the shorts, strips the duplicate jeans, and returns the jeans to locker stock without requiring a fresh replacement item.
-- A sixth narrow Package 3 lower-body slice is now closed in deterministic planning/service tests: full-leg skintight underlayers like leggings now ride the pants lane instead of being sheltered in underwear, so hot-weather locker cleanup can strip them alongside cargo pants before landing the cargo-shorts swap.
-- A seventh narrow Package 3 lower-body classification slice is now closed in deterministic code/tests: jumpsuit-like outer one-piece suits no longer fall into vest logic just because they are marked `OUTER`, so the planner now keeps them in the pants lane instead of pretending the lower-body slot is empty.
-- An eighth narrow Package 3 one-piece acceptance-bar slice is now closed in deterministic planning/service tests: lower-body-only upgrades no longer strip torso coverage from a current one-piece suit unless the same locker pass also supplies a torso replacement, so the planner stops "upgrading" into half-dressed nonsense.
-- A ninth narrow Package 3 one-piece classification slice is now closed in deterministic planning/service tests: skintight full-body one-piece suits like union suits and wetsuits no longer hide in underwear, so the locker path now keeps them in the pants lane and refuses to layer cargo shorts over them unless some separate torso replacement exists.
-- A tenth narrow Package 3 one-piece alias slice is now closed in deterministic code/tests: indirect suit-alias full-body items like tuxedos now stay in the pants lane instead of falling back into vest logic, so the locker path keeps their torso-coverage guard instead of reintroducing half-dressed nonsense through `looks_like: suit` variants.
-- An eleventh narrow Package 3 one-piece civilian-clothing slice is now closed in deterministic planning/service tests: short dresses now keep the same torso-coverage guard as the suit-like cases, so a shorts-only locker candidate leaves the dress in place while a shorts + t-shirt locker packet can still split it cleanly in one service pass.
-- A twelfth narrow Package 3 lower-body overlay slice is now closed in deterministic planning/service tests: draped-only overgarments like `hakama` no longer get treated as real pants-slot conflicts, so hot-weather locker cleanup can swap actual pants for cargo shorts without stripping the draped overgarment into locker stock.
-- A thirteenth narrow Package 3 full-length civilian-dress slice is now closed in deterministic planning/service tests: long dresses now keep the same torso-coverage guard as the short-dress cases, so a shorts-only locker candidate leaves the dress in place while a shorts + t-shirt locker packet can still split it cleanly in one service pass.
-- A fourteenth narrow Package 3 sleeved one-piece civilian-clothing slice is now closed in deterministic planning/service tests: lower-body-only upgrades no longer split sleeved dresses into bare-arm vest-plus-shorts nonsense unless the same locker pass also keeps or equips some separate arm-covering upper-body item.
-- A fifteenth narrow Package 3 sleeved-dress acceptance-bar slice is now closed in deterministic planning/service tests: the new arm-coverage guard is not just a blocker, it still lets hot-weather shorts swaps split a sleeved dress when the same locker pass also supplies an arm-covering shirt replacement.
-- A sixteenth narrow Package 3 full-body protective-suit slice is now closed in deterministic planning/service tests: head-covering full-body suits like `hazmat_suit` no longer get bucketed as helmets just because the classifier sees head coverage first, so the locker path now keeps them in the pants lane and refuses shorts-only splits that would peel them into ordinary-clothes nonsense.
-- A seventeenth narrow Package 3 split-coverage slice is now closed in deterministic proof: footed full-body jumpsuits no longer split into shorts + shirt unless the same locker pass also supplies replacement footwear, so the locker path stops "upgrading" them into barefoot nonsense after the earlier pants-lane classifier fix.
-- An eighteenth narrow Package 3 armor-tradeoff slice is now closed in deterministic planning/service proof: full helmets that also cover eyes, like `helmet_plate`, no longer get misbucketed as glasses just because the classifier sees eye coverage first, so the locker path now compares them as real helmets and explicitly keeps a ballistic `helmet_army` over a melee-skewed great helm while still allowing the reverse upgrade when the ballistic helmet is in locker stock.
-- A nineteenth narrow Package 3 body-armor tradeoff slice is now closed in deterministic planning/service proof: ballistic torso armor with ablative plate pockets, like `ballistic_vest_esapi`, no longer gets flattened into the ordinary vest slot just because those plate pockets look like storage, so the locker path now compares it as real body armor and explicitly keeps the ballistic vest over melee-skewed `armor_lc_plate` while still allowing the reverse upgrade when the ballistic vest is in locker stock.
-- A twentieth narrow Package 3 lower-body support-gear slice is now closed in deterministic planning/service proof: belted leg accessories like `holster` no longer get flattened into the pants slot just because they cover the upper leg, so hot-weather locker cleanup can swap actual pants for cargo shorts without stripping the holster into locker stock as fake duplicate legwear.
-- A twenty-first narrow Package 3 lower-leg support-armor slice is now closed in deterministic planning/service proof: lower-leg armor accessories like `knee_pads` no longer get flattened into the pants slot just because they cover knees or shins, so hot-weather locker cleanup can swap actual pants for cargo shorts without stripping the knee pads into locker stock as fake duplicate legwear.
-- A twenty-second narrow Package 3 partial-leg support-storage slice is now closed in deterministic planning/service proof: partial leg-mounted support gear like the deep concealment `bholster` and `leg_small_bag` no longer gets misbucketed as underwear or pants just because it covers only hips or upper thighs, so hot-weather locker cleanup can swap actual pants for cargo shorts without stripping that support gear into locker stock as fake clothing.
-- A twenty-third narrow Package 3 full-leg rigid-support-armor slice is now closed in deterministic planning/service proof: hard no-storage leg guards like `legguard_hard` no longer get flattened into the pants lane just because they cover both upper and lower legs, so hot-weather locker cleanup can swap actual pants for cargo shorts without stripping those guards into locker stock as fake duplicate legwear.
-- A twenty-fourth narrow Package 3 full-leg outer-greaves support-armor slice is now closed in deterministic planning/service proof: full-leg outer greaves without hip coverage, like `legguard_lc_brigandine`, no longer get flattened into the pants lane just because they cover both upper and lower legs, so hot-weather locker cleanup can swap actual pants for cargo shorts without stripping those standalone greaves into locker stock as fake duplicate legwear.
-- A twenty-fifth narrow Package 3 full-body body-armor occupancy slice is now closed in deterministic planning/service proof: full-body armor like `armor_lc_plate` no longer leaves the pants slot looking empty just because the classifier still tracks it in the body-armor lane for armor tradeoff scoring, so hot-weather locker cleanup stops stuffing filler cargo shorts underneath full-body plate armor.
-- A twenty-sixth narrow Package 3 upper-leg overlay-armor slice is now closed in deterministic planning/service proof: hip-only armored skirts like `legguard_metal_sheets_hip` no longer get flattened into the pants lane just because they cover the waist and upper thighs, so hot-weather locker cleanup can swap actual pants for cargo shorts without stripping those armored overlays into locker stock as fake duplicate pants.
-- A twenty-seventh narrow Package 3 armored full-body utility-suit slice is now closed in deterministic planning/service proof: armored full-body utility suits with real storage and protection, like `survivor_suit`, no longer split into ordinary hot-weather `shorts_cargo + tshirt` packets just because the one-piece logic sees torso/arm coverage and the weather scorer likes shorts, so the locker path now keeps those suits intact unless the replacement is itself another armored full-body suit.
-- A twenty-eighth narrow Package 3 footed lower-body split-order slice is now closed in deterministic planning/service proof: footed lower-body gear like `fishing_waders` no longer leaves the replacement `boots` stranded in locker stock just because locker service tried missing-current shoes before removing the replaced waders, so the planner now keeps shorts-only packets blocked while the service path can still land the clean `shorts_cargo + tshirt + boots` split once the full replacement set exists.
-- A twenty-ninth narrow Package 3 draped-waist overlay slice is now closed in deterministic planning/service proof: draped waist overlays like `waist_apron_long` no longer get flattened into the pants lane just because they cover torso waist plus draped legs, so hot-weather locker cleanup can swap actual pants for `shorts_cargo` without stripping the apron into locker stock as fake legwear.
-- The current-packet preserved-baseline regression guard is now landed in deterministic code/tests because Josef caught a live player-facing leak on the Package 2 board path:
-  - structured board/job payload text like `board=show_board`, `status=blocked`, `approval=waiting_player`, and `next=job=1` had appeared in the in-game message log instead of staying on the internal path
-  - the narrow fix now keeps those structured board/job payloads on the internal camp-reply log path while the visible in-game message log reuses the organic board/status bark, without reopening ordinary follower behavior
-  - supporting auxiliary for the live-proof shape: `doc/basecamp-board-log-observability-2026-04-08.md`
-- The matching observability helper is now landed on the same stack:
-  - the assigned-camp board probe now captures OCR-backed screen-text artifacts alongside `llm_intent.log`, so the visible message-log bark can be compared directly with the internal structured camp-reply packet
-  - latest current-binary side-by-side live proof: `.userdata/dev-harness/harness_runs/20260408_233639/` (`probe.report.json`, `probe.artifacts.log`, `wait_for_board_reply.after.screen_text.txt`, `wait_for_job_followup_reply.after.screen_text.txt`)
-  - on that run the visible screen-text packet stays organic (`check the board`, `Got it-I'll help you`) while the internal artifact packet still carries the structured `board=show_board`, `details=show_job=1`, and `next=job=1` payloads
-- Patrol sanity on the current McWilliams save already checks out: the visible patrol tiles currently resolve to **2 clusters** under 4-way connectivity, so that note is no longer an open mystery.
-- The active repo rule for this packet is still simple:
-  - one package at a time
-  - revalidate before widening
-  - no broad Andi reactivation
-  - no opportunistic side quests while the packet is active
+Explicit greenlit backlog behind the current slice:
+- **Package 4, locker zone policy + control-surface cleanup**
+- **Organic bulletin-board speech polish**
+- **Combat-oriented locker policy**
+- **Plan/Aux pipeline helper**
 
-### Next real state
-1. keep **Package 3** narrow now that the preserved board/log split is re-proved live: after the landed bag-condition, jumpsuit-classification, cap -> helmet, lower-body cleanup, shorts-vs-jeans duplicate-cleanup, leggings-underlayer cleanup, outer-suit classification, indirect suit-alias one-piece, skintight one-piece classification, short-dress torso-coverage proof, draped-overgarment overlay proof, full-length-dress torso-coverage proof, head-covering full-body protective-suit proof, footed-jumpsuit split-coverage proof, full-helmet-vs-glasses classification / ballistic-helmet tradeoff proof, ballistic-body-armor-vs-plate proof, leg-holster support-gear proof, lower-leg support-armor proof, partial-leg support-storage proof, full-leg hard-guard support-armor proof, full-leg outer-greaves-without-hips support-armor proof, hip-only armored-skirt overlay proof, draped-waist overlay proof, and armored full-body utility-suit no-downgrade proof slices, the next honest hardening target is the next current-path body-armor or lower-body oddity, not a grab-bag rewrite
-2. expand the current Package 3 deterministic proof battery via `doc/locker-service-parity-test-battery-2026-04-08.md` so locker logic is checked across classification, planning, and actual service behavior for full-body suits, footed one-pieces, the remaining draped one-piece families beyond the now-covered draped waist-apron seam, full-leg outer greaves without hip coverage, and the remaining bullet-vs-melee armor tradeoff cases beyond the now-covered helmet and body-armor seams
-3. preserve the landed better-condition bag swap behavior, the new jumpsuit-not-shoes behavior, the cap -> helmet swap path, the lower-body cleanup path, the shorts-vs-jeans duplicate cleanup, the leggings-underlayer cleanup, the outer-suit classification fix, the indirect suit-alias one-piece fix, the skintight one-piece no-shorts-over-wetsuits guard, the short-dress torso-coverage guard, the draped-overgarment no-strip guard, the new full-length-dress torso-coverage guard, the new sleeved-dress arm-coverage guard, the new sleeved-dress split-with-arm-covering-shirt proof, the new head-covering full-body suit classification / shorts-only guard, the new footed-jumpsuit split-only-with-footwear guard, the new footed-lower-body split-order guard, the new full-helmet-vs-glasses / ballistic-helmet tradeoff guard, the new ballistic-body-armor-vs-plate guard, the new full-body plate-armor no-filler-pants guard, the new leg-holster support-gear guard, the new knee-pad lower-leg-support-armor guard, the new partial-leg support-storage guard, the new full-leg hard-guard support-armor guard, the new full-leg outer-greaves-without-hips support-armor guard, the new hip-only armored-skirt overlay guard, the new draped-waist overlay guard, and the new armored full-body utility-suit no-downgrade guard while extending the acceptance bar one visible failure mode at a time
-4. once the current locker / basecamp stack reaches its honest bottom-of-stack handoff point, continue into the already-greenlit **Smart Zone Manager v1** one-off zone-stamping lane from `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md` without interrupting the active packet early
+Meaning:
+- these items are defined enough and explicitly greenlit
+- they do **not** need another permission round
+- they are **not** all active at once
+- Andi should still be judged against one chosen current slice, not allowed to freestyle across the buffet
+
+---
+
+## 1. Checkpointed — Smart Zone Manager v1
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+Smart Zone Manager v1 is now good enough for the current pre-freeze goal.
+The lane should stay closed unless later code/runtime evidence disproves the claimed state.
+
+Current honest state:
+- the one-off Smart Zone Manager v1 surface is real on both Basecamp inventory-zone creation and later position/stretch edits
+- the deterministic packet still proves the main stamped layout, the corrected firewood/splintered/wood knot, too-small-zone failure, outdoor rotten placement beyond a simple wall ring, non-destructive refusal on pre-zoned bed tiles, and repeatability on the same layout
+- the contract seam audit is now closed honestly: fire/food/equipment anchors are flag-first where the map exposes real signals, clothing/bed support still use small explicit id allowlists where the map does not expose a clean category signal, and ordinary floor fallback stays in place instead of clever failure
+- existing built-in loot/custom zone machinery is still the default shape; the only current deliberate custom filters in the v1 packet are `splintered`, `dirty`, `rotten`, `blanket`, and `quilt`
+- a proportional live McWilliams proof now exists on the rebuilt current tiles binary via `tools/openclaw_harness/scenarios/smart_zone.live_probe_mcw_prepped.json`, using a narrow prepared-save restage (clear existing zones, spawn/deploy a brazier, place `Basecamp: Storage`, accept the smart-zoning prompt, save, reopen Zone Manager)
+- the live packet stayed narrow: it proved the real prompt path plus the saved stamped layout without reopening zone-doctrine archaeology
+
+Keep this lane out of the active queue unless later work breaks one of those claims.
 
 ---
 
@@ -159,22 +127,43 @@ If later code work or runtime evidence shows any one of those bundled claims is 
 
 ---
 
-## 5. Reopened context — Locker Zone V1
+## 5. Active — Basecamp carried-item dump lane
 
-**Status:** REOPENED UNDER SECTION 1
+**Status:** ACTIVE / GREENLIT
 
-Do not treat Locker Zone V1 as closed right now.
-Fresh-save manual testing disproved the old surface/control close-out, so the active V1 reopen now lives in section 1.
+The current active slice is **Package 5, basecamp carried-item dump lane** from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
 
 Still believed true unless new evidence breaks it:
 - locker outfitting core exists as real planner/service behavior
 - locker maintenance rhythm exists as real dirty/queue/reservation behavior
-- earlier deterministic + proportional runtime proof for those non-surface slices still exists
+- locker ranged-readiness support already covers ammo / magazine use from curated locker stock
+- earlier deterministic + proportional runtime proof for those non-carried-item slices still exists
 
-What is no longer safe to claim as closed until revalidated:
-- that the locker surface/control is currently solid on the real fresh-save path
-- that ordinary sorting cannot siphon gear out of locker tiles
-- that the current locker zone interaction surface is free of the reported type-mismatch / overlay problems
+Current required close-out for this slice:
+- basecamp NPCs dump ordinary carried misc junk before or during the locker dressing cycle
+- the kept carried lane is intentionally tiny and explicit:
+  - bandages
+  - ammo
+  - magazines
+- dump behavior does **not** pollute curated locker stock
+- the result behaves as a basecamp-specific policy instead of follower-style inventory preservation
+
+Current honest state:
+- the locker service code now strips ordinary carried junk during locker dressing instead of preserving generic follower-style pocket clutter
+- the kept carried lane is explicitly narrow in code and deterministic coverage: `bandages`, `ammo`, and `magazines`
+- replaced/duplicate container contents now get split so kept carried items return to the worker while dumped miscellany goes to a non-locker cleanup tile
+- fresh runtime-compatible `locker.weather_wait` artifact proof on 2026-04-18 shows the live locker path really dumping ordinary carried junk outside curated locker stock
+- the remaining gap is that the current live locker fixture proved the junk-dump side but did **not** explicitly exercise the kept `bandages` / `ammo` / `magazines` lane yet, so Package 5 is not honestly closed
+
+Greenlit backlog, not erased:
+- Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice and is now explicitly greenlit, just not the current active queue
+
+Out of scope for this slice:
+- finishing Package 4 as part of the same patch just because it is nearby
+- grenades or broader consumable logic
+- complex pocket micromanagement
+- bandit / overmap-threat design
+- hackathon feature lanes
 
 ---
 
@@ -206,23 +195,88 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 8. Hackathon-reserved feature lanes — do not touch before the event
+## 8. Hackathon feature lanes — parked far back / do not touch anytime soon
 
-These are intentionally **reserved for the hackathon itself**.
-They should stay visibly separate from the current repo-footing/harness work so reviewers do not mistake scaffolding for early feature implementation.
+These lanes are **not part of the current basecamp work and not part of the near-term queue**.
+Keep them visibly separate so scaffolding/support work is not mistaken for partial feature delivery.
 
 1. **Chat interface over in-game dialogue branches**
-   - the future feature lane
-   - current harness work may exercise nearby-NPC/freeform chat controls, but that is only test scaffolding and **not** this feature
+   - future feature lane, parked far back
 2. **Tiny ambient-trigger NPC model**
-   - the future feature lane
-   - current harness work may stage weird-item scenarios and artifact checks, but that is only test scaffolding/observability and **not** this feature
+   - future feature lane, parked far back
 
-Do not start them early, do not half-land them, and do not describe scaffolding as partial completion.
+Do not reopen them during the current locker/basecamp slice.
+Do not treat them as the next natural follow-up after Package 5.
+Current ordering intent is that they stay buried until much later threat/worldwork exists, with Josef explicitly saying they are not for anytime soon and not before the later Mongol riders lane.
+Do not describe adjacent harness or UI work as partial completion of those features.
 
 ---
 
-## 9. Documentation discipline
+## 9. Greenlit backlog — organic bulletin-board speech
+
+**Status:** GREENLIT / BACKLOG
+
+The raw structured board/job payload leak is fixed, but one aesthetic remainder is still visible on the bulletin-board path: the surviving `job=1`-style follow-up wording still sounds like internal routing glue instead of organic in-world speech.
+
+This lane is greenlit for later because the path is already stable enough to leave alone for now, but the remaining player-facing machine-speech ugliness is a real defined item.
+
+What this future polish item should do:
+- support organic player-facing triggers for bulletin-board / camp-job requests (for example ordinary requests like "craft" in a sentence)
+- keep internal routing/debug tokens available where useful without surfacing them as normal speech
+- make visible answers sound like poor survivors in a dump making it work for another day while the dead and worse roam outside
+- eliminate remaining visible `job=<id>` / `show_board` / `show_job`-style machine phrasing from ordinary in-world output
+
+Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
+
+---
+
+## 10. Greenlit backlog — Plan/Aux pipeline helper
+
+**Status:** GREENLIT / BACKLOG TOOLING
+
+Josef explicitly wants a small helper for the `Plan.md` / auxiliary-doc pipeline because greenlighting already-existing lanes should not require slow manual file carpentry every time.
+
+What this future tool should do:
+- take a proposed item, greenlight, or parked-lane request
+- print the contract back for verification
+- collect corrections before touching canon files
+- ask the final classification question (active, parked, or bottom-of-stack)
+- patch the relevant canon files consistently:
+  - `Plan.md`
+  - `TODO.md`
+  - `SUCCESS.md`
+  - `TESTING.md` when needed
+  - the auxiliary doc itself
+- optionally generate the Andi handoff packet too
+
+The point is leverage and consistency, not ceremony:
+- preserve the frozen intake/classification/packaging workflow
+- reduce slow manual canon edits
+- make parked-vs-active-vs-bottom-of-stack updates faster and less error-prone
+
+Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
+
+---
+
+## 11. Greenlit backlog — combat-oriented locker policy
+
+**Status:** GREENLIT / BACKLOG
+
+Josef wants future locker development to lean harder toward sensible guard/combat outfits instead of spending disproportionate energy on weird artisanal clothing edge cases.
+
+This future direction should:
+- keep the already-earned weird-garment safety wins
+- add common useful gear emphasis (gloves, belts, masks, holsters, sensible normal outfit pieces)
+- support a bulletin-board bulletproof toggle
+- support explicit ballistic vest / plate handling
+- prefer clearly superior full-body battle suits when appropriate
+- bias future deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
+
+Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
+
+---
+
+## 12. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute
