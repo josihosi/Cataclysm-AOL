@@ -283,6 +283,25 @@ std::string trim_copy( std::string_view text )
     return std::string( text.substr( start, end - start ) );
 }
 
+std::string sanitize_dialogue_chat_say_text( std::string text )
+{
+    text = trim_copy( text );
+    const std::string lowered = to_lower_case( text );
+    if( lowered.rfind( "say ", 0 ) == 0 ) {
+        text = trim_copy( text.substr( 4 ) );
+    } else if( lowered.rfind( "say:", 0 ) == 0 ) {
+        text = trim_copy( text.substr( 4 ) );
+    }
+    if( text.size() >= 2 ) {
+        const char first = text.front();
+        const char last = text.back();
+        if( ( first == '"' && last == '"' ) || ( first == '\'' && last == '\'' ) ) {
+            text = trim_copy( text.substr( 1, text.size() - 2 ) );
+        }
+    }
+    return text;
+}
+
 std::string next_llm_request_id()
 {
     static std::atomic<int> counter{ 1 };
@@ -2472,9 +2491,11 @@ Return exactly one line in this format and nothing else:
 say text | tool_id
 
 Formatting rules:
-- Put the visible NPC reply on the left of the pipe.
+- Put the entire visible NPC reply on the left of one final pipe.
+- If you include both a scenic beat and spoken dialogue, both stay on the left side.
 - Put one exact tool id on the right of the pipe, or leave it blank if no hidden action should happen.
 - Do not use the `|` character anywhere inside the visible reply text.
+- Example reply with no tool: `*Ali glances past your shoulder.* "You alone?" |`
 /no_think
 Answer directly. No reasoning.
 </System>
@@ -2520,9 +2541,11 @@ Return exactly one line in this format and nothing else:
 say text |
 
 Formatting rules:
-- Put the visible NPC reply on the left of the pipe.
+- Put the entire visible NPC reply on the left of one final pipe.
+- If you include both a scenic beat and spoken dialogue, both stay on the left side.
 - Leave the right side blank on opening turns.
 - Do not use the `|` character anywhere inside the visible reply text.
+- Example opener: `*Ali glances toward the road.* "Keep it quiet." |`
 
 /no_think
 Answer directly. No reasoning.
@@ -2902,10 +2925,10 @@ std::string extract_partial_dialogue_chat_say( const std::string &text )
     const std::string stripped = strip_code_fence_wrapper( text );
     const size_t pipe = stripped.find( '|' );
     if( pipe != std::string::npos ) {
-        return trim_copy( stripped.substr( 0, pipe ) );
+        return sanitize_dialogue_chat_say_text( stripped.substr( 0, pipe ) );
     }
     if( !stripped.empty() && stripped.find( "\"say\"" ) == std::string::npos ) {
-        return trim_copy( stripped );
+        return sanitize_dialogue_chat_say_text( stripped );
     }
 
     const size_t say_key = text.find( "\"say\"" );
@@ -2955,7 +2978,7 @@ std::string extract_partial_dialogue_chat_say( const std::string &text )
         }
         out.push_back( ch );
     }
-    return out;
+    return sanitize_dialogue_chat_say_text( out );
 }
 
 std::string strip_code_fence_wrapper( const std::string &text )
@@ -3000,7 +3023,7 @@ std::optional<llm_intent::dialogue_chat_result> parse_dialogue_chat_model_output
 
     if( pipe != std::string::npos ) {
         result.ok = true;
-        result.say = trim_copy( stripped.substr( 0, pipe ) );
+        result.say = sanitize_dialogue_chat_say_text( stripped.substr( 0, pipe ) );
         result.tool = trim_copy( stripped.substr( pipe + 1 ) );
         if( result.tool == "\"\"" || result.tool == "''" ) {
             result.tool.clear();
@@ -3026,7 +3049,7 @@ std::optional<llm_intent::dialogue_chat_result> parse_dialogue_chat_model_output
         TextJsonObject obj = jsin.get_object();
         obj.allow_omitted_members();
         result.ok = true;
-        result.say = trim_copy( obj.get_string( "say", "" ) );
+        result.say = sanitize_dialogue_chat_say_text( obj.get_string( "say", "" ) );
         result.tool = trim_copy( obj.get_string( "tool", "" ) );
     } catch( const std::exception & ) {
         return std::nullopt;

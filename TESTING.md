@@ -132,6 +132,31 @@ Current honest state:
     `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/npctalk.o`
   - log:
     `build_logs/hackathon_chat_streaming_refresh_narrow_20260418.log`
+- A sixth narrow compile also passed on `2026-04-18` after the `say`/smalltalk hardening fix:
+  - pipe-delimited chat parsing now strips stray leading `say` labels and wrapping quotes
+  - generic greetings/small talk now suppress branch-action firing so they do not immediately reset chat into a second NPC line
+  - the live chat prompts now explicitly forbid `say`/`tool` labels in visible text
+  - command:
+    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o obj/tiles/npctalk.o`
+  - log:
+    `build_logs/hackathon_chat_say_smalltalk_narrow_20260418.log`
+- A seventh narrow compile also passed on `2026-04-18` after scenic-beat rendering and pacing polish:
+  - dialogue history now renders `*...*` scenic beats in a distinct yellow highlight during LLM chat
+  - the streaming callback now adds a tiny artificial per-partial delay so the text unfolds a bit more slowly
+  - command:
+    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/npctalk.o`
+  - log:
+    `build_logs/hackathon_chat_scenic_streaming_narrow_20260418.log`
+- An eighth narrow compile also passed on `2026-04-18` after tightening the scenic-beat prompt wording in code defaults:
+  - the prompt now explicitly says the entire visible reply stays on the left of one final trailing pipe
+  - command:
+    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o`
+  - log:
+    `build_logs/hackathon_chat_promptwording_narrow_20260418.log`
+- Direct API prompt checks on `2026-04-18`:
+  - the first scenic-beat test exposed a prompt ambiguity: the model put the spoken line on the wrong side of the pipe
+  - after tightening the wording, the second direct test came back in the intended shape:
+    `*Ali trudges through the fog-choked pines, listening for any sign of movement.* "Don't stop-stay close." |`
 
 ### Smart Zone Manager v1
 

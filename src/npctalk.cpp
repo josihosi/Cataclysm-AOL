@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <chrono>
 #include <climits>
 #include <cmath>
 #include <cstddef>
@@ -21,6 +22,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <thread>
 
 #include "achievement.h"
 #include "action.h"
@@ -3517,6 +3519,48 @@ std::string normalize_dialogue_chat_memory_text( const std::string &text )
     return normalized;
 }
 
+bool is_dialogue_chat_greeting_or_smalltalk( const std::string &text )
+{
+    const std::string normalized = normalize_dialogue_chat_memory_text( text );
+    if( normalized.empty() ) {
+        return false;
+    }
+    static const std::unordered_set<std::string> exact_smalltalk = {
+        "hi", "hey", "hello", "hello there", "hey there", "yo", "sup", "howdy",
+        "greetings", "good morning", "good evening", "good to see you",
+        "how are you", "how are you doing", "hows it going", "what s up",
+        "whats up", "how you doing"
+    };
+    if( exact_smalltalk.count( normalized ) > 0 ) {
+        return true;
+    }
+    if( normalized.size() <= 24 ) {
+        static const std::vector<std::string> greeting_prefixes = {
+            "hi ", "hey ", "hello ", "yo ", "sup "
+        };
+        for( const std::string &prefix : greeting_prefixes ) {
+            if( normalized.rfind( prefix, 0 ) == 0 ) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool should_suppress_dialogue_chat_branch_tool(
+    const std::vector<llm_intent::dialogue_chat_tool> &tools, const std::string &tool_id,
+    const std::string &player_utterance )
+{
+    if( tool_id.empty() || !is_dialogue_chat_greeting_or_smalltalk( player_utterance ) ) {
+        return false;
+    }
+    const llm_intent::dialogue_chat_tool *tool = find_dialogue_chat_tool( tools, tool_id );
+    if( tool == nullptr ) {
+        return false;
+    }
+    return true;
+}
+
 bool should_store_dialogue_chat_memory( npc &listener, const std::string &npc_response )
 {
     if( npc_response.empty() ) {
@@ -3603,6 +3647,7 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
                 started = true;
             }
             d_win.update_last_history_text( partial_say );
+            std::this_thread::sleep_for( std::chrono::milliseconds( 12 ) );
             ui_manager::redraw();
             refresh_display();
             inp_mngr.pump_events();
@@ -3648,9 +3693,14 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
 
     bool reply_streaming_started = false;
     llm_intent::dialogue_chat_result reply = llm_intent::request_dialogue_chat(
-                *d.actor( true )->get_npc(), *player_utterance, challenge, action_surface,
-                relationship_memory, false,
-                make_streaming_callback( reply_streaming_started ) );
+                 *d.actor( true )->get_npc(), *player_utterance, challenge, action_surface,
+                 relationship_memory, false,
+                 make_streaming_callback( reply_streaming_started ) );
+
+    if( should_suppress_dialogue_chat_branch_tool( action_surface.branch_actions, reply.tool,
+            *player_utterance ) ) {
+        reply.tool.clear();
+    }
 
     if( !reply.ok || is_blank_input( reply.say ) ) {
         add_challenge_to_history( d, d_win, challenge );
@@ -3680,9 +3730,6 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
                 action_surface.branch_actions, reply.tool ) ) {
         if( confirm_dialogue_response( d, *response_ind ) ) {
             talk_topic next_topic = apply_dialogue_response( d, *response_ind );
-            if( next_topic.id != topic.id && next_topic.id != llm_dialogue_chat_continue_topic ) {
-                d_win.llm_chat_started = false;
-            }
             return next_topic;
         }
     }

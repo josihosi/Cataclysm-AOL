@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <vector>
@@ -17,6 +18,34 @@
 
 // Height of the response section
 static const int RESPONSES_LINES = 15;
+
+namespace
+{
+std::string colorize_dialogue_history_text( const std::string &text, nc_color base_color,
+        bool allow_scenic_markup )
+{
+    if( !allow_scenic_markup || text.find( '*' ) == std::string::npos ) {
+        return colorize( text, base_color );
+    }
+
+    std::string out;
+    size_t pos = 0;
+    bool scenic = false;
+    while( pos < text.size() ) {
+        const size_t marker = text.find( '*', pos );
+        if( marker == std::string::npos ) {
+            const std::string segment = text.substr( pos );
+            out += colorize( segment, scenic ? c_brown : base_color );
+            break;
+        }
+        const std::string segment = text.substr( pos, marker - pos );
+        out += colorize( segment, scenic ? c_brown : base_color );
+        scenic = !scenic;
+        pos = marker + 1;
+    }
+    return out;
+}
+} // namespace
 
 multiline_list_entry talk_data::get_entry() const
 {
@@ -107,7 +136,9 @@ void dialogue_window::draw( const std::string &npc_name )
             if( !llm_chat_active && i < newindex ) {
                 col = c_light_gray;
             }
-            assembled += colorize( history[i].text, col ).append( "\n" );
+            const bool allow_scenic_markup = llm_chat_active && col != c_light_gray;
+            assembled += colorize_dialogue_history_text( history[i].text, col,
+                         allow_scenic_markup ).append( "\n" );
         }
 
         history_view->set_text( assembled, false );
