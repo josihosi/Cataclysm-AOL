@@ -14,7 +14,10 @@ Current target:
 1. package the remaining live locker proof that explicitly shows both sides of Package 5 on the right McWilliams / `CAMP_LOCKER` footing:
    - ordinary carried junk gets dumped
    - `bandages`, `ammo`, and `magazines` stay carried
-2. if the current harness fixture cannot exercise those kept classes cleanly, land the narrowest harness restage/helper that makes that proof possible
+2. this narrow harness restage/helper lane is explicitly greenlit inside Package 5 if needed:
+   - seed only the exact proof items (`bandages`, ammo, one magazine, one junk control item)
+   - place/drop them onto the real McWilliams live path
+   - use the real pickup plus locker-service seam to prove keep-vs-dump from artifacts/logs
 3. once that proof exists, close the Package 5 ledgers without wandering into Package 4 surface/control cleanup
 
 Out of scope right now:

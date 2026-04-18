@@ -209,6 +209,15 @@ Treat basecamp NPCs differently from followers:
 - ammo and magazines are kept instead of being dumped with the junk
 - curated locker stock does not get polluted by the dump behavior
 
+### Greenlit proof support inside Package 5
+A narrow live-restage/helper path is explicitly greenlit when the missing evidence is only the kept-lane live packet.
+That means Andi may:
+- seed only the exact proof items (`bandages`, ammo, one magazine, one junk control item)
+- place/drop them onto the real McWilliams / `CAMP_LOCKER` live path
+- use the real pickup plus locker-service seam to prove keep-vs-dump from artifacts/logs
+
+This is still **Package 5 evidence work**, not permission to reopen Package 4 or redesign locker semantics.
+
 ### Recommended v1 exclusions
 - grenades
 - broad consumable logic beyond bandages

@@ -66,6 +66,10 @@ Current honest state:
 - not yet safe to claim the whole Package 5 acceptance bar is closed:
   - the current live fixture/probe proves the junk-dump path and non-polluting locker target on the real locker route
   - it does **not** yet explicitly exercise the kept `bandages` / `ammo` / `magazines` lane on that same live path
+- Josef has now explicitly greenlit the narrow live-restage helper path for this missing proof:
+  - seed only the exact kept-item classes plus one junk control item
+  - keep the real `McWilliams` / `CAMP_LOCKER` footing and real pickup plus locker-service seam
+  - treat this as Package 5 evidence work, not Package 4 scope creep
 - the current slice should stay on the `McWilliams` / `Zoraida Vick` footing and the real locker/live path, not wander back into Package 4 surface cleanup or unrelated future lanes
 
 ### Meaning
@@ -139,7 +143,7 @@ Current honest state:
 ## Pending probes
 
 - a packaged live locker proof on the correct McWilliams / `CAMP_LOCKER` footing that explicitly includes the kept `bandages` / `ammo` / `magazines` lane, not only the dumped-junk side
-- if the current locker fixture cannot show those kept classes honestly, the narrowest harness restage/helper that makes that live proof possible without reopening Package 4 work
+- use the now-greenlit narrow restage helper if needed: seed only the kept classes plus one junk control item on the real live path, then prove keep-vs-dump from the locker artifact/log
 
 ---
 

@@ -50,7 +50,8 @@ Current target:
 Best concrete next states for this lane:
 1. keep the landed Package 5 code/test packet honest in the docs: ordinary carried junk now dumps on the locker service path, and the deterministic keep-vs-dump policy is intentionally limited to `bandages`, `ammo`, and `magazines`
 2. package the remaining live proof on the right locker footing so the real McWilliams / `CAMP_LOCKER` path explicitly shows the kept carried lane too, not only the junk-dump side
-3. close the slice only after that live packet exists, without pretending Package 4 was secretly finished too
+3. if the current fixture does not naturally contain the kept classes, use the narrowest honest harness restage/helper to seed only the exact proof items on that same live path; this is explicitly greenlit as part of Package 5, not Package 4 drift
+4. close the slice only after that live packet exists, without pretending Package 4 was secretly finished too
 
 Explicit greenlit backlog behind the current slice:
 - **Package 4, locker zone policy + control-surface cleanup**
