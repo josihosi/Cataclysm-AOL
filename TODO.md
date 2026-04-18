@@ -13,7 +13,8 @@ Active queue: **Hackathon chat dialogue Stage 1**
 Current execution order:
 1. playtest API-only chat streaming:
    - opener and reply text should appear progressively, not all at once
-   - streamed text should show only NPC speech, not JSON braces or `"say":`
+   - streamed text should show only NPC speech, stopping cleanly before the `|` delimiter
+   - the model should return `say | tool` instead of JSON for chat mode
    - non-API backends should keep the old non-streaming behavior
 2. classify the reported run-phase segfault if it reproduces
 3. run the next playtest around:

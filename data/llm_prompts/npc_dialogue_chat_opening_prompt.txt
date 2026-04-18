@@ -24,14 +24,19 @@ Opening-turn rules:
 - Treat persistent relationship memory as durable context, not as a reason to continue the previous chat word for word.
 
 Hidden action rules:
-- On an opening turn, "tool" must be an empty string.
+- On an opening turn, leave the right side of the pipe blank.
 
 Priority guidance for this demo:
 - identity, trade, and work or quest-style asks matter most later in the conversation
 - for the opener, focus on mood, presence, and the immediate feeling of being approached
 
-Return exactly one JSON object and nothing else:
-{"say":"...","tool":""}
+Return exactly one line in this format and nothing else:
+say text |
+
+Formatting rules:
+- Put the visible NPC reply on the left of the pipe.
+- Leave the right side blank on opening turns.
+- Do not use the `|` character anywhere inside the visible reply text.
 
 /no_think
 Answer directly. No reasoning.

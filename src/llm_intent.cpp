@@ -253,6 +253,7 @@ struct runner_config {
         std::streamoff max_bytes );
 std::string extract_csv_from_text( const std::string &text );
 bool should_attempt_parse( const std::string &line );
+std::string strip_code_fence_wrapper( const std::string &text );
 
 std::string sanitize_text( std::string_view text )
 {
@@ -2438,7 +2439,7 @@ You are {{npc_name}}, a human survivor in a brutal cataclysmic world.
 The player sees only your in-character chat reply. The hidden action lists are not visible to the player.
 
 Visible reply rules:
-- Always write a freeform in-character NPC reply in "say".
+- Always write a freeform in-character NPC reply on the left side of the pipe.
 - Keep it grounded, human, rough, and short-to-medium.
 - Small physical or environmental beats are good when they add mood or context.
 - Do not bloat. Make every sentence count.
@@ -2448,7 +2449,7 @@ Visible reply rules:
 - Treat persistent relationship memory as durable context, not as a reason to continue the previous chat word for word.
 
 Hidden action rules:
-- "tool" must be either one exact tool id from the list or an empty string.
+- The right side of the pipe must be either one exact tool id from the list or blank.
 - Sandbox actions are broad things you can really do right now. Branch actions are local authored moves for the current dialogue state.
 - Prefer sandbox actions for clear asks about trade, identity, work, quest progress, or joining up when a matching sandbox action exists.
 - Only choose a tool when the player's request clearly matches a currently legal hidden action.
@@ -2465,12 +2466,15 @@ Priority guidance for this demo:
 
 Special opener rule:
 - If Dialogue turn kind is "opening", write the NPC's first beat as the player approaches.
-- On an opening turn, "tool" must be an empty string.
+- On an opening turn, leave the right side of the pipe blank.
 
-Return exactly one JSON object and nothing else:
-{"say":"...","tool":""}
+Return exactly one line in this format and nothing else:
+say text | tool_id
 
-If no hidden action should happen, leave "tool" empty.
+Formatting rules:
+- Put the visible NPC reply on the left of the pipe.
+- Put one exact tool id on the right of the pipe, or leave it blank if no hidden action should happen.
+- Do not use the `|` character anywhere inside the visible reply text.
 /no_think
 Answer directly. No reasoning.
 </System>
@@ -2506,14 +2510,19 @@ Opening-turn rules:
 - Treat persistent relationship memory as durable context, not as a reason to continue the previous chat word for word.
 
 Hidden action rules:
-- On an opening turn, "tool" must be an empty string.
+- On an opening turn, leave the right side of the pipe blank.
 
 Priority guidance for this demo:
 - identity, trade, and work or quest-style asks matter most later in the conversation
 - for the opener, focus on mood, presence, and the immediate feeling of being approached
 
-Return exactly one JSON object and nothing else:
-{"say":"...","tool":""}
+Return exactly one line in this format and nothing else:
+say text |
+
+Formatting rules:
+- Put the visible NPC reply on the left of the pipe.
+- Leave the right side blank on opening turns.
+- Do not use the `|` character anywhere inside the visible reply text.
 
 /no_think
 Answer directly. No reasoning.
@@ -2890,6 +2899,15 @@ bool should_attempt_parse( const std::string &line )
 
 std::string extract_partial_dialogue_chat_say( const std::string &text )
 {
+    const std::string stripped = strip_code_fence_wrapper( text );
+    const size_t pipe = stripped.find( '|' );
+    if( pipe != std::string::npos ) {
+        return trim_copy( stripped.substr( 0, pipe ) );
+    }
+    if( !stripped.empty() && stripped.find( "\"say\"" ) == std::string::npos ) {
+        return trim_copy( stripped );
+    }
+
     const size_t say_key = text.find( "\"say\"" );
     if( say_key == std::string::npos ) {
         return {};
@@ -2975,12 +2993,33 @@ std::string extract_braced_json( const std::string &text )
 std::optional<llm_intent::dialogue_chat_result> parse_dialogue_chat_model_output(
     const std::string &text )
 {
+    const std::string stripped = strip_code_fence_wrapper( text );
+    const size_t pipe = stripped.find( '|' );
+    llm_intent::dialogue_chat_result result;
+    result.raw = text;
+
+    if( pipe != std::string::npos ) {
+        result.ok = true;
+        result.say = trim_copy( stripped.substr( 0, pipe ) );
+        result.tool = trim_copy( stripped.substr( pipe + 1 ) );
+        if( result.tool == "\"\"" || result.tool == "''" ) {
+            result.tool.clear();
+        }
+        if( !result.tool.empty() &&
+            result.tool.size() >= 2 &&
+            result.tool.front() == '"' &&
+            result.tool.back() == '"' ) {
+            result.tool = result.tool.substr( 1, result.tool.size() - 2 );
+        }
+        if( !result.say.empty() ) {
+            return result;
+        }
+    }
+
     const std::string payload = extract_braced_json( text );
     if( !should_attempt_parse( payload ) ) {
         return std::nullopt;
     }
-    llm_intent::dialogue_chat_result result;
-    result.raw = text;
     try {
         std::istringstream in( payload );
         TextJsonIn jsin( in );
@@ -4775,7 +4814,7 @@ dialogue_chat_result request_dialogue_chat( npc &listener,
     }
 
     result.raw = response.text;
-    result.error = "Chat response was not valid JSON.";
+    result.error = "Chat response was not valid pipe or JSON output.";
     append_llm_dialogue_chat_log( string_format(
                                       "[MODEL RAW OUTPUT]\n%s\n\n"
                                       "[FALLBACK REASON]\n%s\n\n"

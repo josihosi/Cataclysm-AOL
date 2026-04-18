@@ -108,15 +108,23 @@ Current honest state:
     `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o`
   - log:
     `build_logs/hackathon_chat_opener_split_narrow_20260418.log`
-- A fourth narrow compile also passed on `2026-04-18` after landing API-only chat streaming:
+- A fourth narrow compile also passed on `2026-04-18` after landing the first API-only chat streaming attempt:
   - dialogue chat requests can now emit partial API events
   - the chat UI progressively redraws streamed NPC `say` text
-  - streamed partials are filtered so the player should not see raw JSON keys/braces
   - non-streaming paths remain the fallback for non-API backends
   - command:
     `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/llm_intent.o obj/tiles/npctalk.o`
   - log:
     `build_logs/hackathon_chat_streaming_narrow_20260418.log`
+- Deterministic runner probing on `2026-04-18` showed the API transport itself is fine:
+  - the OpenAI runner emitted real partial events for both long and short requests
+  - a short guarded reply streamed in about `1.1s`
+  - a longer atmospheric reply streamed in about `1.56s`
+  - the failure mode was therefore not "no streaming", but the brittle JSON-shaped stream contract
+- The active streaming rework now switches chat-mode output to a pipe-delimited one-line contract:
+  - `say text | tool_id`
+  - opening turns use `say text |`
+  - the goal is to let the UI stream visible NPC speech directly and stop cleanly at the delimiter
 
 ### Smart Zone Manager v1
 
@@ -196,7 +204,7 @@ Hackathon chat dialogue Stage 1:
 - verify that the chat log cleanly distinguishes `SANDBOX ACTIONS` from `BRANCH ACTIONS`
 - verify that fresh talk start shows compact relationship memory instead of stale prior-turn carry-over
 - verify that opener turns no longer log or behave like replies to the hidden authored branch line
-- verify that API chat now streams progressively without showing raw JSON structure in the dialogue window
+- verify that API chat now streams progressively and stops cleanly before the `|` delimiter in the dialogue window
 - verify that topic-changing hidden actions now feel readable with the opener reset
 - then do the next playtest build
 

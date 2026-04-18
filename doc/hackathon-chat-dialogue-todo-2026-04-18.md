@@ -11,7 +11,7 @@ Delete completed clutter instead of turning this into a graveyard.
 Active follow-up after first playtest:
 - Investigate the `build_and_run.cmd` / run-phase segmentation fault report and determine whether it is a startup crash, exit-time crash, or helper-script/runtime issue.
 - Verify that API-backed chat now streams progressively in the dialogue UI.
-- Verify that streamed text shows only NPC speech rather than raw JSON structure.
+- Verify that streamed text shows only NPC speech and stops cleanly before the `|` delimiter.
 - Verify that non-API backends still fall back cleanly to non-streaming chat behavior.
 - Verify that the transcript now preserves player-gray and NPC-white speaker separation in actual play.
 - Verify that sandbox trade actually opens and no longer gets trapped inside a quest-status branch pocket.
@@ -44,6 +44,7 @@ Trash pile / already landed:
 - Chat transcript rendering now preserves per-speaker colors instead of flattening older lines to gray.
 - Fresh opener turns now use opener-only context with separate inspectable prompt and honest log labeling.
 - API-only chat streaming is now wired for progressive NPC text display.
+- The streaming contract is now a pipe-delimited one-line reply: `say text | tool_id`.
 
 ## 2. Stage 2 - Quality Pass
 
