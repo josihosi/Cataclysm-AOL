@@ -39,17 +39,17 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is **no active greenlit implementation lane right now**.
-Smart Zone Manager v1 reached the honest pre-freeze checkpoint, and the fresh 2026-04-09 rebuild + smoke rerun kept that claim honest.
+There is now **one active greenlit implementation lane**: **Locker Package 4, locker zone policy + control-surface cleanup**.
 
-During Josef's last debug-round prep window, do **not** open Package 4 or 5.
-Use remaining time only for freeze-prep, smoke/support rechecks, reviewer-packet cleanup, and the smallest needed merge/freeze paperwork.
+Current target:
+- finish the remaining locker/basecamp surface so curated locker stock, locker policy semantics, and player-facing locker settings behave sanely on the real fresh-save path
+- keep the working locker/basecamp loop on the current `McWilliams` / `Zoraida Vick` footing instead of reopening the whole world
+- do **not** widen into Package 5 carried-item support, bandit/overmap-threat design, or hackathon feature lanes during this slice
 
-Best concrete next decisions for Josef after the debug round:
-1. explicitly freeze `dev -> master` if the current packet survives the round cleanly
-2. either keep the leftover locker/basecamp follow-through stack parked after freeze, or consciously reopen it instead of letting it drift back into a fake active queue
-3. explicitly reopen **Locker Package 4, locker zone policy + control-surface cleanup**, if more locker work is still wanted after freeze prep
-4. pull one parked future lane, most plausibly **organic bulletin-board speech polish** or the **Plan/Aux pipeline helper**
+Best concrete next states for this lane:
+1. reproduce and isolate the fresh-save surface/control failures cleanly
+2. land the smallest policy/control-surface slice that keeps locker stock out of generic sorting and makes the first useful locker settings discoverable
+3. revalidate the current loop on the right harness/save path before considering Package 5 or any later threat work
 
 ---
 
@@ -114,22 +114,34 @@ If later code work or runtime evidence shows any one of those bundled claims is 
 
 ---
 
-## 5. Reopened context — Locker Zone V1
+## 5. Active — Locker Zone V1 surface/control cleanup
 
-**Status:** REOPENED BASELINE / FROZEN FOR PRE-FREEZE
+**Status:** ACTIVE / GREENLIT
 
-Do not treat Locker Zone V1 as fully closed right now.
-Fresh-save manual testing disproved the old surface/control close-out, but that reopen is currently preserved only as future-reopen context during freeze prep, not as an active coding queue.
+Locker Zone V1 is not fully closed. The current active slice is **Package 4, locker zone policy + control-surface cleanup** from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
 
 Still believed true unless new evidence breaks it:
 - locker outfitting core exists as real planner/service behavior
 - locker maintenance rhythm exists as real dirty/queue/reservation behavior
 - earlier deterministic + proportional runtime proof for those non-surface slices still exists
 
-What is no longer safe to claim as closed until revalidated:
-- that the locker surface/control is currently solid on the real fresh-save path
-- that ordinary sorting cannot siphon gear out of locker tiles
-- that the current locker zone interaction surface is free of the reported type-mismatch / overlay problems
+Current required close-out for this slice:
+- locker items remain curated stock instead of quietly collapsing back into generic sorting behavior
+- for locker semantics, `ignore items when sorting in this zone` is effectively treated as **YES**
+- player-facing locker settings live on the billboard / locker settings surface and expose the first useful toggles:
+  - helmets
+  - armor
+  - backpacks
+  - sidearm
+  - melee
+  - long guns
+- one-piece / onesie armor still counts for major protective regions where appropriate
+- the fresh-save locker zone surface is free of the reported zone-creation type-mismatch / overlay problems
+
+Out of scope for this slice:
+- Package 5 carried-item / dump-lane expansion
+- bandit / overmap-threat design
+- hackathon feature lanes
 
 ---
 
@@ -161,19 +173,18 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 8. Hackathon-reserved feature lanes — do not touch before the event
+## 8. Hackathon feature lanes — keep parked / do not touch in the current basecamp pass
 
-These are intentionally **reserved for the hackathon itself**.
-They should stay visibly separate from the current repo-footing/harness work so reviewers do not mistake scaffolding for early feature implementation.
+These lanes are **not part of the current basecamp close-out work**.
+Keep them visibly separate so scaffolding/support work is not mistaken for partial feature delivery.
 
 1. **Chat interface over in-game dialogue branches**
-   - the future feature lane
-   - current harness work may exercise nearby-NPC/freeform chat controls, but that is only test scaffolding and **not** this feature
+   - future feature lane, not current work
 2. **Tiny ambient-trigger NPC model**
-   - the future feature lane
-   - current harness work may stage weird-item scenarios and artifact checks, but that is only test scaffolding/observability and **not** this feature
+   - future feature lane, not current work
 
-Do not start them early, do not half-land them, and do not describe scaffolding as partial completion.
+Do not reopen them during the current locker/basecamp slice.
+Do not describe adjacent harness or UI work as partial completion of those features.
 
 ---
 

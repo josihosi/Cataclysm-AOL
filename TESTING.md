@@ -39,6 +39,24 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
+### Locker zone policy + control-surface cleanup (active)
+
+Current honest state:
+- fresh-save manual testing previously reopened the old locker surface/control close-out
+- still believed true from earlier work: locker outfitting core exists, locker maintenance rhythm exists, and earlier deterministic/runtime proof for those non-surface slices still stands unless new evidence disproves it
+- not yet safe to claim:
+  - `CAMP_LOCKER` is fully solid on the real fresh-save path
+  - ordinary sorting cannot siphon curated locker stock
+  - the player-facing locker policy/control surface is clear and discoverable
+  - the reported locker zone creation type-mismatch / overlay issue is gone
+- the current slice should stay on the `McWilliams` / `Zoraida Vick` footing and the real fresh-save surface, not wander into Package 5 or unrelated future lanes
+
+### Meaning
+
+- the active delivery target is Package 4 from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
+- the next evidence should be the smallest honest mix of narrow code proof plus the right fresh-save / live locker repro, not more freeze-prep ritual
+- keep Smart Zone Manager, board routing, hackathon features, and future threat design closed or out of scope while this slice is active
+
 ### Smart Zone Manager v1
 
 Current honest state:
@@ -70,8 +88,7 @@ Current honest state:
 ### Meaning
 
 - Smart Zone Manager v1 still survives a fresh rebuild + live rerun on current HEAD
-- the lane is good enough for the current pre-freeze goal and should stay closed unless code/runtime evidence breaks it
-- the next action is not more smart-zone archaeology; it is Josef's debug round and then a freeze decision
+- the lane should stay closed while Package 4 is active unless code/runtime evidence breaks it
 
 ### Assigned-camp board/log leak recheck
 
@@ -98,19 +115,15 @@ Current honest state:
 
 - the assigned-camp board/log leak fix still survives a fresh rebuilt-current-head live check
 - current truth is the intended split: organic player-facing message log, structured internal artifact log
-- do not reopen follower/basecamp routing work from this packet unless Josef's final round disproves one of those claims
+- keep this out of the active queue while Package 4 is running unless later code or runtime evidence breaks one of those claims
 
 ---
 
 ## Pending probes
 
-None right now.
-
-Do not rerun these packets as ritual.
-Only reopen them if:
-- code affecting smart zoning or assigned-camp board routing changes
-- a reviewer disputes the prepared-save seam or the assigned-camp live probe shape
-- runtime evidence disproves one of the current claims
+- fresh-save repro of the locker zone creation/control-surface failure on the current active path, with screen / tests / artifacts kept separate
+- the narrowest deterministic check(s) needed once locker sorting-protection or control-surface behavior changes
+- a packaged live locker proof on the correct McWilliams / `CAMP_LOCKER` footing showing curated locker stock survives and the player-facing settings surface is understandable
 
 ---
 
@@ -140,6 +153,9 @@ Use these when they are actually the missing evidence, not as ritual.
 
 ### Current assigned-camp board/log recheck
 - `python3 tools/openclaw_harness/startup_harness.py probe basecamp.package2_assign_camp_toolcall_probe_mcw`
+
+### Existing locker live baseline
+- `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
 
 ## Local build caveat
 
