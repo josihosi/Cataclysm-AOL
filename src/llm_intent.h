@@ -9,6 +9,21 @@ class npc;
 
 namespace llm_intent
 {
+struct dialogue_chat_tool {
+    std::string id;
+    std::string label;
+    bool available = true;
+    std::string unavailable_reason;
+};
+
+struct dialogue_chat_result {
+    bool ok = false;
+    std::string say;
+    std::string tool;
+    std::string raw;
+    std::string error;
+};
+
 void enqueue_request( npc &listener, const std::string &player_utterance );
 void enqueue_request( const npc &listener, const std::string &player_utterance );
 void enqueue_ambient_request( npc &listener, const std::string &player_utterance );
@@ -18,6 +33,11 @@ void prewarm();
 void process_responses();
 void enqueue_random_requests();
 void log_event( const std::string &message );
+dialogue_chat_result request_dialogue_chat( npc &listener,
+        const std::string &player_utterance,
+        const std::string &authored_npc_line,
+        const std::vector<dialogue_chat_tool> &tools,
+        bool opening_turn );
 std::string build_snapshot_for_test( npc &listener,
                                      const std::string &player_utterance,
                                      const std::string &request_id );

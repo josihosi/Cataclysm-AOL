@@ -15,6 +15,27 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Hackathon chat dialogue Stage 1
+
+Status: ACTIVE
+
+Success state:
+- [ ] `[LLM]` dialogue toggle exists for `branches` vs `chat`.
+- [ ] Chat mode can open a normal NPC conversation without breaking ordinary branch dialogue fallback.
+- [ ] Chat mode uses popup-based freeform player input instead of visible branch selection.
+- [ ] The conversation opens with an LLM-generated opening beat.
+- [ ] Each player line can produce a freeform NPC reply plus at most one hidden real dialogue action.
+- [ ] A dedicated inspectable prompt file exists for chat mode in `data/llm_prompts/`.
+- [ ] A dedicated `config/llm_dialogue_chat.log` path records raw chat-pipeline input/output.
+- [ ] One coherent Stage 1 compile checkpoint is recorded in `TESTING.md`.
+
+Notes:
+- Stage 1 demo priorities are identity, trade, and work or quest-style asks.
+- Rumors/background are a softer secondary success case.
+- Follower control and streaming feel are not Stage 1 requirements.
+
+---
+
 ## Controlled locker / basecamp follow-through packet
 
 Status: PARKED / FROZEN FOR PRE-FREEZE

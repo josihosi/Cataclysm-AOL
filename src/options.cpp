@@ -2958,6 +2958,13 @@ void options_manager::add_options_llm()
          false
        );
 
+    add( "LLM_DIALOGUE_MODE", "llm", to_translation( "Dialogue interface" ),
+         to_translation( "Choose whether NPC conversations use classic dialogue branches or the hackathon chat mode." ),
+         { { "branches", to_translation( "Dialogue branches" ) },
+           { "chat", to_translation( "Chat" ) } },
+         "branches"
+       );
+
     add( "LLM_INTENT_RANDOM_CALL", "llm", to_translation( "Random call (turns)" ),
          to_translation( "0 disables it.  Above 0, allied NPCs occasionally trigger spontaneous LLM calls after roughly this many turns, with per-NPC random jitter." ),
          0, 500, 0

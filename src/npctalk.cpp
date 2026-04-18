@@ -1971,7 +1971,9 @@ void avatar::talk_to( std::unique_ptr<talker> talk_with, bool radio_contact,
         d.actor( true )->update_missions( d.missions_assigned );
         DebugLog( D_INFO, DC_ALL ) << "avatar::talk_to: opt topic=" << d.topic_stack.back().id;
         const talk_topic next = d.opt( d_win, d.topic_stack.back() );
-        if( next.id == "TALK_NONE" ) {
+        if( next.id == "TALK_LLM_CHAT_CONTINUE" ) {
+            continue;
+        } else if( next.id == "TALK_NONE" ) {
             int cat = topic_category( d.topic_stack.back() );
             do {
                 d.topic_stack.pop_back();
@@ -3217,8 +3219,213 @@ const talk_topic &special_talk( const std::string &action )
     return no_topic;
 }
 
+namespace
+{
+constexpr const char *llm_dialogue_chat_continue_topic = "TALK_LLM_CHAT_CONTINUE";
+
+bool use_llm_dialogue_chat( dialogue const &d, dialogue_window const &d_win )
+{
+    return !d_win.is_computer &&
+           !d_win.is_not_conversation &&
+           d.actor( true )->get_npc() != nullptr &&
+           get_option<bool>( "LLM_INTENT_ENABLE" ) &&
+           get_option<std::string>( "LLM_DIALOGUE_MODE" ) == "chat";
+}
+
+std::string build_authored_challenge( dialogue &d, const talk_topic &topic )
+{
+    std::string challenge = d.dynamic_line( topic );
+    if( challenge.empty() ) {
+        return challenge;
+    }
+
+    if( challenge[0] != '*' && challenge[0] != '&' ) {
+        challenge = string_format( _( "\"%s\"" ), challenge );
+    }
+
+    if( d.actor( true )->get_npc() ) {
+        parse_tags( challenge, *d.actor( false )->get_character(), *d.actor( true )->get_npc(), d,
+                    topic.item_type );
+    } else {
+        parse_tags( challenge, *d.actor( false )->get_character(), *d.actor( false )->get_character(), d,
+                    topic.item_type );
+    }
+    return uppercase_first_letter( challenge );
+}
+
+void add_challenge_to_history( dialogue &d, dialogue_window &d_win, std::string challenge )
+{
+    if( challenge.empty() ) {
+        return;
+    }
+    if( challenge[0] == '&' ) {
+        d_win.add_to_history( challenge.substr( 1 ) );
+    } else if( challenge[0] == '*' ) {
+        d_win.add_to_history( string_format( pgettext( "npc does something", "%s %s" ),
+                                             d.actor( true )->disp_name(), challenge.substr( 1 ) ) );
+    } else {
+        npc *npc_actor = d.actor( true )->get_npc();
+        d_win.add_to_history( challenge, d_win.is_not_conversation ? "" : d.actor( true )->disp_name(),
+                              npc_actor ? npc_actor->basic_symbol_color() : c_red );
+    }
+}
+
+bool confirm_dialogue_response( dialogue &d, size_t response_ind )
+{
+    bool okay = true;
+    std::set<dialogue_consequence> consequences = d.responses[response_ind].get_consequences( d );
+    if( consequences.count( dialogue_consequence::hostile ) > 0 ) {
+        okay = query_yn( _( "You may be attacked!  Proceed?" ) );
+    } else if( consequences.count( dialogue_consequence::helpless ) > 0 ) {
+        okay = query_yn( _( "You'll be helpless!  Proceed?" ) );
+    }
+    return okay;
+}
+
+talk_topic apply_dialogue_response( dialogue &d, size_t response_ind )
+{
+    talk_response chosen = d.responses[response_ind];
+    if( chosen.mission_selected != nullptr ) {
+        d.actor( true )->select_mission( chosen.mission_selected );
+    }
+
+    d.actor( true )->store_chosen_training( chosen.skill, chosen.style, chosen.dialogue_spell,
+                                            chosen.proficiency );
+    const bool success = chosen.trial.roll( d );
+    talk_effect_t const &effects = success ? chosen.success : chosen.failure;
+    talk_topic ret_topic = effects.apply( d );
+    talk_effect_t::update_missions( d );
+    return ret_topic;
+}
+
+std::vector<llm_intent::dialogue_chat_tool> build_dialogue_chat_tools( dialogue &d,
+        const dialogue_window &d_win )
+{
+    std::vector<llm_intent::dialogue_chat_tool> tools;
+    input_event hotkey;
+    for( size_t i = 0; i < d.responses.size(); ++i ) {
+        const talk_data td = d.responses[i].create_option_line( d, hotkey, d_win.is_computer );
+        const bool available = !d.response_condition_exists[i] || d.response_condition_eval[i];
+        llm_intent::dialogue_chat_tool tool;
+        tool.id = string_format( "response_%d", static_cast<int>( i ) );
+        tool.label = remove_color_tags( td.text );
+        tool.available = available;
+        if( !available ) {
+            tool.unavailable_reason = d.responses[i].show_reason;
+        }
+        tools.push_back( std::move( tool ) );
+    }
+    return tools;
+}
+
+std::optional<size_t> resolve_dialogue_chat_tool( const std::vector<llm_intent::dialogue_chat_tool> &tools,
+        const std::string &tool_id )
+{
+    if( tool_id.empty() ) {
+        return std::nullopt;
+    }
+    for( size_t i = 0; i < tools.size(); ++i ) {
+        if( tools[i].id == tool_id && tools[i].available ) {
+            return i;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
+        dialogue_window &d_win, const talk_topic &topic )
+{
+    const auto is_blank_input = []( const std::string &text ) {
+        return text.find_first_not_of( " \t\r\n" ) == std::string::npos;
+    };
+
+    d_win.add_history_separator();
+
+    ui_adaptor ui;
+    const auto resize_cb = [&]( ui_adaptor & ui ) {
+        d_win.resize( ui );
+    };
+    ui.on_screen_resize( resize_cb );
+    resize_cb( ui );
+
+    const std::string challenge = build_authored_challenge( d, topic );
+    d.gen_responses( topic );
+
+    if( d.responses.empty() ) {
+        return std::nullopt;
+    }
+
+    d_win.clear_history_highlights();
+    if( !d_win.llm_chat_started ) {
+        llm_intent::dialogue_chat_result opener = llm_intent::request_dialogue_chat(
+                    *d.actor( true )->get_npc(), "", challenge, {}, true );
+        if( opener.ok && !opener.say.empty() ) {
+            d_win.add_to_history( opener.say, d.actor( true )->disp_name(),
+                                  d.actor( true )->get_npc()->basic_symbol_color() );
+            d.actor( true )->get_npc()->add_llm_intent_memory( "", opener.say, {} );
+            d_win.llm_chat_started = true;
+        } else if( !d_win.llm_chat_started ) {
+            return std::nullopt;
+        }
+    }
+
+    d.apply_speaker_effects( topic );
+
+    ui.on_redraw( [&]( const ui_adaptor & ) {
+        d_win.draw( d_win.is_not_conversation ? "" : d.actor( true )->disp_name() );
+    } );
+    ui_manager::redraw();
+
+    string_input_popup_imgui popup( FULL_SCREEN_WIDTH / 2, "", _( "Chat" ) );
+    popup.set_identifier( "dialogue_chat" );
+    popup.set_label( _( "You:" ), c_light_blue );
+    popup.set_description( _( "Type what you want to say." ) );
+
+    std::string player_utterance;
+    do {
+        player_utterance = popup.query();
+    } while( !popup.cancelled() && is_blank_input( player_utterance ) );
+
+    if( popup.cancelled() ) {
+        return talk_topic( "TALK_DONE" );
+    }
+
+    d_win.add_history_separator();
+    d_win.add_to_history( player_utterance, _( "You" ), c_light_blue );
+
+    const std::vector<llm_intent::dialogue_chat_tool> tools = build_dialogue_chat_tools( d, d_win );
+    llm_intent::dialogue_chat_result reply = llm_intent::request_dialogue_chat(
+                *d.actor( true )->get_npc(), player_utterance, challenge, tools, false );
+
+    if( !reply.ok || is_blank_input( reply.say ) ) {
+        add_challenge_to_history( d, d_win, challenge );
+        d.actor( true )->get_npc()->add_llm_intent_memory( player_utterance, challenge, {} );
+        return talk_topic( llm_dialogue_chat_continue_topic );
+    }
+
+    d_win.add_to_history( reply.say, d.actor( true )->disp_name(),
+                          d.actor( true )->get_npc()->basic_symbol_color() );
+    d.actor( true )->get_npc()->add_llm_intent_memory( player_utterance, reply.say, {} );
+
+    if( const std::optional<size_t> response_ind = resolve_dialogue_chat_tool( tools, reply.tool ) ) {
+        if( confirm_dialogue_response( d, *response_ind ) ) {
+            return apply_dialogue_response( d, *response_ind );
+        }
+    }
+
+    return talk_topic( llm_dialogue_chat_continue_topic );
+}
+} // namespace
+
 talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
 {
+    if( use_llm_dialogue_chat( *this, d_win ) ) {
+        if( const std::optional<talk_topic> chat_topic = try_llm_dialogue_chat_turn( *this, d_win,
+                topic ) ) {
+            return *chat_topic;
+        }
+    }
+
     d_win.add_history_separator();
 
     ui_adaptor ui;

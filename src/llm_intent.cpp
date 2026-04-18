@@ -96,6 +96,7 @@ namespace
 {
 std::mutex llm_intent_log_mutex;
 constexpr const char *llm_intent_log_filename = "llm_intent.log";
+constexpr const char *llm_dialogue_chat_log_filename = "llm_dialogue_chat.log";
 constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
 std::filesystem::path central_llm_config_dir_path()
@@ -108,7 +109,7 @@ std::filesystem::path central_llm_log_path( const char *filename )
     return central_llm_config_dir_path() / std::filesystem::u8path( filename );
 }
 
-void append_llm_intent_log( const std::string &payload )
+void append_rotating_log( const char *filename, const std::string &payload )
 {
     if( payload.empty() ) {
         return;
@@ -142,7 +143,7 @@ void append_llm_intent_log( const std::string &payload )
     const std::filesystem::path config_dir = central_llm_config_dir_path();
     std::error_code mkdir_ec;
     std::filesystem::create_directories( config_dir, mkdir_ec );
-    const std::filesystem::path log_path = central_llm_log_path( llm_intent_log_filename );
+    const std::filesystem::path log_path = central_llm_log_path( filename );
     std::error_code ec;
     if( std::filesystem::exists( log_path, ec ) ) {
         const std::uintmax_t size = std::filesystem::file_size( log_path, ec );
@@ -164,8 +165,19 @@ void append_llm_intent_log( const std::string &payload )
     out << final_payload;
 }
 
+void append_llm_intent_log( const std::string &payload )
+{
+    append_rotating_log( llm_intent_log_filename, payload );
+}
+
+void append_llm_dialogue_chat_log( const std::string &payload )
+{
+    append_rotating_log( llm_dialogue_chat_log_filename, payload );
+}
+
 constexpr const char *npc_action_prompt_filename = "npc_action_prompt.txt";
 constexpr const char *npc_ambient_prompt_filename = "npc_ambient_prompt.txt";
+constexpr const char *npc_dialogue_chat_prompt_filename = "npc_dialogue_chat_prompt.txt";
 constexpr const char *look_around_prompt_filename = "look_around_prompt.txt";
 constexpr const char *look_inventory_prompt_filename = "look_inventory_prompt.txt";
 constexpr const char *llm_prompt_readme_filename = "README.txt";
@@ -238,6 +250,7 @@ struct runner_config {
 [[maybe_unused]] std::string read_log_tail( const std::filesystem::path &path,
         std::streamoff max_bytes );
 std::string extract_csv_from_text( const std::string &text );
+bool should_attempt_parse( const std::string &line );
 
 std::string sanitize_text( std::string_view text )
 {
@@ -265,6 +278,12 @@ std::string trim_copy( std::string_view text )
         --end;
     }
     return std::string( text.substr( start, end - start ) );
+}
+
+std::string next_llm_request_id()
+{
+    static std::atomic<int> counter{ 1 };
+    return string_format( "req_%d", counter.fetch_add( 1 ) );
 }
 
 std::string normalize_item_label( std::string_view text )
@@ -2394,6 +2413,56 @@ Answer directly. No reasoning.
 )";
 }
 
+std::string default_npc_dialogue_chat_prompt_template()
+{
+    return R"(Situation:
+{{snapshot}}
+
+Dialogue turn kind: {{turn_kind}}
+Current authored NPC line:
+{{authored_npc_line}}
+
+Current legal hidden actions:
+{{tool_list}}
+
+<System>
+You are {{npc_name}}, a human survivor in a brutal cataclysmic world.
+The player sees only your in-character chat reply. The hidden action list is not visible to the player.
+
+Visible reply rules:
+- Always write a freeform in-character NPC reply in "say".
+- Keep it grounded, human, rough, and short-to-medium.
+- Small physical or environmental beats are good when they add mood or context.
+- Do not bloat. Make every sentence count.
+- No assistant tone, no meta explanation, no bullet points, no menu wording.
+- Do not copy the authored line verbatim unless it would sound natural.
+
+Hidden action rules:
+- "tool" must be either one exact tool id from the list or an empty string.
+- Only choose a tool when the player's request clearly matches a currently legal hidden action.
+- Never invent unavailable actions, quests, trade, or promises.
+- Use at most one tool.
+
+Priority guidance for this demo:
+- identity, trade, and work or quest-style asks matter most
+- rumors or background texture are welcome if they fit
+- follower-control style requests are not the focus right now
+
+Special opener rule:
+- If Dialogue turn kind is "opening", write the NPC's first beat as the player approaches.
+- On an opening turn, "tool" must be an empty string.
+
+Return exactly one JSON object and nothing else:
+{"say":"...","tool":""}
+
+If no hidden action should happen, leave "tool" empty.
+/no_think
+Answer directly. No reasoning.
+</System>
+<PlayerUtterance>{{player_utterance}}</PlayerUtterance>
+)";
+}
+
 std::string build_prompt( const std::string &npc_name, const std::string &player_utterance,
                           const std::string &snapshot )
 {
@@ -2437,6 +2506,61 @@ std::string build_ambient_prompt( const std::string &npc_name,
     return llm_prompt_templates::render( templ,
     {
         { "{{snapshot}}", snapshot },
+        { "{{npc_name}}", sanitize_text( npc_name ) },
+        { "{{player_utterance}}", sanitize_text( player_utterance ) }
+    } );
+}
+
+std::string build_dialogue_chat_tool_block( const std::vector<llm_intent::dialogue_chat_tool> &tools )
+{
+    if( tools.empty() ) {
+        return "(none)";
+    }
+    std::ostringstream out;
+    for( const llm_intent::dialogue_chat_tool &tool : tools ) {
+        out << "- id=" << tool.id
+            << " available=" << ( tool.available ? "true" : "false" )
+            << " label=\"" << sanitize_text( tool.label ) << "\"";
+        if( !tool.available && !tool.unavailable_reason.empty() ) {
+            out << " reason=\"" << sanitize_text( tool.unavailable_reason ) << "\"";
+        }
+        out << "\n";
+    }
+    return trim_copy( out.str() );
+}
+
+std::string build_dialogue_chat_packet( const std::string &snapshot,
+                                        const std::string &authored_npc_line,
+                                        const std::vector<llm_intent::dialogue_chat_tool> &tools,
+                                        bool opening_turn )
+{
+    std::ostringstream out;
+    out << snapshot << "\n\n";
+    out << "dialogue_turn_kind: " << ( opening_turn ? "opening" : "reply" ) << "\n";
+    out << "current_authored_npc_line: " << sanitize_text( authored_npc_line ) << "\n";
+    out << "current_legal_hidden_actions:\n" << build_dialogue_chat_tool_block( tools ) << "\n";
+    return out.str();
+}
+
+std::string build_dialogue_chat_prompt( const std::string &npc_name,
+                                        const std::string &player_utterance,
+                                        const std::string &packet,
+                                        const std::string &authored_npc_line,
+                                        const std::vector<llm_intent::dialogue_chat_tool> &tools,
+                                        bool opening_turn )
+{
+    const std::string templ = llm_prompt_templates::load( npc_dialogue_chat_prompt_filename,
+                              default_npc_dialogue_chat_prompt_template(),
+    { "{{snapshot}}", "{{turn_kind}}", "{{authored_npc_line}}", "{{tool_list}}", "{{npc_name}}",
+      "{{player_utterance}}" },
+    { npc_dialogue_chat_prompt_filename, npc_action_prompt_filename, npc_ambient_prompt_filename,
+      look_around_prompt_filename, look_inventory_prompt_filename, llm_prompt_readme_filename } );
+    return llm_prompt_templates::render( templ,
+    {
+        { "{{snapshot}}", packet },
+        { "{{turn_kind}}", opening_turn ? "opening" : "reply" },
+        { "{{authored_npc_line}}", sanitize_text( authored_npc_line ) },
+        { "{{tool_list}}", build_dialogue_chat_tool_block( tools ) },
         { "{{npc_name}}", sanitize_text( npc_name ) },
         { "{{player_utterance}}", sanitize_text( player_utterance ) }
     } );
@@ -2513,6 +2637,61 @@ bool should_attempt_parse( const std::string &line )
         return std::nullopt;
     }
     return response;
+}
+
+std::string strip_code_fence_wrapper( const std::string &text )
+{
+    std::string trimmed = trim_copy( text );
+    if( trimmed.rfind( "```", 0 ) != 0 ) {
+        return trimmed;
+    }
+    const size_t first_newline = trimmed.find( '\n' );
+    if( first_newline == std::string::npos ) {
+        return trimmed;
+    }
+    trimmed = trimmed.substr( first_newline + 1 );
+    const size_t fence_end = trimmed.rfind( "```" );
+    if( fence_end != std::string::npos ) {
+        trimmed = trimmed.substr( 0, fence_end );
+    }
+    return trim_copy( trimmed );
+}
+
+std::string extract_braced_json( const std::string &text )
+{
+    const std::string stripped = strip_code_fence_wrapper( text );
+    if( should_attempt_parse( stripped ) ) {
+        return stripped;
+    }
+    const size_t open = stripped.find( '{' );
+    const size_t close = stripped.rfind( '}' );
+    if( open == std::string::npos || close == std::string::npos || close <= open ) {
+        return {};
+    }
+    return stripped.substr( open, close - open + 1 );
+}
+
+std::optional<llm_intent::dialogue_chat_result> parse_dialogue_chat_model_output(
+    const std::string &text )
+{
+    const std::string payload = extract_braced_json( text );
+    if( !should_attempt_parse( payload ) ) {
+        return std::nullopt;
+    }
+    llm_intent::dialogue_chat_result result;
+    result.raw = text;
+    try {
+        std::istringstream in( payload );
+        TextJsonIn jsin( in );
+        TextJsonObject obj = jsin.get_object();
+        obj.allow_omitted_members();
+        result.ok = true;
+        result.say = trim_copy( obj.get_string( "say", "" ) );
+        result.tool = trim_copy( obj.get_string( "tool", "" ) );
+    } catch( const std::exception & ) {
+        return std::nullopt;
+    }
+    return result;
 }
 
 [[maybe_unused]] std::filesystem::path resolve_path( const std::string &path )
@@ -3265,7 +3444,45 @@ class posix_runner_process
             }
         }
 };
+using llm_intent_runner_process = posix_runner_process;
 #endif
+
+llm_intent_response run_request_sync( llm_intent_runner_process &runner,
+                                      const llm_intent_request &req )
+{
+    llm_intent_response response;
+    response.request_id = req.request_id;
+    response.npc_id = req.npc_id;
+    response.npc_name = req.npc_name;
+    const runner_config config = current_runner_config();
+    std::string error;
+    if( !config.use_api && config.force_npu && config.device != "NPU" ) {
+        response.ok = false;
+        response.error = "LLM_INTENT_FORCE_NPU requires device NPU.";
+        return response;
+    }
+    if( !runner.ensure_running( config, error ) ) {
+        response.ok = false;
+        response.error = error;
+        return response;
+    }
+    std::string line;
+    const int timeout_ms = get_option<int>( "LLM_INTENT_TIMEOUT_MS" );
+    if( !runner.send_request( req, line, error,
+                              std::chrono::milliseconds( timeout_ms ) ) ) {
+        runner.terminate();
+        response.ok = false;
+        response.error = error;
+        return response;
+    }
+    if( auto parsed = response_from_json( line, req ) ) {
+        return *parsed;
+    }
+    response.ok = false;
+    response.error = "Runner returned invalid JSON.";
+    response.raw = line;
+    return response;
+}
 
 class llm_intent_manager
 {
@@ -3995,7 +4212,6 @@ class llm_intent_manager
         std::unordered_map<std::string, look_inventory_context> look_inventory_requests;
         std::thread worker;
         std::atomic<bool> stopping = false;
-        std::atomic<int> counter = 0;
         std::atomic<bool> warmup_enqueued = false;
 #if defined(_WIN32)
         llm_intent_runner_process runner;
@@ -4021,7 +4237,7 @@ class llm_intent_manager
         }
 
         std::string next_request_id() {
-            return string_format( "req_%d", counter.fetch_add( 1 ) );
+            return next_llm_request_id();
         }
 
         void worker_loop() {
@@ -4047,37 +4263,7 @@ class llm_intent_manager
         }
 
         llm_intent_response handle_request( const llm_intent_request &req ) {
-            llm_intent_response response;
-            response.request_id = req.request_id;
-            response.npc_id = req.npc_id;
-            response.npc_name = req.npc_name;
-            const runner_config config = current_runner_config();
-            std::string error;
-            if( !config.use_api && config.force_npu && config.device != "NPU" ) {
-                response.ok = false;
-                response.error = "LLM_INTENT_FORCE_NPU requires device NPU.";
-                return response;
-            }
-            if( !runner.ensure_running( config, error ) ) {
-                response.ok = false;
-                response.error = error;
-                return response;
-            }
-            std::string line;
-            const int timeout_ms = get_option<int>( "LLM_INTENT_TIMEOUT_MS" );
-            if( !runner.send_request( req, line, error,
-                                      std::chrono::milliseconds( timeout_ms ) ) ) {
-                runner.terminate();
-                response.ok = false;
-                response.error = error;
-                return response;
-            }
-            if( auto parsed = response_from_json( line, req ) ) {
-                return *parsed;
-            }
-            response.ok = false;
-            response.error = "Runner returned invalid JSON.";
-            return response;
+            return run_request_sync( runner, req );
         }
 };
 
@@ -4152,6 +4338,80 @@ void enqueue_random_requests()
         get_manager().enqueue_request( *listener, "" );
         listener->schedule_next_llm_random_call( base_turns );
     }
+}
+
+dialogue_chat_result request_dialogue_chat( npc &listener,
+        const std::string &player_utterance,
+        const std::string &authored_npc_line,
+        const std::vector<dialogue_chat_tool> &tools,
+        bool opening_turn )
+{
+    static llm_intent_runner_process chat_runner;
+
+    dialogue_chat_result result;
+    llm_intent_request req;
+    req.request_id = next_llm_request_id();
+    req.npc_id = listener.getID();
+    req.npc_name = listener.get_name();
+    req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
+    req.snapshot = build_dialogue_chat_packet( req.snapshot, authored_npc_line, tools, opening_turn );
+    req.prompt = build_dialogue_chat_prompt( req.npc_name, player_utterance, req.snapshot,
+                 authored_npc_line, tools, opening_turn );
+    req.max_tokens = 512;
+    req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
+    req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
+    req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
+
+    append_llm_dialogue_chat_log( string_format(
+                                      "TURN START %s (%s)\n"
+                                      "opening_turn=%s\n\n"
+                                      "INPUT PACKET\n%s\n\n"
+                                      "PROMPT\n%s",
+                                      req.npc_name, req.request_id,
+                                      opening_turn ? "true" : "false",
+                                      req.snapshot, req.prompt ) );
+
+    const llm_intent_response response = run_request_sync( chat_runner, req );
+    if( !response.ok ) {
+        result.error = response.error.empty() ? "Chat request failed." : response.error;
+        result.raw = response.raw;
+        append_llm_dialogue_chat_log( string_format(
+                                          "RAW MODEL OUTPUT %s (%s)\n%s\n\n"
+                                          "FALLBACK REASON %s (%s)\n%s\n\n"
+                                          "TURN END %s (%s)",
+                                          req.npc_name, req.request_id, response.raw,
+                                          req.npc_name, req.request_id, result.error,
+                                          req.npc_name, req.request_id ) );
+        return result;
+    }
+
+    if( auto parsed = parse_dialogue_chat_model_output( response.text ) ) {
+        result = *parsed;
+        result.ok = true;
+        append_llm_dialogue_chat_log( string_format(
+                                          "RAW MODEL OUTPUT %s (%s)\n%s\n\n"
+                                          "PARSED RESULT %s (%s)\n"
+                                          "say=%s\n"
+                                          "tool=%s\n\n"
+                                          "TURN END %s (%s)",
+                                          req.npc_name, req.request_id, response.text,
+                                          req.npc_name, req.request_id,
+                                          result.say,
+                                          result.tool.empty() ? "(none)" : result.tool,
+                                          req.npc_name, req.request_id ) );
+        return result;
+    }
+
+    result.raw = response.text;
+    result.error = "Chat response was not valid JSON.";
+    append_llm_dialogue_chat_log( string_format(
+                                      "RAW MODEL OUTPUT %s (%s)\n%s\n\n"
+                                      "FALLBACK REASON %s (%s)\n%s\n\n"
+                                      "TURN END %s (%s)",
+                                      req.npc_name, req.request_id, response.text,
+                                      req.npc_name, req.request_id, result.error,
+                                      req.npc_name, req.request_id ) );
+    return result;
 }
 
 void log_event( const std::string &message )

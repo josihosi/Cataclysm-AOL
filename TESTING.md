@@ -39,6 +39,47 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
+### Hackathon chat dialogue Stage 1
+
+Current honest state:
+- Stage 1 implementation is now in progress on the hackathon branch.
+- The active code slice currently targets:
+  - `[LLM]` toggle
+  - popup chat input
+  - LLM opener
+  - freeform reply
+  - one hidden dialogue action
+  - dedicated prompt file
+  - dedicated chat log
+  - safe fallback seam
+- A narrow WSL object compile passed after the first full Stage 1 vertical slice landed:
+  - command:
+    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/options.o obj/tiles/npctalk.o obj/tiles/dialogue_win.o obj/tiles/llm_intent.o`
+  - log:
+    `build_logs/hackathon_chat_stage1_narrow_20260418.log`
+- The first narrow compile initially failed on local `npctalk.cpp` seam mistakes:
+  - private `dialogue` helper access
+  - missing local whitespace-trim check
+  - private quit-helper access
+- Those local issues were fixed and the rerun passed.
+- First real user playtest on `2026-04-18` was a functional success:
+  - game started
+  - chat mode worked
+  - the overall feel was reported as highly atmospheric
+- The first real playtest also surfaced concrete Stage 1 follow-up issues:
+  - `?` input behavior in chat entry
+  - chat UI overlap when trade opens
+  - chat entry should move under `Your response:`
+  - repeated signature-line phrasing in replies
+  - fake-seeming work or quest wording without a real quest-log action
+- Current log read on the work or quest issue:
+  - `config/llm_dialogue_chat.log` showed no real mission-offer or mission-accept hidden action on the relevant turn
+  - the model replied with freeform text and `tool=""`
+  - so the immediate fix is prompt or routing honesty, not a broken quest-tool execution on that exact turn
+- Additional run note from Josef:
+  - `build_and_run.cmd` later reported `/usr/bin/bash: line 1: 434 Segmentation fault ./$RUN_EX`
+  - current `config/debug.log` does not yet pin this to startup, in-chat runtime, or exit
+
 ### Smart Zone Manager v1
 
 Current honest state:
@@ -104,7 +145,18 @@ Current honest state:
 
 ## Pending probes
 
-None right now.
+Hackathon chat dialogue Stage 1:
+- classify the reported `build_and_run.cmd` segfault as startup, runtime, or exit-time
+- fix `?` input behavior
+- fix chat overlap when trade or another tool-backed UI opens
+- move chat entry under `Your response:` if the seam is acceptably local
+- tighten prompt and/or memory so repeated warning lines do not dominate
+- tighten work or quest wording so the NPC does not imply real job acceptance without a real legal hidden action
+- after those follow-up edits, run the next narrow honest compile/test pass
+- then do the next playtest build
+
+Older frozen packets:
+- none right now beyond the preserved evidence below
 
 Do not rerun these packets as ritual.
 Only reopen them if:

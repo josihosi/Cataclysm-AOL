@@ -31,6 +31,9 @@ Keep these placeholders exactly as written if they appear in a file:
 - {{action_list_with_target}}
 - {{npc_name}}
 - {{player_utterance}}
+- {{authored_npc_line}}
+- {{tool_list}}
+- {{turn_kind}}
 - {{items_xml}}
 - {{inventory_xml}}
 - {{story_text_block}}

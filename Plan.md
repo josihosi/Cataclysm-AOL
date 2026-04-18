@@ -39,17 +39,21 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is **no active greenlit implementation lane right now**.
-Smart Zone Manager v1 reached the honest pre-freeze checkpoint, and the fresh 2026-04-09 rebuild + smoke rerun kept that claim honest.
+There is one active greenlit implementation lane on this branch:
+- **Hackathon chat dialogue Stage 1**
 
-During Josef's last debug-round prep window, do **not** open Package 4 or 5.
-Use remaining time only for freeze-prep, smoke/support rechecks, reviewer-packet cleanup, and the smallest needed merge/freeze paperwork.
+Current target:
+- `[LLM]` dialogue toggle for `branches` vs `chat`
+- safe fallback to ordinary branch dialogue
+- popup-based freeform player input
+- LLM opener
+- freeform NPC replies
+- at most one hidden real dialogue action per player turn
+- dedicated prompt file and dedicated chat log
+- one coherent compile checkpoint only after the full Stage 1 vertical slice exists
 
-Best concrete next decisions for Josef after the debug round:
-1. explicitly freeze `dev -> master` if the current packet survives the round cleanly
-2. either keep the leftover locker/basecamp follow-through stack parked after freeze, or consciously reopen it instead of letting it drift back into a fake active queue
-3. explicitly reopen **Locker Package 4, locker zone policy + control-surface cleanup**, if more locker work is still wanted after freeze prep
-4. pull one parked future lane, most plausibly **organic bulletin-board speech polish** or the **Plan/Aux pipeline helper**
+Keep the first pass narrow.
+Do not broaden Stage 1 into follower control, streaming UI, or wider retrieval/memory polish before the first checkpoint works.
 
 ---
 
