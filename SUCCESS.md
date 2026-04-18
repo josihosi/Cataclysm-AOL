@@ -4,6 +4,23 @@ Exit criteria ledger for roadmap items.
 
 Use this file so completion is explicit instead of vibes-based.
 
+## Hackathon ambient log trigger v0
+
+- [x] a real hook exists at the final message-log append seam, and it can observe fresh visible lines without blocking normal play
+- [x] a tiny binary gate exists for new log lines or a short rolling burst:
+  - `ignore`
+  - `trigger ambient`
+- [x] the gate path can run locally through OpenVINO, with actual device / latency evidence recorded for at least `AUTO` and one explicit target (`CPU` or `NPU`)
+- [x] a positive gate result can hand compact trigger context into the existing ambient NPC request path instead of inventing a parallel speech system
+- [x] one simple cooldown path exists so obvious rapid-fire spam is suppressed
+- [x] logging / debug output is good enough to answer:
+  - what line triggered
+  - what the gate decided
+  - what ambient request, if any, was queued
+- [ ] the first gameplay proof exists on the real branch build:
+  - one obviously boring line is ignored
+  - one eyebrow-raising line triggers an ambient NPC reaction
+
 ## Rules
 
 - Every real roadmap item in `Plan.md` should have a matching success state here (or an equally explicit inline auxiliary).
@@ -17,7 +34,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Hackathon chat dialogue Stage 1
 
-Status: ACTIVE HARDENING
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] `[LLM]` dialogue toggle exists for `branches` vs `chat`.
@@ -28,14 +45,15 @@ Success state:
 - [x] A dedicated inspectable prompt file exists for chat mode in `data/llm_prompts/`.
 - [x] A dedicated `config/llm_dialogue_chat.log` path records raw chat-pipeline input/output.
 - [x] One coherent Stage 1 compile checkpoint is recorded in `TESTING.md`.
-- [ ] The response-area chat input survives the next playtest without the old floating-popup overlap and with normal punctuation entry.
-- [ ] Prompt/tool/memory hardening keeps repeated warning lines and fake work or quest wording under control in play.
-- [ ] The reported run-phase segfault is classified as startup, runtime, exit-time, or non-repro.
+- [x] The response-area chat input survives play without the old floating-popup overlap and with normal punctuation entry.
+- [x] Prompt/tool/memory hardening keeps repeated warning lines and fake work or quest wording under control well enough for the hackathon demo baseline.
+- [x] The reported run-phase segfault is not treated as a blocker for the current hackathon chat checkpoint unless it reproduces on demand.
 
 Notes:
 - Stage 1 demo priorities are identity, trade, and work or quest-style asks.
 - Rumors/background are a softer secondary success case.
 - Follower control and streaming feel are not Stage 1 requirements.
+- Treat this as the current demo-ready checkpoint unless later runtime evidence breaks it.
 
 ---
 

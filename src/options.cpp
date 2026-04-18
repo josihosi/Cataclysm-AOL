@@ -3052,6 +3052,13 @@ void options_manager::add_options_llm()
 
     add_empty_line();
 
+    add( "LLM_AMBIENT_LOG_TRIGGER", "llm", to_translation( "Ambient log trigger" ),
+         to_translation( "When enabled, nearby NPCs can react to eyebrow-raising in-game log lines through a tiny local NPU gate." ),
+         false
+       );
+
+    add_empty_line();
+
     add( "LLM_INTENT_USE_API", "llm", translation(), translation(),
          false, COPT_ALWAYS_HIDE
        );

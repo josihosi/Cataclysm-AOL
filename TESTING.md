@@ -39,124 +39,67 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Hackathon chat dialogue Stage 1
+### Hackathon ambient log trigger v0
 
 Current honest state:
-- Stage 1 implementation is now in progress on the hackathon branch.
-- The active code slice currently targets:
-  - `[LLM]` toggle
-  - response-area chat input
-  - LLM opener
-  - freeform reply
-  - one hidden dialogue action
-  - dedicated prompt file
-  - dedicated chat log
-  - safe fallback seam
-- A narrow WSL object compile passed after the first full Stage 1 vertical slice landed:
-  - command:
-    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/options.o obj/tiles/npctalk.o obj/tiles/dialogue_win.o obj/tiles/llm_intent.o`
-  - log:
-    `build_logs/hackathon_chat_stage1_narrow_20260418.log`
-- The first narrow compile initially failed on local `npctalk.cpp` seam mistakes:
-  - private `dialogue` helper access
-  - missing local whitespace-trim check
-  - private quit-helper access
-- Those local issues were fixed and the rerun passed.
-- First real user playtest on `2026-04-18` was a functional success:
-  - game started
-  - chat mode worked
-  - the overall feel was reported as highly atmospheric
-- The first real playtest also surfaced concrete Stage 1 follow-up issues:
-  - `?` input behavior in chat entry
-  - chat UI overlap when trade opens
-  - chat entry should move under `Your response:`
-  - repeated signature-line phrasing in replies
-  - fake-seeming work or quest wording without a real quest-log action
-- Current log read on the work or quest issue:
-  - `config/llm_dialogue_chat.log` showed no real mission-offer or mission-accept hidden action on the relevant turn
-  - the model replied with freeform text and `tool=""`
-  - so the immediate fix is prompt or routing honesty, not a broken quest-tool execution on that exact turn
-- Additional run note from Josef:
-  - `build_and_run.cmd` later reported `/usr/bin/bash: line 1: 434 Segmentation fault ./$RUN_EX`
-  - current `config/debug.log` does not yet pin this to startup, in-chat runtime, or exit
-- A follow-up narrow fix pass compiled cleanly on `2026-04-18` after landing:
-  - response-area chat input in `dialogue_window`
-  - prompt hardening for repeated lines and fake work or quest wording
-  - hidden-tool hinting in the chat packet
-  - chat-memory dedupe for near-identical NPC replies
-  - opener reset on real topic changes triggered by hidden actions
-  - command:
-    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/npctalk.o obj/tiles/llm_intent.o`
-  - log:
-    `build_logs/hackathon_chat_stage1_fixpass_narrow_20260418.log`
-- A second follow-up narrow compile also passed on `2026-04-18` after landing:
-  - separate `sandbox actions` plus `branch actions`
-  - compact relationship-memory injection
-  - fresh-conversation short-memory reset
-  - transcript color preservation for chat history
-  - updated readable chat prompt/log sections for sandbox versus branch actions
-  - command:
-    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/llm_intent.o obj/tiles/npc.o obj/tiles/npctalk.o`
-  - log:
-    `build_logs/hackathon_chat_sandbox_memory_colors_narrow_20260418.log`
-- A third narrow compile also passed on `2026-04-18` after landing the opener split:
-  - opening turns now use opener-only context
-  - opening turns no longer receive the current authored branch line
-  - opening turns no longer receive branch actions
-  - chat logging now distinguishes opening-prompt versus reply-prompt setup
-  - command:
-    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o`
-  - log:
-    `build_logs/hackathon_chat_opener_split_narrow_20260418.log`
-- A fourth narrow compile also passed on `2026-04-18` after landing the first API-only chat streaming attempt:
-  - dialogue chat requests can now emit partial API events
-  - the chat UI progressively redraws streamed NPC `say` text
-  - non-streaming paths remain the fallback for non-API backends
-  - command:
-    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/llm_intent.o obj/tiles/npctalk.o`
-  - log:
-    `build_logs/hackathon_chat_streaming_narrow_20260418.log`
-- Deterministic runner probing on `2026-04-18` showed the API transport itself is fine:
-  - the OpenAI runner emitted real partial events for both long and short requests
-  - a short guarded reply streamed in about `1.1s`
-  - a longer atmospheric reply streamed in about `1.56s`
-  - the failure mode was therefore not "no streaming", but the brittle JSON-shaped stream contract
-- The active streaming rework now switches chat-mode output to a pipe-delimited one-line contract:
-  - `say text | tool_id`
-  - opening turns use `say text |`
-  - the goal is to let the UI stream visible NPC speech directly and stop cleanly at the delimiter
-- A fifth narrow compile also passed on `2026-04-18` after the UI-force-refresh seam fix:
-  - the streaming callback now does `ui_manager::redraw()`, `refresh_display()`, and `inp_mngr.pump_events()`
-  - this matches existing codebase guidance for visible redraws during blocking operations
-  - command:
-    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/npctalk.o`
-  - log:
-    `build_logs/hackathon_chat_streaming_refresh_narrow_20260418.log`
-- A sixth narrow compile also passed on `2026-04-18` after the `say`/smalltalk hardening fix:
-  - pipe-delimited chat parsing now strips stray leading `say` labels and wrapping quotes
-  - generic greetings/small talk now suppress branch-action firing so they do not immediately reset chat into a second NPC line
-  - the live chat prompts now explicitly forbid `say`/`tool` labels in visible text
-  - command:
-    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o obj/tiles/npctalk.o`
-  - log:
-    `build_logs/hackathon_chat_say_smalltalk_narrow_20260418.log`
-- A seventh narrow compile also passed on `2026-04-18` after scenic-beat rendering and pacing polish:
-  - dialogue history now renders `*...*` scenic beats in a distinct yellow highlight during LLM chat
-  - the streaming callback now adds a tiny artificial per-partial delay so the text unfolds a bit more slowly
-  - command:
-    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/npctalk.o`
-  - log:
-    `build_logs/hackathon_chat_scenic_streaming_narrow_20260418.log`
-- An eighth narrow compile also passed on `2026-04-18` after tightening the scenic-beat prompt wording in code defaults:
-  - the prompt now explicitly says the entire visible reply stays on the left of one final trailing pipe
-  - command:
-    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o`
-  - log:
-    `build_logs/hackathon_chat_promptwording_narrow_20260418.log`
-- Direct API prompt checks on `2026-04-18`:
-  - the first scenic-beat test exposed a prompt ambiguity: the model put the spoken line on the wrong side of the pipe
-  - after tightening the wording, the second direct test came back in the intended shape:
-    `*Ali trudges through the fog-choked pines, listening for any sign of movement.* "Don't stop-stay close." |`
+- The chat-dialogue hackathon lane is treated as the current checkpointed baseline for this branch.
+- The new active lane is ambient triggering from ordinary in-game log lines.
+- The clean hook seam already identified for fresh visible lines is:
+  - [src/messages.cpp](C:/Users/josef/dev/Cataclysm-AOL/src/messages.cpp) `messages_impl::add_msg_string(...)`
+- The ambient NPC path already exists and should be reused:
+  - [src/llm_intent.cpp](C:/Users/josef/dev/Cataclysm-AOL/src/llm_intent.cpp) `enqueue_ambient_request(...)`
+  - existing ambient prompt build / queue / response handling already route back into game speech and NPC memory
+- Local model inventory check already found that the existing `C:\\Users\\josef\\openvino_models\\ov_xlmr_ir` artifact is the wrong model type for this lane:
+  - it is a token-classification / NER artifact, not a binary sequence-classification gate
+- Hugging Face / Optimum evidence currently points to the supported export path for the right model class:
+  - `OVModelForSequenceClassification.from_pretrained(model_id, export=True)`
+  - source: [Optimum quick tour](https://huggingface.co/docs/optimum/quicktour)
+- Current practical gate-model stance:
+  - do not pretend the local NER artifact can serve as the gate
+  - the chosen demo footing is now:
+    - reference model: [MoritzLaurer/MiniLM-L6-mnli-binary](https://hf.co/MoritzLaurer/MiniLM-L6-mnli-binary)
+    - chosen local NPU artifact: `C:\Users\josef\openvino_models\ambient_gate_minilm_l6_mnli_binary_ov_static64_fixed`
+- The code path is now landed:
+  - [src/options.cpp](C:/Users/josef/dev/Cataclysm-AOL/src/options.cpp) adds `[LLM] -> Ambient log trigger`
+  - [src/messages.cpp](C:/Users/josef/dev/Cataclysm-AOL/src/messages.cpp) forwards fresh visible log lines into `llm_intent::observe_game_log_message(...)`
+  - [src/llm_intent.cpp](C:/Users/josef/dev/Cataclysm-AOL/src/llm_intent.cpp) now owns:
+    - the async ambient log gate worker
+    - the short rolling tagged burst
+    - the NPU OpenVINO runner config
+    - the cooldown path
+    - `config/llm_ambient_log_gate.log`
+    - the handoff into the existing ambient NPC enqueue path
+  - [tools/llm_runner/ambient_gate_runner.py](C:/Users/josef/dev/Cataclysm-AOL/tools/llm_runner/ambient_gate_runner.py) is the dedicated stdin/stdout OpenVINO binary-gate runner
+  - [data/llm_prompts/npc_ambient_log_prompt.txt](C:/Users/josef/dev/Cataclysm-AOL/data/llm_prompts/npc_ambient_log_prompt.txt) is the dedicated ambient reaction prompt
+- Model evidence now splits cleanly:
+  - initial OpenVINO DistilBERT fallback proved the device path:
+    - `CPU` about `16 ms`
+    - `AUTO` about `18 ms`
+    - `NPU` about `5-7 ms`
+    - log: [build_logs/ambient_gate_model_probe_20260418.log](C:/Users/josef/dev/Cataclysm-AOL/build_logs/ambient_gate_model_probe_20260418.log:1)
+  - small-model semantic bake-off on the gameplay trigger rubric picked the best compact candidate:
+    - `MoritzLaurer/MiniLM-L6-mnli-binary` at `8/10`
+    - log: [build_logs/ambient_gate_candidate_bakeoff_v2_20260418.json](C:/Users/josef/dev/Cataclysm-AOL/build_logs/ambient_gate_candidate_bakeoff_v2_20260418.json:1)
+  - the quick OpenVINO/NPU export of that MiniLM model is somewhat degraded but accepted for the hackathon demo:
+    - NPU result: `6/10`
+    - roughly `8-15 ms` per trigger-vs-ignore pair evaluation
+    - log: [build_logs/ambient_gate_minilm_binary_npu_fixed_20260418.log](C:/Users/josef/dev/Cataclysm-AOL/build_logs/ambient_gate_minilm_binary_npu_fixed_20260418.log:1)
+- The earlier preferred tiny-BERT export probe was not the blocker conceptually; the local OpenVINO env currently has an Optimum package mismatch that broke export-time imports.
+- Direct runner smoke with the real configured OpenVINO Python and the real NPU artifact now passes:
+  - `PLAYER_ACTION_LOG: Moving past this bench is slow!` -> `ignore`
+  - `PLAYER_ACTION_LOG: You wield your shotgun.` -> `trigger`
+- Narrow compile for the landed code path passed:
+  - `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/messages.o obj/tiles/options.o obj/tiles/llm_intent.o`
+  - log: [build_logs/ambient_log_trigger_narrow_20260418.log](C:/Users/josef/dev/Cataclysm-AOL/build_logs/ambient_log_trigger_narrow_20260418.log:1)
+
+## Pending probes
+
+- keep the first gameplay proof binary and simple:
+  - boring line ignored
+  - eyebrow-raising line triggers ambient chatter
+- verify the in-game option path behaves honestly:
+  - ambient trigger off -> no gate log activity from ordinary gameplay lines
+  - ambient trigger on -> gate log records the observed line, decision, and any queued ambient request
 
 ### Smart Zone Manager v1
 

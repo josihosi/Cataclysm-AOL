@@ -40,25 +40,31 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 ## Current status
 
 There is one active greenlit implementation lane on this branch:
-- **Hackathon chat dialogue Stage 1**
+- **Hackathon ambient log trigger v0**
 
 Current target:
-- `[LLM]` dialogue toggle for `branches` vs `chat`
-- safe fallback to ordinary branch dialogue
-- freeform player input in the dialogue response area
-- LLM opener
-- freeform NPC replies
-- at most one hidden real dialogue action per player turn
-- dedicated prompt file and dedicated chat log
-- prompt/tool/memory hardening for repeated lines and fake work or quest wording
-- clearer player/NPC speaker colors in the transcript
-- cleaner chat-history UX in the response-area input
-- a log-first debug pass on trade refusal before changing trade behavior blindly
-- one coherent compile checkpoint for the follow-up fix slice
-- classify the reported run-phase segfault if it reproduces again
+- treat the chat-dialogue lane as checkpointed and move forward from the current hackathon build instead of reopening old cleanup
+- keep the landed ambient log trigger v0 narrow and demo-biased:
+  - observe newly appended visible log lines without interrupting play
+  - run one tiny async binary gate:
+    - `ignore`
+    - `trigger ambient NPC reaction`
+  - reuse the existing ambient NPC enqueue path instead of inventing a parallel speech system
+  - keep one short rolling burst, one cooldown path, and readable trigger logging
+- the next missing proof is now gameplay proof on the real branch build:
+  - one boring line ignored
+  - one eyebrow-raising line triggers ambient chatter
+- after that proof exists, tune only if the demo noise level demands it; do not balloon this into taxonomy soup or flood-edge-case engineering
 
-Keep the first pass narrow.
-Do not broaden Stage 1 into follower control, streaming UI, or wider retrieval/memory polish before the first checkpoint works.
+Current practical model direction:
+- the local `ov_xlmr_ir` artifact is the wrong task head; it is token classification / NER, not a binary gate
+- the chosen demo gate model is:
+  - `MoritzLaurer/MiniLM-L6-mnli-binary`
+- the chosen local NPU-ready artifact is:
+  - `C:\Users\josef\openvino_models\ambient_gate_minilm_l6_mnli_binary_ov_static64_fixed`
+- this artifact is slightly degraded versus the PyTorch reference model, but it is fast, local, and NPU-capable on the current machine
+- for the hackathon demo, keep the NPU story and accept the rougher trigger quality instead of reopening model hunting indefinitely
+- the repo now has a real `[LLM] -> Ambient log trigger` option so Josef can demo the feature on or off without code edits
 
 ---
 
@@ -170,19 +176,14 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 8. Hackathon-reserved feature lanes — do not touch before the event
-
-These are intentionally **reserved for the hackathon itself**.
-They should stay visibly separate from the current repo-footing/harness work so reviewers do not mistake scaffolding for early feature implementation.
+## 8. Hackathon feature-lane status
 
 1. **Chat interface over in-game dialogue branches**
-   - the future feature lane
-   - current harness work may exercise nearby-NPC/freeform chat controls, but that is only test scaffolding and **not** this feature
+   - checkpointed for now on this branch
+   - treat the current pushed chat build as the baseline unless new runtime evidence disproves it
 2. **Tiny ambient-trigger NPC model**
-   - the future feature lane
-   - current harness work may stage weird-item scenarios and artifact checks, but that is only test scaffolding/observability and **not** this feature
-
-Do not start them early, do not half-land them, and do not describe scaffolding as partial completion.
+   - now active and partially landed
+   - the remaining work is no longer architecture hunting; it is the first real gameplay proof plus any narrow demo tuning that follows from that proof
 
 ---
 

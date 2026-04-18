@@ -35,6 +35,7 @@ struct dialogue_chat_result {
 void enqueue_request( npc &listener, const std::string &player_utterance );
 void enqueue_request( const npc &listener, const std::string &player_utterance );
 void enqueue_ambient_request( npc &listener, const std::string &player_utterance );
+void observe_game_log_message( const std::string &message );
 void enqueue_requests( const std::vector<npc *> &listeners,
                        const std::string &player_utterance );
 void prewarm();

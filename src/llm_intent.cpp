@@ -97,6 +97,7 @@ namespace
 std::mutex llm_intent_log_mutex;
 constexpr const char *llm_intent_log_filename = "llm_intent.log";
 constexpr const char *llm_dialogue_chat_log_filename = "llm_dialogue_chat.log";
+constexpr const char *llm_ambient_log_gate_log_filename = "llm_ambient_log_gate.log";
 constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
 
 std::filesystem::path central_llm_config_dir_path()
@@ -175,13 +176,39 @@ void append_llm_dialogue_chat_log( const std::string &payload )
     append_rotating_log( llm_dialogue_chat_log_filename, payload );
 }
 
+void append_llm_ambient_log_gate_log( const std::string &payload )
+{
+    append_rotating_log( llm_ambient_log_gate_log_filename, payload );
+}
+
 constexpr const char *npc_action_prompt_filename = "npc_action_prompt.txt";
 constexpr const char *npc_ambient_prompt_filename = "npc_ambient_prompt.txt";
+constexpr const char *npc_ambient_log_prompt_filename = "npc_ambient_log_prompt.txt";
 constexpr const char *npc_dialogue_chat_prompt_filename = "npc_dialogue_chat_prompt.txt";
 constexpr const char *npc_dialogue_chat_opening_prompt_filename = "npc_dialogue_chat_opening_prompt.txt";
 constexpr const char *look_around_prompt_filename = "look_around_prompt.txt";
 constexpr const char *look_inventory_prompt_filename = "look_inventory_prompt.txt";
 constexpr const char *llm_prompt_readme_filename = "README.txt";
+constexpr const char *ambient_log_gate_runner_path = "tools/llm_runner/ambient_gate_runner.py";
+constexpr const char *ambient_log_gate_model_dir_name = "ambient_gate_minilm_l6_mnli_binary_ov_static64_fixed";
+constexpr int ambient_log_gate_burst_size = 3;
+constexpr int ambient_log_gate_cooldown_turns = 30;
+constexpr int ambient_log_gate_notice_volume = 12;
+
+std::string default_ambient_log_gate_model_dir()
+{
+#if defined(_WIN32)
+    const char *home = std::getenv( "USERPROFILE" );
+#else
+    const char *home = std::getenv( "HOME" );
+#endif
+    if( home == nullptr || *home == '\0' ) {
+        return ambient_log_gate_model_dir_name;
+    }
+    std::filesystem::path path = std::filesystem::u8path( home ) / "openvino_models" /
+                                 ambient_log_gate_model_dir_name;
+    return path.string();
+}
 
 struct llm_intent_request {
     std::string request_id;
@@ -2435,6 +2462,22 @@ Answer directly. No reasoning.
 )";
 }
 
+std::string default_npc_ambient_log_prompt_template()
+{
+    return R"(Situation:
+{{snapshot}}
+<System>You are {{npc_name}}, a human survivor NPC reacting to something you just noticed near the player in a brutal cataclysmic world.
+The observed log block is not your own action and not a menu. If it is prefixed PLAYER_ACTION_LOG or PLAYER_VISIBLE_LOG, treat it as an observed event about the player or nearby world state.
+Reply deeply in character, informed by the snapshot: your background, your tone, your opinions of the player, and your recent memories.
+Return exactly one short spoken reply only: 1-3 sentences, no narration, no bullet points, no stage directions, no action tokens, no pipe-separated action line, no tool calls, no menu syntax.
+If you are unsure, answer briefly and naturally instead of inventing details.
+/no_think
+Answer directly. No reasoning.
+</System>
+<ObservedLog>{{observed_log}}</ObservedLog>
+)";
+}
+
 std::string default_npc_dialogue_chat_prompt_template()
 {
     return R"(Situation:
@@ -2600,6 +2643,95 @@ std::string build_ambient_prompt( const std::string &npc_name,
         { "{{npc_name}}", sanitize_text( npc_name ) },
         { "{{player_utterance}}", sanitize_text( player_utterance ) }
     } );
+}
+
+std::string build_ambient_log_prompt( const std::string &npc_name,
+                                      const std::string &observed_log,
+                                      const std::string &snapshot )
+{
+    const std::string templ = llm_prompt_templates::load( npc_ambient_log_prompt_filename,
+                              default_npc_ambient_log_prompt_template(),
+    { "{{snapshot}}", "{{npc_name}}", "{{observed_log}}" },
+    { npc_action_prompt_filename, npc_ambient_prompt_filename, npc_ambient_log_prompt_filename,
+      look_around_prompt_filename, look_inventory_prompt_filename,
+      llm_prompt_readme_filename } );
+    return llm_prompt_templates::render( templ,
+    {
+        { "{{snapshot}}", snapshot },
+        { "{{npc_name}}", sanitize_text( npc_name ) },
+        { "{{observed_log}}", sanitize_text( observed_log ) }
+    } );
+}
+
+bool should_consider_ambient_log_message( const std::string &message )
+{
+    const std::string trimmed = trim_copy( remove_color_tags( message ) );
+    if( trimmed.empty() ) {
+        return false;
+    }
+    const std::string lowered = to_lower_case( trimmed );
+    if( lowered.find( " says: \"" ) != std::string::npos ) {
+        return false;
+    }
+    if( lowered.rfind( "you say", 0 ) == 0 || lowered.rfind( "you yell", 0 ) == 0 ||
+        lowered.rfind( "you whisper", 0 ) == 0 ) {
+        return false;
+    }
+    return true;
+}
+
+std::string tag_ambient_log_message( const std::string &message )
+{
+    const std::string trimmed = trim_copy( remove_color_tags( message ) );
+    const std::string lowered = to_lower_case( trimmed );
+    if( lowered.rfind( "you ", 0 ) == 0 || lowered.rfind( "your ", 0 ) == 0 ||
+        lowered.rfind( "moving ", 0 ) == 0 || lowered.rfind( "you'", 0 ) == 0 ) {
+        return "PLAYER_ACTION_LOG: " + trimmed;
+    }
+    return "PLAYER_VISIBLE_LOG: " + trimmed;
+}
+
+std::string build_ambient_log_burst_text( const std::deque<std::string> &lines )
+{
+    if( lines.empty() ) {
+        return {};
+    }
+    std::ostringstream out;
+    for( const std::string &line : lines ) {
+        out << "- " << line << "\n";
+    }
+    return trim_copy( out.str() );
+}
+
+npc *select_ambient_log_target()
+{
+    if( g == nullptr ) {
+        return nullptr;
+    }
+    const Character &player = get_player_character();
+    std::vector<npc *> candidates = g->get_npcs_if( [&]( const npc &guy ) {
+        if( guy.is_player_ally() || guy.is_hallucination() ) {
+            return false;
+        }
+        if( guy.get_attitude() == NPCATT_KILL || guy.get_attitude() == NPCATT_FLEE ||
+            guy.get_attitude() == NPCATT_FLEE_TEMP ) {
+            return false;
+        }
+        return guy.can_hear( player.pos_bub(), ambient_log_gate_notice_volume );
+    } );
+    if( candidates.empty() ) {
+        return nullptr;
+    }
+    const tripoint_bub_ms player_pos = player.pos_bub();
+    std::sort( candidates.begin(), candidates.end(), [&]( const npc *lhs, const npc *rhs ) {
+        const int lhs_dist = rl_dist( player_pos, lhs->pos_bub() );
+        const int rhs_dist = rl_dist( player_pos, rhs->pos_bub() );
+        if( lhs_dist != rhs_dist ) {
+            return lhs_dist < rhs_dist;
+        }
+        return lhs->getID() < rhs->getID();
+    } );
+    return candidates.front();
 }
 
 std::string build_dialogue_chat_tool_block( const std::vector<llm_intent::dialogue_chat_tool> &tools )
@@ -3140,6 +3272,25 @@ std::optional<llm_intent::dialogue_chat_result> parse_dialogue_chat_model_output
         cfg.max_prompt_len = default_max_prompt_len;
     }
     cfg.force_npu = get_option<bool>( "LLM_INTENT_FORCE_NPU" );
+    return cfg;
+}
+
+runner_config ambient_log_gate_runner_config()
+{
+    runner_config cfg = current_runner_config();
+    cfg.runner_path = ambient_log_gate_runner_path;
+    cfg.backend = "openvino";
+    cfg.use_api = false;
+    cfg.api_key_env.clear();
+    cfg.api_provider.clear();
+    cfg.api_model.clear();
+    cfg.ollama_url.clear();
+    cfg.ollama_model.clear();
+    cfg.model_dir = default_ambient_log_gate_model_dir();
+    cfg.device = "NPU";
+    cfg.max_tokens = 1;
+    cfg.max_prompt_len = 256;
+    cfg.force_npu = false;
     return cfg;
 }
 
@@ -3830,15 +3981,14 @@ class posix_runner_process
 using llm_intent_runner_process = posix_runner_process;
 #endif
 
-llm_intent_response run_request_sync( llm_intent_runner_process &runner,
-                                      const llm_intent_request &req,
-                                      const std::function<void( const std::string & )> &on_partial = nullptr )
+llm_intent_response run_request_sync_with_config( llm_intent_runner_process &runner,
+        const llm_intent_request &req, const runner_config &config,
+        const std::function<void( const std::string & )> &on_partial = nullptr )
 {
     llm_intent_response response;
     response.request_id = req.request_id;
     response.npc_id = req.npc_id;
     response.npc_name = req.npc_name;
-    const runner_config config = current_runner_config();
     std::string error;
     if( !config.use_api && config.force_npu && config.device != "NPU" ) {
         response.ok = false;
@@ -3868,6 +4018,13 @@ llm_intent_response run_request_sync( llm_intent_runner_process &runner,
     return response;
 }
 
+llm_intent_response run_request_sync( llm_intent_runner_process &runner,
+                                      const llm_intent_request &req,
+                                      const std::function<void( const std::string & )> &on_partial = nullptr )
+{
+    return run_request_sync_with_config( runner, req, current_runner_config(), on_partial );
+}
+
 class llm_intent_manager
 {
     private:
@@ -3885,6 +4042,12 @@ class llm_intent_manager
             std::string npc_name;
             std::vector<inventory_item_entry> items;
         };
+        struct ambient_log_gate_context {
+            character_id npc_id;
+            std::string npc_name;
+            std::string tagged_log;
+            std::string burst_text;
+        };
 
     public:
         llm_intent_manager() = default;
@@ -3899,6 +4062,10 @@ class llm_intent_manager
 
         void enqueue_ambient_request( npc &listener, const std::string &player_utterance ) {
             queue_ambient_request( listener, player_utterance );
+        }
+
+        void observe_game_log_message( const std::string &message ) {
+            queue_ambient_log_gate_request( message );
         }
 
         void enqueue_requests_serial( const std::vector<npc *> &listeners,
@@ -3993,6 +4160,98 @@ class llm_intent_manager
             }
             ensure_worker();
             cv.notify_one();
+        }
+
+        void queue_ambient_log_request( npc &listener, const std::string &observed_log ) {
+            if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
+                return;
+            }
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                if( pending_ambient_npcs.count( listener.getID() ) > 0 ) {
+                    return;
+                }
+                pending_ambient_npcs.insert( listener.getID() );
+            }
+            static constexpr int ambient_log_max_tokens = 128;
+            llm_intent_request req;
+            req.request_id = next_request_id();
+            req.npc_id = listener.getID();
+            req.npc_name = listener.get_name();
+            req.snapshot = build_snapshot_json( listener, observed_log, req.request_id );
+            req.prompt = build_ambient_log_prompt( req.npc_name, observed_log, req.snapshot );
+            req.max_tokens = ambient_log_max_tokens;
+            req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
+            req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
+            req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
+            if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                append_llm_intent_log( string_format( "ambient log prompt %s (%s)\n%s\n\n",
+                                                      req.npc_name, req.request_id, req.prompt ) );
+            }
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                utterance_by_request[req.request_id] = observed_log;
+                ambient_request_ids.insert( req.request_id );
+                request_queue.push( std::move( req ) );
+            }
+            ensure_worker();
+            cv.notify_one();
+        }
+
+        void queue_ambient_log_gate_request( const std::string &message ) {
+            if( !get_option<bool>( "LLM_INTENT_ENABLE" ) ||
+                !get_option<bool>( "LLM_AMBIENT_LOG_TRIGGER" ) ) {
+                return;
+            }
+            if( g == nullptr || !should_consider_ambient_log_message( message ) ) {
+                return;
+            }
+            npc *target = select_ambient_log_target();
+            if( target == nullptr ) {
+                return;
+            }
+            const std::string tagged_log = tag_ambient_log_message( message );
+            llm_intent_request req;
+            ambient_log_gate_context context;
+            std::string request_id;
+            {
+                std::lock_guard<std::mutex> lock( mutex );
+                if( calendar::turn < ambient_log_gate_next_allowed_turn ) {
+                    const int turns_left = to_turns<int>( ambient_log_gate_next_allowed_turn - calendar::turn );
+                    append_llm_ambient_log_gate_log( string_format(
+                                                         "[SKIP]\nreason: cooldown active (%d turns left)\nmessage: %s",
+                                                         turns_left,
+                                                         tagged_log ) );
+                    return;
+                }
+                if( ambient_log_gate_pending || pending_ambient_npcs.count( target->getID() ) > 0 ) {
+                    return;
+                }
+                recent_ambient_log_lines.push_back( tagged_log );
+                while( static_cast<int>( recent_ambient_log_lines.size() ) > ambient_log_gate_burst_size ) {
+                    recent_ambient_log_lines.pop_front();
+                }
+                context.npc_id = target->getID();
+                context.npc_name = target->get_name();
+                context.tagged_log = tagged_log;
+                context.burst_text = build_ambient_log_burst_text( recent_ambient_log_lines );
+                req.request_id = next_request_id();
+                request_id = req.request_id;
+                req.npc_id = target->getID();
+                req.npc_name = target->get_name();
+                req.prompt = context.burst_text;
+                req.max_tokens = 1;
+                ambient_log_gate_context_by_request[req.request_id] = context;
+                ambient_log_gate_request_ids.insert( req.request_id );
+                ambient_log_gate_pending = true;
+                ambient_log_gate_request_queue.push( std::move( req ) );
+            }
+            append_llm_ambient_log_gate_log( string_format(
+                                                 "[QUEUE]\nrequest_id: %s\nnpc: %s\nobserved:\n%s\n\n[LOG BURST]\n%s",
+                                                 request_id, context.npc_name,
+                                                 context.tagged_log, context.burst_text ) );
+            ensure_ambient_log_gate_worker();
+            ambient_log_gate_cv.notify_one();
         }
 
         void dispatch_next_serial_primary_request() {
@@ -4263,17 +4522,89 @@ class llm_intent_manager
 
         void process_responses() {
             std::queue<llm_intent_response> local;
+            std::queue<llm_intent_response> local_gate;
             {
                 std::lock_guard<std::mutex> lock( mutex );
                 std::swap( local, response_queue );
+                std::swap( local_gate, ambient_log_gate_response_queue );
             }
 
-            if( local.empty() ) {
+            if( local.empty() && local_gate.empty() ) {
                 return;
             }
 
             const bool debug_ui = get_option<bool>( "DEBUG_LLM_INTENT_UI" );
             const bool debug_log = get_option<bool>( "DEBUG_LLM_INTENT_LOG" );
+            while( !local_gate.empty() ) {
+                const llm_intent_response &resp = local_gate.front();
+                ambient_log_gate_context context;
+                bool has_context = false;
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    auto it = ambient_log_gate_context_by_request.find( resp.request_id );
+                    if( it != ambient_log_gate_context_by_request.end() ) {
+                        context = it->second;
+                        has_context = true;
+                        ambient_log_gate_context_by_request.erase( it );
+                    }
+                    ambient_log_gate_request_ids.erase( resp.request_id );
+                    ambient_log_gate_pending = false;
+                }
+                bool trigger = false;
+                double trigger_score = 0.0;
+                double ignore_score = 0.0;
+                if( resp.ok && !resp.raw.empty() ) {
+                    try {
+                        std::istringstream in( resp.raw );
+                        TextJsonIn jsin( in );
+                        TextJsonObject obj = jsin.get_object();
+                        obj.allow_omitted_members();
+                        trigger = trim_copy( obj.get_string( "text", "" ) ) == "trigger";
+                        if( obj.has_float( "trigger_score" ) ) {
+                            trigger_score = obj.get_float( "trigger_score" );
+                        }
+                        if( obj.has_float( "ignore_score" ) ) {
+                            ignore_score = obj.get_float( "ignore_score" );
+                        }
+                    } catch( const std::exception & ) {
+                        trigger = trim_copy( resp.text ) == "trigger";
+                    }
+                }
+                if( !resp.ok ) {
+                    append_llm_ambient_log_gate_log( string_format(
+                                                         "[GATE FAILED]\nrequest_id: %s\nnpc: %s\nerror: %s\nraw:\n%s",
+                                                         resp.request_id, resp.npc_name,
+                                                         resp.error, resp.raw.empty() ? resp.text : resp.raw ) );
+                    local_gate.pop();
+                    continue;
+                }
+                append_llm_ambient_log_gate_log( string_format(
+                                                     "[GATE RESULT]\nrequest_id: %s\nnpc: %s\nobserved:\n%s\n\n[DECISION]\n%s\ntrigger_score=%.4f\nignore_score=%.4f",
+                                                     resp.request_id, resp.npc_name,
+                                                     has_context ? context.tagged_log : "(missing context)",
+                                                     trigger ? "trigger" : "ignore",
+                                                     trigger_score, ignore_score ) );
+                if( trigger && has_context ) {
+                    if( npc *target = g->find_npc( context.npc_id ) ) {
+                        queue_ambient_log_request( *target, context.burst_text );
+                        {
+                            std::lock_guard<std::mutex> lock( mutex );
+                            ambient_log_gate_next_allowed_turn = calendar::turn +
+                                                                 time_duration::from_turns(
+                                                                     ambient_log_gate_cooldown_turns );
+                        }
+                        append_llm_ambient_log_gate_log( string_format(
+                                                             "[GATE QUEUED AMBIENT]\nrequest_id: %s\nnpc: %s\nlog_burst:\n%s",
+                                                             resp.request_id, context.npc_name,
+                                                             context.burst_text ) );
+                    } else {
+                        append_llm_ambient_log_gate_log( string_format(
+                                                             "[GATE DROPPED]\nrequest_id: %s\nreason: npc target vanished\nlog_burst:\n%s",
+                                                             resp.request_id, context.burst_text ) );
+                    }
+                }
+                local_gate.pop();
+            }
             while( !local.empty() ) {
                 const llm_intent_response &resp = local.front();
                 if( resp.request_id == "prewarm" ) {
@@ -4582,25 +4913,36 @@ class llm_intent_manager
     private:
         std::mutex mutex;
         std::condition_variable cv;
+        std::condition_variable ambient_log_gate_cv;
         std::queue<llm_intent_request> request_queue;
         std::queue<llm_intent_response> response_queue;
+        std::queue<llm_intent_request> ambient_log_gate_request_queue;
+        std::queue<llm_intent_response> ambient_log_gate_response_queue;
         std::unordered_map<std::string, std::string> utterance_by_request;
         std::unordered_map<std::string, tripoint_abs_ms> snapshot_origin_by_request;
         std::unordered_set<std::string> primary_request_ids;
         std::unordered_set<std::string> ambient_request_ids;
+        std::unordered_set<std::string> ambient_log_gate_request_ids;
+        std::unordered_map<std::string, ambient_log_gate_context> ambient_log_gate_context_by_request;
         std::deque<pending_primary_request> pending_primary_requests;
+        std::deque<std::string> recent_ambient_log_lines;
         std::set<character_id> pending_primary_npcs;
         std::set<character_id> pending_ambient_npcs;
         std::unordered_set<std::string> serial_primary_request_ids;
         std::unordered_map<std::string, look_around_context> look_around_requests;
         std::unordered_map<std::string, look_inventory_context> look_inventory_requests;
         std::thread worker;
+        std::thread ambient_log_gate_worker;
         std::atomic<bool> stopping = false;
         std::atomic<bool> warmup_enqueued = false;
+        bool ambient_log_gate_pending = false;
+        time_point ambient_log_gate_next_allowed_turn = calendar::before_time_starts;
 #if defined(_WIN32)
         llm_intent_runner_process runner;
+        llm_intent_runner_process ambient_log_gate_runner;
 #else
         posix_runner_process runner;
+        posix_runner_process ambient_log_gate_runner;
 #endif
 
         void ensure_worker() {
@@ -4612,11 +4954,24 @@ class llm_intent_manager
             } );
         }
 
+        void ensure_ambient_log_gate_worker() {
+            if( ambient_log_gate_worker.joinable() ) {
+                return;
+            }
+            ambient_log_gate_worker = std::thread( [this]() {
+                ambient_log_gate_worker_loop();
+            } );
+        }
+
         void stop() {
             stopping = true;
             cv.notify_one();
+            ambient_log_gate_cv.notify_one();
             if( worker.joinable() ) {
                 worker.join();
+            }
+            if( ambient_log_gate_worker.joinable() ) {
+                ambient_log_gate_worker.join();
             }
         }
 
@@ -4646,8 +5001,35 @@ class llm_intent_manager
             }
         }
 
+        void ambient_log_gate_worker_loop() {
+            while( !stopping ) {
+                llm_intent_request req;
+                {
+                    std::unique_lock<std::mutex> lock( mutex );
+                    ambient_log_gate_cv.wait( lock, [this]() {
+                        return stopping || !ambient_log_gate_request_queue.empty();
+                    } );
+                    if( stopping ) {
+                        break;
+                    }
+                    req = std::move( ambient_log_gate_request_queue.front() );
+                    ambient_log_gate_request_queue.pop();
+                }
+                llm_intent_response response = handle_ambient_log_gate_request( req );
+                {
+                    std::lock_guard<std::mutex> lock( mutex );
+                    ambient_log_gate_response_queue.push( std::move( response ) );
+                }
+            }
+        }
+
         llm_intent_response handle_request( const llm_intent_request &req ) {
             return run_request_sync( runner, req );
+        }
+
+        llm_intent_response handle_ambient_log_gate_request( const llm_intent_request &req ) {
+            return run_request_sync_with_config( ambient_log_gate_runner, req,
+                                                ambient_log_gate_runner_config() );
         }
 };
 
@@ -4673,6 +5055,11 @@ void enqueue_request( const npc &listener, const std::string &player_utterance )
 void enqueue_ambient_request( npc &listener, const std::string &player_utterance )
 {
     get_manager().enqueue_ambient_request( listener, player_utterance );
+}
+
+void observe_game_log_message( const std::string &message )
+{
+    get_manager().observe_game_log_message( message );
 }
 
 void enqueue_requests( const std::vector<npc *> &listeners,

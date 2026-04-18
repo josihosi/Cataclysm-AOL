@@ -22,6 +22,7 @@
 #include "game.h"
 #include "input_context.h"
 #include "json.h"
+#include "llm_intent.h"
 #include "map.h"
 #include "options.h"
 #include "output.h"
@@ -206,6 +207,7 @@ class messages_impl
             }
 
             messages.emplace_back( m );
+            llm_intent::observe_game_log_message( m.message );
         }
 
         /** Check if the current message needs to be prevented (hidden) or not from being displayed in the side bar.
