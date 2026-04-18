@@ -178,6 +178,7 @@ void append_llm_dialogue_chat_log( const std::string &payload )
 constexpr const char *npc_action_prompt_filename = "npc_action_prompt.txt";
 constexpr const char *npc_ambient_prompt_filename = "npc_ambient_prompt.txt";
 constexpr const char *npc_dialogue_chat_prompt_filename = "npc_dialogue_chat_prompt.txt";
+constexpr const char *npc_dialogue_chat_opening_prompt_filename = "npc_dialogue_chat_opening_prompt.txt";
 constexpr const char *look_around_prompt_filename = "look_around_prompt.txt";
 constexpr const char *look_inventory_prompt_filename = "look_inventory_prompt.txt";
 constexpr const char *llm_prompt_readme_filename = "README.txt";
@@ -192,6 +193,7 @@ struct llm_intent_request {
     float temperature = 0.0f;
     float top_p = 0.0f;
     float repetition_penalty = 0.0f;
+    bool stream = false;
 };
 
 struct llm_intent_response {
@@ -2419,15 +2421,21 @@ std::string default_npc_dialogue_chat_prompt_template()
 {{snapshot}}
 
 Dialogue turn kind: {{turn_kind}}
+Persistent relationship memory:
+{{relationship_memory}}
+
 Current authored NPC line:
 {{authored_npc_line}}
 
-Current legal hidden actions:
-{{tool_list}}
+Sandbox actions:
+{{sandbox_tool_list}}
+
+Branch actions:
+{{branch_tool_list}}
 
 <System>
 You are {{npc_name}}, a human survivor in a brutal cataclysmic world.
-The player sees only your in-character chat reply. The hidden action list is not visible to the player.
+The player sees only your in-character chat reply. The hidden action lists are not visible to the player.
 
 Visible reply rules:
 - Always write a freeform in-character NPC reply in "say".
@@ -2437,14 +2445,18 @@ Visible reply rules:
 - No assistant tone, no meta explanation, no bullet points, no menu wording.
 - Do not copy the authored line verbatim unless it would sound natural.
 - Do not repeat the same warning, catchphrase, or signature line from recent conversation unless the immediate danger clearly changed.
+- Treat persistent relationship memory as durable context, not as a reason to continue the previous chat word for word.
 
 Hidden action rules:
 - "tool" must be either one exact tool id from the list or an empty string.
+- Sandbox actions are broad things you can really do right now. Branch actions are local authored moves for the current dialogue state.
+- Prefer sandbox actions for clear asks about trade, identity, work, quest progress, or joining up when a matching sandbox action exists.
 - Only choose a tool when the player's request clearly matches a currently legal hidden action.
 - Never invent unavailable actions, quests, trade, or promises.
 - Use at most one tool.
-- If the player asks for jobs, work, tasks, or how to help and a legal action hint suggests work or help, use that tool instead of improvising a fake assignment.
-- If no legal hidden action supports trade, work, or quest progress, keep the reply cautious and vague. Do not act like a quest was offered, accepted, rewarded, or added to a log.
+- If the player asks for jobs, work, tasks, progress, or how to help and a matching sandbox or branch action exists, use that tool instead of improvising a fake assignment.
+- If identity is asked, answer naturally in freeform speech. Identity does not need extra plot machinery.
+- If no hidden action supports trade, work, or quest progress, keep the reply cautious and vague. Do not act like a quest was offered, accepted, rewarded, or added to a log.
 
 Priority guidance for this demo:
 - identity, trade, and work or quest-style asks matter most
@@ -2459,6 +2471,50 @@ Return exactly one JSON object and nothing else:
 {"say":"...","tool":""}
 
 If no hidden action should happen, leave "tool" empty.
+/no_think
+Answer directly. No reasoning.
+</System>
+<PlayerUtterance>{{player_utterance}}</PlayerUtterance>
+)";
+}
+
+std::string default_npc_dialogue_chat_opening_prompt_template()
+{
+    return R"(Situation:
+{{snapshot}}
+
+Dialogue turn kind: opening
+Persistent relationship memory:
+{{relationship_memory}}
+
+Sandbox actions:
+{{sandbox_tool_list}}
+
+<System>
+You are {{npc_name}}, a human survivor in a brutal cataclysmic world.
+The player sees only your in-character chat reply. The hidden action lists are not visible to the player.
+
+Opening-turn rules:
+- This is the first beat as the player approaches you.
+- Do not answer or paraphrase an unseen authored branch line.
+- Do not act like the conversation is already in progress.
+- Write a fresh opener based on the snapshot, relationship memory, personality, mood, and immediate surroundings.
+- Keep it grounded, human, rough, and short-to-medium.
+- Small physical or environmental beats are good when they add mood or context.
+- Do not bloat. Make every sentence count.
+- No assistant tone, no meta explanation, no bullet points, no menu wording.
+- Treat persistent relationship memory as durable context, not as a reason to continue the previous chat word for word.
+
+Hidden action rules:
+- On an opening turn, "tool" must be an empty string.
+
+Priority guidance for this demo:
+- identity, trade, and work or quest-style asks matter most later in the conversation
+- for the opener, focus on mood, presence, and the immediate feeling of being approached
+
+Return exactly one JSON object and nothing else:
+{"say":"...","tool":""}
+
 /no_think
 Answer directly. No reasoning.
 </System>
@@ -2519,36 +2575,15 @@ std::string build_dialogue_chat_tool_block( const std::vector<llm_intent::dialog
     if( tools.empty() ) {
         return "(none)";
     }
-    const auto tool_hint = []( const std::string &label ) {
-        const std::string lower = to_lower_case( label );
-        if( lower.find( "trade" ) != std::string::npos || lower.find( "swap" ) != std::string::npos ) {
-            return "trade";
-        }
-        if( lower.find( "job" ) != std::string::npos || lower.find( "work" ) != std::string::npos ||
-            lower.find( "quest" ) != std::string::npos || lower.find( "anything for you" ) != std::string::npos ||
-            lower.find( "help you" ) != std::string::npos ) {
-            return "work_help";
-        }
-        if( lower.find( "who are you" ) != std::string::npos || lower.find( "name" ) != std::string::npos ) {
-            return "identity";
-        }
-        if( lower.find( "tip" ) != std::string::npos || lower.find( "advice" ) != std::string::npos ) {
-            return "advice";
-        }
-        if( lower.find( "travel with me" ) != std::string::npos || lower.find( "follow" ) != std::string::npos ) {
-            return "follow";
-        }
-        if( lower.find( "take care" ) != std::string::npos || lower.find( "bye" ) != std::string::npos ) {
-            return "goodbye";
-        }
-        return "general";
-    };
     std::ostringstream out;
     for( const llm_intent::dialogue_chat_tool &tool : tools ) {
         out << "- id=" << tool.id
             << " available=" << ( tool.available ? "true" : "false" )
-            << " hint=\"" << tool_hint( tool.label ) << "\""
+            << " hint=\"" << sanitize_text( tool.hint.empty() ? "general" : tool.hint ) << "\""
             << " label=\"" << sanitize_text( tool.label ) << "\"";
+        if( !tool.note.empty() ) {
+            out << " note=\"" << sanitize_text( tool.note ) << "\"";
+        }
         if( !tool.available && !tool.unavailable_reason.empty() ) {
             out << " reason=\"" << sanitize_text( tool.unavailable_reason ) << "\"";
         }
@@ -2558,40 +2593,201 @@ std::string build_dialogue_chat_tool_block( const std::vector<llm_intent::dialog
 }
 
 std::string build_dialogue_chat_packet( const std::string &snapshot,
+                                        const std::string &relationship_memory,
                                         const std::string &authored_npc_line,
-                                        const std::vector<llm_intent::dialogue_chat_tool> &tools,
+                                        const llm_intent::dialogue_chat_action_surface &action_surface,
                                         bool opening_turn )
 {
     std::ostringstream out;
     out << snapshot << "\n\n";
     out << "dialogue_turn_kind: " << ( opening_turn ? "opening" : "reply" ) << "\n";
-    out << "current_authored_npc_line: " << sanitize_text( authored_npc_line ) << "\n";
-    out << "current_legal_hidden_actions:\n" << build_dialogue_chat_tool_block( tools ) << "\n";
+    out << "persistent_relationship_memory: " << sanitize_text( relationship_memory ) << "\n";
+    out << "current_sandbox_actions:\n" << build_dialogue_chat_tool_block(
+            action_surface.sandbox_actions ) << "\n";
+    if( !opening_turn ) {
+        out << "current_authored_npc_line: " << sanitize_text( authored_npc_line ) << "\n";
+        out << "current_branch_actions:\n" << build_dialogue_chat_tool_block(
+                action_surface.branch_actions ) << "\n";
+    }
     return out.str();
 }
 
 std::string build_dialogue_chat_prompt( const std::string &npc_name,
                                         const std::string &player_utterance,
                                         const std::string &packet,
+                                        const std::string &relationship_memory,
                                         const std::string &authored_npc_line,
-                                        const std::vector<llm_intent::dialogue_chat_tool> &tools,
+                                        const llm_intent::dialogue_chat_action_surface &action_surface,
                                         bool opening_turn )
 {
-    const std::string templ = llm_prompt_templates::load( npc_dialogue_chat_prompt_filename,
+    const char *prompt_filename = opening_turn ? npc_dialogue_chat_opening_prompt_filename :
+                                  npc_dialogue_chat_prompt_filename;
+    const std::string templ = llm_prompt_templates::load( prompt_filename,
+                              opening_turn ? default_npc_dialogue_chat_opening_prompt_template() :
                               default_npc_dialogue_chat_prompt_template(),
-    { "{{snapshot}}", "{{turn_kind}}", "{{authored_npc_line}}", "{{tool_list}}", "{{npc_name}}",
-      "{{player_utterance}}" },
-    { npc_dialogue_chat_prompt_filename, npc_action_prompt_filename, npc_ambient_prompt_filename,
+    { "{{snapshot}}", "{{turn_kind}}", "{{relationship_memory}}", "{{authored_npc_line}}",
+      "{{sandbox_tool_list}}", "{{branch_tool_list}}", "{{npc_name}}", "{{player_utterance}}" },
+    { npc_dialogue_chat_opening_prompt_filename, npc_dialogue_chat_prompt_filename,
+      npc_action_prompt_filename, npc_ambient_prompt_filename,
       look_around_prompt_filename, look_inventory_prompt_filename, llm_prompt_readme_filename } );
     return llm_prompt_templates::render( templ,
     {
         { "{{snapshot}}", packet },
         { "{{turn_kind}}", opening_turn ? "opening" : "reply" },
+        { "{{relationship_memory}}", sanitize_text( relationship_memory ) },
         { "{{authored_npc_line}}", sanitize_text( authored_npc_line ) },
-        { "{{tool_list}}", build_dialogue_chat_tool_block( tools ) },
+        { "{{sandbox_tool_list}}", build_dialogue_chat_tool_block( action_surface.sandbox_actions ) },
+        { "{{branch_tool_list}}", build_dialogue_chat_tool_block( action_surface.branch_actions ) },
         { "{{npc_name}}", sanitize_text( npc_name ) },
         { "{{player_utterance}}", sanitize_text( player_utterance ) }
     } );
+}
+
+std::string extract_line_value( const std::string &text, const std::string &prefix )
+{
+    const size_t start = text.find( prefix );
+    if( start == std::string::npos ) {
+        return {};
+    }
+    const size_t value_start = start + prefix.size();
+    const size_t line_end = text.find( '\n', value_start );
+    return trim_copy( text.substr( value_start, line_end == std::string::npos ?
+                                   std::string::npos : line_end - value_start ) );
+}
+
+std::string extract_block( const std::string &text, const std::string &start_marker,
+                           const std::string &end_marker = "" )
+{
+    const size_t start = text.find( start_marker );
+    if( start == std::string::npos ) {
+        return {};
+    }
+    const size_t value_start = start + start_marker.size();
+    const size_t end = end_marker.empty() ? text.size() : text.find( end_marker, value_start );
+    return trim_copy( text.substr( value_start, end == std::string::npos ?
+                                   std::string::npos : end - value_start ) );
+}
+
+std::string build_dialogue_chat_system_prompt_block( const std::string &prompt )
+{
+    const std::string block = extract_block( prompt, "<System>", "</System>" );
+    return block.empty() ? "(missing system prompt block)" : block;
+}
+
+std::string build_dialogue_chat_recent_memory_block( const std::string &base_snapshot )
+{
+    const std::string block = extract_block( base_snapshot, "Recent conversation newest first:\n",
+                              "\n\nyour_name:" );
+    return block.empty() ? "(none)" : block;
+}
+
+std::string build_dialogue_chat_character_sheet_block( const std::string &base_snapshot )
+{
+    const std::string block = extract_block( base_snapshot, "your_name:", "\n\nthreats:" );
+    return block.empty() ? "(missing character sheet)" : "your_name: " + block;
+}
+
+std::string build_dialogue_chat_world_snapshot_block( const std::string &base_snapshot )
+{
+    const std::string block = extract_block( base_snapshot, "threats:" );
+    return block.empty() ? "(missing world snapshot)" : "threats: " + block;
+}
+
+std::string dialogue_chat_separator( char ch = '=' )
+{
+    return std::string( 60, ch );
+}
+
+struct dialogue_chat_log_session_state {
+    int session_serial = 0;
+    int turn_index = 0;
+    std::string session_id;
+    std::string player_name;
+    std::string relationship_memory;
+    std::string character_sheet;
+    std::string world_snapshot;
+    std::string opening_system_prompt;
+    std::string reply_system_prompt;
+};
+
+std::map<character_id, dialogue_chat_log_session_state> &dialogue_chat_log_sessions()
+{
+    static std::map<character_id, dialogue_chat_log_session_state> sessions;
+    return sessions;
+}
+
+std::string build_dialogue_chat_session_block( const dialogue_chat_log_session_state &session,
+        const std::string &npc_name )
+{
+    std::ostringstream out;
+    out << dialogue_chat_separator() << "\n";
+    out << "NPC CHAT SESSION START\n";
+    out << "session_id: " << session.session_id << "\n";
+    out << "npc: " << npc_name << "\n";
+    out << "player: " << session.player_name << "\n";
+    out << dialogue_chat_separator() << "\n\n";
+    out << "[PERSISTENT RELATIONSHIP MEMORY]\n" << session.relationship_memory << "\n\n";
+    out << "[STATIC CHARACTER SHEET]\n" << session.character_sheet << "\n\n";
+    out << "[STATIC WORLD SNAPSHOT]\n" << session.world_snapshot << "\n\n";
+    out << "[SYSTEM PROMPT - OPENING]\n" << session.opening_system_prompt << "\n\n";
+    out << "[SYSTEM PROMPT - REPLY]\n" << session.reply_system_prompt;
+    return out.str();
+}
+
+std::string build_dialogue_chat_turn_block( const dialogue_chat_log_session_state &session,
+        const std::string &request_id,
+        bool opening_turn,
+        const std::string &player_utterance,
+        const std::string &relationship_memory,
+        const std::string &authored_npc_line,
+        const llm_intent::dialogue_chat_action_surface &action_surface,
+        const std::string &recent_memory,
+        const std::string &character_sheet,
+        const std::string &world_snapshot )
+{
+    std::ostringstream out;
+    out << dialogue_chat_separator( '-' ) << "\n";
+    out << "TURN " << session.turn_index << "\n";
+    out << "request_id: " << request_id << "\n";
+    out << "turn_kind: " << ( opening_turn ? "opening" : "reply" ) << "\n";
+    out << "session_id: " << session.session_id << "\n";
+    out << dialogue_chat_separator( '-' ) << "\n\n";
+    out << "[PLAYER]\n" << ( player_utterance.empty() ? "(opening turn)" : player_utterance ) << "\n\n";
+    out << "[PERSISTENT RELATIONSHIP MEMORY]\n" << relationship_memory << "\n\n";
+    out << "[SANDBOX ACTIONS]\n" << build_dialogue_chat_tool_block(
+            action_surface.sandbox_actions ) << "\n\n";
+    if( opening_turn ) {
+        out << "[CURRENT AUTHORED STATE]\n(not provided on opening turn)\n\n";
+        out << "[BRANCH ACTIONS]\n(not provided on opening turn)\n\n";
+    } else {
+        out << "[CURRENT AUTHORED STATE]\n";
+        out << "authored_npc_line: " << authored_npc_line << "\n\n";
+        out << "[BRANCH ACTIONS]\n" << build_dialogue_chat_tool_block(
+                action_surface.branch_actions ) << "\n\n";
+    }
+    out << "[RECENT CONVERSATION MEMORY]\n" << recent_memory << "\n\n";
+    out << "[CHANGED STATIC CONTEXT]\n";
+    bool any_changes = false;
+    auto write_changed_block = [&]( const std::string &header, const std::string &body ) {
+        if( any_changes ) {
+            out << "\n";
+        }
+        out << header << "\n" << body << "\n";
+        any_changes = true;
+    };
+    if( relationship_memory != session.relationship_memory ) {
+        write_changed_block( "[RELATIONSHIP MEMORY UPDATED]", relationship_memory );
+    }
+    if( character_sheet != session.character_sheet ) {
+        write_changed_block( "[CHARACTER SHEET UPDATED]", character_sheet );
+    }
+    if( world_snapshot != session.world_snapshot ) {
+        write_changed_block( "[WORLD SNAPSHOT UPDATED]", world_snapshot );
+    }
+    if( !any_changes ) {
+        out << "(unchanged)";
+    }
+    return out.str();
 }
 
 [[maybe_unused]] std::string request_to_json( const llm_intent_request &request )
@@ -2606,6 +2802,7 @@ std::string build_dialogue_chat_prompt( const std::string &npc_name,
     jsout.member( "temperature", request.temperature );
     jsout.member( "top_p", request.top_p );
     jsout.member( "repetition_penalty", request.repetition_penalty );
+    jsout.member( "stream", request.stream );
     jsout.end_object();
     return out.str();
 }
@@ -2665,6 +2862,82 @@ bool should_attempt_parse( const std::string &line )
         return std::nullopt;
     }
     return response;
+}
+
+[[maybe_unused]] std::optional<std::string> partial_text_from_json( const std::string &line,
+        const llm_intent_request &request )
+{
+    if( !should_attempt_parse( line ) ) {
+        return std::nullopt;
+    }
+    try {
+        std::istringstream in( line );
+        TextJsonIn jsin( in );
+        TextJsonObject obj = jsin.get_object();
+        obj.allow_omitted_members();
+        const std::string resp_id = obj.get_string( "request_id", "" );
+        if( resp_id.empty() || resp_id != request.request_id ) {
+            return std::nullopt;
+        }
+        if( obj.get_string( "event", "" ) != "partial" ) {
+            return std::nullopt;
+        }
+        return obj.get_string( "text", "" );
+    } catch( const std::exception & ) {
+        return std::nullopt;
+    }
+}
+
+std::string extract_partial_dialogue_chat_say( const std::string &text )
+{
+    const size_t say_key = text.find( "\"say\"" );
+    if( say_key == std::string::npos ) {
+        return {};
+    }
+    const size_t colon = text.find( ':', say_key );
+    if( colon == std::string::npos ) {
+        return {};
+    }
+    const size_t open_quote = text.find( '"', colon );
+    if( open_quote == std::string::npos ) {
+        return {};
+    }
+    std::string out;
+    bool escape = false;
+    for( size_t i = open_quote + 1; i < text.size(); ++i ) {
+        const char ch = text[i];
+        if( escape ) {
+            switch( ch ) {
+                case 'n':
+                    out.push_back( '\n' );
+                    break;
+                case 'r':
+                    break;
+                case 't':
+                    out.push_back( '\t' );
+                    break;
+                case '\\':
+                case '"':
+                case '/':
+                    out.push_back( ch );
+                    break;
+                default:
+                    out.push_back( ch );
+                    break;
+            }
+            escape = false;
+            continue;
+        }
+        if( ch == '\\' ) {
+            escape = true;
+            continue;
+        }
+        if( ch == '"' ) {
+            break;
+        }
+        out.push_back( ch );
+    }
+    return out;
 }
 
 std::string strip_code_fence_wrapper( const std::string &text )
@@ -2845,6 +3118,7 @@ class llm_intent_runner_process
         }
 
         bool send_request( const llm_intent_request &request, std::string &response_line,
+                           const std::function<void( const std::string & )> &on_partial,
                            std::string &error,
                            std::chrono::milliseconds timeout ) {
             std::string payload = request_to_json( request );
@@ -2859,7 +3133,8 @@ class llm_intent_runner_process
                     effective_timeout = startup_grace;
                 }
             }
-            const bool ok = read_response_for_request( request, response_line, effective_timeout, error );
+            const bool ok = read_response_for_request( request, response_line, on_partial,
+                            effective_timeout, error );
             if( ok ) {
                 warm = true;
             }
@@ -3046,7 +3321,8 @@ class llm_intent_runner_process
             std::string response_line;
             llm_intent_request dummy;
             dummy.request_id = "shutdown";
-            read_response_for_request( dummy, response_line, std::chrono::milliseconds( 200 ), error );
+            read_response_for_request( dummy, response_line, nullptr, std::chrono::milliseconds( 200 ),
+                                       error );
             close_handles();
         }
 
@@ -3084,6 +3360,7 @@ class llm_intent_runner_process
         }
 
         bool read_response_for_request( const llm_intent_request &request, std::string &out_line,
+                                        const std::function<void( const std::string & )> &on_partial,
                                         std::chrono::milliseconds timeout, std::string &error ) {
             const auto start = std::chrono::steady_clock::now();
             while( true ) {
@@ -3094,6 +3371,12 @@ class llm_intent_runner_process
                     std::string trimmed = line;
                     if( !trimmed.empty() && trimmed.back() == '\r' ) {
                         trimmed.pop_back();
+                    }
+                    if( const std::optional<std::string> partial = partial_text_from_json( trimmed, request ) ) {
+                        if( on_partial ) {
+                            on_partial( *partial );
+                        }
+                        continue;
                     }
                     if( response_from_json( trimmed, request ) ) {
                         out_line = trimmed;
@@ -3162,6 +3445,7 @@ class posix_runner_process
         }
 
         bool send_request( const llm_intent_request &request, std::string &response_line,
+                           const std::function<void( const std::string & )> &on_partial,
                            std::string &error,
                            std::chrono::milliseconds timeout ) {
             std::string payload = request_to_json( request );
@@ -3176,7 +3460,8 @@ class posix_runner_process
                     effective_timeout = startup_grace;
                 }
             }
-            const bool ok = read_response_for_request( request, response_line, effective_timeout, error );
+            const bool ok = read_response_for_request( request, response_line, on_partial,
+                            effective_timeout, error );
             if( ok ) {
                 warm = true;
             }
@@ -3338,7 +3623,8 @@ class posix_runner_process
             std::string response_line;
             llm_intent_request dummy;
             dummy.request_id = "shutdown";
-            read_response_for_request( dummy, response_line, std::chrono::milliseconds( 200 ), error );
+            read_response_for_request( dummy, response_line, nullptr, std::chrono::milliseconds( 200 ),
+                                       error );
             close_handles();
         }
 
@@ -3387,6 +3673,7 @@ class posix_runner_process
         }
 
         bool read_response_for_request( const llm_intent_request &request, std::string &out_line,
+                                        const std::function<void( const std::string & )> &on_partial,
                                         std::chrono::milliseconds timeout, std::string &error ) {
             const auto start = std::chrono::steady_clock::now();
             while( true ) {
@@ -3397,6 +3684,12 @@ class posix_runner_process
                     std::string trimmed = line;
                     if( !trimmed.empty() && trimmed.back() == '\r' ) {
                         trimmed.pop_back();
+                    }
+                    if( const std::optional<std::string> partial = partial_text_from_json( trimmed, request ) ) {
+                        if( on_partial ) {
+                            on_partial( *partial );
+                        }
+                        continue;
                     }
                     if( response_from_json( trimmed, request ) ) {
                         out_line = trimmed;
@@ -3476,7 +3769,8 @@ using llm_intent_runner_process = posix_runner_process;
 #endif
 
 llm_intent_response run_request_sync( llm_intent_runner_process &runner,
-                                      const llm_intent_request &req )
+                                      const llm_intent_request &req,
+                                      const std::function<void( const std::string & )> &on_partial = nullptr )
 {
     llm_intent_response response;
     response.request_id = req.request_id;
@@ -3496,7 +3790,7 @@ llm_intent_response run_request_sync( llm_intent_runner_process &runner,
     }
     std::string line;
     const int timeout_ms = get_option<int>( "LLM_INTENT_TIMEOUT_MS" );
-    if( !runner.send_request( req, line, error,
+    if( !runner.send_request( req, line, on_partial, error,
                               std::chrono::milliseconds( timeout_ms ) ) ) {
         runner.terminate();
         response.ok = false;
@@ -4371,8 +4665,10 @@ void enqueue_random_requests()
 dialogue_chat_result request_dialogue_chat( npc &listener,
         const std::string &player_utterance,
         const std::string &authored_npc_line,
-        const std::vector<dialogue_chat_tool> &tools,
-        bool opening_turn )
+        const dialogue_chat_action_surface &action_surface,
+        const std::string &relationship_memory,
+        bool opening_turn,
+        const std::function<void( const std::string & )> &on_partial_say )
 {
     static llm_intent_runner_process chat_runner;
 
@@ -4381,35 +4677,79 @@ dialogue_chat_result request_dialogue_chat( npc &listener,
     req.request_id = next_llm_request_id();
     req.npc_id = listener.getID();
     req.npc_name = listener.get_name();
-    req.snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
-    req.snapshot = build_dialogue_chat_packet( req.snapshot, authored_npc_line, tools, opening_turn );
-    req.prompt = build_dialogue_chat_prompt( req.npc_name, player_utterance, req.snapshot,
-                 authored_npc_line, tools, opening_turn );
+    const std::string base_snapshot = build_snapshot_json( listener, player_utterance, req.request_id );
+    const std::string recent_memory = build_dialogue_chat_recent_memory_block( base_snapshot );
+    const std::string character_sheet = build_dialogue_chat_character_sheet_block( base_snapshot );
+    const std::string world_snapshot = build_dialogue_chat_world_snapshot_block( base_snapshot );
+    const std::string opening_snapshot = build_dialogue_chat_packet( base_snapshot, relationship_memory, "",
+                                        { action_surface.sandbox_actions, {} }, true );
+    const std::string reply_snapshot = build_dialogue_chat_packet( base_snapshot, relationship_memory,
+                                      authored_npc_line, action_surface, false );
+    const std::string opening_prompt = build_dialogue_chat_prompt( req.npc_name, player_utterance,
+                                       opening_snapshot, relationship_memory, "",
+                                       { action_surface.sandbox_actions, {} }, true );
+    const std::string reply_prompt = build_dialogue_chat_prompt( req.npc_name, player_utterance,
+                                     reply_snapshot, relationship_memory, authored_npc_line,
+                                     action_surface, false );
+    req.snapshot = build_dialogue_chat_packet( base_snapshot, relationship_memory, authored_npc_line,
+                   action_surface, opening_turn );
+    if( opening_turn ) {
+        req.snapshot = opening_snapshot;
+        req.prompt = opening_prompt;
+    } else {
+        req.snapshot = reply_snapshot;
+        req.prompt = reply_prompt;
+    }
     req.max_tokens = 512;
     req.temperature = get_option<float>( "LLM_INTENT_TEMPERATURE" );
     req.top_p = get_option<float>( "LLM_INTENT_TOP_P" );
     req.repetition_penalty = get_option<float>( "LLM_INTENT_REPETITION_PENALTY" );
+    req.stream = true;
 
-    append_llm_dialogue_chat_log( string_format(
-                                      "TURN START %s (%s)\n"
-                                      "opening_turn=%s\n\n"
-                                      "INPUT PACKET\n%s\n\n"
-                                      "PROMPT\n%s",
-                                      req.npc_name, req.request_id,
-                                      opening_turn ? "true" : "false",
-                                      req.snapshot, req.prompt ) );
+    dialogue_chat_log_session_state &session = dialogue_chat_log_sessions()[req.npc_id];
+    if( opening_turn || session.session_id.empty() ) {
+        ++session.session_serial;
+        session.turn_index = 0;
+        session.session_id = string_format( "%s_%d", req.npc_name, session.session_serial );
+        session.player_name = extract_line_value( base_snapshot, "player name: " );
+        session.relationship_memory = relationship_memory;
+        session.character_sheet = character_sheet;
+        session.world_snapshot = world_snapshot;
+        session.opening_system_prompt = build_dialogue_chat_system_prompt_block( opening_prompt );
+        session.reply_system_prompt = build_dialogue_chat_system_prompt_block( reply_prompt );
+        append_llm_dialogue_chat_log( build_dialogue_chat_session_block( session, req.npc_name ) );
+    }
+    ++session.turn_index;
 
-    const llm_intent_response response = run_request_sync( chat_runner, req );
+    append_llm_dialogue_chat_log( build_dialogue_chat_turn_block(
+                                      session, req.request_id, opening_turn, player_utterance,
+                                      relationship_memory, authored_npc_line, action_surface,
+                                      recent_memory, character_sheet,
+                                      world_snapshot ) );
+
+    std::string last_partial_say;
+    const auto handle_partial = [&]( const std::string &partial_text ) {
+        if( !on_partial_say ) {
+            return;
+        }
+        const std::string partial_say = extract_partial_dialogue_chat_say( partial_text );
+        if( partial_say.empty() || partial_say == last_partial_say ) {
+            return;
+        }
+        last_partial_say = partial_say;
+        on_partial_say( partial_say );
+    };
+
+    const llm_intent_response response = run_request_sync( chat_runner, req, handle_partial );
     if( !response.ok ) {
         result.error = response.error.empty() ? "Chat request failed." : response.error;
         result.raw = response.raw;
         append_llm_dialogue_chat_log( string_format(
-                                          "RAW MODEL OUTPUT %s (%s)\n%s\n\n"
-                                          "FALLBACK REASON %s (%s)\n%s\n\n"
-                                          "TURN END %s (%s)",
-                                          req.npc_name, req.request_id, response.raw,
-                                          req.npc_name, req.request_id, result.error,
-                                          req.npc_name, req.request_id ) );
+                                          "[MODEL RAW OUTPUT]\n%s\n\n"
+                                          "[FALLBACK REASON]\n%s\n\n"
+                                          "[TURN END]\nrequest_id: %s\nsession_id: %s",
+                                          response.raw, result.error,
+                                          req.request_id, session.session_id ) );
         return result;
     }
 
@@ -4417,28 +4757,31 @@ dialogue_chat_result request_dialogue_chat( npc &listener,
         result = *parsed;
         result.ok = true;
         append_llm_dialogue_chat_log( string_format(
-                                          "RAW MODEL OUTPUT %s (%s)\n%s\n\n"
-                                          "PARSED RESULT %s (%s)\n"
-                                          "say=%s\n"
-                                          "tool=%s\n\n"
-                                          "TURN END %s (%s)",
-                                          req.npc_name, req.request_id, response.text,
-                                          req.npc_name, req.request_id,
+                                          "[MODEL RAW OUTPUT]\n%s\n\n"
+                                          "[PARSED RESULT]\n"
+                                          "say: %s\n"
+                                          "tool: %s\n\n"
+                                          "[TURN END]\nrequest_id: %s\nsession_id: %s",
+                                          response.text,
                                           result.say,
                                           result.tool.empty() ? "(none)" : result.tool,
-                                          req.npc_name, req.request_id ) );
+                                          req.request_id, session.session_id ) );
+        session.relationship_memory = relationship_memory;
+        session.character_sheet = character_sheet;
+        session.world_snapshot = world_snapshot;
+        session.opening_system_prompt = build_dialogue_chat_system_prompt_block( opening_prompt );
+        session.reply_system_prompt = build_dialogue_chat_system_prompt_block( reply_prompt );
         return result;
     }
 
     result.raw = response.text;
     result.error = "Chat response was not valid JSON.";
     append_llm_dialogue_chat_log( string_format(
-                                      "RAW MODEL OUTPUT %s (%s)\n%s\n\n"
-                                      "FALLBACK REASON %s (%s)\n%s\n\n"
-                                      "TURN END %s (%s)",
-                                      req.npc_name, req.request_id, response.text,
-                                      req.npc_name, req.request_id, result.error,
-                                      req.npc_name, req.request_id ) );
+                                      "[MODEL RAW OUTPUT]\n%s\n\n"
+                                      "[FALLBACK REASON]\n%s\n\n"
+                                      "[TURN END]\nrequest_id: %s\nsession_id: %s",
+                                      response.text, result.error,
+                                      req.request_id, session.session_id ) );
     return result;
 }
 

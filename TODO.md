@@ -11,16 +11,14 @@ If the queue below stops matching `Plan.md`, fix this file.
 Active queue: **Hackathon chat dialogue Stage 1**
 
 Current execution order:
-1. review the next chat logs with focus on trade refusal:
-   - did the model see a real trade-capable hidden action
-   - did it decline to fire the tool anyway
-   - did fallback or topic state interfere
-2. land the next Stage 1 hardening slice in code:
-   - stronger player/NPC speaker color separation
-   - chat-history UX cleanup in the response-area input
-   - possible trade-tool eagerness tuning, depending on the logs
+1. playtest API-only chat streaming:
+   - opener and reply text should appear progressively, not all at once
+   - streamed text should show only NPC speech, not JSON braces or `"say":`
+   - non-API backends should keep the old non-streaming behavior
+2. classify the reported run-phase segfault if it reproduces
 3. run the next playtest around:
-   - speaker readability
-   - chat-history behavior
-   - trade handoff
-4. classify the reported run-phase segfault if it reproduces
+   - fresh conversation opener behavior
+   - trade still opening
+   - sandbox action selection versus branch action selection in `config/llm_dialogue_chat.log`
+   - compact relationship memory showing up instead of stale old chat carry-over
+4. if streaming feels good, treat this dialogue slice as demo-ready

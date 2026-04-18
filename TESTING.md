@@ -89,6 +89,34 @@ Current honest state:
     `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/npctalk.o obj/tiles/llm_intent.o`
   - log:
     `build_logs/hackathon_chat_stage1_fixpass_narrow_20260418.log`
+- A second follow-up narrow compile also passed on `2026-04-18` after landing:
+  - separate `sandbox actions` plus `branch actions`
+  - compact relationship-memory injection
+  - fresh-conversation short-memory reset
+  - transcript color preservation for chat history
+  - updated readable chat prompt/log sections for sandbox versus branch actions
+  - command:
+    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/llm_intent.o obj/tiles/npc.o obj/tiles/npctalk.o`
+  - log:
+    `build_logs/hackathon_chat_sandbox_memory_colors_narrow_20260418.log`
+- A third narrow compile also passed on `2026-04-18` after landing the opener split:
+  - opening turns now use opener-only context
+  - opening turns no longer receive the current authored branch line
+  - opening turns no longer receive branch actions
+  - chat logging now distinguishes opening-prompt versus reply-prompt setup
+  - command:
+    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/llm_intent.o`
+  - log:
+    `build_logs/hackathon_chat_opener_split_narrow_20260418.log`
+- A fourth narrow compile also passed on `2026-04-18` after landing API-only chat streaming:
+  - dialogue chat requests can now emit partial API events
+  - the chat UI progressively redraws streamed NPC `say` text
+  - streamed partials are filtered so the player should not see raw JSON keys/braces
+  - non-streaming paths remain the fallback for non-API backends
+  - command:
+    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/dialogue_win.o obj/tiles/llm_intent.o obj/tiles/npctalk.o`
+  - log:
+    `build_logs/hackathon_chat_streaming_narrow_20260418.log`
 
 ### Smart Zone Manager v1
 
@@ -164,7 +192,11 @@ Hackathon chat dialogue Stage 1:
 - verify that chat-history behavior feels intentional and closes cleanly
 - verify that repeated warning lines are reduced in real turns
 - verify that work or quest wording stays honest unless a real legal hidden action exists
-- verify whether trade refusal is caused by missing legal tools, model choice, or fallback/topic drift
+- verify that trade now routes through `sandbox_trade` when the player clearly asks for it
+- verify that the chat log cleanly distinguishes `SANDBOX ACTIONS` from `BRANCH ACTIONS`
+- verify that fresh talk start shows compact relationship memory instead of stale prior-turn carry-over
+- verify that opener turns no longer log or behave like replies to the hidden authored branch line
+- verify that API chat now streams progressively without showing raw JSON structure in the dialogue window
 - verify that topic-changing hidden actions now feel readable with the opener reset
 - then do the next playtest build
 

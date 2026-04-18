@@ -7,7 +7,7 @@ import time
 import traceback
 import urllib.request
 import urllib.error
-from typing import Any, Dict, Optional, TextIO, Tuple
+from typing import Any, Dict, List, Optional, TextIO, Tuple
 
 TEMPERATURE = 0.6
 TOP_P = 0.9
@@ -473,6 +473,62 @@ def apply_provider_api_key_env(provider: str, api_key: str) -> None:
         os.environ["OPENAI_API_KEY"] = api_key
 
 
+def extract_chat_stream_delta(chunk: Any) -> str:
+    try:
+        choices = getattr(chunk, "choices", None)
+        if not choices:
+            return ""
+        delta = getattr(choices[0], "delta", None)
+        if delta is None:
+            return ""
+        content = getattr(delta, "content", None)
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts: List[str] = []
+            for item in content:
+                text = getattr(item, "text", None)
+                if isinstance(text, str) and text:
+                    parts.append(text)
+            return "".join(parts)
+    except Exception:
+        return ""
+    return ""
+
+
+def stream_openai_chat_completion(
+    provider: str,
+    model: str,
+    prompt: str,
+    api_key: str,
+    request_id: str,
+    max_tokens: int,
+    temperature: float,
+    top_p: float,
+) -> Tuple[str, float]:
+    from openai import OpenAI
+
+    client = OpenAI(api_key=api_key)
+    accumulated = ""
+    start_time = time.perf_counter()
+    stream = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+        max_completion_tokens=int(max_tokens),
+        temperature=float(temperature),
+        top_p=float(top_p),
+    )
+    for chunk in stream:
+        delta = sanitize_text(extract_chat_stream_delta(chunk))
+        if not delta:
+            continue
+        accumulated += delta
+        write_response({"request_id": request_id, "event": "partial", "text": accumulated})
+    elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+    return strip_think_tags(accumulated), elapsed_ms
+
+
 def run_api_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
     try:
         from any_llm import completion
@@ -757,9 +813,41 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
             write_response({"request_id": request_id, "ok": False, "error": "Missing prompt"})
             continue
 
+        max_tokens = request.get("max_tokens")
+        if not isinstance(max_tokens, int) or max_tokens <= 0:
+            max_tokens = args.max_tokens if args.max_tokens > 0 else 128
+        temperature = request.get("temperature")
+        if not isinstance(temperature, (int, float)) or temperature <= 0:
+            temperature = TEMPERATURE
+        top_p = request.get("top_p")
+        if not isinstance(top_p, (int, float)) or top_p <= 0 or top_p > 1.0:
+            top_p = TOP_P
+        wants_stream = bool(request.get("stream"))
+
         start_time = time.perf_counter()
         apply_provider_api_key_env(provider, api_key)
         try:
+            if wants_stream and provider.lower() == "openai":
+                text, elapsed_ms = stream_openai_chat_completion(
+                    provider=provider,
+                    model=model,
+                    prompt=prompt,
+                    api_key=api_key,
+                    request_id=request_id,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                )
+                text = sanitize_text(text)
+                payload = {"request_id": request_id, "ok": True, "text": text}
+                payload["metrics"] = {
+                    "gen_time_ms": elapsed_ms,
+                    "use_api": True,
+                    "streamed": True,
+                }
+                write_response(payload)
+                continue
+
             completion_kwargs: Dict[str, Any] = {
                 "model": model,
                 "provider": provider,

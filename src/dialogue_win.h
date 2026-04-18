@@ -44,6 +44,8 @@ class dialogue_window
                              nc_color speaker_color, nc_color text_color );
         /** Adds a separator to the conversation history. */
         void add_history_separator();
+        /** Replaces the most recent history line text. */
+        void update_last_history_text( const std::string &text );
         /** Prompts for LLM chat input inside the response area. */
         std::optional<std::string> query_llm_chat_input();
 
@@ -64,7 +66,9 @@ class dialogue_window
         bool show_response_effects = true;
         //copy of dialogue::show_all_responses
         bool show_all_responses = false;
+        bool llm_chat_active = false;
         bool llm_chat_started = false;
+        bool llm_chat_session_initialized = false;
         int sel_response = 0;
         std::string debug_topic_name;
     private:

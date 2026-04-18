@@ -149,19 +149,39 @@ Recommendation:
 Observed behavior:
 - The NPC can still refuse to trade even when the chat flow itself feels good.
 
-Likely causes:
-- the model saw a legal trade-capable hidden action but chose freeform text with `tool=""`
-- the current topic on that turn did not actually expose a trade-capable hidden action
-- fallback or topic drift interfered with the expected trade moment
+Current diagnosis:
+- The more important failure mode is not just model hesitation.
+- The current system often exposes only branch-local legal actions, so obvious sandbox asks like trade can be impossible when the authored branch is sitting in a quest/status pocket.
+- That means the model is sometimes boxed into roleplaying trade without any real trade tool behind it.
 
 Recommendation:
-- Treat this as a log-first issue before changing behavior blindly.
-- On the next debug pass, inspect:
-  - the legal hidden actions on the trade request turn
-  - the raw model output
-  - whether the result used a tool or stayed purely freeform
+- Rework the hidden action surface into two layers:
+  - `sandbox actions`
+  - `branch actions`
+- `sandbox actions` should expose broad real capabilities such as trade, quest-status, quest-offer, identity, and recruit whenever the NPC/backend can honestly support them.
+- `branch actions` should remain the authored local dialogue-state moves tied to the current topic pocket.
+- The model should see both layers, so authored branch context stays useful without imprisoning obvious sandbox asks.
 
-### 0.9 Speaker colors
+### 0.9 Recruit inclination
+
+Observed need:
+- If recruit or join-up becomes a sandbox action, the model needs more than a bare yes/no capability.
+
+Recommendation:
+- Surface a compact recruit inclination summary in the packet, for example:
+  - willing
+  - cautious
+  - reluctant
+  - hostile to the idea
+- Also surface a short reason hint if available, such as:
+  - low trust
+  - current mission obligation
+  - fear
+  - respect
+  - intimidation route is plausible
+- This lets the LLM answer naturally without pretending every NPC is equally recruitable.
+
+### 0.10 Speaker colors
 
 Observed behavior:
 - The current transcript is atmospheric, but the speaker separation can be clearer.
@@ -174,7 +194,7 @@ Recommendation:
 - Keep the change narrow and visual only.
 - Do not redesign the whole dialogue palette; just make speaker ownership easier to scan.
 
-### 0.10 Chat-history UX
+### 0.11 Chat-history UX
 
 Observed behavior:
 - A history action can open unexpectedly in chat input.
@@ -191,19 +211,76 @@ Recommendation:
   - or simplify history access so accidental opening stops happening
 - Prefer the simplest behavior that still feels good in play.
 
-### 0.11 Recommended follow-up order
+### 0.12 Fresh conversation memory reset
+
+Observed behavior:
+- When a conversation is restarted, the opener can feel like the NPC is continuing the last chat as if no break happened.
+
+Recommended direction:
+- Clear the short rolling turn-by-turn chat memory when a fresh conversation starts.
+
+### 0.13 Fresh opener still answers the hidden authored branch line
+
+Observed behavior:
+- The first line after approaching an NPC still behaves like a reply to the current branch-state authored line.
+- Recent logs showed:
+  - `[RECENT CONVERSATION MEMORY] (none)`
+  - `authored_npc_line: "Any luck?"`
+  - opener outputs starting with `Not really...`
+
+Conclusion:
+- The problem is no longer stale rolling chat memory.
+- The problem is that the opening-turn packet still includes the authored branch line and branch-action context.
+- So the model treats a fresh approach as if it is already answering an unseen mid-conversation line.
+
+Recommended fix:
+- Opening turns should use their own packet shape:
+  - keep snapshot
+  - keep compact persistent relationship memory
+  - keep sandbox actions if useful
+  - omit `current_authored_npc_line`
+  - omit branch actions
+- Opening turns should use a separate opener prompt file so the instruction is explicit and inspectable.
+- Logging should also reflect this honestly:
+  - show an opener system prompt separately from the reply system prompt
+  - show authored state / branch actions as not provided on opening turns
+
+Expected risk:
+- low to medium
+- this is a narrow prompt/packet/logging split, not a new backend mechanic
+- Keep only one compact persistent relationship-memory line so the NPC still remembers who the player is in broad strokes.
+
+Why this is better:
+- it preserves continuity without making every new greeting feel like mid-scene carryover
+- it keeps the opener fresh and readable
+- it should reduce some prompt drift from stale immediate-memory lines
+
+### 0.13 Streaming as likely next lane
+
+Product call:
+- If trade becomes real and the sandbox-vs-branch action split stabilizes, the feature is already good enough for a video.
+- At that point the best next "snazz" lane is probably streaming or a stronger live-speaking feel, rather than deeper architecture churn.
+
+Recommendation:
+- Finish the action-surface rework first.
+- Then move to streaming if the demo slice is stable.
+
+### 0.14 Recommended follow-up order
 
 1. Confirm the run-phase segfault is reproducible and classify when it happens.
-2. Review the next trade-refusal logs as their own debug session.
-3. Rework the response-area UX:
+2. Rework the hidden action surface into `sandbox actions` plus `branch actions`.
+3. Surface recruit inclination explicitly for recruit/join-up behavior.
+4. Rework the response-area UX:
    - `?` input
    - speaker colors
    - chat history behavior
-4. Re-test prompt and memory behavior:
+5. Re-test prompt and memory behavior:
    - reduced repeated warnings
    - more honest work or quest wording
-5. Re-test topic-change feel after hidden actions.
-6. Review fallback rate in `config/llm_dialogue_chat.log`.
+   - fresh opener behavior after restarting a conversation
+6. Re-test topic-change feel after hidden actions.
+7. Review fallback rate in `config/llm_dialogue_chat.log`.
+8. If trade works and the slice feels stable, move to streaming/snazz.
 
 ## 1. Scope Rule For Stage 1
 

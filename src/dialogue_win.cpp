@@ -103,7 +103,10 @@ void dialogue_window::draw( const std::string &npc_name )
         const int newindex = history.size() - num_lines_highlighted;
         std::string assembled;
         for( int i = 0; i < static_cast<int>( history.size() ); ++i ) {
-            nc_color col = ( i >= newindex ) ? history[i].color : c_light_gray;
+            nc_color col = history[i].color;
+            if( !llm_chat_active && i < newindex ) {
+                col = c_light_gray;
+            }
             assembled += colorize( history[i].text, col ).append( "\n" );
         }
 
@@ -162,6 +165,16 @@ void dialogue_window::add_to_history( const std::string &text, nc_color color )
 void dialogue_window::add_history_separator()
 {
     add_to_history( "", default_color() );
+}
+
+void dialogue_window::update_last_history_text( const std::string &text )
+{
+    if( history.empty() ) {
+        add_to_history( text, default_color() );
+        return;
+    }
+    history.back().text = text;
+    update_history_view = true;
 }
 
 std::optional<std::string> dialogue_window::query_llm_chat_input()

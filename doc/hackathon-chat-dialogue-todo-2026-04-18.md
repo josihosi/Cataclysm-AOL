@@ -9,16 +9,17 @@ Delete completed clutter instead of turning this into a graveyard.
 ## 1. Stage 1 - Minimum Viable Demo
 
 Active follow-up after first playtest:
-- Review the next chat logs as a dedicated debug session, especially around trade refusal.
 - Investigate the `build_and_run.cmd` / run-phase segmentation fault report and determine whether it is a startup crash, exit-time crash, or helper-script/runtime issue.
-- Verify that `?` input now works in the response-area chat entry. <WORKS>
-- Verify that tool-backed UI such as trade no longer overlaps a floating chat popup. <NPC REFUSES TO TRADE>
-- Rework speaker colors so player text stays gray and NPC speech reads clearly in white.
-- Clean up chat-history UX in the response-area input so it feels intentional and closes cleanly.
+- Verify that API-backed chat now streams progressively in the dialogue UI.
+- Verify that streamed text shows only NPC speech rather than raw JSON structure.
+- Verify that non-API backends still fall back cleanly to non-streaming chat behavior.
+- Verify that the transcript now preserves player-gray and NPC-white speaker separation in actual play.
+- Verify that sandbox trade actually opens and no longer gets trapped inside a quest-status branch pocket.
+- Verify that quest-status and quest-offer sandbox actions route to the right follow-up state.
+- Verify that recruit tone tracks the surfaced inclination note.
+- Verify that fresh talk starts now wipe short rolling chat memory while keeping one compact persistent relationship-memory line.
 - Verify that repeated lines like `keep your hands where I can see them` are reduced by the prompt/memory hardening.
 - Verify that work/quest wording now stays honest unless a real legal hidden action exists.
-- Diagnose why an NPC may still refuse to trade even when chat otherwise works.
-- Verify that real topic changes now get a fresh opener instead of dropping into silent blank-slate input.
 - Review fallback behavior and make sure chat does not silently default to authored fallback more than necessary.
 - Run the next playtest on the hardened slice.
 
@@ -36,6 +37,13 @@ Trash pile / already landed:
 - Prompt/tool/memory hardening landed for repeated-line control and work/quest honesty.
 - Topic-changing hidden actions now reset the opener so the next state can speak first.
 - The follow-up narrow compile checkpoint is done.
+- Chat action surface is now split into `sandbox actions` and `branch actions`.
+- Sandbox trade, quest-status, quest-offer, identity, and recruit hooks are now exposed separately from branch-local responses.
+- The chat log and prompt now print sandbox actions and branch actions separately.
+- Fresh conversation start now clears short rolling chat memory and keeps a compact relationship-memory line.
+- Chat transcript rendering now preserves per-speaker colors instead of flattening older lines to gray.
+- Fresh opener turns now use opener-only context with separate inspectable prompt and honest log labeling.
+- API-only chat streaming is now wired for progressive NPC text display.
 
 ## 2. Stage 2 - Quality Pass
 
@@ -43,7 +51,7 @@ Trash pile / already landed:
 - Improve current-topic authored-context injection.
 - Tune opener quality, brevity, and mood-setting.
 - Make identity, trade, and work asks feel acceptable, and let rumors/background land softly.
-- Improve the "someone is talking to you" feel if there is a cheap path, for example streaming or a truer inline input.
+- Improve the "someone is talking to you" feel if there is a cheap path, for example streaming or a truer inline input. This becomes the likely next lane once trade works reliably.
 - Add selective medium voice/story cards for demo-important NPCs if needed.
 - Run the narrowest honest compile/test pass for the stage.
 

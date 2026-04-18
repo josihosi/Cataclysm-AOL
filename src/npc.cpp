@@ -2983,6 +2983,12 @@ std::vector<npc::llm_intent_memory_entry> npc::get_llm_intent_memory() const
             state.conversation_memory.end() );
 }
 
+void npc::clear_llm_intent_memory() const
+{
+    llm_intent_state &state = llm_intent_state_for( *this );
+    state.conversation_memory.clear();
+}
+
 void npc::add_llm_overheard_memory( const std::string &npc_name,
                                     const std::string &npc_response,
                                     const std::vector<std::string> &actions ) const

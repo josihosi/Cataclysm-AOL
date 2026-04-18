@@ -2,6 +2,7 @@
 
 #include "coordinates.h"
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -12,8 +13,15 @@ namespace llm_intent
 struct dialogue_chat_tool {
     std::string id;
     std::string label;
+    std::string hint;
+    std::string note;
     bool available = true;
     std::string unavailable_reason;
+};
+
+struct dialogue_chat_action_surface {
+    std::vector<dialogue_chat_tool> sandbox_actions;
+    std::vector<dialogue_chat_tool> branch_actions;
 };
 
 struct dialogue_chat_result {
@@ -36,8 +44,10 @@ void log_event( const std::string &message );
 dialogue_chat_result request_dialogue_chat( npc &listener,
         const std::string &player_utterance,
         const std::string &authored_npc_line,
-        const std::vector<dialogue_chat_tool> &tools,
-        bool opening_turn );
+        const dialogue_chat_action_surface &action_surface,
+        const std::string &relationship_memory,
+        bool opening_turn,
+        const std::function<void( const std::string & )> &on_partial_say = nullptr );
 std::string build_snapshot_for_test( npc &listener,
                                      const std::string &player_utterance,
                                      const std::string &request_id );

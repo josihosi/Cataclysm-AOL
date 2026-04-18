@@ -1001,6 +1001,7 @@ class npc : public Character
                                     const std::string &npc_response,
                                     const std::vector<std::string> &actions ) const;
         std::vector<llm_intent_memory_entry> get_llm_intent_memory() const;
+        void clear_llm_intent_memory() const;
         void add_llm_overheard_memory( const std::string &npc_name,
                                        const std::string &npc_response,
                                        const std::vector<std::string> &actions ) const;

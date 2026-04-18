@@ -3302,13 +3302,35 @@ std::vector<llm_intent::dialogue_chat_tool> build_dialogue_chat_tools( dialogue 
         const dialogue_window &d_win )
 {
     std::vector<llm_intent::dialogue_chat_tool> tools;
+    const auto tool_hint = []( const std::string &label ) {
+        const std::string lower = to_lower_case( label );
+        if( lower.find( "trade" ) != std::string::npos || lower.find( "swap" ) != std::string::npos ) {
+            return std::string( "trade" );
+        }
+        if( lower.find( "job" ) != std::string::npos || lower.find( "work" ) != std::string::npos ||
+            lower.find( "quest" ) != std::string::npos || lower.find( "anything for you" ) != std::string::npos ||
+            lower.find( "help you" ) != std::string::npos ) {
+            return std::string( "work_help" );
+        }
+        if( lower.find( "who are you" ) != std::string::npos || lower.find( "name" ) != std::string::npos ) {
+            return std::string( "identity" );
+        }
+        if( lower.find( "travel with me" ) != std::string::npos || lower.find( "follow" ) != std::string::npos ) {
+            return std::string( "follow" );
+        }
+        if( lower.find( "take care" ) != std::string::npos || lower.find( "bye" ) != std::string::npos ) {
+            return std::string( "goodbye" );
+        }
+        return std::string( "general" );
+    };
     input_event hotkey;
     for( size_t i = 0; i < d.responses.size(); ++i ) {
         const talk_data td = d.responses[i].create_option_line( d, hotkey, d_win.is_computer );
         const bool available = !d.response_condition_exists[i] || d.response_condition_eval[i];
         llm_intent::dialogue_chat_tool tool;
-        tool.id = string_format( "response_%d", static_cast<int>( i ) );
+        tool.id = string_format( "branch_response_%d", static_cast<int>( i ) );
         tool.label = remove_color_tags( td.text );
+        tool.hint = tool_hint( tool.label );
         tool.available = available;
         if( !available ) {
             tool.unavailable_reason = d.responses[i].show_reason;
@@ -3328,6 +3350,149 @@ std::optional<size_t> resolve_dialogue_chat_tool( const std::vector<llm_intent::
         if( tools[i].id == tool_id && tools[i].available ) {
             return i;
         }
+    }
+    return std::nullopt;
+}
+
+const llm_intent::dialogue_chat_tool *find_dialogue_chat_tool(
+    const std::vector<llm_intent::dialogue_chat_tool> &tools, const std::string &tool_id )
+{
+    if( tool_id.empty() ) {
+        return nullptr;
+    }
+    for( const llm_intent::dialogue_chat_tool &tool : tools ) {
+        if( tool.id == tool_id ) {
+            return &tool;
+        }
+    }
+    return nullptr;
+}
+
+std::string dialogue_chat_score_word( int value )
+{
+    if( value <= -8 ) {
+        return "extreme";
+    }
+    if( value <= -4 ) {
+        return "high";
+    }
+    if( value <= -1 ) {
+        return "low";
+    }
+    if( value <= 2 ) {
+        return "low";
+    }
+    if( value <= 5 ) {
+        return "moderate";
+    }
+    return "high";
+}
+
+std::string build_dialogue_chat_recruit_note( const npc &listener )
+{
+    if( listener.is_player_ally() ) {
+        return "already your ally";
+    }
+    const int recruit_score = listener.op_of_u.trust * 2 + listener.op_of_u.value -
+                              listener.op_of_u.anger * 2 - listener.op_of_u.fear;
+    if( recruit_score >= 8 ) {
+        return "inclination high";
+    }
+    if( recruit_score >= 2 ) {
+        return "inclination moderate";
+    }
+    if( recruit_score >= -3 ) {
+        return "inclination low";
+    }
+    return "inclination very low";
+}
+
+std::string build_dialogue_chat_relationship_memory( const npc &listener )
+{
+    const std::string player_name = get_player_character().get_name();
+    const std::string relationship = listener.is_player_ally() ?
+                                     "a current ally" : "a survivor you have dealt with before";
+    return string_format(
+               "You know %s as %s; trust is %s, fear is %s, anger is %s.",
+               player_name,
+               relationship,
+               dialogue_chat_score_word( listener.op_of_u.trust ),
+               dialogue_chat_score_word( listener.op_of_u.fear ),
+               dialogue_chat_score_word( listener.op_of_u.anger ) );
+}
+
+llm_intent::dialogue_chat_action_surface build_dialogue_chat_action_surface( dialogue &d,
+        const dialogue_window &d_win )
+{
+    llm_intent::dialogue_chat_action_surface action_surface;
+    action_surface.branch_actions = build_dialogue_chat_tools( d, d_win );
+
+    npc &listener = *d.actor( true )->get_npc();
+
+    llm_intent::dialogue_chat_tool trade_tool;
+    trade_tool.id = "sandbox_trade";
+    trade_tool.label = "Open the trade window.";
+    trade_tool.hint = "trade";
+    trade_tool.note = "Use this when the player clearly wants to buy, sell, barter, or swap gear.";
+    action_surface.sandbox_actions.push_back( trade_tool );
+
+    if( !d.missions_assigned.empty() ) {
+        llm_intent::dialogue_chat_tool status_tool;
+        status_tool.id = "sandbox_quest_status";
+        status_tool.label = "Discuss assigned work or report progress on an active mission.";
+        status_tool.hint = "quest_status";
+        status_tool.note = "Use this when the player asks about current jobs, progress, updates, or turning something in.";
+        action_surface.sandbox_actions.push_back( status_tool );
+    }
+
+    if( !d.actor( true )->available_missions().empty() ) {
+        llm_intent::dialogue_chat_tool offer_tool;
+        offer_tool.id = "sandbox_quest_offer";
+        offer_tool.label = "Discuss available work or offer a mission.";
+        offer_tool.hint = "quest_offer";
+        offer_tool.note = "Use this when the player asks for work, tasks, jobs, or how to help.";
+        action_surface.sandbox_actions.push_back( offer_tool );
+    }
+
+    llm_intent::dialogue_chat_tool identity_tool;
+    identity_tool.id = "sandbox_identity";
+    identity_tool.label = "Answer identity or personal-background questions in freeform speech.";
+    identity_tool.hint = "identity";
+    identity_tool.note = "This is a conversational action with no separate backend state change.";
+    action_surface.sandbox_actions.push_back( identity_tool );
+
+    if( !listener.is_player_ally() ) {
+        llm_intent::dialogue_chat_tool recruit_tool;
+        recruit_tool.id = "sandbox_recruit";
+        recruit_tool.label = "Discuss joining up or traveling together.";
+        recruit_tool.hint = "recruit";
+        recruit_tool.note = build_dialogue_chat_recruit_note( listener );
+        action_surface.sandbox_actions.push_back( recruit_tool );
+    }
+
+    return action_surface;
+}
+
+std::optional<talk_topic> apply_dialogue_chat_sandbox_action( dialogue &d,
+        const llm_intent::dialogue_chat_tool &tool )
+{
+    npc &listener = *d.actor( true )->get_npc();
+    if( tool.id == "sandbox_trade" ) {
+        talk_function::start_trade( listener );
+        return talk_topic( llm_dialogue_chat_continue_topic );
+    }
+    if( tool.id == "sandbox_quest_status" ) {
+        d.actor( true )->update_missions( d.missions_assigned );
+        return talk_topic( "TALK_MISSION_LIST_ASSIGNED" );
+    }
+    if( tool.id == "sandbox_quest_offer" ) {
+        return talk_topic( "TALK_MISSION_LIST" );
+    }
+    if( tool.id == "sandbox_recruit" ) {
+        return talk_topic( "TALK_SUGGEST_FOLLOW" );
+    }
+    if( tool.id == "sandbox_identity" ) {
+        return talk_topic( llm_dialogue_chat_continue_topic );
     }
     return std::nullopt;
 }
@@ -3413,26 +3578,58 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
         return std::nullopt;
     }
 
+    d_win.llm_chat_active = true;
+    const llm_intent::dialogue_chat_action_surface action_surface =
+        build_dialogue_chat_action_surface( d, d_win );
+    const std::string relationship_memory =
+        build_dialogue_chat_relationship_memory( *d.actor( true )->get_npc() );
+
     d_win.clear_history_highlights();
     d_win.set_responses( {} );
+    d.apply_speaker_effects( topic );
+
+    ui.on_redraw( [&]( const ui_adaptor & ) {
+        d_win.draw( d_win.is_not_conversation ? "" : d.actor( true )->disp_name() );
+    } );
+
+    const auto make_streaming_callback = [&]( bool &started ) {
+        return [&]( const std::string &partial_say ) {
+            if( partial_say.empty() ) {
+                return;
+            }
+            if( !started ) {
+                d_win.add_to_history( "", d.actor( true )->disp_name(),
+                                      d.actor( true )->get_npc()->basic_symbol_color() );
+                started = true;
+            }
+            d_win.update_last_history_text( partial_say );
+            ui_manager::redraw();
+        };
+    };
+
     if( !d_win.llm_chat_started ) {
+        if( !d_win.llm_chat_session_initialized ) {
+            d.actor( true )->get_npc()->clear_llm_intent_memory();
+            d_win.llm_chat_session_initialized = true;
+        }
+        bool opener_streaming_started = false;
         llm_intent::dialogue_chat_result opener = llm_intent::request_dialogue_chat(
-                    *d.actor( true )->get_npc(), "", challenge, {}, true );
+                    *d.actor( true )->get_npc(), "", challenge, action_surface,
+                    relationship_memory, true,
+                    make_streaming_callback( opener_streaming_started ) );
         if( opener.ok && !opener.say.empty() ) {
-            d_win.add_to_history( opener.say, d.actor( true )->disp_name(),
-                                  d.actor( true )->get_npc()->basic_symbol_color() );
+            if( opener_streaming_started ) {
+                d_win.update_last_history_text( opener.say );
+            } else {
+                d_win.add_to_history( opener.say, d.actor( true )->disp_name(),
+                                      d.actor( true )->get_npc()->basic_symbol_color() );
+            }
             remember_dialogue_chat_turn( *d.actor( true )->get_npc(), "", opener.say );
             d_win.llm_chat_started = true;
         } else if( !d_win.llm_chat_started ) {
             return std::nullopt;
         }
     }
-
-    d.apply_speaker_effects( topic );
-
-    ui.on_redraw( [&]( const ui_adaptor & ) {
-        d_win.draw( d_win.is_not_conversation ? "" : d.actor( true )->disp_name() );
-    } );
     ui_manager::redraw();
 
     std::optional<std::string> player_utterance;
@@ -3447,9 +3644,11 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
     d_win.add_history_separator();
     d_win.add_to_history( *player_utterance, _( "You" ), c_light_gray, c_light_gray );
 
-    const std::vector<llm_intent::dialogue_chat_tool> tools = build_dialogue_chat_tools( d, d_win );
+    bool reply_streaming_started = false;
     llm_intent::dialogue_chat_result reply = llm_intent::request_dialogue_chat(
-                *d.actor( true )->get_npc(), *player_utterance, challenge, tools, false );
+                *d.actor( true )->get_npc(), *player_utterance, challenge, action_surface,
+                relationship_memory, false,
+                make_streaming_callback( reply_streaming_started ) );
 
     if( !reply.ok || is_blank_input( reply.say ) ) {
         add_challenge_to_history( d, d_win, challenge );
@@ -3457,11 +3656,26 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
         return talk_topic( llm_dialogue_chat_continue_topic );
     }
 
-    d_win.add_to_history( reply.say, d.actor( true )->disp_name(),
-                          d.actor( true )->get_npc()->basic_symbol_color() );
+    if( reply_streaming_started ) {
+        d_win.update_last_history_text( reply.say );
+    } else {
+        d_win.add_to_history( reply.say, d.actor( true )->disp_name(),
+                              d.actor( true )->get_npc()->basic_symbol_color() );
+    }
     remember_dialogue_chat_turn( *d.actor( true )->get_npc(), *player_utterance, reply.say );
 
-    if( const std::optional<size_t> response_ind = resolve_dialogue_chat_tool( tools, reply.tool ) ) {
+    if( const llm_intent::dialogue_chat_tool *sandbox_tool =
+            find_dialogue_chat_tool( action_surface.sandbox_actions, reply.tool ) ) {
+        if( sandbox_tool->available ) {
+            if( const std::optional<talk_topic> next_topic = apply_dialogue_chat_sandbox_action( d,
+                    *sandbox_tool ) ) {
+                return *next_topic;
+            }
+        }
+    }
+
+    if( const std::optional<size_t> response_ind = resolve_dialogue_chat_tool(
+                action_surface.branch_actions, reply.tool ) ) {
         if( confirm_dialogue_response( d, *response_ind ) ) {
             talk_topic next_topic = apply_dialogue_response( d, *response_ind );
             if( next_topic.id != topic.id && next_topic.id != llm_dialogue_chat_continue_topic ) {
