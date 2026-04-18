@@ -176,17 +176,19 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 8. Hackathon feature lanes — keep parked / do not touch in the current basecamp pass
+## 8. Hackathon feature lanes — parked far back / do not touch anytime soon
 
-These lanes are **not part of the current basecamp close-out work**.
+These lanes are **not part of the current basecamp work and not part of the near-term queue**.
 Keep them visibly separate so scaffolding/support work is not mistaken for partial feature delivery.
 
 1. **Chat interface over in-game dialogue branches**
-   - future feature lane, not current work
+   - future feature lane, parked far back
 2. **Tiny ambient-trigger NPC model**
-   - future feature lane, not current work
+   - future feature lane, parked far back
 
 Do not reopen them during the current locker/basecamp slice.
+Do not treat them as the next natural follow-up after Package 5.
+Current ordering intent is that they stay buried until much later threat/worldwork exists, with Josef explicitly saying they are not for anytime soon and not before the later Mongol riders lane.
 Do not describe adjacent harness or UI work as partial completion of those features.
 
 ---
