@@ -3604,6 +3604,8 @@ std::optional<talk_topic> try_llm_dialogue_chat_turn( dialogue &d,
             }
             d_win.update_last_history_text( partial_say );
             ui_manager::redraw();
+            refresh_display();
+            inp_mngr.pump_events();
         };
     };
 

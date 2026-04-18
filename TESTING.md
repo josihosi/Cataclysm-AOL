@@ -125,6 +125,13 @@ Current honest state:
   - `say text | tool_id`
   - opening turns use `say text |`
   - the goal is to let the UI stream visible NPC speech directly and stop cleanly at the delimiter
+- A fifth narrow compile also passed on `2026-04-18` after the UI-force-refresh seam fix:
+  - the streaming callback now does `ui_manager::redraw()`, `refresh_display()`, and `inp_mngr.pump_events()`
+  - this matches existing codebase guidance for visible redraws during blocking operations
+  - command:
+    `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/npctalk.o`
+  - log:
+    `build_logs/hackathon_chat_streaming_refresh_narrow_20260418.log`
 
 ### Smart Zone Manager v1
 
