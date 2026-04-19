@@ -49,9 +49,9 @@ Current target:
 
 Best concrete next states for this lane:
 1. keep the landed Package 5 code/test packet honest in the docs: ordinary carried junk now dumps on the locker service path, and the deterministic keep-vs-dump policy is intentionally limited to `bandages`, `ammo`, and `magazines`
-2. package the remaining live proof on the right locker footing so the real McWilliams / `CAMP_LOCKER` path explicitly shows the kept carried lane too, not only the junk-dump side
-3. if the current fixture does not naturally contain the kept classes, use the narrowest honest harness restage/helper to seed only the exact proof items on that same live path; this is explicitly greenlit as part of Package 5, not Package 4 drift
-4. close the slice only after that live packet exists, without pretending Package 4 was secretly finished too
+2. keep one exact end-to-end live actor for the correction lane, now Robbie: post-drop ground check -> Robbie pickup -> Robbie camp assignment -> Robbie locker service
+3. fix or replace the current seeding/drop seam so the intended `bandage` / `ammo` / `magazine` / junk-control packet is provably on the live tile before pickup, because the current corrected run only surfaced a pre-existing `small ammo can` there
+4. only after that seeding proof is real, rerun the same-actor locker packet and interpret keep-vs-dump; until then do not pretend the locker artifact answers the kept-lane question
 
 Explicit greenlit backlog behind the current slice:
 - **Package 4, locker zone policy + control-surface cleanup**
@@ -154,7 +154,10 @@ Current honest state:
 - the kept carried lane is explicitly narrow in code and deterministic coverage: `bandages`, `ammo`, and `magazines`
 - replaced/duplicate container contents now get split so kept carried items return to the worker while dumped miscellany goes to a non-locker cleanup tile
 - fresh runtime-compatible `locker.weather_wait` artifact proof on 2026-04-18 shows the live locker path really dumping ordinary carried junk outside curated locker stock
-- the remaining gap is that the current live locker fixture proved the junk-dump side but did **not** explicitly exercise the kept `bandages` / `ammo` / `magazines` lane yet, so Package 5 is not honestly closed
+- a corrected same-actor live probe on 2026-04-19 now keeps Robbie as pickup actor, camp-assignment actor, and locker-service actor, so the earlier mixed-actor worry was real for the old packet and is now corrected in the probe shape
+- that corrected Robbie run fails earlier than locker semantics: explicit post-drop ground verification on the intended tile showed only a pre-existing `small ammo can`, not the seeded `bandage` / `9x19mm JHP` / `Glock 9x19mm 15-round magazine` / `stone axe` packet
+- because that seed packet was not verified on-ground first, Robbie's later pickup chatter and locker artifact cannot honestly be read as Package 5 keep-vs-dump proof yet
+- so Package 5 is not honestly closed; the current blocker is the seeding/drop verification seam, not locker-service triggering or same-actor continuity
 
 Greenlit backlog, not erased:
 - Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice and is now explicitly greenlit, just not the current active queue
@@ -277,7 +280,34 @@ Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 
 ---
 
-## 12. Documentation discipline
+## 12. Parked concept chain — bandit overmap AI
+
+**Status:** PARKED / CONCEPT CHAIN
+
+Josef wants the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet is coherent enough as a whole.
+Do not quietly treat partial bandit notes as an active lane or as already-greenlit implementation.
+
+Current parked-chain anchor:
+- the broad concept vessel lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
+
+Current parked sub-item:
+- deterministic bounty/threat scoring guidance v1 at `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`
+
+What this parked sub-item should do:
+- define deterministic camp-ledger and map-mark inputs for bandit decision-making
+- define deterministic bounty and threat scoring
+- define job desirability scoring from those scores plus temperament/need modifiers
+- stay explicitly separate from exact visibility math, signal-ingestion cadence, overmap-to-bubble handoff rules, and player/basecamp visibility
+
+The intended parked-chain order for now is:
+1. broad concept vessel
+2. deterministic bounty/threat scoring
+3. later parked concept slices for visibility math, signal cadence/persistence, handoff seam, and player/basecamp visibility
+4. only then decide whether the whole bandit concept is ready to be promoted into greenlit backlog
+
+---
+
+## 13. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

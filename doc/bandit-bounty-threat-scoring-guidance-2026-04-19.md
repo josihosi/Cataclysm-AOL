@@ -1,0 +1,391 @@
+# Bandit bounty/threat scoring guidance v1 (2026-04-19)
+
+## Status
+
+This is a **parked concept-chain guidance doc**, not an implementation greenlight.
+Its job is to make the bandit overmap idea more concrete without prematurely opening an active coding lane.
+
+Use it for:
+- deterministic scoring design
+- later Andi-facing technical guidance
+- keeping scoring logic separate from still-open visibility and handoff questions
+
+Do **not** treat this doc by itself as permission to implement the whole bandit system now.
+
+---
+
+## Purpose
+
+Bandit camps need a deterministic way to decide what is worth doing.
+This v1 guidance defines two core overmap-side scores:
+- **bounty**: how attractive a mark or target is
+- **threat**: how dangerous that mark or target looks
+
+The bandit decision layer should not run on vibes, LLM improvisation, or hand-authored one-off encounter magic.
+It should score remembered marks, camp state, and job templates deterministically.
+
+---
+
+## Scope
+
+This guidance currently covers:
+- camp ledger inputs that drift over time
+- mark types and mark decay
+- deterministic bounty scoring
+- deterministic threat scoring
+- simple job desirability scoring
+- a clean separation between hard state and temperament modifiers
+
+---
+
+## Explicit non-goals
+
+This guidance does **not** yet define:
+- exact smoke/light/sound visibility math
+- exact signal-ingestion cadence
+- exact overmap-to-bubble handoff rules
+- player/basecamp visibility or concealment logic
+- detailed local tactical AI
+- faction diplomacy systems
+
+Those remain later parked concept items.
+
+---
+
+## Deterministic law
+
+The scoring layer should be deterministic given the same inputs.
+That means:
+- no LLM interpretation
+- no hidden random action choice inside scoring
+- no invisible human-authored "because it felt right" jumps
+
+Randomness may still exist later in:
+- world generation
+- signal appearance
+- mission variation
+- local combat outcomes
+
+But the overmap scoring pass itself should be repeatable from the same state.
+
+---
+
+## Core data model
+
+### 1. Camp ledger
+
+Each bandit camp should maintain a small deterministic ledger.
+
+Suggested v1 fields:
+- `food_pressure`
+- `ammo_pressure`
+- `med_pressure`
+- `manpower_available`
+- `confidence`
+- `aggression`
+- `recent_losses`
+- `recent_gains`
+- `job_load`
+
+### Meaning
+- pressure values increase urgency for relevant jobs
+- manpower limits which jobs are even valid
+- confidence affects willingness to take risks
+- recent losses raise perceived threat and caution
+- recent gains can reinforce greed/confidence
+- job load prevents a camp from acting infinitely busy without cost
+
+---
+
+### 2. Map marks
+
+Each camp should maintain rough remembered marks rather than perfect knowledge.
+
+Suggested v1 fields per mark:
+- `mark_type`
+- `location`
+- `age`
+- `confidence`
+- `bounty_base`
+- `threat_base`
+- `decay_rate`
+- `last_refresh_turn`
+
+### Example mark types
+- `smoke_seen`
+- `light_seen`
+- `gunfire_heard`
+- `traveler_route`
+- `weak_target`
+- `defended_site`
+- `zombie_heavy_zone`
+- `previous_loss_site`
+- `good_ambush_road`
+- `likely_loot`
+
+Marks should be:
+- approximate
+- decaying
+- refreshable
+- mergeable when nearby and same-kind
+- usable even when partly stale
+
+---
+
+## Hard state vs soft temperament
+
+Keep these separate.
+
+### Hard state
+Inputs that should score directly:
+- supplies and pressures
+- manpower
+- recent losses/gains
+- mark location and age
+- bounty/threat estimates
+- job cooldown/load
+
+### Soft temperament
+Camp personality knobs that bias choices but do not replace the hard math:
+- `greed`
+- `caution`
+- `revenge_bias`
+- `opportunism`
+- `territoriality`
+
+This allows two camps to read the same mark differently without turning the model into mush.
+
+---
+
+## Bounty score
+
+## Goal
+Bounty answers:
+
+> How worthwhile does this mark look right now?
+
+### Suggested v1 components
+- `loot_value`
+- `target_weakness`
+- `traffic_value`
+- `signal_freshness_bonus`
+- `camp_need_bonus`
+- `distance_cost`
+
+### Suggested formula shape
+
+```text
+bounty_score =
+    loot_value
+  + target_weakness
+  + traffic_value
+  + signal_freshness_bonus
+  + camp_need_bonus
+  - distance_cost
+```
+
+### Component notes
+- `loot_value`: expected material gain, whether goods, supplies, captives, or easy robbery
+- `target_weakness`: how exploitable the mark looks
+- `traffic_value`: whether a road/route seems worth farming repeatedly
+- `signal_freshness_bonus`: new information is more actionable than stale rumor
+- `camp_need_bonus`: food/ammo/med pressure raises value of matching targets
+- `distance_cost`: farther targets cost time, risk, and manpower attention
+
+---
+
+## Threat score
+
+## Goal
+Threat answers:
+
+> How dangerous does this mark look right now?
+
+### Suggested v1 components
+- `defender_strength`
+- `fortification_value`
+- `recent_losses_penalty`
+- `zombie_pressure`
+- `uncertainty_penalty`
+- `distance_penalty`
+- `target_distraction_bonus`
+
+### Suggested formula shape
+
+```text
+threat_score =
+    defender_strength
+  + fortification_value
+  + recent_losses_penalty
+  + zombie_pressure
+  + uncertainty_penalty
+  + distance_penalty
+  - target_distraction_bonus
+```
+
+### Component notes
+- `defender_strength`: perceived armed human danger
+- `fortification_value`: static difficulty of attacking a location
+- `recent_losses_penalty`: camps should remember getting bloodied
+- `zombie_pressure`: monsters increase chaos and danger around the mark
+- `uncertainty_penalty`: unknowns are threat, not free mystery meat
+- `distance_penalty`: farther operations are harder to support and retreat from
+- `target_distraction_bonus`: if the target is already stressed or entangled, effective threat drops
+
+---
+
+## Important opportunism rule
+
+Zombie chaos should not only raise ambient danger.
+It can also reduce the target's **effective defensive coherence**.
+
+Meaning:
+- a strong player/survivor group may still be dangerous in absolute terms
+- but if they are wounded, overextended, distracted, or fighting zombies
+- bandits may judge them as more attackable
+
+So the model should allow:
+- `zombie_pressure` to increase raw environmental danger
+- `target_distraction_bonus` to lower effective target threat
+
+This tension is good.
+It creates opportunistic ambush logic instead of flat power comparison.
+
+---
+
+## Job desirability score
+
+Camps should not pick marks directly.
+They should score **jobs** against marks.
+
+### Suggested v1 jobs
+- `scout`
+- `scavenge`
+- `toll`
+- `stalk`
+- `steal`
+- `raid`
+- `reinforce`
+
+### Job template fields
+Each job type should define:
+- `required_min_manpower`
+- `preferred_mark_types`
+- `max_risk_tolerance`
+- `max_travel_radius`
+- `reward_profile`
+- `cooldown`
+
+### Suggested formula shape
+
+```text
+job_score =
+    bounty_score
+  - threat_score
+  + temperament_modifiers
+  + camp_need_modifiers
+  + job_type_bonus
+```
+
+A job is valid only if:
+- manpower is sufficient
+- travel radius is allowed
+- job cooldown is clear
+- current load allows dispatch
+
+Highest valid job wins.
+
+---
+
+## Mark decay and refresh
+
+Marks should get weaker over time.
+
+### Daily drift idea
+Once per day, marks can:
+- lose confidence
+- lose bounty if stale
+- gain uncertainty if not refreshed
+- be deleted if they fall below a minimum threshold
+
+### Refresh rule
+A mark can be refreshed by:
+- a repeat signal
+- a scout pass
+- a successful raid/toll/stalk observation
+- a new related mark merging into it
+
+This keeps the bandit map lively without turning it into perfect memory.
+
+---
+
+## Camp ledger drift
+
+Daily camp bookkeeping can do things like:
+- raise food/ammo/med pressure from consumption
+- reduce confidence after losses
+- reduce aggression if manpower is too low
+- raise greed/opportunism pressure when supplies run short
+- lower job load as missions end
+
+This is where camps slowly become more desperate, cautious, or bold.
+
+---
+
+## Suggested v1 deterministic sequence
+
+For each camp on its strategic tick:
+
+1. update camp ledger drift
+2. decay/refresh marks
+3. generate candidate jobs from current valid marks
+4. compute bounty score for each job/mark pair
+5. compute threat score for each job/mark pair
+6. compute final job desirability
+7. discard invalid jobs
+8. choose highest-scoring valid job
+9. dispatch a lightweight abstract group if one wins
+
+This whole pass should be deterministic from current stored state.
+
+---
+
+## Implementation guidance shape for Andi (later)
+
+When this parked item is eventually greenlit, the implementation guidance should stay narrow:
+- represent camp ledger state explicitly
+- represent marks explicitly
+- keep formulas visible and inspectable
+- prefer small named helper functions over one giant mystery scorer
+- make scoring debug-printable
+- keep player/basecamp visibility out of the first scoring slice
+
+Suggested helper shape:
+- `compute_mark_bounty( camp, mark )`
+- `compute_mark_threat( camp, mark )`
+- `compute_job_score( camp, job_template, mark )`
+- `decay_mark( mark )`
+- `apply_daily_camp_drift( camp )`
+
+That makes the math testable instead of mythological.
+
+---
+
+## Good first parked-chain follow-ups
+
+After this scoring guidance, the next parked concept items likely are:
+1. exact visibility/signal math
+2. signal cadence/persistence model
+3. overmap-to-bubble handoff seam
+4. player/basecamp visibility and concealment
+
+This order is intentional.
+Scoring should not quietly absorb visibility logic that belongs to later slices.
+
+---
+
+## Why this item is parked
+
+This is a concept-enrichment step.
+It makes the larger bandit design more concrete and technically legible.
+But it should remain parked until the broader bandit concept chain is coherent enough to greenlight as a real implementation backlog item.
