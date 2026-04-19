@@ -95,6 +95,8 @@ A real camp or repeating settlement footprint can imply:
 - meaningful route/return value
 
 These locations should feel more legible than one-off campfires because repetition matters.
+But ordinary survivor routine should **not** harden into a settlement signature too quickly.
+Durable settlement interpretation should usually require site-centered repetition across more than one cadence pass, or mixed corroborating signals, not one or two generic chores.
 
 ### Empty cities
 Cities can also read as both:
@@ -280,10 +282,12 @@ Good rule:
 - one-off signals create tentative marks
 - repeated signals refresh marks and raise confidence
 - repeated mixed signals at the same area can harden a weak suspicion into a meaningful target region
+- settlement-class interpretation should require stronger reinforcement than generic human-activity interpretation
 
 Examples:
 - one night light: maybe a traveler or brief shelter
 - smoke two days in a row: stronger suspicion of recurring human activity
+- a couple of ordinary scavenging passes: still human/route activity, not automatic settlement truth
 - recurring smoke + light + traffic pattern: stronger basecamp/settlement interpretation
 
 This should integrate with the existing mark/heatmap doc instead of replacing it.
