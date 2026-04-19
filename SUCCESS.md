@@ -285,6 +285,26 @@ Notes:
 
 ---
 
+## Plan status summary command
+
+Status: GREENLIT / BACKLOG TOOLING
+
+Success state:
+- [ ] A user can request a plan readout and see compact numbered `active`, `greenlit`, and `parked` summaries derived from current `Plan.md` canon.
+- [ ] The greenlit readout preserves execution order, with active first and any bottom-of-stack entries simply appearing last in that numbered list.
+- [ ] If canon headings are contradictory or missing enough structure to classify cleanly, the command warns instead of inventing certainty.
+- [ ] The output stays short and Discord-friendly rather than dumping whole roadmap prose.
+
+Notes:
+- Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
+- This is a greenlit backlog tooling item, not the active bandit lane.
+- The intended readout surface is `/plan active`, `/plan greenlit`, `/plan parked`, with optional compact combined `/plan`.
+- Source of truth stays `Plan.md`; the command must not invent state from chat memory or agent narration.
+- Keep bottom-of-stack as ordering inside the numbered greenlit output rather than as a separate printed category.
+- The greenlit packaging for this item was previewed through `tools/plan_aux_pipeline_helper.py` before the canon sections were pasted in manually, because the current bounded `apply` path still only patches known existing headings.
+
+---
+
 ## Bandit overmap AI concept chain
 
 Status: PARKED / CONCEPT CHAIN

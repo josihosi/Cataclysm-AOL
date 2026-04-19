@@ -68,10 +68,13 @@ Current target:
 - do not drift into moving bounty, reappearance, stockpile math, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
-- none right now; after the active bandit follow-through lane, the next slice should be chosen deliberately instead of freelancing across parked work
+- **Plan status summary command**
+  - read-only plan visibility tooling for `/plan active`, `/plan greenlit`, and `/plan parked`, with optional combined `/plan`
+  - keep numbering meaningful, especially for the greenlit order, and fold bottom-of-stack items into that order instead of surfacing a separate command
 
 Meaning:
 - the bandit follow-through lane is now the only active slice
+- the only greenlit backlog item behind it right now is the plan status summary command
 - it does **not** need another permission round
 - it is doc/spec work only, not code greenlight
 - Andi should still move one micro-item at a time instead of freestyling across the buffet
@@ -302,7 +305,28 @@ This is now the active **concept formalization** lane, still doc/spec work only,
 
 ---
 
-## 13. Parked concept chain — Bandit overmap AI
+## 13. Greenlit backlog — Plan status summary command
+
+**Status:** GREENLIT / BACKLOG TOOLING
+
+Josef wants a small read-only command surface that prints current plan categories from `Plan.md` so active, greenlit, and parked work stop feeling like a black box when Andi or Schani reshuffle canon.
+
+What this item should do:
+- provide a compact plan-status readout with `active`, `greenlit`, and `parked` views, plus an optional combined `/plan`
+- treat `Plan.md` as the only source of truth rather than chat history, agent summaries, or Andi's self-reporting
+- keep numbered output where ordering matters, especially for the greenlit stack, with bottom-of-stack items folded in by position rather than split into a separate command
+- warn when canon headings or status labels are too contradictory or too thin to classify cleanly instead of inventing certainty
+
+Non-goals:
+- do not mutate canon or reclassify items from the command path
+- do not infer plan state from chat memory when `Plan.md` disagrees
+- do not create a separate bottom-of-stack command or broaden this into workflow redesign
+
+Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
+
+---
+
+## 14. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / CONCEPT CHAIN
 
@@ -358,7 +382,7 @@ If the packet is revisited later, the next planning discussion should be about w
 
 ---
 
-## 14. Documentation discipline
+## 15. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute
