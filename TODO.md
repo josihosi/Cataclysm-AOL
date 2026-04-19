@@ -8,17 +8,21 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Locker Package 5, basecamp carried-item dump lane**.
+Active lane: **Combat-oriented locker policy**.
 
 Current target:
-1. package the remaining live locker proof that explicitly shows both sides of Package 5 on the right McWilliams / `CAMP_LOCKER` footing:
-   - ordinary carried junk gets dumped
-   - `bandages`, `ammo`, and `magazines` stay carried
-2. if the current harness fixture cannot exercise those kept classes cleanly, land the narrowest harness restage/helper that makes that proof possible
-3. once that proof exists, close the Package 5 ledgers without wandering into Package 4 surface/control cleanup
+1. build the second combat-policy slice on top of the new slot footing
+   - explicit `gloves`, `mask`, `belt`, and `holster` locker slots are now real, with persistence/classification/candidate coverage in place
+   - choose the next smallest control seam, most likely the still-missing bulletproof preference toggle before any broader ballistic doctrine
+2. keep the slice suspicion-first and narrow
+   - preserve the already-earned weird-garment safety work, weather-sensitive locker footing, full-body suit protection, and the newly landed holster/belt separation instead of bulldozing them
+   - treat the missing player-facing ballistic preference control as the real next blocker, not a license to freestyle a whole combat doctrine engine
+3. keep this separate from the other lanes
+   - do not reopen the closed board-speech cleanup without a fresh contradiction
+   - do not drift back into Package 5 carried-item archaeology or forward into bandit/threat docs
 
 Out of scope right now:
-- finishing Package 4 in the same patch
-- grenades or broader consumable logic
+- reopening the closed Package 4 locker surface/control slice without a new contradiction
+- reopening the closed organic bulletin-board speech slice without a new contradiction
 - bandit / overmap-threat design
 - hackathon feature lanes

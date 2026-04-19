@@ -39,24 +39,34 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now **one active greenlit implementation lane**: **Locker Package 5, basecamp carried-item dump lane**.
+There is now **one active greenlit implementation lane**: **Combat-oriented locker policy**.
+
+Fresh checkpoint just closed:
+- **Package 5, basecamp carried-item dump lane** is honestly closed on the documented `bandages` acceptance item.
+- **Package 4, locker zone policy + control-surface cleanup** is now honestly reclosed too:
+  - `.userdata/dev-harness/harness_runs/20260419_141422/` shows the real McWilliams `CAMP_LOCKER` Zone Manager seam creating `Basecamp: Locker`, renaming it to `Probe Locker`, closing through the single-`Esc` save prompt, and reopening Zone Manager with `Probe Locker` still present
+  - that same live packet did **not** surface the reported zone-creation type-mismatch on screen, in `debug.final.log`, or in stderr
+- **Organic bulletin-board speech polish** is now honestly reclosed too:
+  - deterministic coverage still passes for the cleaned spoken board/job bark and widened organic status parsing
+  - live run `.userdata/dev-harness/harness_runs/20260419_154244/` used the real camp-assignment seam, asked `what needs making`, and showed Katharina answering `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue
+  - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- make basecamp NPCs dump ordinary carried junk before or during locker dressing instead of preserving follower-style pocket clutter
-- keep only a deliberately tiny carried lane for now: `bandages`, `ammo`, and `magazines`
-- keep the dump behavior out of curated locker stock and on the current `McWilliams` / `Zoraida Vick` footing
-- do **not** silently blend this with Package 4 surface-control cleanup, bandit/overmap-threat design, or hackathon feature lanes
+- move the now-active combat-oriented locker policy lane from backlog wording into a first honest implementation slice
+- the opening suspicion-first audit on the current tree already found concrete control-law gaps instead of vague vibes:
+  - `camp_locker_slot`, `all_camp_locker_slots()`, and `locker_policy_ui()` still expose only the older 12-slot surface, with no gloves, belt, mask, or holster controls and no bulletproof toggle
+  - `classify_camp_locker_item()` still drops holsters and other accessory-heavy combat kit on the floor instead of giving them an explicit policy home
+  - the current locker footing already has useful safety scaffolding, like weird-garment preservation, weather sensitivity, and full-body suit protection, so the next slice should extend that spine instead of replacing it
+- keep this separate from the already-closed board speech cleanup, deeper locker V3 doctrine soup, and bandit/threat design lanes
 
 Best concrete next states for this lane:
-1. keep the landed Package 5 code/test packet honest in the docs: ordinary carried junk now dumps on the locker service path, and the deterministic keep-vs-dump policy is intentionally limited to `bandages`, `ammo`, and `magazines`
-2. package the remaining live proof on the right locker footing so the real McWilliams / `CAMP_LOCKER` path explicitly shows the kept carried lane too, not only the junk-dump side
-3. close the slice only after that live packet exists, without pretending Package 4 was secretly finished too
+1. freeze the first combat-policy slice narrowly: add the missing slot/control-surface footing before trying to solve every ballistic and outfit nuance at once
+2. make the first code proof deterministic first, centered on the newly exposed combat-gear controls and classification behavior, before demanding live locker service proof
+3. only broaden into ballistic plate replacement or full suit preference once the slot/control surface is real on the current tree
 
 Explicit greenlit backlog behind the current slice:
-- **Package 4, locker zone policy + control-surface cleanup**
-- **Organic bulletin-board speech polish**
-- **Combat-oriented locker policy**
 - **Plan/Aux pipeline helper**
+- **Bandit concept formalization follow-through** (bottom-of-stack, conceptual docs only)
 
 Meaning:
 - these items are defined enough and explicitly greenlit
@@ -127,43 +137,24 @@ If later code work or runtime evidence shows any one of those bundled claims is 
 
 ---
 
-## 5. Active — Basecamp carried-item dump lane
+## 5. Checkpointed — Locker zone policy + control-surface cleanup
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-The current active slice is **Package 5, basecamp carried-item dump lane** from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
-
-Still believed true unless new evidence breaks it:
-- locker outfitting core exists as real planner/service behavior
-- locker maintenance rhythm exists as real dirty/queue/reservation behavior
-- locker ranged-readiness support already covers ammo / magazine use from curated locker stock
-- earlier deterministic + proportional runtime proof for those non-carried-item slices still exists
-
-Current required close-out for this slice:
-- basecamp NPCs dump ordinary carried misc junk before or during the locker dressing cycle
-- the kept carried lane is intentionally tiny and explicit:
-  - bandages
-  - ammo
-  - magazines
-- dump behavior does **not** pollute curated locker stock
-- the result behaves as a basecamp-specific policy instead of follower-style inventory preservation
+This slice is now considered done for now because the bundled Locker Zone V1 surface/control row in `SUCCESS.md` is checked.
 
 Current honest state:
-- the locker service code now strips ordinary carried junk during locker dressing instead of preserving generic follower-style pocket clutter
-- the kept carried lane is explicitly narrow in code and deterministic coverage: `bandages`, `ammo`, and `magazines`
-- replaced/duplicate container contents now get split so kept carried items return to the worker while dumped miscellany goes to a non-locker cleanup tile
-- fresh runtime-compatible `locker.weather_wait` artifact proof on 2026-04-18 shows the live locker path really dumping ordinary carried junk outside curated locker stock
-- the remaining gap is that the current live locker fixture proved the junk-dump side but did **not** explicitly exercise the kept `bandages` / `ammo` / `magazines` lane yet, so Package 5 is not honestly closed
+- the suspicion-first audit and fresh deterministic packet already reclosed the non-live claims:
+  - `CAMP_LOCKER` remains the real `Basecamp: Locker` Zone Manager zone definition
+  - locker policy state still exists and the player-facing `Camp_Locker_Policy` / `basecamp::locker_policy_ui()` surface still exists
+  - ordinary sorting still leaves `CAMP_LOCKER` tiles alone
+- fresh live proof now exists at `.userdata/dev-harness/harness_runs/20260419_141422/`:
+  - the real McWilliams Zone Manager path creates `Basecamp: Locker`
+  - the creation-time rename to `Probe Locker` works on screen
+  - single-`Esc` closeout opens the save prompt, `Y` returns to gameplay, and reopening Zone Manager still shows `Probe Locker`
+  - no type-mismatch popup or related stderr/debug failure surfaced on that packet
 
-Greenlit backlog, not erased:
-- Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice and is now explicitly greenlit, just not the current active queue
-
-Out of scope for this slice:
-- finishing Package 4 as part of the same patch just because it is nearby
-- grenades or broader consumable logic
-- complex pocket micromanagement
-- bandit / overmap-threat design
-- hackathon feature lanes
+Keep this slice closed unless later code or runtime evidence breaks one of those claims.
 
 ---
 
@@ -212,19 +203,20 @@ Do not describe adjacent harness or UI work as partial completion of those featu
 
 ---
 
-## 9. Greenlit backlog — organic bulletin-board speech
+## 9. Checkpointed, organic bulletin-board speech
 
-**Status:** GREENLIT / BACKLOG
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-The raw structured board/job payload leak is fixed, but one aesthetic remainder is still visible on the bulletin-board path: the surviving `job=1`-style follow-up wording still sounds like internal routing glue instead of organic in-world speech.
+This slice is now considered done for now because the bundled success state in `SUCCESS.md` is checked.
 
-This lane is greenlit for later because the path is already stable enough to leave alone for now, but the remaining player-facing machine-speech ugliness is a real defined item.
+Current honest state:
+- ordinary player-facing board status asks now accept organic wording like `what needs making`, `what needs doing`, `got any craft work`, and `show me what needs doing`
+- ordinary spoken board/job replies stay free of visible request-id glue and keep `show_board` / `show_job` / `job=` structure on the internal/log side only
+- deterministic coverage still passes on the current tree for the widened organic parsing and cleaned spoken bark
+- live run `.userdata/dev-harness/harness_runs/20260419_154244/` used the real camp-assignment seam, asked `what needs making`, and showed Katharina answering `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue
+- the same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture; treat that as separate routing noise unless a later change makes it the active seam again
 
-What this future polish item should do:
-- support organic player-facing triggers for bulletin-board / camp-job requests (for example ordinary requests like "craft" in a sentence)
-- keep internal routing/debug tokens available where useful without surfacing them as normal speech
-- make visible answers sound like poor survivors in a dump making it work for another day while the dead and worse roam outside
-- eliminate remaining visible `job=<id>` / `show_board` / `show_job`-style machine phrasing from ordinary in-world output
+Keep this lane closed unless a fresh probe surfaces a real visible machine-speech seam again.
 
 Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
 
@@ -258,17 +250,22 @@ Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
 ---
 
-## 11. Greenlit backlog — combat-oriented locker policy
+## 11. Active — combat-oriented locker policy
 
-**Status:** GREENLIT / BACKLOG
+**Status:** ACTIVE / GREENLIT
 
-Josef wants future locker development to lean harder toward sensible guard/combat outfits instead of spending disproportionate energy on weird artisanal clothing edge cases.
+Josef wants locker development to lean harder toward sensible guard/combat outfits without throwing away the already-earned weird-garment safety wins.
 
-This future direction should:
-- keep the already-earned weird-garment safety wins
-- add common useful gear emphasis (gloves, belts, masks, holsters, sensible normal outfit pieces)
-- support a bulletin-board bulletproof toggle
-- support explicit ballistic vest / plate handling
+The first narrow slice is now landed on the current tree:
+- `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now include explicit `gloves`, `mask`, `belt`, and `holster` slots instead of the older 12-slot-only footing
+- `classify_camp_locker_item()` now gives common combat support gear an explicit locker-policy home instead of dropping holsters on the floor or letting belt-like waist gear get lost in generic clothing logic
+- scoring/upgrade-threshold plumbing and deterministic persistence/candidate coverage were extended for that new slot footing on the current tree
+- the current locker safety spine stayed intact while doing that: weird-garment preservation, weather-sensitive outerwear/legwear handling, full-body suit protection, and the earlier great-helm / holster safety cases still survive the filtered locker suite
+- there is still no bulletin-board or locker-surface bulletproof toggle, so ballistic preference is still not a real player-facing control yet
+
+What this active lane should do next:
+- use the new combat-kit slot footing for the next equally explicit control, most likely the still-missing bulletproof preference toggle
+- extend explicit ballistic vest / plate handling after that control seam is real
 - prefer clearly superior full-body battle suits when appropriate
 - bias future deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
 
@@ -276,7 +273,92 @@ Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 
 ---
 
-## 12. Documentation discipline
+## 12. Greenlit bottom-of-stack — bandit concept formalization follow-through
+
+**Status:** GREENLIT / BOTTOM-OF-STACK
+
+Josef wants Andi to start tightening the remaining bandit control-law gaps after the current basecamp fixes are honestly closed, but still as conceptualization/doc work rather than implementation.
+
+This follow-through should turn the still-loose bandit economy, cadence, and cross-layer interaction rules into explicit packets without reopening code or pretending the whole bandit system is now active.
+
+Frozen footing for this follow-through:
+- no passive decay for bounty
+- no passive decay for threat
+- structural bounty is set by terrain / tile class and reduced by harvesting or exploitation
+- moving bounty changes when real actors or visible activity change, not because an idle timer shaved numbers off in the dark
+- bandit camp stockpile may go down by consumption, and any future spoilage rule must stay explicit and separate from bounty/threat logic
+
+Default package order:
+1. bounty source / harvesting / camp-stockpile rules
+2. cadence / distance burden / route-fallback rules
+3. cross-layer interaction packet with starter numbers and worked scenarios
+
+The auxiliary contract intentionally decomposes those three packages into **31 narrow single-question micro-items** so Andi can freeze one law at a time instead of hiding several assumptions inside one friendly paragraph.
+
+Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
+
+Do not treat this as permission to start coding bandit AI.
+This is greenlit **concept formalization** at the bottom of the stack, meant to make the parked packet cleaner and implementation-legible later.
+
+---
+
+## 13. Parked concept chain — bandit overmap AI
+
+**Status:** PARKED / CONCEPT CHAIN
+
+Josef wants the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet is coherent enough as a whole.
+Do not quietly treat partial bandit notes as an active lane or as already-greenlit implementation.
+The new bottom-of-stack formalization follow-through above is greenlit only for doc/spec cleanup inside this chain; implementation still stays parked.
+
+Current parked-chain anchor:
+- the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
+
+Current parked sub-items:
+- deterministic bounty/threat scoring guidance v1 at `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`
+- overmap mark-generation and heatmap model v1 at `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`
+- bidirectional overmap-to-bubble handoff seam v1 at `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`
+- player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
+
+Supporting recon note for the visibility item:
+- physical-systems recon at `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`
+
+What the current parked sub-items should do:
+- scoring guidance: define deterministic camp-ledger and map-mark inputs for bandit decision-making, then score bounty/threat/job desirability from those inputs
+- mark/heatmap guidance: define how overmap-only marks get created, rechecked, harvested, and folded into broad threat/bounty heatmaps on the same cadence family without passive decay math
+- handoff guidance: define how abstract overmap groups enter local play and how cargo, wounds, panic, losses, and updated threat/bounty knowledge return back into overmap state
+- visibility/concealment guidance: define signal sources, environmental filters, bounty/threat interpretation outputs, and player/basecamp exposure-reduction levers on recon-backed footing
+- current acceptable footing: fog/mist can suppress sight/light legibility without forcing new fog-based sound dampening rules
+- resolved note-1 anti-spiral footing: each camp should own its own sparse operational map rather than shared omniscience
+- resolved note-1 bounty footing: ground bounty should be coarse, structural, finite, and non-regenerating by region class, while player/NPC/camp activity supplies the moving bounty layer
+- resolved no-passive-decay footing: do not model passive decay for bounty or threat; structural bounty changes through harvesting/exploitation, moving bounty changes through fresh activity and collection, threat changes through real recheck, and camp stockpile changes through explicit consumption
+- resolved note-1 dampers: false-lead / recently-checked / harvested memory and self-signal filtering should stop camps from spiraling into pseudo-psychic fixation
+- resolved note-2 fairness footing: sustained pressure and stalking against legible camps is desired, but decisive full camp assault stays player-present only for current scope
+- resolved note-2 attack-signaling footing: fairness should come from bounded offscreen consequence scope, not from requiring bandits to presignal attacks
+- resolved note-2 repo footing: existing overmap-NPC persistence, travel, and companion plumbing is valid substrate for following outbound groups and route interception, but the current need-driven wandering policy is not the finished hostile model
+- resolved note-3 identity footing: persistent overmap group continuity is mandatory, with only a small anchored-individual slice surviving handoffs directly while the remaining membership stays fungible
+- resolved note-3 goal-sustainability footing: smoke/mark destinations are provisional mission leads, not sacred tile commitments, and local observations may continue, divert, shadow, or abort the current goal
+- resolved note-3 scope footing: v1 should cap anchored continuity at roughly 1-3 individuals rather than forcing full per-bandit persistence everywhere
+- resolved note-4 city-opportunism footing: cities may support one-off or occasional opportunistic bandit action under zombie chaos, but not persistent farming, because structural bounty depletes while threat remains high
+- resolved note-4 zombie-model footing: zombies currently matter as threat and target-coherence pressure only, not as a separately simulated bandit-versus-zombie tactical system
+- resolved note-4 sticky-threat footing: if a group leaves due to threat, the area should keep a sticky scary mark that is only meaningfully reevaluated on close revisit or when some other attraction pulls the group back nearby
+- resolved note-5 independence footing: v1 camps should behave as mostly independent actors rather than a coordinated coalition strategy layer, so overlap may happen by accident but routine dogpile convergence should not be the norm
+- resolved note-5 anti-dogpile footing: territoriality, distance burden, depletion, sticky threat, and fresh active-pressure penalties should suppress repeated multi-camp pile-ons against the same region
+- resolved note-5 scope footing: deliberate alliances, campaign planning, and explicit multi-camp coordination are later-layer strategy material, not part of the current parked v1 shape
+
+The intended parked-chain order for now is:
+1. broad concept vessel
+2. deterministic bounty/threat scoring
+3. overmap mark-generation and heatmap model
+4. bidirectional overmap-to-bubble handoff seam
+5. player/basecamp visibility and concealment, informed by the physical-systems recon note
+6. only then decide whether the whole bandit concept is ready to be promoted into greenlit backlog
+
+The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
+If the packet is revisited later, the next planning discussion should be about whether the packet is coherent enough for future greenlight consideration, not about spawning more disconnected feeder docs by default.
+
+---
+
+## 14. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

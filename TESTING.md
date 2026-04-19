@@ -39,107 +39,45 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Basecamp carried-item dump lane (active)
+### Combat-oriented locker policy
 
 Current honest state:
-- still believed true from earlier work: locker outfitting core exists, locker maintenance rhythm exists, and earlier deterministic/runtime proof for those non-carried-item slices still stands unless new evidence disproves it
-- locker ranged-readiness support already has honest ammo / magazine grounding on the curated locker side
-- Package 5 code is now landed in the tree:
-  - ordinary carried misc junk is removed during locker dressing instead of being preserved follower-style
-  - the deliberately kept carried lane is explicitly limited to `bandages`, `ammo`, and `magazines`
-  - dumped carried junk is sent to a non-locker cleanup/drop tile instead of being folded back into curated locker stock
-- fresh deterministic proof on current HEAD passed:
-  - `./tests/cata_test "camp_locker_service_dumps_carried_junk_outside_curated_locker_stock"`
-  - log: `build_logs/package5_carried_dump_test_20260418.log`
-  - result: `All tests passed (22 assertions in 1 test case)`
-- fresh broader locker regression packet also passed:
+- the first combat-policy code slice is now landed narrowly on the current tree:
+  - `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now expose explicit `gloves`, `mask`, `belt`, and `holster` slots
+  - `classify_camp_locker_item()` now routes representative combat support gear into those slots instead of dropping hip holsters on the floor or letting waist gear disappear into generic clothing logic
+  - scoring and upgrade-threshold plumbing were extended for the new slots
+- narrow deterministic validation passed on the current tree after the slice landed:
+  - `make -j4 tests`
   - `./tests/cata_test "[camp][locker]"`
-  - log: `build_logs/package5_locker_suite_20260418.log`
-  - result: `All tests passed (955 assertions in 51 test cases)`
-- fresh tiles rebuild for live proof succeeded after clearing the stale tiles PCH:
-  - `make -j4 TILES=1 cataclysm-tiles`
-  - log: `build_logs/package5_tiles_build_20260418.log`
-- fresh live locker proof now exists on rebuilt current HEAD `6952308b74` at `.userdata/dev-harness/harness_runs/20260418_231138/` via `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
-  - screen: runtime-compatible harness launch reached gameplay and completed the locker wait path; this packet did not surface direct on-screen locker text, so the proof class here is mainly artifact/log rather than visible UI text
-  - tests: `not_run` by the harness packet itself; the deterministic evidence above is the paired test packet
-  - artifacts/logs: `probe.artifacts.log` captured the real locker service dumping ordinary carried junk for Ricky Broughton (`small plastic bag`, `dried lentils`, `bullpup shotgun`, `stone axe`) while the post-service locker state only showed the pants-lane items, not the dumped junk
-- not yet safe to claim the whole Package 5 acceptance bar is closed:
-  - the current live fixture/probe proves the junk-dump path and non-polluting locker target on the real locker route
-  - it does **not** yet explicitly exercise the kept `bandages` / `ammo` / `magazines` lane on that same live path
-- the current slice should stay on the `McWilliams` / `Zoraida Vick` footing and the real locker/live path, not wander back into Package 4 surface cleanup or unrelated future lanes
+- the filtered locker suite still covers the previously suspicious safety seams this slice could have broken, including great-helm classification and holster-vs-pants cleanup behavior
+- there is still no bulletin-board or locker-surface bulletproof toggle, so ballistic preference is still not a real player-facing control yet
+- the current locker footing still includes the reusable scaffolding the next slice should preserve:
+  - weird-garment safety and non-destructive coverage preservation
+  - weather-sensitive outerwear and legwear handling
+  - full-body suit protection logic
+
+### Recently closed, do not casually reopen
+
+- Organic bulletin-board speech polish is now reclosed on both deterministic and live footing:
+  - `make -j4 tests` plus `./tests/cata_test "[camp][basecamp_ai]"` passed for the widened organic status parsing and cleaned spoken bark
+  - live run `.userdata/dev-harness/harness_runs/20260419_154244/` used the real camp-assignment seam, asked `what needs making`, and showed `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue
+  - Robbie's same-packet follower crosstalk stays separate routing noise, not a reason to reopen the closed machine-speech seam
+- Locker surface/control is also reclosed on both deterministic and live footing:
+  - deterministic proof still covers locker policy persistence and sorting skip behavior on `CAMP_LOCKER`
+  - live run `.userdata/dev-harness/harness_runs/20260419_141422/` created `Basecamp: Locker`, renamed it to `Probe Locker`, used the single-`Esc` -> save-prompt -> `Y` closeout, and reopened Zone Manager with `Probe Locker` still present
+  - no type-mismatch popup or related stderr/debug failure surfaced on that live packet
 
 ### Meaning
 
-- the active delivery target is Package 5 from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
-- the next evidence should be the smallest honest mix of narrow code proof plus the right locker/live repro for keep-vs-dump carried behavior
-- keep Smart Zone Manager, board routing, Package 4 surface cleanup, hackathon features, and future threat design closed or out of scope while this slice is active
-
-### Smart Zone Manager v1
-
-Current honest state:
-- the one-off Smart Zone Manager v1 code remains real in the tree, not aux-doc theater
-- the Basecamp inventory-zone prompt path still exists in both honest UI seams:
-  - initial `CAMP_STORAGE` placement in Zone Manager
-  - later position/stretch edits of that same Basecamp zone
-- the deterministic proof still covers the active honest packet in `tests/clzones_test.cpp`, including:
-  - expected stamped layout on a representative indoor basecamp fixture
-  - outdoor rotten placement beyond a simple wall ring
-  - too-small-zone failure
-  - non-destructive refusal when a required bed tile is already occupied by a non-basecamp zone
-  - repeatability on the same layout
-- fresh current-head rebuild on 2026-04-09 succeeded:
-  - `make -j4 tests` -> `build_logs/freeze_prep_tests_20260409.log`
-  - `make -j4 TILES=1 cataclysm-tiles` -> `build_logs/freeze_prep_tiles_20260409.log`
-- fresh deterministic recheck on rebuilt current HEAD passed:
-  - `./tests/cata_test "[zones][smart_zone][basecamp]"`
-  - log: `build_logs/freeze_prep_smart_zone_tests_20260409.log`
-  - result: `All tests passed (2825 assertions in 4 test cases)`
-- the too-small-zone failure path is therefore **implemented and presently re-verified**; it is not a hand-wavy TODO
-- fresh proportional live proof now exists on rebuilt current HEAD `fce15a6c5a` at `.userdata/dev-harness/harness_runs/20260409_140439/`:
-  - prepared-save seam: reinstall the McWilliams fixture into `dev-harness`, move existing `*zones*.json` out of the save, then run `smart_zone.live_probe_mcw_prepped`
-  - prompt screenshot: `.userdata/dev-harness/harness_runs/20260409_140439/confirm_zone_end.after.png`
-  - saved/reopened layout screenshot: `.userdata/dev-harness/harness_runs/20260409_140439/reopen_zones_manager_for_layout_capture.after.png`
-  - screen evidence: the Smart Zone Manager prompt fired on the real UI path, and the saved/reopened Zone Manager list still showed `Basecamp: Storage` plus the expected stamped smart-zone entries
-  - artifacts/logs: the harness verdict is `inconclusive_no_new_artifacts`, which is expected here because this proof class is screen/UI evidence rather than `llm_intent.log` output
-
-### Meaning
-
-- Smart Zone Manager v1 still survives a fresh rebuild + live rerun on current HEAD
-- the lane should stay closed while Package 5 is active unless code/runtime evidence breaks it
-
-### Assigned-camp board/log leak recheck
-
-Current honest state:
-- the preserved-baseline assigned-camp board/log fix still holds on rebuilt current HEAD
-- fresh deterministic recheck passed:
-  - `./tests/cata_test "[camp][basecamp_ai]"`
-  - log: `build_logs/freeze_prep_basecamp_ai_tests_20260409.log`
-  - result: `All tests passed (332 assertions in 1 test case)`
-- fresh live assigned-camp probe now exists on rebuilt current HEAD `fce15a6c5a` at `.userdata/dev-harness/harness_runs/20260409_140655/` via `basecamp.package2_assign_camp_toolcall_probe_mcw`
-- screen evidence:
-  - screenshot: `.userdata/dev-harness/harness_runs/20260409_140655/wait_for_job_followup_reply.after.png`
-  - visible in-game replies stay organic on the player-facing message log
-  - the old raw leak shape does **not** appear on-screen: no visible `board=show_board`, `details=show_job=1`, or `next=job=1`
-  - the player's own typed structured probe text `job=1` still appears as the player utterance, which is expected for this harnessed internal-path check
-- artifacts/logs:
-  - artifact log: `.userdata/dev-harness/harness_runs/20260409_140655/probe.artifacts.log`
-  - the internal structured path still records `board=show_board`, `details=show_job=1`, `approval=waiting_player`, and `next=job=1`, which is the intended observability split
-- known weird-but-non-blocking remainder:
-  - the same artifact packet still records a nearby Robbie Knox response after the Katharina exchange
-  - that is recipient/chatter noise on the live probe, not the old raw player-log leak returning
-
-### Meaning
-
-- the assigned-camp board/log leak fix still survives a fresh rebuilt-current-head live check
-- current truth is the intended split: organic player-facing message log, structured internal artifact log
-- keep this out of the active queue while Package 5 is running unless later code or runtime evidence breaks one of those claims
+- the missing evidence for the active lane is not another live board or locker rerun
+- the next honest move is a narrow combat-policy implementation slice plus deterministic coverage for the new slot/control behavior
 
 ---
 
 ## Pending probes
 
-- a packaged live locker proof on the correct McWilliams / `CAMP_LOCKER` footing that explicitly includes the kept `bandages` / `ammo` / `magazines` lane, not only the dumped-junk side
-- if the current locker fixture cannot show those kept classes honestly, the narrowest harness restage/helper that makes that live proof possible without reopening Package 4 work
+- none yet for this follow-up slice
+- if the next combat-policy step is the bulletproof toggle or another new control seam, start again with narrow deterministic locker tests before asking for any live locker-service proof
 
 ---
 
@@ -147,31 +85,12 @@ Current honest state:
 
 Use these when they are actually the missing evidence, not as ritual.
 
-### Fresh full test rebuild on this Mac
+### Narrow locker deterministic pass after a code slice lands
 - `make -j4 tests`
+- `./tests/cata_test "[camp][locker]"`
 
-### Fresh tiles relink on this Mac
+### Fresh tiles rebuild only if a later combat-policy handoff really needs live proof
 - `make -j4 TILES=1 cataclysm-tiles`
-
-### Smart-zone deterministic check
-- `./tests/cata_test "[zones][smart_zone][basecamp]"`
-
-### Basecamp routing deterministic check
-- `./tests/cata_test "[camp][basecamp_ai]"`
-
-### Startup/load smoke for later live proof
-- `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
-
-### Current smart-zone live probe
-- `python3 tools/openclaw_harness/startup_harness.py install-fixture mcwilliams_live_debug_2026-04-07 --profile dev-harness --fixture-profile live-debug --replace`
-- move the installed McWilliams `*zones*.json` files out of `.userdata/dev-harness/save/McWilliams/`
-- `python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_probe_mcw_prepped`
-
-### Current assigned-camp board/log recheck
-- `python3 tools/openclaw_harness/startup_harness.py probe basecamp.package2_assign_camp_toolcall_probe_mcw`
-
-### Existing locker live baseline
-- `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
 
 ## Local build caveat
 
