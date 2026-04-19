@@ -49,9 +49,9 @@ Current target:
 
 Best concrete next states for this lane:
 1. keep the landed Package 5 code/test packet honest in the docs: ordinary carried junk now dumps on the locker service path, and the deterministic keep-vs-dump policy is intentionally limited to `bandages`, `ammo`, and `magazines`
-2. keep one exact end-to-end live actor for the correction lane, now Robbie: post-drop ground check -> Robbie pickup -> Robbie camp assignment -> Robbie locker service
-3. tighten or replace the remaining live ammo restage seam so the exact intended ammo proof item, not a `small ammo can`, is provably on the live tile before pickup; the repaired single-count bandage and magazine drop path is now honest enough to use
-4. only after that exact seeded packet is real, rerun the same-actor locker packet and interpret keep-vs-dump; until then do not pretend the locker artifact answers the kept-lane question
+2. keep the corrected live packet honest on the real McWilliams tile: Robbie-only `say` targeting is now real, the shorter spoken order really submits on-screen, the bag-only probe proved `small plastic bag` is visibly collectible on its own, and the repaired `look_around` cap now lets the four-item seed complete together
+3. repair or replace the unstable post-pickup camp-assignment dialog seam on that same corrected packet so Robbie gets assigned back to camp after the now-honest four-item pickup
+4. once pickup plus camp reassignment are both honest again, rerun the same-actor locker packet and only then interpret keep-vs-dump; until then do not pretend the locker artifact answers the kept-lane question
 
 Explicit greenlit backlog behind the current slice:
 - **Package 4, locker zone policy + control-surface cleanup**
@@ -154,7 +154,7 @@ Current honest state:
 - the kept carried lane is explicitly narrow in code and deterministic coverage: `bandages`, `ammo`, and `magazines`
 - replaced/duplicate container contents now get split so kept carried items return to the worker while dumped miscellany goes to a non-locker cleanup tile
 - fresh runtime-compatible `locker.weather_wait` artifact proof on 2026-04-18 shows the live locker path really dumping ordinary carried junk outside curated locker stock
-- a corrected same-actor live probe on 2026-04-19 now keeps Robbie as pickup actor, camp-assignment actor, and locker-service actor, so the earlier mixed-actor worry was real for the old packet and is now corrected in the probe shape
+- the earlier mixed-actor worry is still not honestly closed on the corrected live packet; the current blocker has moved upstream from pure post-pickup dialog mapping to pickup targeting itself
 - the probe helper itself was also lying for a while: `tools/openclaw_harness/startup_harness.py` had been leaving the multidrop menu open, and the drop path was selecting filtered items wrong, so the old post-drop screenshots were not honest ground checks
 - fresh repaired single-count bandage proof is now real:
   - `.userdata/dev-harness/harness_runs/20260419_035025/` shows the wish helper stocks inventory for query `bandage`, as `adhesive bandage`
@@ -162,11 +162,44 @@ Current honest state:
 - fresh repaired single-count magazine proof is now real too:
   - `.userdata/dev-harness/harness_runs/20260419_035431/` shows inventory really contains `Glock 9x19mm 15-round magazine (15/15 9x19mm JHP)` after the wish spawn
   - `.userdata/dev-harness/harness_runs/20260419_040243/` now shows the corrected filtered drop path really lands that Glock magazine on the live pickup tile
-- fresh ammo-side probe narrowed the remaining seam instead of closing it:
-  - the wish-menu query screenshot at `.userdata/dev-harness/harness_runs/20260419_031430/` shows top result for `9x19mm JHP` is `1000 9x19mm JHP ammo can`, not loose ammo
-  - even after teaching `debug_spawn_item` to pick the second filtered wish-menu entry for that query, `.userdata/dev-harness/harness_runs/20260419_040812/` still lands `small ammo can` on the live pickup tile rather than loose `9x19mm JHP`
-- fresh same-actor rerun at `.userdata/dev-harness/harness_runs/20260419_034022/` is therefore still not clean proof: the tile contents and Robbie pickup order were contaminated by the old bad seed packet, including `small ammo can` / nearby-gear ambiguity
-- so Package 5 is not honestly closed; the current blocker is now the remaining live ammo-restage mismatch plus the pickup-command ambiguity that follows from that bad seed packet, not locker-service triggering, same-actor continuity, or the single-count bandage/magazine drop seam
+- the older `9x19mm JHP` wish-query mismatch is now demoted to historical context, not the current blocker:
+  - `.userdata/dev-harness/harness_runs/20260419_031430/` showed the wish-menu query preferring `1000 9x19mm JHP ammo can`
+  - `.userdata/dev-harness/harness_runs/20260419_040812/` showed the second filtered result still landing `small ammo can`
+  - the current correction packet no longer relies on that exact query; it seeds `9x19mm JHP, reloaded` instead
+- fresh same-actor ground proof at `.userdata/dev-harness/harness_runs/20260419_051921/` now shows the exact intended small-packet seed on the live pickup tile: `9x19mm JHP, reloaded (1)`, `adhesive bandage`, `Glock 9x19mm 15-round magazine (15/15 9x19mm JHP)`, and `small plastic bag`
+- the overlong exact-name pickup sentence was a real harness/probe lie: `.userdata/dev-harness/harness_runs/20260419_051921/` stays stuck in `Enter a sentence to say`, while the shorter wording already used in the side probes and now in the corrected e2e scenario does submit on-screen
+- fresh rerun at `.userdata/dev-harness/harness_runs/20260419_052751/` moved the correction packet one step forward:
+  - the shorter spoken order is visibly submitted on-screen
+  - Robbie visibly accepts the pickup instruction and starts acting on it
+  - the generic follow-up packet still ended in the wrong place, but the artifact log at least proved the talk path was now reaching `TALK_MISSION_INQUIRE`, `TALK_MISSION_SUCCESS_LIE`, and `TALK_FRIEND` instead of staying trapped in the say prompt
+- fresh dialog drill-down at `.userdata/dev-harness/harness_runs/20260419_055401/` did prove something useful, but less final than it first looked:
+  - on that narrow probe, the post-pickup reply chain `b -> a -> b -> d -> n -> a` reached Robbie's camp-specific `What about the camp?` submenu and then `I want to assign you to work at this camp.`
+  - so the camp branch is real on the corrected packet, but that probe alone was not enough to claim the packaged e2e path was now solved
+- fresh packaged rerun at `.userdata/dev-harness/harness_runs/20260419_061324/` disproved the simpler overlay-exit story:
+  - the same corrected seed packet still gets the shorter spoken order on-screen and the follow-up packet does reach Robbie dialogue again
+  - but the inlined assignment continuation does not reproducibly reach the camp submenu on the full packet
+  - in this rerun, the follow-up keys drift back into Robbie's general follower dialog: `d` selects `I'd like to know a bit more about your abilities.`, `a` opens Robbie's character sheet, and `c` opens `Select a destination`
+  - no `camp locker:` artifact lines follow, so there is still no honest kept-lane readout from the corrected packet
+- fresh re-audit at `.userdata/dev-harness/harness_runs/20260419_063750/` did catch a real upstream problem:
+  - the short spoken order still submitted on-screen, but the message log showed both nearby followers responding
+  - Katharina said `Got it, Zoraida Robbie, bandage and ammo go to you; I'll grab the Glock mag and keep watch.`
+  - Robbie said `On it, Zoraida-I'll secure the supplies and keep watch while you grab the bandage and ammo.`
+  - so that older `say` packet was not honestly Robbie-only
+- the whisper fallback at `.userdata/dev-harness/harness_runs/20260419_064258/` also failed as a rescue path:
+  - `You whisper "Robbie, pick up the bandage, the reloaded 9mm ammo, the Glock magazine, and the small plastic bag on the ground."` is visibly submitted on-screen
+  - after 50 turns, no follower response or pickup-completion line appears in the message log, so that targeted whisper path is a no-op on this footing
+- fresh code repair plus rerun at `.userdata/dev-harness/harness_runs/20260419_073418/` moved the active seam forward again:
+  - `src/npctalk.cpp` now filters allied hearers by direct addressed name before ambient routing steals the utterance, so named `say` orders stop fanning out to nearby followers
+  - the corrected `say` packet is now honestly Robbie-only on-screen: `You say "Robbie, pick up the bandage, the reloaded 9mm ammo, the Glock magazine, and the small plastic bag on the ground."`, Robbie is the only follower who answers, and only Robbie pickup lines appear in the visible log
+  - that rerun also exposed the remaining upstream lie cleanly: the `look_around` prompt text and `parse_look_around_response()` were both still hard-capped at three selected items, so the fourth requested pickup never entered the queue
+- Frau Knackal's bag-specific recommendation was then followed on the bounded targeting checkpoint at commit `377c1f0695`:
+  - exactly one materially changed bag-only probe at `.userdata/dev-harness/harness_runs/20260419_082431/` restaged just `small plastic bag` on the same real McWilliams footing and ordered only `Robbie, pick up the small plastic bag on the ground.`
+  - that bag-only probe answers the narrow question honestly: the bag is **not** being picked up silently. Robbie visibly picks it up on-screen, `config/llm_intent.log` records `look_around selected Robbie Knox (req_1): item_6:a: small plastic bag` and `look_around pickup Robbie Knox (small plastic bag): picked up 1 item(s)`, and the follow-up `g` check says `There is nothing to pick up nearby.`
+- fresh four-item-cap repair validation at `.userdata/dev-harness/harness_runs/20260419_090351/` closes the upstream pickup-completion seam enough to move downstream again:
+  - screen: `You say "Robbie, pick up the bandage, the reloaded 9mm ammo, the Glock magazine, and the small plastic bag on the ground."` is visibly submitted, Robbie is the only follower who answers, and the visible log shows Robbie picking up `adhesive bandage`, `9x19mm JHP, reloaded`, `Glock 9x19mm 15-round magazine`, and `small plastic bag`
+  - artifacts/logs: `config/llm_intent.log` now records `look_around response Robbie Knox (req_1): item_8, item_6, item_7, item_9` and the corresponding four-item selection list; pickup lines are logged for `9x19mm JHP, reloaded`, `Glock 9x19mm 15-round magazine`, and `small plastic bag`
+  - remaining weirdness is now observability, not queueing: the bandage still reaches the selected queue and is visibly picked up on-screen, but the current `action_status` logging falls through to `pickup.item_missing` instead of mirroring that pickup cleanly in `config/llm_intent.log`
+- so Package 5 is still not honestly closed, but the active blocker has moved back downstream: keep the four-item pickup repair checkpointed, reopen the post-pickup camp-assignment seam, and only after that returns to locker service should the kept-lane artifact be interpreted
 
 Greenlit backlog, not erased:
 - Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice and is now explicitly greenlit, just not the current active queue

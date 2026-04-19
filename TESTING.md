@@ -64,18 +64,96 @@ Current honest state:
   - tests: `not_run` by the harness packet itself; the deterministic evidence above is the paired test packet
   - artifacts/logs: `probe.artifacts.log` captured the real locker service dumping ordinary carried junk for Ricky Broughton (`small plastic bag`, `dried lentils`, `bullpup shotgun`, `stone axe`) while the post-service locker state only showed the pants-lane items, not the dumped junk
 - not yet safe to claim the whole Package 5 acceptance bar is closed:
-  - the current live fixture/probe proves the junk-dump path and non-polluting locker target on the real locker route
-  - it does **not** yet explicitly exercise the kept `bandages` / `ammo` / `magazines` lane on that same live path
-- Josef has now explicitly greenlit the narrow live-restage helper path for this missing proof:
-  - seed only the exact kept-item classes plus one junk control item
-  - keep the real `McWilliams` / `CAMP_LOCKER` footing and real pickup plus locker-service seam
-  - treat this as Package 5 evidence work, not Package 4 scope creep
+  - the current live fixture/probe still honestly proves the junk-dump path and non-polluting locker target on the real locker route
+  - the missing live proof is now the kept `bandages` / `ammo` / `magazines` lane on that same real path
+- the active correction packet on 2026-04-19 proved the actor question, then forced a probe-shape audit, and that audit materially changed the blocker:
+  - corrected scenario still is `tools/openclaw_harness/scenarios/locker.package5_robbie_e2e_verified_mcw.json`
+  - first honest finding: the modified harness helper itself was wrong. `tools/openclaw_harness/startup_harness.py` had been leaving the multidrop menu open, and the filtered drop path was selecting items wrong, so the old post-drop screenshots were not honest ground checks
+  - repaired narrow bandage proof now closes honestly:
+    - inventory probe: `.userdata/dev-harness/harness_runs/20260419_035025/`
+      - screen: the wish helper stocks inventory for query `bandage`, but as `adhesive bandage`
+    - ground probe: `.userdata/dev-harness/harness_runs/20260419_040122/`
+      - screen: the corrected filtered drop path now logs `You drop your adhesive bandage on the floor.` and the pickup menu shows `adhesive bandage` on the intended live tile
+  - repaired narrow magazine proof now closes honestly too:
+    - inventory probe: `.userdata/dev-harness/harness_runs/20260419_035431/`
+      - screen: the filtered drop menu shows `Glock 9x19mm 15-round magazine (15/15 9x19mm JHP)` really exists in inventory after the wish spawn
+    - ground probe: `.userdata/dev-harness/harness_runs/20260419_040243/`
+      - screen: the corrected filtered drop path now logs `You drop your Glock 9x19mm 15-round magazine on the floor.` and the pickup menu shows that same Glock magazine on the intended live tile
+  - the older loose-`9x19mm JHP` query mismatch is still useful context, but it is no longer the current blocker:
+    - wish-query probe: `.userdata/dev-harness/harness_runs/20260419_031430/`
+      - screen: the top wish-menu result for query `9x19mm JHP` is `1000 9x19mm JHP ammo can`, while loose `9x19mm JHP` is the second filtered result
+    - explicit-second-entry ground probe: `.userdata/dev-harness/harness_runs/20260419_040812/`
+      - screen: even after forcing the second filtered wish-menu entry, the pickup seam on the live tile still resolves as `small ammo can`, not loose `9x19mm JHP`
+    - current correction packet avoids that seam by seeding `9x19mm JHP, reloaded`
+  - fresh same-actor rerun: `.userdata/dev-harness/harness_runs/20260419_051921/`
+    - screen, post-drop verification seam: the pickup menu on the intended live tile now honestly shows `9x19mm JHP, reloaded (1)`, `adhesive bandage`, `Glock 9x19mm 15-round magazine (15/15 9x19mm JHP)`, and `small plastic bag`
+    - screen, spoken-order seam: `ask_robbie_to_pick_up_seeded_items.after.png` still sits in `Enter a sentence to say`, with the overlong exact-name pickup line never visibly submitted
+    - screen, later seams: `verify_robbie_picked_up_seeded_packet.after.png`, `assign_robbie_to_camp_dialog.after.png`, and `wait_for_first_locker_service_window.after.png` stay in the same prompt-stall state, so they are not honest pickup/assignment/service proof
+    - artifacts/logs: the rerun produced `verdict: inconclusive_no_new_artifacts`, with no matching `camp locker:` lines
+  - fresh corrected rerun with the shorter pickup phrasing: `.userdata/dev-harness/harness_runs/20260419_052751/`
+    - screen, spoken-order seam: `ask_robbie_to_pick_up_seeded_items.after.png` now shows `You say "Robbie, pick up the bandage, the reloaded 9mm ammo, the Glock magazine, and the small plastic bag on the ground."`
+    - screen, later dialog seam: the broader follow-up packet no longer stalls in the say prompt, but its generic continuation still lands in the wrong end-state instead of returning cleanly to gameplay
+    - artifacts/logs: `probe.artifacts.log` records `avatar::talk_to` topic churn (`TALK_MISSION_INQUIRE`, `TALK_MISSION_SUCCESS_LIE`, `TALK_FRIEND`) and the rerun ends `verdict: inconclusive_no_artifact_match`
+  - fresh dialog drill-down on that same corrected packet: `.userdata/dev-harness/harness_runs/20260419_055401/`
+    - screen: the post-pickup reply chain `b -> a -> b -> d -> n -> a` reaches Robbie's camp-specific `What about the camp?` submenu and then `I want to assign you to work at this camp.`
+    - screen: this proves the camp branch is real on the corrected packet, but only on this narrow drill-down path so far
+    - tests: `not_run` by this live drill-down, because the missing evidence class here was UI path shape
+    - artifacts/logs: the useful fact from this probe is the on-screen branch shape; no locker artifact interpretation is honest yet because the flow still did not return to gameplay and wait for service
+  - fresh packaged e2e rerun after inlining the assignment presses: `.userdata/dev-harness/harness_runs/20260419_061324/`
+    - screen, pickup seam: the corrected packet still gets the short spoken order on-screen and Robbie still picks up the seeded items
+    - screen, assignment seam: the full packet does **not** yet reproduce the narrowed camp-submenu path reliably; on this rerun the follow-up dialog drifts back into Robbie's general follower menu instead
+    - screen, concrete wrong-path evidence:
+      - `d` selects `I'd like to know a bit more about your abilities.`
+      - the later `a` opens Robbie's character sheet, not camp work assignment
+      - the later `c` opens `Select a destination`
+    - tests: `not_run` by this live rerun, because the missing evidence class was still UI path shape
+    - artifacts/logs: still no matching `camp locker:` lines, so there is still no honest kept-lane locker readout from the corrected packet
+  - fresh pickup-targeting re-audit at `.userdata/dev-harness/harness_runs/20260419_063750/` did reveal a real upstream problem:
+    - screen: after the short `say` order and a 50-turn wait, the message log shows both nearby followers responding, not a Robbie-only packet
+    - screen: `You say "Robbie, pick up the bandage, the reloaded 9mm ammo, the Glock magazine, and the small plastic bag on the ground."`
+    - screen: `Katharina Leach says: "Got it, Zoraida Robbie, bandage and ammo go to you; I'll grab the Glock mag and keep watch."`
+    - screen: `Robbie Knox says: "On it, Zoraida-I'll secure the supplies and keep watch while you grab the bandage and ammo."`
+  - fresh whisper-targeted pickup probe at `.userdata/dev-harness/harness_runs/20260419_064258/` confirmed the fallback was no better:
+    - screen: `You whisper "Robbie, pick up the bandage, the reloaded 9mm ammo, the Glock magazine, and the small plastic bag on the ground."` is visibly submitted on-screen
+    - screen: after 50 turns, there is still no follower response or pickup-completion line in the visible log, so this targeted whisper path is currently a no-op for the packet
+    - tests: `not_run` by this live probe, because the missing evidence class was targeted live pickup behavior
+    - artifacts/logs: no new locker artifact interpretation is honest here because the packet never reaches confirmed pickup
+  - fresh post-fix rerun at `.userdata/dev-harness/harness_runs/20260419_073418/` on rebuilt head `6fcc64b56a-dirty`
+    - code: `src/npctalk.cpp` now filters allied hearers by direct addressed name before ambient routing steals the utterance, so named `say` orders stop fanning out to nearby followers
+    - screen: the same short `say` order is visibly submitted on-screen and Robbie is now the only follower who answers
+    - screen: visible pickup lines now show Robbie taking `adhesive bandage`, `9x19mm JHP, reloaded`, and `Glock 9x19mm 15-round magazine`
+    - artifacts/logs: this rerun exposed the real remaining upstream lie: the model answer named all four requested items, but `look_around` was still hard-capped to three selections in both the prompt text and `parse_look_around_response()`
+    - tests: narrow compile/build only for this code-path repair
+      - `make -j8 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/npctalk.o`
+      - `make -j4 TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 ASTYLE=0 TESTS=0 cataclysm-tiles`
+  - bounded checkpoint for the targeting repair is now committed as `377c1f0695` (`Fix direct-addressed NPC pickup targeting`)
+  - exactly one materially changed bag-only probe then answered Frau Knackal's narrow question on that checkpointed footing: `.userdata/dev-harness/harness_runs/20260419_082431/`
+    - screen: `You say "Robbie, pick up the small plastic bag on the ground."`, Robbie answers, `Robbie Knox picks up a small plastic bag.`, and the follow-up `g` check says `There is nothing to pick up nearby.`
+    - artifacts/logs: `config/llm_intent.log` records `look_around selected Robbie Knox (req_1): item_6:a: small plastic bag` followed by `look_around pickup Robbie Knox (small plastic bag): picked up 1 item(s)`
+    - meaning: the bag is not being picked up silently on this footing. The remaining issue on the original four-item packet is upstream selection / queueing on the combined request, not unreadable visible pickup feedback
+  - fresh four-item-cap repair validation at `.userdata/dev-harness/harness_runs/20260419_090351/`
+    - code/prompt: `src/llm_intent.cpp`, `data/llm_prompts/look_around_prompt.txt`, and the live-debug fixture prompt now lift the `look_around` selection cap from three to four
+    - tests: the paired narrow proof remains `make -j4 tests` plus `./tests/cata_test "[llm_intent]"`, which passed after the limit/test adjustment (`All tests passed (69 assertions in 10 test cases)`); the same repaired tiles build was then used for this live rerun
+    - screen: `You say "Robbie, pick up the bandage, the reloaded 9mm ammo, the Glock magazine, and the small plastic bag on the ground."` is visibly submitted, Robbie is the only follower who answers, and the visible log shows Robbie picking up `adhesive bandage`, `9x19mm JHP, reloaded`, `Glock 9x19mm 15-round magazine`, and `small plastic bag`
+    - artifacts/logs: `config/llm_intent.log` now records `look_around response Robbie Knox (req_1): item_8, item_6, item_7, item_9`, the matching four-item selection list, and pickup lines for `9x19mm JHP, reloaded`, `Glock 9x19mm 15-round magazine`, and `small plastic bag`
+    - remaining mismatch: the bandage clearly enters the selected queue and is visibly picked up on-screen, but current `action_status` logging still falls through to `pickup.item_missing` for that first item instead of mirroring the visible pickup cleanly in `config/llm_intent.log`
+    - meaning: the old three-item queue cap is no longer the active blocker. The four-item pickup-completion seam is now honest enough to reopen downstream camp-assignment work, with a smaller bandage observability quirk still noted
 - the current slice should stay on the `McWilliams` / `Zoraida Vick` footing and the real locker/live path, not wander back into Package 4 surface cleanup or unrelated future lanes
 
 ### Meaning
 
-- the active delivery target is Package 5 from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
-- the next evidence should be the smallest honest mix of narrow code proof plus the right locker/live repro for keep-vs-dump carried behavior
+- the active delivery target is still Package 5 from `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`
+- the exact kept-item seed packet is now honestly visible on the live tile in the corrected packet
+- the shortened pickup order is still honestly visible on-screen on the live footing, and the repaired `say` path is now the only honest delivery seam for this packet
+- the mixed-actor pickup-targeting concern is closed on the named `say` seam:
+  - the latest live rerun shows only Robbie answering the addressed order and only Robbie pickup lines in the visible log
+  - the older whisper no-op is now just a failed side path, not the current delivery seam
+- the upstream four-item pickup-completion blocker is now closed enough to move on:
+  - the bag-only probe proved the small plastic bag itself was never the silent failure
+  - the repaired four-item-cap rerun now shows the whole requested seed being picked up on-screen on the corrected named-`say` path
+  - the remaining mismatch on this seam is observability for the bandage log line, not selection / queueing
+- the active blocker therefore moves back downstream to post-pickup camp assignment and return to locker service
+- do not interpret any later locker-service artifact as kept-lane proof until Robbie is shown both completing that corrected four-item pickup packet and re-entering camp service on the same path
 - keep Smart Zone Manager, board routing, Package 4 surface cleanup, hackathon features, and future threat design closed or out of scope while this slice is active
 
 ### Smart Zone Manager v1
@@ -142,8 +220,10 @@ Current honest state:
 
 ## Pending probes
 
-- a packaged live locker proof on the correct McWilliams / `CAMP_LOCKER` footing that explicitly includes the kept `bandages` / `ammo` / `magazines` lane, not only the dumped-junk side
-- use the now-greenlit narrow restage helper if needed: seed only the kept classes plus one junk control item on the real live path, then prove keep-vs-dump from the locker artifact/log
+- rerun the corrected Robbie end-to-end packet now that the upstream four-item pickup seam is honest again, and confirm the post-pickup camp-assignment path on the repaired footing
+- if that path still drifts, instrument or replace the assignment continuation rather than reopening pickup-targeting or pickup-queue speculation
+- only after Robbie reaches pickup, camp assignment, and locker service on the same corrected seed packet should the locker artifact/log be read as kept-vs-dump evidence for Package 5
+- keep the bandage pickup observability mismatch noted, but do not treat it as the active blocker unless it prevents interpreting the downstream packet
 
 ---
 
@@ -176,6 +256,17 @@ Use these when they are actually the missing evidence, not as ritual.
 
 ### Existing locker live baseline
 - `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait`
+
+### Current corrected same-actor probe
+- `python3 tools/openclaw_harness/startup_harness.py probe locker.package5_robbie_e2e_verified_mcw`
+
+### Current narrow kept-item seam probes
+- `python3 tools/openclaw_harness/startup_harness.py probe locker.package5_seed_ammo_ground_probe_mcw`
+- `python3 tools/openclaw_harness/startup_harness.py probe locker.package5_seed_bandage_ground_probe_mcw`
+- `python3 tools/openclaw_harness/startup_harness.py probe locker.package5_seed_mag_ground_probe_mcw`
+- `python3 tools/openclaw_harness/startup_harness.py probe locker.package5_spawn_bandage_inventory_probe_mcw`
+- `python3 tools/openclaw_harness/startup_harness.py probe locker.package5_spawn_mag_inventory_probe_mcw`
+- `python3 tools/openclaw_harness/startup_harness.py probe locker.package5_spawn_query_probe_mcw`
 
 ## Local build caveat
 
