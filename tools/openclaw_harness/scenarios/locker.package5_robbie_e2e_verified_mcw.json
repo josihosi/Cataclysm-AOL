@@ -1,0 +1,200 @@
+{
+  "name": "locker.package5_robbie_e2e_verified_mcw",
+  "description": "Use Robbie end-to-end on the live McWilliams footing: verify the seeded packet is on the ground, have Robbie pick it up, verify the same actor acquired it, then assign Robbie to camp and wait for the real locker service packet.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "settle_seconds": 1.0,
+  "artifact_pattern": "camp locker:",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "debug_spawn_item",
+      "label": "spawn_exact_bandage",
+      "item_query": "bandage",
+      "selection_key": "down",
+      "count": 1,
+      "settle_seconds": 0.4,
+      "capture_after": false
+    },
+    {
+      "kind": "drop_item",
+      "label": "drop_exact_bandage",
+      "query": "bandage",
+      "count": 1,
+      "settle_seconds": 0.4,
+      "capture_after": false
+    },
+    {
+      "kind": "debug_spawn_item",
+      "label": "spawn_9mm_jhp_reloaded_stack",
+      "item_query": "9x19mm JHP, reloaded",
+      "count": 1,
+      "settle_seconds": 0.4,
+      "capture_after": false
+    },
+    {
+      "kind": "drop_item",
+      "label": "drop_9mm_jhp_reloaded_stack",
+      "query": "9x19mm JHP, reloaded",
+      "count": 1,
+      "settle_seconds": 0.4,
+      "capture_after": false
+    },
+    {
+      "kind": "debug_spawn_item",
+      "label": "spawn_glock_magazine",
+      "item_query": "Glock 9x19mm 15-round magazine",
+      "count": 1,
+      "settle_seconds": 0.4,
+      "capture_after": false
+    },
+    {
+      "kind": "drop_item",
+      "label": "drop_glock_magazine",
+      "query": "Glock 9x19mm 15-round magazine",
+      "count": 1,
+      "settle_seconds": 0.4,
+      "capture_after": false
+    },
+    {
+      "kind": "debug_spawn_item",
+      "label": "spawn_small_plastic_bag",
+      "item_query": "small plastic bag",
+      "count": 1,
+      "settle_seconds": 0.4,
+      "capture_after": false
+    },
+    {
+      "kind": "drop_item",
+      "label": "drop_small_plastic_bag",
+      "query": "small plastic bag",
+      "count": 1,
+      "settle_seconds": 0.4,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "verify_seeded_packet_on_ground",
+      "keys": ["g"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "close_ground_pickup_menu",
+      "keys": ["escape"],
+      "settle_seconds": 0.5,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "open_freeform_chat",
+      "keys": ["C", "b"],
+      "settle_seconds": 0.5,
+      "capture_after": false
+    },
+    {
+      "kind": "type",
+      "label": "ask_robbie_to_pick_up_seeded_items",
+      "text": "Robbie, pick up the bandage, the reloaded 9mm ammo, the Glock magazine, and the small plastic bag on the ground.",
+      "submit": true,
+      "settle_seconds": 1.2,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "verify_robbie_picked_up_seeded_packet",
+      "count": 50,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_nearby_talk_menu_for_assignment",
+      "keys": ["C", "t"],
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "select_robbie_for_assignment",
+      "keys": ["3"],
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "choose_mission_success_lie_for_assignment",
+      "keys": ["b"],
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "acknowledge_mission_success_lie_for_assignment",
+      "keys": ["a"],
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "choose_friend_menu_b_for_assignment",
+      "keys": ["b"],
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "choose_followup_d_for_assignment",
+      "keys": ["d"],
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "choose_followup_n_for_assignment",
+      "keys": ["n"],
+      "settle_seconds": 0.8,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "open_worker_priority_overlay_for_assignment",
+      "keys": ["a"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "quit_worker_priority_overlay_for_assignment",
+      "keys": ["q"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "close_assignment_dialog_after_overlay",
+      "keys": ["c"],
+      "settle_seconds": 0.8,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "wait_for_first_locker_service_window",
+      "count": 50,
+      "settle_seconds": 0.8,
+      "capture_after": true
+    }
+  ],
+  "recommended_test_command": "./tests/cata_test \"[camp][locker]\""
+}
