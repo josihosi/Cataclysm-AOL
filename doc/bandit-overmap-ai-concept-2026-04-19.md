@@ -562,6 +562,8 @@ Current v1 simplification:
 - zombies matter here as threat and target-coherence pressure
 - we do **not** need explicit bandit-versus-zombie tactical simulation yet
 - if a group decides the opportunity is worth the risk, assume it can sneak or thread through well enough to make the attempt
+- related world-rule lean: existing zombie hordes should plausibly be attracted by visible light more than by smoke
+- smoke should stay primarily a bandit visibility / activity cue, not a generic horde attractor
 
 That means cities may support a risky opportunistic pass.
 They should **not** become infinite farming zones.

@@ -62,6 +62,10 @@ Meaning:
 
 This is the cleanest existing precedent for future bandit investigation/pursuit or sound-driven interest logic.
 
+Useful related side rule:
+- if existing zombie horde attraction later expands beyond sound, **visible light** is the more grounded attractor candidate
+- **smoke** should stay primarily a visibility / activity signal, not a generic horde lure
+
 ---
 
 ### 2. Weather already exposes the right visibility knobs
