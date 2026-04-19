@@ -4753,6 +4753,21 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
         CHECK_FALSE( parsed->has_request_id );
     }
 
+    SECTION( "status queries accept organic board phrasing" ) {
+        for( const std::string_view utterance : {
+                 std::string_view( "what needs making" ),
+                 std::string_view( "what needs doing" ),
+                 std::string_view( "got any craft work" ),
+                 std::string_view( "show me what needs doing" ) } ) {
+            const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
+                parse_heard_camp_status_query( utterance );
+            CAPTURE( utterance );
+            REQUIRE( parsed.has_value() );
+            CHECK( parsed->all_requests );
+            CHECK_FALSE( parsed->has_request_id );
+        }
+    }
+
     SECTION( "status queries tolerate polite prompt lead-ins" ) {
         const std::optional<basecamp_ai::parsed_camp_request_reference> parsed =
             parse_heard_camp_status_query( "can you please show me the board" );
@@ -5064,8 +5079,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
           "crafting request (#9)");
   }
 
-  SECTION("spoken status bark keeps the request id trailing instead of leading "
-          "with it") {
+  SECTION("spoken status bark keeps ordinary speech free of request ids") {
     const camp_llm_request request{.request_id = 7,
                                    .requested_item_query = "bandages",
                                    .requested_count = 5,
@@ -5073,7 +5087,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
                                    .approval_state = "waiting_player"};
 
     CHECK(camp_request_spoken_status_bark(request) ==
-          "5 × bandages (#7) is pinned, waiting on your go-ahead.");
+          "5 × bandages is pinned, waiting on your go-ahead.");
   }
 
   SECTION(
@@ -5088,7 +5102,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
             "Camp storage could not supply the needed ingredients or tools."}};
 
     CHECK(camp_request_spoken_status_bark(request) ==
-          "5 × bandages (matched sterile bandage) (#7) is blocked — Camp "
+          "5 × bandages (matched sterile bandage) is blocked — Camp "
           "storage could not supply the needed ingredients or tools.");
   }
 
@@ -5362,7 +5376,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     CHECK( structured_reply.find( "next=job=1" ) == std::string::npos );
 
     Messages::clear_messages();
-    REQUIRE(camp->handle_heard_camp_request(listener, "show me the board"));
+    REQUIRE(camp->handle_heard_camp_request(listener, "what needs making"));
     messages = Messages::recent_messages(0);
     REQUIRE_FALSE(messages.empty());
     const std::string spoken_reply = messages.back().second;
@@ -5462,6 +5476,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     CHECK( followup_reply.find( "details=show_job=1" ) == std::string::npos );
     CHECK( followup_reply.find( "next=job=1" ) == std::string::npos );
     CHECK( followup_reply.find( "status=blocked" ) == std::string::npos );
+    CHECK( followup_reply.find( "(#1)" ) == std::string::npos );
     CHECK( followup_reply.find( "Got it." ) == std::string::npos );
 
     Messages::clear_messages();

@@ -1642,7 +1642,7 @@ static std::string camp_request_subject( const camp_llm_request &request )
 
 static std::string camp_request_bark_subject( const camp_llm_request &request )
 {
-    return basecamp_ai::camp_request_subject_for_display( request, false, true );
+    return basecamp_ai::camp_request_subject_for_display( request );
 }
 
 static std::string camp_request_summary_subject( const camp_llm_request &request )
@@ -2690,7 +2690,7 @@ std::string camp_request_spoken_status_bark( const camp_llm_request &request )
     const bool include_matched_recipe = request.status == "blocked" &&
                                         !request.chosen_recipe_name.empty() &&
                                         request.chosen_recipe_name != request.requested_item_query;
-    const std::string subject = camp_request_subject_for_display( request, include_matched_recipe, true );
+    const std::string subject = camp_request_subject_for_display( request, include_matched_recipe );
 
     if( request.status == "blocked" ) {
         if( !request.blockers.empty() ) {
@@ -3109,12 +3109,16 @@ std::optional<parsed_camp_request_reference> parse_heard_camp_status_query( std:
              std::string_view( "what is on the request board" ),
              std::string_view( "show the board" ),
              std::string_view( "show me the board" ),
+             std::string_view( "show me what needs doing" ),
              std::string_view( "check the board" ),
              std::string_view( "read the board" ),
              std::string_view( "board status" ),
              std::string_view( "camp board status" ),
              std::string_view( "any work orders" ),
              std::string_view( "any requests" ),
+             std::string_view( "got any craft work" ),
+             std::string_view( "what needs making" ),
+             std::string_view( "what needs doing" ),
              std::string_view( "what requests do we have" ),
              std::string_view( "do we have any work orders" ) } ) {
         if( text == exact ) {
