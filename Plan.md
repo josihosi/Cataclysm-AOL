@@ -297,7 +297,7 @@ Josef wants the larger bandit / overmap-threat idea developed as a parked concep
 Do not quietly treat partial bandit notes as an active lane or as already-greenlit implementation.
 
 Current parked-chain anchor:
-- the broad concept vessel lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
+- the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
 
 Current parked sub-items:
 - deterministic bounty/threat scoring guidance v1 at `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`
@@ -323,7 +323,8 @@ The intended parked-chain order for now is:
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
 6. only then decide whether the whole bandit concept is ready to be promoted into greenlit backlog
 
-After item 5, the next planning step should be to rewrite the broad concept vessel into a cleaner synthesis paper before any greenlight discussion.
+The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
+If the packet is revisited later, the next planning discussion should be about whether the packet is coherent enough for future greenlight consideration, not about spawning more disconnected feeder docs by default.
 
 ---
 

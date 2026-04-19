@@ -275,7 +275,7 @@ Success state:
 - [ ] The whole bandit concept packet becomes coherent enough that it can be reconsidered for promotion from parked concept chain into greenlit backlog without hidden open seams.
 
 Notes:
-- Broad concept vessel: `doc/bandit-overmap-ai-concept-2026-04-19.md`.
+- Broad synthesis paper / anchor doc: `doc/bandit-overmap-ai-concept-2026-04-19.md`.
 - Current scoring sub-item: `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`.
 - Current heatmap sub-item: `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`.
 - Current handoff sub-item: `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`.
