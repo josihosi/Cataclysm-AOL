@@ -347,11 +347,13 @@ Useful v1 fields include:
 - threat contribution
 - monster-pressure contribution
 - target-coherence subtraction
-- decay rate
+- soft decay rate
 - last refresh turn
+- last visibility confirmation turn
 
 Typed marks are for things a camp would plausibly remember.
-They should be approximate, decaying, refreshable, and mergeable.
+They should be approximate, selectively decaying, refreshable, and mergeable.
+Confirmed threat should mostly freeze until later observation rewrites it.
 
 ### Heatmaps
 Heatmaps are not notes.
@@ -412,22 +414,24 @@ A good synthesis rule is:
 
 That avoids writing immortal notes for every tiny blip.
 
-## Decay and refresh
-Nothing should stay fresh forever.
+## Decay, refresh, and threat freeze
+Not everything should stay equally fresh forever.
 
 At short cadence passes:
 - transient signal strength weakens
-- confidence on stale marks drops
+- confidence on stale soft marks drops
 - heat spikes smooth down if not reinforced
 - empty investigations can add recently-checked / false-lead dampening
+- confirmed threat should not passively melt just because time passed
 
 At daily cleanup:
-- weak stale marks get deleted or collapsed
-- lingering regional pressure fades
+- weak stale soft marks get deleted or collapsed
+- lingering bounty/transient regional pressure fades
 - strong unresolved pressure can remain as lower-confidence background memory
 - harvested areas can keep reduced structural bounty until new mobile activity or new signals justify renewed interest
+- serious threat/loss reads should remain sticky unless later observation honestly downgrades them
 
-Repeat signals, scout passes, and mission results can refresh marks.
+Repeat signals, scout passes, mission results, and team visibility passes can refresh or rewrite marks.
 But camps should not be allowed to become pseudo-psychic by counting their own routine recon traffic as fresh bounty.
 This keeps camps intelligent without making them psychic.
 
@@ -661,7 +665,7 @@ It keeps the world feeling alive without demanding global constant thought.
 
 The strategic tick should broadly do this:
 1. apply ledger drift
-2. decay and refresh marks/heatmaps
+2. refresh marks/heatmaps, selectively decay soft pressure, and freeze confirmed threat until updated
 3. generate candidate jobs from current valid marks/regions
 4. compute bounty and threat
 5. compute final job desirability
@@ -672,7 +676,7 @@ The mark writer should broadly do this:
 1. ingest queued relevant events
 2. update heat pressure
 3. create or refresh marks if thresholds are crossed
-4. decay transient pressure by cadence tier
+4. decay transient pressure by cadence tier, but only revise threat downward when observation actually rechecks it
 5. expose resulting state to the scoring layer
 
 All of this should be inspectable and debug-printable later.

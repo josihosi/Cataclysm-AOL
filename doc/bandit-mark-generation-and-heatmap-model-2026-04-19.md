@@ -34,7 +34,7 @@ This doc defines that missing writer-side logic.
 This guidance currently covers:
 - overmap-only mark generation
 - broad threat and bounty heatmaps
-- mark refresh and decay
+- mark refresh, selective decay, and threat freezing
 - additive and subtractive threat contributions from players, monsters, and remembered events
 - the cadence family for mark and heatmap upkeep
 - the distinction between typed marks and broad heat pressure
@@ -257,11 +257,13 @@ Threat should rise from:
 - uncertainty
 - long distance from camp support
 
-Threat should fall when:
-- a region stays quiet
-- scouts downgrade danger
-- confidence improves after success
-- uncertainty resolves downward
+Threat should **not** passively melt just because time passed and nobody looked.
+Confirmed threat should mostly freeze until later observation updates it.
+
+Threat should fall mainly when:
+- scouts or travelling groups get visibility-confirmed evidence that danger is lower
+- a close revisit or successful passage downgrades the area honestly
+- uncertainty resolves downward through real observation rather than idle forgetting
 
 ### Bounty heatmap update
 Bounty should rise from:
@@ -338,34 +340,42 @@ Merged marks should generally:
 
 ---
 
-## Decay model
+## Decay and freeze model
 
-Nothing should stay fresh forever.
+Not everything should behave the same way over time.
+Transient signal and bounty can fade.
+Confirmed threat should mostly freeze until updated.
 
-### Short cadence decay
+### Short cadence update
 At the 20-minute and 2-hour passes:
 - reduce transient signal strength
-- weaken confidence on unrefreshed marks
-- smooth heat spikes downward if not reinforced
+- weaken confidence on unrefreshed soft marks
+- smooth unconfirmed heat spikes downward if not reinforced
 - do **not** cheaply remote-rewrite a strong recent threat/loss mark into safety just because time passed
 
-### Daily decay
+### Daily cleanup
 At daily cleanup:
-- remove weak stale marks
-- reduce broad heatmap residues
-- convert strong unresolved pressure into lower-confidence background memory
+- remove weak stale soft marks
+- reduce broad bounty residues and transient attention clutter
+- convert unresolved but unconfirmed pressure into lower-confidence background memory when appropriate
 - keep serious threat/loss memory sticky unless later close-range experience genuinely downgrades it
+
+### Visibility-confirmed threat updates
+Threat should be updated by what bandit groups actually see inside their practical visibility bubble, not by passive forgetting.
+If a team gets line-of-travel or close-range confirmation that tiles/areas are safer or still dangerous, that observation should rewrite the local threat state.
+If nobody looked, the scary read should mostly stay frozen.
 
 ### Proximity-gated reevaluation
 If a group leaves an area because it read as too dangerous, that area should remain marked as scary.
 Meaningful reevaluation should usually require:
 - a close revisit
 - a successful later passage
+- a scout/team visibility pass that actually sees the area
 - or some other attractive nearby mark that pulls the group back into local contact
 
 That keeps cities and other failed-risk zones from being remotely recalculated into safe jackpot territory every few ticks.
 
-This keeps the system from turning into immortal clutter.
+This keeps the system from turning into immortal clutter without turning it into amnesia either.
 
 ---
 
@@ -376,9 +386,10 @@ For each relevant cadence pass:
 1. ingest any immediate new events already queued for overmap processing
 2. update local heatmap cells/regions from those events
 3. create or refresh typed marks if thresholds are met
-4. decay transient mark/heat strength based on age and cadence tier
-5. collapse or delete stale weak marks
-6. expose the resulting marks/heat values to the bounty/threat scoring layer
+4. decay transient signal/bounty pressure based on age and cadence tier
+5. preserve or revise threat state based on actual visibility-confirmed observation, not passive time alone
+6. collapse or delete stale weak soft marks
+7. expose the resulting marks/heat values to the bounty/threat scoring layer
 
 This whole sequence should be deterministic from stored state.
 
@@ -392,8 +403,9 @@ Suggested helper shape:
 - `emit_mark_signal( source_event )`
 - `apply_mark_to_heatmaps( mark )`
 - `refresh_or_create_mark( event_or_signal )`
-- `decay_mark( mark, cadence_tier )`
-- `decay_heatmaps( camp_or_region, cadence_tier )`
+- `decay_soft_mark( mark, cadence_tier )`
+- `update_heatmaps_from_visibility_confirmation( camp_or_region, scout_or_group )`
+- `decay_bounty_and_transient_pressure( camp_or_region, cadence_tier )`
 - `collapse_heat_to_mark_if_needed( region )`
 
 Avoid one giant opaque updater.

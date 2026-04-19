@@ -108,8 +108,9 @@ Suggested v1 fields per mark:
 - `confidence`
 - `bounty_base`
 - `threat_base`
-- `decay_rate`
+- `soft_decay_rate`
 - `last_refresh_turn`
+- `last_visibility_confirmation_turn`
 
 ### Example mark types
 - `smoke_seen`
@@ -125,10 +126,14 @@ Suggested v1 fields per mark:
 
 Marks should be:
 - approximate
-- decaying
+- selectively decaying, not uniformly melting
 - refreshable
 - mergeable when nearby and same-kind
 - usable even when partly stale
+
+Important rule:
+- soft bounty/attention components may fade
+- confirmed threat should mostly stay frozen until real observation updates it
 
 ---
 
@@ -329,9 +334,9 @@ Good v1 read:
 
 ---
 
-## Mark decay and refresh
+## Mark refresh and selective decay
 
-Marks should get weaker over time.
+Marks should not all get weaker the same way over time.
 
 ### Daily drift idea
 Once per day, marks can:
@@ -340,14 +345,19 @@ Once per day, marks can:
 - gain uncertainty if not refreshed
 - be deleted if they fall below a minimum threshold
 
-### Refresh rule
-A mark can be refreshed by:
+But:
+- confirmed threat should not passively decay away just because nobody looked
+- threat should be downgraded mainly by scout/team visibility or another close outcome that actually rechecks the area
+
+### Refresh / rewrite rule
+A mark can be refreshed or updated by:
 - a repeat signal
 - a scout pass
 - a successful raid/toll/stalk observation
+- a team visibility pass that actually sees the region
 - a new related mark merging into it
 
-This keeps the bandit map lively without turning it into perfect memory.
+This keeps the bandit map lively without turning it into perfect memory or implausible amnesia.
 
 ---
 
