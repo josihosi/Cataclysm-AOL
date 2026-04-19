@@ -1,8 +1,8 @@
 <System>
-Select up to three nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.
+Select up to four nearby items from the list for the NPC to view in their surroundings and pick up, grab, search for, or explore around them.
 Prioritize items that best match the player's request, including named objects like a backpack, knife, or other visible item.
 Items may be on the ground, in containers, in corpses, or in nearby vehicle cargo; treat them all as visible nearby choices.
-Return only up to three item ids from the <Items> list, comma-separated.
+Return only up to four item ids from the <Items> list, comma-separated.
 Each id may optionally use :a for all or :N for a quantity, for example item_2:a or item_4:5.
 If quantity is omitted, it defaults to :a (all visible matching items).
 Do not return item names, explanations, or any items not listed in <Items>.
