@@ -39,6 +39,7 @@ static const itype_id itype_9mm("9mm");
 static const itype_id itype_abaya("abaya");
 static const itype_id itype_armor_lc_plate("armor_lc_plate");
 static const itype_id itype_ballistic_vest_esapi("ballistic_vest_esapi");
+static const itype_id itype_esapi_plate("esapi_plate");
 static const itype_id itype_bandages("bandages");
 static const itype_id itype_backpack("backpack");
 static const itype_id itype_bholster("bholster");
@@ -1257,6 +1258,11 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     item great_helm(itype_helmet_plate);
     item army_helmet(itype_helmet_army);
 
+    REQUIRE(ballistic_vest.put_in(item(itype_esapi_plate), pocket_type::CONTAINER)
+                .success());
+    REQUIRE(ballistic_vest.put_in(item(itype_esapi_plate), pocket_type::CONTAINER)
+                .success());
+
     camp_locker_policy bulletproof_policy = test_camp.get_locker_policy();
     bulletproof_policy.set_prefers_bulletproof( true );
 
@@ -1283,6 +1289,70 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
         score_camp_locker_item(camp_locker_slot::helmet, great_helm,
                                bulletproof_policy);
     CHECK(bulletproof_helmet_gap > default_helmet_gap);
+  }
+
+  SECTION("ballistic vest scoring notices loaded plates and damaged inserts") {
+    item empty_vest(itype_ballistic_vest_esapi);
+    item loaded_vest(itype_ballistic_vest_esapi);
+    item damaged_vest(itype_ballistic_vest_esapi);
+
+    REQUIRE(loaded_vest.put_in(item(itype_esapi_plate), pocket_type::CONTAINER)
+                .success());
+    REQUIRE(loaded_vest.put_in(item(itype_esapi_plate), pocket_type::CONTAINER)
+                .success());
+
+    item damaged_front_plate(itype_esapi_plate);
+    damaged_front_plate.set_damage(damaged_front_plate.max_damage() / 2);
+    item damaged_back_plate(itype_esapi_plate);
+    damaged_back_plate.set_damage(damaged_back_plate.max_damage() / 2);
+    REQUIRE(damaged_vest.put_in(damaged_front_plate, pocket_type::CONTAINER)
+                .success());
+    REQUIRE(damaged_vest.put_in(damaged_back_plate, pocket_type::CONTAINER)
+                .success());
+
+    CHECK(score_camp_locker_item(camp_locker_slot::body_armor, loaded_vest,
+                                 test_camp.get_locker_policy()) >
+          score_camp_locker_item(camp_locker_slot::body_armor, empty_vest,
+                                 test_camp.get_locker_policy()));
+    CHECK(score_camp_locker_item(camp_locker_slot::body_armor, loaded_vest,
+                                 test_camp.get_locker_policy()) >
+          score_camp_locker_item(camp_locker_slot::body_armor, damaged_vest,
+                                 test_camp.get_locker_policy()));
+  }
+
+  SECTION("same ballistic vest type upgrades when locker plates are healthier") {
+    item current_vest(itype_ballistic_vest_esapi);
+    item locker_vest(itype_ballistic_vest_esapi);
+
+    item damaged_front_plate(itype_esapi_plate);
+    damaged_front_plate.set_damage(damaged_front_plate.max_damage() / 2);
+    item damaged_back_plate(itype_esapi_plate);
+    damaged_back_plate.set_damage(damaged_back_plate.max_damage() / 2);
+    REQUIRE(current_vest.put_in(damaged_front_plate, pocket_type::CONTAINER)
+                .success());
+    REQUIRE(current_vest.put_in(damaged_back_plate, pocket_type::CONTAINER)
+                .success());
+
+    REQUIRE(locker_vest.put_in(item(itype_esapi_plate), pocket_type::CONTAINER)
+                .success());
+    REQUIRE(locker_vest.put_in(item(itype_esapi_plate), pocket_type::CONTAINER)
+                .success());
+
+    const std::vector<const item *> current_items = {&current_vest};
+    const std::vector<const item *> locker_items = {&locker_vest};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy());
+
+    REQUIRE(plan.count(camp_locker_slot::body_armor) == 1);
+    const camp_locker_slot_plan &armor_plan =
+        plan.at(camp_locker_slot::body_armor);
+    CHECK(armor_plan.kept_current == &current_vest);
+    CHECK(armor_plan.selected_candidate == &locker_vest);
+    CHECK(armor_plan.upgrade_selected);
+    CHECK(armor_plan.has_changes());
   }
 
   SECTION("full-body body armor does not invite filler pants underneath it") {

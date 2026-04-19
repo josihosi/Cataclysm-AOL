@@ -11,12 +11,13 @@ If the queue below stops matching `Plan.md`, fix this file.
 Active lane: **Combat-oriented locker policy**.
 
 Current target:
-1. build the third combat-policy slice on top of the new slot footing plus bulletproof control
+1. build the fourth combat-policy slice on top of the new ballistic-maintenance footing
    - explicit `gloves`, `mask`, `belt`, and `holster` locker slots are now real, with persistence/classification/candidate coverage in place
-   - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle, so the next smallest honest seam is explicit ballistic vest / plate handling, most likely around damaged (`XX`) components before any broader combat doctrine
+   - the locker policy surface has the persisted `Prefer bulletproof gear` toggle, and ballistic vest scoring/replacement now notices loaded vs damaged ablative plates
+   - the next smallest honest seam is clearly superior full-body battle/protective suit preference before any broader combat doctrine
 2. keep the slice suspicion-first and narrow
-   - preserve the already-earned weird-garment safety work, weather-sensitive locker footing, full-body suit protection, the holster/belt separation, and the new bulletproof preference control instead of bulldozing them
-   - treat explicit ballistic maintenance/replacement law as the real next blocker, not a license to freestyle a whole combat doctrine engine
+   - preserve the already-earned weird-garment safety work, weather-sensitive locker footing, full-body suit protection, the holster/belt separation, and the new explicit ballistic maintenance law instead of bulldozing them
+   - treat full-body combat-suit preference as the real next blocker, not a license to freestyle a whole combat doctrine engine
 3. keep this separate from the other lanes
    - do not reopen the closed board-speech cleanup without a fresh contradiction
    - do not drift back into Package 5 carried-item archaeology or forward into bandit/threat docs

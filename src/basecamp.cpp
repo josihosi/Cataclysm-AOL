@@ -341,10 +341,34 @@ int bag_score(const item &it) {
          average_armor_encumber(it) * 3;
 }
 
+int ablative_armor_score(const item &it) {
+  int score = 0;
+  for (const item *ablative : it.all_ablative_armor()) {
+    if (ablative == nullptr) {
+      continue;
+    }
+    score += average_armor_coverage(*ablative) * 2 +
+             protection_score(*ablative, 6, 8, 12) -
+             average_armor_encumber(*ablative) * 2;
+  }
+  return score;
+}
+
+int total_ballistic_resist_score(const item &it) {
+  int score = static_cast<int>(it.resist(damage_bullet));
+  for (const item *ablative : it.all_ablative_armor()) {
+    if (ablative == nullptr) {
+      continue;
+    }
+    score += static_cast<int>(ablative->resist(damage_bullet));
+  }
+  return score;
+}
+
 int body_armor_score(const item &it) {
   return average_armor_coverage(it) * 4 + protection_score(it, 10, 12, 16) +
-         it.get_env_resist() * 2 + it.get_warmth() -
-         average_armor_encumber(it) * 6;
+         ablative_armor_score(it) + it.get_env_resist() * 2 +
+         it.get_warmth() - average_armor_encumber(it) * 6;
 }
 
 int helmet_score(const item &it) {
@@ -1263,8 +1287,7 @@ int score_camp_locker_item(
   case camp_locker_slot::body_armor:
     score = body_armor_score(it) +
             ( policy.prefers_bulletproof() ?
-                  static_cast<int>( it.resist( damage_bullet ) ) * 12 :
-                  0 );
+                  total_ballistic_resist_score(it) * 12 : 0 );
     break;
   case camp_locker_slot::helmet:
     score = helmet_score(it) +
@@ -1307,6 +1330,14 @@ bool is_camp_locker_candidate_meaningfully_better(
     }
     if (candidate.damage() != current.damage()) {
       return candidate.damage() < current.damage();
+    }
+
+    const int candidate_score =
+        score_camp_locker_item(slot, candidate, policy, local_temperature);
+    const int current_score =
+        score_camp_locker_item(slot, current, policy, local_temperature);
+    if (candidate_score != current_score) {
+      return candidate_score > current_score;
     }
   }
   return score_camp_locker_item(slot, candidate, policy,

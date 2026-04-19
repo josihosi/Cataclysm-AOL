@@ -251,15 +251,16 @@ Status: ACTIVE / IN PROGRESS
 Success state:
 - [x] Future locker behavior strongly supports sensible common guard/combat gear: gloves, belts, masks, holsters, and the usual practical clothing/loadout pieces.
 - [x] A bulletin-board / locker-surface bulletproof toggle exists and meaningfully shifts outfit preference toward ballistic gear.
-- [ ] Ballistic vest and plate handling becomes explicit enough to replace damaged (`XX`) ballistic components sensibly.
+- [x] Ballistic vest and plate handling becomes explicit enough to replace damaged (`XX`) ballistic components sensibly.
 - [ ] Clearly superior full-body battle/protective suits are preferred when appropriate instead of being split into worse piecemeal junk.
 - [ ] Future deterministic tests lean more toward combat/guard outfit behavior and less toward endlessly widening exotic garment edge-case law.
 
 Notes:
 - Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 - This is now the current active lane.
-- The opening 2026-04-19 audit found the first honest combat-policy seam, and the current tree now has both landed narrow slices from that audit: explicit `gloves` / `mask` / `belt` / `holster` locker footing plus a persisted `Prefer bulletproof gear` locker-policy toggle that shifts body-armor and helmet scoring toward stronger ballistic protection.
-- The next active seam is explicit damaged ballistic vest / plate handling built on top of that control surface, not another round of rediscovering whether the policy menu exists.
+- The opening 2026-04-19 audit found the first honest combat-policy seam, and the current tree now has three landed narrow slices from that audit: explicit `gloves` / `mask` / `belt` / `holster` locker footing, a persisted `Prefer bulletproof gear` locker-policy toggle that shifts body-armor and helmet scoring toward stronger ballistic protection, and explicit ablative-plate-aware ballistic vest scoring/replacement behavior.
+- The ballistic-maintenance slice is now covered by focused deterministic checks for loaded vs empty vest scoring, damaged insert scoring, and same-type healthy-plate upgrades.
+- The next active seam is clearly superior full-body battle/protective suit preference built on top of that ballistic footing, not another round of rediscovering whether the policy menu exists.
 - This future direction preserves the current weird-garment safety work instead of replacing it.
 
 ---
