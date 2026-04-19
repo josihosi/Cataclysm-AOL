@@ -296,6 +296,10 @@ Examples:
 - repeated gunfire heard here
 - reliable ambush road here
 
+Typed marks should stay more conservative than broad heatmaps.
+Heat can blur neighboring pressure.
+Typed marks should preserve distinct practical stories when the signals may belong to different roads, camps, city edges, or actors.
+
 ### Conversion rule
 A useful principle:
 - immediate events update local heatmaps first
@@ -323,6 +327,9 @@ Nearby marks of the same type may merge when:
 - their locations are close enough
 - their ages are compatible
 - they reflect the same practical point of interest
+
+Do **not** merge just because two hot things are nearby on the overmap.
+If the signals could plausibly represent different actors, different approach corridors, different camp footprints, or different city-edge trouble, they should remain separate typed marks even if the surrounding heatmaps blur together.
 
 Merged marks should generally:
 - increase strength
