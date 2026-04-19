@@ -443,7 +443,7 @@ At daily cleanup:
 - weak stale soft marks get deleted or collapsed
 - lingering bounty/transient regional pressure fades
 - strong unresolved pressure can remain as lower-confidence background memory
-- harvested areas can keep reduced structural bounty until new mobile activity or new signals justify renewed interest
+- harvested areas can keep reduced structural bounty until the site is materially resupplied, rebuilt, or reoccupied with new site-bound value; new mobile activity or new signals may justify renewed interest without restoring the structural bucket
 - serious threat/loss reads should remain sticky unless later observation honestly downgrades them
 
 Repeat signals, scout passes, mission results, and team visibility passes can refresh or rewrite marks.

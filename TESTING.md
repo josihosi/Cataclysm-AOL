@@ -45,8 +45,10 @@ Current honest state:
 - the active lane is still doc/spec only, not code, and its canonical work packet lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`
 - that packet still carries the 3-package / 31-micro-item structure, but Package 1, micro-item 1 is now answered with a 0-5 starter structural-bounty table for open street, field, forest, cabin, house, farm, city structure, and camp footprint
 - the table freezes the intended site-class ordering explicitly: `open street/field < forest < cabin < house < farm/city structure < camp footprint`
-- the next honest active slice is Package 1, micro-item 2, `Structural bounty harvest trigger rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should answer exactly what counts as structural-bounty harvesting without smuggling in reappearance, moving-bounty, or stockpile-law decisions
+- Package 1, micro-item 2 is now answered too: structural bounty only depletes after a site-contacting exploitation pass that actually extracts, strips, or meaningfully denies site-bound value; scouting, visitation, and failed approach do not count
+- Package 1, micro-item 3 is now answered too: depleted structural bounty stays down until the site itself gains new site-bound value again through real resupply, rebuilding, or reoccupation; fresh traffic/signals may justify renewed interest, but only as moving bounty
+- the next honest active slice is Package 1, micro-item 4, `Moving bounty source table`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should name the live moving-bounty source categories without smuggling in attachment, clear/rewrite, threat-law, or stockpile-law decisions
 
 ### Recently closed, do not casually reopen
 
@@ -70,15 +72,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the terrain table is no longer the open question; the next honest move is one bounded harvest-trigger rule note
+- the terrain table, harvest trigger, and reappearance rule are no longer the open questions; the next honest move is one bounded moving-bounty source table
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 1, micro-item 2, `Structural bounty harvest trigger rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that harvest rule consistent and free of passive-decay slop
+- land Package 1, micro-item 4, `Moving bounty source table`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that source table consistent and free of moving-vs-structural blur
 
 ---
 

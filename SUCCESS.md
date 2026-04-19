@@ -280,7 +280,7 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 - This is now the active doc/spec lane.
-- The first landed micro-item is Package 1, micro-item 1 (`Terrain bounty bucket table`); keep the next pass on Package 1, micro-item 2 (`Structural bounty harvest trigger rule`) so one law is frozen at a time.
+- The first landed micro-items are Package 1, micro-item 1 (`Terrain bounty bucket table`), micro-item 2 (`Structural bounty harvest trigger rule`), and micro-item 3 (`Structural bounty reappearance rule`); keep the next pass on Package 1, micro-item 4 (`Moving bounty source table`) so one law is frozen at a time.
 - No bandit implementation is greenlit here; keep this as conceptualization/packaging work only.
 
 ---

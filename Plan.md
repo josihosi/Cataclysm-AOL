@@ -63,9 +63,11 @@ Fresh checkpoints just closed:
 Current target:
 - continue the active bandit formalization follow-through as doc/spec work only
 - Package 1, micro-item 1, `Terrain bounty bucket table`, is now landed in the follow-through packet with explicit 0-5 starter buckets for open street, field, forest, cabin, house, farm, city structure, and camp footprint
-- keep the next pass narrow: Package 1, micro-item 2, `Structural bounty harvest trigger rule`
-- answer only what exact bandit action counts as harvesting/exploiting structural bounty, and only touch adjacent stale wording when that rule directly forces the correction
-- do not drift into moving bounty, reappearance, stockpile math, code, or reopened locker/basecamp slices while doing this
+- Package 1, micro-item 2, `Structural bounty harvest trigger rule`, is now landed too: mere visitation/scouting does not deplete structural bounty; only actual extraction, stripping, or meaningful denial of site-bound value does
+- Package 1, micro-item 3, `Structural bounty reappearance rule`, is now landed too: structural bounty does not passively grow back and only returns when the site itself gains new site-bound value through real resupply, rebuilding, or reoccupation
+- keep the next pass narrow: Package 1, micro-item 4, `Moving bounty source table`
+- answer only which live signals create moving bounty in the first place, and only touch adjacent stale wording when that source list directly forces the correction
+- do not drift into moving-bounty attachment/clear rules, stockpile math, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
 - **Plan status summary command**
@@ -295,8 +297,10 @@ The auxiliary contract intentionally decomposes those three packages into **31 n
 
 Current bounded slice:
 - landed: Package 1, micro-item 1, `Terrain bounty bucket table`, now freezes a 0-5 starter site-class prior with the intended ordering `open street/field < forest < cabin < house < farm/city structure < camp footprint`
-- next: Package 1, micro-item 2, `Structural bounty harvest trigger rule`
-- keep the pass to one rule note before touching reappearance, moving-bounty, or threat-law questions
+- landed: Package 1, micro-item 2, `Structural bounty harvest trigger rule`, now freezes that structural bounty only depletes once bandits actually extract, strip, or meaningfully deny site-bound value; scouting, visitation, and failed approaches do not count
+- landed: Package 1, micro-item 3, `Structural bounty reappearance rule`, now freezes that depleted structural bounty stays down until the world adds new site-bound value back through real resupply, rebuilding, or reoccupation; fresh traffic or signals only restore moving interest
+- next: Package 1, micro-item 4, `Moving bounty source table`
+- keep the pass to one source table before touching moving-bounty attachment/clear or threat-law questions
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

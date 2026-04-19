@@ -76,10 +76,46 @@ Guardrails from this table:
 - **Expected output:** One rule note that says what must happen before a site loses some or all structural bounty.
 - **Done when:** Later implementation will not have to guess whether mere visitation, scouting, looting, raid completion, or occupation caused the depletion.
 
+Current answer:
+- Structural bounty is harvested only when a bandit outing completes a **site-contacting exploitation pass** that actually converts site-bound value into haul, usable supplies, salvage, denied occupancy, or meaningful site degradation.
+- The trigger is **conversion or denial of site value**, not mere awareness that the site exists.
+
+| Bandit action | Counts as structural-bounty harvest? | Why |
+| --- | --- | --- |
+| Distant sighting, route pass, or rumor confirmation | No | The group learned something, but did not touch the site's recoverable value. This can write or refresh bounty/threat marks, not deplete structural bounty. |
+| Quick scout or entry probe that leaves without taking, using, damaging, or occupying anything meaningful | No | Mere visitation is not harvest. Otherwise every cautious look would falsely empty the map. |
+| Successful snatch loot, salvage grab, forage pass, or other bounded extraction that removes real site-bound value | Yes, partial | The outing converted some of the site's structural value into haul. The later yield rule decides how much was converted, but the depletion trigger starts here. |
+| Sustained stripping, repeated haul runs, destructive raiding, or occupation that materially denies the site to others | Yes, heavy or full | The group did more than peek or skim. It left the site meaningfully poorer, emptier, or less usable, so structural bounty should drop hard or bottom out. |
+
+Guardrails from this rule:
+- **Scouting, proximity, and failed approach do not deplete structural bounty.** They mostly rewrite confidence, marks, and threat.
+- **Combat by itself does not count** unless it opens the way to actual extraction, stripping, or denial of site value.
+- **Occupation counts only when it meaningfully denies or consumes the site's value**, not when a group merely pauses there for a moment on the road.
+- **Raid completion is not the trigger phrase.** The real trigger is whether site-bound value was actually converted or denied.
+
 #### 3. Structural bounty reappearance rule
 - **Question:** Under what real-world changes, if any, can structural bounty become worth considering again?
 - **Expected output:** One explicit rule for whether structural bounty can return, and by what world change rather than by passive timer.
 - **Done when:** The packet no longer hand-waves about reset or drift.
+
+Current answer:
+- Structural bounty does **not** regenerate from idle time, stale-memory cleanup, rumor refresh, or nearby moving activity.
+- After depletion, structural bounty only comes back when the world materially puts **new site-bound value** at that location again.
+- If the new attraction is only people, lights, smoke, caravans, or route traffic, that is renewed **moving bounty**, not restored structural bounty.
+
+| World change after depletion | Structural bounty returns? | Why |
+| --- | --- | --- |
+| Time passes and nobody materially changes the site | No | No passive refill. Empty time does not restock a stripped house. |
+| Travelers, patrols, caravans, smoke, or lights pass nearby without leaving durable site-bound value behind | No, moving bounty only | The region may become interesting again, but that interest lives on actor/signal layers rather than the structural bucket. |
+| A group deliberately restocks, stashes, repairs, rebuilds, or newly occupies the site in a way that leaves reusable supplies, infrastructure, or camp footprint behind | Yes, partial to strong | The place itself became richer again, so structural bounty can be rewritten upward from the new site state. |
+| The site honestly changes class in the world, such as a house becoming a lived-in camp or a farm becoming an active defended holding | Yes, rewrite from the new class | This is not "regeneration" so much as a real world-state promotion into a richer structural-bounty tier. |
+| Natural regrowth or seasonal recovery that is not explicitly modeled as new harvestable site-bound value | No by default | Future renewable-resource rules must be written explicitly instead of smuggled in as generic reset magic. |
+
+Guardrails from this rule:
+- **Structural depletion persists until a real site-state change writes new structural value.**
+- **Renewed smoke, light, or traffic can justify a revisit without restoring structural bounty.** Those cues may lead bandits back in, but they belong on the moving-bounty layer unless the revisit discovers real new site-bound stores or infrastructure.
+- **Observed reoccupation/resupply can rewrite the structural bucket upward when it leaves durable location-bound value behind.**
+- **"Recent activity" is evidence, not the resource itself.** Do not auto-refill structural bounty just because something happened nearby.
 
 ### B. Moving bounty law
 
