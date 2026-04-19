@@ -303,25 +303,27 @@ Current parked sub-items:
 - deterministic bounty/threat scoring guidance v1 at `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`
 - overmap mark-generation and heatmap model v1 at `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`
 - bidirectional overmap-to-bubble handoff seam v1 at `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`
+- player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
 
-Supporting recon note for the next parked visibility item:
+Supporting recon note for the visibility item:
 - physical-systems recon at `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`
 
 What the current parked sub-items should do:
 - scoring guidance: define deterministic camp-ledger and map-mark inputs for bandit decision-making, then score bounty/threat/job desirability from those inputs
 - mark/heatmap guidance: define how overmap-only marks get created, refreshed, decayed, and folded into broad threat/bounty heatmaps on the same cadence family
 - handoff guidance: define how abstract overmap groups enter local play and how cargo, wounds, panic, losses, and updated threat/bounty knowledge return back into overmap state
-- the next visibility/concealment slice should be recon-backed against existing sound, smoke, light, and weather systems rather than inventing parallel physics
+- visibility/concealment guidance: define signal sources, environmental filters, bounty/threat interpretation outputs, and player/basecamp exposure-reduction levers on recon-backed footing
 - current acceptable footing: fog/mist can suppress sight/light legibility without forcing new fog-based sound dampening rules
-- keep these explicitly separate from player/basecamp visibility until that next slice is packaged
 
 The intended parked-chain order for now is:
 1. broad concept vessel
 2. deterministic bounty/threat scoring
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
-5. later parked concept slice for player/basecamp visibility and concealment, informed by the physical-systems recon note
+5. player/basecamp visibility and concealment, informed by the physical-systems recon note
 6. only then decide whether the whole bandit concept is ready to be promoted into greenlit backlog
+
+After item 5, the next planning step should be to rewrite the broad concept vessel into a cleaner synthesis paper before any greenlight discussion.
 
 ---
 

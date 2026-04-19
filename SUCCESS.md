@@ -269,8 +269,9 @@ Success state:
 - [ ] Deterministic bounty/threat scoring guidance exists with explicit camp-ledger inputs, map-mark fields, decay/drift rules, and job-scoring logic.
 - [ ] Overmap mark-generation and heatmap guidance exists with explicit overmap-only mark creation, refresh/decay, and threat/bounty field update logic on the shared cadence family.
 - [ ] Bidirectional overmap-to-bubble handoff guidance exists with explicit entry modes, return-path state, collapse-back rules, and reuse of existing pursuit/noise-routing footing where possible.
-- [ ] Supporting physical-systems recon exists so the future visibility/concealment slice is grounded in existing smoke, light, sound, and weather hooks instead of made-up parallel physics.
-- [ ] The future player/basecamp visibility item can define signal sources, environmental filters, and bounty/threat interpretation without requiring new fog-based sound dampening rules unless later evidence says otherwise.
+- [ ] Supporting physical-systems recon exists so the visibility/concealment slice is grounded in existing smoke, light, sound, and weather hooks instead of made-up parallel physics.
+- [ ] Player/basecamp visibility and concealment guidance exists with explicit signal sources, environmental filters, bounty/threat interpretation outputs, repetition/reinforcement rules, and player/basecamp exposure-reduction levers.
+- [ ] The visibility item explicitly allows fog/mist to suppress sight/light legibility without requiring new fog-based sound dampening rules unless later evidence says otherwise.
 - [ ] The whole bandit concept packet becomes coherent enough that it can be reconsidered for promotion from parked concept chain into greenlit backlog without hidden open seams.
 
 Notes:
@@ -278,7 +279,8 @@ Notes:
 - Current scoring sub-item: `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`.
 - Current heatmap sub-item: `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`.
 - Current handoff sub-item: `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`.
-- Supporting recon note for the next visibility item: `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`.
+- Current visibility sub-item: `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`.
+- Supporting recon note for the visibility item: `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`.
 - This is parked concept work, not active queue work and not an implementation greenlight.
 
 ---

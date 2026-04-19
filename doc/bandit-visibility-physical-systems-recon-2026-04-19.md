@@ -3,7 +3,10 @@
 ## Status
 
 This is a **supporting recon note** for the parked bandit concept chain.
-It is not the player/basecamp visibility concept item itself, and it is not an implementation greenlight.
+It supports the paired visibility item at:
+- `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
+
+It is not itself an implementation greenlight.
 
 Its job is to answer a narrower question first:
 
