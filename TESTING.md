@@ -42,20 +42,21 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ### Combat-oriented locker policy
 
 Current honest state:
-- the first four combat-policy code slices are now landed narrowly on the current tree:
+- the first five combat-policy code slices are now landed narrowly on the current tree:
   - `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now expose explicit `gloves`, `mask`, `belt`, and `holster` slots
   - `classify_camp_locker_item()` now routes representative combat support gear into those slots instead of dropping hip holsters on the floor or letting waist gear disappear into generic clothing logic
   - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle, and body-armor / helmet scoring adds extra bullet-resistance weight when that control is enabled
   - body-armor scoring now also counts loaded ablative plates as real value, and same-type ballistic vests can replace damaged-insert variants when their actual armor state is better
   - protective full-body suits in the pants lane now suppress missing-current shirt filler when the suit itself is the better combat/protective packet, so survivor-style suits stop inviting junk T-shirts underneath them just because the shirt lane is empty
-  - deterministic coverage now checks bulletproof-toggle persistence, the scoring-gap shift toward more ballistic armor and helmets, loaded-vs-empty ballistic vest scoring, damaged insert scoring, same-type healthy-plate replacement behavior, and the new protective full-body suit shirt-filler guard
-- narrow deterministic validation passed on the current tree after the latest full-body-suit slice landed:
+  - that same protective-suit seam now also handles the first direct currently-worn comparison: when the suit wins the pants-lane upgrade honestly, a weaker current shirt can be demoted into duplicate cleanup instead of being layered underneath the new suit
+  - deterministic coverage now checks bulletproof-toggle persistence, the scoring-gap shift toward more ballistic armor and helmets, loaded-vs-empty ballistic vest scoring, damaged insert scoring, same-type healthy-plate replacement behavior, the missing-shirt filler guard, and the new current-shirt displacement rule
+- narrow deterministic validation passed on the current tree after the latest direct-current-shirt slice landed:
   - `make -j4 tests`
   - `./tests/cata_test "camp_locker_loadout_planning"`
   - `./tests/cata_test "camp_locker_service_keeps_armored_full-body_utility_suits_without_filling_missing_shirts_from_junk"`
-  - `./tests/cata_test "[camp][locker]"`
+  - `./tests/cata_test "camp_locker_service_uses_armored_full-body_utility_suits_over_weaker_current_shirts"`
 - the filtered locker suite still covers the previously suspicious safety seams these slices could have broken, including great-helm classification, holster-vs-pants cleanup behavior, weird-garment preservation, weather-sensitive outerwear/legwear handling, and full-body suit protection logic
-- the next missing evidence is no longer missing-shirt filler suppression; it is direct preference over currently worn piecemeal outfits when a clearly superior full-body battle/protective suit is available
+- the next missing evidence is no longer the first current-outfit comparison at all; it is the next direct upper-body tradeoff slice beyond weak shirts, most likely vest/body-armor comparisons when a clearly superior full-body battle/protective suit is available
 
 ### Recently closed, do not casually reopen
 
@@ -71,14 +72,14 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another live board or locker rerun
-- the next honest move is a narrow combat-policy implementation slice plus deterministic coverage for direct full-body-suit preference over inferior currently worn piecemeal outfits
+- the next honest move is a narrow combat-policy implementation slice plus deterministic coverage for the next current-upper-body tradeoff beyond weak shirts, not a generic rerun of the now-landed direct-comparison seam
 
 ---
 
 ## Pending probes
 
 - none yet for the next follow-up slice
-- if the next combat-policy step is direct comparison between current piecemeal outfits and a superior full-body battle/protective suit, start again with narrow deterministic locker tests before asking for any live locker-service proof
+- if the next combat-policy step expands direct current-outfit comparison into vest/body-armor tradeoffs, start again with narrow deterministic locker tests before asking for any live locker-service proof
 
 ---
 

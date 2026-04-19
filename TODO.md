@@ -11,11 +11,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 Active lane: **Combat-oriented locker policy**.
 
 Current target:
-1. build the next combat-policy slice on top of the new ballistic-maintenance footing
+1. build the next combat-policy slice on top of the explicit ballistic footing and the first direct current-shirt displacement slice
    - explicit `gloves`, `mask`, `belt`, and `holster` locker slots are now real, with persistence/classification/candidate coverage in place
    - the locker policy surface has the persisted `Prefer bulletproof gear` toggle, and ballistic vest scoring/replacement now notices loaded vs damaged ablative plates
-   - the first narrow full-body suit-preference slice is now real: survivor-style protective suits no longer invite missing-shirt junk filler just because the shirt lane is empty
-   - the next smallest honest seam is direct comparison against currently worn piecemeal outfits when a clearly superior full-body battle/protective suit is available, before any broader combat doctrine
+   - the first two narrow full-body suit-preference slices are now real: survivor-style protective suits no longer invite missing-shirt junk filler when chosen from the locker, and the same kind of suit can now also displace a weaker currently worn shirt when it wins the pants-lane upgrade honestly
+   - the next smallest honest seam is the remaining current-outfit comparison work, most likely vest/body-armor tradeoffs when a clearly superior full-body battle/protective suit is available, before any broader combat doctrine
 2. keep the slice suspicion-first and narrow
    - preserve the already-earned weird-garment safety work, weather-sensitive locker footing, full-body suit protection, the holster/belt separation, and the new explicit ballistic maintenance law instead of bulldozing them
    - treat full-body combat-suit preference as the real next blocker, not a license to freestyle a whole combat doctrine engine
