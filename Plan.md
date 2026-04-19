@@ -52,19 +52,19 @@ Fresh checkpoint just closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- move the now-active combat-oriented locker policy lane through its next honest narrow slice after the explicit ballistic-maintenance footing and first direct lighter-upper-body displacement slices landed
+- move the now-active combat-oriented locker policy lane through its next honest state after the explicit ballistic-maintenance footing and the direct full-body-suit displacement slices landed
 - the current tree now has explicit combat-policy footholds instead of vague roadmap prose:
   - `camp_locker_slot`, `all_camp_locker_slots()`, locker policy persistence, and `locker_policy_ui()` already expose explicit `gloves`, `mask`, `belt`, and `holster` controls
   - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle that raises body-armor and helmet bullet-resistance weighting instead of leaving ballistic preference as hidden scoring folklore
   - body-armor scoring now also treats loaded ablative plates as real ballistic value, and same-type ballistic vests can upgrade over damaged-plate variants instead of pretending equal item ids mean equal armor state
-  - protective full-body suits now cover the current lighter-upper-body seam: they suppress missing-current shirt filler when chosen from the locker, and they can also displace weaker currently worn shirts and vests when the suit itself is the meaningful pants-lane upgrade
-  - the current locker footing still keeps the useful safety scaffolding, like weird-garment preservation, weather sensitivity, and full-body suit protection, so the next slice should extend that spine instead of replacing it
+  - protective full-body suits now cover the direct current-outfit seam all the way through the weaker upper-body/body-armor layers: they suppress missing-current shirt filler when chosen from the locker, and they can now also displace weaker currently worn shirts, vests, and body armor when the suit itself is the meaningful pants-lane upgrade, while stronger current ballistic armor still stays put
+  - the current locker footing still keeps the useful safety scaffolding, like weird-garment preservation, weather sensitivity, and full-body suit protection, so the next state should audit whether any real combat-policy gap still remains instead of inventing doctrine creep
 - keep this separate from the already-closed board speech cleanup, deeper locker V3 doctrine soup, and bandit/threat design lanes
 
 Best concrete next states for this lane:
-1. extend the direct current-outfit seam beyond shirts and vests, most likely into body-armor tradeoffs only when the full-body suit is clearly superior overall
-2. keep that next code proof deterministic first, centered on explicit combat-suit-vs-current-body-armor tradeoff behavior, before demanding live locker service proof
-3. only broaden into wider doctrine/fashion nuance once the fuller combat-suit preference packet is real on the current tree
+1. treat the new body-armor displacement slice as landed and do one final suspicion-first audit for any remaining real combat-policy gap before claiming the lane is checkpointable
+2. if that audit finds a real remaining gap, keep the next proof deterministic first and centered on that specific combat/guard outfit behavior
+3. if no such gap survives the audit, checkpoint the combat-oriented locker policy lane honestly and move to the next greenlit target instead of widening fashion law for sport
 
 Explicit greenlit backlog behind the current slice:
 - **Plan/Aux pipeline helper**
@@ -267,12 +267,13 @@ The current narrow combat-policy slices are now landed on the current tree:
 - protective full-body suits in the pants lane now also suppress missing-current shirt filler when the suit itself is already the better combat/protective packet, so survivor-style suits stop inviting junk T-shirts underneath them just because the shirt lane is empty
 - that same protective-suit seam now also handles the current lighter-upper-body comparisons: when the suit wins the pants-lane upgrade honestly, weaker current shirts and vests can be demoted into duplicate cleanup instead of being layered under the new suit
 - the current locker safety spine stayed intact while doing that: weird-garment preservation, weather-sensitive outerwear/legwear handling, full-body suit protection, and the earlier great-helm / holster safety cases still survive the filtered locker suite
-- broader explicit full-body battle/protective suit preference is still missing, so the active seam is no longer the ballistic-maintenance rule itself but the remaining suit-vs-current-body-armor slice built on top of it
+- the broader explicit full-body battle/protective suit preference packet is now real on the current tree, including the remaining suit-vs-current-body-armor slice built on top of the ballistic footing
+- the active seam is now the closure audit: verify that this combat-oriented deterministic packet is honestly enough to checkpoint instead of assuming there must be another clever nuance hiding nearby
 
 What this active lane should do next:
-- prefer clearly superior full-body battle suits over the remaining inferior currently worn body-armor cases when appropriate instead of stopping at shirts and vests
-- keep extending deterministic combat/guard outfit proof before asking for live locker service proof
-- bias future deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
+- verify whether the now-landed full-body combat-suit preference packet is enough to checkpoint honestly, rather than assuming another doctrine slice must exist
+- if a real gap remains, keep extending deterministic combat/guard outfit proof before asking for live locker service proof
+- keep biasing deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
 
 Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 
