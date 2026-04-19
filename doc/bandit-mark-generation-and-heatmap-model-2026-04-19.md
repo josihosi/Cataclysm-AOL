@@ -113,10 +113,13 @@ Represents how attractive or profitable a region feels to bandits.
 Bounty can come from:
 - visible or inferred supplies
 - repeated route traffic
-- weak settlements
+- known camps or weakly defended human sites
 - smoke/light/noise implying human activity
 - known scavenging value
 - easy robbery opportunity
+
+Repeated signals do not need a separate settlement-signature layer to matter.
+If smoke, light, route traffic, and related cues keep stacking at one site, that can simply raise regional bounty/confidence until a camp's needs and cadence make an approach attractive.
 
 Useful v1 terrain split:
 - ordinary open streets, meadows, and fields should contribute little or no structural bounty by themselves

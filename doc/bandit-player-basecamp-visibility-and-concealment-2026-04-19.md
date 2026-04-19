@@ -96,15 +96,16 @@ If the player creates repeated visible activity, bandits should interpret it the
 The system should avoid magical player-targeting and stay activity-based.
 
 ### Basecamps / settlements
-A real camp or repeating settlement footprint can imply:
+A directly discovered camp or obviously durable occupied site can imply:
 - high bounty
 - high threat
 - stable repeated activity
 - meaningful route/return value
 
-These locations should feel more legible than one-off campfires because repetition matters.
-But ordinary survivor routine should **not** harden into a settlement signature too quickly.
-Durable settlement interpretation should usually require site-centered repetition across more than one cadence pass, or mixed corroborating signals, not one or two generic chores.
+These locations should feel more legible than one-off campfires because direct discovery and repetition matter.
+But ordinary survivor routine should **not** harden into a special settlement-signature class.
+Repeated site-centered smoke/light/traffic should usually just raise bounty and confidence on the map.
+Then, when bandit camp needs and cadence make the region worth approaching, groups investigate the accumulated read instead of relying on a separate magical "settlement signature" rule.
 
 ### Empty cities
 Cities can also read as both:
@@ -186,7 +187,7 @@ Important law:
 - the same camp's own routine recon or logistics traffic should not be allowed to harden into fresh hostile-contact truth by default
 - repeated route activity only deserves real reinforcement when the signal plausibly comes from somebody else, from a genuinely mixed/shared corridor, or from external corroboration
 
-### 4. Settlement activity
+### 4. Repeated site-centered activity
 Typical examples:
 - repeated smoke/light at the same region
 - traffic around one site
@@ -197,7 +198,11 @@ General meaning:
 
 Interpretation tendency:
 - strong reinforcement of mark confidence
-- high bounty and non-trivial threat by default
+- rising bounty and stronger revisit value
+- threat should rise mainly when other cues suggest defenders, patrols, searchlights, prior losses, or other hard danger
+
+Important law:
+- this should usually remain an aggregation of repeated ordinary signals, not a separate settlement-signal family
 
 ### 5. City activity
 Typical examples:
@@ -322,15 +327,16 @@ Good rule:
 - one-off signals create tentative marks
 - repeated signals refresh marks and raise confidence
 - repeated mixed signals at the same area can harden a weak suspicion into a meaningful target region
-- settlement-class interpretation should require stronger reinforcement than generic human-activity interpretation
+- repeated mixed signals do **not** need to become a separate settlement-signature class to matter
+- they can simply become a stronger bounty/confidence region that later gets approached when bandit needs and cadence make it worth the risk
 
 Examples:
 - one night light: likely current occupancy or current use, but not yet automatic settlement truth
 - one roadside light source: maybe a vehicle stop, police-style road event, or another dangerous temporary contact
 - smoke two days in a row: stronger suspicion of recurring human activity
 - smoke plus visible night light at one site: strong corroboration that something meaningful is active there now
-- a couple of ordinary scavenging passes: still human/route activity, not automatic settlement truth
-- recurring smoke + light + traffic pattern: stronger basecamp/settlement interpretation
+- a couple of ordinary scavenging passes: still human/route activity, not automatic special-site truth
+- recurring smoke + light + traffic pattern: stronger site-centered bounty region, more likely to attract a later approach when supplies or opportunity pressure push action
 
 This should integrate with the existing mark/heatmap doc instead of replacing it.
 
@@ -520,7 +526,7 @@ This keeps smoke strong as a strategic signal without tying the concept to a non
 
 These are real questions, but they do not block parking the concept.
 
-- whether settlement activity should be its own signal family or mainly an aggregation of smoke/light/human traces
+- how strongly repeated site-centered signals should amplify bounty/confidence before a camp starts taking real approach interest
 - how much terrain/shelter masking should be specified here versus left to later implementation detail
 - how explicit the default “cities imply both bounty and threat” language should be in later synthesis
 - how coarse route-discipline evidence should be before it starts creating meaningful repeated marks

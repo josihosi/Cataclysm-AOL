@@ -305,7 +305,7 @@ A good shape for that later item is:
   - smoke
   - light
   - human activity
-  - repeated settlement activity
+  - repeated site-centered mixed activity
 - environmental filters
   - fog/mist
   - rain/storms

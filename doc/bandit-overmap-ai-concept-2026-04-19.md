@@ -241,7 +241,7 @@ Not:
 The concept currently treats all of these as legitimate coarse signal sources:
 - player activity
 - NPC / human activity
-- basecamp or settlement activity
+- directly discovered camps or obviously occupied sites
 - repeated travel or route use
 - city-edge disturbance or urban salvage activity
 - smoke
@@ -387,7 +387,7 @@ Bounty can rise from:
 - known salvage/scavenge value
 - likely supplies
 - prior success
-- recurring settlement signatures
+- recurring site-centered mixed signals
 
 This split is useful because it lets bandits feel broad regional tension without requiring a million explicit remembered pins.
 
@@ -401,7 +401,7 @@ It reflects broadly recoverable value from the place itself, not exact tile loot
 Good broad examples:
 - low: woods, fields, sparse wilderness
 - medium: houses, farms, scattered buildings
-- high: dense city blocks, discovered camps, strong settlement footprints
+- high: dense city blocks, discovered camps, fortified or repeatedly confirmed occupied sites
 
 Bandit exploitation should reduce this ground bounty.
 It should not quietly grow back on its own.
@@ -743,8 +743,8 @@ The concept is much cleaner now, but some honest questions remain parked.
 ### 1. Visibility granularity
 How coarse should smoke/light/sound detection stay before it becomes too dumb or too expensive?
 
-### 2. Settlement-signature law
-Should settlement activity be its own signal family, or mainly an aggregation of smoke/light/human repetition over time?
+### 2. Site-interest threshold law
+How strongly should repeated site-centered smoke/light/human repetition amplify bounty/confidence before camps start making real approach decisions from it?
 
 ### 3. Terrain masking specificity
 How much terrain/shelter masking belongs in the concept versus later implementation details?
