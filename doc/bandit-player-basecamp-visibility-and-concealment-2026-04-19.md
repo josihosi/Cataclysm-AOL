@@ -258,6 +258,9 @@ Where relevant:
 Useful directional rule:
 - a lit site may be legible from one side and concealed from another
 - closed houses, curtained windows, walls, stoves or other contained indoor sources, and forest cover can reduce or block outward light leakage on some approaches while leaving other directions more exposed
+- trees/forest should likely block or suppress outward light strongly
+- buildings should also mask light, but probably in a different and tunable way rather than by pretending every wall behaves like a tree line
+- later implementation should expect some fitting-based balancing here instead of pretending the first constants will be holy scripture
 - repo recon now suggests this should lean on the existing local light model, which already has directional arcs and quadrant-aware apparent-light handling, then summarize that into a cheap overmap-facing exposure result
 - later implementation should therefore prefer a cheap directional exposure adapter, not expensive tile-perfect world-map ray theater
 
@@ -345,17 +348,20 @@ This should integrate with the existing mark/heatmap doc instead of replacing it
 ## Concealment levers
 
 The player and a basecamp should have understandable ways to reduce exposure.
+Much of this is already ordinary survivor logic, not a brand-new subsystem we need to invent from scratch.
 
 ### Fire discipline
 - fewer fires
 - shorter burns
 - more careful burn timing
 - avoiding obvious repeated plume behavior
+- avoiding smoky daytime burns when possible
 
 ### Light discipline
 - less open nighttime lighting
 - reducing exposed bright sources
 - not broadcasting occupancy for free
+- containing or masking night light instead of letting it spill outward
 
 ### Route discipline
 - avoiding overly repetitive movement patterns
@@ -365,6 +371,13 @@ The player and a basecamp should have understandable ways to reduce exposure.
 - using poor visibility conditions when movement or signaling should be harder to read
 - accepting that this cuts both ways and may also reduce your own legibility to allies
 - accepting that the same conditions may also create better approach or escape windows for hostile groups
+
+### Optional player-facing feedback
+If later implementation wants a small usability helper, a good candidate is:
+- let the player notice when their activity is creating a meaningful overmap-readable smoke signal
+- possibly show that as a coarse overmap-style smoke indication, perhaps one z-level above ground, rather than pretending the player should infer everything blindly
+
+This should be treated as player feedback / readability help, not as a requirement to invent a separate smoke law.
 
 These levers should feel like understandable player choices, not hidden punishment math.
 

@@ -297,6 +297,9 @@ The player and a basecamp should have understandable ways to reduce exposure:
 This is important because the design promise is not merely "bandits notice more things."
 It is "the player has survival choices that affect legibility."
 
+Also, much of this is already plain survival behavior the game teaches naturally.
+The concept does not need to invent an elaborate new counterplay minigame just to justify itself.
+
 ## Camp pressure and assault boundary
 If a camp becomes legible, bandits should not collapse into either extreme:
 - magical invisible camp wipes
@@ -747,7 +750,7 @@ How coarse should smoke/light/sound detection stay before it becomes too dumb or
 How strongly should repeated site-centered smoke/light/human repetition amplify bounty/confidence before camps start making real approach decisions from it?
 
 ### 3. Terrain masking specificity
-How much terrain/shelter masking belongs in the concept versus later implementation details?
+How much terrain/shelter masking belongs in the concept versus later implementation details, and which parts should simply be left to fitting-based tuning?
 
 ### 4. Persistence cost
 How much bandit memory and group state is affordable across save/load without becoming ugly or expensive?
@@ -758,6 +761,11 @@ How much ambient pressure readability is enough to feel fair without making stal
 ### 6. Camp-side responses
 How much basecamp-side agency belongs in any future v1 versus later layers?
 Patrols, escorts, scouts, decoys, and concealment behavior are all tempting, and all dangerous to bloat.
+
+Current lean:
+- keep this lower priority for the current packet
+- the repo already has meaningful related basecamp work such as patrol lines and locker-zone prep
+- future bandit pressure should build on that footing rather than reopening the whole camp-response project here
 
 These are not signs that the packet failed.
 They are the remaining honest seams.
