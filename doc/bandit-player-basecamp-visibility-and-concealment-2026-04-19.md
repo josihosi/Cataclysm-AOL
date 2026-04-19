@@ -548,7 +548,8 @@ But the point is to stop hand-waving and freeze something testable.
 - for coarse overmap reasoning, the clean round number is therefore a **3 overmap tile radius** around the player for **bubble-local / high-relevance** logic
 - but that local bubble-fed zone should **not** be mistaken for the whole abstract bandit overmap play-space
 - the **strategic bandit theater** needs to be much larger, or bandits collapse into a dumb tripwire near the player
-- current preferred starter lean: about **48 overmap tiles radius** for the main abstract theater, with roughly **60 OMT** as a plausible outer cap if testing says the wider region still feels good and affordable
+- current preferred starter lean: **about 60 overmap tiles radius** for the main abstract theater when computationally affordable
+- if that turns out too expensive in real profiling, something around **48 OMT** is the fallback, not a return to tiny tripwire scale
 
 ### Starter sight/read ranges
 - **ordinary bounty visibility range:** start at **10 overmap tiles** in clear conditions
@@ -567,10 +568,23 @@ A clean v1 freeze is still:
 - **maximum daily range:** **6 overmap tiles per day**
 - farther groups can spend bigger chunks of that budget per update pass, but total day-range should still stay inside this envelope
 
+Preferred exact gradient:
+- **3-12 OMT** -> **1 OMT/day**
+- **13-22 OMT** -> **2 OMT/day**
+- **23-32 OMT** -> **3 OMT/day**
+- **33-42 OMT** -> **4 OMT/day**
+- **43-52 OMT** -> **5 OMT/day**
+- **53-60 OMT** -> **6 OMT/day**
+
+Equivalent cheap rule:
+```text
+travel_budget_omt_per_day = clamp( 1 + floor( max( distance_from_player_omt - 3, 0 ) / 10 ), 1, 6 )
+```
+
 That gives a sane first gradient:
 - near groups creep locally
 - midrange groups can cover a few tiles in a day
-- far strategic groups can still migrate meaningfully over multiple days across the wider **48-60 OMT** theater without teleporting across half the county because cadence fired often
+- far strategic groups can still migrate meaningfully over multiple days across the wider **60 OMT** theater without teleporting across half the county because cadence fired often
 
 ---
 

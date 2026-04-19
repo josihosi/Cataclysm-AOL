@@ -685,7 +685,8 @@ Cadence and movement budget should also interact with practical distance-to-play
 
 Important scale split:
 - the **loaded / bubble-local high-relevance zone** near the player is still only a few OMT wide, roughly **3 OMT** from current map-scale constants
-- the **abstract strategic bandit theater** should be far larger, on the order of about **48 OMT radius**, with something like **60 OMT** as a plausible outer cap
+- the **abstract strategic bandit theater** should be far larger, with **about 60 OMT radius** as the preferred target when computationally affordable
+- if later profiling says 60 is too fat, something around **48 OMT** remains the fallback rather than collapsing the whole system back toward tripwire scale
 - if the whole overmap actor space is only bubble-sized, bandits become a glorified tripwire instead of a regional force that can stalk, migrate, remember, and create pressure over time
 
 A good v1 lean is:
@@ -697,15 +698,27 @@ Important correction:
 - movement budget should be frozen as a **per-day allowance**, not "one fresh hop every cadence tick"
 - otherwise a 20-minute cadence would accidentally permit absurd long-distance travel just because the AI woke up often
 
-Useful rough law:
-- nearest / highest-relevance groups start at about **1 overmap tile per day**
-- farther strategic groups can scale upward toward about **6 overmap tiles per day**
-- the high-frequency 20-minute cadence should only spend a fraction of that daily budget or wait until enough budget accrues, not grant a whole new tile every pass
-- slower far cadence may still spend a larger chunk at once, so distant groups do not become decorative map furniture
+Exact preferred v1 gradient:
+- at about **3 OMT** distance from the player, groups get **1 OMT/day**
+- at the far outer strategic edge, they top out at **6 OMT/day**
+- keep this inspectable with a cheap ring law instead of pretty fake curves
 
-This keeps the gradient sensible:
-- minimum day range stays at the requested **one tile, one overmap tile**
-- maximum day range stays inside a sane daily operational envelope instead of letting bandits sprint absurd distances in one day
+Suggested exact law:
+```text
+travel_budget_omt_per_day = clamp( 1 + floor( max( distance_from_player_omt - 3, 0 ) / 10 ), 1, 6 )
+```
+
+That yields this table:
+- **3-12 OMT** -> **1 OMT/day**
+- **13-22 OMT** -> **2 OMT/day**
+- **23-32 OMT** -> **3 OMT/day**
+- **33-42 OMT** -> **4 OMT/day**
+- **43-52 OMT** -> **5 OMT/day**
+- **53-60 OMT** -> **6 OMT/day**
+
+Operational rules around that gradient:
+- the high-frequency 20-minute cadence should only spend a fraction of the current daily budget or wait until enough budget accrues, not grant a whole new tile every pass
+- slower far cadence may spend a larger chunk at once, so distant groups do not become decorative map furniture
 - the broader strategic theater is where long-lived pressure, migration, scouting chains, and remembered marks matter across many days, not a license for instant map-crossing nonsense
 
 The strategic tick should broadly do this:
