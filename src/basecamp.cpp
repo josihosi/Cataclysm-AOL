@@ -1355,7 +1355,8 @@ bool is_camp_locker_dumpable_carried_item(npc &worker, const item &it) {
 
 struct camp_locker_carried_cleanup_state {
   int items_to_dump = 0;
-  std::vector<std::string> sample_items;
+  std::vector<std::string> dump_items;
+  std::vector<std::string> kept_items;
 
   bool has_changes() const {
     return items_to_dump > 0;
@@ -1366,11 +1367,15 @@ camp_locker_carried_cleanup_state
 collect_camp_locker_carried_cleanup_state(npc &worker) {
   camp_locker_carried_cleanup_state cleanup;
   worker.visit_items([&worker, &cleanup](item *node, item *) {
-    if (node != nullptr && is_camp_locker_dumpable_carried_item(worker, *node)) {
+    if (node == nullptr) {
+      return VisitResponse::NEXT;
+    }
+    if (is_camp_locker_dumpable_carried_item(worker, *node)) {
       cleanup.items_to_dump++;
-      if (cleanup.sample_items.size() < 6) {
-        cleanup.sample_items.push_back(camp_locker_item_debug_label(*node));
-      }
+      cleanup.dump_items.push_back(camp_locker_item_debug_label(*node));
+    } else if (!worker.is_worn(*node) && !worker.is_wielding(*node) &&
+               is_camp_locker_kept_carried_item(*node)) {
+      cleanup.kept_items.push_back(camp_locker_item_debug_label(*node));
     }
     return VisitResponse::NEXT;
   });
@@ -1379,11 +1384,21 @@ collect_camp_locker_carried_cleanup_state(npc &worker) {
 
 std::string camp_locker_carried_cleanup_debug_summary(
     const camp_locker_carried_cleanup_state &cleanup) {
-  if (cleanup.items_to_dump <= 0) {
+  if (cleanup.items_to_dump <= 0 && cleanup.kept_items.empty()) {
     return "none";
   }
-  return string_format("dump=%d items=[%s]", cleanup.items_to_dump,
-                       join_camp_locker_debug_parts(cleanup.sample_items));
+  std::vector<std::string> parts;
+  if (cleanup.items_to_dump > 0) {
+    parts.push_back(string_format("dump=%d items=[%s]", cleanup.items_to_dump,
+                                  join_camp_locker_debug_parts(cleanup.dump_items)));
+  } else {
+    parts.push_back("dump=0 items=[none]");
+  }
+  if (!cleanup.kept_items.empty()) {
+    parts.push_back(string_format("kept=[%s]",
+                                  join_camp_locker_debug_parts(cleanup.kept_items)));
+  }
+  return join_camp_locker_debug_parts(parts);
 }
 
 struct camp_locker_extracted_contents {

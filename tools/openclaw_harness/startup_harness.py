@@ -566,8 +566,11 @@ def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> N
 def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
     if not text:
         return
-    cmd = ["peekaboo", "type", text, "--pid", str(pid), "--delay", str(delay_ms), "--profile", "linear"]
-    run_peekaboo_interaction(pid, cmd)
+    max_chunk_len = 20
+    for start in range(0, len(text), max_chunk_len):
+        chunk = text[start:start + max_chunk_len]
+        cmd = ["peekaboo", "type", chunk, "--pid", str(pid), "--delay", str(delay_ms), "--profile", "linear"]
+        run_peekaboo_interaction(pid, cmd)
 
 
 def advance_turns(pid: int, count: int) -> None:
@@ -602,10 +605,8 @@ def drop_item(
     time.sleep(menu_settle_seconds)
 
     selection_mode = "slot" if looks_like_inventory_slot(selector) else "filter"
-    if selection_mode == "slot":
-        peekaboo_press_sequence(pid, [selector], delay_ms=delay_ms)
-        time.sleep(prompt_settle_seconds)
-    else:
+    selection_key = selector if selection_mode == "slot" else "a"
+    if selection_mode == "filter":
         apply_uilist_filter(
             pid,
             selector,
@@ -613,22 +614,16 @@ def drop_item(
             type_delay_ms=type_delay_ms,
             settle_seconds=prompt_settle_seconds,
         )
-        peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+
+    if count > 1:
+        peekaboo_type_text(pid, str(count), delay_ms=type_delay_ms)
         time.sleep(prompt_settle_seconds)
 
-    if count == 1:
-        peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
-        time.sleep(prompt_settle_seconds)
-    else:
-        fill_numeric_prompt(
-            pid,
-            count,
-            delay_ms=delay_ms,
-            type_delay_ms=type_delay_ms,
-        )
+    peekaboo_press_sequence(pid, [selection_key], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
 
     if exit_menu:
-        peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+        peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
         time.sleep(prompt_settle_seconds)
 
     return selection_mode
@@ -686,11 +681,26 @@ def fill_numeric_prompt(
     time.sleep(settle_seconds)
 
 
+def debug_selection_key_moves_highlight(selection_key: str) -> bool:
+    normalized = str(selection_key or "").strip().lower()
+    return normalized in {
+        "up",
+        "down",
+        "left",
+        "right",
+        "pageup",
+        "pagedown",
+        "home",
+        "end",
+    }
+
+
 def debug_spawn_item(
     pid: int,
     *,
     item_query: str,
     count: int = 1,
+    selection_key: str = "enter",
     delay_ms: int = 200,
     type_delay_ms: int = 20,
     menu_settle_seconds: float = 0.35,
@@ -699,6 +709,7 @@ def debug_spawn_item(
 ) -> None:
     if count <= 0:
         raise SystemExit("Item spawn count must be > 0")
+    chosen_selection_key = str(selection_key or "enter").strip() or "enter"
     run_debug_menu_shortcut_path(
         pid,
         ["s", "w"],
@@ -712,8 +723,13 @@ def debug_spawn_item(
         type_delay_ms=type_delay_ms,
         settle_seconds=prompt_settle_seconds,
     )
-    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    peekaboo_press_sequence(pid, [chosen_selection_key], delay_ms=delay_ms)
     time.sleep(prompt_settle_seconds)
+
+    if debug_selection_key_moves_highlight( chosen_selection_key ):
+        peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+
     if count == 1:
         peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
         time.sleep(prompt_settle_seconds)
@@ -840,16 +856,19 @@ def assign_nearby_npc_to_camp_dialog(
     stage_settle_seconds: float = 0.8,
 ) -> None:
     interaction_path = interaction_keys or ["C", "t"]
+    lets_talk_path = [lets_talk_key] if lets_talk_key.strip() else []
     assignment_path = assignment_keys or ["d", "n", "a"]
     exit_path = exit_dialog_keys or ["q", "c"]
 
     for keys in [
         interaction_path,
         [npc_selector],
-        [lets_talk_key],
+        lets_talk_path,
         assignment_path,
         exit_path,
     ]:
+        if not keys:
+            continue
         peekaboo_press_sequence(pid, keys, delay_ms=delay_ms)
         time.sleep(stage_settle_seconds)
 
@@ -1721,12 +1740,19 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             delay_ms = int(step.get("delay_ms", 20) or 20)
             peekaboo_type_text(pid, text, delay_ms=delay_ms)
             submit = bool(step.get("submit", False))
+            submit_settle_seconds = float(step.get("submit_settle_seconds", 0.2) or 0.0)
             report.update({"text": text, "delay_ms": delay_ms, "submit": submit})
             if submit:
+                if submit_settle_seconds > 0:
+                    time.sleep(submit_settle_seconds)
                 submit_key = str(step.get("submit_key", "enter") or "enter")
                 submit_delay_ms = int(step.get("submit_delay_ms", 200) or 200)
                 peekaboo_press_sequence(pid, [submit_key], delay_ms=submit_delay_ms)
-                report.update({"submit_key": submit_key, "submit_delay_ms": submit_delay_ms})
+                report.update({
+                    "submit_key": submit_key,
+                    "submit_delay_ms": submit_delay_ms,
+                    "submit_settle_seconds": submit_settle_seconds,
+                })
         elif kind == "advance_turns":
             count = int(step.get("count", 0) or 0)
             if count <= 0:
@@ -1749,6 +1775,7 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             if not item_query:
                 raise SystemExit(f"Scenario step '{label}' needs item_query/item")
             count = int(step.get("count", 1) or 1)
+            selection_key = str(step.get("selection_key", "enter") or "enter").strip() or "enter"
             delay_ms = int(step.get("delay_ms", 200) or 200)
             type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
             menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
@@ -1757,6 +1784,7 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 pid,
                 item_query=item_query,
                 count=count,
+                selection_key=selection_key,
                 delay_ms=delay_ms,
                 type_delay_ms=type_delay_ms,
                 menu_settle_seconds=menu_settle_seconds,
@@ -1765,6 +1793,7 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             report.update({
                 "item_query": item_query,
                 "count": count,
+                "selection_key": selection_key,
                 "delay_ms": delay_ms,
                 "type_delay_ms": type_delay_ms,
                 "menu_settle_seconds": menu_settle_seconds,
@@ -1878,7 +1907,8 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 interaction_keys = []
             if not interaction_keys:
                 raise SystemExit(f"Scenario step '{label}' needs interaction_keys")
-            lets_talk_key = str(step.get("lets_talk_key", "b") or "b").strip() or "b"
+            raw_lets_talk_key = step.get("lets_talk_key", "b")
+            lets_talk_key = "" if raw_lets_talk_key is None else str(raw_lets_talk_key).strip()
             raw_assignment_keys = step.get("assignment_keys", ["d", "n", "a"])
             if isinstance(raw_assignment_keys, str):
                 assignment_keys = [raw_assignment_keys] if raw_assignment_keys.strip() else []
