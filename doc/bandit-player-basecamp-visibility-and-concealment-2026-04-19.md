@@ -149,19 +149,23 @@ Typical examples:
 - lit structures
 - night travel or camp lighting
 - vehicle or road-stop lighting
+- searchlights or other obvious scanning beams
 
 General meaning:
 - if distant light is actually visible, it usually implies current occupation, current use, or a meaningful active event
+- not all visible light should mean the same thing, because a sweeping searchlight reads very differently from a static lamp, fire, or lit window
 
 Interpretation tendency:
 - stronger at night or in dark conditions
 - often implies immediate occupation more than old smoke does
-- can imply danger as much as bounty, because some visible lights may belong to vehicles, road stops, defensive positions, or other high-risk contact situations
+- **ordinary light** such as lamps, fires, lit interiors, and routine camp lighting should lean toward **bounty / occupancy** interpretation
+- **searchlights** or other obvious scanning / patrol-style beams should lean toward **threat** interpretation first, not generic bounty
 
 Important laws:
 - daylight should suppress distant light usefulness essentially completely, matching the real game footing rather than letting light become a daytime world-map beacon
 - visible light is stronger evidence of active occupancy than smoke alone, but still not perfect identity truth
 - smoke plus visible light in the same area should count as strong corroboration of meaningful active occupancy, not merely vague ambience
+- moving or scanning light should be classified separately from ordinary static light so bandits do not score a watch beam like a cozy lamp
 
 ### 3. Human / route activity
 Typical examples:
@@ -409,10 +413,16 @@ For a sampled active site or local region, derive a coarse exposure packet such 
 - `west_exposure`
 - `peak_exposure`
 - `contained_light`
+- `light_class`
+- `scan_signature`
 
 Where each side bucket means roughly:
 - how much light meaningfully leaks outward from that side under current conditions
 - not exact tactical visibility, just coarse outward legibility
+
+And where the extra light fields mean roughly:
+- `light_class`: ordinary occupancy light versus obvious searchlight / threat-style light
+- `scan_signature`: whether the visible light pattern looks static, intermittent, or sweeping enough to imply active scanning rather than passive illumination
 
 ### Practical derivation rule
 A good v1 implementation shape would be:
@@ -420,20 +430,23 @@ A good v1 implementation shape would be:
 2. suppress the whole pass in daylight unless something unusually bright explicitly deserves exception
 3. read local light truth after normal lightmap generation, rather than rebuilding fake light logic in bandit code
 4. collapse that local truth into four coarse side buckets or quadrants
-5. reduce those buckets by current weather / visibility penalties
-6. emit a light-family mark only if one or more buckets clears a meaningful threshold
+5. classify the visible pattern into ordinary light versus searchlight-like threat light when the source / motion / beam shape makes that distinction legible
+6. reduce the result by current weather / visibility penalties
+7. emit a light-family mark only if one or more buckets clears a meaningful threshold
 
 ### Why this shape is attractive
 It preserves the useful truths we actually want:
 - a house can leak light more on one side than another
 - curtains, walls, forest edge, or contained indoor sources can keep some light internal
 - a bright source can be noticeable without yielding clean tactical truth
+- a sweeping beam can read as defensive threat while a static lamp reads as occupancy or bounty
 - overmap logic stays cheap and inspectable instead of pretending to be a second tile-light simulator
 
 ### What the adapter should not do
 - do not recompute full tile-perfect ray behavior for distant bandit AI every cadence pass
 - do not give exact actor identity or exact room knowledge from light alone
 - do not let one weak transient light instantly harden into settlement truth
+- do not flatten all visible light into one generic score when searchlights and ordinary lamps obviously mean different things
 - do not bypass weather, daylight, or containment just because a source exists
 
 This keeps the implementation promising without making it computational theater.

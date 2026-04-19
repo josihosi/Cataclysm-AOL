@@ -167,6 +167,7 @@ In `src/lightmap.cpp`:
 Meaning:
 - the repo already knows the difference between light existing and light leaking from a particular side
 - there is likely no need to invent a brand-new vector-visibility law from scratch just to get directional exposure semantics
+- the existing arc/direction footing also supports a later design distinction between ordinary occupancy light and obvious searchlight-style threat light
 - if bandit visibility later wants a cheap overmap adapter, a coarse side-bucket or quadrant-derived exposure summary would be much more grounded than a fresh fictional system
 
 ---
