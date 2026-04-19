@@ -580,6 +580,27 @@ bool is_camp_locker_armored_full_body_suit(const item &it) {
          protection_score(it, 1, 2, 2) >= 80;
 }
 
+bool is_camp_locker_protective_full_body_suit(const item &it) {
+  if (!armor_covers_any(it, {"torso"}) ||
+      !armor_covers_any(it, {"arm_l", "arm_r"}) ||
+      !armor_covers_any(it, {"leg_l", "leg_r"}) ||
+      it.has_layer({layer_level::SKINTIGHT}) ||
+      armor_covers_any(it, {"head", "eyes", "mouth", "hand_l",
+                            "hand_r", "foot_l", "foot_r"})) {
+    return false;
+  }
+
+  if (is_camp_locker_armored_full_body_suit(it)) {
+    return true;
+  }
+
+  return total_ballistic_resist_score(it) >= 3 ||
+         protection_score(it, 1, 2, 2) >= 40 ||
+         it.get_env_resist() >= 8 ||
+         (utility_storage_capacity(it) >= 4_liter &&
+          protection_score(it, 1, 2, 2) >= 24);
+}
+
 bool is_camp_locker_outer_onepiece_garment(const item &it) {
   const bool outer =
       it.has_layer({layer_level::OUTER}) || it.has_flag(flag_OUTER);
@@ -687,6 +708,36 @@ void prevent_missing_pants_fill_under_full_body_body_armor(
   }
 
   plan.erase(pants_it);
+}
+
+void prevent_missing_shirt_fill_under_armored_full_body_suit(
+    camp_locker_plan &plan) {
+  const auto pants_it = plan.find(camp_locker_slot::pants);
+  if (pants_it == plan.end()) {
+    return;
+  }
+
+  const camp_locker_slot_plan &pants_plan = pants_it->second;
+  const item *retained_pants =
+      pants_plan.selected_candidate != nullptr ? pants_plan.selected_candidate
+                                               : pants_plan.kept_current;
+  if (retained_pants == nullptr ||
+      !is_camp_locker_protective_full_body_suit(*retained_pants)) {
+    return;
+  }
+
+  const auto shirt_it = plan.find(camp_locker_slot::shirt);
+  if (shirt_it == plan.end()) {
+    return;
+  }
+
+  const camp_locker_slot_plan &shirt_plan = shirt_it->second;
+  if (shirt_plan.kept_current != nullptr ||
+      shirt_plan.selected_candidate == nullptr) {
+    return;
+  }
+
+  plan.erase(shirt_it);
 }
 
 int camp_locker_outerwear_temperature_adjustment(
@@ -1407,6 +1458,7 @@ plan_camp_locker_loadout(
 
   prevent_missing_pants_fill_under_full_body_body_armor(plan);
   prevent_upper_body_stripping_pants_upgrades(plan);
+  prevent_missing_shirt_fill_under_armored_full_body_suit(plan);
 
   return plan;
 }

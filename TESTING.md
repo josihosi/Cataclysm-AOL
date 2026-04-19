@@ -42,17 +42,20 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ### Combat-oriented locker policy
 
 Current honest state:
-- the first three combat-policy code slices are now landed narrowly on the current tree:
+- the first four combat-policy code slices are now landed narrowly on the current tree:
   - `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now expose explicit `gloves`, `mask`, `belt`, and `holster` slots
   - `classify_camp_locker_item()` now routes representative combat support gear into those slots instead of dropping hip holsters on the floor or letting waist gear disappear into generic clothing logic
   - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle, and body-armor / helmet scoring adds extra bullet-resistance weight when that control is enabled
   - body-armor scoring now also counts loaded ablative plates as real value, and same-type ballistic vests can replace damaged-insert variants when their actual armor state is better
-  - deterministic coverage now checks bulletproof-toggle persistence, the scoring-gap shift toward more ballistic armor and helmets, loaded-vs-empty ballistic vest scoring, damaged insert scoring, and same-type healthy-plate replacement behavior
-- narrow deterministic validation passed on the current tree after the ballistic-maintenance slice landed:
+  - protective full-body suits in the pants lane now suppress missing-current shirt filler when the suit itself is the better combat/protective packet, so survivor-style suits stop inviting junk T-shirts underneath them just because the shirt lane is empty
+  - deterministic coverage now checks bulletproof-toggle persistence, the scoring-gap shift toward more ballistic armor and helmets, loaded-vs-empty ballistic vest scoring, damaged insert scoring, same-type healthy-plate replacement behavior, and the new protective full-body suit shirt-filler guard
+- narrow deterministic validation passed on the current tree after the latest full-body-suit slice landed:
   - `make -j4 tests`
+  - `./tests/cata_test "camp_locker_loadout_planning"`
+  - `./tests/cata_test "camp_locker_service_keeps_armored_full-body_utility_suits_without_filling_missing_shirts_from_junk"`
   - `./tests/cata_test "[camp][locker]"`
 - the filtered locker suite still covers the previously suspicious safety seams these slices could have broken, including great-helm classification, holster-vs-pants cleanup behavior, weird-garment preservation, weather-sensitive outerwear/legwear handling, and full-body suit protection logic
-- the next missing evidence is no longer the control surface or plate-maintenance seam; it is explicit full-body battle/protective suit preference on top of that new policy footing
+- the next missing evidence is no longer missing-shirt filler suppression; it is direct preference over currently worn piecemeal outfits when a clearly superior full-body battle/protective suit is available
 
 ### Recently closed, do not casually reopen
 
@@ -68,14 +71,14 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another live board or locker rerun
-- the next honest move is a narrow combat-policy implementation slice plus deterministic coverage for the new slot/control behavior
+- the next honest move is a narrow combat-policy implementation slice plus deterministic coverage for direct full-body-suit preference over inferior currently worn piecemeal outfits
 
 ---
 
 ## Pending probes
 
 - none yet for the next follow-up slice
-- if the next combat-policy step is explicit full-body battle/protective suit preference, start again with narrow deterministic locker tests before asking for any live locker-service proof
+- if the next combat-policy step is direct comparison between current piecemeal outfits and a superior full-body battle/protective suit, start again with narrow deterministic locker tests before asking for any live locker-service proof
 
 ---
 
