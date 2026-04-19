@@ -42,10 +42,21 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ### Plan/Aux pipeline helper
 
 Current honest state:
-- the active helper lane is still at the pre-implementation tooling-audit stage
-- the canonical contract already exists at `doc/plan-aux-pipeline-helper-2026-04-09.md`, and the next missing evidence is not compile output but a suspicion-first audit of what reusable prompt, patch, and canon-update footing already exists nearby
-- the next honest step is repo/tooling inspection for a smallest viable entry point that can preserve verification -> correction -> classification -> patching without hidden magic
-- unless that audit lands code, this lane remains docs/tooling-planning work and does **not** need ceremonial compile churn
+- the suspicion-first audit is now closed honestly: the repo had stable canon-role docs and recurring aux patterns, but no repo-local helper for contract preview, correction merge, canon/snippet packaging, or bounded in-place patching
+- the current bounded helper path now exists at `tools/plan_aux_pipeline_helper.py`
+- current landed command set is:
+  - `schema` prints the contract shape
+  - `show` prints repo config, contract preview, and patch matrix before edits
+  - `merge-corrections` merges an explicit corrections overlay into the reviewed contract
+  - `emit` writes reviewer-visible aux/canon snippet files from the same classified contract
+  - `apply` patches the auxiliary doc plus known existing `Plan.md` / `TODO.md` / `SUCCESS.md` / `TESTING.md` anchors in place, while still failing honestly when a requested heading does not already exist
+- focused validation passed for this tooling slice via:
+  - `python3 -m py_compile tools/plan_aux_pipeline_helper.py`
+  - `python3 tools/plan_aux_pipeline_helper.py schema`
+  - `python3 tools/plan_aux_pipeline_helper.py show /tmp/plan_aux_helper_spec.json`
+  - `python3 tools/plan_aux_pipeline_helper.py emit /tmp/plan_aux_helper_spec.json --out-dir /tmp/plan_aux_helper_emit --force`
+  - `python3 tools/plan_aux_pipeline_helper.py apply /tmp/plan_aux_helper_spec.json --root /tmp/plan_aux_helper_repo`
+- the main canon-patching path is now honestly real for known headings; the remaining open slice is optional handoff generation from the same classified contract
 
 ### Recently closed, do not casually reopen
 
@@ -66,14 +77,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the next honest move is a suspicion-first tooling audit on the Plan/Aux helper lane, while the now-closed combat packet stays closed unless a fresh contradiction appears
+- the main canon-patching path is now proven narrowly enough, while the now-closed combat packet stays closed unless a fresh contradiction appears
+- the next honest decision is whether optional Andi handoff generation deserves to be the final helper slice
 
 ---
 
 ## Pending probes
 
-- none yet for the helper audit
-- if the audit lands actual helper code, use the smallest honest validation for the touched layer instead of defaulting to repo-wide builds
+- decide whether optional Andi handoff generation is worth landing as the final helper slice
+- if that slice lands, validate it with the narrowest command-level proof on a sample spec instead of broad repo builds
 
 ---
 

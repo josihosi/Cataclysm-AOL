@@ -57,13 +57,18 @@ Fresh checkpoints just closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- move the now-active Plan/Aux pipeline helper from greenlit contract to its first honest implementation shape
-- keep v1 small and workflow-faithful:
-  - take a proposed item, greenlight, or parked-lane request and print the contract back for verification
-  - collect corrections before touching canon files
-  - classify the result as active, parked, or bottom-of-stack
-  - patch the canon files consistently, with optional Andi handoff generation only after the main path is real
-- start with a suspicion-first tooling audit instead of inventing fresh scaffolding blindly: check whether the repo already has reusable prompt, patch, or canon-update footing nearby
+- keep the now-active Plan/Aux pipeline helper on the bounded main path instead of letting it sprawl into workflow sorcery
+- the suspicion-first audit and first implementation shape are now honestly done:
+  - the repo already had stable canon file roles and repeated aux-doc patterns, but no repo-local helper for contract preview, correction merge, canon/snippet packaging, or bounded in-place patching
+  - that made a spec-first helper with explicit review/merge/apply stages the smallest honest shape, instead of pretending hidden broad mutation was already safe
+- current landed helper is `tools/plan_aux_pipeline_helper.py`:
+  - `schema` prints the normalized JSON contract shape
+  - `show` prints repo config, contract preview, and patch matrix before canon edits
+  - `merge-corrections` deep-merges an explicit corrections file into the reviewed contract
+  - `emit` writes reviewer-visible aux/canon snippet files from the same classified contract
+  - `apply` patches the auxiliary doc plus known existing `Plan.md` / `TODO.md` / `SUCCESS.md` / `TESTING.md` anchors in place, while still failing honestly when a heading does not already exist
+- narrow validation now exists for that bounded patch path on a temp repo copy via `schema`, `show`, `emit`, and `apply`
+- next step is optional Andi handoff generation from the same classified contract, while the known-heading patch boundary stays deliberately narrow unless a later slice explicitly broadens it
 - keep this separate from the now-closed locker/basecamp slices and the bottom-of-stack bandit docs
 
 Explicit greenlit backlog behind the current slice:
@@ -249,9 +254,14 @@ The point is leverage and consistency, not ceremony:
 
 Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
+Current landed helper:
+- `tools/plan_aux_pipeline_helper.py` now provides a spec-driven preview/merge/emit/apply path for this repo's Plan/Aux workflow
+- the new `apply` path intentionally stays bounded to known existing canon headings and current active-lane anchors, so the workflow law is real without pretending broad freeform mutation is solved
+- when a heading does not already exist, the honest fallback is still `emit` output for reviewer-visible paste/review instead of magical guessing
+
 What this active lane should do next:
-- do a suspicion-first tooling audit for any reusable prompt, patch, or canon-update footing that already exists nearby in the repo
-- choose the smallest v1 entry point that can preserve verification -> correction -> classification -> patching without hidden magic
+- keep the bounded canon-patching path stable and reviewable
+- if the next slice lands, make it optional Andi handoff generation from the same classified contract rather than broadening canon mutation by accident
 - keep this as workflow tooling, not as an excuse to reopen the now-closed locker/basecamp slices
 
 ---

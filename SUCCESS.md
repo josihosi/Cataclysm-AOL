@@ -324,13 +324,15 @@ Notes:
 Status: ACTIVE / GREENLIT TOOLING
 
 Success state:
-- [ ] A small helper can take a proposed item/greenlight and print the contract back for verification before canon files are changed.
-- [ ] The helper can collect corrections and then classify the item cleanly as active, parked, or bottom-of-stack.
-- [ ] The helper can update the relevant canon files consistently (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md` when needed, plus the auxiliary doc).
-- [ ] The helper reduces manual file carpentry for already-understood greenlights without bypassing the frozen workflow.
+- [x] A small helper can take a proposed item/greenlight and print the contract back for verification before canon files are changed.
+- [x] The helper can collect corrections and then classify the item cleanly as active, parked, or bottom-of-stack.
+- [x] The helper can update the relevant canon files consistently (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md` when needed, plus the auxiliary doc).
+- [x] The helper reduces manual file carpentry for already-understood greenlights without bypassing the frozen workflow.
 - [ ] The helper can optionally generate the Andi handoff packet from the same classified contract.
 
 Notes:
 - Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 - This is now the current active lane.
-- The first honest step is a suspicion-first tooling audit for reusable prompt, patch, and canon-update footing, followed by the smallest v1 entry point that can prove verification -> correction -> classification -> patching without hidden workflow magic.
+- The suspicion-first tooling audit is now closed, and the current bounded helper path landed at `tools/plan_aux_pipeline_helper.py`.
+- Current helper shape now covers spec validation, review-packet preview, explicit correction merge, reviewer-visible snippet emission, and bounded in-place patching of known existing canon headings / active-lane anchors.
+- The bounded patch path was validated on a temp repo copy via `schema`, `show`, `emit`, and `apply`; optional handoff generation remains the only open success row.
