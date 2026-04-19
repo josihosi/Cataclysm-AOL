@@ -151,6 +151,19 @@ Meaning:
 - the future visibility model should reuse this truth rather than pretending smoke/light visibility is totally separate from existing sight logic
 - there is already real code footing for the intuition that a bright night light can be noticed at long range without granting clean tactical knowledge
 
+### 5.5. Concrete current-code scale numbers
+
+A few very useful constants fell out of the code directly:
+- `coords::map_squares_per( coords::omt )` is `SEEX * 2`, so **1 overmap tile = 24 map tiles**
+- `MAX_VIEW_DISTANCE` is `SEEX * HALF_MAPSIZE`, so the current loaded-map view radius is **60 tiles** with `MAPSIZE = 11`
+- that means the current local bubble radius is about **2.5 overmap tiles**, which is ugly as a design number but useful to round up to **3 OMT** for coarse overmap-local reasoning
+- `Character::overmap_sight_range()` effectively collapses any ordinary nonzero clear-sight case to base `6`, then adds perception and modifiers
+- with the default `PER 8` survivor, that yields a practical clear-conditions overmap sight baseline of **10 OMT** before enchantment weirdness and terrain line-of-sight trimming
+
+Also useful for later fitting:
+- overmap terrain `see_cost` values are already quantized to `0 / 1 / 2 / 4 / 5 / 10 / 999`
+- so even if the sight baseline is 10 OMT in the open, forests, buildings, and other blocking terrain already provide a grounded way to shrink that in practice
+
 ### 6. Directional light is already a real local concept
 
 This turned out better than expected.

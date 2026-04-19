@@ -537,6 +537,39 @@ This keeps smoke strong as a strategic signal without tying the concept to a non
 
 ---
 
+## Starter numeric packet for v1 tuning
+
+These numbers are a **starter packet**, not sacred doctrine.
+But the point is to stop hand-waving and freeze something testable.
+
+### Engine-grounded scale facts
+- **1 overmap tile = 24 map tiles**
+- current reality-bubble view radius is about **60 map tiles**, which is about **2.5 overmap tiles**
+- for coarse overmap reasoning, the clean round number is therefore a **3 overmap tile radius** around the player for "bubble-local / high-relevance" logic
+
+### Starter sight/read ranges
+- **ordinary bounty visibility range:** start at **10 overmap tiles** in clear conditions
+  - this matches current code footing surprisingly well: `Character::overmap_sight_range()` effectively lands at base `6` plus perception contribution, which is **10 OMT** for the default `PER 8` survivor
+- **confident threat visibility range:** start at **6 overmap tiles**
+  - this is intentionally tighter than bounty so camps can notice "something profitable may be there" before they feel they truly understand danger there
+- **searchlight / hard-danger threat extension:** allow sharper threat reads to stretch to about **8 overmap tiles** when there is corroboration such as searchlights, patrol behavior, prior losses, or other explicit danger evidence
+- **meaningful smoke-plume range:** allow sustained smoke to project out to about **15 overmap tiles** as a coarse outer cap
+  - weak or brief smoke should often read at less than that
+  - this deliberately makes smoke legible farther than ordinary sight without turning every tiny fire into a world-map beacon
+
+### Movement-budget consequence
+If bandits should not range beyond what they can meaningfully threat-read, then a clean v1 freeze is:
+- **minimum daily range:** **1 overmap tile per day**
+- **maximum daily range:** **6 overmap tiles per day**
+- farther groups can spend bigger chunks of that budget per update pass, but total day-range should still stay inside this envelope
+
+That gives a sane first gradient:
+- near groups creep locally
+- midrange groups can cover a few tiles in a day
+- far strategic groups can still migrate meaningfully without teleporting across half the county because cadence fired often
+
+---
+
 ## Open questions that can stay parked
 
 These are real questions, but they do not block parking the concept.

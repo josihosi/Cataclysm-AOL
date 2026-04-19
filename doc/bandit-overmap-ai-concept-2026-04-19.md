@@ -683,15 +683,23 @@ It keeps the world feeling alive without demanding global constant thought.
 ### Working distance and movement budget
 Cadence and movement budget should also interact with practical distance-to-player / local relevance.
 A good v1 lean is:
-- **closer / higher-relevance regions** get tighter cadence but shorter step budgets, so groups update more often but only move a little per pass
-- **farther / lower-relevance regions** can update less often but take larger overmap hops per pass, so abstract groups can still cover ground and explore instead of stalling uselessly
+- **closer / higher-relevance regions** get tighter cadence and smaller daily travel budgets
+- **farther / lower-relevance regions** can update less often but spend a larger daily overmap budget when they do act
+- cadence should control **how often they reconsider and spend budget**, not silently multiply their total daily travel into nonsense
+
+Important correction:
+- movement budget should be frozen as a **per-day allowance**, not "one fresh hop every cadence tick"
+- otherwise a 20-minute cadence would accidentally permit absurd long-distance travel just because the AI woke up often
 
 Useful rough law:
-- nearby active bandit motion may only advance about one overmap tile per cadence step
-- farther strategic motion can jump several tiles toward the best currently attractive nearby region or mark instead of crawling tile-by-tile forever
-- exact movement constants should be tuned later, but the principle should remain: slower far cadence does **not** mean uselessly frozen far groups
+- nearest / highest-relevance groups start at about **1 overmap tile per day**
+- farther strategic groups can scale upward toward about **6 overmap tiles per day**
+- the high-frequency 20-minute cadence should only spend a fraction of that daily budget or wait until enough budget accrues, not grant a whole new tile every pass
+- slower far cadence may still spend a larger chunk at once, so distant groups do not become decorative map furniture
 
-This matters because the design should let bandits actually migrate, probe, and close distance over time rather than becoming decorative map furniture.
+This keeps the gradient sensible:
+- minimum day range stays at the requested **one tile, one overmap tile**
+- maximum day range stays inside the intended threat-reading envelope instead of letting bandits sprint far beyond what they can meaningfully evaluate
 
 The strategic tick should broadly do this:
 1. apply ledger drift
