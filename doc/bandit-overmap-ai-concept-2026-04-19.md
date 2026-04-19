@@ -402,6 +402,9 @@ Current linked parked-chain sub-items:
 - overmap mark-generation and heatmap model: `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`
 - bidirectional overmap-to-bubble handoff seam: `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`
 
+Supporting recon note for the next parked visibility/concealment item:
+- physical-systems recon: `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`
+
 ## Why this vessel exists
 
 This concept is a holding bowl for mixed design nectar.
