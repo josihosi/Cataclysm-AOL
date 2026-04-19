@@ -519,6 +519,15 @@ This is what allows bandits to behave opportunistically rather than simply avoid
 A city fight, horde pressure, or exhausted survivor caravan can be both more dangerous and more attackable.
 That tension is good.
 
+Current v1 simplification:
+- zombies matter here as threat and target-coherence pressure
+- we do **not** need explicit bandit-versus-zombie tactical simulation yet
+- if a group decides the opportunity is worth the risk, assume it can sneak or thread through well enough to make the attempt
+
+That means cities may support a risky opportunistic pass.
+They should **not** become infinite farming zones.
+Structural bounty depletes, threat remains high, and failed or aborted approaches should leave sticky scary memory behind.
+
 ---
 
 ## Mission lifecycle

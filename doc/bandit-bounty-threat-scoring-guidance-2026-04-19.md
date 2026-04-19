@@ -227,7 +227,7 @@ threat_score =
 - `defender_strength`: perceived armed human danger
 - `fortification_value`: static difficulty of attacking a location
 - `recent_losses_penalty`: camps should remember getting bloodied
-- `zombie_pressure`: monsters increase chaos and danger around the mark
+- `zombie_pressure`: monsters increase chaos and danger around the mark; v1 does not require explicit bandit-versus-zombie tactical simulation for this
 - `uncertainty_penalty`: unknowns are threat, not free mystery meat
 - `distance_penalty`: farther operations are harder to support and retreat from
 - `target_distraction_bonus`: if the target is already stressed or entangled, effective threat drops
@@ -247,6 +247,10 @@ Meaning:
 So the model should allow:
 - `zombie_pressure` to increase raw environmental danger
 - `target_distraction_bonus` to lower effective target threat
+
+Current simplification for v1:
+- if bandits decide the opportunity is worth the risk, the model may simply assume they manage the approach well enough to attempt it
+- this does not imply persistent city farming, because structural bounty can deplete and bad outcomes should write back sticky threat memory
 
 This tension is good.
 It creates opportunistic ambush logic instead of flat power comparison.

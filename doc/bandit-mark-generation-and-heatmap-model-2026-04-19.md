@@ -145,6 +145,11 @@ So the system should allow both:
 
 This matches the earlier opportunism rule instead of flattening it into one number.
 
+Current v1 simplification:
+- zombies contribute to scoring and mark shape here
+- they do **not** require explicit bandit-versus-zombie tactical simulation yet
+- if a bandit group accepts the risk, the model can simply assume they manage the approach well enough to attempt the opportunistic action
+
 ---
 
 ## Cadence family
@@ -210,6 +215,8 @@ Examples:
 - target was rich
 - route was good for ambush
 - route was a waste of time
+- city approach was too dangerous
+- horde-choked route caused retreat
 
 These should refresh or alter later scoring instead of disappearing into history fog.
 
@@ -329,12 +336,23 @@ At the 20-minute and 2-hour passes:
 - reduce transient signal strength
 - weaken confidence on unrefreshed marks
 - smooth heat spikes downward if not reinforced
+- do **not** cheaply remote-rewrite a strong recent threat/loss mark into safety just because time passed
 
 ### Daily decay
 At daily cleanup:
 - remove weak stale marks
 - reduce broad heatmap residues
 - convert strong unresolved pressure into lower-confidence background memory
+- keep serious threat/loss memory sticky unless later close-range experience genuinely downgrades it
+
+### Proximity-gated reevaluation
+If a group leaves an area because it read as too dangerous, that area should remain marked as scary.
+Meaningful reevaluation should usually require:
+- a close revisit
+- a successful later passage
+- or some other attractive nearby mark that pulls the group back into local contact
+
+That keeps cities and other failed-risk zones from being remotely recalculated into safe jackpot territory every few ticks.
 
 This keeps the system from turning into immortal clutter.
 
