@@ -121,6 +121,14 @@ void camp_locker_policy::set_enabled(camp_locker_slot slot, bool enabled) {
   enabled_slots[static_cast<size_t>(slot)] = enabled;
 }
 
+bool camp_locker_policy::prefers_bulletproof() const {
+  return prefer_bulletproof;
+}
+
+void camp_locker_policy::set_prefers_bulletproof( bool enabled ) {
+  prefer_bulletproof = enabled;
+}
+
 int camp_locker_policy::enabled_count() const {
   return static_cast<int>(
       std::count(enabled_slots.begin(), enabled_slots.end(), true));
@@ -395,9 +403,12 @@ int camp_locker_upgrade_threshold(camp_locker_slot slot) {
 
 bool is_better_scored_locker_item(
     camp_locker_slot slot, const item &lhs, const item &rhs,
+    const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt) {
-  const int lhs_score = score_camp_locker_item(slot, lhs, local_temperature);
-  const int rhs_score = score_camp_locker_item(slot, rhs, local_temperature);
+  const int lhs_score =
+      score_camp_locker_item(slot, lhs, policy, local_temperature);
+  const int rhs_score =
+      score_camp_locker_item(slot, rhs, policy, local_temperature);
   if (lhs_score != rhs_score) {
     return lhs_score > rhs_score;
   }
@@ -412,14 +423,16 @@ bool is_better_scored_locker_item(
 
 const item *select_best_locker_item(
     camp_locker_slot slot, const std::vector<const item *> &items,
+    const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt) {
   const item *best = nullptr;
   for (const item *candidate : items) {
     if (candidate == nullptr) {
       continue;
     }
-    if (best == nullptr || is_better_scored_locker_item(
-                               slot, *candidate, *best, local_temperature)) {
+    if (best == nullptr ||
+        is_better_scored_locker_item(slot, *candidate, *best, policy,
+                                     local_temperature)) {
       best = candidate;
     }
   }
@@ -1232,7 +1245,7 @@ camp_locker_candidate_map collect_camp_locker_zone_candidates(
 }
 
 int score_camp_locker_item(
-    camp_locker_slot slot, const item &it,
+    camp_locker_slot slot, const item &it, const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature) {
   int score = 0;
   switch (slot) {
@@ -1248,10 +1261,16 @@ int score_camp_locker_item(
     score = generic_clothing_score(it, 100, 4);
     break;
   case camp_locker_slot::body_armor:
-    score = body_armor_score(it);
+    score = body_armor_score(it) +
+            ( policy.prefers_bulletproof() ?
+                  static_cast<int>( it.resist( damage_bullet ) ) * 12 :
+                  0 );
     break;
   case camp_locker_slot::helmet:
-    score = helmet_score(it);
+    score = helmet_score(it) +
+            ( policy.prefers_bulletproof() ?
+                  static_cast<int>( it.resist( damage_bullet ) ) * 10 :
+                  0 );
     break;
   case camp_locker_slot::glasses:
   case camp_locker_slot::mask:
@@ -1280,6 +1299,7 @@ int score_camp_locker_item(
 
 bool is_camp_locker_candidate_meaningfully_better(
     camp_locker_slot slot, const item &candidate, const item &current,
+    const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature) {
   if (candidate.typeId() == current.typeId()) {
     if (candidate.damage_level() != current.damage_level()) {
@@ -1289,8 +1309,9 @@ bool is_camp_locker_candidate_meaningfully_better(
       return candidate.damage() < current.damage();
     }
   }
-  return score_camp_locker_item(slot, candidate, local_temperature) >=
-         score_camp_locker_item(slot, current, local_temperature) +
+  return score_camp_locker_item(slot, candidate, policy,
+                                local_temperature) >=
+         score_camp_locker_item(slot, current, policy, local_temperature) +
              camp_locker_upgrade_threshold(slot);
 }
 
@@ -1314,13 +1335,13 @@ plan_camp_locker_loadout(
     if (current_it != current_by_slot.end() && !current_it->second.empty()) {
       std::vector<const item *> sorted_current = current_it->second;
       std::stable_sort(sorted_current.begin(), sorted_current.end(),
-                       [slot, &local_temperature](const item *lhs,
-                                                 const item *rhs) {
+                       [slot, &policy, &local_temperature](const item *lhs,
+                                                           const item *rhs) {
                          if (lhs == nullptr || rhs == nullptr) {
                            return rhs != nullptr;
                          }
                          return is_better_scored_locker_item(
-                             slot, *lhs, *rhs, local_temperature);
+                             slot, *lhs, *rhs, policy, local_temperature);
                        });
       slot_plan.kept_current = sorted_current.front();
       if (sorted_current.size() > 1) {
@@ -1332,14 +1353,14 @@ plan_camp_locker_loadout(
     auto candidate_it = locker_candidates.find(slot);
     if (candidate_it != locker_candidates.end()) {
       const item *best_candidate = select_best_locker_item(
-          slot, candidate_it->second, local_temperature);
+          slot, candidate_it->second, policy, local_temperature);
       if (best_candidate != nullptr) {
         if (slot_plan.kept_current == nullptr) {
           slot_plan.missing_current = true;
           slot_plan.selected_candidate = best_candidate;
         } else if (is_camp_locker_candidate_meaningfully_better(
                        slot, *best_candidate, *slot_plan.kept_current,
-                       local_temperature)) {
+                       policy, local_temperature)) {
           slot_plan.selected_candidate = best_candidate;
           slot_plan.upgrade_selected = true;
         }
@@ -3528,6 +3549,22 @@ void basecamp::set_locker_slot_enabled(camp_locker_slot slot, bool enabled) {
   for (const npc_ptr &assignee : assigned_npcs) {
     if (assignee && assignee->assigned_camp && *assignee->assigned_camp == omt_pos) {
       mark_camp_locker_dirty(*assignee, true);
+    }
+  }
+}
+
+bool basecamp::locker_prefers_bulletproof() const {
+  return locker_policy.prefers_bulletproof();
+}
+
+void basecamp::set_locker_prefers_bulletproof( bool enabled ) {
+  if( locker_policy.prefers_bulletproof() == enabled ) {
+    return;
+  }
+  locker_policy.set_prefers_bulletproof( enabled );
+  for( const npc_ptr &assignee : assigned_npcs ) {
+    if( assignee && assignee->assigned_camp && *assignee->assigned_camp == omt_pos ) {
+      mark_camp_locker_dirty( *assignee, true );
     }
   }
 }
