@@ -17,22 +17,20 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Controlled locker / basecamp follow-through packet
 
-Status: ACTIVE / PACKAGE 5
+Status: CHECKPOINTED / PACKAGE 5 DONE FOR NOW
 
 Success state:
 - [x] **Package 1, harness zone-manager save-path polish** is landed with screenshots/artifacts from the current McWilliams harness path.
 - [x] **Package 2, basecamp toolcall routing fix** is landed or honestly blocked, and the right discriminator is separated from the bad location-only heuristic.
 - [x] **Package 3, locker outfit engine hardening** is now landed for the current required closeout slice: the weird board/log leak stays re-proved live on the rebuilt current tiles binary, the in-game-log plus `llm_intent.log` observability helper is exercised on that same live probe path, and the required deterministic/service-parity canon is closed through the outer one-piece civilian-garment seam (`abaya`) without reopening open-ended clothing-case collection.
-- [ ] **Package 5, basecamp carried-item dump lane** is landed: ordinary carried junk gets dumped during locker dressing, the kept carried lane is intentionally limited to `bandages`, `ammo`, and `magazines`, and curated locker stock is not polluted by the dump behavior.
-- [ ] The queue stays controlled: Package 5 is the current explicit slice, the other well-defined items remain greenlit backlog instead of forbidden, and no opportunistic broadening happens into bandit/threat or hackathon lanes.
+- [x] **Package 5, basecamp carried-item dump lane** is landed: ordinary carried junk gets dumped during locker dressing, the kept carried lane is intentionally limited to `bandages`, `ammo`, and `magazines`, and curated locker stock is not polluted by the dump behavior.
+- [x] The queue stayed controlled while Package 5 ran, and the next slice can now move forward cleanly as Package 4 instead of broadening into unrelated lanes.
 
 Notes:
 - Canonical package boundaries and acceptance bars live in `doc/locker-basecamp-followthrough-work-packages-2026-04-07.md`.
-- Package 4 remains a defined unfinished slice in that auxiliary doc and in the `Locker Zone V1` ledger below. It is **greenlit backlog**, not the current queue.
-- This **is** the active queue right now. Keep the slice bounded instead of treating the whole locker/basecamp world as open season.
-- The point is not to re-open one giant locker/basecamp world. The point is to preserve the working loop while moving through explicit slices only when they are actually greenlit.
+- The closeout run for the documented `bandages` acceptance item is `.userdata/dev-harness/harness_runs/20260419_133206/`: the live seeded packet shows exact `bandage`, Robbie visibly picks it up, and the rebuilt `camp locker:` artifact keeps `bandage`, `9x19mm JHP, reloaded`, and `Glock 9x19mm 15-round magazine` while dumping `small plastic bag` to cleanup.
+- Package 4 is now reclosed separately in the `Locker Zone V1` ledger below, so this packet can stay checkpointed instead of pretending the whole locker/basecamp follow-through is still active.
 - The ordinary harness footing for this packet should stay on `McWilliams` / `Zoraida Vick`, not drift back to the older default save.
-- Do **not** quietly blend Package 4 and Package 5 just because both touch locker behavior.
 
 ---
 
@@ -151,10 +149,10 @@ Notes:
 
 ## Locker Zone V1
 
-Status: GREENLIT / BACKLOG FOLLOW-THROUGH
+Status: CHECKPOINTED / DONE FOR NOW
 
 Bundled V1 completion tasks:
-- [ ] **Locker surface/control task** — `CAMP_LOCKER` works as a real Zone Manager zone on the fresh-save path, ordinary sorting does not steal from locker tiles, camp locker policy state exists, the player-facing locker policy menu/control exists, and the current surface is free of the reported zone-creation type-mismatch.
+- [x] **Locker surface/control task** — `CAMP_LOCKER` works as a real Zone Manager zone on the fresh-save path, ordinary sorting does not steal from locker tiles, camp locker policy state exists, the player-facing locker policy menu/control exists, and the current surface is free of the reported zone-creation type-mismatch.
 - [x] **Locker outfitting core task** — representative locker item classification, candidate gathering, score helpers, planning, equip/upgrade behavior, duplicate cleanup, and returning replaced managed gear all exist.
 - [x] **Locker maintenance rhythm task** — wake-up dirty, policy-change dirty, new-gear dirty, lost-gear dirty, queue sequencing, and reservation behavior all exist.
 - [x] **Locker V1 proof task** — deterministic coverage plus proportional runtime validation for the same downtime/service path are recorded in `TESTING.md`.
@@ -162,11 +160,10 @@ Bundled V1 completion tasks:
 
 Notes:
 - V1 was reopened on 2026-04-07 because fresh-save manual testing contradicted the old surface/control close-out.
-- That reopened follow-through is now packetized in the active `Controlled locker / basecamp follow-through packet` above instead of staying as one vague reopened blob here.
-- Package 4 surface/control cleanup is currently greenlit backlog by explicit reprioritization while Package 5 runs.
+- That reopened follow-through is now honestly reclosed: `.userdata/dev-harness/harness_runs/20260419_141422/` shows the real McWilliams Zone Manager create/name/save/reopen packet for `Basecamp: Locker`, and the reported type-mismatch did not reproduce on that live seam.
 - `dirty-trigger follow-through` was the final previously landed V1 chunk, not the name of the whole feature.
 - Locker candidate scanning now uses sorted locker tiles so debug/state summaries stay deterministic enough for dirty-trigger tracking and tests.
-- If later code or testing disproves any other bundled V1 task, reopen that slice too instead of pretending only the surface changed.
+- If later code or testing disproves any bundled V1 task, reopen that slice instead of pretending only the surface changed.
 
 ---
 
@@ -229,7 +226,7 @@ Notes:
 
 ## Organic bulletin-board speech polish
 
-Status: GREENLIT / BACKLOG
+Status: ACTIVE / IN PROGRESS
 
 Success state:
 - [ ] Bulletin-board / camp-job requests can be triggered through natural player-facing phrasing instead of exposed machine wording.
@@ -239,7 +236,11 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
-- This is greenlit backlog, not the current active lane.
+- This is now the current active lane.
+- First deterministic cleanup is landed on the current tree: ordinary spoken board/job replies no longer echo request ids, and board-status parsing now accepts `what needs making`, `what needs doing`, `got any craft work`, and `show me what needs doing`.
+- Fresh narrow proof passed on the current dirty tree via `make -j4 tests` and `./tests/cata_test "[camp][basecamp_ai]"`.
+- Proportional live proof now also exists on the rebuilt current tiles binary in `.userdata/dev-harness/harness_runs/20260419_154244/`: the real camp-assignment seam plus `what needs making` produced `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue.
+- The same live packet still lets Robbie chime in as ordinary follower crosstalk on the McWilliams fixture; keep that separate from this narrow machine-speech cleanup unless it becomes the active seam.
 
 ---
 
