@@ -678,6 +678,19 @@ Current preferred shape:
 This is the right kind of cheap.
 It keeps the world feeling alive without demanding global constant thought.
 
+### Working distance and movement budget
+Cadence and movement budget should also interact with practical distance-to-player / local relevance.
+A good v1 lean is:
+- **closer / higher-relevance regions** get tighter cadence but shorter step budgets, so groups update more often but only move a little per pass
+- **farther / lower-relevance regions** can update less often but take larger overmap hops per pass, so abstract groups can still cover ground and explore instead of stalling uselessly
+
+Useful rough law:
+- nearby active bandit motion may only advance about one overmap tile per cadence step
+- farther strategic motion can jump several tiles toward the best currently attractive nearby region or mark instead of crawling tile-by-tile forever
+- exact movement constants should be tuned later, but the principle should remain: slower far cadence does **not** mean uselessly frozen far groups
+
+This matters because the design should let bandits actually migrate, probe, and close distance over time rather than becoming decorative map furniture.
+
 The strategic tick should broadly do this:
 1. apply ledger drift
 2. refresh marks/heatmaps, selectively decay soft pressure, and freeze confirmed threat until updated
@@ -793,6 +806,23 @@ This paper is still **not** trying to:
 - greenlight implementation automatically
 
 The point is coherence, not false completion.
+
+---
+
+## Validation shape for later implementation
+
+When this eventually leaves the parked lane, a good first validation packet should include a small set of ugly canned scenarios rather than only unit math.
+
+Good shape:
+- hand-assembled overmap situations with different mixes of smoke, light, route activity, cities, forest cover, and camp need pressure
+- simulate a meaningful number of turns / cadence passes
+- inspect where groups move, what marks strengthen, and whether approach decisions stay plausible
+
+The goal is not perfect objectivity.
+It is to catch behavior that is obviously stupid, frozen, over-omniscient, or pathologically passive.
+
+A rough packet of maybe 5-10 scenarios would already be useful.
+That is enough to expose whether the system actually explores, converges on promising regions, and reacts sensibly to repeated signals.
 
 ---
 
