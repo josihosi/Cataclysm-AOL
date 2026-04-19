@@ -39,9 +39,14 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now **one active greenlit implementation lane**: **Combat-oriented locker policy**.
+There is now **one active greenlit lane**: **Plan/Aux pipeline helper**.
 
-Fresh checkpoint just closed:
+Fresh checkpoints just closed:
+- **Combat-oriented locker policy** is honestly checkpointed:
+  - the explicit `gloves`, `mask`, `belt`, and `holster` locker slots are real, the `Prefer bulletproof gear` toggle is real, ballistic vest scoring/replacement now notices loaded vs damaged ablative plates, and the full-body combat-suit packet now reaches weaker current shirts, vests, and body armor while stronger ballistic armor still stays put
+  - the final suspicion-first audit found one real remaining proof gap, namely that the new common combat-support slots had classification/candidate coverage but no direct service proof yet
+  - that gap is now closed by deterministic test `camp_locker_service_equips_common_combat_support_slots`, which drives real `CAMP_LOCKER` service and shows gloves, dust mask, tool belt, and holster actually being equipped from locker stock
+  - focused deterministic validation passed on the current tree: `make -j4 tests`, `./tests/cata_test "camp_locker_service_equips_common_combat_support_slots"`, and `./tests/cata_test "[camp][locker]"`
 - **Package 5, basecamp carried-item dump lane** is honestly closed on the documented `bandages` acceptance item.
 - **Package 4, locker zone policy + control-surface cleanup** is now honestly reclosed too:
   - `.userdata/dev-harness/harness_runs/20260419_141422/` shows the real McWilliams `CAMP_LOCKER` Zone Manager seam creating `Basecamp: Locker`, renaming it to `Probe Locker`, closing through the single-`Esc` save prompt, and reopening Zone Manager with `Probe Locker` still present
@@ -52,22 +57,16 @@ Fresh checkpoint just closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- move the now-active combat-oriented locker policy lane through its next honest state after the explicit ballistic-maintenance footing and the direct full-body-suit displacement slices landed
-- the current tree now has explicit combat-policy footholds instead of vague roadmap prose:
-  - `camp_locker_slot`, `all_camp_locker_slots()`, locker policy persistence, and `locker_policy_ui()` already expose explicit `gloves`, `mask`, `belt`, and `holster` controls
-  - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle that raises body-armor and helmet bullet-resistance weighting instead of leaving ballistic preference as hidden scoring folklore
-  - body-armor scoring now also treats loaded ablative plates as real ballistic value, and same-type ballistic vests can upgrade over damaged-plate variants instead of pretending equal item ids mean equal armor state
-  - protective full-body suits now cover the direct current-outfit seam all the way through the weaker upper-body/body-armor layers: they suppress missing-current shirt filler when chosen from the locker, and they can now also displace weaker currently worn shirts, vests, and body armor when the suit itself is the meaningful pants-lane upgrade, while stronger current ballistic armor still stays put
-  - the current locker footing still keeps the useful safety scaffolding, like weird-garment preservation, weather sensitivity, and full-body suit protection, so the next state should audit whether any real combat-policy gap still remains instead of inventing doctrine creep
-- keep this separate from the already-closed board speech cleanup, deeper locker V3 doctrine soup, and bandit/threat design lanes
-
-Best concrete next states for this lane:
-1. treat the new body-armor displacement slice as landed and do one final suspicion-first audit for any remaining real combat-policy gap before claiming the lane is checkpointable
-2. if that audit finds a real remaining gap, keep the next proof deterministic first and centered on that specific combat/guard outfit behavior
-3. if no such gap survives the audit, checkpoint the combat-oriented locker policy lane honestly and move to the next greenlit target instead of widening fashion law for sport
+- move the now-active Plan/Aux pipeline helper from greenlit contract to its first honest implementation shape
+- keep v1 small and workflow-faithful:
+  - take a proposed item, greenlight, or parked-lane request and print the contract back for verification
+  - collect corrections before touching canon files
+  - classify the result as active, parked, or bottom-of-stack
+  - patch the canon files consistently, with optional Andi handoff generation only after the main path is real
+- start with a suspicion-first tooling audit instead of inventing fresh scaffolding blindly: check whether the repo already has reusable prompt, patch, or canon-update footing nearby
+- keep this separate from the now-closed locker/basecamp slices and the bottom-of-stack bandit docs
 
 Explicit greenlit backlog behind the current slice:
-- **Plan/Aux pipeline helper**
 - **Bandit concept formalization follow-through** (bottom-of-stack, conceptual docs only)
 
 Meaning:
@@ -224,13 +223,13 @@ Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
 
 ---
 
-## 10. Greenlit backlog — Plan/Aux pipeline helper
+## 10. Active — Plan/Aux pipeline helper
 
-**Status:** GREENLIT / BACKLOG TOOLING
+**Status:** ACTIVE / GREENLIT TOOLING
 
 Josef explicitly wants a small helper for the `Plan.md` / auxiliary-doc pipeline because greenlighting already-existing lanes should not require slow manual file carpentry every time.
 
-What this future tool should do:
+What this tool should do:
 - take a proposed item, greenlight, or parked-lane request
 - print the contract back for verification
 - collect corrections before touching canon files
@@ -250,11 +249,16 @@ The point is leverage and consistency, not ceremony:
 
 Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
+What this active lane should do next:
+- do a suspicion-first tooling audit for any reusable prompt, patch, or canon-update footing that already exists nearby in the repo
+- choose the smallest v1 entry point that can preserve verification -> correction -> classification -> patching without hidden magic
+- keep this as workflow tooling, not as an excuse to reopen the now-closed locker/basecamp slices
+
 ---
 
-## 11. Active — combat-oriented locker policy
+## 11. Checkpointed — combat-oriented locker policy
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
 Josef wants locker development to lean harder toward sensible guard/combat outfits without throwing away the already-earned weird-garment safety wins.
 
@@ -263,17 +267,15 @@ The current narrow combat-policy slices are now landed on the current tree:
 - `classify_camp_locker_item()` now gives common combat support gear an explicit locker-policy home instead of dropping holsters on the floor or letting belt-like waist gear get lost in generic clothing logic
 - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle, and body-armor / helmet scoring now leans harder toward higher bullet protection when that control is enabled
 - body-armor scoring now also counts loaded ablative plates as real armor value, and same-type ballistic vests can be upgraded over damaged-plate variants instead of treating identical item ids as an automatic tie
-- focused deterministic coverage now exercises loaded-vs-empty ballistic vest scoring, damaged insert scoring, and same-type healthy-plate replacement behavior on the current tree
+- focused deterministic coverage now exercises loaded-vs-empty ballistic vest scoring, damaged insert scoring, same-type healthy-plate replacement behavior, and the positive/negative full-body-suit-vs-current-body-armor tradeoffs on the current tree
 - protective full-body suits in the pants lane now also suppress missing-current shirt filler when the suit itself is already the better combat/protective packet, so survivor-style suits stop inviting junk T-shirts underneath them just because the shirt lane is empty
-- that same protective-suit seam now also handles the current lighter-upper-body comparisons: when the suit wins the pants-lane upgrade honestly, weaker current shirts and vests can be demoted into duplicate cleanup instead of being layered under the new suit
+- that same protective-suit seam now also handles the direct current-outfit comparisons all the way through weaker body armor: when the suit wins the pants-lane upgrade honestly, weaker current shirts, vests, and body armor can be demoted into duplicate cleanup instead of being layered under the new suit, while stronger current ballistic armor remains equipped
 - the current locker safety spine stayed intact while doing that: weird-garment preservation, weather-sensitive outerwear/legwear handling, full-body suit protection, and the earlier great-helm / holster safety cases still survive the filtered locker suite
-- the broader explicit full-body battle/protective suit preference packet is now real on the current tree, including the remaining suit-vs-current-body-armor slice built on top of the ballistic footing
-- the active seam is now the closure audit: verify that this combat-oriented deterministic packet is honestly enough to checkpoint instead of assuming there must be another clever nuance hiding nearby
+- the final closure audit found one real remaining proof gap, namely end-to-end service evidence for the newly explicit combat-support slots
+- that gap is now closed by deterministic test `camp_locker_service_equips_common_combat_support_slots`, which proves real `CAMP_LOCKER` service equips gloves, dust mask, tool belt, and holster from locker stock
+- focused deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "camp_locker_service_equips_common_combat_support_slots"`, and `./tests/cata_test "[camp][locker]"`
 
-What this active lane should do next:
-- verify whether the now-landed full-body combat-suit preference packet is enough to checkpoint honestly, rather than assuming another doctrine slice must exist
-- if a real gap remains, keep extending deterministic combat/guard outfit proof before asking for live locker service proof
-- keep biasing deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
+Keep this lane closed unless later code or runtime evidence breaks one of those claims.
 
 Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 

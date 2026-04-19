@@ -246,22 +246,23 @@ Notes:
 
 ## Combat-oriented locker policy
 
-Status: ACTIVE / IN PROGRESS
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] Future locker behavior strongly supports sensible common guard/combat gear: gloves, belts, masks, holsters, and the usual practical clothing/loadout pieces.
 - [x] A bulletin-board / locker-surface bulletproof toggle exists and meaningfully shifts outfit preference toward ballistic gear.
 - [x] Ballistic vest and plate handling becomes explicit enough to replace damaged (`XX`) ballistic components sensibly.
 - [x] Clearly superior full-body battle/protective suits are preferred when appropriate instead of being split into worse piecemeal junk.
-- [ ] Future deterministic tests lean more toward combat/guard outfit behavior and less toward endlessly widening exotic garment edge-case law.
+- [x] Future deterministic tests lean more toward combat/guard outfit behavior and less toward endlessly widening exotic garment edge-case law.
 
 Notes:
 - Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
-- This is now the current active lane.
+- This lane is now checkpointed instead of active.
 - The opening 2026-04-19 audit found the first honest combat-policy seam, and the current tree now has landed narrow slices for explicit `gloves` / `mask` / `belt` / `holster` locker footing, a persisted `Prefer bulletproof gear` locker-policy toggle that shifts body-armor and helmet scoring toward stronger ballistic protection, explicit ablative-plate-aware ballistic vest scoring/replacement behavior, missing-shirt filler suppression under protective full-body suits, and the direct-current comparisons where a superior full-body suit can now also displace weaker currently worn shirts, vests, and body armor while still keeping stronger current ballistic armor.
 - The ballistic-maintenance slice is now covered by focused deterministic checks for loaded vs empty vest scoring, damaged insert scoring, same-type healthy-plate upgrades, and the new positive/negative full-body-suit-vs-current-body-armor tradeoffs.
-- The remaining open question for this lane is no longer whether the full-body combat-suit preference exists on the current tree. It is whether the current deterministic combat-policy packet is now broad enough to checkpoint the lane honestly, or whether one more real combat-oriented gap still exists.
-- This future direction preserves the current weird-garment safety work instead of replacing it.
+- The final closure audit found one real remaining proof gap, namely end-to-end service evidence for the newly explicit combat-support slots.
+- That gap is now closed by `camp_locker_service_equips_common_combat_support_slots`, and focused deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "camp_locker_service_equips_common_combat_support_slots"`, and `./tests/cata_test "[camp][locker]"`.
+- This future direction preserved the current weird-garment safety work instead of replacing it.
 
 ---
 
@@ -320,7 +321,7 @@ Notes:
 
 ## Plan/Aux pipeline helper
 
-Status: GREENLIT / BACKLOG TOOLING
+Status: ACTIVE / GREENLIT TOOLING
 
 Success state:
 - [ ] A small helper can take a proposed item/greenlight and print the contract back for verification before canon files are changed.
@@ -331,4 +332,5 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
-- This is greenlit backlog tooling meant to improve workflow speed and consistency, not a current-lane feature.
+- This is now the current active lane.
+- The first honest step is a suspicion-first tooling audit for reusable prompt, patch, and canon-update footing, followed by the smallest v1 entry point that can prove verification -> correction -> classification -> patching without hidden workflow magic.

@@ -39,29 +39,21 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Combat-oriented locker policy
+### Plan/Aux pipeline helper
 
 Current honest state:
-- the current combat-policy slices are landed narrowly on the current tree:
-  - `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now expose explicit `gloves`, `mask`, `belt`, and `holster` slots
-  - `classify_camp_locker_item()` now routes representative combat support gear into those slots instead of dropping hip holsters on the floor or letting waist gear disappear into generic clothing logic
-  - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle, and body-armor / helmet scoring adds extra bullet-resistance weight when that control is enabled
-  - body-armor scoring now also counts loaded ablative plates as real value, and same-type ballistic vests can replace damaged-insert variants when their actual armor state is better
-  - protective full-body suits in the pants lane now suppress missing-current shirt filler when the suit itself is the better combat/protective packet, so survivor-style suits stop inviting junk T-shirts underneath them just because the shirt lane is empty
-  - that same protective-suit seam now also handles the direct current-outfit comparisons all the way through weaker body armor: when the suit wins the pants-lane upgrade honestly, weaker current shirts, vests, and body armor can be demoted into duplicate cleanup instead of being layered underneath the new suit, while stronger current ballistic armor remains equipped
-  - deterministic coverage now checks bulletproof-toggle persistence, the scoring-gap shift toward more ballistic armor and helmets, loaded-vs-empty ballistic vest scoring, damaged insert scoring, same-type healthy-plate replacement behavior, the missing-shirt filler guard, and the positive/negative current shirt/vest/body-armor displacement rules
-- focused deterministic validation passed on the current tree after the body-armor slice landed:
-  - `make -j4 tests`
-  - `./tests/cata_test "camp_locker_loadout_planning"`
-  - `./tests/cata_test "camp_locker_service_uses_armored_full-body_utility_suits_over_weaker_current_shirts"`
-  - `./tests/cata_test "camp_locker_service_uses_armored_full-body_utility_suits_over_weaker_current_vests"`
-  - `./tests/cata_test "camp_locker_service_uses_armored_full-body_utility_suits_over_weaker_current_body_armor"`
-  - `./tests/cata_test "[camp][locker]"`
-- the filtered locker suite still covers the previously suspicious safety seams this shared-helper change could have broken, including great-helm classification, ballistic body-armor comparisons, holster-vs-pants cleanup behavior, weird-garment preservation, weather-sensitive outerwear/legwear handling, and full-body suit protection logic
-- the next missing evidence is no longer the body-armor tradeoff slice itself; it is the closure audit on whether this deterministic combat-policy packet is already enough to checkpoint the lane honestly
+- the active helper lane is still at the pre-implementation tooling-audit stage
+- the canonical contract already exists at `doc/plan-aux-pipeline-helper-2026-04-09.md`, and the next missing evidence is not compile output but a suspicion-first audit of what reusable prompt, patch, and canon-update footing already exists nearby
+- the next honest step is repo/tooling inspection for a smallest viable entry point that can preserve verification -> correction -> classification -> patching without hidden magic
+- unless that audit lands code, this lane remains docs/tooling-planning work and does **not** need ceremonial compile churn
 
 ### Recently closed, do not casually reopen
 
+- Combat-oriented locker policy is now honestly checkpointed:
+  - the final closure audit found one real remaining deterministic gap, namely end-to-end service proof for the newly explicit common combat-support slots
+  - that gap is now closed by `camp_locker_service_equips_common_combat_support_slots`, which proves real locker service equips gloves, dust mask, tool belt, and holster from `CAMP_LOCKER` stock
+  - focused deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "camp_locker_service_equips_common_combat_support_slots"`, and `./tests/cata_test "[camp][locker]"`
+  - the filtered locker suite still covers the previously suspicious safety seams this packet could have broken, including great-helm classification, ballistic body-armor comparisons, holster-vs-pants cleanup behavior, weird-garment preservation, weather-sensitive outerwear/legwear handling, and full-body suit protection logic
 - Organic bulletin-board speech polish is now reclosed on both deterministic and live footing:
   - `make -j4 tests` plus `./tests/cata_test "[camp][basecamp_ai]"` passed for the widened organic status parsing and cleaned spoken bark
   - live run `.userdata/dev-harness/harness_runs/20260419_154244/` used the real camp-assignment seam, asked `what needs making`, and showed `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue
@@ -73,15 +65,15 @@ Current honest state:
 
 ### Meaning
 
-- the missing evidence for the active lane is not another live board or locker rerun
-- the next honest move is a suspicion-first closure audit on the combat-policy lane, not a generic rerun of the now-landed direct-comparison seam and not automatic doctrine creep just because the lane is still open in canon
+- the missing evidence for the active lane is not another locker rerun or compile ritual
+- the next honest move is a suspicion-first tooling audit on the Plan/Aux helper lane, while the now-closed combat packet stays closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- none yet for the closure audit
-- if that audit surfaces a fresh real combat-policy gap, start again with narrow deterministic locker tests before asking for any live locker-service proof
+- none yet for the helper audit
+- if the audit lands actual helper code, use the smallest honest validation for the touched layer instead of defaulting to repo-wide builds
 
 ---
 
@@ -92,6 +84,10 @@ Use these when they are actually the missing evidence, not as ritual.
 ### Narrow locker deterministic pass after a code slice lands
 - `make -j4 tests`
 - `./tests/cata_test "[camp][locker]"`
+
+### Future helper validation only if code actually lands
+- use the narrowest test or script-level proof that matches the touched helper entry point
+- do not rebuild game binaries for docs-only helper audit work
 
 ### Fresh tiles rebuild only if a later combat-policy handoff really needs live proof
 - `make -j4 TILES=1 cataclysm-tiles`

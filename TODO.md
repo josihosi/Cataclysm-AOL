@@ -8,20 +8,21 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Combat-oriented locker policy**.
+Active lane: **Plan/Aux pipeline helper**.
 
 Current target:
-1. do the final suspicion-first closure audit on the combat-oriented locker policy lane
-   - the explicit `gloves`, `mask`, `belt`, and `holster` locker slots are real, the `Prefer bulletproof gear` toggle is real, ballistic vest scoring/replacement now notices loaded vs damaged ablative plates, and the current full-body suit packet now reaches weaker current shirts, vests, and body armor while stronger ballistic armor still stays put
-   - do not assume there must be one more clever combat-policy nuance just because the lane is active; check whether a real remaining gap actually exists
-2. keep the audit narrow
-   - preserve the already-earned weird-garment safety work, weather-sensitive locker footing, full-body suit protection, the holster/belt separation, and the explicit ballistic maintenance law instead of bulldozing them
-   - if a real remaining gap appears, name it precisely and start with the smallest deterministic proof for that gap
+1. do a suspicion-first tooling audit for the helper lane
+   - inspect whether the repo already has reusable prompt, contract-confirmation, patch, or canon-update footing instead of inventing scaffolding from thin air
+   - keep the first honest implementation shape small enough that verification -> correction -> classification -> patching can be proven without hidden workflow magic
+2. keep v1 narrow
+   - prefer one entry point that can take an already-understood item and walk it through contract echo, correction, and final classification before patching canon files
+   - do not drag in optional Andi handoff generation unless the main packaging path is already real
 3. keep this separate from the other lanes
-   - do not reopen the closed board-speech cleanup without a fresh contradiction
-   - do not drift back into Package 5 carried-item archaeology or forward into bandit/threat docs
+   - the combat-oriented locker policy lane is checkpointed unless a fresh contradiction appears
+   - do not drift into bandit/threat docs or reopen closed locker/basecamp slices just because they are nearby
 
 Out of scope right now:
+- reopening the closed combat-oriented locker lane without a new contradiction
 - reopening the closed Package 4 locker surface/control slice without a new contradiction
 - reopening the closed organic bulletin-board speech slice without a new contradiction
 - bandit / overmap-threat design
