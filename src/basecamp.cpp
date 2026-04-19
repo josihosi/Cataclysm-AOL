@@ -755,7 +755,8 @@ void prefer_selected_full_body_suit_over_redundant_current_upper_body_layers(
   }
 
   for (const camp_locker_slot slot :
-       {camp_locker_slot::shirt, camp_locker_slot::vest}) {
+       {camp_locker_slot::shirt, camp_locker_slot::vest,
+        camp_locker_slot::body_armor}) {
     const auto slot_it = plan.find(slot);
     if (slot_it == plan.end()) {
       continue;
