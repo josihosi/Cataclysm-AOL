@@ -545,7 +545,10 @@ But the point is to stop hand-waving and freeze something testable.
 ### Engine-grounded scale facts
 - **1 overmap tile = 24 map tiles**
 - current reality-bubble view radius is about **60 map tiles**, which is about **2.5 overmap tiles**
-- for coarse overmap reasoning, the clean round number is therefore a **3 overmap tile radius** around the player for "bubble-local / high-relevance" logic
+- for coarse overmap reasoning, the clean round number is therefore a **3 overmap tile radius** around the player for **bubble-local / high-relevance** logic
+- but that local bubble-fed zone should **not** be mistaken for the whole abstract bandit overmap play-space
+- the **strategic bandit theater** needs to be much larger, or bandits collapse into a dumb tripwire near the player
+- current preferred starter lean: about **48 overmap tiles radius** for the main abstract theater, with roughly **60 OMT** as a plausible outer cap if testing says the wider region still feels good and affordable
 
 ### Starter sight/read ranges
 - **ordinary bounty visibility range:** start at **10 overmap tiles** in clear conditions
@@ -558,7 +561,8 @@ But the point is to stop hand-waving and freeze something testable.
   - this deliberately makes smoke legible farther than ordinary sight without turning every tiny fire into a world-map beacon
 
 ### Movement-budget consequence
-If bandits should not range beyond what they can meaningfully threat-read, then a clean v1 freeze is:
+Daily movement budget should stay much smaller than the full strategic theater.
+A clean v1 freeze is still:
 - **minimum daily range:** **1 overmap tile per day**
 - **maximum daily range:** **6 overmap tiles per day**
 - farther groups can spend bigger chunks of that budget per update pass, but total day-range should still stay inside this envelope
@@ -566,7 +570,7 @@ If bandits should not range beyond what they can meaningfully threat-read, then 
 That gives a sane first gradient:
 - near groups creep locally
 - midrange groups can cover a few tiles in a day
-- far strategic groups can still migrate meaningfully without teleporting across half the county because cadence fired often
+- far strategic groups can still migrate meaningfully over multiple days across the wider **48-60 OMT** theater without teleporting across half the county because cadence fired often
 
 ---
 

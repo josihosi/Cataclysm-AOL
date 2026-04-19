@@ -682,6 +682,12 @@ It keeps the world feeling alive without demanding global constant thought.
 
 ### Working distance and movement budget
 Cadence and movement budget should also interact with practical distance-to-player / local relevance.
+
+Important scale split:
+- the **loaded / bubble-local high-relevance zone** near the player is still only a few OMT wide, roughly **3 OMT** from current map-scale constants
+- the **abstract strategic bandit theater** should be far larger, on the order of about **48 OMT radius**, with something like **60 OMT** as a plausible outer cap
+- if the whole overmap actor space is only bubble-sized, bandits become a glorified tripwire instead of a regional force that can stalk, migrate, remember, and create pressure over time
+
 A good v1 lean is:
 - **closer / higher-relevance regions** get tighter cadence and smaller daily travel budgets
 - **farther / lower-relevance regions** can update less often but spend a larger daily overmap budget when they do act
@@ -699,7 +705,8 @@ Useful rough law:
 
 This keeps the gradient sensible:
 - minimum day range stays at the requested **one tile, one overmap tile**
-- maximum day range stays inside the intended threat-reading envelope instead of letting bandits sprint far beyond what they can meaningfully evaluate
+- maximum day range stays inside a sane daily operational envelope instead of letting bandits sprint absurd distances in one day
+- the broader strategic theater is where long-lived pressure, migration, scouting chains, and remembered marks matter across many days, not a license for instant map-crossing nonsense
 
 The strategic tick should broadly do this:
 1. apply ledger drift
