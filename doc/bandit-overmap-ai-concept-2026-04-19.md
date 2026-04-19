@@ -400,6 +400,7 @@ This document is not yet trying to:
 Current linked parked-chain sub-items:
 - deterministic scoring guidance: `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`
 - overmap mark-generation and heatmap model: `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`
+- bidirectional overmap-to-bubble handoff seam: `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`
 
 ## Why this vessel exists
 

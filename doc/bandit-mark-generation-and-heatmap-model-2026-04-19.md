@@ -388,17 +388,16 @@ Related parked-chain sub-item:
 
 ---
 
-## Good next parked-chain follow-up after this
+## Related parked-chain follow-up
 
-After this item, the next strongest parked concept item is:
-- the **overmap-to-bubble handoff seam**
+The next parked-chain follow-up after this was the bidirectional seam doc:
+- `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`
 
-That should wait until:
+That ordering was intentional:
 - marks exist
 - heatmaps exist
 - scoring exists
-
-Then the handoff can be designed on top of something real instead of vapor.
+- then the handoff can be designed on top of something real instead of vapor
 
 ---
 
