@@ -42,19 +42,17 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 ### Combat-oriented locker policy
 
 Current honest state:
-- the first combat-policy code slice is now landed narrowly on the current tree:
+- the first three combat-policy code slices are now landed narrowly on the current tree:
   - `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now expose explicit `gloves`, `mask`, `belt`, and `holster` slots
   - `classify_camp_locker_item()` now routes representative combat support gear into those slots instead of dropping hip holsters on the floor or letting waist gear disappear into generic clothing logic
-  - scoring and upgrade-threshold plumbing were extended for the new slots
-- narrow deterministic validation passed on the current tree after the slice landed:
+  - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle, and body-armor / helmet scoring adds extra bullet-resistance weight when that control is enabled
+  - body-armor scoring now also counts loaded ablative plates as real value, and same-type ballistic vests can replace damaged-insert variants when their actual armor state is better
+  - deterministic coverage now checks bulletproof-toggle persistence, the scoring-gap shift toward more ballistic armor and helmets, loaded-vs-empty ballistic vest scoring, damaged insert scoring, and same-type healthy-plate replacement behavior
+- narrow deterministic validation passed on the current tree after the ballistic-maintenance slice landed:
   - `make -j4 tests`
   - `./tests/cata_test "[camp][locker]"`
-- the filtered locker suite still covers the previously suspicious safety seams this slice could have broken, including great-helm classification and holster-vs-pants cleanup behavior
-- there is still no bulletin-board or locker-surface bulletproof toggle, so ballistic preference is still not a real player-facing control yet
-- the current locker footing still includes the reusable scaffolding the next slice should preserve:
-  - weird-garment safety and non-destructive coverage preservation
-  - weather-sensitive outerwear and legwear handling
-  - full-body suit protection logic
+- the filtered locker suite still covers the previously suspicious safety seams these slices could have broken, including great-helm classification, holster-vs-pants cleanup behavior, weird-garment preservation, weather-sensitive outerwear/legwear handling, and full-body suit protection logic
+- the next missing evidence is no longer the control surface or plate-maintenance seam; it is explicit full-body battle/protective suit preference on top of that new policy footing
 
 ### Recently closed, do not casually reopen
 
@@ -76,8 +74,8 @@ Current honest state:
 
 ## Pending probes
 
-- none yet for this follow-up slice
-- if the next combat-policy step is the bulletproof toggle or another new control seam, start again with narrow deterministic locker tests before asking for any live locker-service proof
+- none yet for the next follow-up slice
+- if the next combat-policy step is explicit full-body battle/protective suit preference, start again with narrow deterministic locker tests before asking for any live locker-service proof
 
 ---
 

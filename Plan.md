@@ -52,17 +52,18 @@ Fresh checkpoint just closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- move the now-active combat-oriented locker policy lane from backlog wording into a first honest implementation slice
-- the opening suspicion-first audit on the current tree already found concrete control-law gaps instead of vague vibes:
-  - `camp_locker_slot`, `all_camp_locker_slots()`, and `locker_policy_ui()` still expose only the older 12-slot surface, with no gloves, belt, mask, or holster controls and no bulletproof toggle
-  - `classify_camp_locker_item()` still drops holsters and other accessory-heavy combat kit on the floor instead of giving them an explicit policy home
-  - the current locker footing already has useful safety scaffolding, like weird-garment preservation, weather sensitivity, and full-body suit protection, so the next slice should extend that spine instead of replacing it
+- move the now-active combat-oriented locker policy lane through its next honest narrow slice after the new explicit ballistic-maintenance footing landed
+- the current tree now has three explicit combat-policy footholds instead of vague roadmap prose:
+  - `camp_locker_slot`, `all_camp_locker_slots()`, locker policy persistence, and `locker_policy_ui()` already expose explicit `gloves`, `mask`, `belt`, and `holster` controls
+  - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle that raises body-armor and helmet bullet-resistance weighting instead of leaving ballistic preference as hidden scoring folklore
+  - body-armor scoring now also treats loaded ablative plates as real ballistic value, and same-type ballistic vests can upgrade over damaged-plate variants instead of pretending equal item ids mean equal armor state
+  - the current locker footing still keeps the useful safety scaffolding, like weird-garment preservation, weather sensitivity, and full-body suit protection, so the next slice should extend that spine instead of replacing it
 - keep this separate from the already-closed board speech cleanup, deeper locker V3 doctrine soup, and bandit/threat design lanes
 
 Best concrete next states for this lane:
-1. freeze the first combat-policy slice narrowly: add the missing slot/control-surface footing before trying to solve every ballistic and outfit nuance at once
-2. make the first code proof deterministic first, centered on the newly exposed combat-gear controls and classification behavior, before demanding live locker service proof
-3. only broaden into ballistic plate replacement or full suit preference once the slot/control surface is real on the current tree
+1. use the now-explicit ballistic footing as the stable seam for the next full-body combat-policy slice, most likely clearly superior battle/protective suits versus worse piecemeal replacements
+2. keep that next code proof deterministic first, centered on explicit combat-suit tradeoff behavior, before demanding live locker service proof
+3. only broaden into wider doctrine/fashion nuance once the full-body combat-suit preference is real on the current tree
 
 Explicit greenlit backlog behind the current slice:
 - **Plan/Aux pipeline helper**
@@ -256,17 +257,18 @@ Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
 Josef wants locker development to lean harder toward sensible guard/combat outfits without throwing away the already-earned weird-garment safety wins.
 
-The first narrow slice is now landed on the current tree:
+The first three narrow slices are now landed on the current tree:
 - `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now include explicit `gloves`, `mask`, `belt`, and `holster` slots instead of the older 12-slot-only footing
 - `classify_camp_locker_item()` now gives common combat support gear an explicit locker-policy home instead of dropping holsters on the floor or letting belt-like waist gear get lost in generic clothing logic
-- scoring/upgrade-threshold plumbing and deterministic persistence/candidate coverage were extended for that new slot footing on the current tree
+- the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle, and body-armor / helmet scoring now leans harder toward higher bullet protection when that control is enabled
+- body-armor scoring now also counts loaded ablative plates as real armor value, and same-type ballistic vests can be upgraded over damaged-plate variants instead of treating identical item ids as an automatic tie
+- focused deterministic coverage now exercises loaded-vs-empty ballistic vest scoring, damaged insert scoring, and same-type healthy-plate replacement behavior on the current tree
 - the current locker safety spine stayed intact while doing that: weird-garment preservation, weather-sensitive outerwear/legwear handling, full-body suit protection, and the earlier great-helm / holster safety cases still survive the filtered locker suite
-- there is still no bulletin-board or locker-surface bulletproof toggle, so ballistic preference is still not a real player-facing control yet
+- explicit full-body battle/protective suit preference is still missing, so the active seam is no longer the ballistic-maintenance rule itself but the next combat-suit preference slice built on top of it
 
 What this active lane should do next:
-- use the new combat-kit slot footing for the next equally explicit control, most likely the still-missing bulletproof preference toggle
-- extend explicit ballistic vest / plate handling after that control seam is real
-- prefer clearly superior full-body battle suits when appropriate
+- prefer clearly superior full-body battle suits when appropriate instead of splitting into worse piecemeal junk
+- keep extending deterministic combat/guard outfit proof before asking for live locker service proof
 - bias future deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
 
 Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
