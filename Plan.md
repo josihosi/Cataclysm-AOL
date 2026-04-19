@@ -52,18 +52,18 @@ Fresh checkpoint just closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- move the now-active combat-oriented locker policy lane through its next honest narrow slice after the explicit ballistic-maintenance footing and first direct current-shirt displacement slice landed
-- the current tree now has four explicit combat-policy footholds instead of vague roadmap prose:
+- move the now-active combat-oriented locker policy lane through its next honest narrow slice after the explicit ballistic-maintenance footing and first direct lighter-upper-body displacement slices landed
+- the current tree now has explicit combat-policy footholds instead of vague roadmap prose:
   - `camp_locker_slot`, `all_camp_locker_slots()`, locker policy persistence, and `locker_policy_ui()` already expose explicit `gloves`, `mask`, `belt`, and `holster` controls
   - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle that raises body-armor and helmet bullet-resistance weighting instead of leaving ballistic preference as hidden scoring folklore
   - body-armor scoring now also treats loaded ablative plates as real ballistic value, and same-type ballistic vests can upgrade over damaged-plate variants instead of pretending equal item ids mean equal armor state
-  - protective full-body suits now cover both sides of the first shirt seam: they suppress missing-current shirt filler when chosen from the locker, and they can also displace a weaker currently worn shirt when the suit itself is the meaningful pants-lane upgrade
+  - protective full-body suits now cover the current lighter-upper-body seam: they suppress missing-current shirt filler when chosen from the locker, and they can also displace weaker currently worn shirts and vests when the suit itself is the meaningful pants-lane upgrade
   - the current locker footing still keeps the useful safety scaffolding, like weird-garment preservation, weather sensitivity, and full-body suit protection, so the next slice should extend that spine instead of replacing it
 - keep this separate from the already-closed board speech cleanup, deeper locker V3 doctrine soup, and bandit/threat design lanes
 
 Best concrete next states for this lane:
-1. extend the direct current-outfit seam beyond weak shirt displacement, most likely into vest/body-armor tradeoffs only when the full-body suit is clearly superior overall
-2. keep that next code proof deterministic first, centered on explicit combat-suit-vs-current-upper-body tradeoff behavior, before demanding live locker service proof
+1. extend the direct current-outfit seam beyond shirts and vests, most likely into body-armor tradeoffs only when the full-body suit is clearly superior overall
+2. keep that next code proof deterministic first, centered on explicit combat-suit-vs-current-body-armor tradeoff behavior, before demanding live locker service proof
 3. only broaden into wider doctrine/fashion nuance once the fuller combat-suit preference packet is real on the current tree
 
 Explicit greenlit backlog behind the current slice:
@@ -258,19 +258,19 @@ Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
 Josef wants locker development to lean harder toward sensible guard/combat outfits without throwing away the already-earned weird-garment safety wins.
 
-The first five narrow slices are now landed on the current tree:
+The current narrow combat-policy slices are now landed on the current tree:
 - `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now include explicit `gloves`, `mask`, `belt`, and `holster` slots instead of the older 12-slot-only footing
 - `classify_camp_locker_item()` now gives common combat support gear an explicit locker-policy home instead of dropping holsters on the floor or letting belt-like waist gear get lost in generic clothing logic
 - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle, and body-armor / helmet scoring now leans harder toward higher bullet protection when that control is enabled
 - body-armor scoring now also counts loaded ablative plates as real armor value, and same-type ballistic vests can be upgraded over damaged-plate variants instead of treating identical item ids as an automatic tie
 - focused deterministic coverage now exercises loaded-vs-empty ballistic vest scoring, damaged insert scoring, and same-type healthy-plate replacement behavior on the current tree
 - protective full-body suits in the pants lane now also suppress missing-current shirt filler when the suit itself is already the better combat/protective packet, so survivor-style suits stop inviting junk T-shirts underneath them just because the shirt lane is empty
-- that same protective-suit seam now also handles the first direct currently worn comparison: when the suit wins the pants-lane upgrade honestly, a weaker current shirt can be demoted into duplicate cleanup instead of being layered under the new suit
+- that same protective-suit seam now also handles the current lighter-upper-body comparisons: when the suit wins the pants-lane upgrade honestly, weaker current shirts and vests can be demoted into duplicate cleanup instead of being layered under the new suit
 - the current locker safety spine stayed intact while doing that: weird-garment preservation, weather-sensitive outerwear/legwear handling, full-body suit protection, and the earlier great-helm / holster safety cases still survive the filtered locker suite
-- broader explicit full-body battle/protective suit preference is still missing, so the active seam is no longer the ballistic-maintenance rule itself but the next suit-vs-current-upper-body slice built on top of it
+- broader explicit full-body battle/protective suit preference is still missing, so the active seam is no longer the ballistic-maintenance rule itself but the remaining suit-vs-current-body-armor slice built on top of it
 
 What this active lane should do next:
-- prefer clearly superior full-body battle suits over the remaining inferior currently worn upper-body piecemeal cases when appropriate instead of stopping at weak-shirt cleanup
+- prefer clearly superior full-body battle suits over the remaining inferior currently worn body-armor cases when appropriate instead of stopping at shirts and vests
 - keep extending deterministic combat/guard outfit proof before asking for live locker service proof
 - bias future deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
 
