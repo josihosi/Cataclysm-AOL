@@ -256,6 +256,36 @@ The player and a basecamp should have understandable ways to reduce exposure:
 This is important because the design promise is not merely "bandits notice more things."
 It is "the player has survival choices that affect legibility."
 
+## Camp pressure and assault boundary
+If a camp becomes legible, bandits should not collapse into either extreme:
+- magical invisible camp wipes
+- total passivity just because a direct raid looks costly
+
+Sustained pressure is desirable.
+That can include:
+- scouting
+- stalking
+- route harassment
+- following small outbound NPC groups
+- opportunistic attacks when those groups get split, wounded, exhausted, or tangled with hordes
+- waiting for camp-side weakness instead of forcing a bad direct assault
+
+Current scope boundary:
+- decisive full camp assault should resolve only when the player is present
+- offscreen systems can create pressure, delays, interceptions, wounds, small losses, or missing returners, but not an invisible total camp devastation
+- attack intent does not need presignaling; fairness here comes from bounded offscreen consequence scope, not courtesy telegraphs
+
+## Existing repo footing for offscreen actors
+We do not need to invent offscreen actor existence from nothing.
+The current game already has a barebones overmap-NPC substrate, including:
+- dormant NPC persistence in `overmap_buffer`
+- overmap destinations and pathfinding
+- overmap travel for travelling NPCs
+- offscreen companion/basecamp NPC tracking
+
+That is enough repo footing for later stalking/intercept slices to reuse persistence, travel, and route-following.
+It is **not** enough reason to pretend the current need-driven random-NPC wandering policy is already the final hostile bandit behavior.
+
 ---
 
 ## Memory, marks, and heatmaps
@@ -661,17 +691,13 @@ Should settlement activity be its own signal family, or mainly an aggregation of
 ### 3. Terrain masking specificity
 How much terrain/shelter masking belongs in the concept versus later implementation details?
 
-### 4. Player warning channels
-How legible should stalking, scouting, and rising attention be before direct contact?
-Rumors, tracks, signs, failed ambushes, and visible scouts all suggest different readability levels.
-
-### 5. Persistence cost
+### 4. Persistence cost
 How much bandit memory and group state is affordable across save/load without becoming ugly or expensive?
 
-### 6. Readability versus exploitation
-How much warning is enough to feel fair without making the system trivial to cheese every time?
+### 5. Readability versus exploitation
+How much ambient pressure readability is enough to feel fair without making stalking and attacks trivial to cheese every time?
 
-### 7. Camp-side responses
+### 6. Camp-side responses
 How much basecamp-side agency belongs in any future v1 versus later layers?
 Patrols, escorts, scouts, decoys, and concealment behavior are all tempting, and all dangerous to bloat.
 
