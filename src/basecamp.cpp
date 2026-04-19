@@ -740,7 +740,7 @@ void prevent_missing_shirt_fill_under_armored_full_body_suit(
   plan.erase(shirt_it);
 }
 
-void prefer_selected_full_body_suit_over_redundant_current_shirt(
+void prefer_selected_full_body_suit_over_redundant_current_upper_body_layers(
     camp_locker_plan &plan, const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature) {
   const auto pants_it = plan.find(camp_locker_slot::pants);
@@ -754,21 +754,25 @@ void prefer_selected_full_body_suit_over_redundant_current_shirt(
     return;
   }
 
-  const auto shirt_it = plan.find(camp_locker_slot::shirt);
-  if (shirt_it == plan.end()) {
-    return;
-  }
+  for (const camp_locker_slot slot :
+       {camp_locker_slot::shirt, camp_locker_slot::vest}) {
+    const auto slot_it = plan.find(slot);
+    if (slot_it == plan.end()) {
+      continue;
+    }
 
-  camp_locker_slot_plan &shirt_plan = shirt_it->second;
-  if (shirt_plan.kept_current == nullptr || shirt_plan.selected_candidate != nullptr ||
-      !is_camp_locker_candidate_meaningfully_better(
-          camp_locker_slot::shirt, *pants_plan.selected_candidate,
-          *shirt_plan.kept_current, policy, local_temperature)) {
-    return;
-  }
+    camp_locker_slot_plan &slot_plan = slot_it->second;
+    if (slot_plan.kept_current == nullptr ||
+        slot_plan.selected_candidate != nullptr ||
+        !is_camp_locker_candidate_meaningfully_better(
+            slot, *pants_plan.selected_candidate, *slot_plan.kept_current,
+            policy, local_temperature)) {
+      continue;
+    }
 
-  shirt_plan.duplicate_current.push_back(shirt_plan.kept_current);
-  shirt_plan.kept_current = nullptr;
+    slot_plan.duplicate_current.push_back(slot_plan.kept_current);
+    slot_plan.kept_current = nullptr;
+  }
 }
 
 int camp_locker_outerwear_temperature_adjustment(
@@ -1490,7 +1494,7 @@ plan_camp_locker_loadout(
   prevent_missing_pants_fill_under_full_body_body_armor(plan);
   prevent_upper_body_stripping_pants_upgrades(plan);
   prevent_missing_shirt_fill_under_armored_full_body_suit(plan);
-  prefer_selected_full_body_suit_over_redundant_current_shirt(
+  prefer_selected_full_body_suit_over_redundant_current_upper_body_layers(
       plan, policy, local_temperature);
 
   return plan;
