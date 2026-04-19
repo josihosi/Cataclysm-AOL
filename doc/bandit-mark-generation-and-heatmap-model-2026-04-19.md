@@ -353,9 +353,17 @@ Not everything should behave the same way over time.
 Transient signal and bounty can fade.
 Confirmed threat should mostly freeze until updated.
 
+Preferred v1 principle:
+- do **not** build an expensive always-melting world map where every mark is continuously re-decayed just to feel alive
+- strong threat/loss memory should usually just **stay on the map** until overwritten or visibility-confirmed otherwise
+- cheap cadence passes should mostly refresh, rewrite, smooth weak soft pressure, and prune obvious clutter
+
+That keeps the system computationally sane and avoids goldfish bandits who repeat the same mistakes because passive forgetting ate their memory.
+
 ### Short cadence update
 At the 20-minute and 2-hour passes:
-- reduce transient signal strength
+- ingest queued events and refresh or overwrite affected marks
+- reduce transient signal strength only for soft, weak, unreinforced pressure
 - weaken confidence on unrefreshed soft marks
 - smooth unconfirmed heat spikes downward if not reinforced
 - do **not** cheaply remote-rewrite a strong recent threat/loss mark into safety just because time passed
@@ -366,6 +374,10 @@ At daily cleanup:
 - reduce broad bounty residues and transient attention clutter
 - convert unresolved but unconfirmed pressure into lower-confidence background memory when appropriate
 - keep serious threat/loss memory sticky unless later close-range experience genuinely downgrades it
+
+This should stay cheap and tiered.
+The point is not to numerically babysit every remembered mark every pass.
+The point is to stop clutter from growing forever while letting important reads persist until replaced or honestly rechecked.
 
 ### Visibility-confirmed threat updates
 Threat should be updated by what bandit groups actually see inside their practical visibility bubble, not by passive forgetting.
@@ -410,6 +422,7 @@ Suggested helper shape:
 - `emit_mark_signal( source_event )`
 - `apply_mark_to_heatmaps( mark )`
 - `refresh_or_create_mark( event_or_signal )`
+- `overwrite_or_confirm_mark( mark, new_observation )`
 - `decay_soft_mark( mark, cadence_tier )`
 - `update_heatmaps_from_visibility_confirmation( camp_or_region, scout_or_group )`
 - `decay_bounty_and_transient_pressure( camp_or_region, cadence_tier )`

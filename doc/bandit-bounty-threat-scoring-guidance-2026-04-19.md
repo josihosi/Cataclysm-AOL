@@ -347,6 +347,7 @@ Good v1 read:
 ## Mark refresh and selective decay
 
 Marks should not all get weaker the same way over time.
+And v1 should prefer **overwrite / refresh / selective pruning** over a costly fantasy where every remembered thing is constantly re-decayed in detail.
 
 ### Daily drift idea
 Once per day, marks can:
@@ -358,6 +359,7 @@ Once per day, marks can:
 But:
 - confirmed threat should not passively decay away just because nobody looked
 - threat should be downgraded mainly by scout/team visibility or another close outcome that actually rechecks the area
+- the implementation should keep this cheap, with important marks persisting until overwritten or honestly revised rather than numerically melted every tick
 
 ### Refresh / rewrite rule
 A mark can be refreshed or updated by:
@@ -366,6 +368,11 @@ A mark can be refreshed or updated by:
 - a successful raid/toll/stalk observation
 - a team visibility pass that actually sees the region
 - a new related mark merging into it
+
+Strong v1 default:
+- important marks stay until refreshed, overwritten, or visibility-confirmed otherwise
+- cheap cadence mostly updates what changed and prunes weak stale clutter
+- forgetting should be the exception for low-value noise, not the default behavior for meaningful threat memory
 
 This keeps the bandit map lively without turning it into perfect memory or implausible amnesia.
 
@@ -416,6 +423,7 @@ Suggested helper shape:
 - `compute_mark_bounty( camp, mark )`
 - `compute_mark_threat( camp, mark )`
 - `compute_job_score( camp, job_template, mark )`
+- `refresh_or_overwrite_mark( mark, observation )`
 - `decay_mark( mark )`
 - `apply_daily_camp_drift( camp )`
 
