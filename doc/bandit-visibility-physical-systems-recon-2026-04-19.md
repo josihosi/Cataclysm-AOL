@@ -179,8 +179,14 @@ The missing pieces appear to be an adapter layer that does the following:
 ### 1. Convert physical traces into overmap-readable marks
 For example:
 - fire/smoke activity -> possible activity mark
-- visible light source -> possible activity mark
+- externally visible light source -> possible activity mark
 - loud human activity -> possible activity mark
+
+For light specifically, the missing glue is not just source detection.
+It is an **external leakage / obstruction** judgment:
+- is the light actually visible outside the structure or terrain pocket
+- how suppressed is it by walls, curtains, indoor containment, or forest cover
+- is the site more exposed from one approach direction than another
 
 ### 2. Interpret those marks as bandit interest, not omniscience
 The bridge should output things like:
@@ -204,6 +210,9 @@ Likely questions:
 The future system should not require simulating every smoke puff on the overmap.
 It should read coarse consequences from real local systems and convert them into abstract marks.
 
+For light, this likely means a cheap coarse exposure model instead of tile-perfect omnidirectional raycasting across the whole map.
+A directional bucket or side-exposure abstraction is much more plausible than full decorative realism.
+
 ---
 
 ## Design constraints implied by this recon
@@ -215,6 +224,8 @@ Bandit visibility should consume those rather than mirror them in a disconnected
 ### Constraint 2: do not pretend smoke/light are already overmap beacons
 Smoke, fire, and light exist physically, but the repo does not obviously already turn them into overmap bounty/threat signals.
 That translation still needs explicit design.
+
+For light, daylight should remain a hard suppressor, and closed/contained indoor light should not magically become a world-map beacon just because a lamp exists somewhere inside.
 
 ### Constraint 3: sound has the cleanest first precedent
 Because the code already uses sound -> weather attenuation -> overmap signal, sound-driven investigation is the safest first bridge for later implementation thinking.

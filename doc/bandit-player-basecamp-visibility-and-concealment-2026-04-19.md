@@ -134,16 +134,20 @@ Typical examples:
 - lamps
 - lit structures
 - night travel or camp lighting
+- vehicle or road-stop lighting
 
 General meaning:
-- visible occupation or active use, especially in darkness
+- if distant light is actually visible, it usually implies current occupation, current use, or a meaningful active event
 
 Interpretation tendency:
 - stronger at night or in dark conditions
 - often implies immediate occupation more than old smoke does
+- can imply danger as much as bounty, because some visible lights may belong to vehicles, road stops, defensive positions, or other high-risk contact situations
 
-Important law:
-- daylight can suppress usefulness of light as a distant signal
+Important laws:
+- daylight should suppress distant light usefulness essentially completely, matching the real game footing rather than letting light become a daytime world-map beacon
+- visible light is stronger evidence of active occupancy than smoke alone, but still not perfect identity truth
+- smoke plus visible light in the same area should count as strong corroboration of meaningful active occupancy, not merely vague ambience
 
 ### 3. Human / route activity
 Typical examples:
@@ -206,7 +210,7 @@ Meaning:
 ### Daylight / darkness
 General rule:
 - light signals matter much more in darkness
-- daylight suppresses distant light usefulness
+- daylight suppresses distant light usefulness essentially to zero for overmap-read purposes
 - darkness may also make some non-light visual cues less reliable
 
 ### Rain / storms
@@ -223,7 +227,13 @@ General rule:
 ### Terrain / shelter
 Where relevant:
 - shelter, forest, walls, and terrain masking can reduce signal legibility
+- for light specifically, visibility should depend on coarse **obstruction / exposure**, not merely on whether a light source exists somewhere in the structure
 - this should stay coarse and overmap-oriented here, not turn into exact tile-stealth law
+
+Useful directional rule:
+- a lit site may be legible from one side and concealed from another
+- closed houses, curtained windows, walls, stoves or other contained indoor sources, and forest cover can reduce or block outward light leakage on some approaches while leaving other directions more exposed
+- later implementation should prefer a cheap directional exposure model, not expensive tile-perfect world-map ray theater
 
 Important bilateral rule:
 - weather and terrain concealment should not act like a player-only stealth blessing
@@ -290,8 +300,10 @@ Good rule:
 - settlement-class interpretation should require stronger reinforcement than generic human-activity interpretation
 
 Examples:
-- one night light: maybe a traveler or brief shelter
+- one night light: likely current occupancy or current use, but not yet automatic settlement truth
+- one roadside light source: maybe a vehicle stop, police-style road event, or another dangerous temporary contact
 - smoke two days in a row: stronger suspicion of recurring human activity
+- smoke plus visible night light at one site: strong corroboration that something meaningful is active there now
 - a couple of ordinary scavenging passes: still human/route activity, not automatic settlement truth
 - recurring smoke + light + traffic pattern: stronger basecamp/settlement interpretation
 
