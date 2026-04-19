@@ -50,14 +50,15 @@ Current target:
 Best concrete next states for this lane:
 1. keep the landed Package 5 code/test packet honest in the docs: ordinary carried junk now dumps on the locker service path, and the deterministic keep-vs-dump policy is intentionally limited to `bandages`, `ammo`, and `magazines`
 2. keep the corrected live packet honest on the real McWilliams tile: Robbie-only `say` targeting is now real, the shorter spoken order really submits on-screen, the bag-only probe proved `small plastic bag` is visibly collectible on its own, and the repaired `look_around` cap now lets the four-item seed complete together
-3. repair or replace the unstable post-pickup camp-assignment dialog seam on that same corrected packet so Robbie gets assigned back to camp after the now-honest four-item pickup
-4. once pickup plus camp reassignment are both honest again, rerun the same-actor locker packet and only then interpret keep-vs-dump; until then do not pretend the locker artifact answers the kept-lane question
+3. keep the downstream repair honest too: the real post-pickup continuation again reaches `TALK_CAMP`, opens the worker-priority overlay, assigns Robbie back to camp, and returns to actual locker service on the same corrected packet
+4. use the rebuilt locker readout to close the remaining exact `bandages` acceptance seam: the live artifact now names carried outcomes, so the next honest step is restaging the real `bandage` item instead of the auto-selected `adhesive bandage`, or explicitly changing policy if adhesive bandages are meant to count
 
 Explicit greenlit backlog behind the current slice:
 - **Package 4, locker zone policy + control-surface cleanup**
 - **Organic bulletin-board speech polish**
 - **Combat-oriented locker policy**
 - **Plan/Aux pipeline helper**
+- **Bandit concept formalization follow-through** (bottom-of-stack, conceptual docs only)
 
 Meaning:
 - these items are defined enough and explicitly greenlit
@@ -199,7 +200,19 @@ Current honest state:
   - screen: `You say "Robbie, pick up the bandage, the reloaded 9mm ammo, the Glock magazine, and the small plastic bag on the ground."` is visibly submitted, Robbie is the only follower who answers, and the visible log shows Robbie picking up `adhesive bandage`, `9x19mm JHP, reloaded`, `Glock 9x19mm 15-round magazine`, and `small plastic bag`
   - artifacts/logs: `config/llm_intent.log` now records `look_around response Robbie Knox (req_1): item_8, item_6, item_7, item_9` and the corresponding four-item selection list; pickup lines are logged for `9x19mm JHP, reloaded`, `Glock 9x19mm 15-round magazine`, and `small plastic bag`
   - remaining weirdness is now observability, not queueing: the bandage still reaches the selected queue and is visibly picked up on-screen, but the current `action_status` logging falls through to `pickup.item_missing` instead of mirroring that pickup cleanly in `config/llm_intent.log`
-- so Package 5 is still not honestly closed, but the active blocker has moved back downstream: keep the four-item pickup repair checkpointed, reopen the post-pickup camp-assignment seam, and only after that returns to locker service should the kept-lane artifact be interpreted
+- fresh downstream dialog re-probe at `.userdata/dev-harness/harness_runs/20260419_104954/` reclosed the next seam honestly:
+  - after mission success, Robbie really does pass through `TALK_FRIEND_GUARD` first (`I'm on watch.`), but the correct continuation on the repaired footing is still `b -> d -> n -> a`
+  - that probe again reaches `TALK_CAMP` and opens the worker-priority overlay, so the earlier drift probes turned out to be wrong-menu archaeology rather than a broken camp branch
+- fresh full same-actor rerun at `.userdata/dev-harness/harness_runs/20260419_105232/` then carried the corrected packet all the way back into locker service:
+  - screen: Robbie completes the four-item pickup, gets assigned back to `Bugchaser central`, returns to gameplay, and later visibly dons `Fighters' Glock 19` during service
+  - artifacts/logs: `probe.artifacts.log` captured the real `camp locker:` packet again, proving the packet had returned to the correct downstream seam even though the old runtime still compressed the carried-item readout
+- fresh observability patch plus rebuilt live rerun at `.userdata/dev-harness/harness_runs/20260419_111134/` closed that locker-readout seam for real:
+  - `src/basecamp.cpp` now logs exact dumped carried items and exact kept carried items in the `camp locker:` cleanup summary; the narrow guard stayed green on the rebuilt tree (`make -j4 tests`, `./tests/cata_test "[camp][locker]"`, `make -j4 TILES=1 cataclysm-tiles`)
+  - on the rebuilt live binary `6fa48c5e6c-dirty`, the same corrected packet now shows the exact outcome: `9x19mm JHP, reloaded` and `Glock 9x19mm 15-round magazine` stay with Robbie, while `small plastic bag` and `adhesive bandage` dump to cleanup
+- fresh exact-bandage query probe at `.userdata/dev-harness/harness_runs/20260419_111843/` exposed the next remaining seam cleanly:
+  - the live wish menu for query `bandage` lists `adhesive bandage` first and exact `bandage` second, so Package 5 is not disproved yet on the documented acceptance item
+  - the blocker is now reliable exact-bandage restaging on the live path, not locker observability, pickup routing, or camp reassignment
+- so Package 5 is still not honestly closed, but the remaining mismatch is finally narrow and explicit: either prove that true `bandage` stays in the kept lane on the same live packet, or consciously broaden/change the policy if `adhesive bandage` is supposed to count as part of the accepted bandages lane
 
 Greenlit backlog, not erased:
 - Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice and is now explicitly greenlit, just not the current active queue
@@ -322,12 +335,40 @@ Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 
 ---
 
-## 12. Parked concept chain — bandit overmap AI
+## 12. Greenlit bottom-of-stack — bandit concept formalization follow-through
+
+**Status:** GREENLIT / BOTTOM-OF-STACK
+
+Josef wants Andi to start tightening the remaining bandit control-law gaps after the current basecamp fixes are honestly closed, but still as conceptualization/doc work rather than implementation.
+
+This follow-through should turn the still-loose bandit economy, cadence, and cross-layer interaction rules into explicit packets without reopening code or pretending the whole bandit system is now active.
+
+Frozen footing for this follow-through:
+- no passive decay for bounty
+- no passive decay for threat
+- structural bounty is set by terrain / tile class and reduced by harvesting or exploitation
+- moving bounty changes when real actors or visible activity change, not because an idle timer shaved numbers off in the dark
+- bandit camp stockpile may go down by consumption, and any future spoilage rule must stay explicit and separate from bounty/threat logic
+
+Default package order:
+1. bounty source / harvesting / camp-stockpile rules
+2. cadence / distance burden / route-fallback rules
+3. cross-layer interaction packet with starter numbers and worked scenarios
+
+Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
+
+Do not treat this as permission to start coding bandit AI.
+This is greenlit **concept formalization** at the bottom of the stack, meant to make the parked packet cleaner and implementation-legible later.
+
+---
+
+## 13. Parked concept chain — bandit overmap AI
 
 **Status:** PARKED / CONCEPT CHAIN
 
 Josef wants the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet is coherent enough as a whole.
 Do not quietly treat partial bandit notes as an active lane or as already-greenlit implementation.
+The new bottom-of-stack formalization follow-through above is greenlit only for doc/spec cleanup inside this chain; implementation still stays parked.
 
 Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
@@ -343,12 +384,13 @@ Supporting recon note for the visibility item:
 
 What the current parked sub-items should do:
 - scoring guidance: define deterministic camp-ledger and map-mark inputs for bandit decision-making, then score bounty/threat/job desirability from those inputs
-- mark/heatmap guidance: define how overmap-only marks get created, refreshed, decayed, and folded into broad threat/bounty heatmaps on the same cadence family
+- mark/heatmap guidance: define how overmap-only marks get created, rechecked, harvested, and folded into broad threat/bounty heatmaps on the same cadence family without passive decay math
 - handoff guidance: define how abstract overmap groups enter local play and how cargo, wounds, panic, losses, and updated threat/bounty knowledge return back into overmap state
 - visibility/concealment guidance: define signal sources, environmental filters, bounty/threat interpretation outputs, and player/basecamp exposure-reduction levers on recon-backed footing
 - current acceptable footing: fog/mist can suppress sight/light legibility without forcing new fog-based sound dampening rules
 - resolved note-1 anti-spiral footing: each camp should own its own sparse operational map rather than shared omniscience
 - resolved note-1 bounty footing: ground bounty should be coarse, structural, finite, and non-regenerating by region class, while player/NPC/camp activity supplies the moving bounty layer
+- resolved no-passive-decay footing: do not model passive decay for bounty or threat; structural bounty changes through harvesting/exploitation, moving bounty changes through fresh activity and collection, threat changes through real recheck, and camp stockpile changes through explicit consumption
 - resolved note-1 dampers: false-lead / recently-checked / harvested memory and self-signal filtering should stop camps from spiraling into pseudo-psychic fixation
 - resolved note-2 fairness footing: sustained pressure and stalking against legible camps is desired, but decisive full camp assault stays player-present only for current scope
 - resolved note-2 attack-signaling footing: fairness should come from bounded offscreen consequence scope, not from requiring bandits to presignal attacks
@@ -376,7 +418,7 @@ If the packet is revisited later, the next planning discussion should be about w
 
 ---
 
-## 13. Documentation discipline
+## 14. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

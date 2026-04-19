@@ -260,14 +260,31 @@ Notes:
 
 ---
 
+## Bandit concept formalization follow-through
+
+Status: GREENLIT / BOTTOM-OF-STACK
+
+Success state:
+- [ ] A follow-through packet exists that turns the loose remaining bandit logic into three explicit doc slices: bounty source/harvesting/stockpile rules, cadence/distance/fallback rules, and cross-layer interactions/worked scenarios.
+- [ ] The packet makes the no-passive-decay footing explicit: structural bounty changes via harvesting/exploitation, moving bounty via current activity and collection, threat via real recheck, and camp stockpile via explicit consumption instead of background decay math.
+- [ ] Each slice includes starter numbers/tables, clear scope/non-goals, and enough worked examples that later implementation planning does not have to rediscover the control law from scratch.
+- [ ] The result remains conceptualization/backlog work only and does not silently greenlight bandit implementation.
+
+Notes:
+- Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
+- This is bottom-of-stack greenlit doc/spec work that sits behind the current locker/basecamp queue and the other already-greenlit backlog items.
+
+---
+
 ## Bandit overmap AI concept chain
 
 Status: PARKED / CONCEPT CHAIN
 
 Success state:
 - [ ] The parked concept packet defines the broad bandit overmap actor model, signal/memory role, threat shape, and overmap-to-bubble intent cleanly enough that later planning no longer has to rediscover the premise from scratch.
-- [ ] Deterministic bounty/threat scoring guidance exists with explicit camp-ledger inputs, map-mark fields, decay/drift rules, and job-scoring logic.
-- [ ] Overmap mark-generation and heatmap guidance exists with explicit overmap-only mark creation, refresh/decay, and threat/bounty field update logic on the shared cadence family.
+- [ ] The broad packet explicitly states that bounty and threat do not passively decay: structural bounty changes through harvesting/exploitation, moving bounty through fresh activity and collection, threat through real recheck, and camp stockpile through explicit consumption.
+- [ ] Deterministic bounty/threat scoring guidance exists with explicit camp-ledger inputs, map-mark fields, harvest/collection/recheck rules, and job-scoring logic.
+- [ ] Overmap mark-generation and heatmap guidance exists with explicit overmap-only mark creation, recheck/harvest rules, and threat/bounty field update logic on the shared cadence family without passive decay.
 - [ ] Bidirectional overmap-to-bubble handoff guidance exists with explicit entry modes, return-path state, collapse-back rules, and reuse of existing pursuit/noise-routing footing where possible.
 - [ ] Supporting physical-systems recon exists so the visibility/concealment slice is grounded in existing smoke, light, sound, and weather hooks instead of made-up parallel physics.
 - [ ] Player/basecamp visibility and concealment guidance exists with explicit signal sources, environmental filters, bounty/threat interpretation outputs, repetition/reinforcement rules, and player/basecamp exposure-reduction levers.
@@ -290,6 +307,7 @@ Notes:
 - Current handoff sub-item: `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`.
 - Current visibility sub-item: `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`.
 - Supporting recon note for the visibility item: `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`.
+- The cleanup/follow-through packet for the remaining control-law gaps lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md` and is greenlit doc/spec work only, not code greenlight.
 - This is parked concept work, not active queue work and not an implementation greenlight.
 
 ---
