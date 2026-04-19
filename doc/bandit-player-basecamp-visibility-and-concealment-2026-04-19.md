@@ -225,6 +225,11 @@ Where relevant:
 - shelter, forest, walls, and terrain masking can reduce signal legibility
 - this should stay coarse and overmap-oriented here, not turn into exact tile-stealth law
 
+Important bilateral rule:
+- weather and terrain concealment should not act like a player-only stealth blessing
+- the same fog, rain, darkness, shelter, or clutter that reduces bandit read on player/basecamp activity can also hide approaching bandits, route harassment, or withdrawal movement
+- the design goal is more mutual uncertainty, not one-sided invisibility
+
 ---
 
 ## Interpretation outputs
@@ -316,6 +321,7 @@ The player and a basecamp should have understandable ways to reduce exposure.
 ### Weather exploitation
 - using poor visibility conditions when movement or signaling should be harder to read
 - accepting that this cuts both ways and may also reduce your own legibility to allies
+- accepting that the same conditions may also create better approach or escape windows for hostile groups
 
 These levers should feel like understandable player choices, not hidden punishment math.
 
