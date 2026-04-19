@@ -249,6 +249,66 @@ static npc *select_llm_out_of_hearing_follower( const avatar &speaker, int hear_
     return candidates.front();
 }
 
+static std::string llm_direct_address_key( std::string_view text )
+{
+    std::string lowered = trim( text );
+    std::transform( lowered.begin(), lowered.end(), lowered.begin(), []( unsigned char c ) {
+        return static_cast<char>( std::tolower( c ) );
+    } );
+    return lowered;
+}
+
+static bool llm_direct_address_matches( std::string_view utterance, std::string_view candidate )
+{
+    const std::string lowered_utterance = llm_direct_address_key( utterance );
+    const std::string lowered_candidate = llm_direct_address_key( candidate );
+    if( lowered_utterance.empty() || lowered_candidate.empty() ||
+        !string_starts_with( lowered_utterance, lowered_candidate ) ) {
+        return false;
+    }
+    if( lowered_utterance.size() == lowered_candidate.size() ) {
+        return true;
+    }
+    const unsigned char next = lowered_utterance[lowered_candidate.size()];
+    return std::isspace( next ) || next == ',' || next == ':' || next == ';' ||
+           next == '!' || next == '?' || next == '-';
+}
+
+static std::vector<npc *> filter_llm_hearers_by_direct_address( const std::vector<npc *> &hearers,
+        const std::string &utterance )
+{
+    if( hearers.size() < 2 ) {
+        return hearers;
+    }
+
+    std::vector<npc *> full_name_matches;
+    std::vector<npc *> short_name_matches;
+    for( npc *guy : hearers ) {
+        if( guy == nullptr ) {
+            continue;
+        }
+        const std::string full_name = guy->get_name();
+        if( llm_direct_address_matches( utterance, full_name ) ) {
+            full_name_matches.push_back( guy );
+            continue;
+        }
+        const size_t first_space = full_name.find( ' ' );
+        const std::string short_name = first_space == std::string::npos ? full_name :
+                                       full_name.substr( 0, first_space );
+        if( short_name != full_name && llm_direct_address_matches( utterance, short_name ) ) {
+            short_name_matches.push_back( guy );
+        }
+    }
+
+    if( !full_name_matches.empty() ) {
+        return full_name_matches;
+    }
+    if( short_name_matches.size() == 1 ) {
+        return short_name_matches;
+    }
+    return hearers;
+}
+
 enum class sentence_speech_mode {
     whisper,
     normal,
@@ -1691,11 +1751,19 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                                       get_option<bool>( "DEBUG_LLM_INTENT_UI" ) ||
                                       get_option<bool>( "DEBUG_LLM_INTENT_LOG" );
             if( llm_or_debug ) {
-                npc *ambient_target = select_llm_ambient_speech_target( u, llm_hear_volume );
-                if( ambient_target != nullptr ) {
-                    hearers.clear();
-                }
                 const std::string utterance = !yell_msg.empty() ? yell_msg : message;
+                const std::vector<npc *> addressed_hearers = filter_llm_hearers_by_direct_address( hearers,
+                                                          utterance );
+                const bool direct_address_filtered = addressed_hearers.size() < hearers.size();
+                hearers = addressed_hearers;
+
+                npc *ambient_target = nullptr;
+                if( !direct_address_filtered ) {
+                    ambient_target = select_llm_ambient_speech_target( u, llm_hear_volume );
+                    if( ambient_target != nullptr ) {
+                        hearers.clear();
+                    }
+                }
                 if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
                     struct camp_hearer_group {
                         tripoint_abs_omt camp_omt;
