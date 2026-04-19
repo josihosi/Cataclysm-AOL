@@ -163,6 +163,7 @@ TEST_CASE("camp_locker_policy_serialization", "[camp][locker]") {
   test_camp.set_locker_slot_enabled(camp_locker_slot::bag, false);
   test_camp.set_locker_slot_enabled(camp_locker_slot::holster, false);
   test_camp.set_locker_slot_enabled(camp_locker_slot::ranged_weapon, false);
+  test_camp.set_locker_prefers_bulletproof( true );
 
   std::ostringstream os;
   JsonOut jsout(os);
@@ -179,6 +180,7 @@ TEST_CASE("camp_locker_policy_serialization", "[camp][locker]") {
   CHECK_FALSE(loaded.is_locker_slot_enabled(camp_locker_slot::holster));
   CHECK_FALSE(loaded.is_locker_slot_enabled(camp_locker_slot::ranged_weapon));
   CHECK(loaded.is_locker_slot_enabled(camp_locker_slot::pants));
+  CHECK(loaded.locker_prefers_bulletproof());
   CHECK(loaded.get_locker_policy().enabled_count() ==
         static_cast<int>(all_camp_locker_slots().size()) - 5);
 }
@@ -1247,6 +1249,40 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(armor_plan.selected_candidate == &ballistic_vest);
     CHECK(armor_plan.upgrade_selected);
     CHECK(armor_plan.has_changes());
+  }
+
+  SECTION("bulletproof preference boosts ballistic armor and helmet scoring") {
+    item plate_armor(itype_armor_lc_plate);
+    item ballistic_vest(itype_ballistic_vest_esapi);
+    item great_helm(itype_helmet_plate);
+    item army_helmet(itype_helmet_army);
+
+    camp_locker_policy bulletproof_policy = test_camp.get_locker_policy();
+    bulletproof_policy.set_prefers_bulletproof( true );
+
+    const int default_body_gap =
+        score_camp_locker_item(camp_locker_slot::body_armor,
+                               ballistic_vest, test_camp.get_locker_policy()) -
+        score_camp_locker_item(camp_locker_slot::body_armor, plate_armor,
+                               test_camp.get_locker_policy());
+    const int bulletproof_body_gap =
+        score_camp_locker_item(camp_locker_slot::body_armor, ballistic_vest,
+                               bulletproof_policy) -
+        score_camp_locker_item(camp_locker_slot::body_armor, plate_armor,
+                               bulletproof_policy);
+    CHECK(bulletproof_body_gap > default_body_gap);
+
+    const int default_helmet_gap =
+        score_camp_locker_item(camp_locker_slot::helmet, army_helmet,
+                               test_camp.get_locker_policy()) -
+        score_camp_locker_item(camp_locker_slot::helmet, great_helm,
+                               test_camp.get_locker_policy());
+    const int bulletproof_helmet_gap =
+        score_camp_locker_item(camp_locker_slot::helmet, army_helmet,
+                               bulletproof_policy) -
+        score_camp_locker_item(camp_locker_slot::helmet, great_helm,
+                               bulletproof_policy);
+    CHECK(bulletproof_helmet_gap > default_helmet_gap);
   }
 
   SECTION("full-body body armor does not invite filler pants underneath it") {

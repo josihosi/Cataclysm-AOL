@@ -4509,6 +4509,7 @@ static void serialize( const camp_locker_policy &value, JsonOut &jsout )
         }
     }
     jsout.end_array();
+    jsout.member( "prefer_bulletproof", value.prefers_bulletproof() );
     jsout.end_object();
 }
 
@@ -4526,6 +4527,11 @@ static void deserialize( camp_locker_policy &value, const JsonObject &jo )
                 value.set_enabled( *slot, true );
             }
         }
+    }
+
+    bool prefer_bulletproof = value.prefers_bulletproof();
+    if( jo.read( "prefer_bulletproof", prefer_bulletproof ) ) {
+        value.set_prefers_bulletproof( prefer_bulletproof );
     }
 }
 

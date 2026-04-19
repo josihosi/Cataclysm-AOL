@@ -4487,6 +4487,11 @@ void basecamp::locker_policy_ui()
                     _( "Choose which loadout slots the camp locker may manage.  Define a Basecamp: Locker zone in the Zone Manager to supply the actual gear." );
 
         int entry_index = 0;
+        const int bulletproof_entry = entry_index++;
+        menu.addentry( bulletproof_entry, true, MENU_AUTOASSIGN,
+                       string_format( "%s %s",
+                                      locker_prefers_bulletproof() ? "[x]" : "[ ]",
+                                      _( "Prefer bulletproof gear" ) ) );
         for( const camp_locker_slot slot : slots ) {
             const bool enabled = is_locker_slot_enabled( slot );
             menu.addentry( entry_index++, true, MENU_AUTOASSIGN,
@@ -4501,8 +4506,14 @@ void basecamp::locker_policy_ui()
             return;
         }
 
-        if( static_cast<size_t>( menu.ret ) < slots.size() ) {
-            const camp_locker_slot slot = slots[menu.ret];
+        if( menu.ret == bulletproof_entry ) {
+            set_locker_prefers_bulletproof( !locker_prefers_bulletproof() );
+            continue;
+        }
+
+        const int slot_entry = menu.ret - 1;
+        if( slot_entry >= 0 && static_cast<size_t>( slot_entry ) < slots.size() ) {
+            const camp_locker_slot slot = slots[slot_entry];
             set_locker_slot_enabled( slot, !is_locker_slot_enabled( slot ) );
         }
     }

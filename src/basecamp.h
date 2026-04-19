@@ -193,10 +193,13 @@ enum class camp_locker_slot : int {
 struct camp_locker_policy {
   std::array<bool, static_cast<size_t>(camp_locker_slot::num_slots)>
       enabled_slots{};
+  bool prefer_bulletproof = false;
 
   camp_locker_policy();
   bool is_enabled(camp_locker_slot slot) const;
   void set_enabled(camp_locker_slot slot, bool enabled);
+  bool prefers_bulletproof() const;
+  void set_prefers_bulletproof( bool enabled );
   int enabled_count() const;
 };
 
@@ -296,10 +299,11 @@ using camp_locker_plan = std::map<camp_locker_slot, camp_locker_slot_plan>;
 
 std::optional<camp_locker_slot> classify_camp_locker_item(const item &it);
 int score_camp_locker_item(
-    camp_locker_slot slot, const item &it,
+    camp_locker_slot slot, const item &it, const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt);
 bool is_camp_locker_candidate_meaningfully_better(
     camp_locker_slot slot, const item &candidate, const item &current,
+    const camp_locker_policy &policy,
     const std::optional<units::temperature> &local_temperature = std::nullopt);
 camp_locker_candidate_map
 collect_camp_locker_candidates(const std::vector<const item *> &items,
@@ -886,6 +890,8 @@ public:
   bool service_camp_locker(npc &worker);
   bool is_locker_slot_enabled(camp_locker_slot slot) const;
   void set_locker_slot_enabled(camp_locker_slot slot, bool enabled);
+  bool locker_prefers_bulletproof() const;
+  void set_locker_prefers_bulletproof( bool enabled );
   const camp_locker_policy &get_locker_policy() const { return locker_policy; }
   void form_storage_zones(map &here, const tripoint_abs_ms &abspos);
   map &get_camp_map();
