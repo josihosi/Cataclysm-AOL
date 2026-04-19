@@ -2364,6 +2364,60 @@ TEST_CASE("camp_locker_service_equips_upgrades_and_returns_replaced_gear",
   zone_manager::get_manager().clear();
 }
 
+TEST_CASE("camp_locker_service_equips_common_combat_support_slots",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_gloves_leather));
+  here.add_item_or_charges(locker_local, item(itype_mask_dust));
+  here.add_item_or_charges(locker_local, item(itype_tool_belt));
+  here.add_item_or_charges(locker_local, item(itype_holster));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  test_camp->add_assignee(worker.getID());
+
+  REQUIRE(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_gloves_leather));
+  CHECK(worker.is_wearing(itype_mask_dust));
+  CHECK(worker.is_wearing(itype_tool_belt));
+  CHECK(worker.is_wearing(itype_holster));
+
+  bool locker_has_gloves = false;
+  bool locker_has_mask = false;
+  bool locker_has_belt = false;
+  bool locker_has_holster = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_gloves = locker_has_gloves || it.typeId() == itype_gloves_leather;
+    locker_has_mask = locker_has_mask || it.typeId() == itype_mask_dust;
+    locker_has_belt = locker_has_belt || it.typeId() == itype_tool_belt;
+    locker_has_holster = locker_has_holster || it.typeId() == itype_holster;
+  }
+  CHECK_FALSE(locker_has_gloves);
+  CHECK_FALSE(locker_has_mask);
+  CHECK_FALSE(locker_has_belt);
+  CHECK_FALSE(locker_has_holster);
+
+  zone_manager::get_manager().clear();
+}
+
 TEST_CASE("camp_locker_service_swaps_in_better_condition_equivalent_bags",
           "[camp][locker]") {
   clear_avatar();
