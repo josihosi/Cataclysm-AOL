@@ -249,8 +249,8 @@ Notes:
 Status: ACTIVE / IN PROGRESS
 
 Success state:
-- [ ] Future locker behavior strongly supports sensible common guard/combat gear: gloves, belts, masks, holsters, and the usual practical clothing/loadout pieces.
-- [ ] A bulletin-board / locker-surface bulletproof toggle exists and meaningfully shifts outfit preference toward ballistic gear.
+- [x] Future locker behavior strongly supports sensible common guard/combat gear: gloves, belts, masks, holsters, and the usual practical clothing/loadout pieces.
+- [x] A bulletin-board / locker-surface bulletproof toggle exists and meaningfully shifts outfit preference toward ballistic gear.
 - [ ] Ballistic vest and plate handling becomes explicit enough to replace damaged (`XX`) ballistic components sensibly.
 - [ ] Clearly superior full-body battle/protective suits are preferred when appropriate instead of being split into worse piecemeal junk.
 - [ ] Future deterministic tests lean more toward combat/guard outfit behavior and less toward endlessly widening exotic garment edge-case law.
@@ -258,7 +258,8 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 - This is now the current active lane.
-- The opening 2026-04-19 audit on the current tree found the first honest seam: `camp_locker_slot`, `all_camp_locker_slots()`, and `locker_policy_ui()` still expose only the older 12-slot surface, `classify_camp_locker_item()` still drops holsters and similar combat accessories, and no bulletproof toggle exists yet.
+- The opening 2026-04-19 audit found the first honest combat-policy seam, and the current tree now has both landed narrow slices from that audit: explicit `gloves` / `mask` / `belt` / `holster` locker footing plus a persisted `Prefer bulletproof gear` locker-policy toggle that shifts body-armor and helmet scoring toward stronger ballistic protection.
+- The next active seam is explicit damaged ballistic vest / plate handling built on top of that control surface, not another round of rediscovering whether the policy menu exists.
 - This future direction preserves the current weird-garment safety work instead of replacing it.
 
 ---
