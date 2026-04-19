@@ -121,6 +121,17 @@ A camp should keep coarse state such as:
 
 These values create the camp's strategic mood without turning it into a mystical personality oracle.
 
+Each camp should also own its own **sparse operational map** around its practical operating radius.
+That map is camp-owned, not shared omniscience.
+It can hold things like:
+- broad terrain/building awareness
+- bounty estimates
+- threat estimates
+- confidence
+- recently checked / false lead / harvested memory
+
+Recon groups and mission outcomes should reveal, refresh, or correct that map over time.
+
 ### Hard state vs temperament
 Keep hard state separate from temperament.
 
@@ -154,6 +165,7 @@ A group should minimally carry:
 - mission-relevant remembered marks
 
 This is enough to explain why the group exists and what it thinks it is doing.
+As groups move, they can locally reevaluate effective threat from their surroundings without requiring the entire camp to recompute the whole world every tick.
 
 ### Jobs
 Initial job vocabulary should likely include:
@@ -213,6 +225,13 @@ Important principle:
 
 A city is not a free loot field.
 It is structurally mixed value.
+
+Baseline awareness should stay asymmetric.
+A camp may plausibly begin with rough nearby terrain/building awareness, broadly like an overmap-aware local actor.
+But quiet humans, NPCs, and the player should not be immediately revealed as overmap truth just for existing.
+Mobile actors should usually enter the camp map through signals, recon observation, close local discovery, or visibly repeated activity.
+Smoke and light can create bounty markers.
+Quiet inactivity should not.
 
 ### Environmental filters
 Signal legibility should be modified by existing physical footing where possible:
@@ -298,6 +317,34 @@ Bounty can rise from:
 
 This split is useful because it lets bandits feel broad regional tension without requiring a million explicit remembered pins.
 
+## Bounty classes
+To keep the system from turning into an infinite suspicion fountain, bounty should not be one undifferentiated soup.
+
+### Structural ground bounty
+Ground bounty should be coarse, finite, and non-regenerating by region class.
+It reflects broadly recoverable value from the place itself, not exact tile loot truth.
+
+Good broad examples:
+- low: woods, fields, sparse wilderness
+- medium: houses, farms, scattered buildings
+- high: dense city blocks, discovered camps, strong settlement footprints
+
+Bandit exploitation should reduce this ground bounty.
+It should not quietly grow back on its own.
+
+### Mobile bounty
+Mobile bounty is carried by actors and active sites, not the dirt.
+Examples:
+- the player current position
+- NPC groups
+- player camps
+- discovered NPC camps or settlements
+
+This layer can move, appear, vanish, or be refreshed by new signals and new observations.
+
+### Route/intercept value
+Roads and chokepoints should have value mainly because they are good places to catch moving bounty, not because the road itself endlessly prints treasure.
+
 ## Conversion rule
 A good synthesis rule is:
 - events first disturb local heat pressure
@@ -312,13 +359,16 @@ At short cadence passes:
 - transient signal strength weakens
 - confidence on stale marks drops
 - heat spikes smooth down if not reinforced
+- empty investigations can add recently-checked / false-lead dampening
 
 At daily cleanup:
 - weak stale marks get deleted or collapsed
 - lingering regional pressure fades
 - strong unresolved pressure can remain as lower-confidence background memory
+- harvested areas can keep reduced structural bounty until new mobile activity or new signals justify renewed interest
 
 Repeat signals, scout passes, and mission results can refresh marks.
+But camps should not be allowed to become pseudo-psychic by counting their own routine recon traffic as fresh bounty.
 This keeps camps intelligent without making them psychic.
 
 ---

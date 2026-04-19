@@ -314,6 +314,9 @@ What the current parked sub-items should do:
 - handoff guidance: define how abstract overmap groups enter local play and how cargo, wounds, panic, losses, and updated threat/bounty knowledge return back into overmap state
 - visibility/concealment guidance: define signal sources, environmental filters, bounty/threat interpretation outputs, and player/basecamp exposure-reduction levers on recon-backed footing
 - current acceptable footing: fog/mist can suppress sight/light legibility without forcing new fog-based sound dampening rules
+- resolved note-1 anti-spiral footing: each camp should own its own sparse operational map rather than shared omniscience
+- resolved note-1 bounty footing: ground bounty should be coarse, structural, finite, and non-regenerating by region class, while player/NPC/camp activity supplies the moving bounty layer
+- resolved note-1 dampers: false-lead / recently-checked / harvested memory and self-signal filtering should stop camps from spiraling into pseudo-psychic fixation
 
 The intended parked-chain order for now is:
 1. broad concept vessel
