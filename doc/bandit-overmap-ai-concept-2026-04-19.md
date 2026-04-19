@@ -256,12 +256,23 @@ Important principle:
 A city is not a free loot field.
 It is structurally mixed value.
 
+Useful v1 asymmetry:
+- **bounty** may be visible more broadly than **threat**
+- terrain/building class, visible light/smoke, and direct human sightings can make a place look worth checking
+- real threat sharpness should usually require closer observation, visibility-confirmed scouting, or painful mission history
+
 Baseline awareness should stay asymmetric.
 A camp may plausibly begin with rough nearby terrain/building awareness, broadly like an overmap-aware local actor.
 But quiet humans, NPCs, and the player should not be immediately revealed as overmap truth just for existing.
 Mobile actors should usually enter the camp map through signals, recon observation, close local discovery, or visibly repeated activity.
 Smoke and light can create bounty markers.
 Quiet inactivity should not.
+
+Useful terrain/bounty split:
+- open streets, meadows, and ordinary fields should not print broad bounty by default
+- forests may hold a little background bounty
+- buildings, houses, and denser urban structures should carry much more structural bounty than empty open ground
+- direct human/NPC sightings should be among the strongest mobile bounty cues
 
 ### Environmental filters
 Signal legibility should be modified by existing physical footing where possible:
@@ -350,6 +361,7 @@ Useful v1 fields include:
 - soft decay rate
 - last refresh turn
 - last visibility confirmation turn
+- threat_confidence_radius
 
 Typed marks are for things a camp would plausibly remember.
 They should be approximate, selectively decaying, refreshable, and mergeable.

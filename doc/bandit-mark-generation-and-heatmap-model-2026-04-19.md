@@ -118,6 +118,12 @@ Bounty can come from:
 - known scavenging value
 - easy robbery opportunity
 
+Useful v1 terrain split:
+- ordinary open streets, meadows, and fields should contribute little or no structural bounty by themselves
+- forests may contribute a little background bounty
+- houses, buildings, and denser urban structure should contribute meaningfully more structural bounty than open empty terrain
+- direct human/NPC sightings should inject strong mobile bounty even when threat is still uncertain
+
 ---
 
 ## Important monster-pressure rule
@@ -259,6 +265,7 @@ Threat should rise from:
 
 Threat should **not** passively melt just because time passed and nobody looked.
 Confirmed threat should mostly freeze until later observation updates it.
+It should also usually project with a **shorter confident radius** than bounty.
 
 Threat should fall mainly when:
 - scouts or travelling groups get visibility-confirmed evidence that danger is lower

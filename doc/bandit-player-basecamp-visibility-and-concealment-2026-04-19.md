@@ -67,6 +67,11 @@ Signals tell bandits:
 - **there may be profit here**
 - **there may be danger here**
 
+But the two axes do **not** need the same legibility.
+A good v1 asymmetry is:
+- **bounty** may be legible at broader overmap scale from terrain/building class, visible activity, light, smoke, and obvious human sightings
+- **threat** should usually require closer observation, local visibility, or hard mission-result evidence before it becomes confidently sharp
+
 So the output of this layer is not truth.
 It is a coarse possible-contact location with confidence plus bounty/threat hints.
 
@@ -105,6 +110,12 @@ Cities can also read as both:
 
 So a city should not be treated as “free loot field.”
 It is structurally mixed value.
+
+Useful bounty baseline split:
+- open streets, meadows, and ordinary fields should usually contribute little or no structural bounty by themselves
+- forests may contribute a little bounty because they can hide activity or support rough survivor use
+- houses, buildings, and denser urban structures should contribute meaningfully more bounty than open empty terrain
+- visible human/NPC sightings should be one of the strongest mobile bounty cues
 
 ---
 
@@ -155,12 +166,14 @@ Typical examples:
 - recurring scavenging patterns
 - repeated local noise or signs of movement
 - visible occupation behavior around a location
+- direct overmap-scale human/NPC sightings
 
 General meaning:
 - there may be people, logistics, habit, or defended use here
 
 Interpretation tendency:
-- often increases both bounty and threat together
+- direct human sighting should usually create strong bounty interest immediately
+- threat should remain less certain unless the sighting also carries closer-range evidence of defenders, force strength, or visible hostile pressure
 
 Important law:
 - the same camp's own routine recon or logistics traffic should not be allowed to harden into fresh hostile-contact truth by default
@@ -256,6 +269,10 @@ Suggested v1 outputs:
 ### Location confidence
 How likely is it that the marked region contains meaningful activity at all?
 This is not certainty, only confidence.
+
+Useful v1 implication:
+- broad bounty confidence may legitimately outrun broad threat confidence
+- bandits may know a place looks promising before they know whether it is safe enough to exploit
 
 ### Bounty hint
 How much potential value might exist here?

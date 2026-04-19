@@ -197,6 +197,11 @@ bounty_score =
 - `camp_need_bonus`: food/ammo/med pressure raises value of matching targets
 - `distance_cost`: farther targets cost time, risk, and manpower attention
 
+Useful v1 asymmetry:
+- bounty should often be easier to perceive at overmap scale than threat
+- terrain/building class, visible light/smoke, and direct human sightings can create promising bounty reads even when the real local danger is still unclear
+- this is good, because it incentivizes scouting/stalking/exploration instead of giving camps perfect threat truth for free
+
 ---
 
 ## Threat score
@@ -236,6 +241,11 @@ threat_score =
 - `uncertainty_penalty`: unknowns are threat, not free mystery meat
 - `distance_penalty`: farther operations are harder to support and retreat from
 - `target_distraction_bonus`: if the target is already stressed or entangled, effective threat drops
+
+Useful v1 asymmetry:
+- threat should usually have a smaller confident radius than bounty
+- broad overmap promise can exist without equally broad threat certainty
+- later implementation can plausibly reuse the existing overmap-scale hostile/zombie visibility precedent as a rough upper bound for how far confirmed threat should project
 
 ---
 
