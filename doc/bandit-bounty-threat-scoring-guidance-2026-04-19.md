@@ -200,6 +200,7 @@ bounty_score =
 Useful v1 asymmetry:
 - bounty should often be easier to perceive at overmap scale than threat
 - terrain/building class, visible light/smoke, and direct human sightings can create promising bounty reads even when the real local danger is still unclear
+- smoke/light should therefore usually write a **bounty-first** mark, with stronger threat sharpening later through approach, contact, searchlight-style evidence, patrol behavior, fortification cues, or prior losses
 - this is good, because it incentivizes scouting/stalking/exploration instead of giving camps perfect threat truth for free
 
 ---

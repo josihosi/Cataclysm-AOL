@@ -253,6 +253,7 @@ General rule:
 Where relevant:
 - shelter, forest, walls, and terrain masking can reduce signal legibility
 - for light specifically, visibility should depend on coarse **obstruction / exposure**, not merely on whether a light source exists somewhere in the structure
+- rough law now is enough; exact constants and edge cases should be left to fitting-based tuning later
 - this should stay coarse and overmap-oriented here, not turn into exact tile-stealth law
 
 Useful directional rule:
@@ -332,6 +333,7 @@ Good rule:
 - repeated mixed signals at the same area can harden a weak suspicion into a meaningful target region
 - repeated mixed signals do **not** need to become a separate settlement-signature class to matter
 - they can simply become a stronger bounty/confidence region that later gets approached when bandit needs and cadence make it worth the risk
+- smoke/light usually create **bounty-first** legibility; sharper threat should mostly come later from closer observation, prior losses, searchlights, patrol behavior, fortification cues, or actual contact
 
 Examples:
 - one night light: likely current occupancy or current use, but not yet automatic settlement truth

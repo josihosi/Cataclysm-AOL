@@ -741,16 +741,26 @@ Why this remains the right first slice:
 
 ## Remaining open questions
 
-The concept is much cleaner now, but some honest questions remain parked.
+The concept is much cleaner now, and several former questions now have a workable lean.
 
 ### 1. Visibility granularity
-How coarse should smoke/light/sound detection stay before it becomes too dumb or too expensive?
+Current lean:
+- keep it coarse and performance-bounded
+- if the first useful version only resolves a few directional buckets or broad visibility cases, that is acceptable
+- do not over-specify this in the concept packet before implementation proves what is cheap enough
 
 ### 2. Site-interest threshold law
-How strongly should repeated site-centered smoke/light/human repetition amplify bounty/confidence before camps start making real approach decisions from it?
+Current lean:
+- repeated smoke/light/human signals should mostly build **bounty/confidence first**, not immediate hard threat
+- camps then move toward those regions later when need pressure, opportunity, and cadence make a closer look worth it
+- threat should sharpen mainly through approach, contact, or harder danger evidence rather than from distant smoke/light alone
 
 ### 3. Terrain masking specificity
-How much terrain/shelter masking belongs in the concept versus later implementation details, and which parts should simply be left to fitting-based tuning?
+Current lean:
+- freeze only the rough law now
+- trees/forest should suppress light strongly
+- buildings and shelter should also mask light, but with tunable fitted behavior rather than fake exact doctrine in the concept docs
+- leave exact constants and edge cases to later fitting-based tuning
 
 ### 4. Persistence cost
 How much bandit memory and group state is affordable across save/load without becoming ugly or expensive?
