@@ -6,11 +6,11 @@ V1 is deliberately narrow:
 - print a normalized contract for review before canon edits
 - merge an explicit corrections overlay into that contract
 - emit reviewer-visible markdown snippets for the aux doc and canon files
+- optionally emit a terse Andi handoff packet from the same contract
 - patch known existing canon headings in place when the heading already exists
 
-It still does not attempt broad freeform canon mutation or automatic Andi handoff
-packet generation. Those boundaries are intentional so the workflow stays visible
-instead of turning into hidden magic.
+It still does not attempt broad freeform canon mutation. That boundary is
+intentional so the workflow stays visible instead of turning into hidden magic.
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ CLASSIFICATIONS = {
     "bottom-of-stack",
 }
 TESTING_NEEDED = {"yes", "no"}
+HANDOFF_NEEDED = {"yes", "no"}
 
 REPO_CONFIG = {
     "files": {
@@ -68,8 +69,12 @@ REPO_CONFIG = {
         "bottom-of-stack": "GREENLIT / BOTTOM-OF-STACK",
     },
     "handoff": {
-        "enabled": False,
-        "notes": "deliberately deferred until the main canon path is real",
+        "enabled": True,
+        "target_role": "Andi",
+        "format": "instruction-packet",
+        "style": "terse",
+        "max_sections": 7,
+        "must_only_restate_contract": True,
     },
     "patching": {
         "mode": "known-existing-headings-only",
@@ -100,6 +105,7 @@ SCHEMA_EXAMPLE = {
             "Name the smallest honest validation for this item.",
         ],
     },
+    "handoff_needed": "yes",
     "classification": "active",
     "status_label": "ACTIVE / GREENLIT TOOLING",
     "aux_doc": {
@@ -244,6 +250,15 @@ def validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
     if testing_needed and testing_needed not in TESTING_NEEDED:
         errors.append("testing_impact.needed must be 'yes' or 'no'.")
 
+    handoff_needed = spec.get("handoff_needed", "no")
+    if not isinstance(handoff_needed, str) or not handoff_needed.strip():
+        errors.append("handoff_needed must be 'yes' or 'no' when present.")
+        handoff_needed = ""
+    else:
+        handoff_needed = handoff_needed.strip()
+        if handoff_needed not in HANDOFF_NEEDED:
+            errors.append("handoff_needed must be 'yes' or 'no' when present.")
+
     aux_doc = spec.get("aux_doc")
     if not isinstance(aux_doc, dict):
         errors.append("aux_doc must be an object.")
@@ -295,6 +310,7 @@ def validate_spec(spec: dict[str, Any]) -> dict[str, Any]:
             "needed": testing_needed,
             "notes": testing_notes,
         },
+        "handoff_needed": handoff_needed,
         "classification": classification,
         "status_label": status_override,
         "aux_doc": {
@@ -341,6 +357,7 @@ def default_aux_status(spec: dict[str, Any]) -> str:
 def build_patch_matrix(spec: dict[str, Any]) -> list[dict[str, Any]]:
     classification = spec["classification"]
     testing_needed = spec["testing_impact"]["needed"] == "yes"
+    handoff_enabled = REPO_CONFIG["handoff"]["enabled"] and spec["handoff_needed"] == "yes"
     return [
         {
             "role": "aux",
@@ -392,6 +409,21 @@ def build_patch_matrix(spec: dict[str, Any]) -> list[dict[str, Any]]:
                 "testing.pending_probes",
             ],
         },
+        {
+            "role": "handoff",
+            "action": "emit-output" if handoff_enabled else "no-output",
+            "target": "andi.handoff.md",
+            "source_fields": [
+                "title",
+                "summary",
+                "classification",
+                "scope",
+                "non_goals",
+                "success_state",
+                "testing_impact",
+                "open_questions",
+            ],
+        },
     ]
 
 
@@ -405,6 +437,7 @@ def render_contract(spec: dict[str, Any]) -> str:
         f"request_kind: {spec['request_kind']}",
         f"classification: {spec['classification']}",
         f"status_label: {effective_status_label(spec)}",
+        f"handoff_needed: {spec['handoff_needed']}",
         f"aux_doc: {spec['aux_doc']['path']}",
         f"summary: {spec['summary']}",
         "scope:",
@@ -631,6 +664,57 @@ def render_preview_packet(spec: dict[str, Any]) -> str:
     return "\n".join(sections).rstrip() + "\n"
 
 
+def priority_position(spec: dict[str, Any]) -> str:
+    mapping = {
+        "active": "current active lane",
+        "parked": "parked lane",
+        "bottom-of-stack": "greenlit bottom-of-stack lane",
+    }
+    return mapping[spec["classification"]]
+
+
+def render_handoff_packet(spec: dict[str, Any]) -> str:
+    cautions = spec["queue"]["out_of_scope"] + spec["open_questions"]
+    if not cautions:
+        cautions = [
+            "Do not widen scope beyond the frozen contract or let the handoff outrun canon.",
+        ]
+
+    lines = [
+        f"# Andi handoff: {spec['title']}",
+        "",
+        "## Classification and position",
+        "",
+        f"- classification: {spec['classification']}",
+        f"- position: {priority_position(spec)}",
+        f"- status label: {effective_status_label(spec)}",
+        f"- canonical aux doc: `{spec['aux_doc']['path']}`",
+        f"- contract summary: {spec['summary']}",
+        "",
+        "## Scope",
+        "",
+        bullet_lines(spec["scope"]),
+        "",
+        "## Non-goals",
+        "",
+        bullet_lines(spec["non_goals"]),
+        "",
+        "## Success bar",
+        "",
+        bullet_lines(spec["success_state"]),
+        "",
+        "## Testing and evidence",
+        "",
+        f"- testing needed: {spec['testing_impact']['needed']}",
+        bullet_lines(spec["testing_impact"]["notes"]),
+        "",
+        "## Cautions and known traps",
+        "",
+        bullet_lines(cautions),
+    ]
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def write_outputs(spec: dict[str, Any], out_dir: Path, force: bool) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     outputs = {
@@ -645,6 +729,8 @@ def write_outputs(spec: dict[str, Any], out_dir: Path, force: bool) -> list[Path
     testing_snippet = render_testing_snippet(spec)
     if testing_snippet:
         outputs["testing.snippet.md"] = testing_snippet
+    if REPO_CONFIG["handoff"]["enabled"] and spec["handoff_needed"] == "yes":
+        outputs["andi.handoff.md"] = render_handoff_packet(spec)
 
     written: list[Path] = []
     for name, content in outputs.items():

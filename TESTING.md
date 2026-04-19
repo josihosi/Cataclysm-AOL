@@ -39,27 +39,20 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Plan/Aux pipeline helper
+### Bandit concept formalization follow-through
 
 Current honest state:
-- the suspicion-first audit is now closed honestly: the repo had stable canon-role docs and recurring aux patterns, but no repo-local helper for contract preview, correction merge, canon/snippet packaging, or bounded in-place patching
-- the current bounded helper path now exists at `tools/plan_aux_pipeline_helper.py`
-- current landed command set is:
-  - `schema` prints the contract shape
-  - `show` prints repo config, contract preview, and patch matrix before edits
-  - `merge-corrections` merges an explicit corrections overlay into the reviewed contract
-  - `emit` writes reviewer-visible aux/canon snippet files from the same classified contract
-  - `apply` patches the auxiliary doc plus known existing `Plan.md` / `TODO.md` / `SUCCESS.md` / `TESTING.md` anchors in place, while still failing honestly when a requested heading does not already exist
-- focused validation passed for this tooling slice via:
-  - `python3 -m py_compile tools/plan_aux_pipeline_helper.py`
-  - `python3 tools/plan_aux_pipeline_helper.py schema`
-  - `python3 tools/plan_aux_pipeline_helper.py show /tmp/plan_aux_helper_spec.json`
-  - `python3 tools/plan_aux_pipeline_helper.py emit /tmp/plan_aux_helper_spec.json --out-dir /tmp/plan_aux_helper_emit --force`
-  - `python3 tools/plan_aux_pipeline_helper.py apply /tmp/plan_aux_helper_spec.json --root /tmp/plan_aux_helper_repo`
-- the main canon-patching path is now honestly real for known headings; the remaining open slice is optional handoff generation from the same classified contract
+- the active lane is still doc/spec only, not code, and its canonical work packet lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`
+- that packet still carries the 3-package / 31-micro-item structure, but Package 1, micro-item 1 is now answered with a 0-5 starter structural-bounty table for open street, field, forest, cabin, house, farm, city structure, and camp footprint
+- the table freezes the intended site-class ordering explicitly: `open street/field < forest < cabin < house < farm/city structure < camp footprint`
+- the next honest active slice is Package 1, micro-item 2, `Structural bounty harvest trigger rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should answer exactly what counts as structural-bounty harvesting without smuggling in reappearance, moving-bounty, or stockpile-law decisions
 
 ### Recently closed, do not casually reopen
 
+- Plan/Aux pipeline helper is now honestly checkpointed:
+  - `tools/plan_aux_pipeline_helper.py` still keeps canon patching bounded to known headings, but `emit` can now also produce downstream `andi.handoff.md` output from the same validated classified contract
+  - narrow validation passed via `python3 -m py_compile tools/plan_aux_pipeline_helper.py`, `schema`, `show`, `emit`, emitted handoff review, and `apply` on a temp repo copy
 - Combat-oriented locker policy is now honestly checkpointed:
   - the final closure audit found one real remaining deterministic gap, namely end-to-end service proof for the newly explicit common combat-support slots
   - that gap is now closed by `camp_locker_service_equips_common_combat_support_slots`, which proves real locker service equips gloves, dust mask, tool belt, and holster from `CAMP_LOCKER` stock
@@ -77,15 +70,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the main canon-patching path is now proven narrowly enough, while the now-closed combat packet stays closed unless a fresh contradiction appears
-- the next honest decision is whether optional Andi handoff generation deserves to be the final helper slice
+- the terrain table is no longer the open question; the next honest move is one bounded harvest-trigger rule note
+- the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- decide whether optional Andi handoff generation is worth landing as the final helper slice
-- if that slice lands, validate it with the narrowest command-level proof on a sample spec instead of broad repo builds
+- land Package 1, micro-item 2, `Structural bounty harvest trigger rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that harvest rule consistent and free of passive-decay slop
 
 ---
 
@@ -97,9 +90,9 @@ Use these when they are actually the missing evidence, not as ritual.
 - `make -j4 tests`
 - `./tests/cata_test "[camp][locker]"`
 
-### Future helper validation only if code actually lands
-- use the narrowest test or script-level proof that matches the touched helper entry point
-- do not rebuild game binaries for docs-only helper audit work
+### Current bandit follow-through slice
+- docs-only change -> no compile
+- validate by rereading the touched doc/spec packet and its immediately adjacent substrate instead of inventing ceremonial runtime checks
 
 ### Fresh tiles rebuild only if a later combat-policy handoff really needs live proof
 - `make -j4 TILES=1 cataclysm-tiles`

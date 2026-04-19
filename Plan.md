@@ -39,9 +39,13 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now **one active greenlit lane**: **Plan/Aux pipeline helper**.
+There is now **one active greenlit lane**: **Bandit concept formalization follow-through**.
 
 Fresh checkpoints just closed:
+- **Plan/Aux pipeline helper** is honestly checkpointed:
+  - `tools/plan_aux_pipeline_helper.py` now lets `emit` produce reviewer-visible aux/canon snippets plus optional downstream `andi.handoff.md` output from the same validated classified contract
+  - the bounded patch path still stays on known existing headings instead of pretending broad freeform canon mutation is solved
+  - narrow validation passed on a sample spec via `python3 -m py_compile tools/plan_aux_pipeline_helper.py`, `schema`, `show`, `emit`, emitted handoff review, and `apply` on a temp repo copy
 - **Combat-oriented locker policy** is honestly checkpointed:
   - the explicit `gloves`, `mask`, `belt`, and `holster` locker slots are real, the `Prefer bulletproof gear` toggle is real, ballistic vest scoring/replacement now notices loaded vs damaged ablative plates, and the full-body combat-suit packet now reaches weaker current shirts, vests, and body armor while stronger ballistic armor still stays put
   - the final suspicion-first audit found one real remaining proof gap, namely that the new common combat-support slots had classification/candidate coverage but no direct service proof yet
@@ -57,28 +61,20 @@ Fresh checkpoints just closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- keep the now-active Plan/Aux pipeline helper on the bounded main path instead of letting it sprawl into workflow sorcery
-- the suspicion-first audit and first implementation shape are now honestly done:
-  - the repo already had stable canon file roles and repeated aux-doc patterns, but no repo-local helper for contract preview, correction merge, canon/snippet packaging, or bounded in-place patching
-  - that made a spec-first helper with explicit review/merge/apply stages the smallest honest shape, instead of pretending hidden broad mutation was already safe
-- current landed helper is `tools/plan_aux_pipeline_helper.py`:
-  - `schema` prints the normalized JSON contract shape
-  - `show` prints repo config, contract preview, and patch matrix before canon edits
-  - `merge-corrections` deep-merges an explicit corrections file into the reviewed contract
-  - `emit` writes reviewer-visible aux/canon snippet files from the same classified contract
-  - `apply` patches the auxiliary doc plus known existing `Plan.md` / `TODO.md` / `SUCCESS.md` / `TESTING.md` anchors in place, while still failing honestly when a heading does not already exist
-- narrow validation now exists for that bounded patch path on a temp repo copy via `schema`, `show`, `emit`, and `apply`
-- next step is optional Andi handoff generation from the same classified contract, while the known-heading patch boundary stays deliberately narrow unless a later slice explicitly broadens it
-- keep this separate from the now-closed locker/basecamp slices and the bottom-of-stack bandit docs
+- continue the active bandit formalization follow-through as doc/spec work only
+- Package 1, micro-item 1, `Terrain bounty bucket table`, is now landed in the follow-through packet with explicit 0-5 starter buckets for open street, field, forest, cabin, house, farm, city structure, and camp footprint
+- keep the next pass narrow: Package 1, micro-item 2, `Structural bounty harvest trigger rule`
+- answer only what exact bandit action counts as harvesting/exploiting structural bounty, and only touch adjacent stale wording when that rule directly forces the correction
+- do not drift into moving bounty, reappearance, stockpile math, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
-- **Bandit concept formalization follow-through** (bottom-of-stack, conceptual docs only)
+- none right now; after the active bandit follow-through lane, the next slice should be chosen deliberately instead of freelancing across parked work
 
 Meaning:
-- these items are defined enough and explicitly greenlit
-- they do **not** need another permission round
-- they are **not** all active at once
-- Andi should still be judged against one chosen current slice, not allowed to freestyle across the buffet
+- the bandit follow-through lane is now the only active slice
+- it does **not** need another permission round
+- it is doc/spec work only, not code greenlight
+- Andi should still move one micro-item at a time instead of freestyling across the buffet
 
 ---
 
@@ -228,41 +224,22 @@ Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
 
 ---
 
-## 10. Active — Plan/Aux pipeline helper
+## 10. Checkpointed — Plan/Aux pipeline helper
 
-**Status:** ACTIVE / GREENLIT TOOLING
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef explicitly wants a small helper for the `Plan.md` / auxiliary-doc pipeline because greenlighting already-existing lanes should not require slow manual file carpentry every time.
+Josef explicitly wanted a small helper for the `Plan.md` / auxiliary-doc pipeline so already-understood lanes stop requiring slow manual canon carpentry every time.
 
-What this tool should do:
-- take a proposed item, greenlight, or parked-lane request
-- print the contract back for verification
-- collect corrections before touching canon files
-- ask the final classification question (active, parked, or bottom-of-stack)
-- patch the relevant canon files consistently:
-  - `Plan.md`
-  - `TODO.md`
-  - `SUCCESS.md`
-  - `TESTING.md` when needed
-  - the auxiliary doc itself
-- optionally generate the Andi handoff packet too
+Current honest state:
+- `tools/plan_aux_pipeline_helper.py` now provides a spec-driven preview/merge/emit/apply path for this repo's Plan/Aux workflow
+- `emit` can now also write a terse downstream `andi.handoff.md` packet from the same validated classified contract when `handoff_needed` is `yes`
+- the `apply` path still stays bounded to known existing canon headings and current active-lane anchors, so the workflow law is real without pretending broad freeform mutation is solved
+- when a heading does not already exist, the honest fallback is still `emit` output for reviewer-visible paste/review instead of magical guessing
+- narrow validation passed on a sample spec via `python3 -m py_compile tools/plan_aux_pipeline_helper.py`, `schema`, `show`, `emit`, emitted handoff review, and `apply` on a temp repo copy
 
-The point is leverage and consistency, not ceremony:
-- preserve the frozen intake/classification/packaging workflow
-- reduce slow manual canon edits
-- make parked-vs-active-vs-bottom-of-stack updates faster and less error-prone
+Keep this lane closed unless later evidence shows the handoff output or bounded patch path lying about what the canon actually says.
 
 Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
-
-Current landed helper:
-- `tools/plan_aux_pipeline_helper.py` now provides a spec-driven preview/merge/emit/apply path for this repo's Plan/Aux workflow
-- the new `apply` path intentionally stays bounded to known existing canon headings and current active-lane anchors, so the workflow law is real without pretending broad freeform mutation is solved
-- when a heading does not already exist, the honest fallback is still `emit` output for reviewer-visible paste/review instead of magical guessing
-
-What this active lane should do next:
-- keep the bounded canon-patching path stable and reviewable
-- if the next slice lands, make it optional Andi handoff generation from the same classified contract rather than broadening canon mutation by accident
-- keep this as workflow tooling, not as an excuse to reopen the now-closed locker/basecamp slices
 
 ---
 
@@ -291,9 +268,9 @@ Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 
 ---
 
-## 12. Greenlit bottom-of-stack — bandit concept formalization follow-through
+## 12. Active — Bandit concept formalization follow-through
 
-**Status:** GREENLIT / BOTTOM-OF-STACK
+**Status:** ACTIVE / GREENLIT DOC/SPEC
 
 Josef wants Andi to start tightening the remaining bandit control-law gaps after the current basecamp fixes are honestly closed, but still as conceptualization/doc work rather than implementation.
 
@@ -313,14 +290,19 @@ Default package order:
 
 The auxiliary contract intentionally decomposes those three packages into **31 narrow single-question micro-items** so Andi can freeze one law at a time instead of hiding several assumptions inside one friendly paragraph.
 
+Current bounded slice:
+- landed: Package 1, micro-item 1, `Terrain bounty bucket table`, now freezes a 0-5 starter site-class prior with the intended ordering `open street/field < forest < cabin < house < farm/city structure < camp footprint`
+- next: Package 1, micro-item 2, `Structural bounty harvest trigger rule`
+- keep the pass to one rule note before touching reappearance, moving-bounty, or threat-law questions
+
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 
 Do not treat this as permission to start coding bandit AI.
-This is greenlit **concept formalization** at the bottom of the stack, meant to make the parked packet cleaner and implementation-legible later.
+This is now the active **concept formalization** lane, still doc/spec work only, meant to make the parked packet cleaner and implementation-legible later.
 
 ---
 
-## 13. Parked concept chain — bandit overmap AI
+## 13. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / CONCEPT CHAIN
 

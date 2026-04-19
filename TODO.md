@@ -8,22 +8,26 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Plan/Aux pipeline helper**.
+Active lane: **Bandit concept formalization follow-through**.
 
 Current target:
-1. treat the bounded preview/merge/apply path as the fixed footing now
-   - keep `tools/plan_aux_pipeline_helper.py` on the known-heading patch path instead of widening it into speculative freeform canon mutation
-   - use `emit` as the honest fallback whenever a requested heading does not already exist
-2. keep the next step narrow
-   - if the next slice lands, make it optional Andi handoff generation from the same classified contract
-   - preserve the existing contract preview -> correction merge -> classification -> bounded apply path
-3. keep this separate from the other lanes
-   - the combat-oriented locker policy lane is checkpointed unless a fresh contradiction appears
-   - do not drift into bandit/threat docs or reopen closed locker/basecamp slices just because they are nearby
+1. continue Package 1 without turning it into one giant law blob
+   - micro-item 1, `Terrain bounty bucket table`, is now landed
+   - stay on micro-item 2, `Structural bounty harvest trigger rule`
+2. keep the law honest and narrow
+   - answer exactly what bandit action counts as harvesting/exploiting structural bounty
+   - make later implementation not guess between mere visitation, scouting, looting, raid completion, occupation, or some bounded subset
+   - only touch adjacent stale wording when that harvest rule directly forces it
+   - do not answer micro-items 3-13 at the same time just because the laws smell related
+3. keep this doc/spec only
+   - no bandit AI code
+   - no reopening locker/basecamp lanes while this bandit slice is active
 
 Out of scope right now:
+- helper workflow redesign
+- bandit implementation
+- multi-item bandit synthesis in one pass
 - reopening the closed combat-oriented locker lane without a new contradiction
 - reopening the closed Package 4 locker surface/control slice without a new contradiction
 - reopening the closed organic bulletin-board speech slice without a new contradiction
-- bandit / overmap-threat design
 - hackathon feature lanes

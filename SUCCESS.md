@@ -268,7 +268,7 @@ Notes:
 
 ## Bandit concept formalization follow-through
 
-Status: GREENLIT / BOTTOM-OF-STACK
+Status: ACTIVE / GREENLIT DOC/SPEC
 
 Success state:
 - [ ] A follow-through packet exists that turns the loose remaining bandit logic into three explicit doc slices: bounty source/harvesting/stockpile rules, cadence/distance/fallback rules, and cross-layer interactions/worked scenarios.
@@ -279,7 +279,9 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
-- This is bottom-of-stack greenlit doc/spec work that sits behind the current locker/basecamp queue and the other already-greenlit backlog items.
+- This is now the active doc/spec lane.
+- The first landed micro-item is Package 1, micro-item 1 (`Terrain bounty bucket table`); keep the next pass on Package 1, micro-item 2 (`Structural bounty harvest trigger rule`) so one law is frozen at a time.
+- No bandit implementation is greenlit here; keep this as conceptualization/packaging work only.
 
 ---
 
@@ -321,18 +323,18 @@ Notes:
 
 ## Plan/Aux pipeline helper
 
-Status: ACTIVE / GREENLIT TOOLING
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] A small helper can take a proposed item/greenlight and print the contract back for verification before canon files are changed.
 - [x] The helper can collect corrections and then classify the item cleanly as active, parked, or bottom-of-stack.
 - [x] The helper can update the relevant canon files consistently (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md` when needed, plus the auxiliary doc).
 - [x] The helper reduces manual file carpentry for already-understood greenlights without bypassing the frozen workflow.
-- [ ] The helper can optionally generate the Andi handoff packet from the same classified contract.
+- [x] The helper can optionally generate the Andi handoff packet from the same classified contract.
 
 Notes:
 - Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
-- This is now the current active lane.
 - The suspicion-first tooling audit is now closed, and the current bounded helper path landed at `tools/plan_aux_pipeline_helper.py`.
-- Current helper shape now covers spec validation, review-packet preview, explicit correction merge, reviewer-visible snippet emission, and bounded in-place patching of known existing canon headings / active-lane anchors.
-- The bounded patch path was validated on a temp repo copy via `schema`, `show`, `emit`, and `apply`; optional handoff generation remains the only open success row.
+- Current helper shape now covers spec validation, review-packet preview, explicit correction merge, reviewer-visible snippet emission, optional downstream `andi.handoff.md` output, and bounded in-place patching of known existing canon headings / active-lane anchors.
+- Narrow validation passed on a sample spec via `python3 -m py_compile tools/plan_aux_pipeline_helper.py`, `schema`, `show`, `emit`, emitted `andi.handoff.md` review, and `apply` on a temp repo copy.
+- Keep this lane closed unless future evidence shows the handoff output or bounded patch path lying about what the canon actually says.

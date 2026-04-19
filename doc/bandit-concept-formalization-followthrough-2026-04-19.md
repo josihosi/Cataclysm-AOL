@@ -52,6 +52,25 @@ Resolve these as **separate micro-items**. Do not treat "resource law" as one bl
 - **Expected output:** One starter table covering at least open street, field, forest, cabin, house, farm, city structure, and camp footprint.
 - **Done when:** The table makes the current lean explicit, fields/open streets near-zero, forests low but non-zero, buildings materially higher where intended.
 
+Current answer:
+- Treat this as `structural_bounty_base`, a site-class prior before mobile activity, threat, distance burden, or harvest depletion are applied.
+
+| Terrain / site class | Starter structural bounty bucket (0-5) | Why this starts here |
+| --- | --- | --- |
+| Open street | 0 | Movement surface only. Any real value here should come later from moving traffic or intercept opportunity, not from the pavement magically printing salvage. |
+| Field | 0 | Broad open ground by itself offers little recoverable value unless later rules add active workers, caravans, or a harvestable destination. |
+| Forest | 1 | Low background value from shelter, wood, game, and occasional salvage, but still clearly below built sites. |
+| Cabin | 2 | Small sheltered stash potential and occasional supplies matter, but the footprint is limited and easy to strip. |
+| House | 3 | Ordinary residential interiors offer repeatable medium-value salvage, food, tools, and shelter worth checking. |
+| Farm | 4 | House-plus-barn/tool/food storage makes a farm materially richer than an ordinary house even before any fresh activity cues. |
+| City structure | 4 | Urban interiors, shops, workshops, and apartment blocks justify high base interest from structure alone. |
+| Camp footprint | 5 | A discovered lived-in footprint implies concentrated reusable value; if people are visibly active there, that extra pull belongs on the moving-bounty and threat layers, not hidden inside the terrain bucket. |
+
+Guardrails from this table:
+- Roads, streets, and fields do **not** climb out of the basement just because traffic later passes through them; that later value belongs to moving bounty or route/intercept rules.
+- Forest stays low but non-zero as background structural bounty, not as a secret all-purpose food printer.
+- Built sites are deliberately separated into cabin < house < farm/city structure < camp footprint so later scoring can be explicit about why a place looks worth checking.
+
 #### 2. Structural bounty harvest trigger rule
 - **Question:** What exact bandit action counts as harvesting or exploiting structural bounty?
 - **Expected output:** One rule note that says what must happen before a site loses some or all structural bounty.
