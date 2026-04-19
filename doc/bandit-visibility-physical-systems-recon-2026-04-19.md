@@ -36,8 +36,10 @@ Primary repo footing looked at during this recon:
 - `src/sounds.cpp`
 - `src/map_field.cpp`
 - `src/lightmap.cpp`
+- `src/lightmap.h`
 - `src/weather.cpp`
 - `src/character.cpp`
+- `src/item.cpp`
 - `src/overmap_ui.cpp`
 - `data/json/weather_type.json`
 - `data/json/field_type.json`
@@ -117,16 +119,44 @@ In `src/weather.cpp`:
 - weather modifies incident sun/moon light through `light_multiplier` and `light_modifier`
 
 In `src/character.cpp`:
-- overmap sight range depends on light level
-- overmap LOS then burns sight points through terrain `get_see_cost()`
+- `Character::sight_range()` derives visible range from light level using Beer-Lambert-style falloff against `LIGHT_TRANSPARENCY_OPEN_AIR`
+- `Character::overmap_sight_range()` and `Character::overmap_los()` then convert that into coarse overmap sight with terrain `get_see_cost()`
+
+In `src/lightmap.h`:
+- open-air transparency is explicitly tuned to run out near `MAX_VIEW_DISTANCE`
+- `LIGHT_RANGE()` already converts luminance into an approximate visible-distance result
 
 In `src/lightmap.cpp`:
 - weather `sight_penalty` participates in visibility behavior
 - smoke/haze cache also affects whether detail is visible locally
+- `apparent_light_at()` distinguishes between ordinary visibility and `BRIGHT_ONLY`, meaning strong light sources can still read as visible even when detail is not
 
 Meaning:
 - daylight, darkness, and weather already materially alter what can be seen
 - the future visibility model should reuse this truth rather than pretending smoke/light visibility is totally separate from existing sight logic
+- there is already real code footing for the intuition that a bright night light can be noticed at long range without granting clean tactical knowledge
+
+### 6. Directional light is already a real local concept
+
+This turned out better than expected.
+The local lighting system is not just a scalar brightness soup.
+It already carries directional structure that matters for outward leakage.
+
+In `src/item.cpp`:
+- `item::getlight()` can expose `luminance`, `width`, and `direction`
+- width `> 0` means the source is an arc light, not just an omnidirectional glow
+
+In `src/lightmap.cpp`:
+- `apply_light_arc()` casts only the octants covered by the source arc
+- `apply_directional_light()` already projects light from one cardinal approach into a tile
+- sunlight leakage into interior openings is handled directionally during `generate_lightmap()`
+- the lightmap stores `four_quadrants` per tile, not just one flat brightness value
+- `apparent_light_helper()` can evaluate which quadrants of an opaque tile are visible from the observer side before deciding how much light is actually apparent
+
+Meaning:
+- the repo already knows the difference between light existing and light leaking from a particular side
+- there is likely no need to invent a brand-new vector-visibility law from scratch just to get directional exposure semantics
+- if bandit visibility later wants a cheap overmap adapter, a coarse side-bucket or quadrant-derived exposure summary would be much more grounded than a fresh fictional system
 
 ---
 
@@ -211,7 +241,8 @@ The future system should not require simulating every smoke puff on the overmap.
 It should read coarse consequences from real local systems and convert them into abstract marks.
 
 For light, this likely means a cheap coarse exposure model instead of tile-perfect omnidirectional raycasting across the whole map.
-A directional bucket or side-exposure abstraction is much more plausible than full decorative realism.
+The good news is that the local engine already has directional light arcs and quadrant-aware apparent-light handling, so the missing piece looks more like a summarizing adapter than a blank-sheet invention.
+A directional bucket or side-exposure abstraction still looks much more plausible than full decorative realism.
 
 ---
 
@@ -226,6 +257,7 @@ Smoke, fire, and light exist physically, but the repo does not obviously already
 That translation still needs explicit design.
 
 For light, daylight should remain a hard suppressor, and closed/contained indoor light should not magically become a world-map beacon just because a lamp exists somewhere inside.
+The code already supports directional leakage thinking, but it still does not hand bandit AI a ready-made overmap exposure score.
 
 ### Constraint 3: sound has the cleanest first precedent
 Because the code already uses sound -> weather attenuation -> overmap signal, sound-driven investigation is the safest first bridge for later implementation thinking.

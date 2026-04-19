@@ -51,6 +51,9 @@ This guidance does **not** yet define:
 - a new fog-based sound dampening rule
 - a separate fake weather/physics system outside the real engine footing
 
+It also does **not** assume we need a wholly new light-vector system.
+The better default is to reuse the existing local directional-light footing and only add a coarse overmap adapter layer.
+
 This is a visibility/concealment concept slice, not the whole machine.
 
 ---
@@ -246,7 +249,8 @@ Where relevant:
 Useful directional rule:
 - a lit site may be legible from one side and concealed from another
 - closed houses, curtained windows, walls, stoves or other contained indoor sources, and forest cover can reduce or block outward light leakage on some approaches while leaving other directions more exposed
-- later implementation should prefer a cheap directional exposure model, not expensive tile-perfect world-map ray theater
+- repo recon now suggests this should lean on the existing local light model, which already has directional arcs and quadrant-aware apparent-light handling, then summarize that into a cheap overmap-facing exposure result
+- later implementation should therefore prefer a cheap directional exposure adapter, not expensive tile-perfect world-map ray theater
 
 Important bilateral rule:
 - weather and terrain concealment should not act like a player-only stealth blessing
