@@ -355,6 +355,8 @@ Default package order:
 2. cadence / distance burden / route-fallback rules
 3. cross-layer interaction packet with starter numbers and worked scenarios
 
+The auxiliary contract intentionally decomposes those three packages into **31 narrow single-question micro-items** so Andi can freeze one law at a time instead of hiding several assumptions inside one friendly paragraph.
+
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 
 Do not treat this as permission to start coding bandit AI.
