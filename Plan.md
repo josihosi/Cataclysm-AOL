@@ -290,20 +290,21 @@ Do not quietly treat partial bandit notes as an active lane or as already-greenl
 Current parked-chain anchor:
 - the broad concept vessel lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
 
-Current parked sub-item:
+Current parked sub-items:
 - deterministic bounty/threat scoring guidance v1 at `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`
+- overmap mark-generation and heatmap model v1 at `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`
 
-What this parked sub-item should do:
-- define deterministic camp-ledger and map-mark inputs for bandit decision-making
-- define deterministic bounty and threat scoring
-- define job desirability scoring from those scores plus temperament/need modifiers
-- stay explicitly separate from exact visibility math, signal-ingestion cadence, overmap-to-bubble handoff rules, and player/basecamp visibility
+What the current parked sub-items should do:
+- scoring guidance: define deterministic camp-ledger and map-mark inputs for bandit decision-making, then score bounty/threat/job desirability from those inputs
+- mark/heatmap guidance: define how overmap-only marks get created, refreshed, decayed, and folded into broad threat/bounty heatmaps on the same cadence family
+- keep both explicitly separate from overmap-to-bubble handoff rules and player/basecamp visibility
 
 The intended parked-chain order for now is:
 1. broad concept vessel
 2. deterministic bounty/threat scoring
-3. later parked concept slices for visibility math, signal cadence/persistence, handoff seam, and player/basecamp visibility
-4. only then decide whether the whole bandit concept is ready to be promoted into greenlit backlog
+3. overmap mark-generation and heatmap model
+4. later parked concept slices for overmap-to-bubble handoff seam and player/basecamp visibility
+5. only then decide whether the whole bandit concept is ready to be promoted into greenlit backlog
 
 ---
 

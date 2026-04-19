@@ -267,12 +267,14 @@ Status: PARKED / CONCEPT CHAIN
 Success state:
 - [ ] The parked concept packet defines the broad bandit overmap actor model, signal/memory role, threat shape, and overmap-to-bubble intent cleanly enough that later planning no longer has to rediscover the premise from scratch.
 - [ ] Deterministic bounty/threat scoring guidance exists with explicit camp-ledger inputs, map-mark fields, decay/drift rules, and job-scoring logic.
-- [ ] The parked chain keeps exact visibility math, signal cadence/persistence details, overmap-to-bubble seam rules, and player/basecamp visibility as explicit later concept items instead of smearing them into the scoring packet.
+- [ ] Overmap mark-generation and heatmap guidance exists with explicit overmap-only mark creation, refresh/decay, and threat/bounty field update logic on the shared cadence family.
+- [ ] The parked chain keeps overmap-to-bubble seam rules and player/basecamp visibility as explicit later concept items instead of smearing them into the current scoring/heatmap packet.
 - [ ] The whole bandit concept packet becomes coherent enough that it can be reconsidered for promotion from parked concept chain into greenlit backlog without hidden open seams.
 
 Notes:
 - Broad concept vessel: `doc/bandit-overmap-ai-concept-2026-04-19.md`.
 - Current scoring sub-item: `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`.
+- Current heatmap sub-item: `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`.
 - This is parked concept work, not active queue work and not an implementation greenlight.
 
 ---

@@ -397,8 +397,9 @@ This document is not yet trying to:
 
 ## Related parked-chain sub-items
 
-Current linked parked-chain sub-item:
+Current linked parked-chain sub-items:
 - deterministic scoring guidance: `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`
+- overmap mark-generation and heatmap model: `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`
 
 ## Why this vessel exists
 
