@@ -50,8 +50,8 @@ Current target:
 Best concrete next states for this lane:
 1. keep the landed Package 5 code/test packet honest in the docs: ordinary carried junk now dumps on the locker service path, and the deterministic keep-vs-dump policy is intentionally limited to `bandages`, `ammo`, and `magazines`
 2. keep one exact end-to-end live actor for the correction lane, now Robbie: post-drop ground check -> Robbie pickup -> Robbie camp assignment -> Robbie locker service
-3. tighten or replace the current live restage/drop seam so the exact intended `bandage` / `ammo` / `magazine` / junk-control packet is provably on the live tile before pickup, because the repaired probes now show the concrete failure modes: `9x19mm JHP` seeds `small ammo can` stacks, while single-count `bandage` / `Glock 9x19mm 15-round magazine` items can be stocked in inventory yet still fail to appear on the tile after the current filtered drop path
-4. only after that exact seeding proof is real, rerun the same-actor locker packet and interpret keep-vs-dump; until then do not pretend the locker artifact answers the kept-lane question
+3. tighten or replace the remaining live ammo restage seam so the exact intended ammo proof item, not a `small ammo can`, is provably on the live tile before pickup; the repaired single-count bandage and magazine drop path is now honest enough to use
+4. only after that exact seeded packet is real, rerun the same-actor locker packet and interpret keep-vs-dump; until then do not pretend the locker artifact answers the kept-lane question
 
 Explicit greenlit backlog behind the current slice:
 - **Package 4, locker zone policy + control-surface cleanup**
@@ -155,16 +155,18 @@ Current honest state:
 - replaced/duplicate container contents now get split so kept carried items return to the worker while dumped miscellany goes to a non-locker cleanup tile
 - fresh runtime-compatible `locker.weather_wait` artifact proof on 2026-04-18 shows the live locker path really dumping ordinary carried junk outside curated locker stock
 - a corrected same-actor live probe on 2026-04-19 now keeps Robbie as pickup actor, camp-assignment actor, and locker-service actor, so the earlier mixed-actor worry was real for the old packet and is now corrected in the probe shape
-- the probe helper itself was also lying for a while: `tools/openclaw_harness/startup_harness.py` had been leaving the multidrop menu open, so the old post-drop screenshots were not honest ground checks
-- fresh narrow proof on the repaired helper at `.userdata/dev-harness/harness_runs/20260419_033907/` now shows the real ammo-side seam: spawning/dropping `9x19mm JHP` on the live McWilliams tile lands `10 small ammo cans`, not loose `9x19mm JHP`
-- fresh narrow bandage probes then split the next ambiguity:
-  - `.userdata/dev-harness/harness_runs/20260419_035025/` shows the wish helper really stocks inventory for query `bandage`, but as `adhesive bandage`
-  - `.userdata/dev-harness/harness_runs/20260419_034852/` still shows an empty pickup tile after the current filtered drop path for that single-count bandage item
-- fresh narrow magazine probes split the same seam for the magazine lane:
+- the probe helper itself was also lying for a while: `tools/openclaw_harness/startup_harness.py` had been leaving the multidrop menu open, and the drop path was selecting filtered items wrong, so the old post-drop screenshots were not honest ground checks
+- fresh repaired single-count bandage proof is now real:
+  - `.userdata/dev-harness/harness_runs/20260419_035025/` shows the wish helper stocks inventory for query `bandage`, as `adhesive bandage`
+  - `.userdata/dev-harness/harness_runs/20260419_040122/` now shows the corrected filtered drop path really lands `adhesive bandage` on the live McWilliams pickup tile
+- fresh repaired single-count magazine proof is now real too:
   - `.userdata/dev-harness/harness_runs/20260419_035431/` shows inventory really contains `Glock 9x19mm 15-round magazine (15/15 9x19mm JHP)` after the wish spawn
-  - `.userdata/dev-harness/harness_runs/20260419_035242/` still shows an empty pickup tile after the current filtered drop path for that single-count magazine item
-- fresh same-actor rerun at `.userdata/dev-harness/harness_runs/20260419_034022/` is now explained more honestly by those seams: the tile showed `10 small ammo cans` plus `stone axe`, and Robbie later picked up a `stone axe`, a `small ammo can`, and even a nearby `Fighter's Glock 19`, so the pickup order is still not clean proof of the intended kept packet
-- so Package 5 is not honestly closed; the current blocker is now the exact live restage/drop seam for the kept items plus the pickup-command ambiguity that follows from that bad seed packet, not locker-service triggering or same-actor continuity
+  - `.userdata/dev-harness/harness_runs/20260419_040243/` now shows the corrected filtered drop path really lands that Glock magazine on the live pickup tile
+- fresh ammo-side probe narrowed the remaining seam instead of closing it:
+  - the wish-menu query screenshot at `.userdata/dev-harness/harness_runs/20260419_031430/` shows top result for `9x19mm JHP` is `1000 9x19mm JHP ammo can`, not loose ammo
+  - even after teaching `debug_spawn_item` to pick the second filtered wish-menu entry for that query, `.userdata/dev-harness/harness_runs/20260419_040812/` still lands `small ammo can` on the live pickup tile rather than loose `9x19mm JHP`
+- fresh same-actor rerun at `.userdata/dev-harness/harness_runs/20260419_034022/` is therefore still not clean proof: the tile contents and Robbie pickup order were contaminated by the old bad seed packet, including `small ammo can` / nearby-gear ambiguity
+- so Package 5 is not honestly closed; the current blocker is now the remaining live ammo-restage mismatch plus the pickup-command ambiguity that follows from that bad seed packet, not locker-service triggering, same-actor continuity, or the single-count bandage/magazine drop seam
 
 Greenlit backlog, not erased:
 - Package 4 locker zone policy + control-surface cleanup remains a known unfinished slice and is now explicitly greenlit, just not the current active queue
@@ -302,18 +304,23 @@ Current parked sub-items:
 - overmap mark-generation and heatmap model v1 at `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`
 - bidirectional overmap-to-bubble handoff seam v1 at `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`
 
+Supporting recon note for the next parked visibility item:
+- physical-systems recon at `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`
+
 What the current parked sub-items should do:
 - scoring guidance: define deterministic camp-ledger and map-mark inputs for bandit decision-making, then score bounty/threat/job desirability from those inputs
 - mark/heatmap guidance: define how overmap-only marks get created, refreshed, decayed, and folded into broad threat/bounty heatmaps on the same cadence family
 - handoff guidance: define how abstract overmap groups enter local play and how cargo, wounds, panic, losses, and updated threat/bounty knowledge return back into overmap state
-- keep these explicitly separate from player/basecamp visibility
+- the next visibility/concealment slice should be recon-backed against existing sound, smoke, light, and weather systems rather than inventing parallel physics
+- current acceptable footing: fog/mist can suppress sight/light legibility without forcing new fog-based sound dampening rules
+- keep these explicitly separate from player/basecamp visibility until that next slice is packaged
 
 The intended parked-chain order for now is:
 1. broad concept vessel
 2. deterministic bounty/threat scoring
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
-5. later parked concept slice for player/basecamp visibility
+5. later parked concept slice for player/basecamp visibility and concealment, informed by the physical-systems recon note
 6. only then decide whether the whole bandit concept is ready to be promoted into greenlit backlog
 
 ---
