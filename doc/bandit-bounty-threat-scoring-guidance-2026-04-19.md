@@ -289,6 +289,7 @@ job_score =
   + temperament_modifiers
   + camp_need_modifiers
   + job_type_bonus
+  - active_pressure_penalty
 ```
 
 A job is valid only if:
@@ -297,7 +298,12 @@ A job is valid only if:
 - job cooldown is clear
 - current load allows dispatch
 
+`active_pressure_penalty` is where v1 can damp silly multi-camp pile-ons.
+If a region already carries fresh disruption, recent failed pressure, or evidence that someone else already made it hot, that should reduce the score for blindly piling in again.
+
 Highest valid job wins.
+This is still per-camp scoring, not coalition strategy logic.
+Occasional overlap can happen, but v1 should not behave like several camps are sharing one omniscient attack planner.
 
 ---
 

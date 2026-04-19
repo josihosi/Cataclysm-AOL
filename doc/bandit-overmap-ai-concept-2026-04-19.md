@@ -152,6 +152,11 @@ Soft temperament should bias, not replace, the hard math:
 
 That way two camps can read the same region differently without turning the model into mush.
 
+V1 does **not** need a deliberate inter-camp coalition layer.
+Camps should mostly act from their own maps, operating radii, and pressures.
+Occasional overlap is fine.
+Routine multi-camp dogpile behavior is not.
+
 ### Overmap groups
 Camps dispatch temporary abstract groups for specific jobs.
 A group should minimally carry:
@@ -199,6 +204,13 @@ Jobs should differ in:
 
 A camp should not choose a mark directly.
 It should score job templates against marks and regional conditions.
+
+That scoring should naturally discourage routine dogpiles through:
+- territoriality bias
+- distance burden
+- depleted bounty after prior exploitation
+- sticky threat memory after bad outcomes
+- fresh active-pressure penalties when a region is already hot or recently disturbed
 
 ---
 
