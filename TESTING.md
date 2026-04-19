@@ -39,44 +39,40 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Organic bulletin-board speech polish
+### Combat-oriented locker policy
 
 Current honest state:
-- this lane became active after the locker surface/control follow-through reclosed honestly, and the first fresh 2026-04-19 audit narrowed the remaining visible seam instead of hand-waving at it:
-  - ordinary spoken board/job replies were still appending request-id chatter like `(#7)`
-  - board-status parsing still missed some obvious organic asks like `what needs making`, `what needs doing`, and `got any craft work`
-  - the raw structured `show_board` / `show_job` / `job=` payload leak itself still stayed fixed
-- that narrow cleanup is now landed in code with deterministic coverage on the current dirty tree:
-  - `src/faction_camp.cpp` stops ordinary spoken board/job barks from echoing request ids
-  - `parse_heard_camp_status_query()` now accepts the added organic board-status asks above
-  - `./tests/cata_test "[camp][basecamp_ai]"` passed after a fresh `make -j4 tests`
-- proportional live runtime proof now exists on the rebuilt current tiles binary:
-  - `make -j4 TILES=1 cataclysm-tiles` passed on 2026-04-19
-  - `.userdata/dev-harness/harness_runs/20260419_154244/` used the real `assign_nearby_npc_to_camp_dialog` seam, not the false guard/hold-only setup
-  - the visible screen packet for `what needs making` shows `Katharina Leach says, "Board's got 1 live and 1 old - 1 x bandages."`
-  - the same visible reply stays free of `(#7)`, `req_0`, `req_1`, and similar machine glue
-  - matching artifacts show `camp routing check ... uses_basecamp=yes`, `camp heard Katharina Leach (2)`, and `player utterance: what needs making`
-- Robbie still chimed in on that McWilliams fixture as ordinary follower crosstalk after Katharina answered; treat that as existing routing noise, not as proof that the closed raw-payload leak regressed
-- do not reopen the older board-routing/raw-payload work unless a new probe actually shows those claims were oversold
+- the opening 2026-04-19 suspicion-first audit stayed code-side and found the first real contract seam without pretending the whole combat locker direction was already implemented:
+  - `camp_locker_slot`, `all_camp_locker_slots()`, and `locker_policy_ui()` still expose only the older 12-slot surface, with no explicit gloves, belt, mask, or holster controls
+  - `classify_camp_locker_item()` still drops holsters and similar accessory-heavy combat kit instead of giving them an explicit locker-policy home
+  - there is still no bulletin-board or locker-surface bulletproof toggle, so ballistic preference is not a real player-facing control yet
+- the current locker footing already includes useful reusable scaffolding that the next slice should preserve:
+  - weird-garment safety and non-destructive coverage preservation already exist
+  - weather-sensitive outerwear and legwear handling already exist
+  - full-body suit protection logic already exists and should not be casually broken by combat-policy expansion
 
 ### Recently closed, do not casually reopen
 
-- Locker surface/control is now reclosed on both deterministic and live footing:
+- Organic bulletin-board speech polish is now reclosed on both deterministic and live footing:
+  - `make -j4 tests` plus `./tests/cata_test "[camp][basecamp_ai]"` passed for the widened organic status parsing and cleaned spoken bark
+  - live run `.userdata/dev-harness/harness_runs/20260419_154244/` used the real camp-assignment seam, asked `what needs making`, and showed `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue
+  - Robbie's same-packet follower crosstalk stays separate routing noise, not a reason to reopen the closed machine-speech seam
+- Locker surface/control is also reclosed on both deterministic and live footing:
   - deterministic proof still covers locker policy persistence and sorting skip behavior on `CAMP_LOCKER`
   - live run `.userdata/dev-harness/harness_runs/20260419_141422/` created `Basecamp: Locker`, renamed it to `Probe Locker`, used the single-`Esc` -> save-prompt -> `Y` closeout, and reopened Zone Manager with `Probe Locker` still present
   - no type-mismatch popup or related stderr/debug failure surfaced on that live packet
 
 ### Meaning
 
-- the missing proof for this narrowed slice is no longer live board-status behavior; that packet now exists on the rebuilt current runtime with screen and artifact evidence kept separate
-- the next honest move is closeout/checkpoint hygiene, not more locker truth and not more blind board archaeology
+- the missing evidence for the active lane is not another live board or locker rerun
+- the next honest move is a narrow combat-policy implementation slice plus deterministic coverage for the new slot/control behavior
 
 ---
 
 ## Pending probes
 
-- none by default for this slice
-- only run another live packet if checkpoint prep specifically needs explicit current-runtime job-followup wording, or if a fresh visible seam appears
+- none yet for this slice
+- once a real combat-policy code slice lands, start with narrow deterministic locker tests before asking for any live locker-service proof
 
 ---
 
@@ -84,14 +80,12 @@ Current honest state:
 
 Use these when they are actually the missing evidence, not as ritual.
 
-### Startup/load smoke for later live board proof
-- `python3 tools/openclaw_harness/startup_harness.py start --profile dev --world 'Sandy Creek'`
+### Narrow locker deterministic pass after a code slice lands
+- `make -j4 tests`
+- `./tests/cata_test "[camp][locker]"`
 
-### Organic board-speech live proof
-- `python3 tools/openclaw_harness/startup_harness.py probe basecamp.organic_board_speech_probe_mcw`
-
-### Recently used locker closeout probe
-- `python3 tools/openclaw_harness/startup_harness.py probe locker.zone_manager_save_probe_mcw`
+### Fresh tiles rebuild only if a later combat-policy handoff really needs live proof
+- `make -j4 TILES=1 cataclysm-tiles`
 
 ## Local build caveat
 

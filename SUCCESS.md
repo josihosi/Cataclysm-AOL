@@ -226,27 +226,27 @@ Notes:
 
 ## Organic bulletin-board speech polish
 
-Status: ACTIVE / IN PROGRESS
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] Bulletin-board / camp-job requests can be triggered through natural player-facing phrasing instead of exposed machine wording.
-- [ ] Ordinary spoken answers no longer expose `job=<id>` / `show_board` / `show_job` style routing tokens.
-- [ ] Internal routing/debug structure can still exist where needed without leaking into normal in-world speech.
-- [ ] The visible answer tone sounds rough, practical, and in-world, like poor survivors making it work for another day while the dead and worse roam outside.
+- [x] Bulletin-board / camp-job requests can be triggered through natural player-facing phrasing instead of exposed machine wording.
+- [x] Ordinary spoken answers no longer expose `job=<id>` / `show_board` / `show_job` style routing tokens.
+- [x] Internal routing/debug structure can still exist where needed without leaking into normal in-world speech.
+- [x] The visible answer tone sounds rough, practical, and in-world, like poor survivors making it work for another day while the dead and worse roam outside.
 
 Notes:
 - Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
-- This is now the current active lane.
-- First deterministic cleanup is landed on the current tree: ordinary spoken board/job replies no longer echo request ids, and board-status parsing now accepts `what needs making`, `what needs doing`, `got any craft work`, and `show me what needs doing`.
-- Fresh narrow proof passed on the current dirty tree via `make -j4 tests` and `./tests/cata_test "[camp][basecamp_ai]"`.
-- Proportional live proof now also exists on the rebuilt current tiles binary in `.userdata/dev-harness/harness_runs/20260419_154244/`: the real camp-assignment seam plus `what needs making` produced `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue.
-- The same live packet still lets Robbie chime in as ordinary follower crosstalk on the McWilliams fixture; keep that separate from this narrow machine-speech cleanup unless it becomes the active seam.
+- This lane is now checkpointed instead of active.
+- Deterministic cleanup on the current tree keeps ordinary spoken board/job replies free of request ids, and board-status parsing now accepts `what needs making`, `what needs doing`, `got any craft work`, and `show me what needs doing`.
+- Fresh narrow proof passed on the current tree via `make -j4 tests` and `./tests/cata_test "[camp][basecamp_ai]"`.
+- Proportional live proof exists on the rebuilt current tiles binary in `.userdata/dev-harness/harness_runs/20260419_154244/`: the real camp-assignment seam plus `what needs making` produced `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue.
+- The same live packet still lets Robbie chime in as ordinary follower crosstalk on the McWilliams fixture; keep that separate from this closed machine-speech cleanup unless it becomes a fresh visible seam.
 
 ---
 
 ## Combat-oriented locker policy
 
-Status: GREENLIT / BACKLOG
+Status: ACTIVE / IN PROGRESS
 
 Success state:
 - [ ] Future locker behavior strongly supports sensible common guard/combat gear: gloves, belts, masks, holsters, and the usual practical clothing/loadout pieces.
@@ -257,6 +257,8 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
+- This is now the current active lane.
+- The opening 2026-04-19 audit on the current tree found the first honest seam: `camp_locker_slot`, `all_camp_locker_slots()`, and `locker_policy_ui()` still expose only the older 12-slot surface, `classify_camp_locker_item()` still drops holsters and similar combat accessories, and no bulletproof toggle exists yet.
 - This future direction preserves the current weird-garment safety work instead of replacing it.
 
 ---

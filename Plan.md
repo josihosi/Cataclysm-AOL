@@ -39,27 +39,32 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now **one active greenlit implementation lane**: **Organic bulletin-board speech polish**.
+There is now **one active greenlit implementation lane**: **Combat-oriented locker policy**.
 
 Fresh checkpoint just closed:
 - **Package 5, basecamp carried-item dump lane** is honestly closed on the documented `bandages` acceptance item.
 - **Package 4, locker zone policy + control-surface cleanup** is now honestly reclosed too:
   - `.userdata/dev-harness/harness_runs/20260419_141422/` shows the real McWilliams `CAMP_LOCKER` Zone Manager seam creating `Basecamp: Locker`, renaming it to `Probe Locker`, closing through the single-`Esc` save prompt, and reopening Zone Manager with `Probe Locker` still present
   - that same live packet did **not** surface the reported zone-creation type-mismatch on screen, in `debug.final.log`, or in stderr
+- **Organic bulletin-board speech polish** is now honestly reclosed too:
+  - deterministic coverage still passes for the cleaned spoken board/job bark and widened organic status parsing
+  - live run `.userdata/dev-harness/harness_runs/20260419_154244/` used the real camp-assignment seam, asked `what needs making`, and showed Katharina answering `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue
+  - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- keep moving the active bulletin-board speech polish slice from the initial suspicion-first audit into proportional proof on the current tree
-- the first honest audit already found a real visible seam: ordinary board/job barks were still appending request-id chatter like `(#7)` even though the fenced internal handoff stayed hidden
-- that same audit also showed the board-status parser was still narrower than the contract examples, missing organic asks like `what needs making`
-- keep this separate from locker follow-through, deeper board-routing archaeology, and bandit/threat design lanes
+- move the now-active combat-oriented locker policy lane from backlog wording into a first honest implementation slice
+- the opening suspicion-first audit on the current tree already found concrete control-law gaps instead of vague vibes:
+  - `camp_locker_slot`, `all_camp_locker_slots()`, and `locker_policy_ui()` still expose only the older 12-slot surface, with no gloves, belt, mask, or holster controls and no bulletproof toggle
+  - `classify_camp_locker_item()` still drops holsters and other accessory-heavy combat kit on the floor instead of giving them an explicit policy home
+  - the current locker footing already has useful safety scaffolding, like weird-garment preservation, weather sensitivity, and full-body suit protection, so the next slice should extend that spine instead of replacing it
+- keep this separate from the already-closed board speech cleanup, deeper locker V3 doctrine soup, and bandit/threat design lanes
 
 Best concrete next states for this lane:
-1. keep the landed deterministic cleanup narrow: ordinary spoken board/job replies stay free of request-id glue while internal `show_board` / `show_job` / `job=` tokens remain internal/log-only
-2. capture the next proportional proof packet on the rebuilt current runtime, preferably one live board/status exchange using an organic ask like `what needs making`
-3. only broaden beyond that if a fresh audit shows another real visible machine-speech seam instead of assuming there must be one
+1. freeze the first combat-policy slice narrowly: add the missing slot/control-surface footing before trying to solve every ballistic and outfit nuance at once
+2. make the first code proof deterministic first, centered on the newly exposed combat-gear controls and classification behavior, before demanding live locker service proof
+3. only broaden into ballistic plate replacement or full suit preference once the slot/control surface is real on the current tree
 
 Explicit greenlit backlog behind the current slice:
-- **Combat-oriented locker policy**
 - **Plan/Aux pipeline helper**
 - **Bandit concept formalization follow-through** (bottom-of-stack, conceptual docs only)
 
@@ -198,27 +203,20 @@ Do not describe adjacent harness or UI work as partial completion of those featu
 
 ---
 
-## 9. Active — organic bulletin-board speech
+## 9. Checkpointed, organic bulletin-board speech
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-The raw structured board/job payload leak is fixed, and the first fresh audit on the current tree narrowed the remaining visible seam honestly:
-- ordinary spoken board/job replies were still appending request-id chatter like `(#7)`
-- board-status parsing still missed a few obvious natural asks like `what needs making` / `what needs doing` / `got any craft work`
-- the fenced internal handoff/log tokens remain the right place for `show_board` / `show_job` / `job=` structure
+This slice is now considered done for now because the bundled success state in `SUCCESS.md` is checked.
 
-That narrow cleanup now has proportional proof on the rebuilt current runtime too:
-- deterministic coverage still passes on the current tree for the cleaned spoken bark and widened organic status parsing
+Current honest state:
+- ordinary player-facing board status asks now accept organic wording like `what needs making`, `what needs doing`, `got any craft work`, and `show me what needs doing`
+- ordinary spoken board/job replies stay free of visible request-id glue and keep `show_board` / `show_job` / `job=` structure on the internal/log side only
+- deterministic coverage still passes on the current tree for the widened organic parsing and cleaned spoken bark
 - live run `.userdata/dev-harness/harness_runs/20260419_154244/` used the real camp-assignment seam, asked `what needs making`, and showed Katharina answering `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue
 - the same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture; treat that as separate routing noise unless a later change makes it the active seam again
 
-This is still the active slice because the locker surface/control follow-through just reclosed honestly, but the next honest move is closeout/checkpoint hygiene, not more speculative board archaeology.
-
-What this polish item should do:
-- support organic player-facing triggers for bulletin-board / camp-job requests (for example ordinary requests like "craft" in a sentence)
-- keep internal routing/debug tokens available where useful without surfacing them as normal speech
-- make visible answers sound like poor survivors in a dump making it work for another day while the dead and worse roam outside
-- eliminate remaining visible `job=<id>` / `show_board` / `show_job`-style machine phrasing from ordinary in-world output
+Keep this lane closed unless a fresh probe surfaces a real visible machine-speech seam again.
 
 Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
 
@@ -252,17 +250,22 @@ Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
 ---
 
-## 11. Greenlit backlog — combat-oriented locker policy
+## 11. Active — combat-oriented locker policy
 
-**Status:** GREENLIT / BACKLOG
+**Status:** ACTIVE / GREENLIT
 
-Josef wants future locker development to lean harder toward sensible guard/combat outfits instead of spending disproportionate energy on weird artisanal clothing edge cases.
+Josef wants locker development to lean harder toward sensible guard/combat outfits without throwing away the already-earned weird-garment safety wins.
 
-This future direction should:
-- keep the already-earned weird-garment safety wins
-- add common useful gear emphasis (gloves, belts, masks, holsters, sensible normal outfit pieces)
-- support a bulletin-board bulletproof toggle
-- support explicit ballistic vest / plate handling
+The first suspicion-first audit on the current tree already found the real opening seam:
+- `camp_locker_slot`, `all_camp_locker_slots()`, and `locker_policy_ui()` still expose only the older 12-slot surface, so gloves, belt, mask, and holster controls do not exist yet
+- `classify_camp_locker_item()` still drops holsters and similar accessory-heavy combat kit instead of giving them an explicit locker-policy home
+- there is still no bulletin-board or locker-surface bulletproof toggle, so ballistic preference is not a real player-facing control yet
+- the current locker footing already includes useful safety structure, like weird-garment preservation, weather-sensitive outerwear/legwear handling, and full-body suit protection, so the next slice should build on that spine rather than replace it
+
+What this active lane should do next:
+- add common useful combat-kit emphasis, starting with the missing slot/control-surface footing
+- support a bulletin-board or locker-surface bulletproof toggle once the control seam is real
+- extend explicit ballistic vest / plate handling after that first footing exists
 - prefer clearly superior full-body battle suits when appropriate
 - bias future deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
 
