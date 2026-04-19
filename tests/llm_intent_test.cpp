@@ -24,6 +24,9 @@ std::string build_snapshot_for_test( npc &listener, const std::string &player_ut
 std::string build_action_prompt_for_test( const std::string &npc_name,
         const std::string &player_utterance,
         const std::string &snapshot );
+size_t look_around_selection_limit_for_test();
+std::vector<std::string> parse_look_around_response_for_test( const std::string &text,
+        const std::vector<std::string> &allowed_names );
 bool parse_move_field_for_test( const std::string &field, point &delta,
                                 std::string &terminal_state,
                                 std::string &error );
@@ -150,6 +153,21 @@ TEST_CASE( "llm_intent_can_parse_delta_move_fields", "[llm_intent]" )
     CHECK_FALSE( llm_intent::parse_move_field_for_test( "move=4 east hold_position", delta,
                  terminal_state, error ) );
     CHECK_FALSE( error.empty() );
+}
+
+TEST_CASE( "llm_intent_look_around_supports_four_selected_items", "[llm_intent]" )
+{
+    CHECK( llm_intent::look_around_selection_limit_for_test() == 4 );
+
+    const std::vector<std::string> selected = llm_intent::parse_look_around_response_for_test(
+                "item_1, item_2, item_3, item_4",
+                { "adhesive bandage", "9x19mm JHP, reloaded",
+                    "Glock 9x19mm 15-round magazine", "small plastic bag" } );
+    REQUIRE( selected.size() == 4 );
+    CHECK( selected[0] == "adhesive bandage" );
+    CHECK( selected[1] == "9x19mm JHP, reloaded" );
+    CHECK( selected[2] == "Glock 9x19mm 15-round magazine" );
+    CHECK( selected[3] == "small plastic bag" );
 }
 
 TEST_CASE( "llm_intent_resolves_move_deltas_to_snapshot_targets", "[llm_intent]" )
