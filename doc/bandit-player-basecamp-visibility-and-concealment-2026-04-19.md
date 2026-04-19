@@ -440,6 +440,69 @@ This keeps the implementation promising without making it computational theater.
 
 ---
 
+## Smoke exposure adapter sketch
+
+Smoke wants a slightly different adapter than light.
+It should care less about side-specific leak buckets and more about plume strength, persistence, and weather shaping.
+
+### Input stance
+- do **not** treat all fires as equal smoke signals
+- do **not** assume local smoke field visibility and overmap smoke legibility are the same question
+- do reuse the current fire/smoke/wind footing as the physical substrate
+
+### Suggested cheap summary shape
+For a sampled active site or recent burn region, derive a coarse smoke packet such as:
+- `smoke_strength`
+- `smoke_persistence`
+- `smoke_height_bias`
+- `smoke_spread_bias`
+- `smoke_confidence`
+
+Where these mean roughly:
+- how much smoke is being or was recently produced
+- whether it is a brief puff or a repeating / sustained plume
+- whether the smoke likely rises into a more legible plume shape
+- how much wind/shelter fuzzes, smears, or displaces the signal
+- how believable the resulting overmap smoke mark should be
+
+### Practical derivation rule
+A good v1 implementation shape would be:
+1. sample only relevant active fires / burn sites / other smoke-producing sources, not arbitrary empty terrain
+2. derive smoke weight from existing smoke-production footing rather than a fixed "fire means smoke" rule
+3. raise confidence for sustained or repeated smoke production, not one tiny transient puff
+4. modify the result by shelter, wind, and weather so the mark can become clearer, fuzzier, or displaced
+5. allow the resulting smoke-family overmap mark to project farther than ordinary local sight range when conditions support a meaningful plume
+6. keep the mark coarse and uncertain, not a magical exact column locator
+
+### Important current-engine caveat
+At the moment, the physical smoke source itself appears to live in the **reality bubble** world.
+Current fire processing and field processing run on the loaded map bubble, not as a global offscreen smoke simulation.
+
+That means the later bandit system should probably **not** depend on literal offscreen smoke fields existing forever outside the bubble.
+The cleaner design is:
+- bubble-local fire/smoke behavior produces or refreshes abstract smoke marks
+- those marks can persist or be read at overmap scale
+- the overmap mark is allowed to outlive the immediate local field simulation
+
+So yes, a smoke mark may legitimately matter at a broader scale than local vision range, even if the literal smoke field is only ever simulated while the source area is loaded.
+
+### Why this shape is attractive
+It preserves the useful truths we actually want:
+- larger / dirtier burns should matter more than tiny clean burns
+- repeated smoke should feel more settlement-like than one accidental puff
+- wind and shelter should shape the read instead of acting like decorative flavor text
+- smoke can be legible from far away without requiring infinite global gas simulation
+
+### What the adapter should not do
+- do not require a literal smoke field to be continuously simulated outside the reality bubble
+- do not make every campfire a world-map beacon
+- do not give exact room or actor identity from smoke alone
+- do not ignore that wind may blur the source location while still preserving the fact that "something is burning over there"
+
+This keeps smoke strong as a strategic signal without tying the concept to a non-existent full-world plume sim.
+
+---
+
 ## Open questions that can stay parked
 
 These are real questions, but they do not block parking the concept.

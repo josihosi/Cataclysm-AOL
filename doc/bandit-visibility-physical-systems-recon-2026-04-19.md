@@ -107,9 +107,20 @@ In `src/map_field.cpp`:
 Meaning:
 - smoke already exists as a physical system with wind-aware behavior
 - fires already produce smoke without inventing a new bandit-only mechanic
+- smoke output is not flat; it already varies with what is burning and with local conditions
+
+A few especially useful details:
+- item/material burn data already carries smoke-production values, so later bandit logic can weight "dirty" burns above tiny clean ones
+- terrain/furniture burning can add more smoke, and local `windpower` directly affects that contribution
+- fires try to place smoke upward first, which is a nice physical hint for plume-style interpretation rather than just floor-hugging fog logic
 
 What is missing is not smoke itself.
 What is missing is the overmap-facing interpretation layer.
+
+Important caveat:
+- the current fire/smoke system appears to be a **reality-bubble** physical system, not a full offscreen world-plume simulation
+- that strongly suggests future overmap smoke should be an abstract mark refreshed by bubble-local activity, not a requirement that literal smoke fields keep existing outside the loaded area
+- this also means an overmap smoke mark can reasonably matter at broader scale than ordinary local vision range, because the mark is a coarse inferred plume signal, not "can the player currently inspect each smoke tile"
 
 ---
 
@@ -240,6 +251,9 @@ Likely questions:
 The future system should not require simulating every smoke puff on the overmap.
 It should read coarse consequences from real local systems and convert them into abstract marks.
 
+This matters even more if smoke/light are effectively reality-bubble-bound physical systems today.
+The overmap layer should be allowed to preserve a coarse "there was a meaningful plume / there is visible night leakage here" interpretation without pretending the exact tilewise physical source remains globally active forever.
+
 For light, this likely means a cheap coarse exposure model instead of tile-perfect omnidirectional raycasting across the whole map.
 The good news is that the local engine already has directional light arcs and quadrant-aware apparent-light handling, so the missing piece looks more like a summarizing adapter than a blank-sheet invention.
 A directional bucket or side-exposure abstraction still looks much more plausible than full decorative realism.
@@ -261,6 +275,9 @@ Bandit visibility should consume those rather than mirror them in a disconnected
 
 ### Constraint 2: do not pretend smoke/light are already overmap beacons
 Smoke, fire, and light exist physically, but the repo does not obviously already turn them into overmap bounty/threat signals.
+
+They also appear to live primarily in the loaded local simulation.
+So later design should not accidentally require infinite offscreen smoke/light persistence just because bandits need coarse long-range reads.
 That translation still needs explicit design.
 
 For light, daylight should remain a hard suppressor, and closed/contained indoor light should not magically become a world-map beacon just because a lamp exists somewhere inside.
