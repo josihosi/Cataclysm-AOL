@@ -155,6 +155,7 @@ That way two camps can read the same region differently without turning the mode
 ### Overmap groups
 Camps dispatch temporary abstract groups for specific jobs.
 A group should minimally carry:
+- group identity
 - source camp
 - job type
 - rough strength
@@ -163,9 +164,18 @@ A group should minimally carry:
 - mission urgency
 - retreat bias
 - mission-relevant remembered marks
+- goal stickiness / diversion posture
 
 This is enough to explain why the group exists and what it thinks it is doing.
+The group itself should persist across overmap travel and local handoffs.
+But that does **not** mean every bandit must be a fully persistent tracked individual.
+A good v1 shape is:
+- persistent group identity
+- at most a small anchored slice of recurring individuals
+- fungible remainder for the rest of the membership
+
 As groups move, they can locally reevaluate effective threat from their surroundings without requiring the entire camp to recompute the whole world every tick.
+Their current target should be a provisional mission lead, not a sacred tile commitment.
 
 ### Jobs
 Initial job vocabulary should likely include:
@@ -532,9 +542,10 @@ The clean mission lifecycle should look like this:
 
 5. **overmap travel and reaction happen**
    - the group routes toward a target, observes, stalks, probes, ambushes, or raids
+   - en route observations may reinforce, divert, shadow, or abort the current goal if reality changes
 
 6. **bubble handoff happens when relevant**
-   - the abstract group becomes local NPC encounter logic in the proper mode
+   - the abstract group becomes local NPC encounter logic in the proper mode, while preserving group continuity and any anchored recurring individuals
 
 7. **local encounter resolves**
    - search, observe, contact, engage, loot, retreat, or break
@@ -571,12 +582,14 @@ The overmap layer should transfer:
 - why they came
 - what they think is true
 - how committed they are
+- whether the current goal is sticky, fragile, or easy to preempt
 
 It should **not** transfer:
 - exact tile truth
 - exact inventory truth
 - perfect defender counts
 - magical certainty
+- a fake law that the original destination must be reached no matter what appears on the route
 
 ### Handoff modes
 The main conceptual modes currently are:

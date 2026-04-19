@@ -148,6 +148,7 @@ Bubble role:
 When an abstract group becomes local, it should carry a small explicit payload.
 
 Suggested v1 fields:
+- `group_id`
 - `source_camp_id`
 - `job_type`
 - `group_strength`
@@ -159,6 +160,9 @@ Suggested v1 fields:
 - `current_bounty_estimate`
 - `mission_urgency`
 - `retreat_bias`
+- `goal_stickiness`
+- `goal_preemption_posture`
+- `anchored_identity_slots`
 - `known_recent_marks`
 
 This payload should stay small and inspectable.
@@ -181,8 +185,33 @@ The seam should transfer:
 - confidence
 - rough target knowledge
 - mission posture
+- whether the current goal is sticky, fragile, or easy to preempt
+- any anchored recurring identities that should survive the handoff
 
 Not divine revelation.
+
+## Identity continuity across the seam
+The overmap group itself should be the primary persistent actor.
+That continuity is mandatory.
+
+But v1 should **not** require every individual bandit to exist as a fully persistent tracked person across every overmap step and every handoff.
+That would bloat the system for little gain.
+
+The better split is:
+- persistent **group continuity**
+- a small number of **anchored individuals** that survive handoffs directly
+- fungible remainder for the rest of the group
+
+Good v1 anchors are things like:
+- the group leader
+- a bandit the player has encountered or recognized before
+- a mission-special actor worth remembering
+
+Good v1 cap:
+- roughly **1 to 3 anchored individuals** per active group
+
+So if the player kills or wounds an anchored individual, that exact result can survive the return trip.
+If an unnamed grunt dies, the return path can usually treat that as reduced strength or generic casualty instead of demanding full biography continuity.
 
 ---
 
@@ -202,6 +231,28 @@ Suggested categories:
 
 These are not full tactical AI. They are seam-relevant state buckets.
 
+## Goal sustainability and preemption
+The current target or mark should be treated as a **mission lead**, not an inviolable tile oath.
+If the group is moving toward smoke, a mark, or a suspected victim site, local observations on the route should be allowed to revise that goal.
+
+Good v1 outcomes are:
+- **continue**: the current lead still looks worth following
+- **divert**: a better immediate prey/opportunity appears
+- **shadow / delay**: the new target is promising, but patience is smarter than charging now
+- **abort / reroute**: route danger, zombie pressure, or collapsing confidence make the current lead not worth forcing
+
+This is where goal sustainability lives.
+Goals should persist long enough to matter, but not so rigidly that the group behaves like a missile homing on stale smoke.
+
+Useful v1 inputs:
+- current goal value
+- current goal confidence
+- prey quality on sight
+- local zombie pressure
+- route safety
+- mission posture
+- retreat bias
+
 ---
 
 ## Bubble -> overmap return-path state
@@ -220,6 +271,7 @@ Suggested v1 return fields:
 - `new_marks_learned`
 - `loss_site_if_any`
 - `retreat_destination_or_home_bias`
+- `anchored_identity_updates`
 
 ---
 
@@ -318,9 +370,10 @@ Randomness may still exist in local outcomes, but the seam rules should not be m
 
 ### Exit side
 5. local encounter accumulates seam-relevant result state
-6. when collapse-back trigger is met, build return payload
-7. write return payload into overmap group/camp state
-8. route surviving abstract group toward retreat/home/next goal as appropriate
+6. local observations may continue, divert, shadow, or abort the current mission lead
+7. when collapse-back trigger is met, build return payload
+8. write return payload into overmap group/camp state
+9. route surviving abstract group toward retreat/home/next goal as appropriate
 
 ---
 
