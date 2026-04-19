@@ -392,6 +392,54 @@ No mystical omniscience engine required.
 
 ---
 
+## Directional light exposure adapter sketch
+
+If later implementation wants a practical v1 for visible night light, the cleanest shape now looks like this:
+
+### Input stance
+- do **not** infer light exposure from overmap terrain class alone
+- do **not** treat every indoor lamp as automatically overmap-visible
+- do reuse the existing local lightmap/light-arc truth as the physical footing
+
+### Suggested cheap summary shape
+For a sampled active site or local region, derive a coarse exposure packet such as:
+- `north_exposure`
+- `east_exposure`
+- `south_exposure`
+- `west_exposure`
+- `peak_exposure`
+- `contained_light`
+
+Where each side bucket means roughly:
+- how much light meaningfully leaks outward from that side under current conditions
+- not exact tactical visibility, just coarse outward legibility
+
+### Practical derivation rule
+A good v1 implementation shape would be:
+1. only evaluate this for relevant candidate sites or active signal regions, not for the whole world continuously
+2. suppress the whole pass in daylight unless something unusually bright explicitly deserves exception
+3. read local light truth after normal lightmap generation, rather than rebuilding fake light logic in bandit code
+4. collapse that local truth into four coarse side buckets or quadrants
+5. reduce those buckets by current weather / visibility penalties
+6. emit a light-family mark only if one or more buckets clears a meaningful threshold
+
+### Why this shape is attractive
+It preserves the useful truths we actually want:
+- a house can leak light more on one side than another
+- curtains, walls, forest edge, or contained indoor sources can keep some light internal
+- a bright source can be noticeable without yielding clean tactical truth
+- overmap logic stays cheap and inspectable instead of pretending to be a second tile-light simulator
+
+### What the adapter should not do
+- do not recompute full tile-perfect ray behavior for distant bandit AI every cadence pass
+- do not give exact actor identity or exact room knowledge from light alone
+- do not let one weak transient light instantly harden into settlement truth
+- do not bypass weather, daylight, or containment just because a source exists
+
+This keeps the implementation promising without making it computational theater.
+
+---
+
 ## Open questions that can stay parked
 
 These are real questions, but they do not block parking the concept.

@@ -244,6 +244,13 @@ For light, this likely means a cheap coarse exposure model instead of tile-perfe
 The good news is that the local engine already has directional light arcs and quadrant-aware apparent-light handling, so the missing piece looks more like a summarizing adapter than a blank-sheet invention.
 A directional bucket or side-exposure abstraction still looks much more plausible than full decorative realism.
 
+A strong v1 candidate now looks like:
+- sample only relevant active sites / signal regions
+- skip or heavily suppress daylight cases
+- reuse post-lightmap local light truth
+- collapse that truth into 4 side buckets or quadrants plus a peak/contained summary
+- then let weather and cadence rules decide whether a light-family overmap mark should exist at all
+
 ---
 
 ## Design constraints implied by this recon
