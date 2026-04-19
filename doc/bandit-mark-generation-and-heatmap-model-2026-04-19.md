@@ -314,6 +314,10 @@ Marks and heatmaps should refresh from:
 - nearby repeated activity
 - repeated heat buildup crossing a threshold
 
+But refresh should still respect provenance.
+A camp should not treat its own routine recon traffic, its own logistics churn, or the aftermath of its own uninteresting local movement as fresh hostile-contact evidence by default.
+Self-generated activity should only reinforce a mark when later evidence says it really revealed something external or mission-relevant.
+
 ### Merge rule
 Nearby marks of the same type may merge when:
 - their locations are close enough

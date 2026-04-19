@@ -156,6 +156,10 @@ General meaning:
 Interpretation tendency:
 - often increases both bounty and threat together
 
+Important law:
+- the same camp's own routine recon or logistics traffic should not be allowed to harden into fresh hostile-contact truth by default
+- repeated route activity only deserves real reinforcement when the signal plausibly comes from somebody else, from a genuinely mixed/shared corridor, or from external corroboration
+
 ### 4. Settlement activity
 Typical examples:
 - repeated smoke/light at the same region
