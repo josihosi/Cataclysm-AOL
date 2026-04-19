@@ -129,10 +129,12 @@ int camp_locker_policy::enabled_count() const {
 std::vector<camp_locker_slot> all_camp_locker_slots() {
   return {
       camp_locker_slot::underwear,    camp_locker_slot::socks,
-      camp_locker_slot::shoes,        camp_locker_slot::pants,
-      camp_locker_slot::shirt,        camp_locker_slot::vest,
-      camp_locker_slot::body_armor,   camp_locker_slot::helmet,
-      camp_locker_slot::glasses,      camp_locker_slot::bag,
+      camp_locker_slot::gloves,       camp_locker_slot::shoes,
+      camp_locker_slot::pants,        camp_locker_slot::shirt,
+      camp_locker_slot::vest,         camp_locker_slot::body_armor,
+      camp_locker_slot::helmet,       camp_locker_slot::glasses,
+      camp_locker_slot::mask,         camp_locker_slot::belt,
+      camp_locker_slot::holster,      camp_locker_slot::bag,
       camp_locker_slot::melee_weapon, camp_locker_slot::ranged_weapon,
   };
 }
@@ -143,6 +145,8 @@ std::string camp_locker_slot_id(camp_locker_slot slot) {
     return "underwear";
   case camp_locker_slot::socks:
     return "socks";
+  case camp_locker_slot::gloves:
+    return "gloves";
   case camp_locker_slot::shoes:
     return "shoes";
   case camp_locker_slot::pants:
@@ -157,6 +161,12 @@ std::string camp_locker_slot_id(camp_locker_slot slot) {
     return "helmet";
   case camp_locker_slot::glasses:
     return "glasses";
+  case camp_locker_slot::mask:
+    return "mask";
+  case camp_locker_slot::belt:
+    return "belt";
+  case camp_locker_slot::holster:
+    return "holster";
   case camp_locker_slot::bag:
     return "bag";
   case camp_locker_slot::melee_weapon:
@@ -175,6 +185,8 @@ translation camp_locker_slot_name(camp_locker_slot slot) {
     return to_translation("Locker slot", "Underwear");
   case camp_locker_slot::socks:
     return to_translation("Locker slot", "Socks");
+  case camp_locker_slot::gloves:
+    return to_translation("Locker slot", "Gloves");
   case camp_locker_slot::shoes:
     return to_translation("Locker slot", "Shoes");
   case camp_locker_slot::pants:
@@ -189,6 +201,12 @@ translation camp_locker_slot_name(camp_locker_slot slot) {
     return to_translation("Locker slot", "Helmet");
   case camp_locker_slot::glasses:
     return to_translation("Locker slot", "Glasses");
+  case camp_locker_slot::mask:
+    return to_translation("Locker slot", "Mask");
+  case camp_locker_slot::belt:
+    return to_translation("Locker slot", "Belt");
+  case camp_locker_slot::holster:
+    return to_translation("Locker slot", "Holster");
   case camp_locker_slot::bag:
     return to_translation("Locker slot", "Bag");
   case camp_locker_slot::melee_weapon:
@@ -348,14 +366,18 @@ int camp_locker_upgrade_threshold(camp_locker_slot slot) {
   switch (slot) {
   case camp_locker_slot::underwear:
   case camp_locker_slot::socks:
+  case camp_locker_slot::gloves:
     return 20;
   case camp_locker_slot::shoes:
   case camp_locker_slot::pants:
   case camp_locker_slot::shirt:
   case camp_locker_slot::helmet:
+  case camp_locker_slot::mask:
     return 25;
   case camp_locker_slot::vest:
   case camp_locker_slot::body_armor:
+  case camp_locker_slot::belt:
+  case camp_locker_slot::holster:
     return 35;
   case camp_locker_slot::glasses:
     return 15;
@@ -671,6 +693,9 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   }
   const islot_armor *armor = it.find_armor_data();
   if (armor == nullptr) {
+    if (it.is_holster()) {
+      return camp_locker_slot::holster;
+    }
     if (it.is_melee()) {
       return camp_locker_slot::melee_weapon;
     }
@@ -679,6 +704,8 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
 
   const bool covers_eyes = armor_covers_any(it, {"eyes"});
   const bool covers_head = armor_covers_any(it, {"head"});
+  const bool covers_hands = armor_covers_any(it, {"hand_l", "hand_r"});
+  const bool covers_mouth = armor_covers_any(it, {"mouth", "muzzle"});
   const bool covers_feet = armor_covers_any(it, {"foot_l", "foot_r"});
   const bool covers_legs = armor_covers_any(it, {"leg_l", "leg_r"});
   const bool covers_lower_legs =
@@ -686,6 +713,9 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
                                         "leg_lower_l", "leg_lower_r"});
   const bool covers_torso = armor_covers_any(it, {"torso"});
   const bool covers_arms = armor_covers_any(it, {"arm_l", "arm_r"});
+  const bool covers_waist = armor_specifically_covers_any(it, {"torso_waist"});
+  const bool covers_hips =
+      armor_specifically_covers_any(it, {"leg_hip_l", "leg_hip_r"});
   const bool skintight = it.has_layer({layer_level::SKINTIGHT});
   const bool outer =
       it.has_layer({layer_level::OUTER}) || it.has_flag(flag_OUTER);
@@ -699,14 +729,24 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
        is_camp_locker_outer_onepiece_garment(it))) {
     return camp_locker_slot::pants;
   }
+  if (covers_mouth && !covers_head) {
+    return camp_locker_slot::mask;
+  }
   if (covers_head) {
     return camp_locker_slot::helmet;
   }
   if (covers_eyes) {
     return camp_locker_slot::glasses;
   }
+  if (covers_hands && !covers_head && !covers_eyes && !covers_torso &&
+      !covers_arms && !covers_legs && !covers_feet) {
+    return camp_locker_slot::gloves;
+  }
   if (covers_feet && !covers_legs && !covers_torso && !covers_arms) {
     return skintight ? camp_locker_slot::socks : camp_locker_slot::shoes;
+  }
+  if (it.is_holster() && (covers_hips || !covers_waist)) {
+    return camp_locker_slot::holster;
   }
   if (is_camp_locker_leg_accessory(it)) {
     return std::nullopt;
@@ -719,6 +759,11 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   if (covers_legs && !covers_head && !covers_eyes && !covers_torso &&
       !is_camp_locker_draped_only_legwear(it)) {
     return camp_locker_slot::pants;
+  }
+  if (covers_waist && !covers_head && !covers_eyes && !covers_mouth &&
+      !covers_arms && !covers_hands && !covers_feet &&
+      (!it.is_holster() || !covers_hips)) {
+    return camp_locker_slot::belt;
   }
   if (covers_torso) {
     if (storage >= 6_liter) {
@@ -1193,6 +1238,7 @@ int score_camp_locker_item(
   switch (slot) {
   case camp_locker_slot::underwear:
   case camp_locker_slot::socks:
+  case camp_locker_slot::gloves:
   case camp_locker_slot::shoes:
   case camp_locker_slot::pants:
   case camp_locker_slot::shirt:
@@ -1208,8 +1254,11 @@ int score_camp_locker_item(
     score = helmet_score(it);
     break;
   case camp_locker_slot::glasses:
+  case camp_locker_slot::mask:
     score = glasses_score(it);
     break;
+  case camp_locker_slot::belt:
+  case camp_locker_slot::holster:
   case camp_locker_slot::bag:
     score = bag_score(it);
     break;

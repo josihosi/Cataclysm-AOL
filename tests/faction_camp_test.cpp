@@ -49,6 +49,7 @@ static const itype_id itype_daypack("daypack");
 static const itype_id itype_duffelbag("duffelbag");
 static const itype_id itype_fishing_waders("fishing_waders");
 static const itype_id itype_glasses_eye("glasses_eye");
+static const itype_id itype_gloves_leather("gloves_leather");
 static const itype_id itype_glock_19("glock_19");
 static const itype_id itype_glockmag("glockmag");
 static const itype_id itype_hakama("hakama");
@@ -71,6 +72,7 @@ static const itype_id itype_legguard_metal_sheets_hip("legguard_metal_sheets_hip
 static const itype_id itype_leggings("leggings");
 static const itype_id itype_long_dress("long_dress");
 static const itype_id itype_long_dress_sleeved("long_dress_sleeved");
+static const itype_id itype_mask_dust("mask_dust");
 static const itype_id itype_cheongsam("cheongsam");
 static const itype_id itype_pants_cargo("pants_cargo");
 static const itype_id itype_short_dress("short_dress");
@@ -78,6 +80,7 @@ static const itype_id itype_shorts_cargo("shorts_cargo");
 static const itype_id itype_sneakers("sneakers");
 static const itype_id itype_socks("socks");
 static const itype_id itype_suit("suit");
+static const itype_id itype_tool_belt("tool_belt");
 static const itype_id itype_survivor_suit("survivor_suit");
 static const itype_id itype_test_100_kcal("test_100_kcal");
 static const itype_id itype_test_200_kcal("test_200_kcal");
@@ -156,7 +159,9 @@ TEST_CASE("camp_locker_policy_serialization", "[camp][locker]") {
         static_cast<int>(all_camp_locker_slots().size()));
 
   test_camp.set_locker_slot_enabled(camp_locker_slot::socks, false);
+  test_camp.set_locker_slot_enabled(camp_locker_slot::gloves, false);
   test_camp.set_locker_slot_enabled(camp_locker_slot::bag, false);
+  test_camp.set_locker_slot_enabled(camp_locker_slot::holster, false);
   test_camp.set_locker_slot_enabled(camp_locker_slot::ranged_weapon, false);
 
   std::ostringstream os;
@@ -169,11 +174,13 @@ TEST_CASE("camp_locker_policy_serialization", "[camp][locker]") {
   loaded.deserialize(jo);
 
   CHECK_FALSE(loaded.is_locker_slot_enabled(camp_locker_slot::socks));
+  CHECK_FALSE(loaded.is_locker_slot_enabled(camp_locker_slot::gloves));
   CHECK_FALSE(loaded.is_locker_slot_enabled(camp_locker_slot::bag));
+  CHECK_FALSE(loaded.is_locker_slot_enabled(camp_locker_slot::holster));
   CHECK_FALSE(loaded.is_locker_slot_enabled(camp_locker_slot::ranged_weapon));
   CHECK(loaded.is_locker_slot_enabled(camp_locker_slot::pants));
   CHECK(loaded.get_locker_policy().enabled_count() ==
-        static_cast<int>(all_camp_locker_slots().size()) - 3);
+        static_cast<int>(all_camp_locker_slots().size()) - 5);
 }
 
 TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
@@ -181,6 +188,8 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
         camp_locker_slot::underwear);
   CHECK(classify_camp_locker_item(item(itype_socks)) ==
         camp_locker_slot::socks);
+  CHECK(classify_camp_locker_item(item(itype_gloves_leather)) ==
+        camp_locker_slot::gloves);
   CHECK(classify_camp_locker_item(item(itype_sneakers)) ==
         camp_locker_slot::shoes);
   CHECK(classify_camp_locker_item(item(itype_jeans)) ==
@@ -213,8 +222,14 @@ TEST_CASE("camp_locker_item_classification", "[camp][locker]") {
         camp_locker_slot::pants);
   CHECK(classify_camp_locker_item(item(itype_wetsuit)) ==
         camp_locker_slot::pants);
-  CHECK_FALSE(classify_camp_locker_item(item(itype_bholster)).has_value());
-  CHECK_FALSE(classify_camp_locker_item(item(itype_holster)).has_value());
+  CHECK(classify_camp_locker_item(item(itype_mask_dust)) ==
+        camp_locker_slot::mask);
+  CHECK(classify_camp_locker_item(item(itype_tool_belt)) ==
+        camp_locker_slot::belt);
+  CHECK(classify_camp_locker_item(item(itype_bholster)) ==
+        camp_locker_slot::holster);
+  CHECK(classify_camp_locker_item(item(itype_holster)) ==
+        camp_locker_slot::holster);
   CHECK_FALSE(classify_camp_locker_item(item(itype_knee_pads)).has_value());
   CHECK_FALSE(classify_camp_locker_item(item(itype_leg_small_bag)).has_value());
   CHECK_FALSE(classify_camp_locker_item(item(itype_legguard_hard)).has_value());
@@ -264,11 +279,16 @@ TEST_CASE("camp_locker_zone_candidate_gathering", "[camp][locker]") {
   here.i_clear(locker_local);
   here.i_clear(offzone_local);
   here.add_item_or_charges(locker_local, item(itype_sneakers));
+  here.add_item_or_charges(locker_local, item(itype_gloves_leather));
+  here.add_item_or_charges(locker_local, item(itype_mask_dust));
+  here.add_item_or_charges(locker_local, item(itype_tool_belt));
+  here.add_item_or_charges(locker_local, item(itype_holster));
   here.add_item_or_charges(locker_local, item(itype_backpack));
   here.add_item_or_charges(locker_local, item(itype_glock_19));
   here.add_item_or_charges(offzone_local, item(itype_helmet_bike));
 
   basecamp test_camp("Locker Camp", project_to<coords::omt>(locker_abs));
+  test_camp.set_locker_slot_enabled(camp_locker_slot::belt, false);
   test_camp.set_locker_slot_enabled(camp_locker_slot::bag, false);
 
   const camp_locker_candidate_map candidates =
@@ -280,11 +300,27 @@ TEST_CASE("camp_locker_zone_candidate_gathering", "[camp][locker]") {
   CHECK(candidates.at(camp_locker_slot::shoes).front()->typeId() ==
         itype_sneakers);
 
+  REQUIRE(candidates.count(camp_locker_slot::gloves) == 1);
+  REQUIRE(candidates.at(camp_locker_slot::gloves).size() == 1);
+  CHECK(candidates.at(camp_locker_slot::gloves).front()->typeId() ==
+        itype_gloves_leather);
+
+  REQUIRE(candidates.count(camp_locker_slot::mask) == 1);
+  REQUIRE(candidates.at(camp_locker_slot::mask).size() == 1);
+  CHECK(candidates.at(camp_locker_slot::mask).front()->typeId() ==
+        itype_mask_dust);
+
+  REQUIRE(candidates.count(camp_locker_slot::holster) == 1);
+  REQUIRE(candidates.at(camp_locker_slot::holster).size() == 1);
+  CHECK(candidates.at(camp_locker_slot::holster).front()->typeId() ==
+        itype_holster);
+
   REQUIRE(candidates.count(camp_locker_slot::ranged_weapon) == 1);
   REQUIRE(candidates.at(camp_locker_slot::ranged_weapon).size() == 1);
   CHECK(candidates.at(camp_locker_slot::ranged_weapon).front()->typeId() ==
         itype_glock_19);
 
+  CHECK(candidates.count(camp_locker_slot::belt) == 0);
   CHECK(candidates.count(camp_locker_slot::bag) == 0);
   CHECK(candidates.count(camp_locker_slot::helmet) == 0);
 

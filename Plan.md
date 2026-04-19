@@ -256,16 +256,16 @@ Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
 Josef wants locker development to lean harder toward sensible guard/combat outfits without throwing away the already-earned weird-garment safety wins.
 
-The first suspicion-first audit on the current tree already found the real opening seam:
-- `camp_locker_slot`, `all_camp_locker_slots()`, and `locker_policy_ui()` still expose only the older 12-slot surface, so gloves, belt, mask, and holster controls do not exist yet
-- `classify_camp_locker_item()` still drops holsters and similar accessory-heavy combat kit instead of giving them an explicit locker-policy home
-- there is still no bulletin-board or locker-surface bulletproof toggle, so ballistic preference is not a real player-facing control yet
-- the current locker footing already includes useful safety structure, like weird-garment preservation, weather-sensitive outerwear/legwear handling, and full-body suit protection, so the next slice should build on that spine rather than replace it
+The first narrow slice is now landed on the current tree:
+- `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now include explicit `gloves`, `mask`, `belt`, and `holster` slots instead of the older 12-slot-only footing
+- `classify_camp_locker_item()` now gives common combat support gear an explicit locker-policy home instead of dropping holsters on the floor or letting belt-like waist gear get lost in generic clothing logic
+- scoring/upgrade-threshold plumbing and deterministic persistence/candidate coverage were extended for that new slot footing on the current tree
+- the current locker safety spine stayed intact while doing that: weird-garment preservation, weather-sensitive outerwear/legwear handling, full-body suit protection, and the earlier great-helm / holster safety cases still survive the filtered locker suite
+- there is still no bulletin-board or locker-surface bulletproof toggle, so ballistic preference is still not a real player-facing control yet
 
 What this active lane should do next:
-- add common useful combat-kit emphasis, starting with the missing slot/control-surface footing
-- support a bulletin-board or locker-surface bulletproof toggle once the control seam is real
-- extend explicit ballistic vest / plate handling after that first footing exists
+- use the new combat-kit slot footing for the next equally explicit control, most likely the still-missing bulletproof preference toggle
+- extend explicit ballistic vest / plate handling after that control seam is real
 - prefer clearly superior full-body battle suits when appropriate
 - bias future deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
 

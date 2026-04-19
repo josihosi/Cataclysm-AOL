@@ -173,6 +173,7 @@ struct camp_llm_request {
 enum class camp_locker_slot : int {
   underwear,
   socks,
+  gloves,
   shoes,
   pants,
   shirt,
@@ -180,6 +181,9 @@ enum class camp_locker_slot : int {
   body_armor,
   helmet,
   glasses,
+  mask,
+  belt,
+  holster,
   bag,
   melee_weapon,
   ranged_weapon,
