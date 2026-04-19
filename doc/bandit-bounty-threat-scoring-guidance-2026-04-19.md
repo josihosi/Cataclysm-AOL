@@ -279,6 +279,7 @@ Each job type should define:
 - `max_travel_radius`
 - `reward_profile`
 - `cooldown`
+- `base_return_clock`
 
 ### Suggested formula shape
 
@@ -304,6 +305,27 @@ If a region already carries fresh disruption, recent failed pressure, or evidenc
 Highest valid job wins.
 This is still per-camp scoring, not coalition strategy logic.
 Occasional overlap can happen, but v1 should not behave like several camps are sharing one omniscient attack planner.
+
+## Important revenge / persistence rule
+
+Stalking pressure is desirable.
+Infinite revenge spirals are not.
+
+So revenge bias should mostly do things like:
+- keep a painful target region warm in memory longer
+- make follow-up stalking/probing more likely than total forgetfulness
+- modestly resist immediate total de-prioritization after a bad contact
+
+But revenge bias should **not** override:
+- a raid group's return clock
+- severe wound accumulation
+- panic / morale collapse
+- obviously worsening threat math
+
+Good v1 read:
+- a bloodied group may stalk, shadow, or take another look later
+- the same bloodied group should still become more eager to reroute home as wounds and losses mount
+- revenge can help preserve pressure at the camp level even while the specific outing cuts short
 
 ---
 

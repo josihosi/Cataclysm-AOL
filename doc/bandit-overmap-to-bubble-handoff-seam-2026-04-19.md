@@ -162,6 +162,7 @@ Suggested v1 fields:
 - `retreat_bias`
 - `goal_stickiness`
 - `goal_preemption_posture`
+- `return_clock`
 - `anchored_identity_slots`
 - `known_recent_marks`
 
@@ -212,6 +213,12 @@ Good v1 cap:
 
 So if the player kills or wounds an anchored individual, that exact result can survive the return trip.
 If an unnamed grunt dies, the return path can usually treat that as reduced strength or generic casualty instead of demanding full biography continuity.
+
+Useful continuity rule:
+- the player should mostly be re-meeting the same **group problem**, not rolling a fresh unrelated encounter every time the seam toggles
+- the group should carry forward its source camp, current job, surviving anchored faces, fresh losses, current cargo, and recent target memory
+- anchored individuals should reappear on later handoffs when they honestly survived and remained attached to that group
+- replacement of dead fungible members is fine later, but it should read as the same bandit outfit limping home, regrouping, and returning, not as instant total cast amnesia
 
 ---
 
@@ -316,6 +323,24 @@ Effects:
 
 ---
 
+## Mission leash / return clock
+
+Stalking is good.
+Endless local fixation is not.
+
+Raid, probe, or stalking groups should carry a **return clock**.
+That clock says how long the current outing remains worth extending before the group reroutes toward home or safe withdrawal.
+
+Good v1 behavior:
+- groups may stalk, shadow, or circle a target for a while instead of charging immediately
+- wounds, morale damage, cargo burden, and mounting local danger should shorten the remaining clock
+- good local opportunity may consume some clock while still justifying continued pressure
+- when the clock expires, the default should be reroute home or disengage, not immortal orbiting
+
+This gives v1 a nice middle ground:
+- not goldfish bandits who forget immediately
+- not Terminator raiders who pursue forever because revenge exists
+
 ## Collapse-back rules
 
 The seam needs explicit rules for when local actors collapse back into overmap abstraction.
@@ -324,6 +349,7 @@ Suggested v1 triggers:
 - the group exits the relevant local area
 - the group successfully disengages and is no longer in meaningful local contact
 - the group completes cargo acquisition and transitions to escape/return
+- the group's return clock expires and it reroutes home or to safe disengagement
 - the group breaks and flees
 - the encounter cools below relevance and no immediate re-contact is occurring
 

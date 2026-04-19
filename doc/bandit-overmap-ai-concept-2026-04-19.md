@@ -179,6 +179,10 @@ A good v1 shape is:
 - at most a small anchored slice of recurring individuals
 - fungible remainder for the rest of the membership
 
+Useful identity-continuity rule:
+- the player should mostly be re-encountering the same group problem, not drawing a fresh unrelated cast every time the seam toggles
+- surviving anchored individuals, current job, recent losses, and current cargo should carry forward when that group reappears
+
 As groups move, they can locally reevaluate effective threat from their surroundings without requiring the entire camp to recompute the whole world every tick.
 Their current target should be a provisional mission lead, not a sacred tile commitment.
 
@@ -201,6 +205,7 @@ Jobs should differ in:
 - expected reward profile
 - cooldown / load burden
 - preferred mark types
+- base return clock / outing duration
 
 A camp should not choose a mark directly.
 It should score job templates against marks and regional conditions.
@@ -211,6 +216,9 @@ That scoring should naturally discourage routine dogpiles through:
 - depleted bounty after prior exploitation
 - sticky threat memory after bad outcomes
 - fresh active-pressure penalties when a region is already hot or recently disturbed
+
+It should also avoid dumb revenge loops.
+Stalking pressure is good, but groups should still carry a return clock and become more eager to disengage as wounds, panic, and losses accumulate.
 
 ---
 
