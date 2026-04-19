@@ -1742,6 +1742,30 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(pants_plan.selected_candidate == nullptr);
     CHECK_FALSE(pants_plan.upgrade_selected);
     CHECK_FALSE(pants_plan.has_changes());
+    CHECK(plan.count(camp_locker_slot::shirt) == 0);
+  }
+
+  SECTION(
+      "armored full-body utility suits suppress missing shirt filler when chosen from the locker") {
+    item survivor_suit(itype_survivor_suit);
+    item tshirt(itype_tshirt);
+    const std::vector<const item *> current_items;
+    const std::vector<const item *> locker_items = {&survivor_suit, &tshirt};
+
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy());
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    CHECK(pants_plan.kept_current == nullptr);
+    REQUIRE(pants_plan.selected_candidate != nullptr);
+    CHECK(pants_plan.selected_candidate->typeId() == itype_survivor_suit);
+    CHECK(pants_plan.missing_current);
+    CHECK(pants_plan.has_changes());
+    CHECK(plan.count(camp_locker_slot::shirt) == 0);
   }
 
   SECTION(
@@ -3151,7 +3175,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "camp_locker_service_keeps_armored_full-body_utility_suits_when_hot-weather_replacements_would_downgrade_them",
+    "camp_locker_service_keeps_armored_full-body_utility_suits_without_filling_missing_shirts_from_junk",
     "[camp][locker]") {
   clear_avatar();
   clear_map_without_vision();
@@ -3181,20 +3205,23 @@ TEST_CASE(
   REQUIRE(worker.wear_item(item(itype_survivor_suit), false).has_value());
   test_camp->add_assignee(worker.getID());
 
-  CHECK(test_camp->service_camp_locker(worker));
+  CHECK_FALSE(test_camp->service_camp_locker(worker));
   CHECK(worker.is_wearing(itype_survivor_suit));
-  CHECK(worker.is_wearing(itype_tshirt));
+  CHECK_FALSE(worker.is_wearing(itype_tshirt));
   CHECK_FALSE(worker.is_wearing(itype_shorts_cargo));
 
   bool locker_has_shorts = false;
+  bool locker_has_tshirt = false;
   bool locker_has_survivor_suit = false;
   for (const item &it : here.i_at(locker_local)) {
     locker_has_shorts = locker_has_shorts ||
                         it.typeId() == itype_shorts_cargo;
+    locker_has_tshirt = locker_has_tshirt || it.typeId() == itype_tshirt;
     locker_has_survivor_suit = locker_has_survivor_suit ||
                                it.typeId() == itype_survivor_suit;
   }
   CHECK(locker_has_shorts);
+  CHECK(locker_has_tshirt);
   CHECK_FALSE(locker_has_survivor_suit);
 
   zone_manager::get_manager().clear();
