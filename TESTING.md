@@ -60,8 +60,10 @@ Current honest state:
 - Package 1, micro-item 11 is now answered too: one outing converts at most 0-3 haul steps into stockpile, route-side skims stay inside that same cap, and rich regions still need repeat exploitation instead of one magic vacuum pass
 - Package 1, micro-item 12 is now answered too: camp stockpile drains only by one daily housekeeping pass plus explicit dispatch/return mission costs, with food/ammo/med pressure driven by those named costs instead of hidden decay
 - Package 1, micro-item 13 is now answered too: pure forest now cashes out as thin food/fuel/basic-material value, usually 0-1 haul, while richer hidden sites in the woods should score as those site classes rather than as magical forest bounty
-- the next honest active slice is Package 2, micro-item 14, `Daily movement budget rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define starter daily OMT travel budgets for the relevant outing types without smuggling in cadence-spend or distance-burden law
+- Package 2, micro-item 14 is now answered too: daily travel is now frozen as a job-shaped 1-6 OMT/day starter envelope, with local forage skims at the bottom, raids/reinforce packets near the top, and cadence spending explicitly deferred instead of hidden inside the table
+- adjacent parked substrate wording was tightened once: the broad concept and visibility docs now point at that outing-type envelope instead of the older player-distance ring gradient
+- the next honest active slice is Package 2, micro-item 15, `Cadence budget-spend rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define how cadence wakes spend existing daily travel budget without smuggling in distance-burden or return-clock law
 
 ### Recently closed, do not casually reopen
 
@@ -85,15 +87,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the forest-practicality question is no longer open either; the next honest move is one bounded starter movement-budget table
+- the movement-budget table is no longer open either; the next honest move is one bounded cadence budget-spend rule
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 2, micro-item 14, `Daily movement budget rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that movement-budget note separate from later cadence-spend and distance-burden law
+- land Package 2, micro-item 15, `Cadence budget-spend rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that cadence-spend note separate from later distance-burden and return-clock law
 
 ---
 

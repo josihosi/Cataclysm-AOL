@@ -25,12 +25,13 @@ Current target:
    - micro-item 11, `Collection yield rule`, is now landed
    - micro-item 12, `Camp stockpile consumption rule`, is now landed
    - micro-item 13, `Forest yield rule`, is now landed
-   - stay on micro-item 14, `Daily movement budget rule`
+   - micro-item 14, `Daily movement budget rule`, is now landed
+   - stay on micro-item 15, `Cadence budget-spend rule`
 2. keep the law honest and narrow
-   - answer exactly the starter daily OMT travel budget for the relevant outing types
-   - make later implementation stop guessing whether a raid, probe, convoy hit, or local forage skim can cross half the map on one daily budget
-   - keep it separate from the already-landed forest-yield rule and from later cadence-spend / distance-burden laws
-   - do not answer micro-items 14-18 at the same time just because movement rules smell related
+   - answer exactly how cadence wakes spend existing daily travel budget without minting a fresh travel allowance every pass
+   - make later implementation stop teleporting a raid, probe, convoy hit, or forage skim just because the AI woke again
+   - keep it separate from the now-landed movement-budget table and from later distance-burden / return-clock laws
+   - do not answer micro-items 15-18 at the same time just because movement rules smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

@@ -697,36 +697,22 @@ Important scale split:
 - if the whole overmap actor space is only bubble-sized, bandits become a glorified tripwire instead of a regional force that can stalk, migrate, remember, and create pressure over time
 
 A good v1 lean is:
-- **closer / higher-relevance regions** get tighter cadence and smaller daily travel budgets
-- **farther / lower-relevance regions** can update less often but spend a larger daily overmap budget when they do act
+- the current follow-through canon now freezes a **job-shaped daily envelope** instead of a player-distance ring:
+  - local forage skim / camp-edge opportunism -> **1 OMT/day**
+  - scout / cautious probe / short shadow -> **2 OMT/day**
+  - toll setup / convoy hit / route ambush -> **3 OMT/day**
+  - ordinary scavenge / steal run -> **4 OMT/day**
+  - raid / hard reinforce / committed strike -> **5 OMT/day**
+  - rare explicit theater reposition / emergency redeploy -> **6 OMT/day**
+- later follow-through micro-items may still decide how player relevance, cadence, and distance burden discount or chunk that budget
 - cadence should control **how often they reconsider and spend budget**, not silently multiply their total daily travel into nonsense
 
 Important correction:
 - movement budget should be frozen as a **per-day allowance**, not "one fresh hop every cadence tick"
 - otherwise a 20-minute cadence would accidentally permit absurd long-distance travel just because the AI woke up often
 
-Exact preferred v1 gradient:
-- at about **3 OMT** distance from the player, groups get **1 OMT/day**
-- at the far outer strategic edge, they top out at **6 OMT/day**
-- keep this inspectable with a cheap ring law instead of pretty fake curves
-
-Suggested exact law:
-```text
-travel_budget_omt_per_day = clamp( 1 + floor( max( distance_from_player_omt - 3, 0 ) / 10 ), 1, 6 )
-```
-
-That yields this table:
-- **3-12 OMT** -> **1 OMT/day**
-- **13-22 OMT** -> **2 OMT/day**
-- **23-32 OMT** -> **3 OMT/day**
-- **33-42 OMT** -> **4 OMT/day**
-- **43-52 OMT** -> **5 OMT/day**
-- **53-60 OMT** -> **6 OMT/day**
-
-Operational rules around that gradient:
-- the high-frequency 20-minute cadence should only spend a fraction of the current daily budget or wait until enough budget accrues, not grant a whole new tile every pass
-- slower far cadence may spend a larger chunk at once, so distant groups do not become decorative map furniture
-- the broader strategic theater is where long-lived pressure, migration, scouting chains, and remembered marks matter across many days, not a license for instant map-crossing nonsense
+That keeps the broader strategic theater meaningful without turning ordinary same-day jobs into nonsense map-crossing.
+The exact cadence-spend rule and any later distance/relevance modifier still belong to the narrower follow-through micro-items, not to this broad parked concept note.
 
 The strategic tick should broadly do this:
 1. apply ledger drift

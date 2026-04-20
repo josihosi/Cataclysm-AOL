@@ -563,28 +563,19 @@ But the point is to stop hand-waving and freeze something testable.
 
 ### Movement-budget consequence
 Daily movement budget should stay much smaller than the full strategic theater.
-A clean v1 freeze is still:
-- **minimum daily range:** **1 overmap tile per day**
-- **maximum daily range:** **6 overmap tiles per day**
-- farther groups can spend bigger chunks of that budget per update pass, but total day-range should still stay inside this envelope
+The current follow-through canon freezes this starter envelope by outing type:
+- local forage skim / camp-edge opportunism -> **1 OMT/day**
+- scout / cautious probe / short shadow -> **2 OMT/day**
+- toll setup / convoy hit / route ambush -> **3 OMT/day**
+- ordinary scavenge / steal run -> **4 OMT/day**
+- raid / hard reinforce / committed strike -> **5 OMT/day**
+- rare explicit theater reposition / emergency redeploy -> **6 OMT/day**
 
-Preferred exact gradient:
-- **3-12 OMT** -> **1 OMT/day**
-- **13-22 OMT** -> **2 OMT/day**
-- **23-32 OMT** -> **3 OMT/day**
-- **33-42 OMT** -> **4 OMT/day**
-- **43-52 OMT** -> **5 OMT/day**
-- **53-60 OMT** -> **6 OMT/day**
-
-Equivalent cheap rule:
-```text
-travel_budget_omt_per_day = clamp( 1 + floor( max( distance_from_player_omt - 3, 0 ) / 10 ), 1, 6 )
-```
-
-That gives a sane first gradient:
-- near groups creep locally
-- midrange groups can cover a few tiles in a day
-- far strategic groups can still migrate meaningfully over multiple days across the wider **60 OMT** theater without teleporting across half the county because cadence fired often
+That keeps the wide strategic theater useful without implying same-day nonsense:
+- routine local jobs stay local
+- planned haul or raid jobs can reach farther, but still should not cross half the county in one day
+- the 6-OMT ceiling is a rare top-end reposition packet, not the default daily economy loop
+- later cadence-spend, distance-burden, and return-clock law can narrow or chunk this, but should not mint free extra travel because the AI woke often
 
 ---
 

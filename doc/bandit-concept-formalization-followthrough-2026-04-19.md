@@ -401,6 +401,26 @@ Resolve these as **separate movement/control-law micro-items**.
 - **Expected output:** One small starter table.
 - **Done when:** The packet no longer relies on vague phrases like "they can move a few tiles".
 
+Current answer:
+- Freeze daily travel as a **job-shaped per-day allowance**, not as a player-distance ring and not as one fresh hop every cadence wake.
+- This micro-item only answers how much ground one ordinary day of a given outing can honestly cover before later cadence-spend, distance-burden, return-clock, and cargo/wound rules start trimming it.
+
+| Outing type | Starter daily travel budget (OMT/day) | Why |
+| --- | --- | --- |
+| Local forage skim / camp-edge opportunism | 1 | Keeps thin woods/roadside skims truly local instead of letting every low-grade food or fuel run become a same-day county tour. |
+| Scout / cautious probe / short shadow | 2 | A look-around outing should reach a little beyond the home footprint, but still behave like reconnaissance rather than free map-wide presence. |
+| Toll setup / convoy hit / route ambush | 3 | Intercept work needs enough room to reach and work a corridor, but not enough to teleport between several unrelated routes in one day. |
+| Ordinary scavenge / steal run | 4 | A committed haul trip can push farther than a probe because it is planned around one worthwhile target, but it should still stay far short of half-map crossing. |
+| Raid / hard reinforce / committed strike | 5 | The most serious ordinary hostile outing gets the broadest same-day envelope, while still needing multiple days for deep-theater pressure. |
+| Rare explicit theater reposition / emergency redeploy | 6 | Reserve the top end for exceptional movement packets that are more like strategic reposition than the normal day-to-day income loop. |
+
+Guardrails from this rule:
+- **This is one per-day allowance, not one allowance per cadence wake.** Exact cadence spend belongs to micro-item 15.
+- **This answers outing type, not desirability by range.** Distance burden still belongs to micro-item 16.
+- **Later burden rules may shrink usable travel, not silently enlarge it.** Cargo, wounds, panic, and hard caution belong to micro-item 18.
+- **Far targets require multiple days or staged pressure.** A same-day raid or convoy hit should not cross half the strategic theater just because the camp noticed it.
+- **The 6-OMT row is a rare top-end exception, not the normal economy loop.** Most routine movement should live inside the 1-5 envelope.
+
 #### 15. Cadence budget-spend rule
 - **Question:** How do cadence wakes spend existing budget without minting fresh travel budget every pass?
 - **Expected output:** One explicit cadence-spend rule.

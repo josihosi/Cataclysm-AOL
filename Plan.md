@@ -75,9 +75,10 @@ Current target:
 - Package 1, micro-item 11, `Collection yield rule`, is now landed too: one outing converts at most 0-3 haul steps into stockpile, route-side skims stay inside that same cap, and rich regions still need repeat exploitation instead of one magic vacuum pass
 - Package 1, micro-item 12, `Camp stockpile consumption rule`, is now landed too: camp stockpile now drains only by explicit daily housekeeping plus explicit dispatch/return mission costs, with pressure coming from uncovered named costs rather than hidden decay
 - Package 1, micro-item 13, `Forest yield rule`, is now landed too: pure forest now cashes out as thin food/fuel/basic-material value, usually 0-1 haul, while richer hidden sites in the woods should score as those site classes rather than as magical forest bounty
-- keep the next pass narrow: Package 2, micro-item 14, `Daily movement budget rule`
-- answer only the starter daily OMT travel budget for relevant outing types, and only touch adjacent stale wording when that movement-budget pass directly forces the correction
-- do not drift into the later Package 2 cadence-spend/distance-burden law, code, or reopened locker/basecamp slices while doing this
+- Package 2, micro-item 14, `Daily movement budget rule`, is now landed too: daily travel is now frozen as a job-shaped 1-6 OMT/day envelope from local forage skim through rare strategic redeploy, instead of vague "a few tiles" mush or player-distance-ring canon drift
+- keep the next pass narrow: Package 2, micro-item 15, `Cadence budget-spend rule`
+- answer only how cadence wakes spend existing daily travel budget without minting fresh movement every pass, and only touch adjacent stale wording when that cadence-spend pass directly forces the correction
+- do not drift into the later Package 2 distance-burden/return-clock law, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
 - **Plan status summary command**
@@ -319,8 +320,9 @@ Current bounded slice:
 - landed: Package 1, micro-item 11, `Collection yield rule`, now freezes a 0-3 per-outing haul cap so ingress stays bounded, route-side skims stay inside the same packet, and rich regions still need repeat exploitation
 - landed: Package 1, micro-item 12, `Camp stockpile consumption rule`, now freezes one daily housekeeping drain plus explicit dispatch/return mission costs, with food/ammo/med pressure driven by those named costs rather than by hidden stockpile decay
 - landed: Package 1, micro-item 13, `Forest yield rule`, now freezes forest as thin food/fuel/basic-material value, usually 0-1 haul, unless the outing actually touches a richer embedded site that should score by its own site class
-- next: Package 2, micro-item 14, `Daily movement budget rule`
-- keep the pass to one starter movement-budget table before touching the later Package 2 cadence/distance law
+- landed: Package 2, micro-item 14, `Daily movement budget rule`, now freezes a job-shaped 1-6 OMT/day starter envelope so local forage skims, probes, convoy hits, scavenge runs, raids, and rare redeploys stop sharing one mushy "few tiles" assumption
+- next: Package 2, micro-item 15, `Cadence budget-spend rule`
+- keep the pass to one cadence-spend rule before touching the later Package 2 distance/return law
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 
