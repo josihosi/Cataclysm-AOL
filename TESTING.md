@@ -47,8 +47,10 @@ Current honest state:
 - the table freezes the intended site-class ordering explicitly: `open street/field < forest < cabin < house < farm/city structure < camp footprint`
 - Package 1, micro-item 2 is now answered too: structural bounty only depletes after a site-contacting exploitation pass that actually extracts, strips, or meaningfully denies site-bound value; scouting, visitation, and failed approach do not count
 - Package 1, micro-item 3 is now answered too: depleted structural bounty stays down until the site itself gains new site-bound value again through real resupply, rebuilding, or reoccupation; fresh traffic/signals may justify renewed interest, but only as moving bounty
-- the next honest active slice is Package 1, micro-item 4, `Moving bounty source table`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should name the live moving-bounty source categories without smuggling in attachment, clear/rewrite, threat-law, or stockpile-law decisions
+- Package 1, micro-item 4 is now answered too: moving bounty source families are now named explicitly for direct humans/NPC groups, repeated route traffic, caravans/haul convoys, basecamp routine, smoke, ordinary visible light, defensive scanning light, and sound/contact clues
+- Package 1, micro-item 5 is now answered too: moving bounty now stays source-shaped, with explicit actor/group, route/corridor, and site-centered activity attachments instead of blurring back into structural terrain value
+- the next honest active slice is Package 1, micro-item 6, `Moving bounty clear / rewrite rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define how moving bounty is rewritten, cleared, or replaced when the source changes, without smuggling in threat-law or stockpile-law decisions
 
 ### Recently closed, do not casually reopen
 
@@ -79,8 +81,8 @@ Current honest state:
 
 ## Pending probes
 
-- land Package 1, micro-item 4, `Moving bounty source table`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that source table consistent and free of moving-vs-structural blur
+- land Package 1, micro-item 6, `Moving bounty clear / rewrite rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that clear/rewrite rule consistent and free of fake passive-decay slop
 
 ---
 

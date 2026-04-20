@@ -410,17 +410,19 @@ Bandit exploitation should reduce this ground bounty.
 It should not quietly grow back on its own.
 
 ### Mobile bounty
-Mobile bounty is carried by actors and active sites, not the dirt.
+Mobile bounty is carried by actors, active sites, or intercept-worthy corridors, not by anonymous terrain value.
 Examples:
 - the player current position
 - NPC groups
 - player camps
 - discovered NPC camps or settlements
+- repeatedly used ambush-worthy road segments
 
 This layer can move, appear, vanish, or be refreshed by new signals and new observations.
 
 ### Route/intercept value
 Roads and chokepoints should have value mainly because they are good places to catch moving bounty, not because the road itself endlessly prints treasure.
+When the only honest evidence is repeated passage through a corridor, the moving bounty should live on a route/intercept carrier rather than being smeared into structural ground value.
 
 ## Conversion rule
 A good synthesis rule is:

@@ -124,10 +124,54 @@ Guardrails from this rule:
 - **Expected output:** One source table covering humans, NPC traffic, basecamp routine, caravans, smoke, light, sound-derived contact clues, and similar activity.
 - **Done when:** Each source is named clearly enough that later mark generation can point to a real category instead of vibes.
 
+Current answer:
+- Moving bounty starts from **current actors, current site use, or fresh activity clues** that imply actors or carried value are present now or very recently.
+- It is not the structural worth of the ground itself, and this micro-item still does **not** decide where the bounty lives after the source moves or goes quiet.
+
+| Live source family | Creates moving bounty? | Starter pull | Why this counts |
+| --- | --- | --- | --- |
+| Direct visible humans / NPC groups | Yes | Strong | A directly seen person or group is the clearest sign of current carried goods, vulnerable movement, labor, or escort-worthy traffic. |
+| Repeated route traffic | Yes | Medium, rising to strong with repetition | A road or corridor with recurring movement promises future intercept opportunity even if no one actor stays there. |
+| Caravans, pack trains, or visible haul convoys | Yes | Very strong | Concentrated mobile cargo and predictable movement are exactly the kind of moving value bandits want to notice. |
+| Basecamp routine or obvious occupied-site work | Yes | Medium to strong, site-centered | Hauling, guard shifts, farming, repairs, cooking, or repeated in/out motion prove active use without pretending the dirt itself became richer. |
+| Smoke | Yes | Weak to medium alone | Smoke is a coarse sign that somebody is cooking, burning, stripping, signaling, or otherwise doing something active here now. |
+| Ordinary visible light | Yes, usually night-weighted | Medium | Visible night light usually means current use or occupation more reliably than old smoke, even though it still does not identify exactly who is there. |
+| Searchlights, patrol beams, or other obvious scanning light | Conditional, threat-first | Weak bounty, strong threat implication | They still prove active people and current use, but their first meaning is organized defenders or alert posture rather than easy profit. |
+| Sound-derived contact clues | Yes | Weak to medium, stronger when repeated or corroborated | Gunfire, engines, chopping, construction noise, shouted voices, and similar cues imply current actors or active work without requiring clean visual confirmation. |
+
+Guardrails from this table:
+- **Moving bounty comes from live presence or live-use clues, not from empty terrain class.** Roads, fields, and buildings only contribute here when something is actively happening on or around them.
+- **One weak cue may create only a low-confidence moving-bounty read.** Repetition or corroboration strengthens the read, but does not silently convert it into structural bounty.
+- **Direct sightings, caravans, and repeated traffic are the strongest pure moving-bounty sources** because they point at interceptable mobile value, not just possible occupancy.
+- **Searchlights and similar defensive cues are not free bounty.** They can still create moving interest because people are active there, but the same cue should sharpen threat more than bounty.
+
 #### 5. Moving bounty attachment rule
 - **Question:** Is moving bounty attached to an actor, a route segment, a site-centered mark, or some bounded mixture?
 - **Expected output:** One narrow rule describing where moving bounty lives in the abstract model.
 - **Done when:** The packet no longer blurs together actor bounty and ground bounty.
+
+Current answer:
+- Moving bounty always lives on a **source-shaped carrier**, not as anonymous value baked into the dirt.
+- Use the **smallest stable carrier the evidence honestly supports**:
+  - **actor/group attachment** when the bounty comes from directly seen people, a caravan, a haul convoy, or another clearly moving group
+  - **route attachment** when the value is repeated passage through a corridor or chokepoint rather than one anchored site
+  - **site-centered activity attachment** when smoke, light, repeated work, or other occupancy/use clues keep pointing back to one place
+- Later mark/heatmap logic may summarize those carriers coarsely, but the attachment class should stay explicit so scoring knows whether it is valuing a moving group, an intercept corridor, or an active site.
+
+| Source family | Primary moving-bounty attachment | Why this lives there |
+| --- | --- | --- |
+| Direct visible humans / NPC groups | Actor/group | The value is literally on the observed people and what they are carrying or doing. |
+| Caravans, pack trains, or haul convoys | Actor/group | The cargo is mobile and should travel with the convoy rather than becoming fake ground richness. |
+| Repeated route traffic | Route segment / corridor mark | The opportunity is future interception along a path, not ownership of the pavement itself. |
+| Basecamp routine or obvious occupied-site work | Site-centered activity mark | The signal says this place is being actively used, even if the exact workers rotate in and out. |
+| Smoke, ordinary visible light, or fixed-location sound/work clues | Site-centered activity mark | These cues imply meaningful current use at or near one place without proving a specific actor identity. |
+| Searchlights, patrol beams, or defensive scanning light | Site-centered activity mark, threat-first | The cue still anchors to active defenders at a place, even though its first meaning is danger rather than easy profit. |
+
+Guardrails from this rule:
+- **Do not store moving bounty as bonus structural terrain value.** A hot road is still a road; the moving interest lives on a corridor mark, not in the asphalt bucket.
+- **One region may carry structural bounty and moving bounty at the same time.** A house can have medium structural value while also hosting fresh site-centered moving activity.
+- **Site-centered moving bounty is not the same thing as proven settlement truth.** It only says the current activity points back to that place as the likely carrier.
+- **Weak evidence should stay coarse.** If a cue only supports route-level or site-level attachment, do not upgrade it into exact actor identity just to feel clever.
 
 #### 6. Moving bounty clear / rewrite rule
 - **Question:** When the source changes or disappears, how is moving bounty rewritten, cleared, or replaced?

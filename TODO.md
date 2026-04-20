@@ -15,12 +15,14 @@ Current target:
    - micro-item 1, `Terrain bounty bucket table`, is now landed
    - micro-item 2, `Structural bounty harvest trigger rule`, is now landed
    - micro-item 3, `Structural bounty reappearance rule`, is now landed
-   - stay on micro-item 4, `Moving bounty source table`
+   - micro-item 4, `Moving bounty source table`, is now landed
+   - micro-item 5, `Moving bounty attachment rule`, is now landed
+   - stay on micro-item 6, `Moving bounty clear / rewrite rule`
 2. keep the law honest and narrow
-   - answer exactly which live signals create moving bounty in the first place
-   - make later implementation not guess between humans, NPC traffic, caravans, smoke, light, sound/contact clues, basecamp routine, or other activity categories
-   - only touch adjacent stale wording when that source table directly forces it
-   - do not answer micro-items 5-13 at the same time just because the laws smell related
+   - answer exactly how moving bounty is rewritten, cleared, or replaced when the source moves, disappears, or is reobserved
+   - make later implementation stop guessing between stale soft decay, hard deletion, overwrite, refresh, or coexistence when live sources change
+   - only touch adjacent stale wording when that rewrite rule directly forces it
+   - do not answer micro-items 7-13 at the same time just because the laws smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active
