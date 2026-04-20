@@ -319,6 +319,135 @@ TEST_CASE( "bandit_mark_generation_human_route_adapter_keeps_sightings_mobile_an
     } ) );
 }
 
+TEST_CASE( "bandit_mark_generation_repeated_site_reinforcement_needs_mixed_signals_and_stays_bounded",
+           "[bandit][marks]" )
+{
+    const std::vector<bandit_dry_run::job_template> blocked_extraction_jobs = {
+        bandit_dry_run::job_template::scavenge,
+        bandit_dry_run::job_template::steal,
+        bandit_dry_run::job_template::raid,
+    };
+
+    const bandit_mark_generation::signal_input smoke_signal = {
+        "farmstead_trace",
+        "smoke",
+        "farmstead_trace",
+        "farmstead_edge",
+        bandit_dry_run::lead_family::site,
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0.60,
+        bandit_dry_run::threat_gate::discount_only,
+        blocked_extraction_jobs,
+        false,
+        true,
+        { "Smoke at the same site should create only tentative revisit pressure." }
+    };
+    const bandit_mark_generation::signal_input light_signal = {
+        "farmstead_trace",
+        "light",
+        "farmstead_trace",
+        "farmstead_edge",
+        bandit_dry_run::lead_family::site,
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0.65,
+        bandit_dry_run::threat_gate::discount_only,
+        blocked_extraction_jobs,
+        false,
+        true,
+        { "Night light at the same site should strengthen revisit interest without minting free extraction." }
+    };
+    const bandit_mark_generation::signal_input route_signal = {
+        "farmstead_trace",
+        "route_activity",
+        "farmstead_trace",
+        "farmstead_edge",
+        bandit_dry_run::lead_family::site,
+        1,
+        2,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0.70,
+        bandit_dry_run::threat_gate::discount_only,
+        blocked_extraction_jobs,
+        false,
+        true,
+        { "Corroborated traffic at the same site should reinforce the same clue, not invent a settlement-signature class." }
+    };
+
+    bandit_mark_generation::ledger_state weak_state;
+    bandit_mark_generation::advance_state( weak_state, 0,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { smoke_signal } );
+    bandit_mark_generation::advance_state( weak_state, 20,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { smoke_signal } );
+    REQUIRE( weak_state.marks.size() == 1 );
+    CHECK( weak_state.marks[0].repeated_site_reinforcement.total_site_hits == 2 );
+    CHECK( weak_state.marks[0].repeated_site_reinforcement.distinct_signal_count == 1 );
+    CHECK_FALSE( weak_state.marks[0].repeated_site_reinforcement.viable );
+    CHECK( weak_state.marks[0].repeated_site_reinforcement.confidence_bonus == 0 );
+    CHECK( weak_state.marks[0].repeated_site_reinforcement.bounty_bonus == 0 );
+    CHECK( weak_state.marks[0].bounty_add == 1 );
+
+    bandit_mark_generation::ledger_state mixed_state;
+    bandit_mark_generation::advance_state( mixed_state, 0,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { smoke_signal } );
+    bandit_mark_generation::advance_state( mixed_state, 20,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { light_signal } );
+    REQUIRE( mixed_state.marks.size() == 1 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.total_site_hits == 2 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.distinct_signal_count == 2 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.viable );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.confidence_bonus == 1 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.bounty_bonus == 1 );
+    CHECK( mixed_state.marks[0].bounty_add == 2 );
+
+    bandit_mark_generation::advance_state( mixed_state, 40,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { route_signal } );
+    REQUIRE( mixed_state.marks.size() == 1 );
+    CHECK( mixed_state.marks[0].kind == "route_activity" );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.total_site_hits == 3 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.distinct_signal_count == 3 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.confidence_bonus == 2 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.bounty_bonus == 2 );
+    CHECK( mixed_state.marks[0].bounty_add == 3 );
+
+    const int bounded_confidence_bonus = mixed_state.marks[0].repeated_site_reinforcement.confidence_bonus;
+    const int bounded_bounty_bonus = mixed_state.marks[0].repeated_site_reinforcement.bounty_bonus;
+    const int bounded_bounty_add = mixed_state.marks[0].bounty_add;
+    bandit_mark_generation::advance_state( mixed_state, 60,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { smoke_signal } );
+    REQUIRE( mixed_state.marks.size() == 1 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.total_site_hits == 4 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.distinct_signal_count == 3 );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.confidence_bonus == bounded_confidence_bonus );
+    CHECK( mixed_state.marks[0].repeated_site_reinforcement.bounty_bonus == bounded_bounty_bonus );
+    CHECK( mixed_state.marks[0].bounty_add == bounded_bounty_add );
+
+    const std::vector<bandit_dry_run::lead_input> leads = bandit_mark_generation::emit_leads( mixed_state );
+    REQUIRE( leads.size() == 1 );
+    CHECK( leads[0].hard_blocked_jobs == blocked_extraction_jobs );
+}
+
 TEST_CASE( "bandit_mark_generation_keeps_confirmed_threat_sticky", "[bandit][marks]" )
 {
     bandit_mark_generation::ledger_state state;

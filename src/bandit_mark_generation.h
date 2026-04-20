@@ -151,6 +151,17 @@ struct human_route_projection {
     bool viable = false;
 };
 
+struct repeated_site_reinforcement_packet {
+    int total_site_hits = 0;
+    int distinct_signal_count = 0;
+    int confidence_bonus = 0;
+    int bounty_bonus = 0;
+    bool saw_smoke = false;
+    bool saw_light = false;
+    bool saw_route_activity = false;
+    bool viable = false;
+};
+
 struct typed_mark {
     std::string id;
     std::string kind;
@@ -171,6 +182,7 @@ struct typed_mark {
     bool soft_decay = true;
     int age_turns = 0;
     int last_refresh_tick = 0;
+    repeated_site_reinforcement_packet repeated_site_reinforcement;
     std::vector<std::string> notes;
 };
 
