@@ -304,15 +304,36 @@ Each job type should define:
 
 ### Suggested formula shape
 
+Treat scoring as a visible **pre-veto comparison pass**:
+
 ```text
-job_score =
-    bounty_score
-  - threat_score
-  + temperament_modifiers
-  + camp_need_modifiers
+positive_pull =
+    lead_bounty_value
+  + lead_confidence_bonus
+  + job_lead_fit_bonus
+  + ordinary_need_alignment
+  + temperament_bias
   + job_type_bonus
+
+travel_shaped_pull =
+    positive_pull * distance_multiplier
+
+pre_veto_job_score =
+    travel_shaped_pull
+  - threat_penalty
   - active_pressure_penalty
 ```
+
+Where the named factors mean:
+- `lead_bounty_value`: the current bounty-side attractiveness of the lead envelope
+- `lead_confidence_bonus`: freshness / corroboration pull for acting now
+- `job_lead_fit_bonus`: how well the template matches the lead family
+- `ordinary_need_alignment`: mild food/ammo/med alignment only, not full desperation override
+- `temperament_bias`: small soft bias from greed/caution/revenge/opportunism/territoriality, without replacing hard state
+- `job_type_bonus`: small template-level bias for commitment/profile
+- `distance_multiplier`: the already-landed round-trip burden multiplier from the follow-through packet
+- `threat_penalty`: the current soft danger subtraction from the lead's threat read
+- `active_pressure_penalty`: extra damp for already-hot regions, recent failed pressure, or overlapping disruption
 
 A job is valid only if:
 - manpower is sufficient
@@ -329,8 +350,13 @@ The follow-through canon now also freezes candidate generation as a separate boa
 `active_pressure_penalty` is where v1 can damp silly multi-camp pile-ons.
 If a region already carries fresh disruption, recent failed pressure, or evidence that someone else already made it hot, that should reduce the score for blindly piling in again.
 
+Important separation:
+- later follow-through micro-item 24 should still decide when low stockpile or desperation lets a mediocre real lead clear the bar anyway
+- later follow-through micro-item 25 should still decide when threat merely discounts a job versus when it hard-vetoes it
+- this formula is the visible comparison shape before those later passes
+
 `hold / chill` should be treated as an always-available score-`0` baseline with no mark requirement, no travel, and no dispatch cost.
-Highest valid outward job wins only if it scores above that baseline, while ties or worse should collapse to `hold / chill` instead of speculative wandering.
+Highest valid outward job wins only if its `pre_veto_job_score` stays above that baseline, while ties or worse should collapse to `hold / chill` instead of speculative wandering.
 This is still per-camp scoring, not coalition strategy logic.
 Occasional overlap can happen, but v1 should not behave like several camps are sharing one omniscient attack planner.
 

@@ -75,8 +75,10 @@ Current honest state:
 - adjacent parked substrate wording was tightened again where it still treated mission leads as free-form target rewrites instead of bounded same-outing switches
 - Package 3, micro-item 22 is now answered too: candidate generation is now frozen as a separate board-building pass, with `hold / chill` always present and outward jobs emitted only from deduped compatible lead envelopes whose hard preconditions already hold
 - adjacent parked substrate wording was tightened again where it still blurred board generation together with later scoring/veto/no-path filtering
-- the next honest active slice is Package 3, micro-item 23, `Job scoring formula shape`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define the score shape and named factors directly, without quietly re-solving need-pressure override, threat veto, or handoff-mode selection in the same pass
+- Package 3, micro-item 23 is now answered too: job comparison now freezes as positive pull from lead bounty, lead confidence, job-lead fit, mild need alignment, soft temperament bias, and job-type bias, shaped by the already-landed distance multiplier, then reduced by soft threat and active-pressure penalties before later desperation/veto passes
+- adjacent parked substrate wording was tightened again where it still hand-waved one muddy `job_score` instead of the now-landed pre-veto comparison shape
+- the next honest active slice is Package 3, micro-item 24, `Need-pressure override rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define when shortage pressure can push a mediocre real lead above `hold / chill`, without quietly re-solving the later hard-vs-soft threat veto or handoff-mode selection in the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -107,8 +109,8 @@ Current honest state:
 
 ## Pending probes
 
-- land Package 3, micro-item 23, `Job scoring formula shape`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that score-shape note separate from later Package 3 override / veto / seam work
+- land Package 3, micro-item 24, `Need-pressure override rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that desperation rule separate from later Package 3 threat-veto / seam work
 
 ---
 

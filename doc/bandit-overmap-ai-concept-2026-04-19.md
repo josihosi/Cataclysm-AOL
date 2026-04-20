@@ -521,13 +521,29 @@ The camp then scores possible jobs against marks/regions.
 A useful v1 shape is:
 
 ```text
-job_score =
-    bounty_score
-  - threat_score
-  + temperament_modifiers
-  + camp_need_modifiers
+positive_pull =
+    lead_bounty_value
+  + lead_confidence_bonus
+  + job_lead_fit_bonus
+  + ordinary_need_alignment
+  + temperament_bias
   + job_type_bonus
+
+travel_shaped_pull =
+    positive_pull * distance_multiplier
+
+pre_veto_job_score =
+    travel_shaped_pull
+  - threat_penalty
+  - active_pressure_penalty
 ```
+
+Meaning:
+- the positive subtotal should answer opportunity plus template fit first
+- the already-landed distance-burden law should shape that pull before danger subtraction
+- threat should still subtract softly here without yet deciding the later hard-veto ladder
+- ordinary need alignment should stay mild here so later follow-through canon can still answer desperation override separately
+- temperament should bias softly here without replacing hard state or turning the model into personality mush
 
 A job is valid only if:
 - manpower exists
@@ -535,7 +551,7 @@ A job is valid only if:
 - cooldown is clear
 - job load allows dispatch
 
-Highest valid job wins.
+Highest valid outward job wins only if its `pre_veto_job_score` beats `hold / chill`.
 
 The follow-through canon now also freezes `hold / chill` as the explicit no-target fallback baseline: always include that zero-distance stay-home option, and only dispatch an outward group when some other valid job scores above it honestly.
 

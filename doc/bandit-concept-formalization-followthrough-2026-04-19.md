@@ -805,6 +805,67 @@ Guardrails from this rule:
 - **Expected output:** One explicit formula shape or score table, even if some numbers remain provisional.
 - **Done when:** The packet names the factors instead of hiding them in prose.
 
+Current answer:
+- Freeze job scoring as a **pre-veto comparison pass**, not as one muddy all-in verdict and not as the later desperation / veto law.
+- First total the positive pull from the lead itself plus how well this job fits that lead.
+- Then shape that pull by the already-landed distance-burden multiplier.
+- Only after that subtract current danger and active-region pressure.
+- Later micro-item 24 may still add a bounded desperation override, and later micro-item 25 may still hard-veto or clamp jobs that remain too dangerous. Neither decision is made here.
+
+Starter formula shape:
+
+```text
+positive_pull =
+    lead_bounty_value
+  + lead_confidence_bonus
+  + job_lead_fit_bonus
+  + ordinary_need_alignment
+  + temperament_bias
+  + job_type_bonus
+
+travel_shaped_pull =
+    positive_pull * distance_multiplier
+
+pre_veto_job_score =
+    travel_shaped_pull
+  - threat_penalty
+  - active_pressure_penalty
+```
+
+Starter factor table:
+
+| Factor | Starter band | What it means here | What it does **not** decide here |
+| --- | --- | --- | --- |
+| `lead_bounty_value` | `0-8` | The current bounty-side attractiveness of this lead envelope after the already-landed bounty law. | Not threat, not desperation, not eligibility by itself. |
+| `lead_confidence_bonus` | `0-2` | Extra pull when the lead is fresh, corroborated, or otherwise strong enough to act on now. | Not passive-decay cleanup and not a hidden threat read. |
+| `job_lead_fit_bonus` | `-2` to `+3` | Whether this template actually suits the lead family, such as `toll` on a corridor, `stalk` on a moving carrier, or `scavenge` on a site envelope. | Not board generation, incompatible jobs should already be absent or lose here honestly instead of being invented later. |
+| `ordinary_need_alignment` | `0-2` | A mild pull when the job's likely payoff matches the camp's current food/ammo/med shortage pattern. | Not the later desperation rule that makes mediocre real leads worth taking anyway. |
+| `temperament_bias` | `-1` to `+1` | Small soft bias from camp temperament, such as greed leaning a little toward juicy cargo or caution leaning a little toward safer work. | Not a replacement for hard state, and not permission for personality mush to override the board. |
+| `job_type_bonus` | `-1` to `+1` | Small template bias for commitment/profile, such as cheap reliable scouting getting a tiny edge when information is thin. | Not threat veto and not a back door to re-solve movement law. |
+| `distance_multiplier` | `0.05-1.00` | The already-landed round-trip burden multiplier from micro-item 16. | Not a fresh flat range tax invented here. |
+| `threat_penalty` | `0-8` | The current soft danger subtraction from the lead's threat read. | Not the later hard-veto / soft-veto ladder. |
+| `active_pressure_penalty` | `0-3` | Extra damp when the region is already hot from fresh disruption, failed pressure, or overlapping recent activity. | Not coalition AI or a permanent territorial block. |
+
+Starter interpretation notes:
+- Compare `pre_veto_job_score` against the already-landed `hold / chill = 0` baseline. If the best outward job is not above that line, the camp stays home.
+- `ordinary_need_alignment` stays deliberately small here so micro-item 24 can still answer when low stockpile should push a mediocre but real lead over the line.
+- `threat_penalty` stays a soft subtraction here so micro-item 25 can still answer when danger merely discounts a job versus when it should block it outright.
+- `distance_multiplier` comes from the already-landed burden table and should shape the whole positive pull, not be double-counted later as another flat penalty.
+
+Starter examples:
+
+| Candidate | Positive pull sketch | Distance shaping | Threat / pressure subtraction | Starter read |
+| --- | --- | --- | --- | --- |
+| Nearby house `scavenge` with decent confidence | `5 + 1 + 2 + 1 + 0 = 9` | `9 * 0.85 = 7.65` | `-2 threat -0 pressure` | Strong honest winner over `hold / chill`. |
+| Corridor `toll` on repeated caravan traffic | `4 + 2 + 3 + 0 + 1 = 10` | `10 * 0.65 = 6.5` | `-3 threat -1 pressure` | Still viable, but only if the corridor is not already too hot. |
+| Distant city-edge `raid` with juicy value but scary pressure | `7 + 1 + 1 + 0 + 1 = 10` | `10 * 0.40 = 4.0` | `-5 threat -1 pressure` | Loses for now even before later veto law, attractive does not mean dispatchable. |
+
+Guardrails from this rule:
+- **Score shape answers comparison, not desperation.** The later need-pressure rule may still push weak-but-real candidates upward, but this micro-item does not.
+- **Score shape answers soft weighting, not absolute danger bars.** Later veto law still decides when threat merely hurts a score and when it should stop the job entirely.
+- **Score shape assumes candidate generation already happened.** No-path, hard eligibility, and handoff mode selection remain downstream or elsewhere.
+- **Keep the factors inspectable.** One visible subtotal, one distance shaping step, then explicit danger/pressure subtraction is enough for v1.
+
 #### 24. Need-pressure override rule
 - **Question:** When does camp need or low stockpile make a mediocre opportunity worth taking anyway?
 - **Expected output:** One bounded override rule.
