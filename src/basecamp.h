@@ -218,6 +218,36 @@ struct camp_locker_reservation {
 
 using camp_locker_candidate_map =
     std::map<camp_locker_slot, std::vector<const item *>>;
+
+struct camp_locker_service_metrics {
+  int zone_item_collection_calls = 0;
+  int zone_tile_visits = 0;
+  int zone_top_level_items_seen = 0;
+  int zone_reserved_items_skipped = 0;
+  int zone_items_returned = 0;
+  int candidate_item_checks = 0;
+  int candidate_items_accepted = 0;
+  int compatible_magazine_item_checks = 0;
+  int compatible_ammo_item_checks = 0;
+};
+
+struct camp_locker_service_probe {
+  camp_locker_service_metrics metrics;
+  bool applied_changes = false;
+  int locker_tile_count = 0;
+  int current_item_count = 0;
+  int worker_item_count = 0;
+  int locker_item_count = 0;
+  int candidate_item_count = 0;
+  int changed_slot_count = 0;
+  int cleanup_item_count = 0;
+  int magazines_to_take = 0;
+  int magazines_to_reload = 0;
+};
+
+std::string render_camp_locker_service_probe(
+    const camp_locker_service_probe &probe);
+
 using camp_patrol_cluster = std::vector<tripoint_abs_ms>;
 
 enum class camp_patrol_shift : int {
@@ -888,6 +918,7 @@ public:
   void mark_camp_locker_dirty(npc &worker, bool high_priority = false);
   bool process_camp_locker_downtime(npc &worker);
   bool service_camp_locker(npc &worker);
+  camp_locker_service_probe measure_camp_locker_service(npc &worker);
   bool is_locker_slot_enabled(camp_locker_slot slot) const;
   void set_locker_slot_enabled(camp_locker_slot slot, bool enabled);
   bool locker_prefers_bulletproof() const;
@@ -910,6 +941,8 @@ private:
   bool can_assign_crafting_worker(const npc &worker, const recipe &making,
                                   bool require_available,
                                   std::string *reason = nullptr) const;
+  bool service_camp_locker_impl(npc &worker,
+                                camp_locker_service_probe *probe);
   npc_ptr resolve_crafting_worker(
       const recipe &making, int batch_size,
       const character_id &preferred_worker_id = character_id(),

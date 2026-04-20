@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <unordered_set>
 
@@ -77,6 +78,7 @@ static const itype_id itype_long_dress_sleeved("long_dress_sleeved");
 static const itype_id itype_mask_dust("mask_dust");
 static const itype_id itype_cheongsam("cheongsam");
 static const itype_id itype_pants_cargo("pants_cargo");
+static const itype_id itype_rock("rock");
 static const itype_id itype_short_dress("short_dress");
 static const itype_id itype_shorts_cargo("shorts_cargo");
 static const itype_id itype_sneakers("sneakers");
@@ -151,6 +153,29 @@ static camp_patrol_cluster make_patrol_cluster(
     return lhs.x() < rhs.x();
   });
   return cluster;
+}
+
+static item make_loaded_glock_magazine(int rounds = 15) {
+  item magazine(itype_glockmag);
+  const ret_val<void> loaded =
+      magazine.put_in(item(itype_9mm, calendar::turn_zero, rounds),
+                      pocket_type::MAGAZINE);
+  if (!loaded.success()) {
+    throw std::runtime_error(loaded.str());
+  }
+  return magazine;
+}
+
+static item make_filled_daypack(int rocks = 3) {
+  item bag(itype_daypack);
+  for (int i = 0; i < rocks; ++i) {
+    const ret_val<void> inserted =
+        bag.put_in(item(itype_rock), pocket_type::CONTAINER);
+    if (!inserted.success()) {
+      throw std::runtime_error(inserted.str());
+    }
+  }
+  return bag;
 }
 
 TEST_CASE("camp_locker_policy_serialization", "[camp][locker]") {
@@ -4475,6 +4500,297 @@ TEST_CASE(
   }
   CHECK(locker_has_shorts);
   CHECK_FALSE(locker_has_wetsuit);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_probe_scales_with_top_level_clutter",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  auto run_probe = [](int clutter_items) {
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    map &here = get_map();
+    const tripoint_bub_ms npc_local{5, 5, 0};
+    const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+    const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+    create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+    here.i_clear(locker_local);
+    here.add_item_or_charges(locker_local, item(itype_duffelbag));
+    for (int i = 0; i < clutter_items; ++i) {
+      here.add_item_or_charges(locker_local, item(itype_bandages));
+    }
+
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+    here.add_camp(camp_omt, "faction_camp");
+    std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+    REQUIRE(!!bcp);
+    basecamp *test_camp = *bcp;
+    test_camp->set_owner(your_fac);
+
+    npc &worker = spawn_npc(npc_local.xy(), "thug");
+    clear_character(worker, true);
+    REQUIRE(worker.wear_item(item(itype_daypack), false).has_value());
+    test_camp->add_assignee(worker.getID());
+
+    const camp_locker_service_probe probe =
+        test_camp->measure_camp_locker_service(worker);
+    CHECK(probe.applied_changes);
+    CHECK(worker.is_wearing(itype_duffelbag));
+    CHECK_FALSE(worker.is_wearing(itype_daypack));
+    CHECK(probe.locker_item_count == clutter_items + 1);
+    CHECK(probe.metrics.candidate_item_checks >= clutter_items + 1);
+    return probe;
+  };
+
+  const camp_locker_service_probe small_probe = run_probe(50);
+  const camp_locker_service_probe hundred_probe = run_probe(100);
+  const camp_locker_service_probe medium_probe = run_probe(200);
+  const camp_locker_service_probe five_hundred_probe = run_probe(500);
+  const camp_locker_service_probe large_probe = run_probe(1000);
+
+  CHECK(small_probe.metrics.zone_top_level_items_seen == 2 * 51);
+  CHECK(hundred_probe.metrics.zone_top_level_items_seen == 2 * 101);
+  CHECK(medium_probe.metrics.zone_top_level_items_seen == 2 * 201);
+  CHECK(five_hundred_probe.metrics.zone_top_level_items_seen == 2 * 501);
+  CHECK(large_probe.metrics.zone_top_level_items_seen == 2 * 1001);
+  CHECK(small_probe.metrics.candidate_item_checks == 2 * 51);
+  CHECK(hundred_probe.metrics.candidate_item_checks == 2 * 101);
+  CHECK(medium_probe.metrics.candidate_item_checks == 2 * 201);
+  CHECK(five_hundred_probe.metrics.candidate_item_checks == 2 * 501);
+  CHECK(large_probe.metrics.candidate_item_checks == 2 * 1001);
+  CHECK(render_camp_locker_service_probe(large_probe).find("top_level=2002") !=
+        std::string::npos);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_probe_scales_linearly_with_worker_count",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  auto run_probe = [](int worker_count) {
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    map &here = get_map();
+    const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+    const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+    create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+    here.i_clear(locker_local);
+    here.add_item_or_charges(locker_local, item(itype_daypack));
+    for (int i = 0; i < 100; ++i) {
+      here.add_item_or_charges(locker_local, item(itype_bandages));
+    }
+
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+    here.add_camp(camp_omt, "faction_camp");
+    std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+    REQUIRE(!!bcp);
+    basecamp *test_camp = *bcp;
+    test_camp->set_owner(your_fac);
+
+    int total_top_level_scans = 0;
+    int total_candidate_checks = 0;
+    for (int i = 0; i < worker_count; ++i) {
+      npc &worker = spawn_npc(tripoint_bub_ms{5, 5 + i, 0}.xy(), "thug");
+      clear_character(worker, true);
+      REQUIRE(worker.wear_item(item(itype_duffelbag), false).has_value());
+      test_camp->add_assignee(worker.getID());
+      const camp_locker_service_probe probe =
+          test_camp->measure_camp_locker_service(worker);
+      CHECK_FALSE(probe.applied_changes);
+      CHECK(probe.locker_item_count == 101);
+      total_top_level_scans += probe.metrics.zone_top_level_items_seen;
+      total_candidate_checks += probe.metrics.candidate_item_checks;
+    }
+    return std::pair<int, int>(total_top_level_scans, total_candidate_checks);
+  };
+
+  const auto one_worker = run_probe(1);
+  const auto five_workers = run_probe(5);
+  const auto ten_workers = run_probe(10);
+
+  CHECK(one_worker.first == 2 * 101);
+  CHECK(five_workers.first == 5 * one_worker.first);
+  CHECK(ten_workers.first == 10 * one_worker.first);
+  CHECK(one_worker.second == 2 * 101);
+  CHECK(five_workers.second == 5 * one_worker.second);
+  CHECK(ten_workers.second == 10 * one_worker.second);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_probe_treats_nested_magazines_and_bags_as_top_level_items",
+          "[camp][locker]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  auto run_probe = [](const std::vector<item> &extra_items) {
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    map &here = get_map();
+    const tripoint_bub_ms npc_local{5, 5, 0};
+    const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+    const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+    create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+    here.i_clear(locker_local);
+    here.add_item_or_charges(locker_local, item(itype_duffelbag));
+    for (const item &extra : extra_items) {
+      here.add_item_or_charges(locker_local, extra);
+    }
+
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+    here.add_camp(camp_omt, "faction_camp");
+    std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+    REQUIRE(!!bcp);
+    basecamp *test_camp = *bcp;
+    test_camp->set_owner(your_fac);
+
+    npc &worker = spawn_npc(npc_local.xy(), "thug");
+    clear_character(worker, true);
+    REQUIRE(worker.wear_item(item(itype_daypack), false).has_value());
+    test_camp->add_assignee(worker.getID());
+
+    return test_camp->measure_camp_locker_service(worker);
+  };
+
+  std::vector<item> junk_items(25, item(itype_bandages));
+  std::vector<item> empty_magazines(25, item(itype_glockmag));
+  std::vector<item> loaded_magazines;
+  loaded_magazines.reserve(25);
+  for (int i = 0; i < 25; ++i) {
+    loaded_magazines.emplace_back(make_loaded_glock_magazine());
+  }
+  std::vector<item> empty_daypacks(25, item(itype_daypack));
+  std::vector<item> filled_daypacks;
+  filled_daypacks.reserve(25);
+  for (int i = 0; i < 25; ++i) {
+    filled_daypacks.emplace_back(make_filled_daypack());
+  }
+
+  const camp_locker_service_probe junk_probe = run_probe(junk_items);
+  const camp_locker_service_probe empty_mag_probe = run_probe(empty_magazines);
+  const camp_locker_service_probe loaded_mag_probe = run_probe(loaded_magazines);
+  const camp_locker_service_probe empty_bag_probe = run_probe(empty_daypacks);
+  const camp_locker_service_probe filled_bag_probe = run_probe(filled_daypacks);
+
+  CHECK(junk_probe.metrics.zone_top_level_items_seen ==
+        empty_mag_probe.metrics.zone_top_level_items_seen);
+  CHECK(junk_probe.metrics.zone_top_level_items_seen ==
+        empty_bag_probe.metrics.zone_top_level_items_seen);
+  CHECK(empty_mag_probe.metrics.zone_top_level_items_seen ==
+        loaded_mag_probe.metrics.zone_top_level_items_seen);
+  CHECK(empty_bag_probe.metrics.zone_top_level_items_seen ==
+        filled_bag_probe.metrics.zone_top_level_items_seen);
+
+  CHECK(junk_probe.metrics.candidate_item_checks ==
+        empty_mag_probe.metrics.candidate_item_checks);
+  CHECK(junk_probe.metrics.candidate_item_checks ==
+        empty_bag_probe.metrics.candidate_item_checks);
+  CHECK(empty_mag_probe.metrics.candidate_item_checks ==
+        loaded_mag_probe.metrics.candidate_item_checks);
+  CHECK(empty_bag_probe.metrics.candidate_item_checks ==
+        filled_bag_probe.metrics.candidate_item_checks);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_probe_distinguishes_junk_candidate_and_ranged_stock_shapes",
+          "[camp][locker]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  auto run_probe = [](const std::vector<item> &locker_items) {
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    map &here = get_map();
+    const tripoint_bub_ms npc_local{5, 5, 0};
+    const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+    const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+    create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+    here.i_clear(locker_local);
+    for (const item &locker_item : locker_items) {
+      here.add_item_or_charges(locker_local, locker_item);
+    }
+
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+    here.add_camp(camp_omt, "faction_camp");
+    std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+    REQUIRE(!!bcp);
+    basecamp *test_camp = *bcp;
+    test_camp->set_owner(your_fac);
+
+    npc &worker = spawn_npc(npc_local.xy(), "thug");
+    clear_character(worker, true);
+    REQUIRE(worker.wear_item(item(itype_daypack), false).has_value());
+    item empty_glock(itype_glock_19);
+    REQUIRE(worker.wield(empty_glock));
+    test_camp->add_assignee(worker.getID());
+
+    const camp_locker_service_probe probe =
+        test_camp->measure_camp_locker_service(worker);
+    CHECK(probe.applied_changes);
+    CHECK(worker.is_wearing(itype_duffelbag));
+    return probe;
+  };
+
+  std::vector<item> junk_items;
+  junk_items.reserve(25);
+  junk_items.emplace_back(itype_duffelbag);
+  for (int i = 0; i < 24; ++i) {
+    junk_items.emplace_back(itype_bandages);
+  }
+
+  std::vector<item> candidate_items(25, item(itype_duffelbag));
+
+  std::vector<item> ranged_items;
+  ranged_items.reserve(25);
+  ranged_items.emplace_back(itype_duffelbag);
+  ranged_items.emplace_back(item(itype_9mm, calendar::turn_zero,
+                                 item(itype_glockmag).remaining_ammo_capacity() * 2));
+  for (int i = 0; i < 11; ++i) {
+    ranged_items.emplace_back(itype_daypack);
+  }
+  for (int i = 0; i < 12; ++i) {
+    ranged_items.emplace_back(itype_glockmag);
+  }
+
+  const camp_locker_service_probe junk_probe = run_probe(junk_items);
+  const camp_locker_service_probe candidate_probe = run_probe(candidate_items);
+  const camp_locker_service_probe ranged_probe = run_probe(ranged_items);
+
+  CHECK(junk_probe.metrics.candidate_items_accepted <
+        candidate_probe.metrics.candidate_items_accepted);
+  CHECK(junk_probe.metrics.candidate_items_accepted <
+        ranged_probe.metrics.candidate_items_accepted);
+  CHECK(ranged_probe.metrics.candidate_items_accepted <
+        candidate_probe.metrics.candidate_items_accepted);
+
+  CHECK(junk_probe.magazines_to_take == 0);
+  CHECK(candidate_probe.magazines_to_take == 0);
+  CHECK(ranged_probe.magazines_to_take == 2);
+  CHECK(ranged_probe.magazines_to_reload == 2);
+  CHECK(junk_probe.metrics.compatible_ammo_item_checks == 0);
+  CHECK(candidate_probe.metrics.compatible_ammo_item_checks == 0);
+  CHECK(ranged_probe.metrics.compatible_ammo_item_checks > 0);
+  CHECK(render_camp_locker_service_probe(ranged_probe).find("ammo_checks=") !=
+        std::string::npos);
 
   zone_manager::get_manager().clear();
 }

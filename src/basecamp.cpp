@@ -905,21 +905,55 @@ std::optional<camp_locker_slot> classify_camp_locker_item(const item &it) {
   return std::nullopt;
 }
 
-camp_locker_candidate_map
-collect_camp_locker_candidates(const std::vector<const item *> &items,
-                               const camp_locker_policy &policy) {
+namespace {
+
+camp_locker_candidate_map collect_camp_locker_candidates_impl(
+    const std::vector<const item *> &items, const camp_locker_policy &policy,
+    camp_locker_service_probe *probe) {
   camp_locker_candidate_map candidates;
   for (const item *it : items) {
     if (it == nullptr) {
       continue;
     }
+    if (probe != nullptr) {
+      probe->metrics.candidate_item_checks++;
+    }
     const std::optional<camp_locker_slot> slot = classify_camp_locker_item(*it);
     if (!slot || !policy.is_enabled(*slot)) {
       continue;
     }
+    if (probe != nullptr) {
+      probe->metrics.candidate_items_accepted++;
+    }
     candidates[*slot].push_back(it);
   }
   return candidates;
+}
+
+int count_camp_locker_candidates(const camp_locker_candidate_map &candidates) {
+  int count = 0;
+  for (const auto &entry : candidates) {
+    count += static_cast<int>(entry.second.size());
+  }
+  return count;
+}
+
+int count_changed_camp_locker_slots(const camp_locker_plan &plan) {
+  int count = 0;
+  for (const auto &entry : plan) {
+    if (entry.second.has_changes()) {
+      count++;
+    }
+  }
+  return count;
+}
+
+} // namespace
+
+camp_locker_candidate_map
+collect_camp_locker_candidates(const std::vector<const item *> &items,
+                               const camp_locker_policy &policy) {
+  return collect_camp_locker_candidates_impl(items, policy, nullptr);
 }
 
 std::vector<tripoint_abs_ms>
@@ -1317,25 +1351,41 @@ camp_locker_candidate_map collect_camp_locker_zone_candidates(
 std::vector<const item *> collect_camp_locker_zone_items(
     const std::vector<tripoint_abs_ms> &locker_tiles,
     const std::vector<camp_locker_reservation> &reservations,
-    const character_id &requesting_worker) {
+    const character_id &requesting_worker,
+    camp_locker_service_probe *probe = nullptr) {
   map &here = get_map();
   std::vector<const item *> items;
 
+  if (probe != nullptr) {
+    probe->metrics.zone_item_collection_calls++;
+  }
   for (const tripoint_abs_ms &tile : locker_tiles) {
     const tripoint_bub_ms local = here.get_bub(tile);
     if (!here.inbounds(local)) {
       continue;
     }
+    if (probe != nullptr) {
+      probe->metrics.zone_tile_visits++;
+    }
     for (const item &it : here.i_at(local)) {
+      if (probe != nullptr) {
+        probe->metrics.zone_top_level_items_seen++;
+      }
       if (std::any_of(reservations.begin(), reservations.end(),
                       [&tile, &it, &requesting_worker](
                           const camp_locker_reservation &reservation) {
                         return camp_locker_reservation_matches(
                             reservation, tile, it, requesting_worker);
                       })) {
+        if (probe != nullptr) {
+          probe->metrics.zone_reserved_items_skipped++;
+        }
         continue;
       }
       items.push_back(&it);
+      if (probe != nullptr) {
+        probe->metrics.zone_items_returned++;
+      }
     }
   }
 
@@ -1349,10 +1399,10 @@ camp_locker_candidate_map collect_camp_locker_zone_candidates(
     const character_id &requesting_worker, int range) {
   const std::vector<tripoint_abs_ms> locker_tiles =
       collect_sorted_camp_locker_tiles(origin, fac, range);
-  return collect_camp_locker_candidates(
+  return collect_camp_locker_candidates_impl(
       collect_camp_locker_zone_items(locker_tiles, reservations,
                                      requesting_worker),
-      policy);
+      policy, nullptr);
 }
 
 int score_camp_locker_item(
@@ -1686,7 +1736,8 @@ void sort_camp_locker_magazines(std::vector<const item *> &magazines) {
 }
 
 std::vector<const item *> collect_camp_locker_compatible_magazines(
-    const std::vector<const item *> &items, const item &weapon) {
+    const std::vector<const item *> &items, const item &weapon,
+    camp_locker_service_probe *probe = nullptr) {
   std::vector<const item *> magazines;
   if (!weapon.is_gun() || !weapon.uses_magazine()) {
     return magazines;
@@ -1697,6 +1748,9 @@ std::vector<const item *> collect_camp_locker_compatible_magazines(
     magazines.push_back(current_magazine);
   }
   for (const item *it : items) {
+    if (probe != nullptr) {
+      probe->metrics.compatible_magazine_item_checks++;
+    }
     if (it == nullptr || it == current_magazine || !it->is_magazine() ||
         !weapon.can_reload_with(*it, false)) {
       continue;
@@ -1740,9 +1794,13 @@ std::vector<item_location> collect_camp_locker_compatible_magazine_locations(
 }
 
 const item *select_best_camp_locker_ammo_candidate(
-    const std::vector<const item *> &items, const item &target) {
+    const std::vector<const item *> &items, const item &target,
+    camp_locker_service_probe *probe = nullptr) {
   std::vector<const item *> ammo_items;
   for (const item *it : items) {
+    if (probe != nullptr) {
+      probe->metrics.compatible_ammo_item_checks++;
+    }
     if (it == nullptr || !it->is_ammo() || !target.can_reload_with(*it, true)) {
       continue;
     }
@@ -1775,7 +1833,7 @@ bool reload_camp_locker_target_from_zone(npc &worker,
       collect_camp_locker_zone_items(locker_tiles,
                                      std::vector<camp_locker_reservation>(),
                                      worker.getID()),
-      *target);
+      *target, nullptr);
   if (ammo_candidate == nullptr) {
     return false;
   }
@@ -1828,7 +1886,8 @@ struct camp_locker_ranged_readiness_state {
 camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_state(
     npc &worker, const camp_locker_policy &policy,
     const std::vector<const item *> &worker_items,
-    const std::vector<const item *> &locker_items) {
+    const std::vector<const item *> &locker_items,
+    camp_locker_service_probe *probe = nullptr) {
   camp_locker_ranged_readiness_state readiness;
 
   const item_location weapon_loc = worker.get_wielded_item();
@@ -1840,13 +1899,15 @@ camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_state(
 
   if (weapon_loc->uses_magazine()) {
     const std::vector<const item *> current_magazines =
-        collect_camp_locker_compatible_magazines(worker_items, *weapon_loc);
+        collect_camp_locker_compatible_magazines(worker_items, *weapon_loc,
+                                                 probe);
     readiness.current_compatible_magazines =
         static_cast<int>(current_magazines.size());
 
     std::vector<const item *> selected_magazines = current_magazines;
     const std::vector<const item *> locker_magazines =
-        collect_camp_locker_compatible_magazines(locker_items, *weapon_loc);
+        collect_camp_locker_compatible_magazines(locker_items, *weapon_loc,
+                                                 probe);
     const int desired_magazines = std::max(0, 2 - readiness.current_compatible_magazines);
     readiness.magazines_to_take =
         std::min(desired_magazines, static_cast<int>(locker_magazines.size()));
@@ -1862,8 +1923,8 @@ camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_state(
 
     for (const item *magazine : selected_magazines) {
       if (magazine == nullptr || magazine->remaining_ammo_capacity() <= 0 ||
-          select_best_camp_locker_ammo_candidate(locker_items, *magazine) ==
-              nullptr) {
+          select_best_camp_locker_ammo_candidate(locker_items, *magazine,
+                                                 probe) == nullptr) {
         continue;
       }
       readiness.magazines_to_reload++;
@@ -1880,8 +1941,8 @@ camp_locker_ranged_readiness_state collect_camp_locker_ranged_readiness_state(
         weapon_loc->ammo_remaining() <= 0 && could_ready_magazine;
   } else if (weapon_loc->remaining_ammo_capacity() > 0) {
     readiness.weapon_needs_reload =
-        select_best_camp_locker_ammo_candidate(locker_items, *weapon_loc) !=
-        nullptr;
+        select_best_camp_locker_ammo_candidate(locker_items, *weapon_loc,
+                                               probe) != nullptr;
   }
 
   return readiness;
@@ -3425,10 +3486,14 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
   return applied_changes;
 }
 
-bool basecamp::service_camp_locker(npc &worker) {
+bool basecamp::service_camp_locker_impl(npc &worker,
+                                       camp_locker_service_probe *probe) {
   const faction_id fac_id = owner.is_valid() ? owner : your_fac;
   const std::vector<tripoint_abs_ms> locker_tiles =
       collect_sorted_camp_locker_tiles(worker.pos_abs(), fac_id);
+  if (probe != nullptr) {
+    probe->locker_tile_count = static_cast<int>(locker_tiles.size());
+  }
   if (locker_tiles.empty()) {
     return false;
   }
@@ -3447,13 +3512,10 @@ bool basecamp::service_camp_locker(npc &worker) {
   const std::vector<const item *> worker_items =
       collect_camp_locker_worker_items(worker);
   const std::vector<const item *> locker_items = collect_camp_locker_zone_items(
-      locker_tiles, locker_reservations, worker.getID());
+      locker_tiles, locker_reservations, worker.getID(), probe);
   const camp_locker_candidate_map locker_candidates =
-      collect_camp_locker_candidates(locker_items, locker_policy);
-  int candidate_count = 0;
-  for (const auto &entry : locker_candidates) {
-    candidate_count += static_cast<int>(entry.second.size());
-  }
+      collect_camp_locker_candidates_impl(locker_items, locker_policy, probe);
+  const int candidate_count = count_camp_locker_candidates(locker_candidates);
   const camp_locker_plan plan = plan_camp_locker_loadout(
       current_items, locker_candidates, locker_policy,
       get_weather().get_temperature(worker.pos_bub()));
@@ -3461,9 +3523,23 @@ bool basecamp::service_camp_locker(npc &worker) {
       collect_camp_locker_carried_cleanup_state(worker);
   const camp_locker_ranged_readiness_state ranged_readiness =
       collect_camp_locker_ranged_readiness_state(worker, locker_policy,
-                                                 worker_items, locker_items);
+                                                 worker_items, locker_items,
+                                                 probe);
+  if (probe != nullptr) {
+    probe->current_item_count = static_cast<int>(current_items.size());
+    probe->worker_item_count = static_cast<int>(worker_items.size());
+    probe->locker_item_count = static_cast<int>(locker_items.size());
+    probe->candidate_item_count = candidate_count;
+    probe->changed_slot_count = count_changed_camp_locker_slots(plan);
+    probe->cleanup_item_count = carried_cleanup.items_to_dump;
+    probe->magazines_to_take = ranged_readiness.magazines_to_take;
+    probe->magazines_to_reload = ranged_readiness.magazines_to_reload;
+  }
   if (plan.empty() && !carried_cleanup.has_changes() &&
       !ranged_readiness.has_changes()) {
+    if (probe != nullptr) {
+      probe->applied_changes = false;
+    }
     DebugLog(D_INFO, DC_ALL)
         << string_format(
                "camp locker: no-op for %s locker_tiles=%d current_items=%d candidates=%d reservations=%d cleanup=[%s] ranged=[%s]",
@@ -3499,12 +3575,7 @@ bool basecamp::service_camp_locker(npc &worker) {
                                    reservation_expiry});
   }
 
-  int planned_slots = 0;
-  for (const auto &entry : plan) {
-    if (entry.second.has_changes()) {
-      planned_slots++;
-    }
-  }
+  const int planned_slots = count_changed_camp_locker_slots(plan);
   DebugLog(D_INFO, DC_ALL)
       << string_format(
              "camp locker: plan for %s locker_tiles=%d current_items=%d candidates=%d changed_slots=%d reservations=%d changes=[%s] cleanup=[%s] ranged=[%s]",
@@ -3619,6 +3690,9 @@ bool basecamp::service_camp_locker(npc &worker) {
         });
     if (!removed_items.empty()) {
       applied_changes = true;
+      if (probe != nullptr) {
+        probe->cleanup_item_count = static_cast<int>(removed_items.size());
+      }
       for (item &removed : removed_items) {
         store_camp_locker_item(*cleanup_drop_tile, std::move(removed));
       }
@@ -3636,13 +3710,14 @@ bool basecamp::service_camp_locker(npc &worker) {
       collect_camp_locker_worker_items(worker);
   const std::vector<const item *> locker_items_after =
       collect_camp_locker_zone_items(locker_tiles, locker_reservations,
-                                     worker.getID());
+                                     worker.getID(), probe);
   const camp_locker_candidate_map locker_candidates_after =
-      collect_camp_locker_candidates(locker_items_after, locker_policy);
+      collect_camp_locker_candidates_impl(locker_items_after, locker_policy,
+                                          probe);
   const camp_locker_ranged_readiness_state ranged_readiness_after =
       collect_camp_locker_ranged_readiness_state(worker, locker_policy,
                                                  worker_items_after,
-                                                 locker_items_after);
+                                                 locker_items_after, probe);
   const camp_locker_carried_cleanup_state carried_cleanup_after =
       collect_camp_locker_carried_cleanup_state(worker);
   DebugLog(D_INFO, DC_ALL)
@@ -3655,7 +3730,40 @@ bool basecamp::service_camp_locker(npc &worker) {
              camp_locker_ranged_readiness_debug_summary(
                  ranged_readiness_after));
 
+  if (probe != nullptr) {
+    probe->applied_changes = applied_changes;
+  }
   return applied_changes;
+}
+
+bool basecamp::service_camp_locker(npc &worker) {
+  return service_camp_locker_impl(worker, nullptr);
+}
+
+camp_locker_service_probe basecamp::measure_camp_locker_service(npc &worker) {
+  camp_locker_service_probe probe;
+  service_camp_locker_impl(worker, &probe);
+  return probe;
+}
+
+std::string render_camp_locker_service_probe(
+    const camp_locker_service_probe &probe) {
+  return string_format(
+      "locker_tiles=%d locker_items=%d current_items=%d worker_items=%d candidates=%d changed_slots=%d cleanup_items=%d mag_take=%d mag_reload=%d scans={collect_calls=%d tiles=%d top_level=%d returned=%d reserved=%d classify=%d accepted=%d mag_checks=%d ammo_checks=%d} applied=%s",
+      probe.locker_tile_count, probe.locker_item_count, probe.current_item_count,
+      probe.worker_item_count, probe.candidate_item_count,
+      probe.changed_slot_count, probe.cleanup_item_count,
+      probe.magazines_to_take, probe.magazines_to_reload,
+      probe.metrics.zone_item_collection_calls,
+      probe.metrics.zone_tile_visits,
+      probe.metrics.zone_top_level_items_seen,
+      probe.metrics.zone_items_returned,
+      probe.metrics.zone_reserved_items_skipped,
+      probe.metrics.candidate_item_checks,
+      probe.metrics.candidate_items_accepted,
+      probe.metrics.compatible_magazine_item_checks,
+      probe.metrics.compatible_ammo_item_checks,
+      probe.applied_changes ? "true" : "false" );
 }
 
 bool basecamp::is_locker_slot_enabled(camp_locker_slot slot) const {
