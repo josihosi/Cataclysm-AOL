@@ -39,7 +39,16 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-There is currently **no active greenlit lane**.
+There is now one active greenlit lane: **Bandit smoke visibility to overmap mark bridge v0**.
+
+### Active lane — Bandit smoke visibility to overmap mark bridge v0
+
+Current honest state:
+- canon-only promotion landed at `doc/bandit-smoke-visibility-overmap-mark-bridge-v0-2026-04-20.md`; no code has landed for this slice yet
+- the parked bandit concept packet is now coherent enough to support this one bounded smoke bridge without reopening the whole visibility system
+- the next missing evidence is deterministic smoke-packet / smoke-mark coverage on the current bandit mark-generation / playback footing, not more parked concept prose
+- keep the product rule explicit during implementation: sustained clear-weather smoke should remain legible from several OMT away and usually create a bounded `worth scoping out` lead before it implies anything sharper
+- because this patch is docs-only canon packaging, no compile belongs to this run by ritual
 
 ### Latest closed lane — Locker lag-threshold probe v0
 
@@ -121,7 +130,10 @@ Current honest state:
 
 ## Pending probes
 
-None until the next lane is greenlit.
+### After the first smoke-bridge code slice lands
+- `make -j4 tests`
+- `./tests/cata_test "[bandit]"`
+- smoke-specific deterministic cases on the current playback/report footing, proving weak versus sustained smoke and clear versus degraded-condition legibility without flattening smoke into a tiny-range joke
 
 ---
 

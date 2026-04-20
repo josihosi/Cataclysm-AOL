@@ -39,8 +39,9 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently **no active greenlit lane**.
-The last active lane is now checkpointed, so the repo is waiting on Josef to greenlight the next one.
+There is now one active greenlit lane: **Bandit smoke visibility to overmap mark bridge v0**.
+Josef has standing approval for the next narrow bandit slices until the first honest 500-turn proof, unless a real product ambiguity, scope jump, or priority collision appears.
+The current job is to turn the parked visibility/recon packet into one bounded smoke-specific signal bridge instead of breeding more parked feeder docs.
 
 Fresh checkpoints that stay closed:
 - **Locker lag-threshold probe v0** is now honestly checkpointed too:
@@ -93,7 +94,8 @@ Fresh checkpoints that stay closed:
 
 Meaning:
 - the locker lag-threshold probe is checkpointed closed too, with no clear knee found through `20000` top-level locker items
-- there is currently no active greenlit lane, so the next real move needs a fresh Josef greenlight
+- the active lane is now the smoke-specific bridge from existing fire/smoke/wind footing into coarse overmap marks and smoke-born `worth scoping out` leads
+- smoke must stay meaningfully long-range in clear conditions, not collapse into tiny OMT-count nonsense
 - the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
@@ -105,6 +107,20 @@ Meaning:
 - the broad bandit concept chain stays parked outside those explicit promoted slices
 
 ---
+
+## Active — Bandit smoke visibility to overmap mark bridge v0
+
+**Status:** ACTIVE / GREENLIT
+
+The parked bandit concept packet is now coherent enough to promote one narrow smoke-specific signal bridge.
+The canonical contract lives at `doc/bandit-smoke-visibility-overmap-mark-bridge-v0-2026-04-20.md`.
+
+Current contract:
+- build one bounded smoke adapter from existing fire/smoke/wind footing, or equivalent deterministic smoke packets, into a coarse overmap-readable smoke signal state
+- feed that signal into the current bandit mark-generation seam so smoke writes bounty-first, reviewer-readable `worth scoping out` leads instead of staying hand-authored scenario lore
+- preserve the product rule that sustained clear-weather smoke remains several OMT legible, with a rough outer cap around the existing concept starter range, instead of shrinking into comically short-range OMT intuition
+- keep the slice bounded: no light/searchlight adapter, no broad concealment pass, no global offscreen smoke sim, and no first 500-turn proof yet
+- next honest evidence should be deterministic smoke-packet / smoke-mark cases plus reviewer-readable report output on the existing bandit seams
 
 ## Checkpointed — Locker lag-threshold probe v0
 
@@ -477,11 +493,12 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 
 ## 14. Parked concept chain — Bandit overmap AI
 
-**Status:** PARKED / CONCEPT CHAIN
+**Status:** PARKED / COHERENT SUBSTRATE
 
-Josef wants the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet is coherent enough as a whole.
-Do not quietly treat partial bandit notes as an active lane or as already-greenlit implementation.
-The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain; broader bandit implementation still stays parked outside the explicit promoted v0 slices above.
+Josef wanted the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet was coherent enough as a whole.
+That coherence audit now passes for one narrow promotion: the smoke-specific visibility -> mark bridge is active above.
+Do not quietly treat the rest of the parked notes as broad implementation approval just because one bounded slice was promoted.
+The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain, and the broader concept still stays parked outside the explicit promoted v0 slices above plus the active smoke bridge.
 
 Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
@@ -524,10 +541,10 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. only then decide whether the whole bandit concept is ready to be promoted into greenlit backlog
+6. promotion audit, now passed narrowly for the smoke bridge, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
-If the packet is revisited later, the next planning discussion should be about whether the packet is coherent enough for future greenlight consideration, not about spawning more disconnected feeder docs by default.
+If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
 
 ---
 
