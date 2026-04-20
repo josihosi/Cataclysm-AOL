@@ -1,12 +1,5 @@
 # Technical Tome
 
-## Bandit mark-generation v0 spine
-- The bounded writer-side bandit seam is source-shaped, not world-sim theater: deterministic `signal_input` packets write or refresh typed marks, rebuild broad regional heat, and emit evaluator-ready leads without pretending a full hostile overmap ecosystem already exists.
-- Soft marks cool selectively by cadence tier, while confirmed threat stays sticky on the ledger until later real evidence rewrites it. That means weak smoke/searchlight pressure can fade back out, but recent ugly loss / hard-threat memory does not get passively wished away.
-- Playback is now the reviewer-readable bridge for this seam: generated mark state rides alongside the existing dry-run scenarios so the same reference packet can show both the overmap-side mark picture and the evaluator winner drift.
-- Human/route packets stay explicit and anti-magical: direct sightings always project to `moving_carrier`, same-camp routine traffic is suppressed instead of self-poisoning into hostile truth, shared/external repeated route activity usually projects to `corridor`, and only site-correlated traffic may yield a bounded `site` clue, with extraction jobs still blocked on that packet.
-- Repeated site reinforcement is deliberately modest: a site mark only gets reinforcement credit from mixed ordinary smoke/light/route activity, repeated one-kind noise stays weak, and the bonus tops out as bounded confidence/bounty amplification instead of unlocking magical settlement truth or free extraction jobs.
-
 ## Smart Zone Manager v1 spine
 - Smart Zone Manager v1 is a one-off Basecamp helper, not an always-on rearrangement goblin: Zone Manager offers the prompt when a `CAMP_STORAGE` zone is first placed and again when that Basecamp zone is later repositioned/stretched.
 - The current v1 packet is deliberately narrow: one crafting niche, one food/drink niche, one equipment niche, plus support zones for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
@@ -471,19 +464,6 @@ That topic stays design-sensitive and should not be treated as settled just beca
 - The visible ladder is now explicit in code: positive pull -> distance shaping -> threat/pressure subtraction -> bounded need-pressure rescue -> threat gate -> downstream `no_path` invalidation.
 - `render_report()` is the first inspectable explanation surface for this seam: it prints leads considered, the full candidate board, per-candidate score terms, veto / soft-veto reasons, the winner versus `hold / chill`, and explicitly reports that no return-packet fields are touched in v0.
 - Keep later scenario playback and perf/save-budget work separate. This seam is the decision kernel footing, not permission to quietly ship the whole bandit system.
-
-#### Bandit pursuit handoff seam v0
-- The first overmap-to-bubble follow-through stays group-first and bounded: `src/bandit_pursuit_handoff.{h,cpp}` translates a winning scout/stalk candidate plus small abstract group state into an explicit local `entry_payload`, then back out through an explicit `return_packet`.
-- The entry-mode chooser is intentionally narrow for this packet: only `scout`, `probe`, `shadow`, and `withdrawal` are in play, keyed by the winning pursuit candidate, carrier family, contact certainty, and return pressure.
-- The return side preserves only the small abstract consequences this slice can honestly answer now, such as survivor count, anchored identity status, wound / morale burden, carried-vs-delivered cargo, threat/bounty writeback, learned marks, and retreat pressure.
-- `apply_return_packet()` updates abstract group continuity from that bounded packet, while `render_report()` keeps the seam reviewer-readable without pretending a full tactical AI or biography persistence stack exists.
-
-#### Bandit live-world ownership seam v0
-- The first real live-world hostile-bandit substrate now lives in `src/bandit_live_world.{h,cpp}` and persists through `overmap_global_state.bandit_live_world`.
-- This seam started as the owner ledger and now carries one first bounded control hook too: tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns claim at `map::place_npc` time, and nearby owned sites can now mint one bounded scout dispatch through `plan_site_dispatch(...)` / `apply_dispatch_plan(...)` instead of staying pure post-hoc bookkeeping.
-- Site identity is source-shaped and save-stable: overmap specials anchor to their bounded footprint, while map extras stay single-OMT micro-sites instead of inventing a giant settlement taxonomy early.
-- Membership is keyed by `character_id` plus the home spawn tile/template id so later dispatch and writeback can start from real spawned NPC continuity instead of folklore reconstruction.
-- The first cadence hook is intentionally narrow: `overmap_npc_move()` may select one nearby owned site, mark selected members outbound, and hand those actual NPCs normal `NPC_MISSION_TRAVELLING` overmap routes toward the current nearby player target; broader restage, messy local writeback, and richer cadence still belong to later slices.
 
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:
