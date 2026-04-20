@@ -67,6 +67,12 @@ struct playback_result {
     std::vector<checkpoint_result> checkpoints;
 };
 
+struct proof_packet_result {
+    std::string packet_id;
+    std::vector<int> checkpoints;
+    std::vector<playback_result> scenarios;
+};
+
 struct checkpoint_budget {
     int tick = 0;
     std::string phase;
@@ -108,11 +114,13 @@ const std::vector<scenario_definition> &reference_scenarios();
 const scenario_definition *find_reference_scenario( const std::string &id );
 playback_result run_scenario( const scenario_definition &scenario,
                               const std::vector<int> &checkpoints = {} );
+proof_packet_result run_first_500_turn_playback_proof();
 scenario_budget measure_scenario_budget( const scenario_definition &scenario,
         size_t iterations_per_checkpoint = 1,
         const std::vector<int> &checkpoints = {} );
 persistence_budget estimate_v0_persistence_budget();
 reference_suite_budget measure_reference_suite_budget( size_t iterations_per_checkpoint = 1 );
 std::string render_report( const playback_result &result );
+std::string render_first_500_turn_playback_proof( const proof_packet_result &result );
 std::string render_budget_report( const reference_suite_budget &result );
 } // namespace bandit_playback
