@@ -39,15 +39,21 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Active lane — Bandit overmap-to-bubble pursuit handoff seam v0
+### Active lane — Locker lag-threshold probe v0
 
 Current honest state:
-- the writer-side mark/heat seam is now checkpointed, so the missing evidence has moved to one bounded pursuit / investigation handoff
-- the active question is now how one abstract group crosses into local play and returns with explicit consequences instead of whether overmap marks can be written at all
-- prefer deterministic or tightly controlled handoff proof first; do not jump to live/harness theater unless the touched seam honestly stops being answerable there
-- the queued locker lag-threshold follow-up still exists, but it is not the current evidence burden while the active handoff seam is open
+- the earlier locker clutter / perf packet is now checkpointed, so the missing evidence has moved to the sharper threshold question on the same real `CAMP_LOCKER` service path
+- the active question is no longer whether clutter shape grows at all, but around where the path starts looking suspicious or actually bad under heavier item-hoard pressure
+- prefer directly instrumented timing evidence first; do not jump to live/harness theater unless the direct service seam honestly stops answering the threshold question
+- keep worker-count sweeps realistic (`1 / 5 / 10`) and bias the stress search toward top-level item hoards rather than fantasy camp populations
 
 ### Recently closed, do not casually reopen
+
+- Bandit overmap-to-bubble pursuit handoff seam v0 is now honestly checkpointed:
+  - the authoritative contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
+  - `src/bandit_pursuit_handoff.{h,cpp}` now provides the bounded overmap-to-bubble handoff, building an explicit `entry_payload`, explicit `return_packet`, bounded `scout` / `probe` / `shadow` / `withdrawal` chooser, and abstract-state writeback through `apply_return_packet()`
+  - deterministic coverage in `tests/bandit_pursuit_handoff_test.cpp` now proves the bounded scout entry packet, explicit return consequences, moving-carrier shadow routing, and reviewer-readable report output
+  - narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, and `./tests/cata_test "[bandit]"`
 
 - Locker clutter / perf guardrail probe v0 is now honestly checkpointed:
   - the authoritative contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
@@ -103,19 +109,19 @@ Current honest state:
 
 ### Meaning
 
-- the current evidence burden is the active bandit pursuit handoff seam, not more ceremonial revalidation of the already-closed bandit foundation packets
-- the writer-side bandit mark-generation seam is now checkpointed closed with deterministic proof and reviewer-readable report output
-- the locker clutter / perf question still has its first bounded direct answer and remains checkpointed closed for now
-- the queued locker lag-threshold follow-up should stay on concrete timing evidence and cheap guardrails first when it becomes active
+- the current evidence burden is the active locker lag-threshold probe, not more ceremonial revalidation of the already-closed bandit packets or the earlier locker shape packet
+- the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
+- the writer-side bandit mark-generation seam is now checkpointed closed too
+- the active locker threshold search should stay on concrete timing evidence and cheap guardrails first
 
 ---
 
 ## Pending probes
 
-- deterministic or tightly controlled proof for one bounded pursuit / investigation handoff and its return packet
-- reviewer-readable entry/return summaries for the handoff seam, not only debugger-inspection truth
-- when the queued locker lag-threshold packet becomes active later, keep it on concrete timing evidence and the first cheap guardrail order instead of architecture opera
-- do **not** jump to harness/live play unless a future touched seam honestly stops being answerable through deterministic or directly instrumented footing
+- extend the real `CAMP_LOCKER` service-path sweep beyond `1000` top-level items until a rough knee, suspicious zone, bad zone, or honest `not found within tested bound` answer appears
+- keep worker-count sweeps separated from item-hoard pressure so the packet can say which axis actually bites first
+- if the threshold starts looking bad, finish with the first cheap guardrail recommendation order instead of architecture opera
+- do **not** jump to harness/live play unless the direct locker-service seam honestly stops being answerable through directly instrumented footing
 
 ---
 

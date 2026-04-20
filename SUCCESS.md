@@ -34,23 +34,25 @@ Notes:
 
 ## Bandit overmap-to-bubble pursuit handoff seam v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded pursuit / investigation handoff exists from abstract overmap group state into local play.
-- [ ] The return path preserves meaningful abstract consequences such as updated mark/threat knowledge, losses, panic, cargo, or retreat state instead of dropping them on the floor.
-- [ ] Entry payload and return packet stay explicit, small, and reviewer-readable.
-- [ ] The slice stays bounded: no full raid / ambush suite, no broad tactical AI rewrite, and no full per-bandit biography persistence are smuggled in.
+- [x] One bounded pursuit / investigation handoff exists from abstract overmap group state into local play.
+- [x] The return path preserves meaningful abstract consequences such as updated mark/threat knowledge, losses, panic, cargo, or retreat state instead of dropping them on the floor.
+- [x] Entry payload and return packet stay explicit, small, and reviewer-readable.
+- [x] The slice stays bounded: no full raid / ambush suite, no broad tactical AI rewrite, and no full per-bandit biography persistence are smuggled in.
 
 Notes:
 - Canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`.
-- This is now the next active promoted implementation slice, inheriting real overmap-side state from the checkpointed mark-generation seam instead of fabricated placeholder truth.
+- The bounded handoff seam now lives in `src/bandit_pursuit_handoff.{h,cpp}` and stays on abstract group state plus explicit `entry_payload` / `return_packet` packets instead of pretending full local combat AI already exists.
+- Deterministic coverage in `tests/bandit_pursuit_handoff_test.cpp` proves the bounded scout entry packet, explicit return consequences, moving-carrier shadow routing, and reviewer-readable report output.
+- Narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, and `./tests/cata_test "[bandit]"`.
 
 ---
 
 ## Locker lag-threshold probe v0
 
-Status: GREENLIT / BACKLOG
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] One honest threshold packet exists for the real `CAMP_LOCKER` service path.

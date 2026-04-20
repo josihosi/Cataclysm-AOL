@@ -8,15 +8,12 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Bandit overmap-to-bubble pursuit handoff seam v0**.
+Active lane: **Locker lag-threshold probe v0**.
 
 Current target:
-1. freeze the implementation contract from `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
-2. build one bounded pursuit / investigation handoff from abstract overmap group state into local play
-3. keep the entry payload and return packet explicit, small, and reviewer-readable, carrying real mark/threat/cargo/loss/panic consequences back out
-4. prove the handoff on deterministic or tightly controlled footing before asking for broader live drama
+1. freeze the implementation contract from `doc/locker-lag-threshold-probe-v0-2026-04-20.md`
+2. extend the real `CAMP_LOCKER` service-path clutter sweep beyond `50 / 100 / 200 / 500 / 1000` until a rough knee, suspicious zone, bad zone, or honest `not found within tested bound` answer appears
+3. keep worker-count sweeps realistic (`1 / 5 / 10`) and item-hoard pressure as the primary stress axis instead of fantasy camp populations
+4. end with the cheapest guardrail order first if the curve starts looking bad, instead of jumping straight to architecture opera
 
-Queued behind this active lane:
-- `Locker lag-threshold probe v0`
-
-Do not widen the new active bandit lane into full raids, broad tactical AI, or visibility/concealment sprawl.
+Do not reopen the earlier locker clutter / perf packet just to restate the same shape answer more loudly.

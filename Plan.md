@@ -86,8 +86,8 @@ Fresh checkpoints that stay closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Meaning:
-- the active lane is now `Bandit overmap-to-bubble pursuit handoff seam v0`
-- the queued greenlit follow-up is `Locker lag-threshold probe v0`
+- the active lane is now `Locker lag-threshold probe v0`
+- the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
 - the locker clutter / perf packet is checkpointed closed too
@@ -99,28 +99,11 @@ Meaning:
 
 ---
 
-## Active lane — Bandit overmap-to-bubble pursuit handoff seam v0
+## Active lane — Locker lag-threshold probe v0
 
 **Status:** ACTIVE / GREENLIT
 
-The bounded bandit evaluator, playback suite, budget packet, and writer-side mark seam are now good enough that the next honest missing slice is the first local handoff.
-The right first anchor remains pursuit / investigation, not a full raid circus.
-
-Current contract:
-- the canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
-- the first honest handoff case is pursuit / investigation, not a full raid circus
-- the slice should carry one small explicit entry payload plus one small explicit return packet for losses, panic, cargo, and updated mark/threat knowledge
-- keep continuity group-first and bounded, with at most a tiny anchored-identity slice where that is honestly needed
-
-Why this is active now:
-- the handoff lane now has real overmap-side state to inherit instead of placeholder writer-side fiction
-- the next real missing question is how one bounded abstract group crosses into local play and comes back with meaningful consequences, not whether the mark ledger exists
-
-## Greenlit backlog — Locker lag-threshold probe v0
-
-**Status:** GREENLIT / BACKLOG
-
-This queued follow-up exists because the first locker clutter / perf packet answered shape better than threshold.
+The first locker clutter / perf packet answered shape honestly enough that the next missing question is the rough player-facing lag threshold on the same real service path.
 
 Current contract:
 - the canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`
@@ -129,6 +112,22 @@ Current contract:
 - if the curve starts looking bad, end with the cheapest guardrail order first instead of jumping straight to architecture opera
 
 Do not reopen the earlier locker packet just to restate the same shape answer more loudly.
+
+## Checkpointed — Bandit overmap-to-bubble pursuit handoff seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The first bounded bandit handoff now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
+- `src/bandit_pursuit_handoff.{h,cpp}` now provides the bounded overmap-to-bubble seam, translating a winning pursuit candidate plus small abstract group state into an explicit `entry_payload` and explicit `return_packet`
+- the current chooser stays intentionally narrow on `scout` / `probe` / `shadow` / `withdrawal`, preserving one pursuit / investigation slice instead of widening into raid or ambush theater
+- `apply_return_packet()` now carries back meaningful abstract consequences such as losses, wound / morale burden, carried-vs-delivered cargo, threat / bounty writeback, learned marks, and retreat pressure instead of dropping them on the floor
+- `render_report()` plus deterministic coverage in `tests/bandit_pursuit_handoff_test.cpp` keep the seam reviewer-readable and prove the bounded scout entry case, explicit return consequences, and moving-carrier shadow path
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the packet is lying, no longer bounded enough, or needs a truly different local handoff class.
 
 ---
 
