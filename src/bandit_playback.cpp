@@ -104,6 +104,31 @@ smoke_packet make_smoke_packet( const std::string &id, const std::string &envelo
     return packet;
 }
 
+light_packet make_light_packet( const std::string &id, const std::string &envelope_id,
+                                const std::string &region_id, int observed_range_omt,
+                                int source_strength, int persistence, int side_leakage,
+                                light_time_band time, light_weather_band weather,
+                                light_exposure_band exposure, light_source_band source,
+                                lead_family family = lead_family::site,
+                                const std::vector<std::string> &notes = {} )
+{
+    light_packet packet;
+    packet.id = id;
+    packet.envelope_id = envelope_id;
+    packet.region_id = region_id;
+    packet.family = family;
+    packet.observed_range_omt = observed_range_omt;
+    packet.source_strength = source_strength;
+    packet.persistence = persistence;
+    packet.side_leakage = side_leakage;
+    packet.time = time;
+    packet.weather = weather;
+    packet.exposure = exposure;
+    packet.source = source;
+    packet.notes = notes;
+    return packet;
+}
+
 scenario_definition make_empty_region()
 {
     scenario_definition scenario;
@@ -523,6 +548,64 @@ scenario_definition make_generated_smoke_mark_cools_off()
     return scenario;
 }
 
+scenario_definition make_generated_night_light_mark_scopes_out()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_night_light_mark_scopes_out";
+    scenario.title = "Generated night light mark scopes out";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Can exposed night light create a bounded site scout lead without turning into magical daytime or identity truth?"
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "fresh_night_light",
+        make_camp( 2 ),
+        {},
+        {
+            "The writer-side light packet should create the first scout pressure with no hand-authored lead list.",
+            "This is ordinary exposed night light, so it stays occupancy-first rather than threat-first."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "farm_window_light", "farm_window_light", "farmstead_edge", 8, 2, 1, 1,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::site,
+                               { "Exposed night light can be legible from far away without becoming free identity truth." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "night_light_cooled_without_refresh",
+        make_camp( 2 ),
+        {},
+        {
+            "A distant inactive pass should cool the ordinary night-light clue back below hold / chill."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "daily_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Daily cleanup should prune the stale light clutter instead of keeping it immortal."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
 scenario_definition make_generated_corridor_mark_refreshes_cleanly()
 {
     scenario_definition scenario;
@@ -530,7 +613,7 @@ scenario_definition make_generated_corridor_mark_refreshes_cleanly()
     scenario.title = "Generated corridor mark refreshes cleanly";
     scenario.default_checkpoints = { 0, 5, 20, 100 };
     scenario.questions = {
-        "Can repeated corridor evidence refresh one mark cleanly and keep it corridor-shaped instead of writing ghost duplicates?"
+        "Can repeated searchlight evidence refresh one mark cleanly and keep it corridor-shaped instead of writing ghost duplicates?"
     };
 
     scenario.frames.push_back( {
@@ -539,15 +622,17 @@ scenario_definition make_generated_corridor_mark_refreshes_cleanly()
         make_camp( 2 ),
         {},
         {
-            "The first corridor mark should yield a bounded stalk, not a site raid."
+            "The first searchlight corridor mark should yield a bounded stalk, not a site raid."
         },
         cadence_tier::nearby_active,
+        {},
+        {},
         {
-            make_signal( "searchlight_road", "searchlight", "searchlight_road", "road_corridor",
-                         lead_family::corridor, 0, 1, 1, 0, 0.70,
-                         0, threat_gate::soft_veto, 0, 0, false, true,
-                         { job_template::scout, job_template::toll },
-                         { "Smoke plus searchlight should stay a corridor-pressure mark." } )
+            make_light_packet( "searchlight_road", "searchlight_road", "road_corridor", 8, 2, 1, 1,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::searchlight,
+                               lead_family::corridor,
+                               { "Searchlight exposure should stay corridor-pressure evidence, not a free extraction lane." } )
         }
     } );
 
@@ -560,12 +645,14 @@ scenario_definition make_generated_corridor_mark_refreshes_cleanly()
             "Refresh should keep the winner corridor-shaped and strengthen confidence modestly."
         },
         cadence_tier::nearby_active,
+        {},
+        {},
         {
-            make_signal( "searchlight_road", "searchlight", "searchlight_road", "road_corridor",
-                         lead_family::corridor, 0, 1, 1, 0, 0.70,
-                         0, threat_gate::soft_veto, 0, 0, false, true,
-                         { job_template::scout, job_template::toll },
-                         { "Repeated matching evidence should refresh the same corridor mark instead of cloning it." } )
+            make_light_packet( "searchlight_road", "searchlight_road", "road_corridor", 8, 2, 1, 1,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::searchlight,
+                               lead_family::corridor,
+                               { "Repeated matching searchlight evidence should refresh the same corridor mark instead of cloning it." } )
         }
     } );
 
@@ -689,6 +776,12 @@ checkpoint_result build_checkpoint( const scenario_definition &scenario, int tic
                 signals.push_back( projection.signal );
             }
         }
+        for( const light_packet &packet : frame.light_packets ) {
+            const light_projection projection = adapt_light_packet( packet );
+            if( projection.viable ) {
+                signals.push_back( projection.signal );
+            }
+        }
         advance_state( generated_marks, frame.tick, frame.cadence, signals );
     }
 
@@ -786,6 +879,7 @@ const std::vector<scenario_definition> &reference_scenarios()
         make_strong_camp_split_route(),
         make_city_edge_moving_hordes(),
         make_generated_smoke_mark_cools_off(),
+        make_generated_night_light_mark_scopes_out(),
         make_generated_corridor_mark_refreshes_cleanly(),
         make_generated_confirmed_threat_stays_sticky(),
     };

@@ -20,6 +20,29 @@ enum class smoke_weather_band {
     fog,
 };
 
+enum class light_time_band {
+    daylight,
+    twilight,
+    night,
+};
+
+enum class light_weather_band {
+    clear,
+    rain,
+    fog,
+};
+
+enum class light_exposure_band {
+    contained,
+    screened,
+    exposed,
+};
+
+enum class light_source_band {
+    ordinary,
+    searchlight,
+};
+
 struct signal_input {
     std::string id;
     std::string kind;
@@ -57,6 +80,30 @@ struct smoke_packet {
 
 struct smoke_projection {
     smoke_packet packet;
+    signal_input signal;
+    int visibility_score = 0;
+    int projected_range_omt = 0;
+    bool viable = false;
+};
+
+struct light_packet {
+    std::string id;
+    std::string envelope_id;
+    std::string region_id;
+    bandit_dry_run::lead_family family = bandit_dry_run::lead_family::site;
+    int observed_range_omt = 0;
+    int source_strength = 0;
+    int persistence = 0;
+    int side_leakage = 0;
+    light_time_band time = light_time_band::night;
+    light_weather_band weather = light_weather_band::clear;
+    light_exposure_band exposure = light_exposure_band::screened;
+    light_source_band source = light_source_band::ordinary;
+    std::vector<std::string> notes;
+};
+
+struct light_projection {
+    light_packet packet;
     signal_input signal;
     int visibility_score = 0;
     int projected_range_omt = 0;
@@ -122,6 +169,11 @@ std::vector<bandit_dry_run::lead_input> emit_leads( const ledger_state &state,
 std::string render_report( const ledger_state &state,
                            const std::vector<bandit_dry_run::lead_input> *leads = nullptr );
 smoke_projection adapt_smoke_packet( const smoke_packet &packet );
+light_projection adapt_light_packet( const light_packet &packet );
 std::string to_string( cadence_tier tier );
 std::string to_string( smoke_weather_band weather );
+std::string to_string( light_time_band time );
+std::string to_string( light_weather_band weather );
+std::string to_string( light_exposure_band exposure );
+std::string to_string( light_source_band source );
 } // namespace bandit_mark_generation

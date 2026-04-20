@@ -46,6 +46,60 @@ int smoke_weather_penalty( smoke_weather_band weather )
     return 0;
 }
 
+int light_time_penalty( light_time_band time )
+{
+    switch( time ) {
+        case light_time_band::daylight:
+            return 6;
+        case light_time_band::twilight:
+            return 2;
+        case light_time_band::night:
+            return 0;
+    }
+
+    return 0;
+}
+
+int light_weather_penalty( light_weather_band weather )
+{
+    switch( weather ) {
+        case light_weather_band::clear:
+            return 0;
+        case light_weather_band::rain:
+            return 2;
+        case light_weather_band::fog:
+            return 3;
+    }
+
+    return 0;
+}
+
+int light_exposure_bonus( light_exposure_band exposure )
+{
+    switch( exposure ) {
+        case light_exposure_band::contained:
+            return -3;
+        case light_exposure_band::screened:
+            return 0;
+        case light_exposure_band::exposed:
+            return 2;
+    }
+
+    return 0;
+}
+
+int light_source_bonus( light_source_band source )
+{
+    switch( source ) {
+        case light_source_band::ordinary:
+            return 0;
+        case light_source_band::searchlight:
+            return 2;
+    }
+
+    return 0;
+}
+
 std::string effective_mark_id( const signal_input &signal )
 {
     if( !signal.id.empty() ) {
@@ -210,6 +264,60 @@ std::string to_string( smoke_weather_band weather )
     return "unknown";
 }
 
+std::string to_string( light_time_band time )
+{
+    switch( time ) {
+        case light_time_band::daylight:
+            return "daylight";
+        case light_time_band::twilight:
+            return "twilight";
+        case light_time_band::night:
+            return "night";
+    }
+
+    return "unknown";
+}
+
+std::string to_string( light_weather_band weather )
+{
+    switch( weather ) {
+        case light_weather_band::clear:
+            return "clear";
+        case light_weather_band::rain:
+            return "rain";
+        case light_weather_band::fog:
+            return "fog";
+    }
+
+    return "unknown";
+}
+
+std::string to_string( light_exposure_band exposure )
+{
+    switch( exposure ) {
+        case light_exposure_band::contained:
+            return "contained";
+        case light_exposure_band::screened:
+            return "screened";
+        case light_exposure_band::exposed:
+            return "exposed";
+    }
+
+    return "unknown";
+}
+
+std::string to_string( light_source_band source )
+{
+    switch( source ) {
+        case light_source_band::ordinary:
+            return "ordinary";
+        case light_source_band::searchlight:
+            return "searchlight";
+    }
+
+    return "unknown";
+}
+
 smoke_projection adapt_smoke_packet( const smoke_packet &packet )
 {
     smoke_projection projection;
@@ -255,6 +363,77 @@ smoke_projection adapt_smoke_packet( const smoke_packet &packet )
                             ", projected_range_omt=" + std::to_string( projection.projected_range_omt ) +
                             ", visibility_score=" + std::to_string( projection.visibility_score ) );
     signal.notes.push_back( "smoke stays bounty-first: this is worth scoping out, not free loot or identity truth" );
+
+    projection.signal = signal;
+    return projection;
+}
+
+light_projection adapt_light_packet( const light_packet &packet )
+{
+    light_projection projection;
+    projection.packet = packet;
+
+    const int weather_penalty = light_weather_penalty( packet.weather );
+    const int time_penalty = light_time_penalty( packet.time );
+    const int exposure_bonus = light_exposure_bonus( packet.exposure );
+    const int side_leakage = std::clamp( packet.side_leakage, 0, 2 );
+    const int source_bonus = light_source_bonus( packet.source );
+    projection.visibility_score = std::max( 0, packet.source_strength + packet.persistence +
+                                            exposure_bonus + side_leakage + source_bonus -
+                                            weather_penalty - time_penalty );
+    projection.projected_range_omt = std::clamp( 1 + packet.source_strength * 2 + packet.persistence +
+                                     exposure_bonus + side_leakage + source_bonus -
+                                     weather_penalty - time_penalty, 0, 12 );
+    projection.viable = projection.visibility_score > 0 &&
+                        packet.observed_range_omt <= projection.projected_range_omt;
+
+    if( !projection.viable ) {
+        return projection;
+    }
+
+    signal_input signal;
+    signal.id = packet.id;
+    signal.kind = packet.source == light_source_band::searchlight ? "searchlight" : "light";
+    signal.envelope_id = packet.envelope_id;
+    signal.region_id = packet.region_id;
+    signal.family = packet.family;
+    signal.strength = 1;
+    signal.confidence = 1;
+    signal.threat_add = packet.source == light_source_band::searchlight ? 1 : 0;
+    signal.bounty_add = packet.source == light_source_band::searchlight ? 0 : 1;
+    signal.reward_profile_match = 0;
+    signal.distance_multiplier = std::clamp( 1.10 - static_cast<double>( packet.observed_range_omt ) /
+                                 static_cast<double>( std::max( 1, projection.projected_range_omt ) ),
+                                 0.25, 1.0 );
+    signal.threat_gate_result = packet.source == light_source_band::searchlight ?
+                                bandit_dry_run::threat_gate::soft_veto :
+                                bandit_dry_run::threat_gate::discount_only;
+    signal.hard_blocked_jobs = {
+        bandit_dry_run::job_template::scavenge,
+        bandit_dry_run::job_template::steal,
+        bandit_dry_run::job_template::raid,
+    };
+    if( packet.source == light_source_band::searchlight &&
+        packet.family == bandit_dry_run::lead_family::corridor ) {
+        signal.hard_blocked_jobs.push_back( bandit_dry_run::job_template::scout );
+        signal.hard_blocked_jobs.push_back( bandit_dry_run::job_template::toll );
+    }
+    signal.confirmed_threat = false;
+    signal.soft_decay = true;
+    signal.notes = packet.notes;
+    signal.notes.push_back( "light packet: time=" + to_string( packet.time ) +
+                            ", weather=" + to_string( packet.weather ) +
+                            ", exposure=" + to_string( packet.exposure ) +
+                            ", source=" + to_string( packet.source ) +
+                            ", side_leakage=" + std::to_string( side_leakage ) +
+                            ", observed_range_omt=" + std::to_string( packet.observed_range_omt ) +
+                            ", projected_range_omt=" + std::to_string( projection.projected_range_omt ) +
+                            ", visibility_score=" + std::to_string( projection.visibility_score ) );
+    if( packet.source == light_source_band::searchlight ) {
+        signal.notes.push_back( "searchlight stays threat-first: this is a guarded clue, not a free extraction lane" );
+    } else {
+        signal.notes.push_back( "night light stays bounty-first: this is worth scoping out when exposure supports it, not free loot or identity truth" );
+    }
 
     projection.signal = signal;
     return projection;
