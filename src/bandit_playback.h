@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bandit_dry_run.h"
+#include "bandit_mark_generation.h"
 
 #include <string>
 #include <vector>
@@ -13,6 +14,8 @@ struct scenario_frame {
     bandit_dry_run::camp_input camp;
     std::vector<bandit_dry_run::lead_input> leads;
     std::vector<std::string> notes;
+    bandit_mark_generation::cadence_tier cadence = bandit_mark_generation::cadence_tier::nearby_active;
+    std::vector<bandit_mark_generation::signal_input> mark_signals;
 };
 
 struct scenario_definition {
@@ -27,6 +30,8 @@ struct checkpoint_result {
     int tick = 0;
     std::string phase;
     std::vector<std::string> notes;
+    bandit_mark_generation::ledger_state generated_marks;
+    std::vector<bandit_dry_run::lead_input> generated_leads;
     bandit_dry_run::evaluation_result evaluation;
 };
 

@@ -12,6 +12,7 @@ namespace bandit_playback
 namespace
 {
 using namespace bandit_dry_run;
+using namespace bandit_mark_generation;
 
 camp_input make_camp( int manpower, shortage_band shortage = shortage_band::stable )
 {
@@ -46,6 +47,41 @@ lead_input make_lead( const std::string &id, const std::string &envelope_id,
     return lead;
 }
 
+signal_input make_signal( const std::string &id, const std::string &kind,
+                          const std::string &envelope_id, const std::string &region_id,
+                          lead_family family, int strength, int confidence,
+                          int threat_add, int bounty_add, double distance_multiplier,
+                          int reward_profile_match = 0,
+                          threat_gate gate = threat_gate::discount_only,
+                          int monster_pressure_add = 0,
+                          int target_coherence_subtract = 0,
+                          bool confirmed_threat = false,
+                          bool soft_decay = true,
+                          const std::vector<job_template> &hard_blocked_jobs = {},
+                          const std::vector<std::string> &notes = {} )
+{
+    signal_input signal;
+    signal.id = id;
+    signal.kind = kind;
+    signal.envelope_id = envelope_id;
+    signal.region_id = region_id;
+    signal.family = family;
+    signal.strength = strength;
+    signal.confidence = confidence;
+    signal.threat_add = threat_add;
+    signal.bounty_add = bounty_add;
+    signal.reward_profile_match = reward_profile_match;
+    signal.distance_multiplier = distance_multiplier;
+    signal.threat_gate_result = gate;
+    signal.monster_pressure_add = monster_pressure_add;
+    signal.target_coherence_subtract = target_coherence_subtract;
+    signal.confirmed_threat = confirmed_threat;
+    signal.soft_decay = soft_decay;
+    signal.hard_blocked_jobs = hard_blocked_jobs;
+    signal.notes = notes;
+    return signal;
+}
+
 scenario_definition make_empty_region()
 {
     scenario_definition scenario;
@@ -64,7 +100,9 @@ scenario_definition make_empty_region()
         {
             "No real marks, no moving carriers, no corridor pressure.",
             "The only honest candidate should be hold / chill across the whole playback."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     return scenario;
@@ -93,7 +131,9 @@ scenario_definition make_smoke_only_distant_clue()
         {
             "Fresh smoke should justify a bounded scout.",
             "Extraction jobs stay blocked because the signal is only smoke."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -109,7 +149,9 @@ scenario_definition make_smoke_only_distant_clue()
         {
             "The camp should stop orbiting a weak stale smoke clue.",
             "This is the cheap passivity check, not a persistence lane."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -119,7 +161,9 @@ scenario_definition make_smoke_only_distant_clue()
         {},
         {
             "The smoke has gone cold, so the board should collapse back to hold / chill."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     return scenario;
@@ -148,7 +192,9 @@ scenario_definition make_smoke_searchlight_corridor()
         {
             "Soft-veto pressure should keep a marginal stalk alive.",
             "The winner should stay corridor-shaped instead of mutating into a broad site assault."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -158,7 +204,9 @@ scenario_definition make_smoke_searchlight_corridor()
         {},
         {
             "Once the corridor clue cools off, the camp should stop posturing and go back to hold / chill."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     return scenario;
@@ -189,7 +237,9 @@ scenario_definition make_forest_plus_town()
         },
         {
             "At the start, the town should not magically beat the safer nearby forest skim."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -207,7 +257,9 @@ scenario_definition make_forest_plus_town()
         },
         {
             "The winner may pivot, but it should still stay a scout and not an invented deep-city raid."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -217,7 +269,9 @@ scenario_definition make_forest_plus_town()
         {},
         {
             "Long horizon check: no durable fake pressure should remain once both leads cool off."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     return scenario;
@@ -244,7 +298,9 @@ scenario_definition make_single_traveler_forest()
         },
         {
             "Stalk should beat hold / chill while the traveler is current and reachable."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -259,7 +315,9 @@ scenario_definition make_single_traveler_forest()
         {
             "The winner can stay stalk while the carrier is still real.",
             "The forest itself should not become the envelope."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -269,7 +327,9 @@ scenario_definition make_single_traveler_forest()
         {},
         {
             "When the traveler is gone, the camp should not keep treating the forest as a permanent target."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     return scenario;
@@ -301,7 +361,9 @@ scenario_definition make_strong_camp_split_route()
         },
         {
             "The split route should win over direct bravado against the strong camp."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -316,7 +378,9 @@ scenario_definition make_strong_camp_split_route()
         },
         {
             "Long horizon check: a strong defended camp by itself should collapse back to hold / chill if the good route disappears."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     return scenario;
@@ -344,7 +408,9 @@ scenario_definition make_city_edge_moving_hordes()
         },
         {
             "Soft-veto should keep a cautious stalk alive, not a deep raid."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -360,7 +426,9 @@ scenario_definition make_city_edge_moving_hordes()
         {
             "This is the peel-off check.",
             "When the pressure grows, the same route should stop winning and fall back to hold / chill."
-        }
+        },
+        cadence_tier::nearby_active,
+        {}
     } );
 
     scenario.frames.push_back( {
@@ -370,7 +438,192 @@ scenario_definition make_city_edge_moving_hordes()
         {},
         {
             "Long horizon check: the city edge should stay quiet after the hard-veto retreat."
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_smoke_mark_cools_off()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_smoke_mark_cools_off";
+    scenario.title = "Generated smoke mark cools off";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Can the writer-side seam create a smoke mark, feed a scout lead, and then cool it off without hand-authored lead input?"
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "fresh_smoke_mark",
+        make_camp( 2 ),
+        {},
+        {
+            "The mark ledger, not a hand-authored lead list, should create the first scout pressure."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "ridge_smoke", "smoke", "ridge_smoke", "ridge_rim",
+                         lead_family::site, 1, 1, 1, 1, 0.55,
+                         0, threat_gate::discount_only, 0, 0, false, true,
+                         { job_template::scavenge, job_template::steal, job_template::raid },
+                         { "Thin smoke should create a scoutable site mark, not instant loot permission." } )
         }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "smoke_cooled_without_refresh",
+        make_camp( 2 ),
+        {},
+        {
+            "A distant inactive pass should cool the weak smoke mark back below hold / chill."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "daily_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Daily cleanup should prune the stale smoke clutter instead of letting it live forever."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_corridor_mark_refreshes_cleanly()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_corridor_mark_refreshes_cleanly";
+    scenario.title = "Generated corridor mark refreshes cleanly";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Can repeated corridor evidence refresh one mark cleanly and keep it corridor-shaped instead of writing ghost duplicates?"
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "fresh_corridor_mark",
+        make_camp( 2 ),
+        {},
+        {
+            "The first corridor mark should yield a bounded stalk, not a site raid."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "searchlight_road", "searchlight", "searchlight_road", "road_corridor",
+                         lead_family::corridor, 0, 1, 1, 0, 0.70,
+                         0, threat_gate::soft_veto, 0, 0, false, true,
+                         { job_template::scout, job_template::toll },
+                         { "Smoke plus searchlight should stay a corridor-pressure mark." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "corridor_refreshed",
+        make_camp( 2 ),
+        {},
+        {
+            "Refresh should keep the winner corridor-shaped and strengthen confidence modestly."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "searchlight_road", "searchlight", "searchlight_road", "road_corridor",
+                         lead_family::corridor, 0, 1, 1, 0, 0.70,
+                         0, threat_gate::soft_veto, 0, 0, false, true,
+                         { job_template::scout, job_template::toll },
+                         { "Repeated matching evidence should refresh the same corridor mark instead of cloning it." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        60,
+        "corridor_cooling",
+        make_camp( 2 ),
+        {},
+        {
+            "A later distant inactive pass should cool the corridor read instead of keeping it immortal."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "corridor_pruned",
+        make_camp( 2 ),
+        {},
+        {
+            "Without more corroboration, the corridor mark should eventually collapse back to quiet."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_confirmed_threat_stays_sticky()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_confirmed_threat_stays_sticky";
+    scenario.title = "Generated confirmed threat stays sticky";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Does confirmed threat remain on the overmap ledger across cleanup passes instead of passively melting away?"
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "loss_site_written",
+        make_camp( 2 ),
+        {},
+        {
+            "The generated lead should be present but hard-vetoed, leaving hold / chill as the winner."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "fortified_loss_site", "loss_site", "fortified_loss_site", "city_edge",
+                         lead_family::site, 1, 2, 3, 0, 0.60,
+                         0, threat_gate::hard_veto, 0, 0, true, true,
+                         { job_template::scavenge, job_template::steal, job_template::raid },
+                         { "A confirmed ugly loss should freeze as threat until later real observation rewrites it." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "threat_not_forgotten",
+        make_camp( 2 ),
+        {},
+        {
+            "A distant inactive pass should not remote-rewrite the scary read into safety."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "daily_cleanup_keeps_threat",
+        make_camp( 2 ),
+        {},
+        {
+            "Daily cleanup should still keep the confirmed threat mark alive."
+        },
+        cadence_tier::daily_cleanup,
+        {}
     } );
 
     return scenario;
@@ -395,6 +648,31 @@ std::vector<int> normalized_checkpoints( const scenario_definition &scenario,
     std::sort( checkpoints.begin(), checkpoints.end() );
     checkpoints.erase( std::unique( checkpoints.begin(), checkpoints.end() ), checkpoints.end() );
     return checkpoints;
+}
+
+checkpoint_result build_checkpoint( const scenario_definition &scenario, int tick )
+{
+    checkpoint_result checkpoint;
+    checkpoint.tick = tick;
+
+    ledger_state generated_marks;
+    for( const scenario_frame &frame : scenario.frames ) {
+        if( frame.tick > tick ) {
+            break;
+        }
+        advance_state( generated_marks, frame.tick, frame.cadence, frame.mark_signals );
+    }
+
+    const scenario_frame &frame = frame_for_tick( scenario, tick );
+    checkpoint.phase = frame.phase;
+    checkpoint.notes = frame.notes;
+    checkpoint.generated_marks = generated_marks;
+    checkpoint.generated_leads = emit_leads( checkpoint.generated_marks );
+
+    std::vector<lead_input> leads = checkpoint.generated_leads;
+    leads.insert( leads.end(), frame.leads.begin(), frame.leads.end() );
+    checkpoint.evaluation = bandit_dry_run::evaluate( frame.camp, leads );
+    return checkpoint;
 }
 
 const candidate_debug &winner_candidate( const evaluation_result &evaluation )
@@ -478,6 +756,9 @@ const std::vector<scenario_definition> &reference_scenarios()
         make_single_traveler_forest(),
         make_strong_camp_split_route(),
         make_city_edge_moving_hordes(),
+        make_generated_smoke_mark_cools_off(),
+        make_generated_corridor_mark_refreshes_cleanly(),
+        make_generated_confirmed_threat_stays_sticky(),
     };
     return scenarios;
 }
@@ -500,13 +781,7 @@ playback_result run_scenario( const scenario_definition &scenario,
     result.questions = scenario.questions;
 
     for( int tick : normalized_checkpoints( scenario, checkpoints ) ) {
-        const scenario_frame &frame = frame_for_tick( scenario, tick );
-        checkpoint_result checkpoint;
-        checkpoint.tick = tick;
-        checkpoint.phase = frame.phase;
-        checkpoint.notes = frame.notes;
-        checkpoint.evaluation = bandit_dry_run::evaluate( frame.camp, frame.leads );
-        result.checkpoints.push_back( checkpoint );
+        result.checkpoints.push_back( build_checkpoint( scenario, tick ) );
     }
 
     return result;
@@ -531,13 +806,14 @@ scenario_budget measure_scenario_budget( const scenario_definition &scenario,
 
         for( size_t iteration = 0; iteration < iterations; ++iteration ) {
             const auto started = std::chrono::steady_clock::now();
-            const evaluation_result evaluation = bandit_dry_run::evaluate( frame.camp, frame.leads );
+            const checkpoint_result evaluated_checkpoint = build_checkpoint( scenario, tick );
             const auto finished = std::chrono::steady_clock::now();
             const long long runtime_us = std::chrono::duration_cast<std::chrono::microseconds>( finished - started ).count();
 
             checkpoint.total_runtime_us += runtime_us;
-            checkpoint.metrics = evaluation.metrics;
-            checkpoint.checksum = hash_combine( checkpoint.checksum, evaluation_checksum( evaluation ) );
+            checkpoint.metrics = evaluated_checkpoint.evaluation.metrics;
+            checkpoint.checksum = hash_combine( checkpoint.checksum,
+                                                evaluation_checksum( evaluated_checkpoint.evaluation ) );
         }
 
         checkpoint.average_runtime_us = static_cast<double>( checkpoint.total_runtime_us ) /
@@ -615,6 +891,16 @@ std::string render_report( const playback_result &result )
         out << "\n";
         for( const std::string &note : checkpoint.notes ) {
             out << "  note: " << note << "\n";
+        }
+        if( !checkpoint.generated_marks.marks.empty() || !checkpoint.generated_marks.heat.empty() ) {
+            out << "  generated_marks:\n";
+            const std::string mark_report = bandit_mark_generation::render_report( checkpoint.generated_marks,
+                                            &checkpoint.generated_leads );
+            std::istringstream report_stream( mark_report );
+            std::string line;
+            while( std::getline( report_stream, line ) ) {
+                out << "    " << line << "\n";
+            }
         }
         out << "  reason: " << checkpoint.evaluation.winner_reason << "\n";
     }

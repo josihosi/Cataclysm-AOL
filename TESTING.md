@@ -39,24 +39,15 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-There is currently **no active greenlit lane**.
-
-### Latest closed lane — Locker lag-threshold probe v0
+### Active lane — Bandit overmap-to-bubble pursuit handoff seam v0
 
 Current honest state:
-- the threshold packet now stays on the real `CAMP_LOCKER` service path with locker `DebugLog` noise suppressed during timing runs, so measurement output is readable instead of log-spew soup
-- the high-clutter fixture is now honest: `tests/faction_camp_test.cpp` spreads top-level clutter across real multi-tile locker zones, which avoids lying about `5000 / 10000 / 20000` items on one tile past `MAX_ITEM_IN_SQUARE`
-- the packet now covers top-level clutter at `1000 / 2000 / 5000 / 10000 / 20000` plus worker-count sweeps at `1 / 5 / 10` on `5000` clutter
-- current result: no clear knee was found within the tested bound, with median service time staying roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and about `1.0 ms` per worker at `5000` clutter across `1 / 5 / 10`
-- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
+- the writer-side mark/heat seam is now checkpointed, so the missing evidence has moved to one bounded pursuit / investigation handoff
+- the active question is now how one abstract group crosses into local play and returns with explicit consequences instead of whether overmap marks can be written at all
+- prefer deterministic or tightly controlled handoff proof first; do not jump to live/harness theater unless the touched seam honestly stops being answerable there
+- the queued locker lag-threshold follow-up still exists, but it is not the current evidence burden while the active handoff seam is open
 
 ### Recently closed, do not casually reopen
-
-- Bandit overmap-to-bubble pursuit handoff seam v0 is now honestly checkpointed:
-  - the authoritative contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
-  - `src/bandit_pursuit_handoff.{h,cpp}` now provides the bounded overmap-to-bubble handoff, building an explicit `entry_payload`, explicit `return_packet`, bounded `scout` / `probe` / `shadow` / `withdrawal` chooser, and abstract-state writeback through `apply_return_packet()`
-  - deterministic coverage in `tests/bandit_pursuit_handoff_test.cpp` now proves the bounded scout entry packet, explicit return consequences, moving-carrier shadow routing, and reviewer-readable report output
-  - narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, and `./tests/cata_test "[bandit]"`
 
 - Locker clutter / perf guardrail probe v0 is now honestly checkpointed:
   - the authoritative contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
@@ -112,16 +103,19 @@ Current honest state:
 
 ### Meaning
 
-- there is currently no active evidence burden because the locker lag-threshold probe is now checkpointed too
-- do not reopen the locker threshold packet or the earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
-- the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
-- the writer-side bandit mark-generation seam is now checkpointed closed too
+- the current evidence burden is the active bandit pursuit handoff seam, not more ceremonial revalidation of the already-closed bandit foundation packets
+- the writer-side bandit mark-generation seam is now checkpointed closed with deterministic proof and reviewer-readable report output
+- the locker clutter / perf question still has its first bounded direct answer and remains checkpointed closed for now
+- the queued locker lag-threshold follow-up should stay on concrete timing evidence and cheap guardrails first when it becomes active
 
 ---
 
 ## Pending probes
 
-None until the next lane is greenlit.
+- deterministic or tightly controlled proof for one bounded pursuit / investigation handoff and its return packet
+- reviewer-readable entry/return summaries for the handoff seam, not only debugger-inspection truth
+- when the queued locker lag-threshold packet becomes active later, keep it on concrete timing evidence and the first cheap guardrail order instead of architecture opera
+- do **not** jump to harness/live play unless a future touched seam honestly stops being answerable through deterministic or directly instrumented footing
 
 ---
 

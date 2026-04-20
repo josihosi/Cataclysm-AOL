@@ -34,36 +34,33 @@ Notes:
 
 ## Bandit overmap-to-bubble pursuit handoff seam v0
 
-Status: CHECKPOINTED / DONE FOR NOW
+Status: ACTIVE / GREENLIT
 
 Success state:
-- [x] One bounded pursuit / investigation handoff exists from abstract overmap group state into local play.
-- [x] The return path preserves meaningful abstract consequences such as updated mark/threat knowledge, losses, panic, cargo, or retreat state instead of dropping them on the floor.
-- [x] Entry payload and return packet stay explicit, small, and reviewer-readable.
-- [x] The slice stays bounded: no full raid / ambush suite, no broad tactical AI rewrite, and no full per-bandit biography persistence are smuggled in.
+- [ ] One bounded pursuit / investigation handoff exists from abstract overmap group state into local play.
+- [ ] The return path preserves meaningful abstract consequences such as updated mark/threat knowledge, losses, panic, cargo, or retreat state instead of dropping them on the floor.
+- [ ] Entry payload and return packet stay explicit, small, and reviewer-readable.
+- [ ] The slice stays bounded: no full raid / ambush suite, no broad tactical AI rewrite, and no full per-bandit biography persistence are smuggled in.
 
 Notes:
 - Canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`.
-- The bounded handoff seam now lives in `src/bandit_pursuit_handoff.{h,cpp}` and stays on abstract group state plus explicit `entry_payload` / `return_packet` packets instead of pretending full local combat AI already exists.
-- Deterministic coverage in `tests/bandit_pursuit_handoff_test.cpp` proves the bounded scout entry packet, explicit return consequences, moving-carrier shadow routing, and reviewer-readable report output.
-- Narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, and `./tests/cata_test "[bandit]"`.
+- This is now the next active promoted implementation slice, inheriting real overmap-side state from the checkpointed mark-generation seam instead of fabricated placeholder truth.
 
 ---
 
 ## Locker lag-threshold probe v0
 
-Status: CHECKPOINTED / DONE FOR NOW
+Status: GREENLIT / BACKLOG
 
 Success state:
-- [x] One honest threshold packet exists for the real `CAMP_LOCKER` service path.
-- [x] The packet distinguishes top-level item pressure from worker-count pressure instead of flattening them together.
-- [x] The result can name an approximate fine / suspicious / bad range, or honestly report that no clear threshold was found within the tested bound.
-- [x] If the threshold looks bad, the packet ends with a small cheap-first guardrail recommendation order instead of architecture opera, and if it does not, the packet says so plainly.
+- [ ] One honest threshold packet exists for the real `CAMP_LOCKER` service path.
+- [ ] The packet distinguishes top-level item pressure from worker-count pressure instead of flattening them together.
+- [ ] The result can name an approximate fine / suspicious / bad range, or honestly report that no clear threshold was found within the tested bound.
+- [ ] If the threshold looks bad, the packet ends with a small cheap-first guardrail recommendation order instead of architecture opera.
 
 Notes:
 - Canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`.
 - This follow-up exists because `Locker clutter / perf guardrail probe v0` answered shape better than the sharper player-facing lag-threshold question.
-- Current packet result: no clear knee was found through `20000` top-level locker items, and the `5000`-clutter worker sweep stayed around `1.0 ms` per worker across `1 / 5 / 10`.
 
 ---
 

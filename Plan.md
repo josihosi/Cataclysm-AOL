@@ -39,16 +39,10 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently **no active greenlit lane**.
-The last active lane is now checkpointed, so the repo is waiting on Josef to greenlight the next one.
+There is currently **one active greenlit lane**.
+There are also **two queued greenlit follow-ups** behind it.
 
 Fresh checkpoints that stay closed:
-- **Locker lag-threshold probe v0** is now honestly checkpointed too:
-  - `src/basecamp.{h,cpp}` now keeps the real `camp_locker_service_probe` seam quiet during timing runs, while `tests/faction_camp_test.cpp` drives the threshold packet through real multi-tile `CAMP_LOCKER` zones so counts stay honest past the single-tile `MAX_ITEM_IN_SQUARE` ceiling
-  - the threshold packet now covers top-level clutter at `1000 / 2000 / 5000 / 10000 / 20000` plus worker-count sweeps at `1 / 5 / 10` on `5000` clutter, staying on the real service path instead of synthetic guesswork
-  - the current verdict is `not found within tested bound`: median service cost stayed roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and the `5000`-clutter worker sweep stayed around `1.0 ms` per worker across `1 / 5 / 10`
-  - this packet does **not** justify a fresh guardrail yet; if the lane reopens later, keep the cheap-first guardrail order instead of jumping straight to architecture opera
-  - narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
 - **Locker clutter / perf guardrail probe v0** is now honestly checkpointed too:
   - `src/basecamp.{h,cpp}` now contains a real locker-service probe seam through `camp_locker_service_probe`, `basecamp::measure_camp_locker_service( npc & )`, and `render_camp_locker_service_probe()` instead of fake-path guesswork
   - the first bounded direct packet now covers top-level clutter sweeps at `50 / 100 / 200 / 500 / 1000`, worker-count sweeps at `1 / 5 / 10`, the first junk-heavy / locker-candidate-heavy / ammo-magazine-container-heavy stock-shape comparison, and the nested-content question for loaded magazines and ordinary filled bags on the real `CAMP_LOCKER` service path
@@ -92,9 +86,8 @@ Fresh checkpoints that stay closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Meaning:
-- the locker lag-threshold probe is checkpointed closed too, with no clear knee found through `20000` top-level locker items
-- there is currently no active greenlit lane, so the next real move needs a fresh Josef greenlight
-- the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
+- the active lane is now `Bandit overmap-to-bubble pursuit handoff seam v0`
+- the queued greenlit follow-up is `Locker lag-threshold probe v0`
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
 - the locker clutter / perf packet is checkpointed closed too
@@ -106,37 +99,36 @@ Meaning:
 
 ---
 
-## Checkpointed — Locker lag-threshold probe v0
+## Active lane — Bandit overmap-to-bubble pursuit handoff seam v0
 
-**Status:** CHECKPOINTED / DONE FOR NOW
+**Status:** ACTIVE / GREENLIT
 
-The sharper locker threshold packet is now honest enough to stay closed for now.
+The bounded bandit evaluator, playback suite, budget packet, and writer-side mark seam are now good enough that the next honest missing slice is the first local handoff.
+The right first anchor remains pursuit / investigation, not a full raid circus.
+
+Current contract:
+- the canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
+- the first honest handoff case is pursuit / investigation, not a full raid circus
+- the slice should carry one small explicit entry payload plus one small explicit return packet for losses, panic, cargo, and updated mark/threat knowledge
+- keep continuity group-first and bounded, with at most a tiny anchored-identity slice where that is honestly needed
+
+Why this is active now:
+- the handoff lane now has real overmap-side state to inherit instead of placeholder writer-side fiction
+- the next real missing question is how one bounded abstract group crosses into local play and comes back with meaningful consequences, not whether the mark ledger exists
+
+## Greenlit backlog — Locker lag-threshold probe v0
+
+**Status:** GREENLIT / BACKLOG
+
+This queued follow-up exists because the first locker clutter / perf packet answered shape better than threshold.
 
 Current contract:
 - the canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`
-- `src/basecamp.{h,cpp}` now suppresses locker `DebugLog` noise for probe timing runs, and `tests/faction_camp_test.cpp` now drives the threshold packet through real multi-tile `CAMP_LOCKER` zones so `5000 / 10000 / 20000` top-level clutter counts stay honest instead of colliding with the single-tile `MAX_ITEM_IN_SQUARE` cap
-- the top-level clutter sweep now reaches `1000 / 2000 / 5000 / 10000 / 20000`, while the worker-count sweep stays realistic at `1 / 5 / 10` on `5000` clutter
-- the current result is an honest `not found within tested bound`: median service time stayed roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and the `5000`-clutter worker packet stayed around `1.0 ms` per worker across `1 / 5 / 10`
-- no fresh guardrail is justified from this packet alone; if later evidence reopens the lane, keep the cheap-first guardrail order instead of architecture opera
-- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
+- stay on the real `CAMP_LOCKER` service path and extend the top-level clutter sweep beyond the first `50 / 100 / 200 / 500 / 1000` packet until a rough knee, suspicious zone, bad zone, or honest `not found within tested bound` answer appears
+- keep worker-count sweeps realistic (`1 / 5 / 10`) and treat item-hoard pressure as the primary stress axis instead of fantasy NPC populations
+- if the curve starts looking bad, end with the cheapest guardrail order first instead of jumping straight to architecture opera
 
-Keep this lane closed unless later evidence shows the threshold packet was dishonest, player-facing hitching appears below this tested bound, or a genuinely justified cheap guardrail answer appears.
-
-## Checkpointed — Bandit overmap-to-bubble pursuit handoff seam v0
-
-**Status:** CHECKPOINTED / DONE FOR NOW
-
-The first bounded bandit handoff now exists and is honest enough to stay closed for now.
-
-Current honest state:
-- the canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
-- `src/bandit_pursuit_handoff.{h,cpp}` now provides the bounded overmap-to-bubble seam, translating a winning pursuit candidate plus small abstract group state into an explicit `entry_payload` and explicit `return_packet`
-- the current chooser stays intentionally narrow on `scout` / `probe` / `shadow` / `withdrawal`, preserving one pursuit / investigation slice instead of widening into raid or ambush theater
-- `apply_return_packet()` now carries back meaningful abstract consequences such as losses, wound / morale burden, carried-vs-delivered cargo, threat / bounty writeback, learned marks, and retreat pressure instead of dropping them on the floor
-- `render_report()` plus deterministic coverage in `tests/bandit_pursuit_handoff_test.cpp` keep the seam reviewer-readable and prove the bounded scout entry case, explicit return consequences, and moving-carrier shadow path
-- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, and `./tests/cata_test "[bandit]"`
-
-Keep this lane closed unless later evidence shows the packet is lying, no longer bounded enough, or needs a truly different local handoff class.
+Do not reopen the earlier locker packet just to restate the same shape answer more loudly.
 
 ---
 
