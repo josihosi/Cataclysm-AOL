@@ -244,12 +244,14 @@ If the group is moving toward smoke, a mark, or a suspected victim site, local o
 
 Good v1 outcomes are:
 - **continue**: the current lead still looks worth following
-- **divert**: a better immediate prey/opportunity appears
-- **shadow / delay**: the new target is promising, but patience is smarter than charging now
-- **abort / reroute**: route danger, zombie pressure, or collapsing confidence make the current lead not worth forcing
+- **probe**: the current lead is still nearby/plausible, but one bounded close look is needed before either committing or clearing it
+- **shadow / delay**: a live moving target is promising, but patience is smarter than charging now
+- **divert**: a materially better immediate prey/opportunity appears on the same route or immediate intercept envelope
+- **abort / reroute**: route danger, zombie pressure, burdened return-clock pressure, or collapsing confidence make the current lead not worth forcing
 
 This is where goal sustainability lives.
 Goals should persist long enough to matter, but not so rigidly that the group behaves like a missile homing on stale smoke.
+These outcomes should all spend the same outing's remaining movement and leash. None of them should silently mint a fresh mission clock or a broad off-route strategic replan.
 
 Useful v1 inputs:
 - current goal value

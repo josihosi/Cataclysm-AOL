@@ -684,6 +684,44 @@ Guardrails from this rule:
 - **Expected output:** One bounded diversion rule.
 - **Done when:** Mission leads stop looking like sacred tile commitments.
 
+Current answer:
+- Freeze mid-route change as a **bounded outing-local rewrite**, not as a fresh whole-map job rescore.
+- Once a group is already out, a cadence wake may choose only five honest outcomes for the current lead: **continue, probe, shadow, divert, or abort/reroute**.
+- The group may change course only when the new read still fits inside the outing's **remaining earned travel, burdened movement, and burdened return clock**. A mid-route switch does **not** mint a new daily budget, a new return clock, or a free job-family rewrite.
+
+Use this starter decision ladder:
+
+| Mid-route observation or state change | Allowed action | Why |
+| --- | --- | --- |
+| No materially stronger or weaker evidence appears | Continue current lead | Mission persistence is still the default. A dispatched group should not pinball between flimsy hunches just because the scheduler woke up again. |
+| The current lead goes fuzzy but still looks nearby and cheaply clarifiable from the same route envelope | Probe briefly | A short local check is honest when the group needs one closer look, but this stays a bounded clarification pass rather than a free area-wide search rewrite. |
+| A live moving carrier looks promising, but immediate attack is too uncertain, too early, or too exposed | Shadow | Following pressure is allowed when the prey is real but the attack window is not, and it keeps the group on the same outing instead of forcing an instant raid-or-forget binary. |
+| A materially better immediate opportunity appears on the same corridor or within the same immediate intercept envelope | Divert to that new lead | Opportunism is allowed when the replacement target is clearly better and locally reachable now, not when it would require a broad detour or a fresh theater-scale replan. |
+| Route safety collapses, the path ahead becomes honestly bad, threat spikes past current posture, or remaining burdened leash is now at plain-return pressure | Abort / reroute home or disengage | The outing should fail closed once forcing the current plan stops being worth it. This is how pressure ends without fake immortal pursuit. |
+
+Bound the switch law with these constraints:
+- **Probe** means a small same-route clarification pass on the current lead or immediate branch, not a fresh search pattern over several side sites.
+- **Shadow** is only for a supported moving carrier that stays worth following under the current outing's remaining leash. It should preserve contact or timing advantage, not secretly become free endless stalking.
+- **Divert** is only legal to a **same-route or immediate-intercept** opportunity that is materially better than the original lead. If the new idea would require a meaningful detour, different staging, or a different job family, record it as a later mark and keep scoring it on the next dispatch cycle instead.
+- **Abort / reroute** should write the honest memory that caused it, such as stronger threat, route collapse, false lead, or pressure-to-return, rather than pretending the goal merely faded away.
+- **None of these switches reset the outing.** Remaining travel credit, burden tiers, and return-clock pressure continue to spend on the same mission.
+
+Starter examples:
+
+| Situation | Mid-route result |
+| --- | --- |
+| A scout moving toward smoke loses confidence in the exact source but still has one nearby copse/building edge to check without a real detour | Probe the immediate branch, then either resume or clear the lead from that closer look. |
+| A toll/ambush group sees a caravan-sized target on the same corridor, but the escort spacing says patience beats an instant rush | Shadow the moving carrier instead of charging or forgetting it. |
+| A scavenge run aimed at one house sees a softer occupied outbuilding or exposed work party on the same route that is clearly richer/easier than the original stop | Divert to the better same-envelope target without pretending the outing just got a new full search radius. |
+| A raid group meets a route break, ugly zombie pileup, or enough wounds/panic that only plain return time remains | Abort the current lead and bias hard toward home/disengage. |
+
+Guardrails from this rule:
+- **Mission leads are provisional, not disposable.** Continue is still the default unless a concrete reason earns one of the other four outcomes.
+- **Mid-route change is local and bounded.** Camps do not get a free second strategic planning pass just because one group is already outside.
+- **Divert beats probe only when the new opportunity is clearly better now.** Mere curiosity is not enough.
+- **Shadow and probe spend the same leash as everything else.** Fresh sightings do not reset outing endurance.
+- **Broad off-route rewrites wait for later scoring.** If the better idea is real but not immediate, store it and let the next dispatch pass judge it honestly.
+
 ### Package 2 acceptance bar
 - all 8 micro-items above exist as separate answers or tables
 - movement budget, cadence, distance burden, and return pressure are explicit enough to compare routes honestly
@@ -707,6 +745,60 @@ Resolve these as **separate scoring/seam sanity micro-items**.
 - **Question:** What job candidates even get onto the board for a camp to consider?
 - **Expected output:** One candidate-generation rule note.
 - **Done when:** Later scoring is not secretly deciding eligibility and desirability in one muddy pass.
+
+Current answer:
+- Freeze candidate generation as its own **board-building pass** before later scoring, veto, or no-path rejection. Generation decides what is worth evaluating at all, not what wins.
+- Every camp tick starts with exactly one markless baseline candidate: **`hold / chill`**.
+- All outward candidates must come from a current **lead envelope**, meaning either a still-valid remembered mark or a still-valid nearby known structural-value region. No lead envelope, no outward candidate.
+- Each job template may only enter the board when its **lead family** matches and its **hard preconditions** are already true: minimum manpower exists, cooldown/load gates allow dispatch, and the lead has not already been cleared, exhausted for that lead type, or superseded inside the same envelope.
+- Candidate generation should emit at most **one candidate per template family per lead envelope** after nearby same-kind marks are deduped. The board should stay small and legible instead of spraying one pseudo-job per tile.
+- This pass should not quietly decide desirability. A weak candidate may still reach the board and lose later; this rule only answers whether the camp may honestly consider it.
+
+Use this starter lead-to-template table:
+
+| Lead envelope | Minimum substrate | Candidate families that may be generated | Do not generate here |
+| --- | --- | --- | --- |
+| None | no outward lead at all | `hold / chill` | any outward mission invented from pure boredom or vibes |
+| Site-centered lead | nearby known structural-bounty region, occupied-site clue, smoke/light/site-activity mark, or defended-site memory still worth checking | `scout`, `scavenge`, `steal`, `raid` | corridor ambush jobs with no route/intercept read |
+| Corridor lead | repeated route traffic, ambush-road memory, traveler-route mark, or other corridor-shaped moving-bounty read | `scout`, `toll`, `stalk` | house/farm raid jobs that are not actually tied to that corridor envelope |
+| Moving-carrier lead | direct humans, caravan/haul convoy, or other live moving carrier read still localized enough to follow | `stalk`, `toll`, `steal` | generic area raid just because something moved through once |
+| Friendly-pressure / committed-contact lead | own active group, allied camp-side pressure point, or fresh committed hostile contact that creates a real support target | `reinforce` (and only the narrow scout/support variants the canon already names) | broad new opportunism jobs unrelated to supporting that pressure point |
+
+Use this bounded generation sequence:
+
+```text
+candidates = [ hold / chill ]
+lead_envelopes = dedupe( current_valid_marks + current_valid_structural_regions )
+
+for each lead_envelope:
+    for each job_template that matches that lead family:
+        if hard_preconditions_fail:
+            skip
+        else:
+            emit one candidate for ( job_template, lead_envelope )
+```
+
+Where `hard_preconditions_fail` means things like:
+- not enough available manpower for the template minimum
+- current job load/cooldown forbids another packet of that type
+- the lead was visibility-cleared, fully harvested for this lead family, or replaced by a stronger same-envelope lead
+- the candidate would be a duplicate of an already-emitted template on the same envelope
+
+Starter examples:
+
+| Situation | Candidate board result |
+| --- | --- |
+| The camp knows about a nearby house and farm footprint, with no special moving traffic today | `hold / chill` plus site-style `scout` / `scavenge` / `steal` / maybe `raid` candidates for those site envelopes. No toll/stalk packet appears from nowhere. |
+| A road has fresh repeated caravan traffic but no defended site read | `hold / chill` plus corridor-style `toll` / `stalk` candidates. The board does not silently invent a house raid just because the road is busy. |
+| The camp is hungry, but only stale cleared leads remain and nothing structural nearby is still worth checking | only `hold / chill` survives generation. Need pressure may later make mediocre real leads score higher, but it does not conjure a fake target from vacuum here. |
+| Two overlapping smoke/light marks point at the same farmhouse envelope | dedupe them into one site lead, then emit one set of compatible site candidates for that envelope instead of double-counting the same target. |
+
+Guardrails from this rule:
+- **Candidate generation is not scoring.** It names what can be compared, not what should win.
+- **Need pressure does not mint targets from emptiness here.** It modifies later scoring against real leads, which belongs to micro-item 24.
+- **Threat veto does not belong here either.** Scary candidates may still reach the board and then lose or be vetoed later under micro-item 25.
+- **No-path is downstream.** A lead/template pair can be real enough to enter the board and still die honestly later when route evaluation says `no_path`.
+- **The board should stay small, typed, and inspectable.** One candidate per template per deduped lead envelope is enough for v1.
 
 #### 23. Job scoring formula shape
 - **Question:** What are the main weighted factors in job scoring?

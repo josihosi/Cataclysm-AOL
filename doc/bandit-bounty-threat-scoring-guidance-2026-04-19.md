@@ -320,6 +320,12 @@ A job is valid only if:
 - job cooldown is clear
 - current load allows dispatch
 
+The follow-through canon now also freezes candidate generation as a separate board-building pass before this scoring formula runs:
+- always include `hold / chill`
+- build outward candidates only from deduped valid lead envelopes (remembered marks plus still-valid structural-value regions)
+- emit at most one candidate per job template per lead envelope when the template family matches and hard preconditions already hold
+- leave desirability, threat veto, and `no_path` rejection to later passes instead of smearing them into generation
+
 `active_pressure_penalty` is where v1 can damp silly multi-camp pile-ons.
 If a region already carries fresh disruption, recent failed pressure, or evidence that someone else already made it hot, that should reduce the score for blindly piling in again.
 
@@ -411,11 +417,11 @@ For each camp on its strategic tick:
 
 1. update camp ledger drift
 2. decay/refresh marks
-3. generate candidate jobs from current valid marks
-4. compute bounty score for each job/mark pair
-5. compute threat score for each job/mark pair
+3. generate candidate jobs from current valid lead envelopes (`hold / chill` plus deduped mark/region-driven template candidates)
+4. compute bounty score for each job/lead pair
+5. compute threat score for each job/lead pair
 6. compute final job desirability
-7. discard invalid jobs
+7. discard invalid or `no_path` jobs
 8. choose highest-scoring valid job
 9. dispatch a lightweight abstract group only if the best outward job beats `hold / chill`; otherwise stay home
 

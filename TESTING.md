@@ -71,8 +71,12 @@ Current honest state:
 - adjacent parked substrate wording was tightened again where it still implied no-target fallback was undecided future law
 - Package 2, micro-item 20 is now answered too: unreachable targets now fail closed at dispatch time, write a soft route-blocked / unreachable-from-here damper, and fall back to other reachable jobs or `hold / chill` instead of implicit wander/teleport behavior
 - adjacent parked substrate wording was tightened again where it still implied no-path fallback was undecided future law
-- the next honest active slice is Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define what can make an already-dispatched group abandon, shadow, probe, or switch away from its original plan, without smuggling Package 3 scoring/seam law into the same pass
+- Package 2, micro-item 21 is now answered too: already-dispatched outings now have one bounded mid-route rewrite ladder, where fresh same-envelope evidence may only continue, probe, shadow, divert, or abort/reroute while spending the same remaining travel and return leash
+- adjacent parked substrate wording was tightened again where it still treated mission leads as free-form target rewrites instead of bounded same-outing switches
+- Package 3, micro-item 22 is now answered too: candidate generation is now frozen as a separate board-building pass, with `hold / chill` always present and outward jobs emitted only from deduped compatible lead envelopes whose hard preconditions already hold
+- adjacent parked substrate wording was tightened again where it still blurred board generation together with later scoring/veto/no-path filtering
+- the next honest active slice is Package 3, micro-item 23, `Job scoring formula shape`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define the score shape and named factors directly, without quietly re-solving need-pressure override, threat veto, or handoff-mode selection in the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -96,15 +100,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the movement-budget table, cadence-spend rule, distance-burden rule, and base return-clock rule are no longer open either; the next honest move is one bounded burden rule
+- the movement-budget table, cadence-spend rule, distance-burden rule, bounded diversion rule, and candidate-generation rule are no longer open either; the next honest move is score-shape law, not another board-generation rerun
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that diversion note separate from later Package 3 scoring/seam work
+- land Package 3, micro-item 23, `Job scoring formula shape`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that score-shape note separate from later Package 3 override / veto / seam work
 
 ---
 

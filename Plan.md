@@ -82,8 +82,10 @@ Current target:
 - Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, is now landed too: additive cargo/wound/panic burden tiers now only shrink useful travel and remaining return clock after the calm-condition movement law is already set, instead of secretly reopening range scoring or fallback behavior
 - Package 2, micro-item 19, `No-target fallback rule`, is now landed too: when no outward job beats the always-available `hold / chill` baseline, the camp stays home instead of minting speculative random-wander pressure
 - Package 2, micro-item 20, `No-path fallback rule`, is now landed too: unreachable targets now fail closed at dispatch time, write a soft route-blocked damper, and fall back to other reachable jobs or `hold / chill` instead of implicit wander/teleport behavior
-- keep the next pass narrow: Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`
-- answer only what can make an already-dispatched group abandon, shadow, probe, or switch away from its original plan, and only touch adjacent stale wording when that diversion pass directly forces the correction
+- Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`, is now landed too: an outing may only continue, probe, shadow, divert, or abort from fresh same-envelope evidence, while spending the same remaining travel/leash instead of minting a new mission rewrite
+- Package 3, micro-item 22, `Job candidate generation rule`, is now landed too: the board now freezes as `hold / chill` plus one deduped compatible template per still-valid lead envelope whose hard preconditions already hold, before later scoring/veto/no-path passes decide winners
+- keep the next pass narrow: Package 3, micro-item 23, `Job scoring formula shape`
+- answer only the main score shape and named factors, without re-solving need-pressure override, threat veto, or handoff-mode selection in the same pass
 - do not drift into code or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
@@ -333,8 +335,10 @@ Current bounded slice:
 - landed: Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, now freezes a bounded additive burden table so cargo, wounds, and panic only shrink useful travel and remaining leash instead of secretly reopening distance scoring or fallback law
 - landed: Package 2, micro-item 19, `No-target fallback rule`, now freezes `hold / chill` as the score-`0` stay-home baseline, so camps keep manpower home unless a real outward job beats that bar
 - landed: Package 2, micro-item 20, `No-path fallback rule`, now freezes unreachable targets as dispatch-time `no_path` rejects that fall back to other reachable jobs or `hold / chill`, with a soft route-blocked memory instead of implicit wander behavior
-- next: Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`
-- keep the pass to one diversion rule before touching the later Package 3 cross-layer packet
+- landed: Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`, now freezes one bounded mid-route rewrite ladder, where an outing may only continue, probe, shadow, divert to a materially better same-envelope opportunity, or abort/reroute while spending the same remaining movement and leash
+- landed: Package 3, micro-item 22, `Job candidate generation rule`, now freezes a separate board-building pass where `hold / chill` is always present and outward jobs only enter from deduped compatible lead envelopes before later scoring/veto/no-path filtering
+- next: Package 3, micro-item 23, `Job scoring formula shape`
+- keep the pass to one score-shape rule before touching the later need-pressure / veto / seam packet
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

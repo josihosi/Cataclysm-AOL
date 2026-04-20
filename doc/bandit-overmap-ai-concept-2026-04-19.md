@@ -187,6 +187,7 @@ Useful identity-continuity rule:
 
 As groups move, they can locally reevaluate effective threat from their surroundings without requiring the entire camp to recompute the whole world every tick.
 Their current target should be a provisional mission lead, not a sacred tile commitment.
+That mid-route freedom should stay bounded: the same outing may continue, probe the current lead, shadow a live moving carrier, divert to a materially better same-route or immediate-intercept opportunity, or abort/reroute home under route/threat/leash collapse, but it should not quietly mint a fresh theater-scale mission rewrite.
 
 ### Jobs
 Initial job vocabulary should likely include:
@@ -725,7 +726,7 @@ Later player-relevance chunking plus the narrower diversion law still belong to 
 The strategic tick should broadly do this:
 1. apply ledger drift
 2. refresh marks/heatmaps, selectively decay soft pressure, and freeze confirmed threat until updated
-3. generate candidate jobs from current valid marks/regions
+3. generate candidate jobs from current valid lead envelopes: always `hold / chill`, then one deduped compatible template per still-valid mark/region envelope whose hard preconditions already hold
 4. compute bounty and threat
 5. compute final job desirability
 6. discard invalid jobs

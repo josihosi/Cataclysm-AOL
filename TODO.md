@@ -11,7 +11,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 Active lane: **Bandit concept formalization follow-through**.
 
 Current target:
-1. continue Package 2 without turning it into one giant movement-law blob
+1. continue Package 3 without turning it into one giant scoring-law blob
    - micro-item 1, `Terrain bounty bucket table`, is now landed
    - micro-item 2, `Structural bounty harvest trigger rule`, is now landed
    - micro-item 3, `Structural bounty reappearance rule`, is now landed
@@ -32,12 +32,14 @@ Current target:
    - micro-item 18, `Cargo / wounds / panic burden rule`, is now landed
    - micro-item 19, `No-target fallback rule`, is now landed
    - micro-item 20, `No-path fallback rule`, is now landed
-   - stay on micro-item 21, `Mid-route abort / divert / shadow rule`
+   - micro-item 21, `Mid-route abort / divert / shadow rule`, is now landed
+   - micro-item 22, `Job candidate generation rule`, is now landed
+   - stay on micro-item 23, `Job scoring formula shape`
 2. keep the law honest and narrow
-   - answer exactly what can make an already-dispatched group abort, shadow, probe, or switch away from its original plan
-   - keep movement budget, distance burden, return clock, and burden pressure frozen as already-landed law, not as a back door to re-litigate range or outing endurance
-   - keep micro-item 21 separate from later Package 3 cross-layer scoring/seam work
-   - do not answer micro-items 21-22 at the same time just because mission-law edges smell related
+   - answer exactly what the visible score shape and named factors are, before later micro-items decide need-pressure override and hard-vs-soft threat veto
+   - keep movement budget, distance burden, return clock, burden pressure, and candidate-generation law frozen as already-landed law, not as a back door to re-litigate board eligibility
+   - keep micro-item 23 separate from later Package 3 override / veto / seam work
+   - do not answer micro-items 23-24 at the same time just because score-shape and desperation logic smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active
