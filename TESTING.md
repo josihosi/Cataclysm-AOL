@@ -39,13 +39,13 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Active lane — Bandit mark-generation + heatmap seam v0
+### Active lane — Bandit overmap-to-bubble pursuit handoff seam v0
 
 Current honest state:
-- the bandit evaluator, playback, and first budget packet are checkpointed, so the missing evidence has moved to the writer side
-- the active question is no longer whether hand-authored leads can be consumed cheaply, but whether bounded deterministic inputs can create, refresh, cool, and freeze bandit marks honestly enough to feed the current evaluator / playback seam
-- prefer deterministic bandit proof first; do not jump to live/harness theater unless the touched seam honestly stops being answerable there
-- the queued locker lag-threshold follow-up exists, but it is not the current evidence burden while the active bandit seam is open
+- the writer-side mark/heat seam is now checkpointed, so the missing evidence has moved to one bounded pursuit / investigation handoff
+- the active question is now how one abstract group crosses into local play and returns with explicit consequences instead of whether overmap marks can be written at all
+- prefer deterministic or tightly controlled handoff proof first; do not jump to live/harness theater unless the touched seam honestly stops being answerable there
+- the queued locker lag-threshold follow-up still exists, but it is not the current evidence burden while the active handoff seam is open
 
 ### Recently closed, do not casually reopen
 
@@ -56,13 +56,20 @@ Current honest state:
   - the current verdict is `fine for now`: service cost scales with top-level locker items and worker passes, while loaded magazines and ordinary filled bags still behave like one top-level locker item on this path instead of triggering an obvious nested-cost cliff
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[camp][locker]"`
 
+- Bandit mark-generation + heatmap seam v0 is now honestly checkpointed:
+  - the authoritative contract lives at `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`
+  - `src/bandit_mark_generation.{h,cpp}` now provides a bounded writer-side mark ledger with deterministic signal ingestion, refresh, selective cooling, sticky confirmed threat, generated lead emission, and a reviewer-readable mark/heat report instead of hand-authored lead theater
+  - `src/bandit_playback.{h,cpp}` now bridges that ledger into the playback/evaluator footing, carries generated marks/leads through checkpoints, and exposes generated mark state in playback reports
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves mark creation, refresh, selective cooling, sticky confirmed threat, and the clean bridge into the evaluator/playback seam
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
 - Bandit perf + persistence budget probe v0 is now honestly checkpointed:
   - `bandit_dry_run::evaluation_metrics` now makes lead filtering, candidate generation, score/path checks, invalidations, and winner-comparison churn visible instead of hand-waved away inside the evaluator
   - `src/bandit_playback.{h,cpp}` now provides `measure_scenario_budget()`, `measure_reference_suite_budget()`, `estimate_v0_persistence_budget()`, and `render_budget_report()` so the named scenarios can answer runtime, churn, save-budget, and cheap-enough-vs-suspicious questions reviewer-cleanly
   - the first bounded persistence sample lands at about `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 shape, with duplicated tactical truth remaining the main obvious future bloat risk
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - Bandit scenario fixture + playback suite v0 is now honestly checkpointed:
-  - `src/bandit_playback.{h,cpp}` provides seven stable named deterministic scenarios on top of the bounded dry-run evaluator instead of pretending a broader world simulator already exists
+  - `src/bandit_playback.{h,cpp}` now provides ten stable named deterministic scenarios on top of the bounded dry-run evaluator, including three generated-mark writer-side cases, instead of pretending a broader world simulator already exists
   - `run_scenario()` replays those cases at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, while `render_report()` gives a reviewer-readable checkpoint summary for drift questions
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - Bandit evaluator dry-run seam v0 is now honestly checkpointed:
@@ -96,7 +103,8 @@ Current honest state:
 
 ### Meaning
 
-- the current evidence burden is the active bandit mark-generation + heatmap seam, not more ceremonial revalidation of the already-closed bandit foundation packets
+- the current evidence burden is the active bandit pursuit handoff seam, not more ceremonial revalidation of the already-closed bandit foundation packets
+- the writer-side bandit mark-generation seam is now checkpointed closed with deterministic proof and reviewer-readable report output
 - the locker clutter / perf question still has its first bounded direct answer and remains checkpointed closed for now
 - the queued locker lag-threshold follow-up should stay on concrete timing evidence and cheap guardrails first when it becomes active
 
@@ -104,8 +112,8 @@ Current honest state:
 
 ## Pending probes
 
-- deterministic proof for bandit mark creation, refresh, selective cooling, sticky confirmed threat, and the bridge into the current evaluator / playback footing
-- reviewer-readable bandit summaries for generated mark/heat state, not only debugger-inspection truth
+- deterministic or tightly controlled proof for one bounded pursuit / investigation handoff and its return packet
+- reviewer-readable entry/return summaries for the handoff seam, not only debugger-inspection truth
 - when the queued locker lag-threshold packet becomes active later, keep it on concrete timing evidence and the first cheap guardrail order instead of architecture opera
 - do **not** jump to harness/live play unless a future touched seam honestly stops being answerable through deterministic or directly instrumented footing
 

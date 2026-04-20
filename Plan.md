@@ -53,8 +53,8 @@ Fresh checkpoints that stay closed:
   - it reads `Plan.md` only, preserves greenlit ordering, and warns when canon is thin or contradictory instead of inventing certainty
   - narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct current-canon samples for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
 - **Bandit scenario fixture + playback suite v0** is now honestly checkpointed too:
-  - `src/bandit_playback.{h,cpp}` now defines seven stable named reference scenarios (`empty_region`, `smoke_only_distant_clue`, `smoke_searchlight_corridor`, `forest_plus_town`, `single_traveler_forest`, `strong_camp_split_route`, `city_edge_moving_hordes`) on top of the dry-run evaluator seam instead of pretending a full overmap simulator already exists
-  - `run_scenario()` now replays those cases at stable checkpoints (`tick 0`, `tick 5`, `tick 20`, `tick 100`), and `render_report()` exposes winner drift so idle, smoke-investigation, corridor stalking, moving-carrier attachment, and peel-off behavior can be inspected reviewer-cleanly
+  - `src/bandit_playback.{h,cpp}` now defines ten stable named reference scenarios on top of the dry-run evaluator seam, including the three writer-side generated-mark cases added by the mark-generation packet, instead of pretending a full overmap simulator already exists
+  - `run_scenario()` now replays those cases at stable checkpoints (`tick 0`, `tick 5`, `tick 20`, `tick 100`), and `render_report()` exposes winner drift plus generated mark/heat state so idle, smoke-investigation, corridor stalking, moving-carrier attachment, peel-off, and sticky-threat behavior can be inspected reviewer-cleanly
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Bandit concept formalization follow-through** is now honestly checkpointed too:
   - Package 3, micro-item 31, `Invariants and non-goals packet`, is now landed, so the follow-through finally carries the explicit must-never-happen sheet that the earlier starter numbers and worked scenarios were waiting on
@@ -86,8 +86,9 @@ Fresh checkpoints that stay closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Meaning:
-- the active lane is now `Bandit mark-generation + heatmap seam v0`
-- the queued greenlit follow-ups are `Bandit overmap-to-bubble pursuit handoff seam v0` and `Locker lag-threshold probe v0`
+- the active lane is now `Bandit overmap-to-bubble pursuit handoff seam v0`
+- the queued greenlit follow-up is `Locker lag-threshold probe v0`
+- the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
 - the locker clutter / perf packet is checkpointed closed too
 - the bandit scenario playback suite is checkpointed closed too
@@ -98,28 +99,12 @@ Meaning:
 
 ---
 
-## Active lane — Bandit mark-generation + heatmap seam v0
+## Active lane — Bandit overmap-to-bubble pursuit handoff seam v0
 
 **Status:** ACTIVE / GREENLIT
 
-The bounded bandit evaluator, deterministic playback suite, and first budget packet are now good enough that the next honest missing slice is the writer side.
-Right now the bandit reference cases can consume leads, but they do not yet create or refresh those leads from a real bounded overmap-side mark model.
-
-Current contract:
-- the canonical contract lives at `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`
-- this slice should build a bounded overmap-side mark ledger plus broad bounty/threat heat-pressure seam instead of leaving the bandit lane dependent on hand-authored leads forever
-- first implementation scope is deterministic input/event packets, selective decay and refresh, sticky confirmed threat, and a clean bridge into the already-landed evaluator / playback footing
-- keep this bounded: no broad visibility/concealment adapter, no bubble handoff, no multi-camp strategy layer, and no world-sim theater
-
-Why this is active now:
-- the bandit v0 foundation is no longer blocked on evaluator, playback, or budget honesty
-- the next real missing question is how marks get written and maintained, not whether the existing dry-run seam can be measured more ceremonially
-
-## Greenlit backlog — Bandit overmap-to-bubble pursuit handoff seam v0
-
-**Status:** GREENLIT / BACKLOG
-
-This queued follow-up should stay behind the active mark-generation seam.
+The bounded bandit evaluator, playback suite, budget packet, and writer-side mark seam are now good enough that the next honest missing slice is the first local handoff.
+The right first anchor remains pursuit / investigation, not a full raid circus.
 
 Current contract:
 - the canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
@@ -127,7 +112,9 @@ Current contract:
 - the slice should carry one small explicit entry payload plus one small explicit return packet for losses, panic, cargo, and updated mark/threat knowledge
 - keep continuity group-first and bounded, with at most a tiny anchored-identity slice where that is honestly needed
 
-Do not pull this forward before the writer-side mark seam is real, or the handoff lane will end up faking the overmap state it is supposed to inherit.
+Why this is active now:
+- the handoff lane now has real overmap-side state to inherit instead of placeholder writer-side fiction
+- the next real missing question is how one bounded abstract group crosses into local play and comes back with meaningful consequences, not whether the mark ledger exists
 
 ## Greenlit backlog — Locker lag-threshold probe v0
 
@@ -144,6 +131,21 @@ Current contract:
 Do not reopen the earlier locker packet just to restate the same shape answer more loudly.
 
 ---
+
+## Checkpointed — Bandit mark-generation + heatmap seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The writer-side bandit seam now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`
+- `src/bandit_mark_generation.{h,cpp}` now provides a bounded overmap-side mark ledger with deterministic signal ingestion, refresh, selective cooling, sticky confirmed threat, generated lead emission, and a reviewer-readable mark/heat report instead of hand-authored lead theater
+- `src/bandit_playback.{h,cpp}` now bridges generated marks/leads into the existing playback/evaluator footing, carries generated mark state through checkpoints, and exposes that state in playback reports
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves mark creation, refresh, selective cooling, sticky confirmed threat, and the clean bridge into the evaluator / playback seam
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the writer-side ledger/report bridge is lying, too thin, or no longer bounded enough for reviewer trust.
 
 ## Checkpointed — Locker clutter / perf guardrail probe v0
 
@@ -183,9 +185,9 @@ The first named playback packet now exists and is honest enough to stay closed f
 
 Current honest state:
 - the authoritative contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`
-- `src/bandit_playback.{h,cpp}` now defines seven stable deterministic reference scenarios on top of the bounded dry-run evaluator instead of inventing a broader world simulator
-- the playback seam now reruns those scenarios at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, which is enough to inspect idle, smoke, corridor, moving-carrier, split-route, and city-edge peel-off drift without smuggling in a bigger system
-- `render_report()` now provides a reviewer-readable checkpoint summary, and deterministic coverage in `tests/bandit_playback_test.cpp` proves the named scenario set, the stable checkpoints, and the expected drift answers
+- `src/bandit_playback.{h,cpp}` now defines ten stable deterministic reference scenarios on top of the bounded dry-run evaluator, including three generated-mark writer-side cases, instead of inventing a broader world simulator
+- the playback seam now reruns those scenarios at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, which is enough to inspect idle, smoke, corridor, moving-carrier, split-route, city-edge peel-off, generated cooling, refresh, and sticky-threat drift without smuggling in a bigger system
+- `render_report()` now provides a reviewer-readable checkpoint summary plus generated mark/heat state when present, and deterministic coverage in `tests/bandit_playback_test.cpp` proves the named scenario set, the stable checkpoints, and the expected drift answers
 - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
 Keep this lane closed unless later evidence shows the playback cases are lying, too thin to answer the intended product questions, or no longer stable enough to rerun honestly.

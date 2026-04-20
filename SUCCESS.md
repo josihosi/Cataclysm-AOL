@@ -17,23 +17,24 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Bandit mark-generation + heatmap seam v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] A bounded overmap-side mark ledger and broad bounty/threat heat-pressure seam exist for deterministic bandit inputs.
-- [ ] Deterministic coverage proves mark creation, refresh, selective cooling, and sticky confirmed threat on named reference cases.
-- [ ] The existing evaluator / playback footing can consume generated mark output reviewer-cleanly instead of relying only on hand-authored leads.
-- [ ] The slice stays bounded: no bubble handoff, no broad visibility adapter, and no full hostile-world simulation are smuggled in.
+- [x] A bounded overmap-side mark ledger and broad bounty/threat heat-pressure seam exist for deterministic bandit inputs.
+- [x] Deterministic coverage proves mark creation, refresh, selective cooling, and sticky confirmed threat on named reference cases.
+- [x] The existing evaluator / playback footing can consume generated mark output reviewer-cleanly instead of relying only on hand-authored leads.
+- [x] The slice stays bounded: no bubble handoff, no broad visibility adapter, and no full hostile-world simulation are smuggled in.
 
 Notes:
 - Canonical contract lives at `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`.
-- This is the next promoted implementation slice from the parked mark/heatmap concept packet, now that the evaluator, playback, and budget packets are checkpointed.
+- The current tree now has the bounded writer-side seam in `src/bandit_mark_generation.{h,cpp}`, the playback bridge in `src/bandit_playback.{h,cpp}`, and deterministic coverage in `tests/bandit_mark_generation_test.cpp` plus `tests/bandit_playback_test.cpp`.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 
 ## Bandit overmap-to-bubble pursuit handoff seam v0
 
-Status: GREENLIT / BACKLOG
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] One bounded pursuit / investigation handoff exists from abstract overmap group state into local play.
@@ -43,7 +44,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`.
-- This is queued behind the active mark-generation seam so the handoff lane inherits real overmap-side state instead of fabricated placeholder truth.
+- This is now the next active promoted implementation slice, inheriting real overmap-side state from the checkpointed mark-generation seam instead of fabricated placeholder truth.
 
 ---
 
