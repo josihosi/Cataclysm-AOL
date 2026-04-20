@@ -541,7 +541,7 @@ pre_veto_job_score =
 Meaning:
 - the positive subtotal should answer opportunity plus template fit first
 - the already-landed distance-burden law should shape that pull before danger subtraction
-- threat should still subtract softly here without yet deciding the later hard-veto ladder
+- threat should still subtract softly here before the later post-score danger gate decides whether the candidate stays ordinary, becomes a capped marginal pressure/info job, or is vetoed outright
 - ordinary need alignment should stay mild here, while the landed follow-through need-pressure rule now adds only a later capped rescue for matching mediocre real leads near `hold / chill`
 - temperament should bias softly here without replacing hard state or turning the model into personality mush
 
@@ -555,6 +555,7 @@ Highest valid outward job wins only if its `pre_veto_job_score` beats `hold / ch
 
 The follow-through canon now also freezes `hold / chill` as the explicit no-target fallback baseline: always include that zero-distance stay-home option, and only dispatch an outward group when some other valid job scores above it honestly.
 The follow-through canon also now freezes a bounded need-pressure override after that pre-veto comparison: `low` or `critical` shortage may add a capped reward-profile-matched bonus to a mediocre real lead, but not to deep-negative jobs, fake targets, or unreachable nonsense.
+After that, the follow-through canon now freezes a threat-veto ladder: ordinary danger remains a subtraction, confirmed serious threat only leaves capped marginal info/pressure jobs alive, and fresh catastrophic reads hard-veto dispatch until later close observation rewrites them.
 
 This is where the system stops being a mood board and starts becoming a machine.
 

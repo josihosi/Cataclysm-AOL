@@ -929,6 +929,60 @@ Guardrails from this rule:
 - **Expected output:** One explicit veto ladder.
 - **Done when:** The concept no longer hand-waves the difference between "dangerous but worth it" and "absolutely not".
 
+Current answer:
+- Freeze threat gating as a **post-score danger ladder** that runs after micro-item 24's need-pressure rescue and before later no-path / dispatch cleanup.
+- The earlier `threat_penalty` from micro-item 23 still does the ordinary soft subtraction work. This micro-item only answers what happens when the remaining danger read is serious enough that plain subtraction is no longer the whole story.
+- Use exactly three outcomes for any candidate still competing after need rescue:
+
+| Threat gate | What the read means | Result |
+| --- | --- | --- |
+| `discount_only` | threat is weak, ambiguous, or merely moderate for this job, with no fresh blood-memory or obviously disqualifying defender/monster stack | keep the current `need_adjusted_job_score` exactly as-is; the earlier `threat_penalty` already did the needed discouragement |
+| `soft_veto` | threat is confirmed serious, but still in the range where a deliberate information/pressure job might be worth trying | keep only **threat-compatible** jobs alive as capped marginal choices; clamp pure opportunistic extraction jobs to `hold / chill` |
+| `hard_veto` | threat is source-backed severe danger that should block this outing even if bounty or need looks tempting | invalidate the candidate outright for this dispatch pass |
+
+Classify job templates for `soft_veto` like this:
+
+| Job family under `soft_veto` | Templates | Rule |
+| --- | --- | --- |
+| Information / pressure compatible | `scout`, `stalk`, `toll`, `raid`, `reinforce` | may survive, but `final_job_score = min( need_adjusted_job_score, 1 )` so the job becomes a narrow marginal choice instead of a juicy winner |
+| Pure opportunistic extraction | `scavenge`, `steal` | clamp to `final_job_score = 0`, so confirmed serious danger collapses them back to `hold / chill` rather than letting ordinary loot runs bluff through real resistance |
+
+Use this starter source-based ladder:
+
+| Threat evidence shape | Gate | Why |
+| --- | --- | --- |
+| one weak/medium threat family, or mostly uncertainty / generic monster pressure without fresh bad outcomes | `discount_only` | Soft subtraction is enough. The job is dangerous, but not beyond the normal scoring model. |
+| clear defenders, escorts, fortification signs, searchlight/watch posture, or scary city-edge pressure that is serious but not yet a proven catastrophe | `soft_veto` | The target is too hot for casual extraction, but still plausibly worth a scout, stalk, toll, raid, or reinforce packet. |
+| fresh recent-loss / failed-probe memory with no close contrary recheck, or multiple strong threat families stacked together strongly enough that expected attrition looks catastrophic | `hard_veto` | This is the "absolutely not for now" bucket. Need and bounty may keep the mark interesting, but not dispatchable this pass. |
+
+Starter rule sketch:
+
+```text
+if threat_gate == hard_veto:
+    candidate invalid
+elif threat_gate == soft_veto:
+    if job_template in { scout, stalk, toll, raid, reinforce }:
+        final_job_score = min( need_adjusted_job_score, 1 )
+    else:
+        final_job_score = 0
+else:
+    final_job_score = need_adjusted_job_score
+```
+
+Starter examples:
+
+| Situation | Threat gate | Result |
+| --- | --- | --- |
+| Nearby house with some armed-human uncertainty but no fresh losses, and a decent scavenge score | `discount_only` | Let the normal score stand. The house may still win if the ordinary threat subtraction already left it positive. |
+| Repeated caravan corridor with visible escorts and alert posture | `soft_veto` | `toll` or `stalk` may survive as capped `+1` pressure jobs, but routine `steal` / `scavenge` style extraction should collapse to `hold / chill`. |
+| Med-short camp sees a clinic lead that would otherwise win, but the same area just produced a failed probe and wounded returners with no close recheck yet | `hard_veto` | The clinic remains strategically interesting, but this dispatch pass must reject it outright instead of letting desperation bully through a known kill zone. |
+
+Guardrails from this rule:
+- **Need pressure does not overrule hard threat.** Micro-item 24 may rescue a mediocre real lead, but it may not punch through a fresh catastrophic danger read.
+- **Soft-veto preserves "dangerous but maybe worth it" only for threat-compatible jobs.** Casual extraction should not read the same way as scouting, stalking, toll setup, or a deliberate raid.
+- **Recent losses and failed probes are the strongest veto sources.** They should outweigh generic greed until later close observation honestly rewrites them.
+- **This rule is about threat, not reachability.** `no_path` still belongs downstream, and later handoff-mode selection still belongs to micro-item 26 rather than being smuggled in here.
+
 ### H. Handoff and persistence law
 
 #### 26. Overmap-to-bubble entry-mode chooser

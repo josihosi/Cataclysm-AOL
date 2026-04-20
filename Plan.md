@@ -86,8 +86,9 @@ Current target:
 - Package 3, micro-item 22, `Job candidate generation rule`, is now landed too: the board now freezes as `hold / chill` plus one deduped compatible template per still-valid lead envelope whose hard preconditions already hold, before later scoring/veto/no-path passes decide winners
 - Package 3, micro-item 23, `Job scoring formula shape`, is now landed too: job comparison now freezes as positive pull from lead bounty, lead confidence, job-lead fit, mild need alignment, soft temperament bias, and job-type bias, shaped by the existing distance-burden multiplier, then reduced by soft threat and active-pressure penalties before later override/veto passes
 - Package 3, micro-item 24, `Need-pressure override rule`, is now landed too: only `low`/`critical` shortage bands may add a capped reward-profile-matched rescue bonus to a mediocre real lead near `hold / chill`, without conjuring fake targets or rescuing deep-negative suicide jobs
-- keep the next pass narrow: Package 3, micro-item 25, `Threat veto vs soft-veto rule`
-- answer only when danger should merely discount a job versus blocking it outright, without reopening the newly landed need-pressure rule or drifting into handoff-mode selection in the same pass
+- Package 3, micro-item 25, `Threat veto vs soft-veto rule`, is now landed too: ordinary danger stays in the soft subtraction pass, confirmed serious danger only leaves capped marginal info/pressure jobs alive, and fresh catastrophic recent-loss / failed-probe style reads hard-veto the dispatch outright
+- keep the next pass narrow: Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`
+- answer only which high-level local entry mode a group should use and what chooses it, without silently solving the return-state packet or persistence boundary in the same pass
 - do not drift into code or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
@@ -341,8 +342,9 @@ Current bounded slice:
 - landed: Package 3, micro-item 22, `Job candidate generation rule`, now freezes a separate board-building pass where `hold / chill` is always present and outward jobs only enter from deduped compatible lead envelopes before later scoring/veto/no-path filtering
 - landed: Package 3, micro-item 23, `Job scoring formula shape`, now freezes a pre-veto comparison pass where positive pull (lead bounty, confidence, job-lead fit, mild need alignment, soft temperament bias, job-type bias) is shaped by the landed distance multiplier, then softened by threat and active-pressure penalties before later override/veto passes
 - landed: Package 3, micro-item 24, `Need-pressure override rule`, now freezes one bounded post-score rescue where only `low`/`critical` shortage bands may add a capped reward-profile-matched bonus to mediocre real leads near `hold / chill`
-- next: Package 3, micro-item 25, `Threat veto vs soft-veto rule`
-- keep the pass to one threat-veto rule before touching the later handoff / seam packet
+- landed: Package 3, micro-item 25, `Threat veto vs soft-veto rule`, now freezes a three-step post-score danger ladder, where ordinary threat remains a subtraction, confirmed serious threat only preserves capped marginal info/pressure jobs, and catastrophic recent-loss / failed-probe style reads hard-veto the dispatch
+- next: Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`
+- keep the pass to one handoff entry-mode chooser before touching the later return-state / persistence packet
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

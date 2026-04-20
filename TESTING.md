@@ -79,8 +79,10 @@ Current honest state:
 - adjacent parked substrate wording was tightened again where it still hand-waved one muddy `job_score` instead of the now-landed pre-veto comparison shape
 - Package 3, micro-item 24 is now answered too: only `low` and `critical` shortage bands may add a capped reward-profile-matched rescue bonus after pre-veto scoring, and only for mediocre real leads near `hold / chill` rather than stale emptiness or deep-negative suicide jobs
 - adjacent parked substrate wording was tightened again where it still treated desperation as an unfrozen future blob instead of the now-landed bounded need-pressure rescue
-- the next honest active slice is Package 3, micro-item 25, `Threat veto vs soft-veto rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define when danger merely discounts a job versus when it blocks it outright, without reopening the newly-landed need-pressure rule or quietly solving handoff mode in the same pass
+- Package 3, micro-item 25 is now answered too: threat gating now freezes as `discount_only`, `soft_veto`, or `hard_veto`, with soft-veto preserving only capped marginal info/pressure jobs and hard-veto blocking fresh catastrophic recent-loss / failed-probe style reads outright
+- adjacent parked substrate wording was tightened again where it still treated threat veto as an unfrozen future blob instead of the now-landed post-score danger ladder
+- the next honest active slice is Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define which high-level local entry mode a group uses and what chooses it, without quietly solving the return-state packet or persistence boundary in the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -104,15 +106,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the movement-budget table, cadence-spend rule, distance-burden rule, bounded diversion rule, and candidate-generation rule are no longer open either; the next honest move is score-shape law, not another board-generation rerun
+- the score-shape, need-pressure, and threat-veto laws are no longer open either; the next honest move is handoff entry-mode law, not another scoring rerun
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 3, micro-item 25, `Threat veto vs soft-veto rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that danger-veto rule separate from later Package 3 handoff / seam work
+- land Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that entry-mode chooser separate from later Package 3 return-state / persistence work
 
 ---
 

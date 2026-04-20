@@ -11,7 +11,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 Active lane: **Bandit concept formalization follow-through**.
 
 Current target:
-1. continue Package 3 without turning it into one giant scoring-law blob
+1. continue Package 3 without turning it into one giant cross-layer blob
    - micro-item 1, `Terrain bounty bucket table`, is now landed
    - micro-item 2, `Structural bounty harvest trigger rule`, is now landed
    - micro-item 3, `Structural bounty reappearance rule`, is now landed
@@ -36,12 +36,13 @@ Current target:
    - micro-item 22, `Job candidate generation rule`, is now landed
    - micro-item 23, `Job scoring formula shape`, is now landed
    - micro-item 24, `Need-pressure override rule`, is now landed
-   - stay on micro-item 25, `Threat veto vs soft-veto rule`
+   - micro-item 25, `Threat veto vs soft-veto rule`, is now landed
+   - stay on micro-item 26, `Overmap-to-bubble entry-mode chooser`
 2. keep the law honest and narrow
-   - answer exactly when danger should merely discount a job versus blocking it outright, after the newly landed need-pressure rescue but before later handoff-mode / seam work
-   - keep movement budget, distance burden, return clock, burden pressure, candidate generation, the newly-landed score shape, and the newly-landed need-pressure rule frozen as already-landed law, not as a back door to re-litigate board eligibility
-   - keep micro-item 25 separate from later Package 3 handoff / seam work
-   - do not reopen micro-item 24 just because desperation logic and danger bars smell adjacent
+   - answer exactly which high-level local entry mode a group should use and what chooses it, after the now-landed threat-veto ladder but before later return-state / persistence work
+   - keep candidate generation, score shape, need-pressure rescue, and threat-veto law frozen as already-landed law, not as a back door to re-litigate job scoring
+   - keep micro-item 26 separate from later Package 3 return-state / persistence work
+   - do not quietly solve micro-items 27 and 28 just because handoff edges smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

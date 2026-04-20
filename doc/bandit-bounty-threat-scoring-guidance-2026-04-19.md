@@ -352,7 +352,7 @@ If a region already carries fresh disruption, recent failed pressure, or evidenc
 
 Important separation:
 - later follow-through micro-item 24 now freezes a bounded post-score need-pressure rescue: only `low`/`critical` shortage bands get a capped `0-4` bonus from coarse reward-profile match, and only for mediocre real leads near the `hold / chill` line rather than deep-negative nonsense or invented targets
-- later follow-through micro-item 25 should still decide when threat merely discounts a job versus when it hard-vetoes it
+- later follow-through micro-item 25 now freezes a three-step post-score danger ladder: `discount_only` keeps the current score, `soft_veto` keeps only threat-compatible jobs (`scout`, `stalk`, `toll`, `raid`, `reinforce`) as capped `+1` marginal choices while collapsing `scavenge` / `steal` back to `hold / chill`, and `hard_veto` invalidates the candidate outright for fresh-loss / failed-probe or otherwise catastrophic threat reads
 - this formula is the visible comparison shape before those later passes
 
 `hold / chill` should be treated as an always-available score-`0` baseline with no mark requirement, no travel, and no dispatch cost.
