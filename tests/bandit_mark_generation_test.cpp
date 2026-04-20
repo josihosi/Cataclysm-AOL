@@ -229,6 +229,96 @@ TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_bu
     CHECK( searchlight_projection.signal.threat_gate_result == bandit_dry_run::threat_gate::soft_veto );
 }
 
+TEST_CASE( "bandit_mark_generation_human_route_adapter_keeps_sightings_mobile_and_routine_suppressed",
+           "[bandit][marks]" )
+{
+    const bandit_mark_generation::human_route_packet direct_sighting_packet = {
+        "road_travelers",
+        "road_travelers",
+        "forest_lane",
+        bandit_dry_run::lead_family::site,
+        6,
+        3,
+        0,
+        bandit_mark_generation::human_route_kind::direct_sighting,
+        bandit_mark_generation::human_route_origin::external,
+        bandit_mark_generation::human_route_corroboration::none,
+        { "Direct human sighting should stay attached to the travelers." }
+    };
+    const bandit_mark_generation::human_route_packet same_camp_packet = {
+        "camp_errand",
+        "camp_errand",
+        "home_lane",
+        bandit_dry_run::lead_family::corridor,
+        4,
+        2,
+        1,
+        bandit_mark_generation::human_route_kind::route_activity,
+        bandit_mark_generation::human_route_origin::same_camp,
+        bandit_mark_generation::human_route_corroboration::none,
+        { "Routine camp traffic must not self-poison into hostile truth." }
+    };
+    const bandit_mark_generation::human_route_packet shared_route_packet = {
+        "shared_supply_track",
+        "shared_supply_track",
+        "south_road",
+        bandit_dry_run::lead_family::site,
+        5,
+        3,
+        1,
+        bandit_mark_generation::human_route_kind::route_activity,
+        bandit_mark_generation::human_route_origin::shared,
+        bandit_mark_generation::human_route_corroboration::corridor,
+        { "Shared corroborated traffic should reinforce the corridor without inflating into a site." }
+    };
+    const bandit_mark_generation::human_route_packet corroborated_site_packet = {
+        "trader_stop",
+        "trader_stop",
+        "market_edge",
+        bandit_dry_run::lead_family::site,
+        6,
+        2,
+        2,
+        bandit_mark_generation::human_route_kind::route_activity,
+        bandit_mark_generation::human_route_origin::external,
+        bandit_mark_generation::human_route_corroboration::site,
+        { "External corroborated traffic can refresh a bounded site clue." }
+    };
+
+    const bandit_mark_generation::human_route_projection direct_projection =
+        bandit_mark_generation::adapt_human_route_packet( direct_sighting_packet );
+    const bandit_mark_generation::human_route_projection same_camp_projection =
+        bandit_mark_generation::adapt_human_route_packet( same_camp_packet );
+    const bandit_mark_generation::human_route_projection shared_route_projection =
+        bandit_mark_generation::adapt_human_route_packet( shared_route_packet );
+    const bandit_mark_generation::human_route_projection corroborated_site_projection =
+        bandit_mark_generation::adapt_human_route_packet( corroborated_site_packet );
+
+    CHECK( direct_projection.viable );
+    CHECK( direct_projection.projected_range_omt == 8 );
+    CHECK( direct_projection.projected_family == bandit_dry_run::lead_family::moving_carrier );
+    CHECK( direct_projection.signal.kind == "human_sighting" );
+    CHECK( direct_projection.signal.bounty_add == 2 );
+    CHECK( direct_projection.signal.confidence == 2 );
+
+    CHECK_FALSE( same_camp_projection.viable );
+
+    CHECK( shared_route_projection.viable );
+    CHECK( shared_route_projection.projected_range_omt == 10 );
+    CHECK( shared_route_projection.projected_family == bandit_dry_run::lead_family::corridor );
+    CHECK( shared_route_projection.signal.kind == "route_activity" );
+    CHECK( shared_route_projection.signal.confidence == 2 );
+
+    CHECK( corroborated_site_projection.viable );
+    CHECK( corroborated_site_projection.projected_family == bandit_dry_run::lead_family::site );
+    CHECK( corroborated_site_projection.signal.bounty_add == 2 );
+    CHECK( corroborated_site_projection.signal.hard_blocked_jobs == std::vector<bandit_dry_run::job_template>( {
+        bandit_dry_run::job_template::scavenge,
+        bandit_dry_run::job_template::steal,
+        bandit_dry_run::job_template::raid,
+    } ) );
+}
+
 TEST_CASE( "bandit_mark_generation_keeps_confirmed_threat_sticky", "[bandit][marks]" )
 {
     bandit_mark_generation::ledger_state state;

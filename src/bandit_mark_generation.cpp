@@ -100,6 +100,55 @@ int light_source_bonus( light_source_band source )
     return 0;
 }
 
+int human_route_origin_bonus( human_route_origin origin )
+{
+    switch( origin ) {
+        case human_route_origin::same_camp:
+            return -4;
+        case human_route_origin::ambiguous:
+            return 0;
+        case human_route_origin::external:
+            return 1;
+        case human_route_origin::shared:
+            return 1;
+    }
+
+    return 0;
+}
+
+int human_route_corroboration_bonus( human_route_corroboration corroboration )
+{
+    switch( corroboration ) {
+        case human_route_corroboration::none:
+            return 0;
+        case human_route_corroboration::corridor:
+            return 1;
+        case human_route_corroboration::site:
+            return 2;
+    }
+
+    return 0;
+}
+
+bandit_dry_run::lead_family human_route_projected_family( const human_route_packet &packet )
+{
+    if( packet.kind == human_route_kind::direct_sighting ) {
+        return bandit_dry_run::lead_family::moving_carrier;
+    }
+    if( packet.family == bandit_dry_run::lead_family::site &&
+        packet.corroboration == human_route_corroboration::site ) {
+        return bandit_dry_run::lead_family::site;
+    }
+    return bandit_dry_run::lead_family::corridor;
+}
+
+bool human_route_has_external_footing( const human_route_packet &packet )
+{
+    return packet.origin == human_route_origin::external ||
+           packet.origin == human_route_origin::shared ||
+           packet.corroboration != human_route_corroboration::none;
+}
+
 std::string effective_mark_id( const signal_input &signal )
 {
     if( !signal.id.empty() ) {
@@ -318,6 +367,48 @@ std::string to_string( light_source_band source )
     return "unknown";
 }
 
+std::string to_string( human_route_kind kind )
+{
+    switch( kind ) {
+        case human_route_kind::direct_sighting:
+            return "direct_sighting";
+        case human_route_kind::route_activity:
+            return "route_activity";
+    }
+
+    return "unknown";
+}
+
+std::string to_string( human_route_origin origin )
+{
+    switch( origin ) {
+        case human_route_origin::same_camp:
+            return "same_camp";
+        case human_route_origin::ambiguous:
+            return "ambiguous";
+        case human_route_origin::external:
+            return "external";
+        case human_route_origin::shared:
+            return "shared";
+    }
+
+    return "unknown";
+}
+
+std::string to_string( human_route_corroboration corroboration )
+{
+    switch( corroboration ) {
+        case human_route_corroboration::none:
+            return "none";
+        case human_route_corroboration::corridor:
+            return "corridor";
+        case human_route_corroboration::site:
+            return "site";
+    }
+
+    return "unknown";
+}
+
 smoke_projection adapt_smoke_packet( const smoke_packet &packet )
 {
     smoke_projection projection;
@@ -433,6 +524,79 @@ light_projection adapt_light_packet( const light_packet &packet )
         signal.notes.push_back( "searchlight stays threat-first: this is a guarded clue, not a free extraction lane" );
     } else {
         signal.notes.push_back( "night light stays bounty-first: this is worth scoping out when exposure supports it, not free loot or identity truth" );
+    }
+
+    projection.signal = signal;
+    return projection;
+}
+
+human_route_projection adapt_human_route_packet( const human_route_packet &packet )
+{
+    human_route_projection projection;
+    projection.packet = packet;
+    projection.projected_family = human_route_projected_family( packet );
+
+    const int origin_bonus = human_route_origin_bonus( packet.origin );
+    const int corroboration_bonus = human_route_corroboration_bonus( packet.corroboration );
+    projection.visibility_score = std::max( 0, packet.source_strength + packet.persistence +
+                                            origin_bonus + corroboration_bonus );
+    projection.projected_range_omt = std::clamp( 1 + packet.source_strength * 2 + packet.persistence +
+                                     origin_bonus + corroboration_bonus, 0, 12 );
+
+    bool allowed = true;
+    if( packet.origin == human_route_origin::same_camp ) {
+        allowed = false;
+    } else if( packet.kind == human_route_kind::route_activity && !human_route_has_external_footing( packet ) ) {
+        allowed = false;
+    }
+
+    projection.viable = allowed && projection.visibility_score > 0 &&
+                        packet.observed_range_omt <= projection.projected_range_omt;
+    if( !projection.viable ) {
+        return projection;
+    }
+
+    signal_input signal;
+    signal.id = packet.id;
+    signal.kind = packet.kind == human_route_kind::direct_sighting ? "human_sighting" : "route_activity";
+    signal.envelope_id = packet.envelope_id;
+    signal.region_id = packet.region_id;
+    signal.family = projection.projected_family;
+    signal.strength = 1;
+    signal.confidence = packet.kind == human_route_kind::direct_sighting ? 2 :
+                        1 + ( packet.corroboration != human_route_corroboration::none ? 1 : 0 );
+    signal.threat_add = 0;
+    signal.bounty_add = packet.kind == human_route_kind::direct_sighting ? 2 :
+                        1 + ( projection.projected_family == bandit_dry_run::lead_family::site ? 1 : 0 );
+    signal.reward_profile_match = 0;
+    signal.distance_multiplier = std::clamp( 1.10 - static_cast<double>( packet.observed_range_omt ) /
+                                 static_cast<double>( std::max( 1, projection.projected_range_omt ) ),
+                                 0.25, 1.0 );
+    signal.threat_gate_result = bandit_dry_run::threat_gate::discount_only;
+    if( projection.projected_family == bandit_dry_run::lead_family::site ) {
+        signal.hard_blocked_jobs = {
+            bandit_dry_run::job_template::scavenge,
+            bandit_dry_run::job_template::steal,
+            bandit_dry_run::job_template::raid,
+        };
+    }
+    signal.confirmed_threat = false;
+    signal.soft_decay = true;
+    signal.notes = packet.notes;
+    signal.notes.push_back( "human/route packet: kind=" + to_string( packet.kind ) +
+                            ", origin=" + to_string( packet.origin ) +
+                            ", corroboration=" + to_string( packet.corroboration ) +
+                            ", requested_family=" + bandit_dry_run::to_string( packet.family ) +
+                            ", projected_family=" + bandit_dry_run::to_string( projection.projected_family ) +
+                            ", observed_range_omt=" + std::to_string( packet.observed_range_omt ) +
+                            ", projected_range_omt=" + std::to_string( projection.projected_range_omt ) +
+                            ", visibility_score=" + std::to_string( projection.visibility_score ) );
+    if( packet.kind == human_route_kind::direct_sighting ) {
+        signal.notes.push_back( "direct human sighting stays a moving-carrier clue first, not automatic site truth" );
+    } else if( projection.projected_family == bandit_dry_run::lead_family::site ) {
+        signal.notes.push_back( "corroborated route activity can refresh a bounded site clue, but extraction stays blocked" );
+    } else {
+        signal.notes.push_back( "repeated route activity only hardens when it plausibly belongs to somebody else, a shared corridor, or corroborated traffic" );
     }
 
     projection.signal = signal;

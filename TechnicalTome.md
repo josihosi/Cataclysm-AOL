@@ -4,6 +4,7 @@
 - The bounded writer-side bandit seam is source-shaped, not world-sim theater: deterministic `signal_input` packets write or refresh typed marks, rebuild broad regional heat, and emit evaluator-ready leads without pretending a full hostile overmap ecosystem already exists.
 - Soft marks cool selectively by cadence tier, while confirmed threat stays sticky on the ledger until later real evidence rewrites it. That means weak smoke/searchlight pressure can fade back out, but recent ugly loss / hard-threat memory does not get passively wished away.
 - Playback is now the reviewer-readable bridge for this seam: generated mark state rides alongside the existing dry-run scenarios so the same reference packet can show both the overmap-side mark picture and the evaluator winner drift.
+- Human/route packets stay explicit and anti-magical: direct sightings always project to `moving_carrier`, same-camp routine traffic is suppressed instead of self-poisoning into hostile truth, shared/external repeated route activity usually projects to `corridor`, and only site-correlated traffic may yield a bounded `site` clue, with extraction jobs still blocked on that packet.
 
 ## Smart Zone Manager v1 spine
 - Smart Zone Manager v1 is a one-off Basecamp helper, not an always-on rearrangement goblin: Zone Manager offers the prompt when a `CAMP_STORAGE` zone is first placed and again when that Basecamp zone is later repositioned/stretched.

@@ -43,6 +43,24 @@ enum class light_source_band {
     searchlight,
 };
 
+enum class human_route_kind {
+    direct_sighting,
+    route_activity,
+};
+
+enum class human_route_origin {
+    same_camp,
+    ambiguous,
+    external,
+    shared,
+};
+
+enum class human_route_corroboration {
+    none,
+    corridor,
+    site,
+};
+
 struct signal_input {
     std::string id;
     std::string kind;
@@ -110,6 +128,29 @@ struct light_projection {
     bool viable = false;
 };
 
+struct human_route_packet {
+    std::string id;
+    std::string envelope_id;
+    std::string region_id;
+    bandit_dry_run::lead_family family = bandit_dry_run::lead_family::corridor;
+    int observed_range_omt = 0;
+    int source_strength = 0;
+    int persistence = 0;
+    human_route_kind kind = human_route_kind::route_activity;
+    human_route_origin origin = human_route_origin::ambiguous;
+    human_route_corroboration corroboration = human_route_corroboration::none;
+    std::vector<std::string> notes;
+};
+
+struct human_route_projection {
+    human_route_packet packet;
+    signal_input signal;
+    int visibility_score = 0;
+    int projected_range_omt = 0;
+    bandit_dry_run::lead_family projected_family = bandit_dry_run::lead_family::none;
+    bool viable = false;
+};
+
 struct typed_mark {
     std::string id;
     std::string kind;
@@ -170,10 +211,14 @@ std::string render_report( const ledger_state &state,
                            const std::vector<bandit_dry_run::lead_input> *leads = nullptr );
 smoke_projection adapt_smoke_packet( const smoke_packet &packet );
 light_projection adapt_light_packet( const light_packet &packet );
+human_route_projection adapt_human_route_packet( const human_route_packet &packet );
 std::string to_string( cadence_tier tier );
 std::string to_string( smoke_weather_band weather );
 std::string to_string( light_time_band time );
 std::string to_string( light_weather_band weather );
 std::string to_string( light_exposure_band exposure );
 std::string to_string( light_source_band source );
+std::string to_string( human_route_kind kind );
+std::string to_string( human_route_origin origin );
+std::string to_string( human_route_corroboration corroboration );
 } // namespace bandit_mark_generation
