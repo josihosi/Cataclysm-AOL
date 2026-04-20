@@ -8,7 +8,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Bandit smoke visibility to overmap mark bridge v0**.
+Active lane: **Bandit smoke visibility mark seam v0**.
 
-- Checkpoint the landed smoke bridge as one clean behavior commit without mixing in unrelated repo soup.
-- Decide whether this smoke bridge is now complete enough to checkpoint out of the active lane, then promote the next narrow bandit slice instead of letting canon go dry again.
+- This lane's bounded implementation footing is already landed and validated.
+- Next canon action is to checkpoint this seam out cleanly once the next narrow bandit slice is chosen, without reopening the smoke packet or breeding feeder docs.

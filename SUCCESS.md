@@ -428,7 +428,7 @@ Notes:
 
 ---
 
-## Bandit smoke visibility to overmap mark bridge v0
+## Bandit smoke visibility mark seam v0
 
 Status: ACTIVE / GREENLIT
 
@@ -440,7 +440,7 @@ Success state:
 - [x] The slice stays bounded: no light/searchlight adapter, no broad visibility/concealment implementation, no global offscreen smoke sim, and no first 500-turn proof smuggled in.
 
 Notes:
-- Canonical contract lives at `doc/bandit-smoke-visibility-overmap-mark-bridge-v0-2026-04-20.md`.
+- Canonical contract lives at `doc/bandit-smoke-visibility-mark-seam-v0-2026-04-20.md`.
 - This is the first post-audit promotion from the parked visibility/recon packet, aimed at future 500-turn proof without pretending that proof already exists.
 - The key product rule stays frozen here: on clear days, sustained smoke should remain legible from several OMT away and should usually create a bounded `worth scoping out` lead before it implies anything sharper.
 

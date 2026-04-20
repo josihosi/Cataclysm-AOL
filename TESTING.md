@@ -39,12 +39,12 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-There is now one active greenlit lane: **Bandit smoke visibility to overmap mark bridge v0**.
+There is now one active greenlit lane: **Bandit smoke visibility mark seam v0**.
 
-### Active lane — Bandit smoke visibility to overmap mark bridge v0
+### Active lane — Bandit smoke visibility mark seam v0
 
 Current honest state:
-- the bounded smoke bridge now lands in code: `src/bandit_mark_generation.{h,cpp}` adds deterministic smoke packets plus a bounded smoke adapter, and `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam
+- the bounded smoke seam now lands in code: `src/bandit_mark_generation.{h,cpp}` adds deterministic smoke packets plus a bounded smoke adapter, and `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam
 - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the coarse long-range rule honestly: sustained clear-weather smoke can stay several OMT legible with a hard cap, while weak fogged smoke does not fake long-range truth
 - reviewer-readable playback / mark reports now expose the smoke packet projection and resulting mark/lead path instead of hiding the bridge in debugger soup
 - the slice stayed bounded: no light/searchlight adapter, no broad visibility/concealment implementation, no global offscreen smoke sim, and no 500-turn proof theater

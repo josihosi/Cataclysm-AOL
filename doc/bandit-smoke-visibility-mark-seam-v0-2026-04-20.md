@@ -1,11 +1,11 @@
-# Bandit smoke visibility to overmap mark bridge v0 (2026-04-20)
+# Bandit smoke visibility mark seam v0 (2026-04-20)
 
 Status: active greenlit contract.
 
 ## Promotion audit verdict
 
 The parked bandit concept chain is now coherent enough to promote one narrow smoke-specific implementation slice.
-What is still fake is the signal bridge: current bandit seams can reason about smoke-shaped leads, but they do not yet derive those leads from a bounded smoke adapter grounded in the repo's real fire/smoke/wind footing.
+What is still fake is the signal seam: current bandit seams can reason about smoke-shaped leads, but they do not yet derive those leads from a bounded smoke adapter grounded in the repo's real fire/smoke/wind footing.
 
 This contract is the smallest honest promotion that moves toward a future 500-turn proof without spawning another parked mystery-box feeder doc.
 
@@ -37,7 +37,7 @@ This item is good enough when:
 
 - prefer narrow deterministic bandit coverage and small smoke-scenario extensions on the current playback footing
 - current bounded validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
-- keep evidence reviewer-readable; do not hide the smoke bridge inside debugger soup or broad live-harness theater unless deterministic proof stops being enough
+- keep evidence reviewer-readable; do not hide the smoke seam inside debugger soup or broad live-harness theater unless deterministic proof stops being enough
 
 ## Dependency note
 
