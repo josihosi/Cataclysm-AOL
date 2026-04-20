@@ -38,6 +38,8 @@ The initial suite should cover at least:
 - strong camp near weaker split-off route
 - city edge with moving hordes
 
+For smoke-driven scenarios, keep the distance assumption explicit and bounded: on a clear day, smoke should still be legible from several OMT away, so the fixture should test `worth investigating` behavior at non-tiny ranges instead of accidentally teaching the model that one extra OMT makes the plume vanish.
+
 ## Success shape
 
 This item is good enough when:

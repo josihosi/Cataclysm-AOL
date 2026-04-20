@@ -3487,7 +3487,8 @@ bool basecamp::process_camp_locker_downtime(npc &worker) {
 }
 
 bool basecamp::service_camp_locker_impl(npc &worker,
-                                       camp_locker_service_probe *probe) {
+                                       camp_locker_service_probe *probe,
+                                       bool verbose_logging) {
   const faction_id fac_id = owner.is_valid() ? owner : your_fac;
   const std::vector<tripoint_abs_ms> locker_tiles =
       collect_sorted_camp_locker_tiles(worker.pos_abs(), fac_id);
@@ -3540,7 +3541,8 @@ bool basecamp::service_camp_locker_impl(npc &worker,
     if (probe != nullptr) {
       probe->applied_changes = false;
     }
-    DebugLog(D_INFO, DC_ALL)
+    if( verbose_logging ) {
+        DebugLog(D_INFO, DC_ALL)
         << string_format(
                "camp locker: no-op for %s locker_tiles=%d current_items=%d candidates=%d reservations=%d cleanup=[%s] ranged=[%s]",
                worker.get_name(), static_cast<int>(locker_tiles.size()),
@@ -3548,10 +3550,12 @@ bool basecamp::service_camp_locker_impl(npc &worker,
                static_cast<int>(locker_reservations.size()),
                camp_locker_carried_cleanup_debug_summary(carried_cleanup),
                camp_locker_ranged_readiness_debug_summary(ranged_readiness));
+    }
     return false;
   }
 
-  DebugLog(D_INFO, DC_ALL)
+  if( verbose_logging ) {
+      DebugLog(D_INFO, DC_ALL)
       << string_format(
              "camp locker: before %s worker=[%s] locker=[%s] cleanup=[%s] ranged=[%s]",
              worker.get_name(), camp_locker_item_debug_summary(current_items,
@@ -3559,6 +3563,7 @@ bool basecamp::service_camp_locker_impl(npc &worker,
              camp_locker_candidate_debug_summary(locker_candidates),
              camp_locker_carried_cleanup_debug_summary(carried_cleanup),
              camp_locker_ranged_readiness_debug_summary(ranged_readiness));
+  }
 
   const time_point reservation_expiry = calendar::turn + 10_minutes;
   for (const auto &[slot, slot_plan] : plan) {
@@ -3576,7 +3581,8 @@ bool basecamp::service_camp_locker_impl(npc &worker,
   }
 
   const int planned_slots = count_changed_camp_locker_slots(plan);
-  DebugLog(D_INFO, DC_ALL)
+  if( verbose_logging ) {
+      DebugLog(D_INFO, DC_ALL)
       << string_format(
              "camp locker: plan for %s locker_tiles=%d current_items=%d candidates=%d changed_slots=%d reservations=%d changes=[%s] cleanup=[%s] ranged=[%s]",
              worker.get_name(), static_cast<int>(locker_tiles.size()),
@@ -3585,6 +3591,7 @@ bool basecamp::service_camp_locker_impl(npc &worker,
              camp_locker_plan_debug_summary(plan),
              camp_locker_carried_cleanup_debug_summary(carried_cleanup),
              camp_locker_ranged_readiness_debug_summary(ranged_readiness));
+  }
 
   const tripoint_abs_ms locker_drop_tile = locker_tiles.front();
   const std::optional<tripoint_abs_ms> cleanup_drop_tile =
@@ -3720,7 +3727,8 @@ bool basecamp::service_camp_locker_impl(npc &worker,
                                                  locker_items_after, probe);
   const camp_locker_carried_cleanup_state carried_cleanup_after =
       collect_camp_locker_carried_cleanup_state(worker);
-  DebugLog(D_INFO, DC_ALL)
+  if( verbose_logging ) {
+      DebugLog(D_INFO, DC_ALL)
       << string_format(
              "camp locker: after %s applied=%s worker=[%s] locker=[%s] cleanup=[%s] ranged=[%s]",
              worker.get_name(), applied_changes ? "true" : "false",
@@ -3729,6 +3737,7 @@ bool basecamp::service_camp_locker_impl(npc &worker,
              camp_locker_carried_cleanup_debug_summary(carried_cleanup_after),
              camp_locker_ranged_readiness_debug_summary(
                  ranged_readiness_after));
+  }
 
   if (probe != nullptr) {
     probe->applied_changes = applied_changes;
@@ -3742,7 +3751,7 @@ bool basecamp::service_camp_locker(npc &worker) {
 
 camp_locker_service_probe basecamp::measure_camp_locker_service(npc &worker) {
   camp_locker_service_probe probe;
-  service_camp_locker_impl(worker, &probe);
+  service_camp_locker_impl(worker, &probe, false);
   return probe;
 }
 

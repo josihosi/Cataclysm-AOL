@@ -209,6 +209,9 @@ Examples:
 - sound
 
 These create attention marks when they cross some meaningful overmap threshold.
+For smoke specifically, keep the distance model deliberately non-comical: on a clear day in a dead world, a real plume should often be legible from several OMT away, and one OMT is only roughly house-scale.
+Do not let raw OMT count crush smoke into tiny-range nonsense.
+Long-range smoke should usually create a bounded `worth scoping out` lead first, not immediate loot permission or hard threat certainty.
 
 ### World-state marks
 Examples:
@@ -307,6 +310,8 @@ Examples:
 - we lost people here
 - repeated gunfire heard here
 - reliable ambush road here
+
+For smoke marks, the remembered story should stay explicit about distance footing: the point is that bandits saw a meaningful plume worth investigating, not that they somehow measured tiny local tile-vision range on the overmap.
 
 Typed marks should stay more conservative than broad heatmaps.
 Heat can blur neighboring pressure.

@@ -1,13 +1,17 @@
+#include <chrono>
 #include <algorithm>
 #include <cctype>
 #include <initializer_list>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <unordered_set>
+#include <vector>
 
 #include "basecamp.h"
 #include "calendar.h"
@@ -130,6 +134,23 @@ static void create_tile_zone(const std::string &name,
                                   pos, nullptr, false);
 }
 
+static void create_rect_zone(const std::string &name,
+                             const zone_type_id &zone_type,
+                             const tripoint_abs_ms &start,
+                             const tripoint_abs_ms &end) {
+  zone_manager::get_manager().add(name, zone_type, your_fac, false, true,
+                                  start, end, nullptr, false);
+}
+
+static int count_top_level_items(map &here,
+                                 const std::vector<tripoint_abs_ms> &tiles) {
+  int total = 0;
+  for (const tripoint_abs_ms &tile : tiles) {
+    total += static_cast<int>(here.i_at(here.get_bub(tile)).size());
+  }
+  return total;
+}
+
 static void set_map_temperature(units::temperature new_temperature) {
   get_weather().temperature = new_temperature;
   get_weather().clear_temp_cache();
@@ -176,6 +197,52 @@ static item make_filled_daypack(int rocks = 3) {
     }
   }
   return bag;
+}
+
+struct locker_threshold_timing_sample {
+  camp_locker_service_probe probe;
+  long long median_us = 0;
+  long long p95_us = 0;
+};
+
+static long long median_duration_us(std::vector<long long> samples) {
+  if (samples.empty()) {
+    return 0;
+  }
+  std::sort(samples.begin(), samples.end());
+  const size_t middle = samples.size() / 2;
+  if (samples.size() % 2 == 0) {
+    return (samples[middle - 1] + samples[middle]) / 2;
+  }
+  return samples[middle];
+}
+
+static long long p95_duration_us(std::vector<long long> samples) {
+  if (samples.empty()) {
+    return 0;
+  }
+  std::sort(samples.begin(), samples.end());
+  const size_t index = (samples.size() - 1) * 95 / 100;
+  return samples[index];
+}
+
+template <typename ProbeFn>
+static locker_threshold_timing_sample measure_locker_threshold_timing(
+    ProbeFn &&probe_fn, int repeats) {
+  std::vector<long long> samples;
+  samples.reserve(repeats);
+
+  camp_locker_service_probe last_probe = probe_fn();
+  for (int i = 0; i < repeats; ++i) {
+    const auto started_at = std::chrono::steady_clock::now();
+    last_probe = probe_fn();
+    const auto finished_at = std::chrono::steady_clock::now();
+    samples.push_back(std::chrono::duration_cast<std::chrono::microseconds>(
+                          finished_at - started_at)
+                          .count());
+  }
+
+  return {last_probe, median_duration_us(samples), p95_duration_us(samples)};
 }
 
 TEST_CASE("camp_locker_policy_serialization", "[camp][locker]") {
@@ -4625,6 +4692,220 @@ TEST_CASE("camp_locker_service_probe_scales_linearly_with_worker_count",
   CHECK(one_worker.second == 2 * 101);
   CHECK(five_workers.second == 5 * one_worker.second);
   CHECK(ten_workers.second == 10 * one_worker.second);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_probe_threshold_packet_for_top_level_clutter",
+          "[.][camp][locker][threshold]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  auto build_fixture = [](int clutter_items) {
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    map &here = get_map();
+    constexpr int per_tile_clutter_cap = 1000;
+    const int locker_tile_count = std::max(1, (clutter_items + per_tile_clutter_cap - 1) /
+                                                  per_tile_clutter_cap);
+    const int locker_width = std::min(5, locker_tile_count);
+    const int locker_height = (locker_tile_count + locker_width - 1) / locker_width;
+    const tripoint_bub_ms zone_start_local{6, 5, 0};
+    const tripoint_abs_ms zone_start_abs = here.get_abs(zone_start_local);
+    const tripoint_abs_ms zone_end_abs =
+        here.get_abs(tripoint_bub_ms{6 + locker_width - 1, 5 + locker_height - 1, 0});
+
+    create_rect_zone("Locker", zone_type_CAMP_LOCKER, zone_start_abs, zone_end_abs);
+
+    std::vector<tripoint_abs_ms> locker_tiles;
+    locker_tiles.reserve(locker_tile_count);
+    for (int dy = 0; dy < locker_height; ++dy) {
+      for (int dx = 0; dx < locker_width; ++dx) {
+        if (static_cast<int>(locker_tiles.size()) >= locker_tile_count) {
+          break;
+        }
+        const tripoint_abs_ms tile_abs =
+            here.get_abs(tripoint_bub_ms{6 + dx, 5 + dy, 0});
+        locker_tiles.push_back(tile_abs);
+        here.i_clear(here.get_bub(tile_abs));
+      }
+    }
+
+    here.add_item_or_charges(here.get_bub(locker_tiles.front()), item(itype_duffelbag));
+    int remaining_clutter = clutter_items;
+    for (const tripoint_abs_ms &tile_abs : locker_tiles) {
+      const int items_here = std::min(per_tile_clutter_cap, remaining_clutter);
+      for (int i = 0; i < items_here; ++i) {
+        here.add_item_or_charges(here.get_bub(tile_abs), item(itype_bandages));
+      }
+      remaining_clutter -= items_here;
+    }
+
+    const int expected_top_level_items = clutter_items + 1;
+    CHECK(count_top_level_items(here, locker_tiles) == expected_top_level_items);
+
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>(zone_start_abs);
+    here.add_camp(camp_omt, "faction_camp");
+    std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+    REQUIRE(!!bcp);
+    basecamp *test_camp = *bcp;
+    test_camp->set_owner(your_fac);
+
+    npc &worker = spawn_npc(tripoint_bub_ms{4, 4, 0}.xy(), "thug");
+    clear_character(worker, true);
+    REQUIRE(worker.wear_item(item(itype_duffelbag), false).has_value());
+    test_camp->add_assignee(worker.getID());
+
+    return std::tuple<basecamp *, npc *, int>(test_camp, &worker,
+                                              expected_top_level_items);
+  };
+
+  for (const int clutter_items : {1000, 2000, 5000, 10000, 20000}) {
+    const auto fixture = build_fixture(clutter_items);
+    basecamp &test_camp = *std::get<0>(fixture);
+    npc &worker = *std::get<1>(fixture);
+    const int expected_top_level_items = std::get<2>(fixture);
+
+    const camp_locker_service_probe baseline_probe =
+        test_camp.measure_camp_locker_service(worker);
+    const camp_locker_service_probe repeat_probe =
+        test_camp.measure_camp_locker_service(worker);
+
+    CHECK_FALSE(baseline_probe.applied_changes);
+    CHECK_FALSE(repeat_probe.applied_changes);
+    CHECK(baseline_probe.locker_item_count == expected_top_level_items);
+    CHECK(baseline_probe.metrics.zone_top_level_items_seen ==
+          2 * expected_top_level_items);
+    CHECK(baseline_probe.metrics.candidate_item_checks ==
+          2 * expected_top_level_items);
+    CHECK(render_camp_locker_service_probe(repeat_probe) ==
+          render_camp_locker_service_probe(baseline_probe));
+
+    const int repeats = clutter_items >= 20000 ? 3 : clutter_items >= 10000 ? 5 :
+                        clutter_items >= 5000 ? 8 : 12;
+    const locker_threshold_timing_sample timing =
+        measure_locker_threshold_timing(
+            [&]() { return test_camp.measure_camp_locker_service(worker); },
+            repeats);
+    std::cout << "locker-threshold top_level clutter=" << clutter_items
+              << " workers=1 median_us=" << timing.median_us
+              << " p95_us=" << timing.p95_us << ' '
+              << render_camp_locker_service_probe(timing.probe) << '\n';
+  }
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_probe_threshold_packet_for_worker_count",
+          "[.][camp][locker][threshold]") {
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+
+  auto build_fixture = [](int clutter_items, int worker_count) {
+    clear_map_without_vision();
+    zone_manager::get_manager().clear();
+
+    map &here = get_map();
+    constexpr int per_tile_clutter_cap = 1000;
+    const int locker_tile_count = std::max(1, (clutter_items + per_tile_clutter_cap - 1) /
+                                                  per_tile_clutter_cap);
+    const int locker_width = std::min(5, locker_tile_count);
+    const int locker_height = (locker_tile_count + locker_width - 1) / locker_width;
+    const tripoint_bub_ms zone_start_local{6, 5, 0};
+    const tripoint_abs_ms zone_start_abs = here.get_abs(zone_start_local);
+    const tripoint_abs_ms zone_end_abs =
+        here.get_abs(tripoint_bub_ms{6 + locker_width - 1, 5 + locker_height - 1, 0});
+
+    create_rect_zone("Locker", zone_type_CAMP_LOCKER, zone_start_abs, zone_end_abs);
+
+    std::vector<tripoint_abs_ms> locker_tiles;
+    locker_tiles.reserve(locker_tile_count);
+    for (int dy = 0; dy < locker_height; ++dy) {
+      for (int dx = 0; dx < locker_width; ++dx) {
+        if (static_cast<int>(locker_tiles.size()) >= locker_tile_count) {
+          break;
+        }
+        const tripoint_abs_ms tile_abs =
+            here.get_abs(tripoint_bub_ms{6 + dx, 5 + dy, 0});
+        locker_tiles.push_back(tile_abs);
+        here.i_clear(here.get_bub(tile_abs));
+      }
+    }
+
+    here.add_item_or_charges(here.get_bub(locker_tiles.front()), item(itype_duffelbag));
+    int remaining_clutter = clutter_items;
+    for (const tripoint_abs_ms &tile_abs : locker_tiles) {
+      const int items_here = std::min(per_tile_clutter_cap, remaining_clutter);
+      for (int i = 0; i < items_here; ++i) {
+        here.add_item_or_charges(here.get_bub(tile_abs), item(itype_bandages));
+      }
+      remaining_clutter -= items_here;
+    }
+
+    const int expected_top_level_items = clutter_items + 1;
+    CHECK(count_top_level_items(here, locker_tiles) == expected_top_level_items);
+
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>(zone_start_abs);
+    here.add_camp(camp_omt, "faction_camp");
+    std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+    REQUIRE(!!bcp);
+    basecamp *test_camp = *bcp;
+    test_camp->set_owner(your_fac);
+
+    std::vector<npc *> workers;
+    workers.reserve(worker_count);
+    for (int i = 0; i < worker_count; ++i) {
+      npc &worker = spawn_npc(tripoint_bub_ms{4, 4 + i, 0}.xy(), "thug");
+      clear_character(worker, true);
+      REQUIRE(worker.wear_item(item(itype_duffelbag), false).has_value());
+      test_camp->add_assignee(worker.getID());
+      workers.push_back(&worker);
+    }
+
+    return std::tuple<basecamp *, std::vector<npc *>, int>(test_camp,
+                                                            std::move(workers),
+                                                            expected_top_level_items);
+  };
+
+  constexpr int clutter_items = 5000;
+  for (const int worker_count : {1, 5, 10}) {
+    const auto fixture = build_fixture(clutter_items, worker_count);
+    basecamp &test_camp = *std::get<0>(fixture);
+    const std::vector<npc *> &workers = std::get<1>(fixture);
+    const int expected_top_level_items = std::get<2>(fixture);
+
+    auto run_all_workers = [&]() {
+      camp_locker_service_probe last_probe;
+      for (npc *worker : workers) {
+        last_probe = test_camp.measure_camp_locker_service(*worker);
+        CHECK_FALSE(last_probe.applied_changes);
+        CHECK(last_probe.locker_item_count == expected_top_level_items);
+        CHECK(last_probe.metrics.zone_top_level_items_seen ==
+              2 * expected_top_level_items);
+        CHECK(last_probe.metrics.candidate_item_checks ==
+              2 * expected_top_level_items);
+      }
+      return last_probe;
+    };
+
+    const camp_locker_service_probe baseline_probe = run_all_workers();
+    const camp_locker_service_probe repeat_probe = run_all_workers();
+    CHECK(render_camp_locker_service_probe(repeat_probe) ==
+          render_camp_locker_service_probe(baseline_probe));
+
+    const locker_threshold_timing_sample timing =
+        measure_locker_threshold_timing(run_all_workers,
+                                        worker_count == 10 ? 4 : 6);
+    std::cout << "locker-threshold workers clutter=" << clutter_items
+              << " workers=" << worker_count
+              << " median_total_us=" << timing.median_us
+              << " median_per_worker_us=" << (timing.median_us / worker_count)
+              << " p95_total_us=" << timing.p95_us << ' '
+              << render_camp_locker_service_probe(timing.probe) << '\n';
+  }
 
   zone_manager::get_manager().clear();
 }

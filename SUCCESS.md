@@ -52,17 +52,18 @@ Notes:
 
 ## Locker lag-threshold probe v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One honest threshold packet exists for the real `CAMP_LOCKER` service path.
-- [ ] The packet distinguishes top-level item pressure from worker-count pressure instead of flattening them together.
-- [ ] The result can name an approximate fine / suspicious / bad range, or honestly report that no clear threshold was found within the tested bound.
-- [ ] If the threshold looks bad, the packet ends with a small cheap-first guardrail recommendation order instead of architecture opera.
+- [x] One honest threshold packet exists for the real `CAMP_LOCKER` service path.
+- [x] The packet distinguishes top-level item pressure from worker-count pressure instead of flattening them together.
+- [x] The result can name an approximate fine / suspicious / bad range, or honestly report that no clear threshold was found within the tested bound.
+- [x] If the threshold looks bad, the packet ends with a small cheap-first guardrail recommendation order instead of architecture opera, and if it does not, the packet says so plainly.
 
 Notes:
 - Canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`.
 - This follow-up exists because `Locker clutter / perf guardrail probe v0` answered shape better than the sharper player-facing lag-threshold question.
+- Current packet result: no clear knee was found through `20000` top-level locker items, and the `5000`-clutter worker sweep stayed around `1.0 ms` per worker across `1 / 5 / 10`.
 
 ---
 

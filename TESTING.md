@@ -39,13 +39,16 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Active lane — Locker lag-threshold probe v0
+There is currently **no active greenlit lane**.
+
+### Latest closed lane — Locker lag-threshold probe v0
 
 Current honest state:
-- the earlier locker clutter / perf packet is now checkpointed, so the missing evidence has moved to the sharper threshold question on the same real `CAMP_LOCKER` service path
-- the active question is no longer whether clutter shape grows at all, but around where the path starts looking suspicious or actually bad under heavier item-hoard pressure
-- prefer directly instrumented timing evidence first; do not jump to live/harness theater unless the direct service seam honestly stops answering the threshold question
-- keep worker-count sweeps realistic (`1 / 5 / 10`) and bias the stress search toward top-level item hoards rather than fantasy camp populations
+- the threshold packet now stays on the real `CAMP_LOCKER` service path with locker `DebugLog` noise suppressed during timing runs, so measurement output is readable instead of log-spew soup
+- the high-clutter fixture is now honest: `tests/faction_camp_test.cpp` spreads top-level clutter across real multi-tile locker zones, which avoids lying about `5000 / 10000 / 20000` items on one tile past `MAX_ITEM_IN_SQUARE`
+- the packet now covers top-level clutter at `1000 / 2000 / 5000 / 10000 / 20000` plus worker-count sweeps at `1 / 5 / 10` on `5000` clutter
+- current result: no clear knee was found within the tested bound, with median service time staying roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and about `1.0 ms` per worker at `5000` clutter across `1 / 5 / 10`
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
 
 ### Recently closed, do not casually reopen
 
@@ -109,19 +112,16 @@ Current honest state:
 
 ### Meaning
 
-- the current evidence burden is the active locker lag-threshold probe, not more ceremonial revalidation of the already-closed bandit packets or the earlier locker shape packet
+- there is currently no active evidence burden because the locker lag-threshold probe is now checkpointed too
+- do not reopen the locker threshold packet or the earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
 - the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
 - the writer-side bandit mark-generation seam is now checkpointed closed too
-- the active locker threshold search should stay on concrete timing evidence and cheap guardrails first
 
 ---
 
 ## Pending probes
 
-- extend the real `CAMP_LOCKER` service-path sweep beyond `1000` top-level items until a rough knee, suspicious zone, bad zone, or honest `not found within tested bound` answer appears
-- keep worker-count sweeps separated from item-hoard pressure so the packet can say which axis actually bites first
-- if the threshold starts looking bad, finish with the first cheap guardrail recommendation order instead of architecture opera
-- do **not** jump to harness/live play unless the direct locker-service seam honestly stops being answerable through directly instrumented footing
+None until the next lane is greenlit.
 
 ---
 
