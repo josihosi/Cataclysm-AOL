@@ -87,8 +87,9 @@ Current target:
 - Package 3, micro-item 23, `Job scoring formula shape`, is now landed too: job comparison now freezes as positive pull from lead bounty, lead confidence, job-lead fit, mild need alignment, soft temperament bias, and job-type bias, shaped by the existing distance-burden multiplier, then reduced by soft threat and active-pressure penalties before later override/veto passes
 - Package 3, micro-item 24, `Need-pressure override rule`, is now landed too: only `low`/`critical` shortage bands may add a capped reward-profile-matched rescue bonus to a mediocre real lead near `hold / chill`, without conjuring fake targets or rescuing deep-negative suicide jobs
 - Package 3, micro-item 25, `Threat veto vs soft-veto rule`, is now landed too: ordinary danger stays in the soft subtraction pass, confirmed serious danger only leaves capped marginal info/pressure jobs alive, and fresh catastrophic recent-loss / failed-probe style reads hard-veto the dispatch outright
-- keep the next pass narrow: Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`
-- answer only which high-level local entry mode a group should use and what chooses it, without silently solving the return-state packet or persistence boundary in the same pass
+- Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`, is now landed too: local handoff now freezes to a deterministic chooser from winning job, lead carrier, contact certainty, threat posture, and return pressure, with bounded `scout` / `probe` / `harvest` / `ambush` / `raid` / `shadow` / `withdrawal` entry modes instead of generic spawn-and-vibes
+- keep the next pass narrow: Package 3, micro-item 27, `Bubble-to-overmap return-state packet`
+- answer only which exact fields must come back from bubble play, without silently solving the later save/load persistence boundary or starter-number packet in the same pass
 - do not drift into code or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
@@ -343,8 +344,9 @@ Current bounded slice:
 - landed: Package 3, micro-item 23, `Job scoring formula shape`, now freezes a pre-veto comparison pass where positive pull (lead bounty, confidence, job-lead fit, mild need alignment, soft temperament bias, job-type bias) is shaped by the landed distance multiplier, then softened by threat and active-pressure penalties before later override/veto passes
 - landed: Package 3, micro-item 24, `Need-pressure override rule`, now freezes one bounded post-score rescue where only `low`/`critical` shortage bands may add a capped reward-profile-matched bonus to mediocre real leads near `hold / chill`
 - landed: Package 3, micro-item 25, `Threat veto vs soft-veto rule`, now freezes a three-step post-score danger ladder, where ordinary threat remains a subtraction, confirmed serious threat only preserves capped marginal info/pressure jobs, and catastrophic recent-loss / failed-probe style reads hard-veto the dispatch
-- next: Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`
-- keep the pass to one handoff entry-mode chooser before touching the later return-state / persistence packet
+- landed: Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`, now freezes local handoff as a deterministic chooser from winning job, lead carrier, contact certainty, danger posture, and return pressure into bounded `scout` / `probe` / `harvest` / `ambush` / `raid` / `shadow` / `withdrawal` modes
+- next: Package 3, micro-item 27, `Bubble-to-overmap return-state packet`
+- keep the pass to one return-state field list before touching the later save/load persistence boundary
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

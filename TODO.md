@@ -37,12 +37,13 @@ Current target:
    - micro-item 23, `Job scoring formula shape`, is now landed
    - micro-item 24, `Need-pressure override rule`, is now landed
    - micro-item 25, `Threat veto vs soft-veto rule`, is now landed
-   - stay on micro-item 26, `Overmap-to-bubble entry-mode chooser`
+   - micro-item 26, `Overmap-to-bubble entry-mode chooser`, is now landed
+   - stay on micro-item 27, `Bubble-to-overmap return-state packet`
 2. keep the law honest and narrow
-   - answer exactly which high-level local entry mode a group should use and what chooses it, after the now-landed threat-veto ladder but before later return-state / persistence work
+   - answer exactly which fields must come back from bubble play after the now-landed entry-mode chooser, without silently solving save/load persistence or later starter-number / scenario cleanup
    - keep candidate generation, score shape, need-pressure rescue, and threat-veto law frozen as already-landed law, not as a back door to re-litigate job scoring
-   - keep micro-item 26 separate from later Package 3 return-state / persistence work
-   - do not quietly solve micro-items 27 and 28 just because handoff edges smell related
+   - keep micro-item 27 separate from later Package 3 save/load persistence work
+   - do not quietly solve micro-items 28-31 just because return-path edges smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

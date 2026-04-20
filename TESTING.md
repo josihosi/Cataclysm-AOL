@@ -81,8 +81,9 @@ Current honest state:
 - adjacent parked substrate wording was tightened again where it still treated desperation as an unfrozen future blob instead of the now-landed bounded need-pressure rescue
 - Package 3, micro-item 25 is now answered too: threat gating now freezes as `discount_only`, `soft_veto`, or `hard_veto`, with soft-veto preserving only capped marginal info/pressure jobs and hard-veto blocking fresh catastrophic recent-loss / failed-probe style reads outright
 - adjacent parked substrate wording was tightened again where it still treated threat veto as an unfrozen future blob instead of the now-landed post-score danger ladder
-- the next honest active slice is Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define which high-level local entry mode a group uses and what chooses it, without quietly solving the return-state packet or persistence boundary in the same pass
+- Package 3, micro-item 26 is now answered too: local handoff now freezes as a deterministic chooser from winning job, lead carrier, contact certainty, danger posture, and return pressure into bounded `scout` / `probe` / `harvest` / `ambush` / `raid` / `shadow` / `withdrawal` entry modes
+- the next honest active slice is Package 3, micro-item 27, `Bubble-to-overmap return-state packet`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should name which exact fields must come back from bubble play, without quietly solving save/load persistence or the later starter-number/scenario packet in the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -106,15 +107,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the score-shape, need-pressure, and threat-veto laws are no longer open either; the next honest move is handoff entry-mode law, not another scoring rerun
+- the score-shape, need-pressure, threat-veto, and entry-mode laws are no longer open either; the next honest move is the bubble return-state packet, not another handoff chooser rerun
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that entry-mode chooser separate from later Package 3 return-state / persistence work
+- land Package 3, micro-item 27, `Bubble-to-overmap return-state packet`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that return-state field list separate from later Package 3 save/load persistence work
 
 ---
 

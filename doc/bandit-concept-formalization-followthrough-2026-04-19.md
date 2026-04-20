@@ -990,6 +990,68 @@ Guardrails from this rule:
 - **Expected output:** One small entry-mode chooser packet covering at least scout, probe, harvest, ambush, raid, shadow, and withdrawal-style cases.
 - **Done when:** The handoff seam has explicit mode selection instead of generic spawn-and-vibes.
 
+Current answer:
+- Freeze entry-mode selection as the **last high-level chooser before local NPC behavior starts**. The overmap layer has already decided which outing won dispatch; this micro-item answers only how that same outing should enter the bubble right now.
+- The chooser should stay narrow and deterministic. It may look only at:
+
+| Chooser input | Starter values | Why it belongs here |
+| --- | --- | --- |
+| `job_template` | `scout`, `scavenge`, `steal`, `toll`, `stalk`, `raid`, `reinforce` | The winning overmap job tells local play what kind of pressure this outing was meant to apply. |
+| `lead_carrier_class` | `site`, `corridor`, `moving_carrier` | The same job should enter differently when it is converging on a fixed site, an intercept corridor, or a live moving target. |
+| `contact_certainty` | `broad`, `localized`, `contact_ready` | Local handoff should distinguish broad search from a close edge-test and from already-earned direct contact. |
+| `danger_posture` | `discount_only`, `soft_veto` | The already-landed threat ladder should still shape whether entry is casual extraction or cautious information/pressure work. |
+| `return_pressure_state` | `normal`, `withdraw_now` | Handoff should be allowed to enter as disengagement when leash, burden, or route safety already says the outing should stop pressing. |
+
+- Use these seven local entry modes only:
+
+| Entry mode | What it means |
+| --- | --- |
+| `scout` | Broad local confirm/search with no committed contact yet. |
+| `probe` | Bounded close look or edge-test when the lead is localized but still uncertain or too hot for casual extraction. |
+| `harvest` | Quick soft-target extraction or snatch behavior when the outing has reached exposed value that does not require a committed fight. |
+| `ambush` | Prepared wait/intercept posture on a corridor or approach line. |
+| `raid` | Committed direct pressure/contact against a defended or otherwise fully chosen target. |
+| `shadow` | Follow/observe a moving carrier to preserve timing or contact instead of colliding immediately. |
+| `withdrawal` | Disengage, escape, or bias hard toward home because continued local pressure is no longer the honest move. |
+
+- Apply this deterministic chooser ladder:
+
+```text
+if return_pressure_state == withdraw_now:
+    entry_mode = withdrawal
+elif lead_carrier_class == moving_carrier and contact_certainty != contact_ready:
+    entry_mode = shadow
+elif job_template == toll or ( lead_carrier_class == corridor and contact_certainty == contact_ready ):
+    entry_mode = ambush
+elif job_template == scout and contact_certainty == broad:
+    entry_mode = scout
+elif contact_certainty == localized or danger_posture == soft_veto:
+    entry_mode = probe
+elif job_template in { scavenge, steal } and danger_posture == discount_only:
+    entry_mode = harvest
+else:
+    entry_mode = raid
+```
+
+Starter reading for that ladder:
+
+| Local handoff situation | Chosen entry mode | Why |
+| --- | --- | --- |
+| A `scout` job reaches the region of a vague smoke/light/site lead, but no exact contact point is earned yet | `scout` | The group should search/confirm first, not pretend it already has a raid-worthy contact. |
+| A site lead is narrowed to one building edge or camp fringe, but defenders/uncertainty still make a quick snatch dishonest | `probe` | The outing should test the edge of the target before escalating, not collapse broad search and direct assault together. |
+| A `scavenge` or `steal` outing reaches a soft exposed stash, work party, or lightly defended site edge | `harvest` | The right local posture is quick extraction, not theatrical full raid behavior. |
+| A `toll` or corridor-shaped contact reaches a good intercept line or choke point | `ambush` | The local goal is to wait/intercept from position, not to march in as an ordinary site raid. |
+| A `raid` or `reinforce` outing reaches a committed defended target with direct contact honestly earned | `raid` | At this point the outing is in direct pressure mode rather than scouting or harvesting. |
+| A `stalk` or other moving-target outing has a live carrier, but timing/spacing still favors patience over collision | `shadow` | Preserve contact and position without inventing a free attack window. |
+| The group hits the bubble already burden-broken, route-cut off, or down to plain-return pressure | `withdrawal` | Local handoff should allow honest disengagement instead of forcing one more fake contact scene. |
+
+Guardrails from this rule:
+- **Entry mode is not a second job-scoring pass.** It chooses local posture for the already-selected outing; it does not mint a fresh target family or reopen board generation.
+- **`scout` and `probe` stay separate.** `Scout` is broad confirm/search, while `probe` is a localized cautious edge-test after the lead is already narrowed.
+- **`harvest` is soft extraction only.** If the target still needs deliberate force, soft-veto caution, or prepared interception, the chooser should land on `probe`, `ambush`, or `raid` instead.
+- **`withdrawal` may happen immediately on entry.** Reaching the bubble is not permission to ignore leash collapse, burden collapse, or route failure.
+- **This micro-item does not answer return serialization or save/load schema.** Those remain micro-items 27 and 28.
+
 #### 27. Bubble-to-overmap return-state packet
 - **Question:** Which exact fields must come back from bubble play?
 - **Expected output:** One return-state field list.
