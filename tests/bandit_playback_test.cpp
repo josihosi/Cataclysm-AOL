@@ -285,13 +285,15 @@ TEST_CASE( "bandit_playback_generated_repeated_site_reinforcement_stays_bounded"
     REQUIRE( scenario != nullptr );
 
     const bandit_playback::playback_result result =
-        bandit_playback::run_scenario( *scenario, { 0, 20, 40, 100 } );
+        bandit_playback::run_scenario( *scenario, { 0, 20, 40, 100, 500 } );
     const bandit_playback::checkpoint_result *tick20 = find_checkpoint( result, 20 );
     const bandit_playback::checkpoint_result *tick40 = find_checkpoint( result, 40 );
     const bandit_playback::checkpoint_result *tick100 = find_checkpoint( result, 100 );
+    const bandit_playback::checkpoint_result *tick500 = find_checkpoint( result, 500 );
     REQUIRE( tick20 != nullptr );
     REQUIRE( tick40 != nullptr );
     REQUIRE( tick100 != nullptr );
+    REQUIRE( tick500 != nullptr );
 
     CHECK( winner_at( result, 0 ).job == bandit_dry_run::job_template::scout );
     CHECK( winner_at( result, 20 ).job == bandit_dry_run::job_template::scout );
@@ -322,6 +324,9 @@ TEST_CASE( "bandit_playback_generated_repeated_site_reinforcement_stays_bounded"
     CHECK_FALSE( winner_at( result, 100 ).job == bandit_dry_run::job_template::scavenge );
     CHECK_FALSE( winner_at( result, 100 ).job == bandit_dry_run::job_template::steal );
     CHECK_FALSE( winner_at( result, 100 ).job == bandit_dry_run::job_template::raid );
+
+    CHECK( winner_at( result, 500 ).job == bandit_dry_run::job_template::hold_chill );
+    CHECK( tick500->generated_marks.marks.empty() );
 }
 
 TEST_CASE( "bandit_playback_generated_confirmed_threat_stays_visible_in_reports", "[bandit][playback]" )
@@ -396,6 +401,39 @@ TEST_CASE( "bandit_playback_report_renders_named_checkpoints", "[bandit][playbac
     CHECK( light_report.find( "kind=light" ) != std::string::npos );
     CHECK( light_report.find( "projected_range_omt=9" ) != std::string::npos );
     CHECK( light_report.find( "time=night" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_playback_first_500_turn_proof_stays_bounded", "[bandit][playback]" )
+{
+    const bandit_playback::proof_packet_result proof =
+        bandit_playback::run_first_500_turn_playback_proof();
+    const std::string report = bandit_playback::render_first_500_turn_playback_proof( proof );
+
+    CHECK( proof.packet_id == "bandit_first_500_turn_playback_proof_v0" );
+    CHECK( proof.checkpoints == std::vector<int>( { 0, 20, 100, 500 } ) );
+    REQUIRE( proof.scenarios.size() == 3 );
+
+    const bandit_playback::playback_result &smoke = proof.scenarios[0];
+    CHECK( smoke.scenario_id == "smoke_only_distant_clue" );
+    CHECK( winner_at( smoke, 0 ).job == bandit_dry_run::job_template::scout );
+    CHECK( winner_at( smoke, 500 ).job == bandit_dry_run::job_template::hold_chill );
+
+    const bandit_playback::playback_result &city = proof.scenarios[1];
+    CHECK( city.scenario_id == "city_edge_moving_hordes" );
+    CHECK( winner_at( city, 0 ).job == bandit_dry_run::job_template::stalk );
+    CHECK( winner_at( city, 500 ).job == bandit_dry_run::job_template::hold_chill );
+
+    const bandit_playback::playback_result &reinforcement = proof.scenarios[2];
+    CHECK( reinforcement.scenario_id == "generated_repeated_site_reinforcement_stays_bounded" );
+    CHECK( winner_at( reinforcement, 100 ).job == bandit_dry_run::job_template::scout );
+    CHECK( winner_at( reinforcement, 500 ).job == bandit_dry_run::job_template::hold_chill );
+
+    CHECK( report.find( "bandit first 500-turn playback proof" ) != std::string::npos );
+    CHECK( report.find( "packet: bandit_first_500_turn_playback_proof_v0" ) != std::string::npos );
+    CHECK( report.find( "tick 500" ) != std::string::npos );
+    CHECK( report.find( "scenario: smoke_only_distant_clue" ) != std::string::npos );
+    CHECK( report.find( "scenario: city_edge_moving_hordes" ) != std::string::npos );
+    CHECK( report.find( "scenario: generated_repeated_site_reinforcement_stays_bounded" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_playback_budget_measurement_exposes_short_vs_long_horizon_churn", "[bandit][playback]" )

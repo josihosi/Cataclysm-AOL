@@ -235,6 +235,18 @@ scenario_definition make_smoke_only_distant_clue()
         {}
     } );
 
+    scenario.frames.push_back( {
+        500,
+        "smoke_stays_cold",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the stale smoke should still be dead, not quietly regrow pressure."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
     return scenario;
 }
 
@@ -509,6 +521,18 @@ scenario_definition make_city_edge_moving_hordes()
             "Long horizon check: the city edge should stay quiet after the hard-veto retreat."
         },
         cadence_tier::nearby_active,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "edge_stays_abandoned",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the abandoned city edge should still not regrow a fake vendetta on its own."
+        },
+        cadence_tier::daily_cleanup,
         {}
     } );
 
@@ -974,6 +998,66 @@ scenario_definition make_generated_repeated_site_reinforcement_stays_bounded()
         {}
     } );
 
+    scenario.frames.push_back( {
+        140,
+        "reinforcement_no_new_contact_1",
+        make_camp( 2 ),
+        {},
+        {
+            "Once corroboration stops, the reinforced site should start cooling on ordinary inactive cadence instead of staying magically hot."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        220,
+        "reinforcement_no_new_contact_2",
+        make_camp( 2 ),
+        {},
+        {
+            "The same site should keep losing pressure when nothing fresh happens there."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        300,
+        "reinforcement_no_new_contact_3",
+        make_camp( 2 ),
+        {},
+        {
+            "Repeated-site interest should keep draining on long idle horizons instead of becoming immortal scout pressure."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        380,
+        "reinforcement_no_new_contact_4",
+        make_camp( 2 ),
+        {},
+        {
+            "Still no new corroboration, so the same clue should be close to dead by now."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "reinforcement_finally_cools",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the reinforced site should have cooled back out instead of becoming immortal scout pressure."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
     return scenario;
 }
 
@@ -1213,6 +1297,29 @@ playback_result run_scenario( const scenario_definition &scenario,
     return result;
 }
 
+proof_packet_result run_first_500_turn_playback_proof()
+{
+    static const std::vector<int> proof_checkpoints = { 0, 20, 100, 500 };
+    static const std::vector<std::string> proof_scenarios = {
+        "smoke_only_distant_clue",
+        "city_edge_moving_hordes",
+        "generated_repeated_site_reinforcement_stays_bounded",
+    };
+
+    proof_packet_result result;
+    result.packet_id = "bandit_first_500_turn_playback_proof_v0";
+    result.checkpoints = proof_checkpoints;
+
+    for( const std::string &scenario_id : proof_scenarios ) {
+        const scenario_definition *scenario = find_reference_scenario( scenario_id );
+        if( scenario != nullptr ) {
+            result.scenarios.push_back( run_scenario( *scenario, proof_checkpoints ) );
+        }
+    }
+
+    return result;
+}
+
 scenario_budget measure_scenario_budget( const scenario_definition &scenario,
         size_t iterations_per_checkpoint, const std::vector<int> &checkpoints )
 {
@@ -1329,6 +1436,33 @@ std::string render_report( const playback_result &result )
             }
         }
         out << "  reason: " << checkpoint.evaluation.winner_reason << "\n";
+    }
+
+    return out.str();
+}
+
+std::string render_first_500_turn_playback_proof( const proof_packet_result &result )
+{
+    std::ostringstream out;
+    out << "bandit first 500-turn playback proof\n";
+    out << "packet: " << result.packet_id << "\n";
+    out << "checkpoints:";
+    for( int tick : result.checkpoints ) {
+        out << " " << tick;
+    }
+    out << "\n";
+
+    for( const playback_result &scenario : result.scenarios ) {
+        out << "scenario: " << scenario.scenario_id << " - " << scenario.title << "\n";
+        for( const checkpoint_result &checkpoint : scenario.checkpoints ) {
+            const candidate_debug &winner = winner_candidate( checkpoint.evaluation );
+            out << "- tick " << checkpoint.tick << " [phase=" << checkpoint.phase << "] winner="
+                << bandit_dry_run::to_string( winner.job );
+            if( !winner.envelope_id.empty() ) {
+                out << " @ " << winner.envelope_id;
+            }
+            out << "\n";
+        }
     }
 
     return out.str();
