@@ -77,6 +77,9 @@ But the overmap scoring pass itself should be repeatable from the same state.
 Each bandit camp should maintain a small deterministic ledger.
 
 Suggested v1 fields:
+- `stockpile_food`
+- `stockpile_ammo`
+- `stockpile_med`
 - `food_pressure`
 - `ammo_pressure`
 - `med_pressure`
@@ -88,6 +91,7 @@ Suggested v1 fields:
 - `job_load`
 
 ### Meaning
+- stockpile buckets move by explicit haul, daily camp upkeep, and mission-side provisioning/recovery costs, not by hidden passive decay
 - pressure values increase urgency for relevant jobs
 - manpower limits which jobs are even valid
 - confidence affects willingness to take risks
@@ -384,11 +388,16 @@ This keeps the bandit map lively without turning it into perfect memory or impla
 ## Camp ledger drift
 
 Daily camp bookkeeping can do things like:
-- raise food/ammo/med pressure from consumption
+- apply the once-per-day mouths/basic-upkeep stockpile drain
+- raise food/ammo/med pressure when those daily costs are hard to cover
 - reduce confidence after losses
 - reduce aggression if manpower is too low
 - raise greed/opportunism pressure when supplies run short
 - lower job load as missions end
+
+Mission-side stockpile costs should stay explicit and event-driven:
+- dispatch pays ration/ammo/med issue when a group actually leaves
+- return pays rearm/treatment/restock when a group comes home having spent them
 
 This is where camps slowly become more desperate, cautious, or bold.
 

@@ -123,7 +123,7 @@ If smoke, light, route traffic, and related cues keep stacking at one site, that
 
 Useful v1 terrain split:
 - ordinary open streets, meadows, and fields should contribute little or no structural bounty by themselves
-- forests may contribute a little background bounty
+- forests may contribute a little background bounty, but mostly as thin food/fuel/shelter value rather than as a rich generic loot class
 - houses, buildings, and denser urban structure should contribute meaningfully more structural bounty than open empty terrain
 - direct human/NPC sightings should inject strong mobile bounty even when threat is still uncertain
 
@@ -188,7 +188,7 @@ Use for:
 - pressure decay
 - confidence aging
 - mark deletion/collapse
-- storage/consumption drift
+- daily camp-housekeeping stockpile drift (dispatch/return costs stay event-driven)
 - long-horizon cleanup
 
 ### Event-driven creation

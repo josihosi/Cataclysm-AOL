@@ -11,7 +11,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 Active lane: **Bandit concept formalization follow-through**.
 
 Current target:
-1. continue Package 1 without turning it into one giant law blob
+1. continue Package 2 without turning it into one giant movement-law blob
    - micro-item 1, `Terrain bounty bucket table`, is now landed
    - micro-item 2, `Structural bounty harvest trigger rule`, is now landed
    - micro-item 3, `Structural bounty reappearance rule`, is now landed
@@ -22,12 +22,15 @@ Current target:
    - micro-item 8, `Threat rewrite rule`, is now landed
    - micro-item 9, `Threat-and-bounty coexistence rule`, is now landed
    - micro-item 10, `Destination-only vs along-route collection rule`, is now landed
-   - stay on micro-item 11, `Collection yield rule`
+   - micro-item 11, `Collection yield rule`, is now landed
+   - micro-item 12, `Camp stockpile consumption rule`, is now landed
+   - micro-item 13, `Forest yield rule`, is now landed
+   - stay on micro-item 14, `Daily movement budget rule`
 2. keep the law honest and narrow
-   - answer exactly how much harvestable bounty one outing can convert into haul or stockpile
-   - make later implementation stop guessing whether a successful outing brings home a token skim, an arbitrary cartload, or some bounded starter amount
-   - only touch adjacent stale wording when that ingress pass directly forces it
-   - do not answer micro-items 11-13 at the same time just because the laws smell related
+   - answer exactly the starter daily OMT travel budget for the relevant outing types
+   - make later implementation stop guessing whether a raid, probe, convoy hit, or local forage skim can cross half the map on one daily budget
+   - keep it separate from the already-landed forest-yield rule and from later cadence-spend / distance-burden laws
+   - do not answer micro-items 14-18 at the same time just because movement rules smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

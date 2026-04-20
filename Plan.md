@@ -72,9 +72,12 @@ Current target:
 - Package 1, micro-item 8, `Threat rewrite rule`, is now landed too: threat now rewrites source-by-source through real recheck only, with explicit raise / confirm / lower cases instead of passive threat melt
 - Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, is now landed too: bounty and threat now stay as separate concurrent reads, so one region/carrier can remain worth attacking and risky to approach at the same time unless a source-specific recheck actually disproves one side
 - Package 1, micro-item 10, `Destination-only vs along-route collection rule`, is now landed too: outings may skim opportunistic value on the current corridor or immediate intercept envelope, but not turn into vacuum-cleaner side-sweep harvesting or free goal rewrites
-- keep the next pass narrow: Package 1, micro-item 11, `Collection yield rule`
-- answer only how much harvestable bounty one outing can convert into haul or stockpile, and only touch adjacent stale wording when that ingress pass directly forces the correction
-- do not drift into stockpile-consumption cadence law, forest-yield law, code, or reopened locker/basecamp slices while doing this
+- Package 1, micro-item 11, `Collection yield rule`, is now landed too: one outing converts at most 0-3 haul steps into stockpile, route-side skims stay inside that same cap, and rich regions still need repeat exploitation instead of one magic vacuum pass
+- Package 1, micro-item 12, `Camp stockpile consumption rule`, is now landed too: camp stockpile now drains only by explicit daily housekeeping plus explicit dispatch/return mission costs, with pressure coming from uncovered named costs rather than hidden decay
+- Package 1, micro-item 13, `Forest yield rule`, is now landed too: pure forest now cashes out as thin food/fuel/basic-material value, usually 0-1 haul, while richer hidden sites in the woods should score as those site classes rather than as magical forest bounty
+- keep the next pass narrow: Package 2, micro-item 14, `Daily movement budget rule`
+- answer only the starter daily OMT travel budget for relevant outing types, and only touch adjacent stale wording when that movement-budget pass directly forces the correction
+- do not drift into the later Package 2 cadence-spend/distance-burden law, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
 - **Plan status summary command**
@@ -313,8 +316,11 @@ Current bounded slice:
 - landed: Package 1, micro-item 8, `Threat rewrite rule`, now freezes that threat only changes through source-specific recheck, with explicit raise / confirm / lower cases and no passive decay shortcut
 - landed: Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, now freezes that threat and bounty remain separate concurrent reads on the same region/carrier when the evidence supports both, with only source-specific contradiction clearing one side
 - landed: Package 1, micro-item 10, `Destination-only vs along-route collection rule`, now freezes that outings may collect opportunistically on the current corridor or immediate intercept envelope, but not by broad side-sweep harvesting or free mission rewrites
-- next: Package 1, micro-item 11, `Collection yield rule`
-- keep the pass to one explicit ingress/yield rule before touching stockpile-consumption or forest-yield questions
+- landed: Package 1, micro-item 11, `Collection yield rule`, now freezes a 0-3 per-outing haul cap so ingress stays bounded, route-side skims stay inside the same packet, and rich regions still need repeat exploitation
+- landed: Package 1, micro-item 12, `Camp stockpile consumption rule`, now freezes one daily housekeeping drain plus explicit dispatch/return mission costs, with food/ammo/med pressure driven by those named costs rather than by hidden stockpile decay
+- landed: Package 1, micro-item 13, `Forest yield rule`, now freezes forest as thin food/fuel/basic-material value, usually 0-1 haul, unless the outing actually touches a richer embedded site that should score by its own site class
+- next: Package 2, micro-item 14, `Daily movement budget rule`
+- keep the pass to one starter movement-budget table before touching the later Package 2 cadence/distance law
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

@@ -57,8 +57,11 @@ Current honest state:
 - Package 1, micro-item 9 is now answered too: threat and bounty now stay as separate concurrent reads, so the same region/carrier may remain attractive and dangerous at once unless a source-specific recheck actually disproves one side
 - Package 1, micro-item 10 is now answered too: outings may collect opportunistically on the current corridor or immediate intercept envelope, but not by broad side-sweep harvesting, road-as-loot-tile logic, or free mission rewrites
 - adjacent parked substrate wording was tightened once: the synthesis/scoring docs now talk about intercept-worthy corridor value and bounded on-path skimming rather than vague repeated route "farming"
-- the next honest active slice is Package 1, micro-item 11, `Collection yield rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define how much haul one outing can honestly bring home without smuggling in stockpile-consumption cadence or forest-yield law
+- Package 1, micro-item 11 is now answered too: one outing converts at most 0-3 haul steps into stockpile, route-side skims stay inside that same cap, and rich regions still need repeat exploitation instead of one magic vacuum pass
+- Package 1, micro-item 12 is now answered too: camp stockpile drains only by one daily housekeeping pass plus explicit dispatch/return mission costs, with food/ammo/med pressure driven by those named costs instead of hidden decay
+- Package 1, micro-item 13 is now answered too: pure forest now cashes out as thin food/fuel/basic-material value, usually 0-1 haul, while richer hidden sites in the woods should score as those site classes rather than as magical forest bounty
+- the next honest active slice is Package 2, micro-item 14, `Daily movement budget rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define starter daily OMT travel budgets for the relevant outing types without smuggling in cadence-spend or distance-burden law
 
 ### Recently closed, do not casually reopen
 
@@ -82,15 +85,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the destination-only versus along-route collection question is no longer open; the next honest move is one bounded collection-yield rule
+- the forest-practicality question is no longer open either; the next honest move is one bounded starter movement-budget table
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 1, micro-item 11, `Collection yield rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that ingress rule consistent and separate from later stockpile-consumption / forest-yield law
+- land Package 2, micro-item 14, `Daily movement budget rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that movement-budget note separate from later cadence-spend and distance-burden law
 
 ---
 

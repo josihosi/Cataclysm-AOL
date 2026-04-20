@@ -112,6 +112,7 @@ They are where regional pressure comes from.
 
 A camp should keep coarse state such as:
 - manpower available
+- coarse food/ammo/med stockpile state
 - food/ammo/med pressure
 - confidence and aggression
 - recent gains and recent losses
@@ -120,6 +121,7 @@ A camp should keep coarse state such as:
 - known dangers
 
 These values create the camp's strategic mood without turning it into a mystical personality oracle.
+Pressure should come from explicit daily upkeep and mission-side stockpile costs, not from a hidden background drain.
 
 Each camp should also own its own **sparse operational map** around its practical operating radius.
 That map is camp-owned, not shared omniscience.
@@ -270,7 +272,7 @@ Quiet inactivity should not.
 
 Useful terrain/bounty split:
 - open streets, meadows, and ordinary fields should not print broad bounty by default
-- forests may hold a little background bounty
+- forests may hold a little background bounty, but mostly as thin food/fuel/shelter value that usually cashes out as only 0-1 haul unless a distinct embedded site is involved
 - buildings, houses, and denser urban structures should carry much more structural bounty than empty open ground
 - direct human/NPC sightings should be among the strongest mobile bounty cues
 
@@ -593,6 +595,7 @@ The clean mission lifecycle should look like this:
 
 4. **group dispatch happens**
    - a valid job spawns an abstract overmap group
+   - dispatch provisioning costs are paid here, not by passive bleed later
 
 5. **overmap travel and reaction happen**
    - the group routes toward a target, observes, stalks, probes, ambushes, or raids
@@ -605,7 +608,7 @@ The clean mission lifecycle should look like this:
    - search, observe, contact, engage, loot, retreat, or break
 
 8. **result packet returns to overmap state**
-   - cargo, wounds, morale, losses, revised threat/bounty, new marks, and retreat bias are written back
+   - cargo, wounds, morale, losses, revised threat/bounty, new marks, retreat bias, and any return-side rearm/treatment stockpile costs are written back
 
 9. **future behavior changes**
    - the camp becomes greedier, more cautious, more desperate, more revenge-driven, or more informed depending on what happened

@@ -307,15 +307,75 @@ Guardrails from this rule:
 - **Expected output:** One starter yield rule or small table.
 - **Done when:** Later stockpile math has a real ingress rule instead of hand-wavy "some amount".
 
+Current answer:
+- One outing should convert at most **0-3 haul steps** into camp stockpile, with the top end reserved for unusually rich, low-friction takes.
+- Treat that as an **ingress cap**, not a 1:1 readout of bounty score. High structural or moving bounty makes a target worth attempting, but one trip still brings home only a bounded packet.
+- On-route opportunism counts inside the same cap. A route-side skim may improve a trip's result, but it does not stack into a free second full haul.
+- Any value left behind stays as residual structural or moving bounty, partially harvested state, or a future mission lead rather than being magically vacuumed up by one successful outing.
+
+| Outing outcome | Stockpile ingress | Typical shape | Why |
+| --- | --- | --- | --- |
+| Empty hand or broken contact | 0 | False lead, hard resistance, panic retreat, or no portable value reached | The outing may still rewrite marks or threat, but it did not bring home material gain. |
+| Light skim | 1 | Robbed traveler, clipped convoy edge, quick on-path supplies, or a small exposed stop | This is the normal bounded result for opportunistic route contact or a thin low-risk take. |
+| Ordinary successful haul | 2 | Stripped house/farm packet, good camp-edge theft, modest convoy hit, or other worthwhile site take | A decent outing should matter, but still not liquidate an entire rich region in one pass. |
+| Exceptional capped haul | 3 | Rich convoy, soft camp footprint, or unusually favorable storehouse/outbuilding hit | Rare upper bound for a clean, high-value, low-disruption success. This is a cap, not the new normal. |
+
+Guardrails from this rule:
+- **Bounty score is not stockpile units.** Attraction and ingress stay related, but separate.
+- **One outing means one bounded haul packet.** Even when route-side skimming happens, the total return still caps at 3.
+- **Route-side contact usually yields 0-1.** Reaching 2 or 3 should require a genuinely strong main take, not ordinary roadside noise.
+- **Rich sites need repeat exploitation.** A high-value region may take multiple outings to drain because one mission does not cart away the whole world.
+- **This rule still does not answer consumption cadence or forest practicality.** Those stay for micro-items 12 and 13.
+
 #### 12. Camp stockpile consumption rule
 - **Question:** What drains camp stockpile, and on what explicit cadence family?
 - **Expected output:** One rule packet for stockpile consumption, separate from bounty/threat logic.
 - **Done when:** The packet states plainly that stockpile goes down by consumption rather than by hidden bounty-style decay.
 
+Current answer:
+- Bandit camp stockpile drains only through **explicit camp-side use**, split into one **daily housekeeping cadence** plus two **event-driven mission costs**.
+- Daily housekeeping is the only default recurring drain. It covers the camp simply existing for another day: mouths/basic food use plus ordinary low-grade camp upkeep.
+- Dispatch consumes a one-shot issue packet when a group actually leaves: travel rations first, plus ammo or medical issue only when that job plausibly needs them.
+- Return consumes a one-shot recovery packet when a group comes home with spent ammo, wounds, or other consumed expedition supplies: rearm, wound treatment, and restock of expended mission consumables.
+
+| Stockpile drain source | Drains stockpile? | Cadence family | Why |
+| --- | --- | --- | --- |
+| Daily camp mouths/basic upkeep | Yes | Daily drift | Ordinary residents and an occupied camp should consume food and low-grade upkeep even if no mission launches. |
+| Job dispatch provisioning | Yes | Event-driven on dispatch | Outings should pay an explicit ration/loadout issue cost when they actually leave, not through fake background bleed. |
+| Post-outing rearm/recovery | Yes | Event-driven on mission return | Ammo replacement, wound treatment, and spent expedition consumables should hit stockpile when the outing comes home needing them. |
+| Idle passage of time outside the normal camp day | No extra drain | No extra cadence | There is no hidden bounty-style stockpile melt beyond the one daily housekeeping pass. |
+| Bounty/threat aging or mark cleanup | No | Never | Map-memory maintenance must not double as fake supply decay. |
+| Spoilage, camp construction, or broad repair projects | Not by default in v1 | Future explicit rule only | If later systems want those costs, they must model them openly instead of smuggling them into “consumption”. |
+
+Guardrails from this rule:
+- **Stockpile consumption is not passive decay math.** It is a small set of named costs on named cadence families.
+- **Daily consumption and mission consumption stay separate.** Mouths/basic camp upkeep happen every day; expedition prep and post-mission replenishment happen only when a group actually leaves or returns.
+- **Pressure rises when due costs cannot be covered.** Food/ammo/med pressure should come from these unpaid or thinning buckets, not from a second hidden desperation timer.
+- **No silent spoilage or build-cost bleed in v1.** Those can be later systems, but only as explicit added rules.
+
 #### 13. Forest yield rule
 - **Question:** What practical value can bandits actually extract from forest, separate from generic low forest bounty?
 - **Expected output:** One small forest-yield note with starter numbers or bounded categories.
 - **Done when:** "Forest has a little bounty" and "forest can actually feed stockpile a bit" are separated cleanly.
+
+Current answer:
+- Pure forest should count as **low-yield, low-density structural opportunity**. It can help stockpile a little, but mostly through food, fuel, and rough material rather than rich general loot.
+- A forest outing should usually return **0-1 stockpile step**. Reaching 2 should require the group to hit a distinct embedded site or unusually favorable take inside the woods, and that extra value should mostly be attributed to that site rather than to generic forest.
+- Forest yield should mainly ease **food pressure** and **basic camp upkeep burden**, not act as a routine source of meaningful ammo, medicine, or high-grade salvage.
+- Repeated forest exploitation should flatten quickly unless a later packet explicitly models renewable hunting, logging, or regrowth. V1 should not let "go to the woods" become infinite offscreen income.
+
+| Forest outing shape | Typical stockpile ingress | Practical value | Why |
+| --- | --- | --- | --- |
+| Short forage, hunt, or firewood cut | 0-1 | Food, fuel, rough material | This is the default pure-forest take: useful, but thin and labor-heavy. |
+| Concealed route pass with no real harvest | 0 | None | Cover/concealment can help a mission without itself paying stockpile. |
+| Small trap, cache, or campsite found in the woods | 1-2 | Mixed small supplies | The upside comes from the embedded human-use pocket, not from magical generic forest bounty. |
+| Rich cabin, logging stash, or occupied camp hidden in forest | Treat as cabin/site/camp rule first | Site-bound supplies | Once the value is really a distinct site, score it by that site class plus any moving activity, not as plain forest. |
+
+Guardrails from this rule:
+- **Low forest bounty now has a bounded stockpile meaning.** "Forest has a little bounty" does not mean forest is a rich generic target.
+- **Concealment and moving activity stay separate.** Smoke, lights, camps, routes, or ambush opportunities in forest belong on moving-bounty or site layers.
+- **Pure forest mostly feeds food/basic-upkeep relief, not ammo/med abundance.**
+- **No infinite woods economy in v1.** If later renewable harvesting loops are wanted, write them explicitly instead of letting generic forest bounty refill forever.
 
 ### Package 1 acceptance bar
 - all 13 micro-items above exist as separate answers or tables
