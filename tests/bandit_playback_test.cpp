@@ -29,7 +29,7 @@ TEST_CASE( "bandit_playback_reference_suite_covers_current_contract", "[bandit][
     const std::vector<bandit_playback::scenario_definition> &scenarios =
         bandit_playback::reference_scenarios();
 
-    REQUIRE( scenarios.size() == 11 );
+    REQUIRE( scenarios.size() == 13 );
 
     const std::vector<std::string> expected_ids = {
         "empty_region",
@@ -42,6 +42,8 @@ TEST_CASE( "bandit_playback_reference_suite_covers_current_contract", "[bandit][
         "generated_smoke_mark_cools_off",
         "generated_night_light_mark_scopes_out",
         "generated_corridor_mark_refreshes_cleanly",
+        "generated_human_sighting_tracks_moving_carrier",
+        "generated_shared_route_refresh_stays_corridor",
         "generated_confirmed_threat_stays_sticky",
     };
 
@@ -236,6 +238,45 @@ TEST_CASE( "bandit_playback_generated_corridor_refresh_stays_single_mark", "[ban
     CHECK( winner_at( result, 100 ).job == bandit_dry_run::job_template::hold_chill );
 }
 
+TEST_CASE( "bandit_playback_generated_human_sighting_stays_moving_carrier", "[bandit][playback]" )
+{
+    const bandit_playback::scenario_definition *scenario =
+        bandit_playback::find_reference_scenario( "generated_human_sighting_tracks_moving_carrier" );
+    REQUIRE( scenario != nullptr );
+
+    const bandit_playback::playback_result result =
+        bandit_playback::run_scenario( *scenario, { 0, 20, 160 } );
+    const bandit_playback::checkpoint_result *tick20 = find_checkpoint( result, 20 );
+    REQUIRE( tick20 != nullptr );
+
+    CHECK( winner_at( result, 0 ).job == bandit_dry_run::job_template::stalk );
+    CHECK( winner_at( result, 0 ).family == bandit_dry_run::lead_family::moving_carrier );
+    CHECK( winner_at( result, 20 ).job == bandit_dry_run::job_template::stalk );
+    REQUIRE( tick20->generated_marks.marks.size() == 1 );
+    CHECK( tick20->generated_marks.marks[0].kind == "human_sighting" );
+    CHECK( tick20->generated_marks.marks[0].family == bandit_dry_run::lead_family::moving_carrier );
+    CHECK( winner_at( result, 160 ).job == bandit_dry_run::job_template::hold_chill );
+}
+
+TEST_CASE( "bandit_playback_generated_shared_route_refresh_stays_corridor", "[bandit][playback]" )
+{
+    const bandit_playback::scenario_definition *scenario =
+        bandit_playback::find_reference_scenario( "generated_shared_route_refresh_stays_corridor" );
+    REQUIRE( scenario != nullptr );
+
+    const bandit_playback::playback_result result =
+        bandit_playback::run_scenario( *scenario, { 0, 20, 160 } );
+    const bandit_playback::checkpoint_result *tick20 = find_checkpoint( result, 20 );
+    REQUIRE( tick20 != nullptr );
+
+    CHECK( winner_at( result, 0 ).job == bandit_dry_run::job_template::toll );
+    CHECK( winner_at( result, 20 ).job == bandit_dry_run::job_template::toll );
+    REQUIRE( tick20->generated_marks.marks.size() == 1 );
+    CHECK( tick20->generated_marks.marks[0].kind == "route_activity" );
+    CHECK( tick20->generated_marks.marks[0].family == bandit_dry_run::lead_family::corridor );
+    CHECK( winner_at( result, 160 ).job == bandit_dry_run::job_template::hold_chill );
+}
+
 TEST_CASE( "bandit_playback_generated_confirmed_threat_stays_visible_in_reports", "[bandit][playback]" )
 {
     const bandit_playback::scenario_definition *scenario =
@@ -330,7 +371,7 @@ TEST_CASE( "bandit_playback_reference_suite_budget_reports_perf_churn_and_persis
         bandit_playback::measure_reference_suite_budget( 2 );
     const std::string report = bandit_playback::render_budget_report( budget );
 
-    REQUIRE( budget.scenarios.size() == 11 );
+    REQUIRE( budget.scenarios.size() == 13 );
     CHECK( budget.persistence.sample_total_bytes == 512 );
     CHECK( budget.persistence.lines.size() == 6 );
     CHECK( budget.persistence.verdict.find( "cheap enough" ) != std::string::npos );

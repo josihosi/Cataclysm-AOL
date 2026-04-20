@@ -129,6 +129,28 @@ light_packet make_light_packet( const std::string &id, const std::string &envelo
     return packet;
 }
 
+human_route_packet make_human_route_packet( const std::string &id, const std::string &envelope_id,
+        const std::string &region_id, int observed_range_omt,
+        int source_strength, int persistence, human_route_kind kind,
+        human_route_origin origin, human_route_corroboration corroboration,
+        lead_family family = lead_family::corridor,
+        const std::vector<std::string> &notes = {} )
+{
+    human_route_packet packet;
+    packet.id = id;
+    packet.envelope_id = envelope_id;
+    packet.region_id = region_id;
+    packet.family = family;
+    packet.observed_range_omt = observed_range_omt;
+    packet.source_strength = source_strength;
+    packet.persistence = persistence;
+    packet.kind = kind;
+    packet.origin = origin;
+    packet.corroboration = corroboration;
+    packet.notes = notes;
+    return packet;
+}
+
 scenario_definition make_empty_region()
 {
     scenario_definition scenario;
@@ -683,6 +705,193 @@ scenario_definition make_generated_corridor_mark_refreshes_cleanly()
     return scenario;
 }
 
+scenario_definition make_generated_human_sighting_tracks_moving_carrier()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_human_sighting_tracks_moving_carrier";
+    scenario.title = "Generated human sighting tracks moving carrier";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Can a direct human sighting generate moving-carrier pressure without inflating into magical site truth?"
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "fresh_human_sighting",
+        make_camp( 2 ),
+        {},
+        {
+            "The writer-side route packet should create a moving-carrier lead with no hand-authored lead list.",
+            "A direct sighting stays mobile bounty pressure first, even if the caller asked for a broader site family."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {},
+        {
+            make_human_route_packet( "road_travelers", "road_travelers", "forest_lane", 6, 3, 0,
+                                     human_route_kind::direct_sighting,
+                                     human_route_origin::external,
+                                     human_route_corroboration::none,
+                                     lead_family::site,
+                                     { "Direct human sighting should stay attached to the travelers instead of upgrading the whole lane." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "sighting_refreshed",
+        make_camp( 2 ),
+        {},
+        {
+            "A second matching sighting should refresh the same moving-carrier mark instead of inventing a site anchor."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {},
+        {
+            make_human_route_packet( "road_travelers", "road_travelers", "forest_lane", 6, 3, 0,
+                                     human_route_kind::direct_sighting,
+                                     human_route_origin::external,
+                                     human_route_corroboration::none,
+                                     lead_family::site,
+                                     { "Repeated direct sighting should keep the clue mobile, not site-shaped." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        60,
+        "sighting_cooling",
+        make_camp( 2 ),
+        {},
+        {
+            "A later distant inactive pass should cool the moving-carrier clue instead of leaving it immortal."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "sighting_cleanup_started",
+        make_camp( 2 ),
+        {},
+        {
+            "The first cleanup pass should start pruning the stale moving-carrier clue."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        160,
+        "sighting_pruned",
+        make_camp( 2 ),
+        {},
+        {
+            "Without fresh sightings, the moving-carrier clue should eventually cool back to quiet."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_shared_route_refresh_stays_corridor()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_shared_route_refresh_stays_corridor";
+    scenario.title = "Generated shared route refresh stays corridor";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Can shared corroborated route activity refresh one corridor mark cleanly without inflating into a site?"
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "fresh_shared_route",
+        make_camp( 2 ),
+        {},
+        {
+            "Shared corridor activity should create bounded corridor pressure, not a magical settlement site."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {},
+        {
+            make_human_route_packet( "shared_supply_track", "shared_supply_track", "south_road", 5, 3, 1,
+                                     human_route_kind::route_activity,
+                                     human_route_origin::shared,
+                                     human_route_corroboration::corridor,
+                                     lead_family::site,
+                                     { "Shared traffic with corridor corroboration should reinforce the road, not promote the whole site." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "shared_route_refreshed",
+        make_camp( 2 ),
+        {},
+        {
+            "Refresh should keep one corridor mark alive and modestly stronger instead of cloning or site-inflating it."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {},
+        {
+            make_human_route_packet( "shared_supply_track", "shared_supply_track", "south_road", 5, 3, 1,
+                                     human_route_kind::route_activity,
+                                     human_route_origin::shared,
+                                     human_route_corroboration::corridor,
+                                     lead_family::site,
+                                     { "Repeated shared-route evidence should refresh the same corridor mark." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        60,
+        "shared_route_cooling",
+        make_camp( 2 ),
+        {},
+        {
+            "A later distant inactive pass should cool the shared-route clue instead of leaving it immortal."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "shared_route_cleanup_started",
+        make_camp( 2 ),
+        {},
+        {
+            "The first cleanup pass should start pruning the stale shared-route clue."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        160,
+        "shared_route_pruned",
+        make_camp( 2 ),
+        {},
+        {
+            "Without more corroboration, the shared-route clue should still collapse back to quiet."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
 scenario_definition make_generated_confirmed_threat_stays_sticky()
 {
     scenario_definition scenario;
@@ -778,6 +987,12 @@ checkpoint_result build_checkpoint( const scenario_definition &scenario, int tic
         }
         for( const light_packet &packet : frame.light_packets ) {
             const light_projection projection = adapt_light_packet( packet );
+            if( projection.viable ) {
+                signals.push_back( projection.signal );
+            }
+        }
+        for( const human_route_packet &packet : frame.human_route_packets ) {
+            const human_route_projection projection = adapt_human_route_packet( packet );
             if( projection.viable ) {
                 signals.push_back( projection.signal );
             }
@@ -881,6 +1096,8 @@ const std::vector<scenario_definition> &reference_scenarios()
         make_generated_smoke_mark_cools_off(),
         make_generated_night_light_mark_scopes_out(),
         make_generated_corridor_mark_refreshes_cleanly(),
+        make_generated_human_sighting_tracks_moving_carrier(),
+        make_generated_shared_route_refresh_stays_corridor(),
         make_generated_confirmed_threat_stays_sticky(),
     };
     return scenarios;

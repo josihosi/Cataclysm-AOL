@@ -18,6 +18,7 @@ struct scenario_frame {
     std::vector<bandit_mark_generation::signal_input> mark_signals;
     std::vector<bandit_mark_generation::smoke_packet> smoke_packets;
     std::vector<bandit_mark_generation::light_packet> light_packets;
+    std::vector<bandit_mark_generation::human_route_packet> human_route_packets;
 
     scenario_frame() = default;
     scenario_frame( int tick_, std::string phase_, bandit_dry_run::camp_input camp_,
@@ -26,7 +27,8 @@ struct scenario_frame {
                     bandit_mark_generation::cadence_tier cadence_,
                     std::vector<bandit_mark_generation::signal_input> mark_signals_,
                     std::vector<bandit_mark_generation::smoke_packet> smoke_packets_ = {},
-                    std::vector<bandit_mark_generation::light_packet> light_packets_ = {} ) :
+                    std::vector<bandit_mark_generation::light_packet> light_packets_ = {},
+                    std::vector<bandit_mark_generation::human_route_packet> human_route_packets_ = {} ) :
         tick( tick_ ),
         phase( std::move( phase_ ) ),
         camp( std::move( camp_ ) ),
@@ -35,7 +37,8 @@ struct scenario_frame {
         cadence( cadence_ ),
         mark_signals( std::move( mark_signals_ ) ),
         smoke_packets( std::move( smoke_packets_ ) ),
-        light_packets( std::move( light_packets_ ) )
+        light_packets( std::move( light_packets_ ) ),
+        human_route_packets( std::move( human_route_packets_ ) )
     {
     }
 };
