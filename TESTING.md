@@ -65,9 +65,10 @@ Current honest state:
 - Package 2, micro-item 16 is now answered too: target desirability now falls by the round-trip share of the outing's daily travel budget, with starter discount bands that make the same destination cheaper for higher-commitment jobs and keep mediocre far targets from tying with nearer ones by accident
 - adjacent parked substrate wording was tightened again: the broad concept doc now points at the landed round-trip-share distance burden instead of treating it as still-undecided future law
 - Package 2, micro-item 17 is now answered too: each outing now carries a calm-condition elapsed-time return clock with starter job-shaped leash values, fresh sightings do not refresh that leash for free, and the default flips toward home once only plain return time remains
-- adjacent parked substrate wording was tightened one more time where it still implied return-clock law was undecided
-- the next honest active slice is Package 2, micro-item 18, `Cargo / wounds / panic burden rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define which burden factors shorten outings or useful movement without smuggling fallback/diversion law into the same pass
+- Package 2, micro-item 18 is now answered too: cargo, wounds, and panic now collapse into a bounded additive burden table that only shrinks useful travel and remaining return clock after the calm-condition movement law is already set
+- adjacent parked substrate wording was tightened again where it still implied cargo/wounds/panic burden was undecided future law
+- the next honest active slice is Package 2, micro-item 19, `No-target fallback rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define what camps do when nothing nearby honestly clears the dispatch bar, without smuggling no-path/diversion law into the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -98,8 +99,8 @@ Current honest state:
 
 ## Pending probes
 
-- land Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that burden note separate from later fallback/diversion law
+- land Package 2, micro-item 19, `No-target fallback rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that fallback note separate from later no-path/diversion law
 
 ---
 

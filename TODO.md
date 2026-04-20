@@ -29,12 +29,13 @@ Current target:
    - micro-item 15, `Cadence budget-spend rule`, is now landed
    - micro-item 16, `Distance burden rule`, is now landed
    - micro-item 17, `Return-clock rule`, is now landed
-   - stay on micro-item 18, `Cargo / wounds / panic burden rule`
+   - micro-item 18, `Cargo / wounds / panic burden rule`, is now landed
+   - stay on micro-item 19, `No-target fallback rule`
 2. keep the law honest and narrow
-   - answer exactly which burden factors shorten outings or reduce useful movement after the base return clock is already fixed
-   - keep distance burden and return clock frozen as already-landed law, not a hidden place to smuggle burden trimming back into range scoring or outing-endurance math
-   - keep micro-item 18 separate from later no-target / no-path / diversion law
-   - do not answer micro-items 18-19 at the same time just because movement rules smell related
+   - answer exactly what a camp does when no nearby target honestly clears the bar for dispatch
+   - keep movement budget, distance burden, return clock, and burden pressure frozen as already-landed law, not as a back door to re-litigate range or outing endurance
+   - keep micro-item 19 separate from later no-path / diversion law
+   - do not answer micro-items 19-21 at the same time just because fallback rules smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

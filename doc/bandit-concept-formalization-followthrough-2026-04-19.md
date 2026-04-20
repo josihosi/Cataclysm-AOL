@@ -417,7 +417,7 @@ Current answer:
 Guardrails from this rule:
 - **This is one per-day allowance, not one allowance per cadence wake.** Exact cadence spend belongs to micro-item 15.
 - **This answers outing type, not desirability by range.** Distance burden still belongs to micro-item 16.
-- **Later burden rules may shrink usable travel, not silently enlarge it.** Cargo, wounds, panic, and hard caution belong to micro-item 18.
+- **Later burden rules may shrink usable travel, not silently enlarge it.** Cargo, wounds, and panic belong to micro-item 18.
 - **Far targets require multiple days or staged pressure.** A same-day raid or convoy hit should not cross half the strategic theater just because the camp noticed it.
 - **The 6-OMT row is a rare top-end exception, not the normal economy loop.** Most routine movement should live inside the 1-5 envelope.
 
@@ -500,7 +500,7 @@ Guardrails from this rule:
 - **Use route distance, not player distance ring shortcuts.** The burden is about how much of the outing the trip consumes, not about abstract proximity to the player.
 - **Round trip is the default burden lens.** A target that is easy to reach but expensive to get home from is not "cheap" just because the outbound leg looked short.
 - **This is a desirability discount, not the return-clock law.** Micro-item 17 still decides how long groups stay out before preferring home.
-- **This rule does not yet model cargo, wounds, panic, or pursuit drag.** Those extra burdens belong to micro-item 18.
+- **This rule does not yet model cargo, wounds, or panic pressure.** Those extra burdens belong to micro-item 18.
 - **High-value far targets can still win, but they must win honestly.** The point is to stop mediocre distant targets from tying with nearby ones simply because the system forgot transit cost.
 
 #### 17. Return-clock rule
@@ -547,12 +547,59 @@ Guardrails from this rule:
 - **Distance burden chooses whether to go; return clock chooses how long to stay.**
 - **The clock spends by elapsed time, not by cadence count or number of target swaps.**
 - **Fresh sightings do not mint a new lease.** If the camp wants another chase after the current leash is spent, that is a new outing decision.
-- **This is the calm-condition baseline only.** Cargo, wounds, panic, pursuit drag, and collapse-back pressure belong to micro-item 18 and may only shorten the remaining clock.
+- **This is the calm-condition baseline only.** Cargo, wounds, and panic belong to micro-item 18 and may only shorten the remaining clock; later abort/diversion law can still decide what groups do once that pressure bites.
 
 #### 18. Cargo / wounds / panic burden rule
 - **Question:** Which burden factors shorten outings or reduce useful movement?
 - **Expected output:** One bounded penalty table or rule note.
 - **Done when:** The concept has explicit burden pressure beyond raw distance.
+
+Current answer:
+- Freeze **three carried burden families** that may only shrink an outing after the calm-condition daily budget, distance burden, and return clock are already set:
+  - **cargo burden** from acquired loot, bulky haul, or casualty drag
+  - **wound burden** from injured survivors that slow travel or force caution
+  - **panic burden** from shaken or breaking morale that makes groups less willing to keep pressing
+- These are **not** fresh target-selection rules and **not** the later abort/diversion law. They only answer how an already-committed outing loses useful travel and remaining leash once it becomes burdened.
+- Score each burden family on a simple `0-3` starter scale, then add the three values together and cap at `6` total burden points.
+
+Starter burden-point table:
+
+| Burden family | `0` | `1` | `2` | `3` |
+| --- | --- | --- | --- | --- |
+| Cargo | no meaningful haul beyond weapons / kit already expected for the outing | a light compact haul or one member carrying a small extra packet | a meaningful loot load that slows regrouping or pulls one member off full mobility | overloaded / bulky haul, casualty drag, or enough stolen goods that escape speed is materially compromised |
+| Wounds | no meaningful movement impairment | one lightly wounded survivor or several minor hurts that force extra caution | one badly hurt member or several wounded survivors that slow the whole group | severe combat damage, casualty support, or retreat pace clearly shaped by injuries |
+| Panic | composed / mission-steady | rattled, jumpy, or newly cautious after contact | shaken enough that the group is visibly losing appetite for continued pressure | morale break / rout posture where surviving members mostly want out |
+
+Convert those burden points into movement and leash pressure with this bounded table:
+
+| Total burden points | Useful movement multiplier | Remaining return-clock multiplier | Starter read |
+| --- | --- | --- | --- |
+| `0-1` | `x1.00` | `x1.00` | Still basically calm. The outing keeps its normal budget and leash. |
+| `2-3` | `x0.85` | `x0.80` | Pressured. The group can still finish nearby business, but range and patience are noticeably worse. |
+| `4-5` | `x0.65` | `x0.55` | Heavily burdened. Travel, search time, and willingness to linger all shrink hard. |
+| `6` | `x0.40` | `x0.30` | Near-collapse. Default expectation is escape / homeward bias unless a very short safe finish is already in hand. |
+
+Apply it after the earlier movement rules are already known:
+
+```text
+burden_points = min( 6, cargo_points + wound_points + panic_points )
+effective_available_travel = available_travel * movement_multiplier[burden_points]
+effective_remaining_return_clock = remaining_return_clock * leash_multiplier[burden_points]
+```
+
+Starter examples:
+
+| Example outing state | Burden points | Result |
+| --- | --- | --- |
+| Ordinary scavenge run leaving a house with a compact loot packet but no casualties | cargo `1` = total `1` | No real penalty yet. The group is carrying something, but not enough to rewrite the outing by itself. |
+| Raid group gets one serious casualty and one more lightly wounded survivor while already hauling stolen goods | cargo `2` + wounds `2` = total `4` | Useful movement drops to `x0.65` and remaining leash to `x0.55`, so the same group should start reading as burdened withdrawal pressure, not endless continued stalking. |
+| Scout group takes a bad scare and half-breaks even without much loot | panic `3` = total `3` | Range and patience both shrink even though cargo is low, so fear alone can honestly cut a recon outing short. |
+
+Guardrails from this rule:
+- **This only shrinks the outing that already exists.** It does not create extra range, free stamina, or a new mission clock.
+- **Cargo, wounds, and panic are the whole bounded starter set here.** Losses matter elsewhere as weaker future group strength, not as a second hidden movement tax on top of the wound/panic state already recorded.
+- **Burden changes only when the state changes for real.** Cargo dropped, wounds stabilized, or panic eased under safety can reduce pressure; silent timer melt should not.
+- **This still does not answer no-target fallback, no-path behavior, or mid-route diversion.** Those belong to micro-items 19-21.
 
 ### F. Fallback and diversion law
 

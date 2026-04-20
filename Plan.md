@@ -79,9 +79,10 @@ Current target:
 - Package 2, micro-item 15, `Cadence budget-spend rule`, is now landed too: cadence now spends only elapsed-time-earned travel credit from that daily budget, carrying fractional progress forward instead of rounding each wake into fake free OMT movement
 - Package 2, micro-item 16, `Distance burden rule`, is now landed too: target desirability now falls by the round-trip share of the outing's daily travel budget, so the same destination reads cheaper for a raid than for a scout and far mediocre targets stop tying with nearby ones by accident
 - Package 2, micro-item 17, `Return-clock rule`, is now landed too: each outing now carries a job-shaped elapsed-time leash, fresh sightings do not refresh it for free, and once the remaining clock shrinks to plain return time the default should flip toward home/disengage
-- keep the next pass narrow: Package 2, micro-item 18, `Cargo / wounds / panic burden rule`
-- answer only which burden factors shorten outings or reduce useful movement, and only touch adjacent stale wording when that burden pass directly forces the correction
-- do not drift into the later Package 2 fallback/diversion law, code, or reopened locker/basecamp slices while doing this
+- Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, is now landed too: additive cargo/wound/panic burden tiers now only shrink useful travel and remaining return clock after the calm-condition movement law is already set, instead of secretly reopening range scoring or fallback behavior
+- keep the next pass narrow: Package 2, micro-item 19, `No-target fallback rule`
+- answer only what a camp does when nearby work is absent or not worth dispatching, and only touch adjacent stale wording when that fallback pass directly forces the correction
+- do not drift into the later Package 2 no-path/diversion law, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
 - **Plan status summary command**
@@ -327,8 +328,9 @@ Current bounded slice:
 - landed: Package 2, micro-item 15, `Cadence budget-spend rule`, now freezes travel as elapsed-time-earned credit so cadence wakes can spend only what real world time has accrued instead of minting fresh movement every pass
 - landed: Package 2, micro-item 16, `Distance burden rule`, now freezes target desirability as a round-trip-share discount against the outing's daily travel budget instead of a flat map-distance tax
 - landed: Package 2, micro-item 17, `Return-clock rule`, now freezes a calm-condition outing leash with starter job clocks and a plain-return threshold, so groups prefer home before one chase turns into endless free pressure
-- next: Package 2, micro-item 18, `Cargo / wounds / panic burden rule`
-- keep the pass to one burden rule before touching the later Package 2 fallback/diversion law
+- landed: Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, now freezes a bounded additive burden table so cargo, wounds, and panic only shrink useful travel and remaining leash instead of secretly reopening distance scoring or fallback law
+- next: Package 2, micro-item 19, `No-target fallback rule`
+- keep the pass to one fallback rule before touching the later Package 2 no-path/diversion law
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

@@ -706,7 +706,8 @@ A good v1 lean is:
   - rare explicit theater reposition / emergency redeploy -> **6 OMT/day**
 - the follow-through canon now treats distance burden as a round-trip share of the outing's daily budget, so the same target reads cheaper for a raid than for a scout instead of paying one flat map-distance tax
 - the follow-through canon now also gives each outing an elapsed-time return clock, so fresh sightings do not reset one chase into endless free pressure and groups flip toward home once only plain return time remains
-- later follow-through micro-items may still decide how player relevance, cadence, and cargo/wounds/panic pressure chunk that budget
+- the follow-through canon now also freezes cargo/wounds/panic pressure as additive burden tiers that only shrink useful travel and remaining return clock after the calm-condition movement law is already set
+- later follow-through micro-items may still decide player-relevance chunking plus no-target / no-path / diversion behavior
 - cadence should control **how often they reconsider and spend budget**, not silently multiply their total daily travel into nonsense
 
 Important correction:
@@ -715,7 +716,7 @@ Important correction:
 - the current narrow follow-through answer now leans on **elapsed-time-earned travel credit**: groups only spend the fraction of their daily budget that real world time has earned since the last update, carrying partial progress forward instead of rounding each wake up to a free whole OMT
 
 That keeps the broader strategic theater meaningful without turning ordinary same-day jobs into nonsense map-crossing.
-Later player-relevance chunking and cargo/wounds/panic burden still belong to the narrower follow-through micro-items, not to this broad parked concept note.
+Later player-relevance chunking and fallback/diversion law still belong to the narrower follow-through micro-items, not to this broad parked concept note.
 
 The strategic tick should broadly do this:
 1. apply ledger drift
