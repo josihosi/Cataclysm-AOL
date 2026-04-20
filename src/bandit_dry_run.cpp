@@ -255,6 +255,7 @@ std::string to_string( threat_gate gate )
 evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input> &leads )
 {
     evaluation_result result;
+    result.metrics.input_lead_count = leads.size();
 
     candidate_debug hold;
     hold.generated = true;
@@ -275,6 +276,7 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
         lead_view.notes = lead.validity_notes;
 
         if( !lead_view.has_real_envelope ) {
+            result.metrics.rejected_no_envelope_count++;
             lead_view.still_valid = false;
             lead_view.notes.push_back( "no real outward lead envelope" );
             result.leads.push_back( lead_view );
@@ -282,6 +284,7 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
         }
 
         if( !lead_view.still_valid ) {
+            result.metrics.rejected_invalid_lead_count++;
             if( lead_view.notes.empty() ) {
                 lead_view.notes.push_back( "lead is no longer valid for generation" );
             }
@@ -290,6 +293,7 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
         }
 
         if( emitted_envelopes.count( lead_view.envelope_id ) > 0 ) {
+            result.metrics.deduped_lead_count++;
             lead_view.deduped = true;
             if( lead_view.notes.empty() ) {
                 lead_view.notes.push_back( "deduped into envelope " + lead_view.envelope_id );
@@ -298,6 +302,7 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
             continue;
         }
 
+        result.metrics.accepted_lead_count++;
         emitted_envelopes.insert( lead_view.envelope_id );
         if( lead_view.notes.empty() ) {
             lead_view.notes.push_back( describe_valid_lead( lead ) );
@@ -306,14 +311,21 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
         lead_debug &stored_lead = result.leads.back();
 
         for( job_template job : compatible_jobs_for( lead.family ) ) {
+            result.metrics.compatible_job_checks++;
             if( contains_job( lead.hard_blocked_jobs, job ) ) {
+                result.metrics.hard_blocked_job_count++;
                 stored_lead.notes.push_back( "hard preconditions block " + to_string( job ) );
                 continue;
             }
             if( camp.available_manpower < required_min_manpower( job ) ) {
+                result.metrics.manpower_rejection_count++;
                 stored_lead.notes.push_back( "insufficient manpower for " + to_string( job ) );
                 continue;
             }
+
+            result.metrics.candidates_generated++;
+            result.metrics.score_evaluations++;
+            result.metrics.path_checks++;
 
             candidate_debug candidate;
             candidate.job = job;
@@ -357,6 +369,7 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
             candidate.notes.push_back( "generated from " + to_string( lead.family ) + " envelope" );
 
             if( candidate.score.need_override_bonus > 0 ) {
+                result.metrics.need_override_rescues++;
                 candidate.notes.push_back( "need-pressure override rescued a mediocre real lead" );
             }
 
@@ -366,14 +379,17 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
                     break;
                 case threat_gate::soft_veto:
                     if( is_threat_compatible( job ) ) {
+                        result.metrics.soft_veto_caps++;
                         candidate.score.final_job_score = std::min( candidate.score.need_adjusted_job_score, 1.0 );
                         candidate.notes.push_back( "soft_veto: threat-compatible job capped to a marginal choice" );
                     } else {
+                        result.metrics.soft_veto_collapses++;
                         candidate.score.final_job_score = 0.0;
                         candidate.notes.push_back( "soft_veto: pure extraction collapses back to hold / chill" );
                     }
                     break;
                 case threat_gate::hard_veto:
+                    result.metrics.hard_veto_invalidations++;
                     candidate.valid = false;
                     candidate.score.final_job_score = 0.0;
                     candidate.notes.push_back( "hard_veto: severe danger invalidates this dispatch" );
@@ -381,9 +397,16 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
             }
 
             if( !lead.has_path ) {
+                result.metrics.no_path_invalidations++;
                 candidate.valid = false;
                 candidate.score.final_job_score = 0.0;
                 candidate.notes.push_back( "no_path: unreachable this dispatch pass" );
+            }
+
+            if( candidate.valid ) {
+                result.metrics.valid_outward_candidates++;
+            } else {
+                result.metrics.invalid_outward_candidates++;
             }
 
             result.candidates.push_back( candidate );
@@ -393,6 +416,7 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
     size_t best_index = 0;
     double best_score = 0.0;
     for( size_t i = 1; i < result.candidates.size(); ++i ) {
+        result.metrics.winner_comparisons++;
         const candidate_debug &candidate = result.candidates[i];
         if( candidate.valid && candidate.score.final_job_score > best_score ) {
             best_index = i;
@@ -461,6 +485,27 @@ std::string render_report( const evaluation_result &result )
             << ", final_job_score=" << candidate.score.final_job_score
             << ", notes=" << join_notes( candidate.notes ) << "\n";
     }
+
+    out << "Measurement summary:\n";
+    out << "- input_leads=" << result.metrics.input_lead_count
+        << ", accepted_leads=" << result.metrics.accepted_lead_count
+        << ", rejected_no_envelope=" << result.metrics.rejected_no_envelope_count
+        << ", rejected_invalid=" << result.metrics.rejected_invalid_lead_count
+        << ", deduped_leads=" << result.metrics.deduped_lead_count << "\n";
+    out << "- compatible_job_checks=" << result.metrics.compatible_job_checks
+        << ", hard_blocked_jobs=" << result.metrics.hard_blocked_job_count
+        << ", manpower_rejections=" << result.metrics.manpower_rejection_count
+        << ", candidates_generated=" << result.metrics.candidates_generated << "\n";
+    out << "- score_evaluations=" << result.metrics.score_evaluations
+        << ", path_checks=" << result.metrics.path_checks
+        << ", valid_outward_candidates=" << result.metrics.valid_outward_candidates
+        << ", invalid_outward_candidates=" << result.metrics.invalid_outward_candidates << "\n";
+    out << "- need_override_rescues=" << result.metrics.need_override_rescues
+        << ", soft_veto_caps=" << result.metrics.soft_veto_caps
+        << ", soft_veto_collapses=" << result.metrics.soft_veto_collapses
+        << ", hard_veto_invalidations=" << result.metrics.hard_veto_invalidations
+        << ", no_path_invalidations=" << result.metrics.no_path_invalidations
+        << ", winner_comparisons=" << result.metrics.winner_comparisons << "\n";
 
     out << "Winner:\n- " << result.winner_reason << "\n";
     out << "Return packet fields touched:\n";

@@ -37,9 +37,52 @@ struct playback_result {
     std::vector<checkpoint_result> checkpoints;
 };
 
+struct checkpoint_budget {
+    int tick = 0;
+    std::string phase;
+    bandit_dry_run::evaluation_metrics metrics;
+    size_t iterations = 0;
+    long long total_runtime_us = 0;
+    double average_runtime_us = 0.0;
+    size_t checksum = 0;
+};
+
+struct scenario_budget {
+    std::string scenario_id;
+    std::string title;
+    std::vector<std::string> questions;
+    std::vector<checkpoint_budget> checkpoints;
+};
+
+struct persistence_budget_line {
+    std::string label;
+    size_t bytes = 0;
+    size_t count = 0;
+    std::string notes;
+};
+
+struct persistence_budget {
+    std::string sample_shape;
+    std::vector<persistence_budget_line> lines;
+    std::vector<std::string> assumptions;
+    size_t sample_total_bytes = 0;
+    std::string verdict;
+};
+
+struct reference_suite_budget {
+    std::vector<scenario_budget> scenarios;
+    persistence_budget persistence;
+};
+
 const std::vector<scenario_definition> &reference_scenarios();
 const scenario_definition *find_reference_scenario( const std::string &id );
 playback_result run_scenario( const scenario_definition &scenario,
                               const std::vector<int> &checkpoints = {} );
+scenario_budget measure_scenario_budget( const scenario_definition &scenario,
+        size_t iterations_per_checkpoint = 1,
+        const std::vector<int> &checkpoints = {} );
+persistence_budget estimate_v0_persistence_budget();
+reference_suite_budget measure_reference_suite_budget( size_t iterations_per_checkpoint = 1 );
 std::string render_report( const playback_result &result );
+std::string render_budget_report( const reference_suite_budget &result );
 } // namespace bandit_playback

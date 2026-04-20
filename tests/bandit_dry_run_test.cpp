@@ -29,6 +29,9 @@ TEST_CASE( "bandit_dry_run_falls_back_to_hold_chill_without_real_leads", "[bandi
     CHECK( result.candidates[0].job == bandit_dry_run::job_template::hold_chill );
     CHECK( result.candidates[0].winner );
     CHECK( result.winner_reason.find( "hold / chill wins" ) != std::string::npos );
+    CHECK( result.metrics.input_lead_count == 0 );
+    CHECK( result.metrics.candidates_generated == 0 );
+    CHECK( result.metrics.path_checks == 0 );
 
     const std::string report = bandit_dry_run::render_report( result );
     CHECK( report.find( "Leads considered:" ) != std::string::npos );
@@ -94,6 +97,9 @@ TEST_CASE( "bandit_dry_run_unreachable_lead_fails_closed_without_fake_wander", "
     CHECK( scavenge->score.pre_veto_job_score > 0.0 );
     CHECK( scavenge->score.final_job_score == Approx( 0.0 ) );
     CHECK( result.candidates[result.winner_index].job == bandit_dry_run::job_template::hold_chill );
+    CHECK( result.metrics.candidates_generated == 4 );
+    CHECK( result.metrics.no_path_invalidations == 4 );
+    CHECK( result.metrics.invalid_outward_candidates == 4 );
 
     const std::string report = bandit_dry_run::render_report( result );
     CHECK( report.find( "no_path: unreachable this dispatch pass" ) != std::string::npos );
@@ -123,6 +129,7 @@ TEST_CASE( "bandit_dry_run_need_pressure_can_rescue_a_mediocre_real_lead", "[ban
     CHECK( scavenge->score.need_override_bonus == 2 );
     CHECK( scavenge->score.final_job_score > 0.0 );
     CHECK( result.candidates[result.winner_index].job == bandit_dry_run::job_template::scavenge );
+    CHECK( result.metrics.need_override_rescues == 4 );
 
     const std::string report = bandit_dry_run::render_report( result );
     CHECK( report.find( "need_override_bonus=2" ) != std::string::npos );
@@ -156,8 +163,53 @@ TEST_CASE( "bandit_dry_run_soft_veto_clamps_extraction_but_keeps_pressure_jobs",
     CHECK( stalk->score.final_job_score == Approx( 1.0 ) );
     CHECK( steal->score.final_job_score == Approx( 0.0 ) );
     CHECK( result.candidates[result.winner_index].job == bandit_dry_run::job_template::stalk );
+    CHECK( result.metrics.soft_veto_caps == 2 );
+    CHECK( result.metrics.soft_veto_collapses == 1 );
 
     const std::string report = bandit_dry_run::render_report( result );
     CHECK( report.find( "threat_gate=soft_veto" ) != std::string::npos );
     CHECK( report.find( "soft_veto: pure extraction collapses back to hold / chill" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_dry_run_metrics_expose_lead_filtering_and_churn", "[bandit][dry_run]" )
+{
+    bandit_dry_run::camp_input camp;
+    camp.available_manpower = 1;
+
+    bandit_dry_run::lead_input accepted;
+    accepted.id = "farmhouse";
+    accepted.envelope_id = "farmhouse";
+    accepted.family = bandit_dry_run::lead_family::site;
+    accepted.lead_bounty_value = 3;
+    accepted.lead_confidence_bonus = 1;
+
+    bandit_dry_run::lead_input duplicate = accepted;
+    duplicate.id = "farmhouse_echo";
+
+    bandit_dry_run::lead_input invalid = accepted;
+    invalid.id = "stale_farmhouse";
+    invalid.envelope_id = "stale_farmhouse";
+    invalid.still_valid = false;
+
+    bandit_dry_run::lead_input no_envelope = accepted;
+    no_envelope.id = "ghost_signal";
+    no_envelope.envelope_id = "ghost_signal";
+    no_envelope.has_real_envelope = false;
+
+    const bandit_dry_run::evaluation_result result = bandit_dry_run::evaluate( camp,
+            { accepted, duplicate, invalid, no_envelope } );
+
+    CHECK( result.metrics.input_lead_count == 4 );
+    CHECK( result.metrics.accepted_lead_count == 1 );
+    CHECK( result.metrics.rejected_no_envelope_count == 1 );
+    CHECK( result.metrics.rejected_invalid_lead_count == 1 );
+    CHECK( result.metrics.deduped_lead_count == 1 );
+    CHECK( result.metrics.compatible_job_checks == 4 );
+    CHECK( result.metrics.manpower_rejection_count == 1 );
+    CHECK( result.metrics.candidates_generated == 3 );
+    CHECK( result.metrics.score_evaluations == 3 );
+    CHECK( result.metrics.path_checks == 3 );
+    CHECK( result.metrics.valid_outward_candidates == 3 );
+    CHECK( result.metrics.invalid_outward_candidates == 0 );
+    CHECK( result.metrics.winner_comparisons == 3 );
 }

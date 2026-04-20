@@ -1,6 +1,10 @@
 #include "bandit_playback.h"
 
 #include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <functional>
+#include <iomanip>
 #include <sstream>
 
 namespace bandit_playback
@@ -397,6 +401,71 @@ const candidate_debug &winner_candidate( const evaluation_result &evaluation )
 {
     return evaluation.candidates[evaluation.winner_index];
 }
+
+size_t hash_combine( size_t seed, size_t value )
+{
+    return seed ^ ( value + 0x9e3779b9 + ( seed << 6 ) + ( seed >> 2 ) );
+}
+
+size_t evaluation_checksum( const evaluation_result &evaluation )
+{
+    size_t seed = 0;
+    seed = hash_combine( seed, evaluation.winner_index );
+    seed = hash_combine( seed, evaluation.leads.size() );
+    seed = hash_combine( seed, evaluation.candidates.size() );
+    seed = hash_combine( seed, evaluation.metrics.input_lead_count );
+    seed = hash_combine( seed, evaluation.metrics.candidates_generated );
+    seed = hash_combine( seed, evaluation.metrics.path_checks );
+
+    for( const candidate_debug &candidate : evaluation.candidates ) {
+        seed = hash_combine( seed, static_cast<size_t>( candidate.job ) );
+        seed = hash_combine( seed, static_cast<size_t>( candidate.family ) );
+        seed = hash_combine( seed, candidate.valid ? 1 : 0 );
+        seed = hash_combine( seed, candidate.winner ? 1 : 0 );
+        seed = hash_combine( seed, std::hash<std::string>()( candidate.envelope_id ) );
+        seed = hash_combine( seed, static_cast<size_t>( std::llround( candidate.score.final_job_score * 100.0 ) ) );
+    }
+
+    return seed;
+}
+
+void add_persistence_line( persistence_budget &budget, const std::string &label,
+                           size_t count, size_t bytes, const std::string &notes )
+{
+    persistence_budget_line line;
+    line.label = label;
+    line.count = count;
+    line.bytes = bytes;
+    line.notes = notes;
+    budget.sample_total_bytes += bytes;
+    budget.lines.push_back( line );
+}
+
+std::string classify_budget_verdict( const reference_suite_budget &result )
+{
+    long long max_average_runtime_us = 0;
+    size_t max_candidates_generated = 0;
+    size_t max_path_checks = 0;
+
+    for( const scenario_budget &scenario : result.scenarios ) {
+        for( const checkpoint_budget &checkpoint : scenario.checkpoints ) {
+            max_average_runtime_us = std::max<long long>( max_average_runtime_us,
+                                     static_cast<long long>( std::llround( checkpoint.average_runtime_us ) ) );
+            max_candidates_generated = std::max( max_candidates_generated,
+                                                 checkpoint.metrics.candidates_generated );
+            max_path_checks = std::max( max_path_checks, checkpoint.metrics.path_checks );
+        }
+    }
+
+    if( result.persistence.sample_total_bytes > 2048 ||
+        max_candidates_generated > 16 ||
+        max_path_checks > 16 ||
+        max_average_runtime_us > 5000 ) {
+        return "suspicious: the bounded v0 seam is already bigger or slower than it should be, so broader rollout should wait for cleanup";
+    }
+
+    return "cheap enough: the bounded v0 seam stays tiny across the reference suite, and the first persistence sample remains well below obvious save-bloat territory";
+}
 } // namespace
 
 const std::vector<scenario_definition> &reference_scenarios()
@@ -443,6 +512,84 @@ playback_result run_scenario( const scenario_definition &scenario,
     return result;
 }
 
+scenario_budget measure_scenario_budget( const scenario_definition &scenario,
+        size_t iterations_per_checkpoint, const std::vector<int> &checkpoints )
+{
+    scenario_budget result;
+    result.scenario_id = scenario.id;
+    result.title = scenario.title;
+    result.questions = scenario.questions;
+
+    const size_t iterations = std::max<size_t>( iterations_per_checkpoint, 1 );
+
+    for( int tick : normalized_checkpoints( scenario, checkpoints ) ) {
+        const scenario_frame &frame = frame_for_tick( scenario, tick );
+        checkpoint_budget checkpoint;
+        checkpoint.tick = tick;
+        checkpoint.phase = frame.phase;
+        checkpoint.iterations = iterations;
+
+        for( size_t iteration = 0; iteration < iterations; ++iteration ) {
+            const auto started = std::chrono::steady_clock::now();
+            const evaluation_result evaluation = bandit_dry_run::evaluate( frame.camp, frame.leads );
+            const auto finished = std::chrono::steady_clock::now();
+            const long long runtime_us = std::chrono::duration_cast<std::chrono::microseconds>( finished - started ).count();
+
+            checkpoint.total_runtime_us += runtime_us;
+            checkpoint.metrics = evaluation.metrics;
+            checkpoint.checksum = hash_combine( checkpoint.checksum, evaluation_checksum( evaluation ) );
+        }
+
+        checkpoint.average_runtime_us = static_cast<double>( checkpoint.total_runtime_us ) /
+                                        static_cast<double>( iterations );
+        result.checkpoints.push_back( checkpoint );
+    }
+
+    return result;
+}
+
+persistence_budget estimate_v0_persistence_budget()
+{
+    persistence_budget result;
+    result.sample_shape = "1 camp ledger + 8 marks + 1 active abstract outing + 2 anchored identities + 1 bubble seam key";
+    result.assumptions = {
+        "Approximate payload bytes for the bounded abstract state only, not exact serializer or JSON text overhead.",
+        "Compact ids, enums, bands, and small state flags are assumed for the persisted shape.",
+        "Exact loaded-bubble NPC truth, old candidate boards, and already-consumed return deltas stay out of this budget."
+    };
+
+    add_persistence_line( result, "camp ledger", 1, 64,
+                          "camp id, home region, stockpile buckets, shortage band, manpower state, and dispatch cooldown/load" );
+    add_persistence_line( result, "source-shaped mark ledger", 8, 256,
+                          "eight mixed site/corridor/actor/loss/route-blocked style marks at about 32 bytes each" );
+    add_persistence_line( result, "active abstract outing ledger", 1, 104,
+                          "group id, owning camp, current job/lead, mission posture, survivor count, cargo profile, burden, travel credit, and return pressure" );
+    add_persistence_line( result, "anchored identity slice", 2, 48,
+                          "two anchored identities at about 24 bytes each for status and join continuity" );
+    add_persistence_line( result, "camp/group hard links", 1, 24,
+                          "ownership, reserve commitment, and pending return-writeback linkage" );
+    add_persistence_line( result, "bubble seam key", 1, 16,
+                          "minimal group/camp/mission key plus bubble-owned or return-pending flag" );
+
+    if( result.sample_total_bytes > 2048 ) {
+        result.verdict = "suspicious: even the bounded abstract sample is already large, so the schema shape should be trimmed before wider rollout";
+    } else {
+        result.verdict = "cheap enough: the bounded abstract sample stays around half a kilobyte before serializer overhead, so only duplicated tactical truth or historical deltas look dangerous";
+    }
+
+    return result;
+}
+
+reference_suite_budget measure_reference_suite_budget( size_t iterations_per_checkpoint )
+{
+    reference_suite_budget result;
+    for( const scenario_definition &scenario : reference_scenarios() ) {
+        result.scenarios.push_back( measure_scenario_budget( scenario, iterations_per_checkpoint ) );
+    }
+    result.persistence = estimate_v0_persistence_budget();
+    return result;
+}
+
 std::string render_report( const playback_result &result )
 {
     std::ostringstream out;
@@ -471,6 +618,48 @@ std::string render_report( const playback_result &result )
         }
         out << "  reason: " << checkpoint.evaluation.winner_reason << "\n";
     }
+
+    return out.str();
+}
+
+std::string render_budget_report( const reference_suite_budget &result )
+{
+    std::ostringstream out;
+    out << "bandit budget report\n";
+    out << "scenarios:\n";
+    for( const scenario_budget &scenario : result.scenarios ) {
+        out << "- " << scenario.scenario_id << " - " << scenario.title << "\n";
+        for( const checkpoint_budget &checkpoint : scenario.checkpoints ) {
+            out << "  - tick " << checkpoint.tick << " [phase=" << checkpoint.phase << "] iterations="
+                << checkpoint.iterations << ", total_runtime_us=" << checkpoint.total_runtime_us
+                << ", average_runtime_us=" << std::fixed << std::setprecision( 2 )
+                << checkpoint.average_runtime_us << ", checksum=" << checkpoint.checksum << "\n";
+            out << "    churn: input_leads=" << checkpoint.metrics.input_lead_count
+                << ", accepted_leads=" << checkpoint.metrics.accepted_lead_count
+                << ", candidates_generated=" << checkpoint.metrics.candidates_generated
+                << ", score_evaluations=" << checkpoint.metrics.score_evaluations
+                << ", path_checks=" << checkpoint.metrics.path_checks
+                << ", winner_comparisons=" << checkpoint.metrics.winner_comparisons << "\n";
+            out << "    waste guards: deduped=" << checkpoint.metrics.deduped_lead_count
+                << ", hard_blocked=" << checkpoint.metrics.hard_blocked_job_count
+                << ", manpower_rejections=" << checkpoint.metrics.manpower_rejection_count
+                << ", invalid_outward=" << checkpoint.metrics.invalid_outward_candidates << "\n";
+        }
+    }
+
+    out << "persistence sample:\n";
+    out << "- shape: " << result.persistence.sample_shape << "\n";
+    for( const persistence_budget_line &line : result.persistence.lines ) {
+        out << "  - " << line.label << ": count=" << line.count << ", bytes=" << line.bytes
+            << " (" << line.notes << ")\n";
+    }
+    out << "- sample_total_bytes=" << result.persistence.sample_total_bytes << "\n";
+    out << "- assumptions:\n";
+    for( const std::string &assumption : result.persistence.assumptions ) {
+        out << "  - " << assumption << "\n";
+    }
+    out << "- persistence_verdict: " << result.persistence.verdict << "\n";
+    out << "overall_verdict:\n- " << classify_budget_verdict( result ) << "\n";
 
     return out.str();
 }
