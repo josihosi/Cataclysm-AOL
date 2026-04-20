@@ -44,11 +44,11 @@ There is now one active greenlit lane: **Bandit smoke visibility to overmap mark
 ### Active lane — Bandit smoke visibility to overmap mark bridge v0
 
 Current honest state:
-- canon-only promotion landed at `doc/bandit-smoke-visibility-overmap-mark-bridge-v0-2026-04-20.md`; no code has landed for this slice yet
-- the parked bandit concept packet is now coherent enough to support this one bounded smoke bridge without reopening the whole visibility system
-- the next missing evidence is deterministic smoke-packet / smoke-mark coverage on the current bandit mark-generation / playback footing, not more parked concept prose
-- keep the product rule explicit during implementation: sustained clear-weather smoke should remain legible from several OMT away and usually create a bounded `worth scoping out` lead before it implies anything sharper
-- because this patch is docs-only canon packaging, no compile belongs to this run by ritual
+- the bounded smoke bridge now lands in code: `src/bandit_mark_generation.{h,cpp}` adds deterministic smoke packets plus a bounded smoke adapter, and `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the coarse long-range rule honestly: sustained clear-weather smoke can stay several OMT legible with a hard cap, while weak fogged smoke does not fake long-range truth
+- reviewer-readable playback / mark reports now expose the smoke packet projection and resulting mark/lead path instead of hiding the bridge in debugger soup
+- the slice stayed bounded: no light/searchlight adapter, no broad visibility/concealment implementation, no global offscreen smoke sim, and no 500-turn proof theater
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
 ### Latest closed lane — Locker lag-threshold probe v0
 

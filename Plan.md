@@ -116,11 +116,11 @@ The parked bandit concept packet is now coherent enough to promote one narrow sm
 The canonical contract lives at `doc/bandit-smoke-visibility-overmap-mark-bridge-v0-2026-04-20.md`.
 
 Current contract:
-- build one bounded smoke adapter from existing fire/smoke/wind footing, or equivalent deterministic smoke packets, into a coarse overmap-readable smoke signal state
-- feed that signal into the current bandit mark-generation seam so smoke writes bounty-first, reviewer-readable `worth scoping out` leads instead of staying hand-authored scenario lore
-- preserve the product rule that sustained clear-weather smoke remains several OMT legible, with a rough outer cap around the existing concept starter range, instead of shrinking into comically short-range OMT intuition
-- keep the slice bounded: no light/searchlight adapter, no broad concealment pass, no global offscreen smoke sim, and no first 500-turn proof yet
-- next honest evidence should be deterministic smoke-packet / smoke-mark cases plus reviewer-readable report output on the existing bandit seams
+- the bounded smoke adapter now exists on the current bandit seam, turning deterministic smoke packets into coarse overmap-readable smoke signal state
+- smoke now feeds the current bandit mark-generation / playback seam as bounty-first, reviewer-readable `worth scoping out` leads instead of staying hand-authored scenario lore
+- the product rule stays preserved: sustained clear-weather smoke remains several OMT legible, with a rough outer cap around the existing concept starter range, instead of shrinking into comically short-range OMT intuition
+- the slice stayed bounded: no light/searchlight adapter, no broad concealment pass, no global offscreen smoke sim, and no first 500-turn proof yet
+- current evidence is narrow deterministic proof plus reviewer-readable report output on the existing bandit seams; the next decision is whether to checkpoint this lane out and promote the next narrow slice
 
 ## Checkpointed — Locker lag-threshold probe v0
 
