@@ -1,6 +1,6 @@
 # Bandit repeated site activity reinforcement seam v0 (2026-04-20)
 
-Status: active greenlit contract.
+Status: checkpointed contract.
 
 ## Promotion audit verdict
 
@@ -12,8 +12,8 @@ The next narrow visibility promotion is the repeated site-centered reinforcement
 Current bandit seams already know how to carry repeated smoke, light, and traffic marks on the ledger.
 What they still do not have is a bounded reinforcement rule that turns mixed repeated site-centered activity into stronger revisit interest without inventing a separate magical settlement-signature class.
 
-This contract is the next honest bite after human / route.
-It keeps the visibility packet moving without jumping into broad concealment law, city-signature mythology, or a full persistence-heavy traffic history simulator.
+This was the next honest bite after human / route.
+It kept the visibility packet moving without jumping into broad concealment law, city-signature mythology, or a full persistence-heavy traffic history simulator.
 
 ## Scope
 

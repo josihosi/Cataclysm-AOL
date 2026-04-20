@@ -39,17 +39,27 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-There is now one active greenlit lane: **Bandit repeated site activity reinforcement seam v0**.
+There is now one active greenlit lane: **Bandit first 500-turn playback proof v0**.
 
-### Active lane — Bandit repeated site activity reinforcement seam v0
+### Active lane — Bandit first 500-turn playback proof v0
 
 Current honest state:
-- no repeated-site reinforcement code is claimed yet; this run only promotes the next narrow slice after the smoke, light, and human / route bridge checkpoints
-- the parked visibility packet is already recon-backed for this promotion: the canon already distinguishes repeated site-centered smoke, light, and traffic from direct one-off clues, and already says those mixed repeats should amplify bounty/confidence before they become real approach interest
-- the current bounded bandit seams are ready consumers for this next adapter class: the ledger already carries site marks plus regional heat, while playback/evaluator can inspect strengthened site leads without reopening broader world-sim architecture
-- this retarget was docs-only, so no compile or harness ritual was needed here; the next honest proof after code lands is narrow deterministic bandit coverage plus reviewer-readable report output on the existing seams
+- no 500-turn proof code is claimed yet; this run only promotes the next narrow slice after the smoke, light, human / route, and repeated-site bridge checkpoints
+- the current abstract bandit seams are ready consumers for this proof packet: the playback suite, mark reports, evaluator reports, and perf packet already exist, so the next honest move is long-horizon drift proof rather than another feeder adapter
+- the named scenario footing is already rich enough for the first honest packet: current smoke cooling, city-edge peel-off, and repeated-site boundedness cases can answer long-horizon questions without smuggling in a broader simulator
+- this retarget was docs-only, so no compile or harness ritual was needed here; the next honest proof after code lands is narrow deterministic bandit coverage plus reviewer-readable long-horizon report output on the existing seams
 
-### Latest closed lane — Bandit human / route visibility mark seam v0
+### Latest closed lane — Bandit repeated site activity reinforcement seam v0
+
+Current honest state:
+- the bounded repeated-site seam now lands in code: `src/bandit_mark_generation.{h,cpp}` carries a `repeated_site_reinforcement_packet`, and `src/bandit_playback.cpp` now feeds that packet through the existing generated-mark seam with the named `generated_repeated_site_reinforcement_stays_bounded` scenario
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: mixed repeated signals reinforce one site mark cleanly, weak repetition does not fake durable settlement truth, self-corroboration stays bounded, and strengthened site interest still keeps extraction jobs blocked
+- reviewer-readable playback / mark reports now expose the reinforcement packet and resulting mark/lead path instead of hiding the bridge in debugger soup
+- the product rules stay preserved: repeated ordinary site signals raise revisit interest first, not free settlement truth, free loot truth, or a magical raid warrant
+- the slice stayed bounded: no smoke/light/human-route rewrite, no broad concealment implementation, no settlement-signature mythology, and no 500-turn proof theater
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+### Recently closed lane — Bandit human / route visibility mark seam v0
 
 Current honest state:
 - the bounded human / route seam now lands in code: `src/bandit_mark_generation.{h,cpp}` adds deterministic human/route packets plus a bounded adapter, and `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam
@@ -100,7 +110,7 @@ Current honest state:
   - the first bounded persistence sample lands at about `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 shape, with duplicated tactical truth remaining the main obvious future bloat risk
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - Bandit scenario fixture + playback suite v0 is now honestly checkpointed:
-  - `src/bandit_playback.{h,cpp}` now provides thirteen stable named deterministic scenarios on top of the bounded dry-run evaluator, including six generated-mark writer-side cases, instead of pretending a broader world simulator already exists
+  - `src/bandit_playback.{h,cpp}` now provides fourteen stable named deterministic scenarios on top of the bounded dry-run evaluator, including seven generated-mark writer-side cases, instead of pretending a broader world simulator already exists
   - `run_scenario()` replays those cases at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, while `render_report()` gives a reviewer-readable checkpoint summary for drift questions
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - Bandit evaluator dry-run seam v0 is now honestly checkpointed:
@@ -143,10 +153,10 @@ Current honest state:
 
 ## Pending probes
 
-### After the first repeated-site reinforcement code slice lands
+### After the first 500-turn playback proof code slice lands
 - `make -j4 tests`
 - `./tests/cata_test "[bandit]"`
-- repeated-site deterministic cases on the current playback/report footing, proving mixed repeated signals reinforce one site mark cleanly, weak repetition does not fake durable settlement truth, self-corroboration stays bounded, and strengthened site interest still does not unlock free extraction jobs
+- long-horizon deterministic cases on the current playback/report footing, proving the chosen 500-turn smoke/city-edge/repeated-site packet stays bounded and reviewer-readable instead of drifting into immortal pressure, magical settlement truth, or free extraction jobs
 
 ---
 

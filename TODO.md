@@ -8,10 +8,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Bandit repeated site activity reinforcement seam v0**.
+Active lane: **Bandit first 500-turn playback proof v0**.
 
 - Bandit smoke visibility mark seam v0 is checkpointed closed; do not reopen it unless new evidence says the packet lied.
 - Bandit light visibility mark seam v0 is checkpointed closed; do not reopen it unless new evidence says the packet lied, oversold range, or flattened the threat distinction.
 - Bandit human / route visibility mark seam v0 is checkpointed closed; do not reopen it unless new evidence says the packet lied, self-poisoned routine traffic, or inflated mobile sightings into magical sites.
-- Next implementation slice is a bounded repeated-site reinforcement adapter from mixed repeated smoke/light/traffic into modest site-mark confidence and bounty amplification.
-- Keep this packet narrow: one site mark refreshed by mixed ordinary signals, weak repetition staying weak, self-corroboration staying bounded, no free extraction unlocks, and no settlement-signature mythology or broad concealment jump.
+- Bandit repeated site activity reinforcement seam v0 is checkpointed closed; do not reopen it unless new evidence says the packet lied, overhardened weak repetition, or unlocked magical settlement truth.
+- Next implementation slice is the first honest 500-turn playback proof on the current abstract bandit seams.
+- Keep this packet narrow: reuse a small named scenario set, make long-horizon drift reviewer-readable, and prove cooldown/peel-off/reinforcement stay bounded without new adapter families, live-harness theater, or free extraction unlocks.

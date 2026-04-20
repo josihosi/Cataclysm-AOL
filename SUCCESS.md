@@ -15,21 +15,40 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
-## Bandit repeated site activity reinforcement seam v0
+## Bandit first 500-turn playback proof v0
 
 Status: ACTIVE / GREENLIT
 
 Success state:
-- [ ] A bounded repeated-site reinforcement adapter exists from mixed repeated smoke/light/traffic footing into modest site-mark confidence and bounty amplification.
-- [ ] Reinforced site marks feed the current bandit mark-generation / playback / evaluator seams reviewer-cleanly instead of staying hand-authored lore.
-- [ ] Deterministic coverage proves the key bounded distinctions: mixed repeated signals reinforce one site mark cleanly, weak repetition does not fake durable settlement truth, self-corroboration stays bounded, and strengthened site interest still does not unlock free extraction jobs.
-- [ ] Reviewer-readable report output exposes the reinforcement packet and resulting mark/lead path instead of hiding the bridge in debugger soup.
-- [ ] The slice stays bounded: no smoke/light/human-route rewrite, no broad concealment implementation, no settlement-signature mythology, and no first 500-turn proof smuggled in.
+- [ ] At least one honest deterministic 500-turn bandit playback packet exists on the current abstract seams.
+- [ ] Reviewer-readable report output exposes long-horizon checkpoints and winner drift cleanly enough to inspect the 500-turn answers without debugger soup.
+- [ ] Deterministic coverage proves the chosen long-horizon scenarios stay bounded, including cooldown, peel-off, and repeated-site reinforcement behavior that does not magically harden into free raid truth.
+- [ ] The proof reuses the current mark-generation / playback / evaluator seams instead of smuggling in a broader overmap simulator or persistence rewrite.
+- [ ] The slice stays bounded: no new visibility adapter family, no live-harness-first theater, and no broad AI architecture jump.
+
+Notes:
+- Canonical contract lives at `doc/bandit-first-500-turn-playback-proof-v0-2026-04-20.md`.
+- This is the first long-horizon proof packet after the smoke, light, human / route, and repeated-site bridge checkpoints, not permission to quietly ship broad autonomous bandit world behavior.
+- The current promotion is docs-only retargeting; no 500-turn proof code is claimed yet.
+
+---
+
+## Bandit repeated site activity reinforcement seam v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] A bounded repeated-site reinforcement adapter exists from mixed repeated smoke/light/traffic footing into modest site-mark confidence and bounty amplification.
+- [x] Reinforced site marks feed the current bandit mark-generation / playback / evaluator seams reviewer-cleanly instead of staying hand-authored lore.
+- [x] Deterministic coverage proves the key bounded distinctions: mixed repeated signals reinforce one site mark cleanly, weak repetition does not fake durable settlement truth, self-corroboration stays bounded, and strengthened site interest still does not unlock free extraction jobs.
+- [x] Reviewer-readable report output exposes the reinforcement packet and resulting mark/lead path instead of hiding the bridge in debugger soup.
+- [x] The slice stays bounded: no smoke/light/human-route rewrite, no broad concealment implementation, no settlement-signature mythology, and no first 500-turn proof smuggled in.
 
 Notes:
 - Canonical contract lives at `doc/bandit-repeated-site-activity-reinforcement-seam-v0-2026-04-20.md`.
-- This is the next narrow visibility promotion after the smoke, light, and human / route bridge checkpoints, not permission to implement the whole visibility system at once.
-- The current promotion is docs-only retargeting; no repeated-site reinforcement code is claimed yet.
+- This was the next narrow visibility promotion after the smoke, light, and human / route bridge checkpoints, not permission to implement the whole visibility system at once.
+- The current tree now has the bounded repeated-site seam in `src/bandit_mark_generation.{h,cpp}` and `src/bandit_playback.cpp`, with deterministic coverage in `tests/bandit_mark_generation_test.cpp` plus `tests/bandit_playback_test.cpp`.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 
@@ -152,7 +171,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`.
-- The landed playback seam is `src/bandit_playback.{h,cpp}` plus `tests/bandit_playback_test.cpp`, with thirteen stable named scenarios and checkpoint replay at `tick 0`, `tick 5`, `tick 20`, and `tick 100`.
+- The landed playback seam is `src/bandit_playback.{h,cpp}` plus `tests/bandit_playback_test.cpp`, with fourteen stable named scenarios and checkpoint replay at `tick 0`, `tick 5`, `tick 20`, and `tick 100`.
 - Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
