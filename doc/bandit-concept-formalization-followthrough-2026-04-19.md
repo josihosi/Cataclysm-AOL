@@ -230,6 +230,24 @@ Guardrails from this table:
 - **Expected output:** One explicit rewrite rule that replaces any lingering passive-threat language.
 - **Done when:** The packet plainly says threat only changes through real recheck, not idle clock shave.
 
+Current answer:
+- Threat is rewritten only by **fresh evidence about the danger source**, not by an idle timer.
+- Rewrite the **narrowest threat source the new observation actually touched**. A quiet route pass can lower route danger if it really checked that corridor, but it does not magically erase separate zombie pressure, fortification memory, or prior-loss memory somewhere nearby.
+
+| Recheck or observation | Rewrite action | Why |
+| --- | --- | --- |
+| A closer look reveals stronger defenders, harder fortifications, denser monster pressure, or worse retreat geometry than the current read | Raise or overwrite that source upward | Threat rises because bandits learned the area is actually nastier than they thought, not because time matured the mark. |
+| Repeated corroboration shows the same danger still present at roughly the same level, such as another sentry sighting, another watchlight pass, or another tense approach with no contradiction | Confirm and keep the current threat read sticky, optionally tightening confidence modestly | This preserves the scary read without minting duplicate ghost threat every time the same danger is glimpsed again. |
+| A failed probe, hard withdrawal, new casualties, or another costly mission result hits the same region | Raise sharply and write a sticky mission-result threat read | Bad outcomes are stronger evidence than rumor. If the place bloodies a group again, the model should say so plainly. |
+| A close revisit, scout visibility pass, or successful later passage finds one previously feared source absent or materially weaker | Lower or clear only that specific source | Threat can go down, but only because someone actually looked again and found less danger there. |
+| A recheck changes the best explanation, such as apparent armed defenders resolving into mostly zombie pressure, or searchlights disappearing while barricades still remain | Rewrite the source mix to match the better classification, keeping any remaining supported danger | Better evidence should refine the danger story instead of doing an all-or-nothing wipe. |
+
+Guardrails from this rule:
+- **No passive threat decay.** If nobody rechecks the area, the threat read does not get cheaper just because the clock advanced.
+- **Recent-loss and failed-probe threat is the hardest to lower.** Require a later close revisit, successful passage, or equally strong contrary mission-result evidence before downgrading it.
+- **Repeated confirmation is not free stacking.** Confirming the same danger should mostly preserve or stiffen the read, not inflate it forever.
+- **Threat downgrades should stay source-specific.** Clearing one corridor watch or one defender post does not erase unrelated danger sources that still have support.
+
 #### 9. Threat-and-bounty coexistence rule
 - **Question:** How can one region be both attractive and dangerous at the same time?
 - **Expected output:** One rule explaining coexistence instead of silent overwrite.

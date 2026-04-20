@@ -270,10 +270,10 @@ Threat should **not** passively melt just because time passed and nobody looked.
 Confirmed threat should mostly freeze until later observation updates it.
 It should also usually project with a **shorter confident radius** than bounty.
 
-Threat should fall mainly when:
-- scouts or travelling groups get visibility-confirmed evidence that danger is lower
-- a close revisit or successful passage downgrades the area honestly
-- uncertainty resolves downward through real observation rather than idle forgetting
+Threat should be rewritten source-by-source:
+- closer harder danger evidence or bad outcomes raise the relevant threat read
+- repeated corroboration confirms and stiffens the current read without stacking ghost copies
+- scouts or travelling groups lower threat only when a close revisit, visibility-confirmed pass, or successful passage actually finds that specific danger source reduced or gone
 
 ### Bounty heatmap update
 Bounty should rise from:

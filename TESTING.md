@@ -52,8 +52,10 @@ Current honest state:
 - Package 1, micro-item 6 is now answered too: moving bounty cleanup now happens by evidence-driven refresh, overwrite, clear, replacement, or coexistence on the current carrier instead of passive timer-shave language
 - adjacent parked substrate wording was tightened too: the scoring/concept docs now say moving bounty is rewritten or cleared by changed evidence or negative recheck, while cheap cleanup only prunes weak unsupported clutter
 - Package 1, micro-item 7 is now answered too: threat marks now explicitly come from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure, while ordinary smoke/light/traffic stays bounty-first unless paired with harder danger evidence
-- the next honest active slice is Package 1, micro-item 8, `Threat rewrite rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define exactly which rechecks and observations raise, confirm, or lower threat without smuggling in threat/bounty coexistence or stockpile-law decisions
+- Package 1, micro-item 8 is now answered too: threat now rewrites source-by-source through real recheck only, with explicit raise / confirm / lower cases for harder evidence, repeated corroboration, bad outcomes, and close contradictory observation
+- adjacent parked substrate wording was tightened again too: the scoring/concept/mark-model docs now say threat stays sticky without passive decay and only downgrades through source-specific close recheck or successful passage
+- the next honest active slice is Package 1, micro-item 9, `Threat-and-bounty coexistence rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define exactly how one region can stay attractive and dangerous at the same time without smuggling in harvesting, stockpile, or cadence-law decisions
 
 ### Recently closed, do not casually reopen
 
@@ -77,15 +79,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the terrain table, harvest trigger, and reappearance rule are no longer the open questions; the next honest move is one bounded moving-bounty source table
+- the threat source and threat rewrite questions are no longer open; the next honest move is one bounded threat-and-bounty coexistence rule
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 1, micro-item 8, `Threat rewrite rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that threat-rewrite rule consistent and separate from later threat/bounty coexistence law
+- land Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that coexistence rule consistent and separate from later harvesting/stockpile law
 
 ---
 

@@ -359,7 +359,7 @@ Once per day, cheap cleanup can:
 But:
 - moving bounty should be cleared or rewritten by source change, negative recheck, or stronger replacement evidence, not numerically shaved down by an idle timer
 - confirmed threat should not passively decay away just because nobody looked
-- threat should be downgraded mainly by scout/team visibility or another close outcome that actually rechecks the area
+- threat rewrites should stay source-specific: closer harder danger evidence or bad outcomes raise the read, repeated corroboration confirms it, and only close contradictory observation or successful passage lowers it
 - the implementation should keep this cheap, with important marks persisting until overwritten or honestly revised rather than numerically melted every tick
 
 ### Refresh / rewrite rule
@@ -369,6 +369,7 @@ A mark can be refreshed or updated by:
 - a successful raid/toll/stalk observation
 - a team visibility pass that actually sees the region
 - a negative recheck that honestly clears the prior moving-bounty read
+- a threat recheck that sharpens, confirms, or lowers one specific danger source
 - a new related mark merging into it
 
 Strong v1 default:

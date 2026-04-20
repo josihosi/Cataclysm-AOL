@@ -19,12 +19,13 @@ Current target:
    - micro-item 5, `Moving bounty attachment rule`, is now landed
    - micro-item 6, `Moving bounty clear / rewrite rule`, is now landed
    - micro-item 7, `Threat source table`, is now landed
-   - stay on micro-item 8, `Threat rewrite rule`
+   - micro-item 8, `Threat rewrite rule`, is now landed
+   - stay on micro-item 9, `Threat-and-bounty coexistence rule`
 2. keep the law honest and narrow
-   - answer exactly what kinds of recheck or observation can raise, confirm, or lower threat
-   - make later implementation stop guessing between fresh re-observation, negative recheck, repeated danger confirmation, and stale-memory cleanup when rewriting threat inputs
-   - only touch adjacent stale wording when that threat-rewrite pass directly forces it
-   - do not answer micro-items 9-13 at the same time just because the laws smell related
+   - answer exactly how one region can stay attractive and dangerous at the same time without silent overwrite
+   - make later implementation stop guessing whether danger evidence deletes opportunity, opportunity deletes danger, or both should coexist on separate reads
+   - only touch adjacent stale wording when that coexistence pass directly forces it
+   - do not answer micro-items 10-13 at the same time just because the laws smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active
