@@ -457,6 +457,14 @@ That topic stays design-sensitive and should not be treated as settled just beca
 - Update prompt/snapshot explanation accordingly; lightweight axis/grid hints may help if the model needs better offset orientation.
 - Any malformed output resolves to `stay` (no side effects).
 
+#### Bandit dry-run evaluator seam v0
+- The first code-facing bandit seam is intentionally a **bounded abstract evaluator**, not autonomous world behavior.
+- Current implementation lives in `src/bandit_dry_run.{h,cpp}` and stays on controlled inputs / deterministic tests first.
+- The evaluator always seeds `hold / chill` as the score-0 baseline and generates outward candidates only from real valid lead envelopes with compatible template families.
+- The visible ladder is now explicit in code: positive pull -> distance shaping -> threat/pressure subtraction -> bounded need-pressure rescue -> threat gate -> downstream `no_path` invalidation.
+- `render_report()` is the first inspectable explanation surface for this seam: it prints leads considered, the full candidate board, per-candidate score terms, veto / soft-veto reasons, the winner versus `hold / chill`, and explicitly reports that no return-packet fields are touched in v0.
+- Keep later scenario playback and perf/save-budget work separate. This seam is the decision kernel footing, not permission to quietly ship the whole bandit system.
+
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:
   - threat spike, objective change, squad split, or complex player intent.
