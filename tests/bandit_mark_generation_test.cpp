@@ -70,6 +70,57 @@ TEST_CASE( "bandit_mark_generation_refresh_and_cooling_are_tiered", "[bandit][ma
     CHECK( cleaned.leads.empty() );
 }
 
+TEST_CASE( "bandit_mark_generation_smoke_adapter_keeps_clear_plumes_long_range_but_bounded",
+           "[bandit][marks]" )
+{
+    const bandit_mark_generation::smoke_packet clear_packet = {
+        "ridge_smoke",
+        "ridge_smoke",
+        "ridge_rim",
+        bandit_dry_run::lead_family::site,
+        12,
+        3,
+        2,
+        1,
+        0,
+        bandit_mark_generation::smoke_weather_band::clear,
+        { "Clear sustained smoke should stay several OMT legible." }
+    };
+    const bandit_mark_generation::smoke_packet fogged_packet = {
+        "ridge_smoke_fog",
+        "ridge_smoke_fog",
+        "ridge_rim",
+        bandit_dry_run::lead_family::site,
+        6,
+        1,
+        0,
+        0,
+        1,
+        bandit_mark_generation::smoke_weather_band::fog,
+        { "Weak fogged smoke should not pretend to be long-range truth." }
+    };
+
+    const bandit_mark_generation::smoke_projection clear_projection =
+        bandit_mark_generation::adapt_smoke_packet( clear_packet );
+    const bandit_mark_generation::smoke_projection fogged_projection =
+        bandit_mark_generation::adapt_smoke_packet( fogged_packet );
+
+    CHECK( clear_projection.viable );
+    CHECK( clear_projection.projected_range_omt == 15 );
+    CHECK( clear_projection.signal.kind == "smoke" );
+    CHECK( clear_projection.signal.confidence == 1 );
+    CHECK( clear_projection.signal.bounty_add == 1 );
+    CHECK( clear_projection.signal.distance_multiplier >= 0.25 );
+    CHECK( clear_projection.signal.distance_multiplier < 1.0 );
+    CHECK( clear_projection.signal.hard_blocked_jobs == std::vector<bandit_dry_run::job_template>( {
+        bandit_dry_run::job_template::scavenge,
+        bandit_dry_run::job_template::steal,
+        bandit_dry_run::job_template::raid,
+    } ) );
+    CHECK_FALSE( fogged_projection.viable );
+    CHECK( fogged_projection.projected_range_omt < clear_projection.projected_range_omt );
+}
+
 TEST_CASE( "bandit_mark_generation_keeps_confirmed_threat_sticky", "[bandit][marks]" )
 {
     bandit_mark_generation::ledger_state state;

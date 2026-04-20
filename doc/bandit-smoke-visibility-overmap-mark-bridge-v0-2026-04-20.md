@@ -35,8 +35,8 @@ This item is good enough when:
 
 ## Validation expectations
 
-- this canon packaging is docs-only, so no compile belongs to this patch by ritual
-- once code lands, prefer narrow deterministic bandit coverage and small smoke-scenario extensions on the current playback footing
+- prefer narrow deterministic bandit coverage and small smoke-scenario extensions on the current playback footing
+- current bounded validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - keep evidence reviewer-readable; do not hide the smoke bridge inside debugger soup or broad live-harness theater unless deterministic proof stops being enough
 
 ## Dependency note
