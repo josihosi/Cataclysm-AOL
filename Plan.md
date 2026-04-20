@@ -71,9 +71,10 @@ Current target:
 - Package 1, micro-item 7, `Threat source table`, is now landed too: threat marks now explicitly come from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure instead of from generic bounty clues
 - Package 1, micro-item 8, `Threat rewrite rule`, is now landed too: threat now rewrites source-by-source through real recheck only, with explicit raise / confirm / lower cases instead of passive threat melt
 - Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, is now landed too: bounty and threat now stay as separate concurrent reads, so one region/carrier can remain worth attacking and risky to approach at the same time unless a source-specific recheck actually disproves one side
-- keep the next pass narrow: Package 1, micro-item 10, `Destination-only vs along-route collection rule`
-- answer only whether bandits may collect value opportunistically while traveling or only at the explicit destination, and only touch adjacent stale wording when that collection pass directly forces the correction
-- do not drift into harvesting/stockpile math, cadence law, code, or reopened locker/basecamp slices while doing this
+- Package 1, micro-item 10, `Destination-only vs along-route collection rule`, is now landed too: outings may skim opportunistic value on the current corridor or immediate intercept envelope, but not turn into vacuum-cleaner side-sweep harvesting or free goal rewrites
+- keep the next pass narrow: Package 1, micro-item 11, `Collection yield rule`
+- answer only how much harvestable bounty one outing can convert into haul or stockpile, and only touch adjacent stale wording when that ingress pass directly forces the correction
+- do not drift into stockpile-consumption cadence law, forest-yield law, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
 - **Plan status summary command**
@@ -311,8 +312,9 @@ Current bounded slice:
 - landed: Package 1, micro-item 7, `Threat source table`, now freezes that threat comes from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure rather than from ordinary bounty-first activity clues
 - landed: Package 1, micro-item 8, `Threat rewrite rule`, now freezes that threat only changes through source-specific recheck, with explicit raise / confirm / lower cases and no passive decay shortcut
 - landed: Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, now freezes that threat and bounty remain separate concurrent reads on the same region/carrier when the evidence supports both, with only source-specific contradiction clearing one side
-- next: Package 1, micro-item 10, `Destination-only vs along-route collection rule`
-- keep the pass to one explicit collection-path rule before touching yield or stockpile questions
+- landed: Package 1, micro-item 10, `Destination-only vs along-route collection rule`, now freezes that outings may collect opportunistically on the current corridor or immediate intercept envelope, but not by broad side-sweep harvesting or free mission rewrites
+- next: Package 1, micro-item 11, `Collection yield rule`
+- keep the pass to one explicit ingress/yield rule before touching stockpile-consumption or forest-yield questions
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

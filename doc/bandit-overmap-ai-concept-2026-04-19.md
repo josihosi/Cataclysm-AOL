@@ -423,6 +423,7 @@ This layer can move, appear, vanish, or be refreshed by new signals and new obse
 ### Route/intercept value
 Roads and chokepoints should have value mainly because they are good places to catch moving bounty, not because the road itself endlessly prints treasure.
 When the only honest evidence is repeated passage through a corridor, the moving bounty should live on a route/intercept carrier rather than being smeared into structural ground value.
+Groups may opportunistically skim that moving bounty while already traveling the corridor, but only when the contact stays on-path or within an immediate intercept envelope, not as permission for broad side-sweep harvesting.
 
 ## Conversion rule
 A good synthesis rule is:

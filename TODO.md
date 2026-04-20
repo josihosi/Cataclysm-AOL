@@ -21,12 +21,13 @@ Current target:
    - micro-item 7, `Threat source table`, is now landed
    - micro-item 8, `Threat rewrite rule`, is now landed
    - micro-item 9, `Threat-and-bounty coexistence rule`, is now landed
-   - stay on micro-item 10, `Destination-only vs along-route collection rule`
+   - micro-item 10, `Destination-only vs along-route collection rule`, is now landed
+   - stay on micro-item 11, `Collection yield rule`
 2. keep the law honest and narrow
-   - answer exactly whether bandits may collect value opportunistically while traveling or only at the explicit destination
-   - make later implementation stop guessing whether route-side pickup is allowed, forbidden, or silently half-allowed by prose drift
-   - only touch adjacent stale wording when that collection pass directly forces it
-   - do not answer micro-items 10-13 at the same time just because the laws smell related
+   - answer exactly how much harvestable bounty one outing can convert into haul or stockpile
+   - make later implementation stop guessing whether a successful outing brings home a token skim, an arbitrary cartload, or some bounded starter amount
+   - only touch adjacent stale wording when that ingress pass directly forces it
+   - do not answer micro-items 11-13 at the same time just because the laws smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

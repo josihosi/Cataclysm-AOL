@@ -283,6 +283,25 @@ Guardrails from this rule:
 - **Expected output:** One bounded route-collection rule.
 - **Done when:** Later logic will not secretly oscillate between destination-only and vacuum-cleaner route harvesting.
 
+Current answer:
+- Bandits may collect value at the explicit destination **and** opportunistically while traveling, but only from opportunities that sit on the **current route or immediate intercept envelope**.
+- Route-side collection is therefore **bounded skimming**, not permission to sweep every nearby site. If the opportunity would require a meaningful detour, broad local search, or full goal rewrite, it stops being free along-route collection and becomes a later divert/replan question instead.
+- Keep the carrier honest: route-side collection should come from **moving bounty or directly encountered exposed value** on the corridor actually being traveled, not from pretending the road tile itself is an endlessly harvestable treasure field.
+- The destination remains the outing's primary plan unless immediate route contact yields a small honest opportunistic take on that same path.
+
+| Situation | Collection allowed? | Why |
+| --- | --- | --- |
+| The group reaches its planned target site and strips or steals what it can there | Yes | Destination collection is the normal baseline and does not need special route law. |
+| The group encounters a traveler, convoy, camp work party, or similarly exposed moving target on the corridor it is already using | Yes | That is genuine along-route moving-bounty collection on the current path, not a separate harvest expedition. |
+| The group spots a tempting side site that would require a real detour, fresh search pattern, or abandoning the original path | No, not under this rule | That crosses into later diversion / target-switch law instead of bounded opportunism. |
+| The corridor itself has repeated ambush value because traffic keeps using it | Yes, but only through intercepted moving targets | The route keeps value as an intercept carrier, not because the road terrain endlessly prints structural loot. |
+
+Guardrails from this rule:
+- **No destination-only rigidity.** Bandits do not have to ignore an easy honest haul that appears directly on the route they are already traveling.
+- **No vacuum-cleaner route harvesting.** A mission does not become a free excuse to zig-zag through every nearby shack, field, and back road.
+- **Route-side collection stays carrier-shaped.** What gets collected is the intercepted actor, convoy, exposed camp-party packet, or directly encountered stop, not generic road-ground bounty.
+- **This rule does not answer yield.** It only says route-side skimming is allowed when it stays on-path and bounded; how much haul that creates belongs to micro-item 11.
+
 #### 11. Collection yield rule
 - **Question:** How much harvestable bounty can one outing convert into haul or stockpile?
 - **Expected output:** One starter yield rule or small table.

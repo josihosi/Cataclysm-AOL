@@ -55,8 +55,10 @@ Current honest state:
 - Package 1, micro-item 8 is now answered too: threat now rewrites source-by-source through real recheck only, with explicit raise / confirm / lower cases for harder evidence, repeated corroboration, bad outcomes, and close contradictory observation
 - adjacent parked substrate wording was tightened again too: the scoring/concept/mark-model docs now say threat stays sticky without passive decay and only downgrades through source-specific close recheck or successful passage
 - Package 1, micro-item 9 is now answered too: threat and bounty now stay as separate concurrent reads, so the same region/carrier may remain attractive and dangerous at once unless a source-specific recheck actually disproves one side
-- the next honest active slice is Package 1, micro-item 10, `Destination-only vs along-route collection rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define whether route-side opportunistic collection is allowed at all without smuggling in yield, stockpile, or cadence-law decisions
+- Package 1, micro-item 10 is now answered too: outings may collect opportunistically on the current corridor or immediate intercept envelope, but not by broad side-sweep harvesting, road-as-loot-tile logic, or free mission rewrites
+- adjacent parked substrate wording was tightened once: the synthesis/scoring docs now talk about intercept-worthy corridor value and bounded on-path skimming rather than vague repeated route "farming"
+- the next honest active slice is Package 1, micro-item 11, `Collection yield rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define how much haul one outing can honestly bring home without smuggling in stockpile-consumption cadence or forest-yield law
 
 ### Recently closed, do not casually reopen
 
@@ -80,15 +82,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the threat source and threat rewrite questions are no longer open; the next honest move is one bounded threat-and-bounty coexistence rule
+- the destination-only versus along-route collection question is no longer open; the next honest move is one bounded collection-yield rule
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 1, micro-item 10, `Destination-only vs along-route collection rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that collection-path rule consistent and separate from later yield/stockpile law
+- land Package 1, micro-item 11, `Collection yield rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that ingress rule consistent and separate from later stockpile-consumption / forest-yield law
 
 ---
 

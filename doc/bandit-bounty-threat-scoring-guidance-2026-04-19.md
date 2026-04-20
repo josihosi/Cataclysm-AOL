@@ -192,7 +192,7 @@ bounty_score =
 ### Component notes
 - `loot_value`: expected material gain, whether goods, supplies, captives, or easy robbery
 - `target_weakness`: how exploitable the mark looks
-- `traffic_value`: whether a road/route seems worth farming repeatedly
+- `traffic_value`: whether a road/route seems worth intercepting repeatedly
 - `signal_freshness_bonus`: new information is more actionable than stale rumor
 - `camp_need_bonus`: food/ammo/med pressure raises value of matching targets
 - `distance_cost`: farther targets cost time, risk, and manpower attention
