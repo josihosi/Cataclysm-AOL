@@ -1,15 +1,16 @@
 # Bandit light visibility mark seam v0 (2026-04-20)
 
-Status: active greenlit contract.
+Status: checkpointed done for now.
 
 ## Promotion audit verdict
 
 The smoke bridge is now honestly checkpointed.
-The next narrow visibility promotion is the light-specific signal bridge.
-Current bandit seams can already reason about light-shaped leads in concept space, but they still do not derive those leads from a bounded adapter grounded in the repo's real local lightmap and directional-leakage footing.
+The light bridge is now honestly checkpointed too.
+The next narrow visibility promotion is the human / route activity bridge.
+Current bandit seams can already reason about light-shaped leads in concept space, and this contract captures the bounded adapter that now lands those leads from explicit light packets grounded in real local-light and directional-leakage footing.
 
-This contract is the smallest honest next bite after smoke.
-It keeps the visibility packet moving without jumping into full concealment law, sound/horde expansion, or a fake global light simulator.
+This contract was the smallest honest next bite after smoke.
+It moved the visibility packet forward without jumping into full concealment law, sound/horde expansion, or a fake global light simulator.
 
 ## Scope
 

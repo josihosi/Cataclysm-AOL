@@ -1,13 +1,13 @@
 # Bandit smoke visibility mark seam v0 (2026-04-20)
 
-Status: active greenlit contract.
+Status: checkpointed done for now.
 
 ## Promotion audit verdict
 
-The parked bandit concept chain is now coherent enough to promote one narrow smoke-specific implementation slice.
-What is still fake is the signal seam: current bandit seams can reason about smoke-shaped leads, but they do not yet derive those leads from a bounded smoke adapter grounded in the repo's real fire/smoke/wind footing.
+The parked bandit concept chain was coherent enough to promote one narrow smoke-specific implementation slice, and that slice is now checkpointed.
+What used to be fake was the signal seam: current bandit seams could reason about smoke-shaped leads, but they did not yet derive those leads from a bounded smoke adapter grounded in the repo's real fire/smoke/wind footing.
 
-This contract is the smallest honest promotion that moves toward a future 500-turn proof without spawning another parked mystery-box feeder doc.
+This contract was the smallest honest promotion that moved toward a future 500-turn proof without spawning another parked mystery-box feeder doc.
 
 ## Scope
 

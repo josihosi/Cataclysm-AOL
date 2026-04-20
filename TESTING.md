@@ -39,26 +39,33 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-There is now one active greenlit lane: **Bandit light visibility mark seam v0**.
+There is now one active greenlit lane: **Bandit human / route visibility mark seam v0**.
 
-### Active lane — Bandit light visibility mark seam v0
+### Active lane — Bandit human / route visibility mark seam v0
 
 Current honest state:
-- no light-bridge code is claimed yet; this run only promotes the next narrow slice after the smoke bridge checkpoint
-- the parked visibility/recon packet is already recon-backed for this promotion: `src/item.cpp` and `src/lightmap.cpp` provide directional light and side-aware apparent-light footing, while `src/weather.cpp` and `src/character.cpp` already provide daylight and weather suppression hooks
-- the current bounded bandit seams are ready consumers for this next adapter class: mark-generation, playback, and the evaluator can absorb light-family marks without reopening broader world-sim architecture
+- no human / route bridge code is claimed yet; this run only promotes the next narrow slice after the smoke and light bridge checkpoints
+- the parked visibility packet is already recon-backed for this promotion: the canon already distinguishes direct human sightings, repeated route activity, moving-carrier attachment, corridor reinforcement, corroborated site traffic, and self-camp anti-poison rules
+- the current bounded bandit seams are ready consumers for this next adapter class: evaluator lead families already support `moving_carrier`, `corridor`, and `site`, while mark-generation and playback can absorb those marks without reopening broader world-sim architecture
 - this retarget was docs-only, so no compile or harness ritual was needed here; the next honest proof after code lands is narrow deterministic bandit coverage plus reviewer-readable report output on the existing seams
 
-### Latest closed lane — Bandit smoke visibility mark seam v0
+### Latest closed lane — Bandit light visibility mark seam v0
 
 Current honest state:
-- the bounded smoke seam now lands in code: `src/bandit_mark_generation.{h,cpp}` adds deterministic smoke packets plus a bounded smoke adapter, and `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam
-- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the coarse long-range rule honestly: sustained clear-weather smoke can stay several OMT legible with a hard cap, while weak fogged smoke does not fake long-range truth
-- reviewer-readable playback / mark reports now expose the smoke packet projection and resulting mark/lead path instead of hiding the bridge in debugger soup
-- the slice stayed bounded: no light/searchlight adapter, no broad visibility/concealment implementation, no global offscreen smoke sim, and no 500-turn proof theater
+- the bounded light seam now lands in code: `src/bandit_mark_generation.{h,cpp}` adds deterministic light packets plus a bounded light adapter, and `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: daylight suppression, contained versus exposed night light, side leakage, ordinary occupancy light versus searchlight-like threat light, and reviewer-readable packet reporting
+- the product rule stays preserved: meaningful exposed night light can remain several OMT legible with a hard cap, while daylight and contained light do not fake distant truth
+- the slice stayed bounded: no smoke rewrite, no broad visibility/concealment implementation, no sound/horde expansion, no global offscreen light sim, and no 500-turn proof theater
 - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
 ### Recently closed, do not casually reopen
+
+- Bandit smoke visibility mark seam v0 is now honestly checkpointed:
+  - the bounded smoke seam now lands in code: `src/bandit_mark_generation.{h,cpp}` adds deterministic smoke packets plus a bounded smoke adapter, and `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the coarse long-range rule honestly: sustained clear-weather smoke can stay several OMT legible with a hard cap, while weak fogged smoke does not fake long-range truth
+  - reviewer-readable playback / mark reports now expose the smoke packet projection and resulting mark/lead path instead of hiding the bridge in debugger soup
+  - the slice stayed bounded: no light/searchlight adapter, no broad visibility/concealment implementation, no global offscreen smoke sim, and no 500-turn proof theater
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
 - Locker lag-threshold probe v0 is now honestly checkpointed:
   - the threshold packet now stays on the real `CAMP_LOCKER` service path with locker `DebugLog` noise suppressed during timing runs, so measurement output is readable instead of log-spew soup
@@ -93,7 +100,7 @@ Current honest state:
   - the first bounded persistence sample lands at about `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 shape, with duplicated tactical truth remaining the main obvious future bloat risk
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - Bandit scenario fixture + playback suite v0 is now honestly checkpointed:
-  - `src/bandit_playback.{h,cpp}` now provides ten stable named deterministic scenarios on top of the bounded dry-run evaluator, including three generated-mark writer-side cases, instead of pretending a broader world simulator already exists
+  - `src/bandit_playback.{h,cpp}` now provides eleven stable named deterministic scenarios on top of the bounded dry-run evaluator, including four generated-mark writer-side cases, instead of pretending a broader world simulator already exists
   - `run_scenario()` replays those cases at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, while `render_report()` gives a reviewer-readable checkpoint summary for drift questions
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - Bandit evaluator dry-run seam v0 is now honestly checkpointed:
@@ -127,8 +134,8 @@ Current honest state:
 
 ### Meaning
 
-- the active bandit evidence burden is now the first honest light-visibility bridge, not a rerun of the already-closed smoke packet
-- do not reopen the smoke bridge, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
+- the active bandit evidence burden is now the first honest human / route bridge, not a rerun of the already-closed smoke or light packets
+- do not reopen the smoke bridge, light bridge, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
 - the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
 - the writer-side bandit mark-generation seam is now checkpointed closed too
 
@@ -136,10 +143,10 @@ Current honest state:
 
 ## Pending probes
 
-### After the first light-bridge code slice lands
+### After the first human / route bridge code slice lands
 - `make -j4 tests`
 - `./tests/cata_test "[bandit]"`
-- light-specific deterministic cases on the current playback/report footing, proving daylight suppression, contained versus exposed night light, ordinary occupancy light versus searchlight-like threat light, and at least one side-dependent leakage case without turning every curtained house into a world-map lantern
+- human / route deterministic cases on the current playback/report footing, proving direct sighting versus repeated corridor activity, moving-carrier attachment versus site inflation, same-camp routine suppression, and at least one corroborated shared-route refresh case without minting magical settlement truth
 
 ---
 
