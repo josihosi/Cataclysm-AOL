@@ -39,11 +39,17 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now one active greenlit lane: **Bandit smoke visibility mark seam v0**.
+There is now one active greenlit lane: **Bandit light visibility mark seam v0**.
 Josef has standing approval for the next narrow bandit slices until the first honest 500-turn proof, unless a real product ambiguity, scope jump, or priority collision appears.
-The current job is to turn the parked visibility/recon packet into one bounded smoke-specific signal bridge instead of breeding more parked feeder docs.
+The current job is to turn the parked visibility/recon packet into one bounded light-specific signal bridge now that the smoke bridge is honestly checkpointed, instead of breeding more parked feeder docs.
 
 Fresh checkpoints that stay closed:
+- **Bandit smoke visibility mark seam v0** is now honestly checkpointed too:
+  - `src/bandit_mark_generation.{h,cpp}` now adds deterministic smoke packets plus a bounded smoke adapter, while `src/bandit_playback.{h,cpp}` feeds those packets through the existing generated-mark seam instead of leaving smoke as hand-authored scenario lore
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the coarse long-range rule honestly: sustained clear-weather smoke stays several OMT legible with a hard cap, while weak fogged smoke does not fake long-range truth
+  - reviewer-readable playback / mark reports now expose the smoke packet projection and resulting mark/lead path instead of hiding the bridge in debugger soup
+  - the slice stayed bounded: no light/searchlight adapter, no broad visibility/concealment implementation, no global offscreen smoke sim, and no 500-turn proof theater
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Locker lag-threshold probe v0** is now honestly checkpointed too:
   - `src/basecamp.{h,cpp}` now keeps the real `camp_locker_service_probe` seam quiet during timing runs, while `tests/faction_camp_test.cpp` drives the threshold packet through real multi-tile `CAMP_LOCKER` zones so counts stay honest past the single-tile `MAX_ITEM_IN_SQUARE` ceiling
   - the threshold packet now covers top-level clutter at `1000 / 2000 / 5000 / 10000 / 20000` plus worker-count sweeps at `1 / 5 / 10` on `5000` clutter, staying on the real service path instead of synthetic guesswork
@@ -94,8 +100,9 @@ Fresh checkpoints that stay closed:
 
 Meaning:
 - the locker lag-threshold probe is checkpointed closed too, with no clear knee found through `20000` top-level locker items
-- the active lane is now the smoke-specific bridge from existing fire/smoke/wind footing into coarse overmap marks and smoke-born `worth scoping out` leads
-- smoke must stay meaningfully long-range in clear conditions, not collapse into tiny OMT-count nonsense
+- the smoke-specific bridge is checkpointed closed too
+- the active lane is now the light-specific bridge from existing local light and directional-exposure footing into coarse overmap marks and light-born leads
+- distant night light must stay meaningfully legible when actually exposed, while daylight and containment suppress the magical house-glow fantasy
 - the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
@@ -108,19 +115,34 @@ Meaning:
 
 ---
 
-## Active — Bandit smoke visibility mark seam v0
+## Active — Bandit light visibility mark seam v0
 
 **Status:** ACTIVE / GREENLIT
 
-The parked bandit concept packet is now coherent enough to promote one narrow smoke-specific signal bridge.
-The canonical contract lives at `doc/bandit-smoke-visibility-mark-seam-v0-2026-04-20.md`.
+The smoke bridge is honestly checkpointed, so the next narrow promotion from the parked visibility packet is the light-specific signal bridge.
+The canonical contract lives at `doc/bandit-light-visibility-mark-seam-v0-2026-04-20.md`.
 
 Current contract:
+- the bounded light adapter is the next target on the current bandit seam, translating deterministic light exposure packets into coarse overmap-readable light signal state
+- light should feed the current bandit mark-generation / playback seam as reviewer-readable occupancy/bounty or searchlight/threat clues instead of staying parked prose
+- the product rules stay preserved: meaningful night light can be legible from far away when actually exposed, daylight suppresses distant light usefulness, and contained or side-masked sources should not become magical omnidirectional beacons
+- the slice must stay bounded: no smoke rewrite, no broad concealment pass, no sound/horde expansion, no global offscreen light sim, and no first 500-turn proof yet
+- current evidence burden is still docs-first promotion plus the existing recon-backed light footing; the next honest proof after code lands is narrow deterministic bandit coverage and reviewer-readable report output on the existing seams
+
+## Checkpointed — Bandit smoke visibility mark seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The first promoted visibility bridge now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-smoke-visibility-mark-seam-v0-2026-04-20.md`
 - the bounded smoke adapter now exists on the current bandit seam, turning deterministic smoke packets into coarse overmap-readable smoke signal state
 - smoke now feeds the current bandit mark-generation / playback seam as bounty-first, reviewer-readable `worth scoping out` leads instead of staying hand-authored scenario lore
-- the product rule stays preserved: sustained clear-weather smoke remains several OMT legible, with a rough outer cap around the existing concept starter range, instead of shrinking into comically short-range OMT intuition
-- the slice stayed bounded: no light/searchlight adapter, no broad concealment pass, no global offscreen smoke sim, and no first 500-turn proof yet
-- current evidence is narrow deterministic proof plus reviewer-readable report output on the existing bandit seams; the next decision is whether to checkpoint this lane out and promote the next narrow slice
+- the product rule stays preserved: sustained clear-weather smoke remains several OMT legible with a hard cap instead of shrinking into comically short-range OMT intuition
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the smoke packet is lying, too thin, or needs a truly different adapter class.
 
 ## Checkpointed — Locker lag-threshold probe v0
 
@@ -496,9 +518,9 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 **Status:** PARKED / COHERENT SUBSTRATE
 
 Josef wanted the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet was coherent enough as a whole.
-That coherence audit now passes for one narrow promotion: the smoke-specific visibility -> mark bridge is active above.
-Do not quietly treat the rest of the parked notes as broad implementation approval just because one bounded slice was promoted.
-The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain, and the broader concept still stays parked outside the explicit promoted v0 slices above plus the active smoke seam.
+That coherence audit now passes for two narrow promotions so far: the smoke-specific visibility -> mark bridge is checkpointed above, and the light-specific bridge is now the active next slice.
+Do not quietly treat the rest of the parked notes as broad implementation approval just because two bounded slices were promoted.
+The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain, and the broader concept still stays parked outside the explicit promoted v0 slices above plus the active light seam.
 
 Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
@@ -541,7 +563,7 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. promotion audit, now passed narrowly for the smoke seam, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
+6. promotion audit, now passed narrowly for smoke first and light second, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
 If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.

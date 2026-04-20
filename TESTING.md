@@ -39,9 +39,17 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-There is now one active greenlit lane: **Bandit smoke visibility mark seam v0**.
+There is now one active greenlit lane: **Bandit light visibility mark seam v0**.
 
-### Active lane — Bandit smoke visibility mark seam v0
+### Active lane — Bandit light visibility mark seam v0
+
+Current honest state:
+- no light-bridge code is claimed yet; this run only promotes the next narrow slice after the smoke bridge checkpoint
+- the parked visibility/recon packet is already recon-backed for this promotion: `src/item.cpp` and `src/lightmap.cpp` provide directional light and side-aware apparent-light footing, while `src/weather.cpp` and `src/character.cpp` already provide daylight and weather suppression hooks
+- the current bounded bandit seams are ready consumers for this next adapter class: mark-generation, playback, and the evaluator can absorb light-family marks without reopening broader world-sim architecture
+- this retarget was docs-only, so no compile or harness ritual was needed here; the next honest proof after code lands is narrow deterministic bandit coverage plus reviewer-readable report output on the existing seams
+
+### Latest closed lane — Bandit smoke visibility mark seam v0
 
 Current honest state:
 - the bounded smoke seam now lands in code: `src/bandit_mark_generation.{h,cpp}` adds deterministic smoke packets plus a bounded smoke adapter, and `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam
@@ -50,16 +58,14 @@ Current honest state:
 - the slice stayed bounded: no light/searchlight adapter, no broad visibility/concealment implementation, no global offscreen smoke sim, and no 500-turn proof theater
 - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
-### Latest closed lane — Locker lag-threshold probe v0
-
-Current honest state:
-- the threshold packet now stays on the real `CAMP_LOCKER` service path with locker `DebugLog` noise suppressed during timing runs, so measurement output is readable instead of log-spew soup
-- the high-clutter fixture is now honest: `tests/faction_camp_test.cpp` spreads top-level clutter across real multi-tile locker zones, which avoids lying about `5000 / 10000 / 20000` items on one tile past `MAX_ITEM_IN_SQUARE`
-- the packet now covers top-level clutter at `1000 / 2000 / 5000 / 10000 / 20000` plus worker-count sweeps at `1 / 5 / 10` on `5000` clutter
-- current result: no clear knee was found within the tested bound, with median service time staying roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and about `1.0 ms` per worker at `5000` clutter across `1 / 5 / 10`
-- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
-
 ### Recently closed, do not casually reopen
+
+- Locker lag-threshold probe v0 is now honestly checkpointed:
+  - the threshold packet now stays on the real `CAMP_LOCKER` service path with locker `DebugLog` noise suppressed during timing runs, so measurement output is readable instead of log-spew soup
+  - the high-clutter fixture is now honest: `tests/faction_camp_test.cpp` spreads top-level clutter across real multi-tile locker zones, which avoids lying about `5000 / 10000 / 20000` items on one tile past `MAX_ITEM_IN_SQUARE`
+  - the packet now covers top-level clutter at `1000 / 2000 / 5000 / 10000 / 20000` plus worker-count sweeps at `1 / 5 / 10` on `5000` clutter
+  - current result: no clear knee was found within the tested bound, with median service time staying roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and about `1.0 ms` per worker at `5000` clutter across `1 / 5 / 10`
+  - narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
 
 - Bandit overmap-to-bubble pursuit handoff seam v0 is now honestly checkpointed:
   - the authoritative contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
@@ -121,8 +127,8 @@ Current honest state:
 
 ### Meaning
 
-- there is currently no active evidence burden because the locker lag-threshold probe is now checkpointed too
-- do not reopen the locker threshold packet or the earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
+- the active bandit evidence burden is now the first honest light-visibility bridge, not a rerun of the already-closed smoke packet
+- do not reopen the smoke bridge, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
 - the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
 - the writer-side bandit mark-generation seam is now checkpointed closed too
 
@@ -130,10 +136,10 @@ Current honest state:
 
 ## Pending probes
 
-### After the first smoke-bridge code slice lands
+### After the first light-bridge code slice lands
 - `make -j4 tests`
 - `./tests/cata_test "[bandit]"`
-- smoke-specific deterministic cases on the current playback/report footing, proving weak versus sustained smoke and clear versus degraded-condition legibility without flattening smoke into a tiny-range joke
+- light-specific deterministic cases on the current playback/report footing, proving daylight suppression, contained versus exposed night light, ordinary occupancy light versus searchlight-like threat light, and at least one side-dependent leakage case without turning every curtained house into a world-map lantern
 
 ---
 

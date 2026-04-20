@@ -15,6 +15,24 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Bandit light visibility mark seam v0
+
+Status: ACTIVE / GREENLIT
+
+Success state:
+- [ ] A bounded light-specific adapter exists from current local light and directional-exposure footing, or equivalent deterministic light packets, into coarse overmap-readable light signal state.
+- [ ] Generated light marks or light-born leads feed the current bandit mark-generation / playback / evaluator seams reviewer-cleanly instead of staying hand-authored lore.
+- [ ] Deterministic coverage proves the key bounded distinctions: daylight suppression, contained versus exposed night light, ordinary occupancy light versus searchlight-like threat light, and at least one side-dependent leakage case.
+- [ ] Reviewer-readable report output exposes the light packet and resulting mark/lead path instead of hiding the bridge in debugger soup.
+- [ ] The slice stays bounded: no smoke rewrite, no broad concealment implementation, no sound/horde expansion, and no first 500-turn proof smuggled in.
+
+Notes:
+- Canonical contract lives at `doc/bandit-light-visibility-mark-seam-v0-2026-04-20.md`.
+- This is the next narrow visibility promotion after the smoke bridge checkpoint, not permission to implement the whole visibility system at once.
+- The current promotion is docs-only retargeting; no light-bridge code is claimed yet.
+
+---
+
 ## Bandit mark-generation + heatmap seam v0
 
 Status: CHECKPOINTED / DONE FOR NOW
@@ -430,7 +448,7 @@ Notes:
 
 ## Bandit smoke visibility mark seam v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] A bounded smoke-specific adapter exists from current fire/smoke/wind footing, or equivalent deterministic smoke packets, into coarse overmap-readable smoke signal state for bandit logic.
@@ -441,8 +459,10 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-smoke-visibility-mark-seam-v0-2026-04-20.md`.
-- This is the first post-audit promotion from the parked visibility/recon packet, aimed at future 500-turn proof without pretending that proof already exists.
+- This is the first checkpointed visibility promotion from the parked visibility/recon packet, aimed at future 500-turn proof without pretending that proof already exists.
+- The current tree now has the bounded smoke seam in `src/bandit_mark_generation.{h,cpp}` and `src/bandit_playback.{h,cpp}`, with deterministic coverage in `tests/bandit_mark_generation_test.cpp` plus `tests/bandit_playback_test.cpp`.
 - The key product rule stays frozen here: on clear days, sustained smoke should remain legible from several OMT away and should usually create a bounded `worth scoping out` lead before it implies anything sharper.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 
