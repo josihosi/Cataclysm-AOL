@@ -29,7 +29,7 @@ TEST_CASE( "bandit_playback_reference_suite_covers_current_contract", "[bandit][
     const std::vector<bandit_playback::scenario_definition> &scenarios =
         bandit_playback::reference_scenarios();
 
-    REQUIRE( scenarios.size() == 10 );
+    REQUIRE( scenarios.size() == 11 );
 
     const std::vector<std::string> expected_ids = {
         "empty_region",
@@ -40,6 +40,7 @@ TEST_CASE( "bandit_playback_reference_suite_covers_current_contract", "[bandit][
         "strong_camp_split_route",
         "city_edge_moving_hordes",
         "generated_smoke_mark_cools_off",
+        "generated_night_light_mark_scopes_out",
         "generated_corridor_mark_refreshes_cleanly",
         "generated_confirmed_threat_stays_sticky",
     };
@@ -194,6 +195,29 @@ TEST_CASE( "bandit_playback_generated_smoke_marks_bridge_into_the_evaluator", "[
     CHECK( tick100->generated_marks.marks.empty() );
 }
 
+TEST_CASE( "bandit_playback_generated_night_light_marks_bridge_into_the_evaluator", "[bandit][playback]" )
+{
+    const bandit_playback::scenario_definition *scenario =
+        bandit_playback::find_reference_scenario( "generated_night_light_mark_scopes_out" );
+    REQUIRE( scenario != nullptr );
+
+    const bandit_playback::playback_result result = bandit_playback::run_scenario( *scenario );
+    const bandit_playback::checkpoint_result *tick0 = find_checkpoint( result, 0 );
+    const bandit_playback::checkpoint_result *tick20 = find_checkpoint( result, 20 );
+    REQUIRE( tick0 != nullptr );
+    REQUIRE( tick20 != nullptr );
+
+    CHECK( winner_at( result, 0 ).job == bandit_dry_run::job_template::scout );
+    REQUIRE( tick0->generated_leads.size() == 1 );
+    CHECK( tick0->generated_leads[0].envelope_id == "farm_window_light" );
+    REQUIRE( tick0->generated_marks.marks.size() == 1 );
+    CHECK( tick0->generated_marks.marks[0].kind == "light" );
+    CHECK( tick0->generated_marks.marks[0].notes[1].find( "projected_range_omt=9" ) != std::string::npos );
+
+    CHECK( winner_at( result, 20 ).job == bandit_dry_run::job_template::hold_chill );
+    CHECK( tick20->generated_leads.empty() );
+}
+
 TEST_CASE( "bandit_playback_generated_corridor_refresh_stays_single_mark", "[bandit][playback]" )
 {
     const bandit_playback::scenario_definition *scenario =
@@ -265,6 +289,15 @@ TEST_CASE( "bandit_playback_report_renders_named_checkpoints", "[bandit][playbac
                                          bandit_playback::run_scenario( *smoke_generated_scenario ) );
     CHECK( smoke_report.find( "projected_range_omt=15" ) != std::string::npos );
     CHECK( smoke_report.find( "weather=clear" ) != std::string::npos );
+
+    const bandit_playback::scenario_definition *light_generated_scenario =
+        bandit_playback::find_reference_scenario( "generated_night_light_mark_scopes_out" );
+    REQUIRE( light_generated_scenario != nullptr );
+    const std::string light_report = bandit_playback::render_report(
+                                         bandit_playback::run_scenario( *light_generated_scenario ) );
+    CHECK( light_report.find( "kind=light" ) != std::string::npos );
+    CHECK( light_report.find( "projected_range_omt=9" ) != std::string::npos );
+    CHECK( light_report.find( "time=night" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_playback_budget_measurement_exposes_short_vs_long_horizon_churn", "[bandit][playback]" )
@@ -297,7 +330,7 @@ TEST_CASE( "bandit_playback_reference_suite_budget_reports_perf_churn_and_persis
         bandit_playback::measure_reference_suite_budget( 2 );
     const std::string report = bandit_playback::render_budget_report( budget );
 
-    REQUIRE( budget.scenarios.size() == 10 );
+    REQUIRE( budget.scenarios.size() == 11 );
     CHECK( budget.persistence.sample_total_bytes == 512 );
     CHECK( budget.persistence.lines.size() == 6 );
     CHECK( budget.persistence.verdict.find( "cheap enough" ) != std::string::npos );

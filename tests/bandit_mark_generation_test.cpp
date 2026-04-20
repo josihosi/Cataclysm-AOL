@@ -121,6 +121,114 @@ TEST_CASE( "bandit_mark_generation_smoke_adapter_keeps_clear_plumes_long_range_b
     CHECK( fogged_projection.projected_range_omt < clear_projection.projected_range_omt );
 }
 
+TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_but_bounded",
+           "[bandit][marks]" )
+{
+    const bandit_mark_generation::light_packet exposed_night_packet = {
+        "farm_window_light",
+        "farm_window_light",
+        "farmstead_edge",
+        bandit_dry_run::lead_family::site,
+        8,
+        2,
+        1,
+        1,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::exposed,
+        bandit_mark_generation::light_source_band::ordinary,
+        { "Exposed night light can be worth scoping out from far away." }
+    };
+    const bandit_mark_generation::light_packet contained_night_packet = {
+        "barn_lantern",
+        "barn_lantern",
+        "farmstead_edge",
+        bandit_dry_run::lead_family::site,
+        4,
+        2,
+        1,
+        0,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::contained,
+        bandit_mark_generation::light_source_band::ordinary,
+        { "Contained night light should not become a world-map beacon." }
+    };
+    const bandit_mark_generation::light_packet daylight_packet = {
+        "day_window_glow",
+        "day_window_glow",
+        "farmstead_edge",
+        bandit_dry_run::lead_family::site,
+        4,
+        2,
+        1,
+        1,
+        bandit_mark_generation::light_time_band::daylight,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::exposed,
+        bandit_mark_generation::light_source_band::ordinary,
+        { "Daylight should suppress distant light usefulness." }
+    };
+    const bandit_mark_generation::light_packet screened_side_packet = {
+        "screened_side_light",
+        "screened_side_light",
+        "farmstead_edge",
+        bandit_dry_run::lead_family::site,
+        7,
+        2,
+        1,
+        2,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::screened,
+        bandit_mark_generation::light_source_band::ordinary,
+        { "One side leak should extend the readable range compared to flat screened glow." }
+    };
+    const bandit_mark_generation::light_packet searchlight_packet = {
+        "searchlight_road",
+        "searchlight_road",
+        "road_corridor",
+        bandit_dry_run::lead_family::corridor,
+        8,
+        2,
+        1,
+        1,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::exposed,
+        bandit_mark_generation::light_source_band::searchlight,
+        { "Searchlight exposure should lean threat-first." }
+    };
+
+    const bandit_mark_generation::light_projection exposed_projection =
+        bandit_mark_generation::adapt_light_packet( exposed_night_packet );
+    const bandit_mark_generation::light_projection contained_projection =
+        bandit_mark_generation::adapt_light_packet( contained_night_packet );
+    const bandit_mark_generation::light_projection daylight_projection =
+        bandit_mark_generation::adapt_light_packet( daylight_packet );
+    const bandit_mark_generation::light_projection screened_side_projection =
+        bandit_mark_generation::adapt_light_packet( screened_side_packet );
+    const bandit_mark_generation::light_projection searchlight_projection =
+        bandit_mark_generation::adapt_light_packet( searchlight_packet );
+
+    CHECK( exposed_projection.viable );
+    CHECK( exposed_projection.projected_range_omt == 9 );
+    CHECK( exposed_projection.signal.kind == "light" );
+    CHECK( exposed_projection.signal.bounty_add == 1 );
+    CHECK( exposed_projection.signal.threat_add == 0 );
+    CHECK( exposed_projection.signal.threat_gate_result == bandit_dry_run::threat_gate::discount_only );
+    CHECK_FALSE( contained_projection.viable );
+    CHECK_FALSE( daylight_projection.viable );
+    CHECK( screened_side_projection.viable );
+    CHECK( screened_side_projection.projected_range_omt == 8 );
+    CHECK( searchlight_projection.viable );
+    CHECK( searchlight_projection.projected_range_omt == 11 );
+    CHECK( searchlight_projection.signal.kind == "searchlight" );
+    CHECK( searchlight_projection.signal.bounty_add == 0 );
+    CHECK( searchlight_projection.signal.threat_add == 1 );
+    CHECK( searchlight_projection.signal.threat_gate_result == bandit_dry_run::threat_gate::soft_veto );
+}
+
 TEST_CASE( "bandit_mark_generation_keeps_confirmed_threat_sticky", "[bandit][marks]" )
 {
     bandit_mark_generation::ledger_state state;
