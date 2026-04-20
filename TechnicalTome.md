@@ -470,6 +470,12 @@ That topic stays design-sensitive and should not be treated as settled just beca
 - `render_report()` is the first inspectable explanation surface for this seam: it prints leads considered, the full candidate board, per-candidate score terms, veto / soft-veto reasons, the winner versus `hold / chill`, and explicitly reports that no return-packet fields are touched in v0.
 - Keep later scenario playback and perf/save-budget work separate. This seam is the decision kernel footing, not permission to quietly ship the whole bandit system.
 
+#### Bandit pursuit handoff seam v0
+- The first overmap-to-bubble follow-through stays group-first and bounded: `src/bandit_pursuit_handoff.{h,cpp}` translates a winning scout/stalk candidate plus small abstract group state into an explicit local `entry_payload`, then back out through an explicit `return_packet`.
+- The entry-mode chooser is intentionally narrow for this packet: only `scout`, `probe`, `shadow`, and `withdrawal` are in play, keyed by the winning pursuit candidate, carrier family, contact certainty, and return pressure.
+- The return side preserves only the small abstract consequences this slice can honestly answer now, such as survivor count, anchored identity status, wound / morale burden, carried-vs-delivered cargo, threat/bounty writeback, learned marks, and retreat pressure.
+- `apply_return_packet()` updates abstract group continuity from that bounded packet, while `render_report()` keeps the seam reviewer-readable without pretending a full tactical AI or biography persistence stack exists.
+
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:
   - threat spike, objective change, squad split, or complex player intent.
