@@ -64,8 +64,10 @@ Current honest state:
 - Package 2, micro-item 15 is now answered too: cadence now spends only elapsed-time-earned travel credit from that daily budget, carrying fractional progress forward instead of rounding each wake into a fresh free OMT hop
 - Package 2, micro-item 16 is now answered too: target desirability now falls by the round-trip share of the outing's daily travel budget, with starter discount bands that make the same destination cheaper for higher-commitment jobs and keep mediocre far targets from tying with nearer ones by accident
 - adjacent parked substrate wording was tightened again: the broad concept doc now points at the landed round-trip-share distance burden instead of treating it as still-undecided future law
-- the next honest active slice is Package 2, micro-item 17, `Return-clock rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define how long a group can stay out before preferring home without smuggling cargo/wounds/panic burden law into the same pass
+- Package 2, micro-item 17 is now answered too: each outing now carries a calm-condition elapsed-time return clock with starter job-shaped leash values, fresh sightings do not refresh that leash for free, and the default flips toward home once only plain return time remains
+- adjacent parked substrate wording was tightened one more time where it still implied return-clock law was undecided
+- the next honest active slice is Package 2, micro-item 18, `Cargo / wounds / panic burden rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define which burden factors shorten outings or useful movement without smuggling fallback/diversion law into the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -89,15 +91,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the movement-budget table, cadence-spend rule, and distance-burden rule are no longer open either; the next honest move is one bounded return-clock rule
+- the movement-budget table, cadence-spend rule, distance-burden rule, and base return-clock rule are no longer open either; the next honest move is one bounded burden rule
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 2, micro-item 17, `Return-clock rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that return-clock note separate from later cargo/wounds/panic law
+- land Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that burden note separate from later fallback/diversion law
 
 ---
 

@@ -508,6 +508,47 @@ Guardrails from this rule:
 - **Expected output:** One return-clock rule with starter values.
 - **Done when:** The packet no longer implies immortal stalking squads that stay out forever.
 
+Current answer:
+- Freeze return pressure as an **outing-level elapsed-time leash**. It starts when the group leaves camp, ticks down with real world time, and does **not** reset just because the group found a fresher mark, saw the player again, or kept shadowing the same region.
+- Give each outing type one **base return clock** under calm, unburdened conditions:
+
+| Outing type | Starter base return clock | What it allows before home pressure should dominate |
+| --- | --- | --- |
+| Local forage skim / camp-edge opportunism | `0.75 day` | Enough time to leave, skim very near ground, and get back without turning camp-edge routine into casual overnight wandering. |
+| Scout / cautious probe / short shadow | `1.25 days` | A nearby recon lead can be reached and watched for a while, but not tailed indefinitely as one endless outing. |
+| Toll setup / convoy hit / route ambush | `1.5 days` | A group can stage on a corridor and wait through one honest window, but should not squat on the road forever. |
+| Ordinary scavenge / steal run | `1.5 days` | A worthwhile haul can include travel plus a bounded search/strip window before baseline pressure says to head home. |
+| Raid / hard reinforce / committed strike | `1.75 days` | A hard strike can stalk, probe, fight, and regroup briefly, while still running out of leash before revenge becomes immortal orbiting. |
+| Rare explicit theater reposition / emergency redeploy | `2.5 days` | Exceptional movement can span limited multi-day transfer pressure, but should still end in rebase or a fresh outing rather than endless roaming. |
+
+- Track the remaining calm-condition clock and compare it against the plain time needed to get home on the current route:
+
+```text
+base_return_clock_days = table[job_type]
+remaining_return_clock_days = base_return_clock_days - elapsed_time_since_departure / 1 day
+plain_return_days = assumed_return_route_omt / daily_budget_omt
+prefer_home_when remaining_return_clock_days <= plain_return_days
+```
+
+- While the remaining clock stays above `plain_return_days`, the outing may keep stalking, waiting, searching, or pressing the current lead.
+- Once the remaining clock drops to the plain-return threshold, the default score should flip toward **go home / disengage / withdraw**, with continued loitering treated as exceptional instead of routine.
+- Diverting to a new mark during the same outing spends the same clock. Only actually getting home, rebasing safely, or being explicitly reissued as a fresh outing should mint a new one.
+
+Starter examples:
+
+| Example outing | Base clock | Plain return time | Starter read |
+| --- | --- | --- | --- |
+| Scout / short shadow (`2 OMT/day`) sitting `1 OMT` from camp | `1.25 days` | `0.5 day` | It can reach the lead and spend roughly a quarter-day watching, then should prefer home instead of tailing through the next night for free. |
+| Ordinary scavenge / steal run (`4 OMT/day`) sitting `1 OMT` from camp | `1.5 days` | `0.25 day` | A worthwhile haul can search/strip for about a day before calm-condition return pressure takes over. |
+| Raid / hard reinforce (`5 OMT/day`) sitting `2 OMT` from camp | `1.75 days` | `0.4 day` | A hard strike can stalk, probe, fight, and regroup briefly, but not keep orbiting the target as one immortal revenge outing. |
+| Rare redeploy (`6 OMT/day`) sitting `3 OMT` from camp | `2.5 days` | `0.5 day` | Even the top-end transfer packet gets only a bounded multi-day leash before it should rebase or be treated as a fresh mission. |
+
+Guardrails from this rule:
+- **Distance burden chooses whether to go; return clock chooses how long to stay.**
+- **The clock spends by elapsed time, not by cadence count or number of target swaps.**
+- **Fresh sightings do not mint a new lease.** If the camp wants another chase after the current leash is spent, that is a new outing decision.
+- **This is the calm-condition baseline only.** Cargo, wounds, panic, pursuit drag, and collapse-back pressure belong to micro-item 18 and may only shorten the remaining clock.
+
 #### 18. Cargo / wounds / panic burden rule
 - **Question:** Which burden factors shorten outings or reduce useful movement?
 - **Expected output:** One bounded penalty table or rule note.

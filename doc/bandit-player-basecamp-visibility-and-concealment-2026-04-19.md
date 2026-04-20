@@ -576,7 +576,7 @@ That keeps the wide strategic theater useful without implying same-day nonsense:
 - planned haul or raid jobs can reach farther, but still should not cross half the county in one day
 - the 6-OMT ceiling is a rare top-end reposition packet, not the default daily economy loop
 - cadence should now be read as a **spender of elapsed-time-earned travel credit**, not as a fresh movement grant; the same real 6 hours should expose the same travel whether the AI woke once or many times
-- later distance-burden and return-clock law can still narrow or chunk this, but should not mint free extra travel because the AI woke often
+- distance burden plus the new outing-level return clock can now narrow how long that reach stays worth using, while later cargo/wounds/panic burden may tighten it further without minting free extra travel because the AI woke often
 
 ---
 
