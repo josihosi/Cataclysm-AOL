@@ -255,17 +255,19 @@ def run_self_test() -> None:
     current_greenlit_titles = [section.title for section in parsed_current.sections if section.classification == "greenlit"]
     current_parked_titles = [section.title for section in parsed_current.sections if section.classification == "parked"]
 
-    assert current_active_titles == ["Active lane — Bandit perf + persistence budget probe v0"]
+    assert current_active_titles == ["Active lane — Bandit mark-generation + heatmap seam v0"]
     assert current_greenlit_titles == [
-        "Greenlit backlog — Locker clutter / perf guardrail probe v0",
+        "Greenlit backlog — Bandit overmap-to-bubble pursuit handoff seam v0",
+        "Greenlit backlog — Locker lag-threshold probe v0",
     ]
     assert any( "Bandit overmap AI" in title for title in current_parked_titles )
     assert any( "Hackathon feature lanes" in title for title in current_parked_titles )
     assert any( "Hackathon feature lanes" in warning for warning in parsed_current.warnings )
 
     greenlit_render = render_view( parsed_current, "greenlit" )
-    assert "Bandit perf + persistence budget probe v0" in greenlit_render
-    assert "Locker clutter / perf guardrail probe v0" in greenlit_render
+    assert "Bandit mark-generation + heatmap seam v0" in greenlit_render
+    assert "Bandit overmap-to-bubble pursuit handoff seam v0" in greenlit_render
+    assert "Locker lag-threshold probe v0" in greenlit_render
 
     thin_parsed = parse_plan( SAMPLE_THIN_PLAN )
     assert [section.classification for section in thin_parsed.sections] == ["active", "parked"]

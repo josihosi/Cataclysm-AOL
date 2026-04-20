@@ -15,6 +15,54 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Bandit mark-generation + heatmap seam v0
+
+Status: ACTIVE / GREENLIT
+
+Success state:
+- [ ] A bounded overmap-side mark ledger and broad bounty/threat heat-pressure seam exist for deterministic bandit inputs.
+- [ ] Deterministic coverage proves mark creation, refresh, selective cooling, and sticky confirmed threat on named reference cases.
+- [ ] The existing evaluator / playback footing can consume generated mark output reviewer-cleanly instead of relying only on hand-authored leads.
+- [ ] The slice stays bounded: no bubble handoff, no broad visibility adapter, and no full hostile-world simulation are smuggled in.
+
+Notes:
+- Canonical contract lives at `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`.
+- This is the next promoted implementation slice from the parked mark/heatmap concept packet, now that the evaluator, playback, and budget packets are checkpointed.
+
+---
+
+## Bandit overmap-to-bubble pursuit handoff seam v0
+
+Status: GREENLIT / BACKLOG
+
+Success state:
+- [ ] One bounded pursuit / investigation handoff exists from abstract overmap group state into local play.
+- [ ] The return path preserves meaningful abstract consequences such as updated mark/threat knowledge, losses, panic, cargo, or retreat state instead of dropping them on the floor.
+- [ ] Entry payload and return packet stay explicit, small, and reviewer-readable.
+- [ ] The slice stays bounded: no full raid / ambush suite, no broad tactical AI rewrite, and no full per-bandit biography persistence are smuggled in.
+
+Notes:
+- Canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`.
+- This is queued behind the active mark-generation seam so the handoff lane inherits real overmap-side state instead of fabricated placeholder truth.
+
+---
+
+## Locker lag-threshold probe v0
+
+Status: GREENLIT / BACKLOG
+
+Success state:
+- [ ] One honest threshold packet exists for the real `CAMP_LOCKER` service path.
+- [ ] The packet distinguishes top-level item pressure from worker-count pressure instead of flattening them together.
+- [ ] The result can name an approximate fine / suspicious / bad range, or honestly report that no clear threshold was found within the tested bound.
+- [ ] If the threshold looks bad, the packet ends with a small cheap-first guardrail recommendation order instead of architecture opera.
+
+Notes:
+- Canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`.
+- This follow-up exists because `Locker clutter / perf guardrail probe v0` answered shape better than the sharper player-facing lag-threshold question.
+
+---
+
 ## Bandit evaluator dry-run seam v0
 
 Status: CHECKPOINTED / DONE FOR NOW

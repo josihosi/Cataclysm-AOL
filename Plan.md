@@ -39,7 +39,8 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently **no active greenlit lane**.
+There is currently **one active greenlit lane**.
+There are also **two queued greenlit follow-ups** behind it.
 
 Fresh checkpoints that stay closed:
 - **Locker clutter / perf guardrail probe v0** is now honestly checkpointed too:
@@ -85,14 +86,62 @@ Fresh checkpoints that stay closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Meaning:
+- the active lane is now `Bandit mark-generation + heatmap seam v0`
+- the queued greenlit follow-ups are `Bandit overmap-to-bubble pursuit handoff seam v0` and `Locker lag-threshold probe v0`
 - the plan status summary command is checkpointed closed
 - the locker clutter / perf packet is checkpointed closed too
 - the bandit scenario playback suite is checkpointed closed too
 - the bandit follow-through lane is checkpointed closed too
 - the first bandit evaluator seam is checkpointed closed too
 - the bandit perf/persistence probe is checkpointed closed too
-- no active greenlit lane remains right now, so the next work needs a fresh greenlight instead of quiet scope creep
-- the broad bandit concept chain stays parked outside those explicit greenlit slices
+- the broad bandit concept chain stays parked outside those explicit promoted slices
+
+---
+
+## Active lane — Bandit mark-generation + heatmap seam v0
+
+**Status:** ACTIVE / GREENLIT
+
+The bounded bandit evaluator, deterministic playback suite, and first budget packet are now good enough that the next honest missing slice is the writer side.
+Right now the bandit reference cases can consume leads, but they do not yet create or refresh those leads from a real bounded overmap-side mark model.
+
+Current contract:
+- the canonical contract lives at `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`
+- this slice should build a bounded overmap-side mark ledger plus broad bounty/threat heat-pressure seam instead of leaving the bandit lane dependent on hand-authored leads forever
+- first implementation scope is deterministic input/event packets, selective decay and refresh, sticky confirmed threat, and a clean bridge into the already-landed evaluator / playback footing
+- keep this bounded: no broad visibility/concealment adapter, no bubble handoff, no multi-camp strategy layer, and no world-sim theater
+
+Why this is active now:
+- the bandit v0 foundation is no longer blocked on evaluator, playback, or budget honesty
+- the next real missing question is how marks get written and maintained, not whether the existing dry-run seam can be measured more ceremonially
+
+## Greenlit backlog — Bandit overmap-to-bubble pursuit handoff seam v0
+
+**Status:** GREENLIT / BACKLOG
+
+This queued follow-up should stay behind the active mark-generation seam.
+
+Current contract:
+- the canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
+- the first honest handoff case is pursuit / investigation, not a full raid circus
+- the slice should carry one small explicit entry payload plus one small explicit return packet for losses, panic, cargo, and updated mark/threat knowledge
+- keep continuity group-first and bounded, with at most a tiny anchored-identity slice where that is honestly needed
+
+Do not pull this forward before the writer-side mark seam is real, or the handoff lane will end up faking the overmap state it is supposed to inherit.
+
+## Greenlit backlog — Locker lag-threshold probe v0
+
+**Status:** GREENLIT / BACKLOG
+
+This queued follow-up exists because the first locker clutter / perf packet answered shape better than threshold.
+
+Current contract:
+- the canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`
+- stay on the real `CAMP_LOCKER` service path and extend the top-level clutter sweep beyond the first `50 / 100 / 200 / 500 / 1000` packet until a rough knee, suspicious zone, bad zone, or honest `not found within tested bound` answer appears
+- keep worker-count sweeps realistic (`1 / 5 / 10`) and treat item-hoard pressure as the primary stress axis instead of fantasy NPC populations
+- if the curve starts looking bad, end with the cheapest guardrail order first instead of jumping straight to architecture opera
+
+Do not reopen the earlier locker packet just to restate the same shape answer more loudly.
 
 ---
 

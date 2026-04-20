@@ -39,12 +39,13 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### No active greenlit lane right now
+### Active lane — Bandit mark-generation + heatmap seam v0
 
 Current honest state:
-- the current queue is empty on purpose, not by accident
-- the next lane needs a fresh greenlight instead of quiet scope creep
-- if locker perf is reopened later, the missing evidence must be a concrete new timing question rather than ceremonial reruns of the current packet
+- the bandit evaluator, playback, and first budget packet are checkpointed, so the missing evidence has moved to the writer side
+- the active question is no longer whether hand-authored leads can be consumed cheaply, but whether bounded deterministic inputs can create, refresh, cool, and freeze bandit marks honestly enough to feed the current evaluator / playback seam
+- prefer deterministic bandit proof first; do not jump to live/harness theater unless the touched seam honestly stops being answerable there
+- the queued locker lag-threshold follow-up exists, but it is not the current evidence burden while the active bandit seam is open
 
 ### Recently closed, do not casually reopen
 
@@ -95,18 +96,18 @@ Current honest state:
 
 ### Meaning
 
-- the locker clutter / perf question now has a bounded direct answer and is checkpointed closed for now
-- the queue is empty on purpose, so the next work needs a fresh greenlight instead of quiet drift into adjacent lanes
-- if locker perf is reopened later, keep it on concrete timing evidence and cheap guardrails first
+- the current evidence burden is the active bandit mark-generation + heatmap seam, not more ceremonial revalidation of the already-closed bandit foundation packets
+- the locker clutter / perf question still has its first bounded direct answer and remains checkpointed closed for now
+- the queued locker lag-threshold follow-up should stay on concrete timing evidence and cheap guardrails first when it becomes active
 
 ---
 
 ## Pending probes
 
-- no active greenlit probe right now
-- if locker perf is reopened later, do it only for a concrete new timing question
-- if later evidence says the still-linear top-level scan is too expensive in practice, end with the first cheap mitigation order instead of jumping straight to architecture opera
-- do **not** jump to harness/live play unless a future locker perf question honestly stops being answerable through deterministic or directly instrumented footing
+- deterministic proof for bandit mark creation, refresh, selective cooling, sticky confirmed threat, and the bridge into the current evaluator / playback footing
+- reviewer-readable bandit summaries for generated mark/heat state, not only debugger-inspection truth
+- when the queued locker lag-threshold packet becomes active later, keep it on concrete timing evidence and the first cheap guardrail order instead of architecture opera
+- do **not** jump to harness/live play unless a future touched seam honestly stops being answerable through deterministic or directly instrumented footing
 
 ---
 

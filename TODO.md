@@ -8,12 +8,16 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-There is currently **no active greenlit lane**.
+Active lane: **Bandit mark-generation + heatmap seam v0**.
 
-Hold the queue here until Josef greenlights the next target.
-If locker perf gets reopened later, do it only for a concrete new timing question, and keep the mitigation order cheap first:
-- early junk-ignore
-- bounded candidate consideration
-- simple curated-stock warning/cap
+Current target:
+1. freeze the implementation contract from `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`
+2. build a bounded writer-side seam for bandit marks plus broad bounty/threat heat pressure
+3. prove deterministic mark creation, refresh, selective cooling, sticky confirmed threat, and the bridge into the current evaluator / playback footing
+4. keep the slice bounded and reviewer-readable, with no bubble handoff or broad visibility/concealment sprawl
 
-Do not use an empty queue as permission for scope creep.
+Queued behind this active lane:
+- `Bandit overmap-to-bubble pursuit handoff seam v0`
+- `Locker lag-threshold probe v0`
+
+Do not pull queued follow-ups forward just because the current bandit lane is going well.
