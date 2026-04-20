@@ -39,9 +39,14 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently **one active greenlit lane**.
+There is currently **no active greenlit lane**.
 
 Fresh checkpoints that stay closed:
+- **Locker clutter / perf guardrail probe v0** is now honestly checkpointed too:
+  - `src/basecamp.{h,cpp}` now contains a real locker-service probe seam through `camp_locker_service_probe`, `basecamp::measure_camp_locker_service( npc & )`, and `render_camp_locker_service_probe()` instead of fake-path guesswork
+  - the first bounded direct packet now covers top-level clutter sweeps at `50 / 100 / 200 / 500 / 1000`, worker-count sweeps at `1 / 5 / 10`, the first junk-heavy / locker-candidate-heavy / ammo-magazine-container-heavy stock-shape comparison, and the nested-content question for loaded magazines and ordinary filled bags on the real `CAMP_LOCKER` service path
+  - the current verdict is `fine for now`: observed service cost grows with top-level locker items and worker passes, while loaded magazines and ordinary filled bags still behave like one top-level locker item on this path instead of producing an obvious nested-content cliff
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[camp][locker]"`
 - **Plan status summary command** is now honestly checkpointed too:
   - `tools/plan_status_summary.py` now provides a deliberately small read-only seam for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
   - it reads `Plan.md` only, preserves greenlit ordering, and warns when canon is thin or contradictory instead of inventing certainty
@@ -79,36 +84,33 @@ Fresh checkpoints that stay closed:
   - live run `.userdata/dev-harness/harness_runs/20260419_154244/` used the real camp-assignment seam, asked `what needs making`, and showed Katharina answering `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
-Current target:
-- `Locker clutter / perf guardrail probe v0`
-  - authoritative active contract: `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
-  - now that the bandit perf lane is honestly checkpointed, the next job is to measure the real `CAMP_LOCKER` service path under clutter-heavy stock and keep the answer reviewer-readable
-  - keep it bounded to a first honest clutter matrix and cheap mitigation order, not broad locker architecture theater
-
 Meaning:
 - the plan status summary command is checkpointed closed
+- the locker clutter / perf packet is checkpointed closed too
 - the bandit scenario playback suite is checkpointed closed too
 - the bandit follow-through lane is checkpointed closed too
 - the first bandit evaluator seam is checkpointed closed too
 - the bandit perf/persistence probe is checkpointed closed too
-- Andi now has one active locker clutter / perf guardrail lane, because item hoarding is ordinary play and `CAMP_LOCKER` invites players to dump a lot of stock onto it
+- no active greenlit lane remains right now, so the next work needs a fresh greenlight instead of quiet scope creep
 - the broad bandit concept chain stays parked outside those explicit greenlit slices
 
 ---
 
-## Active lane — Locker clutter / perf guardrail probe v0
+## Checkpointed — Locker clutter / perf guardrail probe v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-This follow-up exists because player hoarding is ordinary play, while camp populations above about ten NPCs are comparatively rare.
-The more believable locker failure mode is a curated zone getting used like a universal junk carpet and then making locker service cost spike in ways the player cannot read.
+This follow-up existed because player hoarding is ordinary play, while camp populations above about ten NPCs are comparatively rare.
+The believable failure mode was a curated locker zone turning into a universal junk carpet and making service cost spike in ways the player could not read.
 
 Current honest state:
-- the authoritative active contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
-- this slice is only meant to measure the real `CAMP_LOCKER` service path under clutter and recommend a small mitigation order if the curve looks bad
-- the first matrix should bias toward top-level item count and realistic worker counts, roughly `50 / 100 / 200 / 500 / 1000` items and `1 / 5 / 10` workers
-- the nested-content question is explicit scope: loaded magazines and common container shapes should be measured honestly enough to say whether they mostly behave like one top-level scan unit or create meaningful extra cost
-- if the curve looks bad, prefer cheap guardrails such as early junk-ignore, bounded candidate consideration, or a simple curated-stock warning/cap before inventing broad architecture
+- the canonical contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
+- `src/basecamp.{h,cpp}` now contains a real locker-service probe seam through `camp_locker_service_probe`, `basecamp::measure_camp_locker_service( npc & )`, and `render_camp_locker_service_probe()` instead of fake-path guesswork
+- the first bounded direct packet now covers top-level clutter sweeps at `50 / 100 / 200 / 500 / 1000`, worker-count sweeps at `1 / 5 / 10`, the first junk-heavy / locker-candidate-heavy / ammo-magazine-container-heavy stock-shape comparison, and the nested-content question for loaded magazines and ordinary filled bags on the real `CAMP_LOCKER` service path
+- the current verdict is `fine for now`: observed service cost grows with top-level locker items and worker passes, while loaded magazines and ordinary filled bags still behave like one top-level locker item on this path instead of producing an obvious nested-content cliff
+- if later timing evidence says the still-linear top-level scan is too expensive, prefer cheap guardrails such as early junk-ignore, bounded candidate consideration, or a simple curated-stock warning/cap before inventing broad architecture
+
+Keep this lane closed unless later timing-specific evidence says the current direct packet is lying or too thin.
 
 ## Checkpointed — Bandit perf + persistence budget probe v0
 

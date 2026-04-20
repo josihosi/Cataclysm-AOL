@@ -1,6 +1,6 @@
 # Locker clutter / perf guardrail probe v0 (2026-04-20)
 
-Status: active lane contract.
+Status: checkpointed / done for now.
 
 ## Why this exists
 
@@ -36,6 +36,24 @@ This item is good enough when:
 3. the loaded-magazine / container question has a concrete answer instead of vibes
 4. if the curve looks bad, the packet ends with a small recommended guardrail order, such as early junk-ignore, bounded candidate consideration, or a simple curated-stock warning/cap
 
+## Current evidence packet (2026-04-20)
+
+The current tree now has a direct service-path probe instead of hand-wavy proxy counting.
+
+- `basecamp::service_camp_locker_impl( npc &, camp_locker_service_probe * )` now drives the real locker-service path while optionally collecting probe metrics.
+- `basecamp::measure_camp_locker_service( npc & )` exposes that seam without inventing a fake microbench path.
+- `render_camp_locker_service_probe()` provides a reviewer-readable summary string for the captured counts.
+- `tests/faction_camp_test.cpp` now covers:
+  - junk-heavy clutter sweeps at `50 / 100 / 200 / 500 / 1000` top-level items
+  - worker-count sweeps at `1 / 5 / 10`
+  - junk-heavy, locker-candidate-heavy, and ammo/magazine/container-heavy stock shapes
+  - loaded-vs-empty magazines and filled-vs-empty bags on the same top-level item counts
+
+Current measured verdict:
+- current service cost is dominated by top-level locker items and worker passes, with straight-line scan growth across the bounded matrix above
+- loaded magazines and ordinary filled bags currently behave like one top-level locker item for this service-path probe, not like a hidden nested-cost cliff
+- no immediate guardrail is forced by this first packet, so the honest verdict is `fine for now`, with future mitigation only warranted if later timing evidence says the linear top-level scan is becoming too expensive in practice
+
 ## Validation expectations
 
 - prefer deterministic or directly instrumented locker service evidence first
@@ -43,7 +61,17 @@ This item is good enough when:
 - bias the stress shape toward heavy item hoards, because that is normal player behavior here, while NPC counts above about ten are much less common
 - escalate to broader live/harness play only if the measurement seam honestly cannot answer the question without it
 
+## Validation snapshot
+
+- `make -j4 tests`
+- `./tests/cata_test "[camp][locker]"`
+
+## Closure note
+
+This item is checkpointed because the first bounded direct packet now exists and already answers the intended question honestly enough.
+Reopen it only if a concrete new timing-specific locker perf question appears.
+
 ## Dependency note
 
-This item is active because the bandit perf lane is now honestly checkpointed.
+This item originally became active because the bandit perf lane was honestly checkpointed.
 Do not smuggle old bandit perf questions back into this locker lane just because both slices contain the word `perf`.

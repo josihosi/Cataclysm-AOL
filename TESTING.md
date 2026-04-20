@@ -39,15 +39,21 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Active lane — Locker clutter / perf guardrail probe v0
+### No active greenlit lane right now
 
 Current honest state:
-- the authoritative active contract now lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
-- the missing evidence is a first honest measurement packet for the real `CAMP_LOCKER` service path under clutter-heavy stock, not more locker-surface or bandit-proof theater
-- the stress shape should bias toward heavy item hoards and realistic worker counts, because that is the normal play pattern this lane is meant to protect
-- deterministic or directly instrumented locker-service evidence is still the preferred first class; broader live/harness ritual only belongs here if the real service-path measurement cannot answer the question cleanly
+- the current queue is empty on purpose, not by accident
+- the next lane needs a fresh greenlight instead of quiet scope creep
+- if locker perf is reopened later, the missing evidence must be a concrete new timing question rather than ceremonial reruns of the current packet
 
 ### Recently closed, do not casually reopen
+
+- Locker clutter / perf guardrail probe v0 is now honestly checkpointed:
+  - the authoritative contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
+  - `src/basecamp.{h,cpp}` now exposes a direct locker-service probe through `camp_locker_service_probe`, `basecamp::measure_camp_locker_service( npc & )`, and `render_camp_locker_service_probe()` instead of fake-path speculation
+  - deterministic coverage in `tests/faction_camp_test.cpp` now exercises the real `CAMP_LOCKER` service path across top-level clutter sweeps at `50 / 100 / 200 / 500 / 1000`, worker-count sweeps at `1 / 5 / 10`, the first junk-heavy / locker-candidate-heavy / ammo-magazine-container-heavy stock-shape comparison, and the nested-content question for loaded magazines and ordinary filled bags
+  - the current verdict is `fine for now`: service cost scales with top-level locker items and worker passes, while loaded magazines and ordinary filled bags still behave like one top-level locker item on this path instead of triggering an obvious nested-cost cliff
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[camp][locker]"`
 
 - Bandit perf + persistence budget probe v0 is now honestly checkpointed:
   - `bandit_dry_run::evaluation_metrics` now makes lead filtering, candidate generation, score/path checks, invalidations, and winner-comparison churn visible instead of hand-waved away inside the evaluator
@@ -89,20 +95,18 @@ Current honest state:
 
 ### Meaning
 
-- the missing evidence is now locker-service cost under clutter-heavy stock, not more bandit measurement reruns or locker-surface archaeology
-- item-hoard pressure is the primary stress shape to answer first; worker-count scaling matters too, but should stay subordinate to realistic camp sizes
-- broader locker architecture or live harness play still stays out of scope until the first direct service-path measurement says it is actually needed
+- the locker clutter / perf question now has a bounded direct answer and is checkpointed closed for now
+- the queue is empty on purpose, so the next work needs a fresh greenlight instead of quiet drift into adjacent lanes
+- if locker perf is reopened later, keep it on concrete timing evidence and cheap guardrails first
 
 ---
 
 ## Pending probes
 
-- identify the real `CAMP_LOCKER` service path and the narrowest honest instrumentation seam for measuring it
-- sweep the first bounded clutter matrix across likely hoard counts (`50 / 100 / 200 / 500 / 1000`) and realistic worker counts (`1 / 5 / 10`)
-- compare at least junk-heavy, locker-candidate-heavy, and ammo/magazine/container-heavy item mixes
-- answer whether loaded magazines and common containers mostly behave like one top-level locker item or create meaningful extra cost
-- if the curve looks bad, end with the first cheap mitigation order instead of jumping straight to architecture opera
-- do **not** jump to harness/live play unless the service-path measurement honestly stops being answerable through deterministic or directly instrumented footing
+- no active greenlit probe right now
+- if locker perf is reopened later, do it only for a concrete new timing question
+- if later evidence says the still-linear top-level scan is too expensive in practice, end with the first cheap mitigation order instead of jumping straight to architecture opera
+- do **not** jump to harness/live play unless a future locker perf question honestly stops being answerable through deterministic or directly instrumented footing
 
 ---
 
