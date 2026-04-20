@@ -35,12 +35,13 @@ Current target:
    - micro-item 21, `Mid-route abort / divert / shadow rule`, is now landed
    - micro-item 22, `Job candidate generation rule`, is now landed
    - micro-item 23, `Job scoring formula shape`, is now landed
-   - stay on micro-item 24, `Need-pressure override rule`
+   - micro-item 24, `Need-pressure override rule`, is now landed
+   - stay on micro-item 25, `Threat veto vs soft-veto rule`
 2. keep the law honest and narrow
-   - answer exactly when low stockpile or matching shortage should push a mediocre but real lead above `hold / chill`, before later micro-items decide hard-vs-soft threat veto
-   - keep movement budget, distance burden, return clock, burden pressure, candidate generation, and the newly-landed score shape frozen as already-landed law, not as a back door to re-litigate board eligibility
-   - keep micro-item 24 separate from later Package 3 veto / seam work
-   - do not answer micro-items 24-25 at the same time just because desperation logic and danger bars smell related
+   - answer exactly when danger should merely discount a job versus blocking it outright, after the newly landed need-pressure rescue but before later handoff-mode / seam work
+   - keep movement budget, distance burden, return clock, burden pressure, candidate generation, the newly-landed score shape, and the newly-landed need-pressure rule frozen as already-landed law, not as a back door to re-litigate board eligibility
+   - keep micro-item 25 separate from later Package 3 handoff / seam work
+   - do not reopen micro-item 24 just because desperation logic and danger bars smell adjacent
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

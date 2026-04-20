@@ -77,8 +77,10 @@ Current honest state:
 - adjacent parked substrate wording was tightened again where it still blurred board generation together with later scoring/veto/no-path filtering
 - Package 3, micro-item 23 is now answered too: job comparison now freezes as positive pull from lead bounty, lead confidence, job-lead fit, mild need alignment, soft temperament bias, and job-type bias, shaped by the already-landed distance multiplier, then reduced by soft threat and active-pressure penalties before later desperation/veto passes
 - adjacent parked substrate wording was tightened again where it still hand-waved one muddy `job_score` instead of the now-landed pre-veto comparison shape
-- the next honest active slice is Package 3, micro-item 24, `Need-pressure override rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define when shortage pressure can push a mediocre real lead above `hold / chill`, without quietly re-solving the later hard-vs-soft threat veto or handoff-mode selection in the same pass
+- Package 3, micro-item 24 is now answered too: only `low` and `critical` shortage bands may add a capped reward-profile-matched rescue bonus after pre-veto scoring, and only for mediocre real leads near `hold / chill` rather than stale emptiness or deep-negative suicide jobs
+- adjacent parked substrate wording was tightened again where it still treated desperation as an unfrozen future blob instead of the now-landed bounded need-pressure rescue
+- the next honest active slice is Package 3, micro-item 25, `Threat veto vs soft-veto rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define when danger merely discounts a job versus when it blocks it outright, without reopening the newly-landed need-pressure rule or quietly solving handoff mode in the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -109,8 +111,8 @@ Current honest state:
 
 ## Pending probes
 
-- land Package 3, micro-item 24, `Need-pressure override rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that desperation rule separate from later Package 3 threat-veto / seam work
+- land Package 3, micro-item 25, `Threat veto vs soft-veto rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that danger-veto rule separate from later Package 3 handoff / seam work
 
 ---
 

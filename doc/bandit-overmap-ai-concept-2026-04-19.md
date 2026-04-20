@@ -542,7 +542,7 @@ Meaning:
 - the positive subtotal should answer opportunity plus template fit first
 - the already-landed distance-burden law should shape that pull before danger subtraction
 - threat should still subtract softly here without yet deciding the later hard-veto ladder
-- ordinary need alignment should stay mild here so later follow-through canon can still answer desperation override separately
+- ordinary need alignment should stay mild here, while the landed follow-through need-pressure rule now adds only a later capped rescue for matching mediocre real leads near `hold / chill`
 - temperament should bias softly here without replacing hard state or turning the model into personality mush
 
 A job is valid only if:
@@ -554,6 +554,7 @@ A job is valid only if:
 Highest valid outward job wins only if its `pre_veto_job_score` beats `hold / chill`.
 
 The follow-through canon now also freezes `hold / chill` as the explicit no-target fallback baseline: always include that zero-distance stay-home option, and only dispatch an outward group when some other valid job scores above it honestly.
+The follow-through canon also now freezes a bounded need-pressure override after that pre-veto comparison: `low` or `critical` shortage may add a capped reward-profile-matched bonus to a mediocre real lead, but not to deep-negative jobs, fake targets, or unreachable nonsense.
 
 This is where the system stops being a mood board and starts becoming a machine.
 

@@ -351,12 +351,12 @@ The follow-through canon now also freezes candidate generation as a separate boa
 If a region already carries fresh disruption, recent failed pressure, or evidence that someone else already made it hot, that should reduce the score for blindly piling in again.
 
 Important separation:
-- later follow-through micro-item 24 should still decide when low stockpile or desperation lets a mediocre real lead clear the bar anyway
+- later follow-through micro-item 24 now freezes a bounded post-score need-pressure rescue: only `low`/`critical` shortage bands get a capped `0-4` bonus from coarse reward-profile match, and only for mediocre real leads near the `hold / chill` line rather than deep-negative nonsense or invented targets
 - later follow-through micro-item 25 should still decide when threat merely discounts a job versus when it hard-vetoes it
 - this formula is the visible comparison shape before those later passes
 
 `hold / chill` should be treated as an always-available score-`0` baseline with no mark requirement, no travel, and no dispatch cost.
-Highest valid outward job wins only if its `pre_veto_job_score` stays above that baseline, while ties or worse should collapse to `hold / chill` instead of speculative wandering.
+Highest valid outward job wins only if its pre-veto score, or later need-adjusted score for one matching shortage case, stays above that baseline, while ties or worse should collapse to `hold / chill` instead of speculative wandering.
 This is still per-camp scoring, not coalition strategy logic.
 Occasional overlap can happen, but v1 should not behave like several camps are sharing one omniscient attack planner.
 

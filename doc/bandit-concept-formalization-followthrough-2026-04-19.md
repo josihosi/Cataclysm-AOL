@@ -795,7 +795,7 @@ Starter examples:
 
 Guardrails from this rule:
 - **Candidate generation is not scoring.** It names what can be compared, not what should win.
-- **Need pressure does not mint targets from emptiness here.** It modifies later scoring against real leads, which belongs to micro-item 24.
+- **Need pressure does not mint targets from emptiness here.** It only modifies later scoring against real leads, as now frozen in micro-item 24.
 - **Threat veto does not belong here either.** Scary candidates may still reach the board and then lose or be vetoed later under micro-item 25.
 - **No-path is downstream.** A lead/template pair can be real enough to enter the board and still die honestly later when route evaluation says `no_path`.
 - **The board should stay small, typed, and inspectable.** One candidate per template per deduped lead envelope is enough for v1.
@@ -810,7 +810,7 @@ Current answer:
 - First total the positive pull from the lead itself plus how well this job fits that lead.
 - Then shape that pull by the already-landed distance-burden multiplier.
 - Only after that subtract current danger and active-region pressure.
-- Later micro-item 24 may still add a bounded desperation override, and later micro-item 25 may still hard-veto or clamp jobs that remain too dangerous. Neither decision is made here.
+- Landed micro-item 24 now adds the bounded desperation rescue later in the ladder, and later micro-item 25 may still hard-veto or clamp jobs that remain too dangerous. Neither decision is made here.
 
 Starter formula shape:
 
@@ -848,7 +848,7 @@ Starter factor table:
 
 Starter interpretation notes:
 - Compare `pre_veto_job_score` against the already-landed `hold / chill = 0` baseline. If the best outward job is not above that line, the camp stays home.
-- `ordinary_need_alignment` stays deliberately small here so micro-item 24 can still answer when low stockpile should push a mediocre but real lead over the line.
+- `ordinary_need_alignment` stays deliberately small here because landed micro-item 24 now handles the bounded rescue case where low stockpile should push a mediocre but real lead over the line.
 - `threat_penalty` stays a soft subtraction here so micro-item 25 can still answer when danger merely discounts a job versus when it should block it outright.
 - `distance_multiplier` comes from the already-landed burden table and should shape the whole positive pull, not be double-counted later as another flat penalty.
 
@@ -861,7 +861,7 @@ Starter examples:
 | Distant city-edge `raid` with juicy value but scary pressure | `7 + 1 + 1 + 0 + 1 = 10` | `10 * 0.40 = 4.0` | `-5 threat -1 pressure` | Loses for now even before later veto law, attractive does not mean dispatchable. |
 
 Guardrails from this rule:
-- **Score shape answers comparison, not desperation.** The later need-pressure rule may still push weak-but-real candidates upward, but this micro-item does not.
+- **Score shape answers comparison, not desperation.** The landed need-pressure rule may still push weak-but-real candidates upward later in the ladder, but this micro-item does not.
 - **Score shape answers soft weighting, not absolute danger bars.** Later veto law still decides when threat merely hurts a score and when it should stop the job entirely.
 - **Score shape assumes candidate generation already happened.** No-path, hard eligibility, and handoff mode selection remain downstream or elsewhere.
 - **Keep the factors inspectable.** One visible subtotal, one distance shaping step, then explicit danger/pressure subtraction is enough for v1.
@@ -870,6 +870,59 @@ Guardrails from this rule:
 - **Question:** When does camp need or low stockpile make a mediocre opportunity worth taking anyway?
 - **Expected output:** One bounded override rule.
 - **Done when:** The model can explain desperate behavior without pretending bandits became stupid.
+
+- Freeze need pressure as one bounded **post-score rescue step** that runs **after** the pre-veto comparison from micro-item 23 and **before** the later threat-veto ladder.
+- Ordinary need alignment in the base formula stays mild on purpose. This override exists only once the camp has crossed from ordinary preference into a **real shortage band**.
+- Need pressure may only rescue a **real generated lead**. It may not mint a target from emptiness, bypass hard job preconditions, ignore `no_path`, or revive a lead that was already cleared as false/stale.
+
+Starter override shape:
+
+```text
+shortage_band_bonus =
+    0  # stable / merely thin
+    1  # low shortage
+    2  # critical shortage
+
+reward_profile_match =
+    0  # no meaningful relief for the pressured bucket
+    1  # partial / indirect relief
+    2  # direct likely relief
+
+need_override_bonus = shortage_band_bonus * reward_profile_match
+
+need_adjusted_job_score =
+    pre_veto_job_score
+  + need_override_bonus
+```
+
+Starter shortage / match table:
+
+| Camp pressure bucket | Direct likely relief (`match = 2`) | Partial / indirect relief (`match = 1`) | No match (`match = 0`) |
+| --- | --- | --- | --- |
+| Food / basic upkeep | nearby house or farm scavenge, thin forest forage skim, caravan/haul hit with plausible food cargo | generic mixed-supply house lead, uncertain occupied site with some likely provisions | pure ammo raid, med-only clinic hit |
+| Ammo | armed caravan toll, ammo-cache scavenge, defended site raid with obvious weapons/ammo payoff | generic occupied house or work site that might yield some rounds | forest skim, food convoy hit |
+| Med | clinic/pharmacy/occupied site with real treatment cues, convoy carrying visible medical stock | generic mixed-supply settlement lead with some likely meds | pure food skim, ammo-only convoy |
+
+Starter interpretation notes:
+- Only **`low`** and **`critical`** shortage bands get this override. Stable or merely thin stockpiles should live inside the already-landed mild `ordinary_need_alignment` term.
+- The override is intentionally **capped at `+4`**. That is enough to lift a weak-but-real candidate over `hold / chill`, not enough to excuse obvious suicide or theater-scale nonsense.
+- Only candidates in a **mediocre-but-real band** may be rescued. Good v1 rule: if `pre_veto_job_score` is already below about `-2`, need pressure should not save it here.
+- Compare `need_adjusted_job_score` against `hold / chill = 0`, then pass the provisional winner into micro-item 25's later threat-veto law.
+- Need pressure changes urgency, not intelligence. "There might be stuff there" is not a direct match, and desperation does not turn stale, unreachable, or wrong-resource leads into good ideas.
+
+Starter examples:
+
+| Situation | `pre_veto_job_score` | Override read | Result |
+| --- | --- | --- | --- |
+| Food-short camp sees a nearby house / forest-edge skim with modest likely food value and manageable heat | `-1` | `low shortage (1) * direct relief (2) = +2` | `need_adjusted_job_score = +1`, so the camp may honestly leave `hold / chill` for a mediocre but real local food run. |
+| Ammo-poor camp sees a distant hot city-edge raid with long travel and ugly pressure | `-3.5` | direct ammo relief exists, but the job is already below the rescue band | Still stay home or choose another job. Need pressure should not legalize bad long-shot suicide. |
+| Critical med shortage points at a nearby clinic-style lead with real supply cues but only middling base attractiveness | `0` | `critical shortage (2) * direct relief (2) = +4` | The clinic hit becomes the provisional winner, but later micro-item 25 may still hard-veto it if the threat read is truly unacceptable. |
+
+Guardrails from this rule:
+- **Need pressure rescues matching mediocre leads, not fake targets.** Generation, eligibility, and reachability stay upstream.
+- **Need pressure does not replace later threat veto.** A desperate camp may want the job more, it still does not get a free pass through hard danger.
+- **Need pressure does not dispatch extra groups.** It only changes which single candidate beats `hold / chill` this pass.
+- **Wrong-resource desperation stays bounded.** Food pressure should not magically justify an ammo-only raid, and ammo pressure should not treat thin forest forage as real relief.
 
 #### 25. Threat veto vs soft-veto rule
 - **Question:** When does threat fully block a job, and when does it merely discount it?
