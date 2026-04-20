@@ -878,6 +878,20 @@ It is to catch behavior that is obviously stupid, frozen, over-omniscient, or pa
 A rough packet of maybe 5-10 scenarios would already be useful.
 That is enough to expose whether the system actually explores, converges on promising regions, and reacts sensibly to repeated signals.
 
+### Later perception and handover test family worth preserving
+
+When the earlier overmap-side proofs are real, later validation should also include a second packet for the ugly interplay cases instead of pretending the seams solved themselves automatically.
+
+Preserve at least these future checks:
+- **Directional light leakage at sensible long range.** If a player camp north of a bandit camp leaks light only toward the east, that should not magically justify north-side staking-out from the bandit camp. If the same camp leaks visible light toward the south, it should become actionable from the bandit side.
+- **Zombie horde interaction.** If a meaningful visible light sits between camps with a zombie horde in the corridor, the world should not turn into bandit-only theater. The same light should plausibly attract the horde too.
+- **Distance discipline.** These fixtures should sit near the maximum meaningful visibility envelope implied by the current hard-coded game footing, not in toy adjacent spacing. Ordinary visible light should likely stay near general overmap visibility under the right conditions, while smoke should project farther because the plume can read above ordinary local-sight assumptions.
+- **Overmap/local handover pressure rewrite.** If bandits stalk a camp but local reality turns the tile into a much hotter threat state, for example the player intersects them directly and the encounter becomes obviously dangerous, a later overmap cadence should be able to rewrite the posture toward retreat rather than homing forever on the stale approach goal.
+- **Vertical visibility edge cases.** Nearby z-level differences should not behave like magical amnesia planes. Fire on `z -1` may still be visible from `z 0`, and light on `z +1` or `z +2` may still be visible from `z 0` when line and exposure support it. The current lean is that elevation may extend exposed light usefulness under the right conditions, while smoke should not gain silly extra strategic range merely because the source changed floors.
+
+These should stay late-stage validation, not early implementation scope creep.
+The point is to preserve the future honesty packet now, so the later system does not quietly go blind whenever directionality, hordes, or verticality become inconvenient.
+
 ---
 
 ## Related parked-chain docs

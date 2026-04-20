@@ -580,6 +580,31 @@ That keeps the wide strategic theater useful without implying same-day nonsense:
 
 ---
 
+## Later visibility and handover tests worth preserving
+
+These are deliberately **later** than the first narrow signal bridges.
+But the parked canon should preserve them now so the future test packet does not forget the annoying real-world interactions.
+
+### Directional light and long-range exposure
+- if a player camp north of a bandit camp leaks visible light only toward the east, that should **not** justify north-side staking-out from the bandit camp
+- if the same camp leaks meaningful light toward the south, it **should** become visible/actionable from the bandit side
+- these fixtures should use sensible spacing near the maximum meaningful visibility envelope implied by the current hard-coded game footing, not toy adjacent placement
+- ordinary visible light should likely track roughly the general overmap visibility envelope under the right conditions, while smoke should project farther because a high plume can stay legible beyond ordinary local-sight assumptions
+
+### Cross-system interaction
+- if a meaningful visible light sits between camps with a zombie horde in the corridor, the same light should plausibly attract the horde too; the world should not turn into isolated bandit-only theater
+- once overmap-side tests are real, later handover tests should also prove that local reality can rewrite overmap posture, for example a stalk becoming an honest retreat when the player intersects the bandits directly and the tile becomes too dangerous
+
+### Z-level edge cases
+- nearby floor changes should not behave like magical visibility amnesia
+- a fire on `z -1` may still be visible from `z 0` under sensible open conditions
+- light on `z +1` or `z +2` may still be visible from `z 0` when line and exposure support it
+- the current lean is that elevation may extend exposed-light usefulness and attraction under the right conditions, while smoke should not gain silly extra strategic range merely because the source changed floors
+
+These are future validation constraints, not permission to bloat the early v1 seams right now.
+
+---
+
 ## Open questions that can stay parked
 
 These are real questions, but they do not block parking the concept.
