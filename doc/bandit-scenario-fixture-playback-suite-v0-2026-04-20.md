@@ -1,11 +1,11 @@
 # Bandit scenario fixture + playback suite v0 (2026-04-20)
 
-Status: greenlit backlog contract, not the current active lane.
+Status: checkpointed contract for the first landed playback slice.
 
 ## Why this exists
 
 One plausible evaluator tick is not enough.
-After the dry-run evaluator seam lands, the next job is to make bandit behavior replayable across multiple ticks so viciousness, passivity, and drift can be inspected instead of guessed.
+After the dry-run evaluator seam landed, the next job was to make bandit behavior replayable across multiple ticks so viciousness, passivity, and drift could be inspected instead of guessed.
 
 ## Scope
 

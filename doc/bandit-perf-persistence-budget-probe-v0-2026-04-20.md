@@ -1,10 +1,10 @@
 # Bandit perf + persistence budget probe v0 (2026-04-20)
 
-Status: greenlit backlog contract, not the current active lane.
+Status: active greenlit contract.
 
 ## Why this exists
 
-Once the evaluator seam and scenario playback seam are real, we need an honest answer about runtime cost and save bloat before broader rollout.
+Now that the evaluator seam and scenario playback seam are real, we need an honest answer about runtime cost and save bloat before broader rollout.
 Otherwise the system will grow a clever little bureaucracy that nobody can afford to run or serialize.
 
 ## Scope
