@@ -183,6 +183,8 @@ TEST_CASE( "bandit_playback_generated_smoke_marks_bridge_into_the_evaluator", "[
     CHECK( tick0->generated_leads[0].envelope_id == "ridge_smoke" );
     REQUIRE( tick0->generated_marks.heat.size() == 1 );
     CHECK( tick0->generated_marks.heat[0].region_id == "ridge_rim" );
+    REQUIRE_FALSE( tick0->generated_marks.marks.empty() );
+    CHECK( tick0->generated_marks.marks[0].notes[1].find( "projected_range_omt=15" ) != std::string::npos );
 
     CHECK( winner_at( result, 20 ).job == bandit_dry_run::job_template::hold_chill );
     CHECK( tick20->generated_leads.empty() );
@@ -255,6 +257,14 @@ TEST_CASE( "bandit_playback_report_renders_named_checkpoints", "[bandit][playbac
     CHECK( generated_report.find( "bandit mark-generation report" ) != std::string::npos );
     CHECK( generated_report.find( "fortified_loss_site" ) != std::string::npos );
     CHECK( generated_report.find( "threat_heat=3" ) != std::string::npos );
+
+    const bandit_playback::scenario_definition *smoke_generated_scenario =
+        bandit_playback::find_reference_scenario( "generated_smoke_mark_cools_off" );
+    REQUIRE( smoke_generated_scenario != nullptr );
+    const std::string smoke_report = bandit_playback::render_report(
+                                         bandit_playback::run_scenario( *smoke_generated_scenario ) );
+    CHECK( smoke_report.find( "projected_range_omt=15" ) != std::string::npos );
+    CHECK( smoke_report.find( "weather=clear" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_playback_budget_measurement_exposes_short_vs_long_horizon_churn", "[bandit][playback]" )

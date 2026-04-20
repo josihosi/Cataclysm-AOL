@@ -30,6 +30,22 @@ std::string join_notes( const std::vector<std::string> &notes )
     return out.str();
 }
 
+int smoke_weather_penalty( smoke_weather_band weather )
+{
+    switch( weather ) {
+        case smoke_weather_band::clear:
+            return 0;
+        case smoke_weather_band::windy:
+            return 1;
+        case smoke_weather_band::rain:
+            return 2;
+        case smoke_weather_band::fog:
+            return 3;
+    }
+
+    return 0;
+}
+
 std::string effective_mark_id( const signal_input &signal )
 {
     if( !signal.id.empty() ) {
@@ -176,6 +192,72 @@ std::string to_string( cadence_tier tier )
     }
 
     return "unknown";
+}
+
+std::string to_string( smoke_weather_band weather )
+{
+    switch( weather ) {
+        case smoke_weather_band::clear:
+            return "clear";
+        case smoke_weather_band::windy:
+            return "windy";
+        case smoke_weather_band::rain:
+            return "rain";
+        case smoke_weather_band::fog:
+            return "fog";
+    }
+
+    return "unknown";
+}
+
+smoke_projection adapt_smoke_packet( const smoke_packet &packet )
+{
+    smoke_projection projection;
+    projection.packet = packet;
+
+    const int weather_penalty = smoke_weather_penalty( packet.weather );
+    projection.visibility_score = std::max( 0, packet.source_strength + packet.persistence +
+                                            packet.height_bias - packet.spread_bias - weather_penalty );
+    projection.projected_range_omt = std::clamp( 4 + packet.source_strength * 2 + packet.persistence * 2 +
+                                     packet.height_bias - packet.spread_bias - weather_penalty, 1, 15 );
+    projection.viable = projection.visibility_score > 0 &&
+                        packet.observed_range_omt <= projection.projected_range_omt;
+
+    if( !projection.viable ) {
+        return projection;
+    }
+
+    signal_input signal;
+    signal.id = packet.id;
+    signal.kind = "smoke";
+    signal.envelope_id = packet.envelope_id;
+    signal.region_id = packet.region_id;
+    signal.family = packet.family;
+    signal.strength = 1;
+    signal.confidence = 1;
+    signal.threat_add = 0;
+    signal.bounty_add = 1;
+    signal.reward_profile_match = 0;
+    signal.distance_multiplier = std::clamp( 1.10 - static_cast<double>( packet.observed_range_omt ) /
+                                 static_cast<double>( std::max( 1, projection.projected_range_omt ) ),
+                                 0.25, 1.0 );
+    signal.threat_gate_result = bandit_dry_run::threat_gate::discount_only;
+    signal.hard_blocked_jobs = {
+        bandit_dry_run::job_template::scavenge,
+        bandit_dry_run::job_template::steal,
+        bandit_dry_run::job_template::raid,
+    };
+    signal.confirmed_threat = false;
+    signal.soft_decay = true;
+    signal.notes = packet.notes;
+    signal.notes.push_back( "smoke packet: weather=" + to_string( packet.weather ) +
+                            ", observed_range_omt=" + std::to_string( packet.observed_range_omt ) +
+                            ", projected_range_omt=" + std::to_string( projection.projected_range_omt ) +
+                            ", visibility_score=" + std::to_string( projection.visibility_score ) );
+    signal.notes.push_back( "smoke stays bounty-first: this is worth scoping out, not free loot or identity truth" );
+
+    projection.signal = signal;
+    return projection;
 }
 
 update_result advance_state( ledger_state &state, int tick, cadence_tier tier,

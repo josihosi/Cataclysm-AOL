@@ -82,6 +82,28 @@ signal_input make_signal( const std::string &id, const std::string &kind,
     return signal;
 }
 
+smoke_packet make_smoke_packet( const std::string &id, const std::string &envelope_id,
+                                const std::string &region_id, int observed_range_omt,
+                                int source_strength, int persistence, int height_bias,
+                                int spread_bias, smoke_weather_band weather,
+                                lead_family family = lead_family::site,
+                                const std::vector<std::string> &notes = {} )
+{
+    smoke_packet packet;
+    packet.id = id;
+    packet.envelope_id = envelope_id;
+    packet.region_id = region_id;
+    packet.family = family;
+    packet.observed_range_omt = observed_range_omt;
+    packet.source_strength = source_strength;
+    packet.persistence = persistence;
+    packet.height_bias = height_bias;
+    packet.spread_bias = spread_bias;
+    packet.weather = weather;
+    packet.notes = notes;
+    return packet;
+}
+
 scenario_definition make_empty_region()
 {
     scenario_definition scenario;
@@ -465,12 +487,12 @@ scenario_definition make_generated_smoke_mark_cools_off()
             "The mark ledger, not a hand-authored lead list, should create the first scout pressure."
         },
         cadence_tier::nearby_active,
+        {},
         {
-            make_signal( "ridge_smoke", "smoke", "ridge_smoke", "ridge_rim",
-                         lead_family::site, 1, 1, 1, 1, 0.55,
-                         0, threat_gate::discount_only, 0, 0, false, true,
-                         { job_template::scavenge, job_template::steal, job_template::raid },
-                         { "Thin smoke should create a scoutable site mark, not instant loot permission." } )
+            make_smoke_packet( "ridge_smoke", "ridge_smoke", "ridge_rim", 9, 3, 2, 1, 0,
+                               smoke_weather_band::clear,
+                               lead_family::site,
+                               { "Sustained clear-weather smoke should stay several OMT legible without becoming identity truth." } )
         }
     } );
 
@@ -660,7 +682,14 @@ checkpoint_result build_checkpoint( const scenario_definition &scenario, int tic
         if( frame.tick > tick ) {
             break;
         }
-        advance_state( generated_marks, frame.tick, frame.cadence, frame.mark_signals );
+        std::vector<signal_input> signals = frame.mark_signals;
+        for( const smoke_packet &packet : frame.smoke_packets ) {
+            const smoke_projection projection = adapt_smoke_packet( packet );
+            if( projection.viable ) {
+                signals.push_back( projection.signal );
+            }
+        }
+        advance_state( generated_marks, frame.tick, frame.cadence, signals );
     }
 
     const scenario_frame &frame = frame_for_tick( scenario, tick );

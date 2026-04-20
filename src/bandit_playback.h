@@ -16,6 +16,25 @@ struct scenario_frame {
     std::vector<std::string> notes;
     bandit_mark_generation::cadence_tier cadence = bandit_mark_generation::cadence_tier::nearby_active;
     std::vector<bandit_mark_generation::signal_input> mark_signals;
+    std::vector<bandit_mark_generation::smoke_packet> smoke_packets;
+
+    scenario_frame() = default;
+    scenario_frame( int tick_, std::string phase_, bandit_dry_run::camp_input camp_,
+                    std::vector<bandit_dry_run::lead_input> leads_,
+                    std::vector<std::string> notes_,
+                    bandit_mark_generation::cadence_tier cadence_,
+                    std::vector<bandit_mark_generation::signal_input> mark_signals_,
+                    std::vector<bandit_mark_generation::smoke_packet> smoke_packets_ = {} ) :
+        tick( tick_ ),
+        phase( std::move( phase_ ) ),
+        camp( std::move( camp_ ) ),
+        leads( std::move( leads_ ) ),
+        notes( std::move( notes_ ) ),
+        cadence( cadence_ ),
+        mark_signals( std::move( mark_signals_ ) ),
+        smoke_packets( std::move( smoke_packets_ ) )
+    {
+    }
 };
 
 struct scenario_definition {

@@ -13,6 +13,13 @@ enum class cadence_tier {
     daily_cleanup,
 };
 
+enum class smoke_weather_band {
+    clear,
+    windy,
+    rain,
+    fog,
+};
+
 struct signal_input {
     std::string id;
     std::string kind;
@@ -32,6 +39,28 @@ struct signal_input {
     bool confirmed_threat = false;
     bool soft_decay = true;
     std::vector<std::string> notes;
+};
+
+struct smoke_packet {
+    std::string id;
+    std::string envelope_id;
+    std::string region_id;
+    bandit_dry_run::lead_family family = bandit_dry_run::lead_family::site;
+    int observed_range_omt = 0;
+    int source_strength = 0;
+    int persistence = 0;
+    int height_bias = 0;
+    int spread_bias = 0;
+    smoke_weather_band weather = smoke_weather_band::clear;
+    std::vector<std::string> notes;
+};
+
+struct smoke_projection {
+    smoke_packet packet;
+    signal_input signal;
+    int visibility_score = 0;
+    int projected_range_omt = 0;
+    bool viable = false;
 };
 
 struct typed_mark {
@@ -92,5 +121,7 @@ std::vector<bandit_dry_run::lead_input> emit_leads( const ledger_state &state,
         ledger_metrics *metrics = nullptr );
 std::string render_report( const ledger_state &state,
                            const std::vector<bandit_dry_run::lead_input> *leads = nullptr );
+smoke_projection adapt_smoke_packet( const smoke_packet &packet );
 std::string to_string( cadence_tier tier );
+std::string to_string( smoke_weather_band weather );
 } // namespace bandit_mark_generation
