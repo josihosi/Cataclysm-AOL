@@ -253,6 +253,29 @@ Guardrails from this rule:
 - **Expected output:** One rule explaining coexistence instead of silent overwrite.
 - **Done when:** The model no longer implies that threat deletes bounty or bounty deletes threat.
 
+Current answer:
+- Threat and bounty are **separate concurrent reads**, not one shared regional mood meter.
+- A region, route, site, or actor can therefore stay **worth attacking and risky to approach at the same time** when the evidence supports both.
+- New threat evidence does **not** delete supported bounty, and new bounty evidence does **not** delete supported threat, unless the same recheck directly disproves the older source.
+- Keep the **smallest honest coexistence shape**:
+  - **same carrier** when one actor, corridor, or site is both lucrative and dangerous
+  - **separate nearby carriers** when the value and the danger are related but come from different supported sources in the same region
+- Later job scoring decides whether the opportunity is worth the risk. Mark-writing should preserve both reads instead of flattening them into one verdict.
+
+| Situation | Bounty read | Threat read | Coexistence outcome | Why |
+| --- | --- | --- | --- | --- |
+| Active camp with stores, workers, and visible sentries | High structural bounty plus site-centered moving bounty | High defender/watch threat | Keep both on the same site-centered region | A rich camp is often rich **because** people and stores are concentrated there, and those same facts can also make it dangerous. |
+| Repeated caravan corridor with escorts or recent failed ambushes | High route or actor bounty | Medium to high corridor threat | Keep both on the same route/intercept carrier | A road can be profitable specifically because valuable traffic keeps using it, while escorts, alarms, or bad outcomes make the same corridor costly. |
+| City edge with scavenger traffic and dense zombie pressure | Medium to high structural/moving bounty | High monster/contact threat | Keep both regional reads alive together | Chaos and salvage opportunity can rise together, danger does not magically erase the value, and value does not make the area safe. |
+| Quiet revisit that finds one old sentry post gone while supplies or active use are still supported by other evidence | Supported bounty may remain | Lower or clear only the contradicted threat source | Rewrite only the disproved side | Source-specific recheck should refine the model, not wipe the whole region clean just because one fear or one opportunity changed. |
+
+Guardrails from this rule:
+- **Do not zero bounty just because threat rose.** A hard target can still be a tempting target.
+- **Do not zero threat just because bounty rose.** Richer evidence can mean better payoff and worse danger at once.
+- **Only direct contradiction clears one side.** If a recheck proves the convoy left, clear that actor bounty. If a recheck proves the watch post is gone, lower that threat. Do not let either update silently erase unrelated supported reads.
+- **Threat-first and bounty-first cues stay asymmetric.** Searchlights may write strong threat plus only weak bounty from active people, smoke may write bounty first and add threat only when harder danger evidence arrives.
+- **The downstream decision layer compares the two.** The mark layer's job is to preserve the honest coexistence, not to pre-decide whether the camp should attack, avoid, stalk, or wait.
+
 ### D. Harvesting and stockpile law
 
 #### 10. Destination-only vs along-route collection rule

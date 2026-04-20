@@ -20,11 +20,12 @@ Current target:
    - micro-item 6, `Moving bounty clear / rewrite rule`, is now landed
    - micro-item 7, `Threat source table`, is now landed
    - micro-item 8, `Threat rewrite rule`, is now landed
-   - stay on micro-item 9, `Threat-and-bounty coexistence rule`
+   - micro-item 9, `Threat-and-bounty coexistence rule`, is now landed
+   - stay on micro-item 10, `Destination-only vs along-route collection rule`
 2. keep the law honest and narrow
-   - answer exactly how one region can stay attractive and dangerous at the same time without silent overwrite
-   - make later implementation stop guessing whether danger evidence deletes opportunity, opportunity deletes danger, or both should coexist on separate reads
-   - only touch adjacent stale wording when that coexistence pass directly forces it
+   - answer exactly whether bandits may collect value opportunistically while traveling or only at the explicit destination
+   - make later implementation stop guessing whether route-side pickup is allowed, forbidden, or silently half-allowed by prose drift
+   - only touch adjacent stale wording when that collection pass directly forces it
    - do not answer micro-items 10-13 at the same time just because the laws smell related
 3. keep this doc/spec only
    - no bandit AI code

@@ -54,8 +54,9 @@ Current honest state:
 - Package 1, micro-item 7 is now answered too: threat marks now explicitly come from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure, while ordinary smoke/light/traffic stays bounty-first unless paired with harder danger evidence
 - Package 1, micro-item 8 is now answered too: threat now rewrites source-by-source through real recheck only, with explicit raise / confirm / lower cases for harder evidence, repeated corroboration, bad outcomes, and close contradictory observation
 - adjacent parked substrate wording was tightened again too: the scoring/concept/mark-model docs now say threat stays sticky without passive decay and only downgrades through source-specific close recheck or successful passage
-- the next honest active slice is Package 1, micro-item 9, `Threat-and-bounty coexistence rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define exactly how one region can stay attractive and dangerous at the same time without smuggling in harvesting, stockpile, or cadence-law decisions
+- Package 1, micro-item 9 is now answered too: threat and bounty now stay as separate concurrent reads, so the same region/carrier may remain attractive and dangerous at once unless a source-specific recheck actually disproves one side
+- the next honest active slice is Package 1, micro-item 10, `Destination-only vs along-route collection rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define whether route-side opportunistic collection is allowed at all without smuggling in yield, stockpile, or cadence-law decisions
 
 ### Recently closed, do not casually reopen
 
@@ -86,8 +87,8 @@ Current honest state:
 
 ## Pending probes
 
-- land Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that coexistence rule consistent and separate from later harvesting/stockpile law
+- land Package 1, micro-item 10, `Destination-only vs along-route collection rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that collection-path rule consistent and separate from later yield/stockpile law
 
 ---
 

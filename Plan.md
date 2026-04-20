@@ -70,8 +70,9 @@ Current target:
 - Package 1, micro-item 6, `Moving bounty clear / rewrite rule`, is now landed too: moving bounty cleanup now happens by evidence-driven refresh, overwrite, clear, replacement, or coexistence on the source carrier rather than by fake passive melt
 - Package 1, micro-item 7, `Threat source table`, is now landed too: threat marks now explicitly come from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure instead of from generic bounty clues
 - Package 1, micro-item 8, `Threat rewrite rule`, is now landed too: threat now rewrites source-by-source through real recheck only, with explicit raise / confirm / lower cases instead of passive threat melt
-- keep the next pass narrow: Package 1, micro-item 9, `Threat-and-bounty coexistence rule`
-- answer only how one region can stay attractive and dangerous at the same time without silent overwrite, and only touch adjacent stale wording when that coexistence pass directly forces the correction
+- Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, is now landed too: bounty and threat now stay as separate concurrent reads, so one region/carrier can remain worth attacking and risky to approach at the same time unless a source-specific recheck actually disproves one side
+- keep the next pass narrow: Package 1, micro-item 10, `Destination-only vs along-route collection rule`
+- answer only whether bandits may collect value opportunistically while traveling or only at the explicit destination, and only touch adjacent stale wording when that collection pass directly forces the correction
 - do not drift into harvesting/stockpile math, cadence law, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
@@ -309,8 +310,9 @@ Current bounded slice:
 - landed: Package 1, micro-item 6, `Moving bounty clear / rewrite rule`, now freezes that moving bounty is cleaned up by evidence-driven refresh, overwrite, clear, replacement, or coexistence on the current carrier rather than by passive timer shave
 - landed: Package 1, micro-item 7, `Threat source table`, now freezes that threat comes from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure rather than from ordinary bounty-first activity clues
 - landed: Package 1, micro-item 8, `Threat rewrite rule`, now freezes that threat only changes through source-specific recheck, with explicit raise / confirm / lower cases and no passive decay shortcut
-- next: Package 1, micro-item 9, `Threat-and-bounty coexistence rule`
-- keep the pass to one explicit coexistence rule before touching harvesting or stockpile questions
+- landed: Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, now freezes that threat and bounty remain separate concurrent reads on the same region/carrier when the evidence supports both, with only source-specific contradiction clearing one side
+- next: Package 1, micro-item 10, `Destination-only vs along-route collection rule`
+- keep the pass to one explicit collection-path rule before touching yield or stockpile questions
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 
