@@ -608,6 +608,39 @@ Guardrails from this rule:
 - **Expected output:** One explicit idle / low-value fallback behavior.
 - **Done when:** The system will not inherit current random-NPC wander nonsense by accident.
 
+Current answer:
+- Freeze the no-target fallback as an always-available **`hold / chill`** job. It is the camp's zero-distance baseline when no outward job honestly clears the dispatch bar.
+- Score normal outward job candidates first, then compare the best surviving one against that baseline:
+
+```text
+hold_chill_score = 0
+best_outward_job_score = max( valid_non_hold_job_scores ) if any exist else none
+dispatch_outward_job only if best_outward_job_score > hold_chill_score
+otherwise choose hold_chill
+```
+
+- Ties stay home. A camp should need a real positive reason to spend manpower, provisioning, and travel budget on an outward outing.
+- `hold / chill` means:
+  - no abstract roaming group is dispatched
+  - no travel budget is spent
+  - no dispatch provisioning cost is paid
+  - manpower stays at camp for ordinary guarding, recovery, sorting, lookout, or camp-edge routine that does **not** become speculative overmap wandering
+- This fallback only answers **no worthwhile target right now**. It does **not** answer what happens when a worthwhile target has no route, and it does **not** answer mid-route abort/divert behavior.
+- Existing groups already out in the field keep following their own return-clock / burden / later diversion law. This rule governs only the current dispatch decision.
+
+Starter examples:
+
+| Situation | Best outward read | Result |
+| --- | --- | --- |
+| A camp has only weak stale soft marks, low immediate need, and fresh loss memory nearby | no outward job rises above `0` | `hold / chill`. The camp stays home instead of inventing a random wander packet. |
+| A food-pressured camp sees a nearby house or route mark with real bounty and manageable threat | a scavenge / toll candidate scores above `0` | Dispatch the winning outward job. The fallback loses honestly because there is now a real reason to go. |
+| Several mediocre far marks exist, but distance burden and recent losses make them net-bad | best outward job falls to `0` or below | `hold / chill`. Distance/threat pressure should suppress speculative roaming rather than minting filler movement. |
+
+Guardrails from this rule:
+- **No worthwhile target means stay home, not random roam.**
+- **`hold / chill` is the only fallback frozen here.** If later implementation wants patrol, decoy, escort, or deeper camp-edge behavior, that needs separate canon.
+- **This rule is conservative on purpose.** The system should under-dispatch when the evidence is weak rather than hide uncertainty behind free wander noise.
+
 #### 20. No-path fallback rule
 - **Question:** What happens when a target exists but has no sensible reachable route?
 - **Expected output:** One explicit no-path rule.

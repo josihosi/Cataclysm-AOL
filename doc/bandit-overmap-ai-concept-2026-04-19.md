@@ -536,6 +536,8 @@ A job is valid only if:
 
 Highest valid job wins.
 
+The follow-through canon now also freezes `hold / chill` as the explicit no-target fallback baseline: always include that zero-distance stay-home option, and only dispatch an outward group when some other valid job scores above it honestly.
+
 This is where the system stops being a mood board and starts becoming a machine.
 
 ---
@@ -707,7 +709,8 @@ A good v1 lean is:
 - the follow-through canon now treats distance burden as a round-trip share of the outing's daily budget, so the same target reads cheaper for a raid than for a scout instead of paying one flat map-distance tax
 - the follow-through canon now also gives each outing an elapsed-time return clock, so fresh sightings do not reset one chase into endless free pressure and groups flip toward home once only plain return time remains
 - the follow-through canon now also freezes cargo/wounds/panic pressure as additive burden tiers that only shrink useful travel and remaining return clock after the calm-condition movement law is already set
-- later follow-through micro-items may still decide player-relevance chunking plus no-target / no-path / diversion behavior
+- the follow-through canon now also freezes `hold / chill` as the no-target fallback, so weak marks should collapse to stay-home behavior instead of accidental random wandering
+- later follow-through micro-items may still decide player-relevance chunking plus no-path / diversion behavior
 - cadence should control **how often they reconsider and spend budget**, not silently multiply their total daily travel into nonsense
 
 Important correction:
@@ -716,7 +719,7 @@ Important correction:
 - the current narrow follow-through answer now leans on **elapsed-time-earned travel credit**: groups only spend the fraction of their daily budget that real world time has earned since the last update, carrying partial progress forward instead of rounding each wake up to a free whole OMT
 
 That keeps the broader strategic theater meaningful without turning ordinary same-day jobs into nonsense map-crossing.
-Later player-relevance chunking and fallback/diversion law still belong to the narrower follow-through micro-items, not to this broad parked concept note.
+Later player-relevance chunking plus the narrower no-path/diversion law still belong to the follow-through micro-items, not to this broad parked concept note.
 
 The strategic tick should broadly do this:
 1. apply ledger drift
@@ -725,7 +728,7 @@ The strategic tick should broadly do this:
 4. compute bounty and threat
 5. compute final job desirability
 6. discard invalid jobs
-7. dispatch a lightweight abstract group if one wins
+7. dispatch a lightweight abstract group only if some outward job beats `hold / chill`; otherwise stay home
 
 The mark writer should broadly do this:
 1. ingest queued relevant events

@@ -67,8 +67,10 @@ Current honest state:
 - Package 2, micro-item 17 is now answered too: each outing now carries a calm-condition elapsed-time return clock with starter job-shaped leash values, fresh sightings do not refresh that leash for free, and the default flips toward home once only plain return time remains
 - Package 2, micro-item 18 is now answered too: cargo, wounds, and panic now collapse into a bounded additive burden table that only shrinks useful travel and remaining return clock after the calm-condition movement law is already set
 - adjacent parked substrate wording was tightened again where it still implied cargo/wounds/panic burden was undecided future law
-- the next honest active slice is Package 2, micro-item 19, `No-target fallback rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define what camps do when nothing nearby honestly clears the dispatch bar, without smuggling no-path/diversion law into the same pass
+- Package 2, micro-item 19 is now answered too: `hold / chill` is the explicit score-`0` no-target fallback baseline, so camps stay home when no outward job beats that bar instead of inheriting random-wander behavior
+- adjacent parked substrate wording was tightened again where it still implied no-target fallback was undecided future law
+- the next honest active slice is Package 2, micro-item 20, `No-path fallback rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define what happens when a worthwhile target lacks a sensible reachable route, without smuggling diversion law into the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -99,8 +101,8 @@ Current honest state:
 
 ## Pending probes
 
-- land Package 2, micro-item 19, `No-target fallback rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that fallback note separate from later no-path/diversion law
+- land Package 2, micro-item 20, `No-path fallback rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that no-path note separate from later diversion law
 
 ---
 

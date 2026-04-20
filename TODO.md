@@ -30,12 +30,13 @@ Current target:
    - micro-item 16, `Distance burden rule`, is now landed
    - micro-item 17, `Return-clock rule`, is now landed
    - micro-item 18, `Cargo / wounds / panic burden rule`, is now landed
-   - stay on micro-item 19, `No-target fallback rule`
+   - micro-item 19, `No-target fallback rule`, is now landed
+   - stay on micro-item 20, `No-path fallback rule`
 2. keep the law honest and narrow
-   - answer exactly what a camp does when no nearby target honestly clears the bar for dispatch
+   - answer exactly what happens when a worthwhile target exists but no sensible reachable route does
    - keep movement budget, distance burden, return clock, and burden pressure frozen as already-landed law, not as a back door to re-litigate range or outing endurance
-   - keep micro-item 19 separate from later no-path / diversion law
-   - do not answer micro-items 19-21 at the same time just because fallback rules smell related
+   - keep micro-item 20 separate from later diversion law
+   - do not answer micro-items 20-21 at the same time just because fallback rules smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

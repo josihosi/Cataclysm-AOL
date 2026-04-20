@@ -80,9 +80,10 @@ Current target:
 - Package 2, micro-item 16, `Distance burden rule`, is now landed too: target desirability now falls by the round-trip share of the outing's daily travel budget, so the same destination reads cheaper for a raid than for a scout and far mediocre targets stop tying with nearby ones by accident
 - Package 2, micro-item 17, `Return-clock rule`, is now landed too: each outing now carries a job-shaped elapsed-time leash, fresh sightings do not refresh it for free, and once the remaining clock shrinks to plain return time the default should flip toward home/disengage
 - Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, is now landed too: additive cargo/wound/panic burden tiers now only shrink useful travel and remaining return clock after the calm-condition movement law is already set, instead of secretly reopening range scoring or fallback behavior
-- keep the next pass narrow: Package 2, micro-item 19, `No-target fallback rule`
-- answer only what a camp does when nearby work is absent or not worth dispatching, and only touch adjacent stale wording when that fallback pass directly forces the correction
-- do not drift into the later Package 2 no-path/diversion law, code, or reopened locker/basecamp slices while doing this
+- Package 2, micro-item 19, `No-target fallback rule`, is now landed too: when no outward job beats the always-available `hold / chill` baseline, the camp stays home instead of minting speculative random-wander pressure
+- keep the next pass narrow: Package 2, micro-item 20, `No-path fallback rule`
+- answer only what happens when a worthwhile target exists but no sensible reachable route does, and only touch adjacent stale wording when that no-path pass directly forces the correction
+- do not drift into the later Package 2 diversion law, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
 - **Plan status summary command**
@@ -329,8 +330,9 @@ Current bounded slice:
 - landed: Package 2, micro-item 16, `Distance burden rule`, now freezes target desirability as a round-trip-share discount against the outing's daily travel budget instead of a flat map-distance tax
 - landed: Package 2, micro-item 17, `Return-clock rule`, now freezes a calm-condition outing leash with starter job clocks and a plain-return threshold, so groups prefer home before one chase turns into endless free pressure
 - landed: Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, now freezes a bounded additive burden table so cargo, wounds, and panic only shrink useful travel and remaining leash instead of secretly reopening distance scoring or fallback law
-- next: Package 2, micro-item 19, `No-target fallback rule`
-- keep the pass to one fallback rule before touching the later Package 2 no-path/diversion law
+- landed: Package 2, micro-item 19, `No-target fallback rule`, now freezes `hold / chill` as the score-`0` stay-home baseline, so camps keep manpower home unless a real outward job beats that bar
+- next: Package 2, micro-item 20, `No-path fallback rule`
+- keep the pass to one fallback rule before touching the later Package 2 diversion law
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

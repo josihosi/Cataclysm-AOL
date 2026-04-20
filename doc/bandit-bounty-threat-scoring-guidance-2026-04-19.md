@@ -283,6 +283,7 @@ Camps should not pick marks directly.
 They should score **jobs** against marks.
 
 ### Suggested v1 jobs
+- `hold / chill`
 - `scout`
 - `scavenge`
 - `toll`
@@ -322,7 +323,8 @@ A job is valid only if:
 `active_pressure_penalty` is where v1 can damp silly multi-camp pile-ons.
 If a region already carries fresh disruption, recent failed pressure, or evidence that someone else already made it hot, that should reduce the score for blindly piling in again.
 
-Highest valid job wins.
+`hold / chill` should be treated as an always-available score-`0` baseline with no mark requirement, no travel, and no dispatch cost.
+Highest valid outward job wins only if it scores above that baseline, while ties or worse should collapse to `hold / chill` instead of speculative wandering.
 This is still per-camp scoring, not coalition strategy logic.
 Occasional overlap can happen, but v1 should not behave like several camps are sharing one omniscient attack planner.
 
@@ -415,7 +417,7 @@ For each camp on its strategic tick:
 6. compute final job desirability
 7. discard invalid jobs
 8. choose highest-scoring valid job
-9. dispatch a lightweight abstract group if one wins
+9. dispatch a lightweight abstract group only if the best outward job beats `hold / chill`; otherwise stay home
 
 This whole pass should be deterministic from current stored state.
 
