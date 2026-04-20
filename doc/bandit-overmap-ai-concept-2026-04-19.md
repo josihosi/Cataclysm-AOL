@@ -710,7 +710,8 @@ A good v1 lean is:
 - the follow-through canon now also gives each outing an elapsed-time return clock, so fresh sightings do not reset one chase into endless free pressure and groups flip toward home once only plain return time remains
 - the follow-through canon now also freezes cargo/wounds/panic pressure as additive burden tiers that only shrink useful travel and remaining return clock after the calm-condition movement law is already set
 - the follow-through canon now also freezes `hold / chill` as the no-target fallback, so weak marks should collapse to stay-home behavior instead of accidental random wandering
-- later follow-through micro-items may still decide player-relevance chunking plus no-path / diversion behavior
+- the follow-through canon now also freezes no-path fallback: unreachable jobs fail closed for that dispatch pass and fall back to other reachable jobs or `hold / chill` instead of implicit engine wandering
+- later follow-through micro-items may still decide player-relevance chunking plus diversion behavior
 - cadence should control **how often they reconsider and spend budget**, not silently multiply their total daily travel into nonsense
 
 Important correction:
@@ -719,7 +720,7 @@ Important correction:
 - the current narrow follow-through answer now leans on **elapsed-time-earned travel credit**: groups only spend the fraction of their daily budget that real world time has earned since the last update, carrying partial progress forward instead of rounding each wake up to a free whole OMT
 
 That keeps the broader strategic theater meaningful without turning ordinary same-day jobs into nonsense map-crossing.
-Later player-relevance chunking plus the narrower no-path/diversion law still belong to the follow-through micro-items, not to this broad parked concept note.
+Later player-relevance chunking plus the narrower diversion law still belong to the follow-through micro-items, not to this broad parked concept note.
 
 The strategic tick should broadly do this:
 1. apply ledger drift

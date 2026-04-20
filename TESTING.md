@@ -69,8 +69,10 @@ Current honest state:
 - adjacent parked substrate wording was tightened again where it still implied cargo/wounds/panic burden was undecided future law
 - Package 2, micro-item 19 is now answered too: `hold / chill` is the explicit score-`0` no-target fallback baseline, so camps stay home when no outward job beats that bar instead of inheriting random-wander behavior
 - adjacent parked substrate wording was tightened again where it still implied no-target fallback was undecided future law
-- the next honest active slice is Package 2, micro-item 20, `No-path fallback rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define what happens when a worthwhile target lacks a sensible reachable route, without smuggling diversion law into the same pass
+- Package 2, micro-item 20 is now answered too: unreachable targets now fail closed at dispatch time, write a soft route-blocked / unreachable-from-here damper, and fall back to other reachable jobs or `hold / chill` instead of implicit wander/teleport behavior
+- adjacent parked substrate wording was tightened again where it still implied no-path fallback was undecided future law
+- the next honest active slice is Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define what can make an already-dispatched group abandon, shadow, probe, or switch away from its original plan, without smuggling Package 3 scoring/seam law into the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -101,8 +103,8 @@ Current honest state:
 
 ## Pending probes
 
-- land Package 2, micro-item 20, `No-path fallback rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that no-path note separate from later diversion law
+- land Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that diversion note separate from later Package 3 scoring/seam work
 
 ---
 

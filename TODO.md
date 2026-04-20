@@ -31,12 +31,13 @@ Current target:
    - micro-item 17, `Return-clock rule`, is now landed
    - micro-item 18, `Cargo / wounds / panic burden rule`, is now landed
    - micro-item 19, `No-target fallback rule`, is now landed
-   - stay on micro-item 20, `No-path fallback rule`
+   - micro-item 20, `No-path fallback rule`, is now landed
+   - stay on micro-item 21, `Mid-route abort / divert / shadow rule`
 2. keep the law honest and narrow
-   - answer exactly what happens when a worthwhile target exists but no sensible reachable route does
+   - answer exactly what can make an already-dispatched group abort, shadow, probe, or switch away from its original plan
    - keep movement budget, distance burden, return clock, and burden pressure frozen as already-landed law, not as a back door to re-litigate range or outing endurance
-   - keep micro-item 20 separate from later diversion law
-   - do not answer micro-items 20-21 at the same time just because fallback rules smell related
+   - keep micro-item 21 separate from later Package 3 cross-layer scoring/seam work
+   - do not answer micro-items 21-22 at the same time just because mission-law edges smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

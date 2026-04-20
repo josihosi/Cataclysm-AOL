@@ -81,9 +81,10 @@ Current target:
 - Package 2, micro-item 17, `Return-clock rule`, is now landed too: each outing now carries a job-shaped elapsed-time leash, fresh sightings do not refresh it for free, and once the remaining clock shrinks to plain return time the default should flip toward home/disengage
 - Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, is now landed too: additive cargo/wound/panic burden tiers now only shrink useful travel and remaining return clock after the calm-condition movement law is already set, instead of secretly reopening range scoring or fallback behavior
 - Package 2, micro-item 19, `No-target fallback rule`, is now landed too: when no outward job beats the always-available `hold / chill` baseline, the camp stays home instead of minting speculative random-wander pressure
-- keep the next pass narrow: Package 2, micro-item 20, `No-path fallback rule`
-- answer only what happens when a worthwhile target exists but no sensible reachable route does, and only touch adjacent stale wording when that no-path pass directly forces the correction
-- do not drift into the later Package 2 diversion law, code, or reopened locker/basecamp slices while doing this
+- Package 2, micro-item 20, `No-path fallback rule`, is now landed too: unreachable targets now fail closed at dispatch time, write a soft route-blocked damper, and fall back to other reachable jobs or `hold / chill` instead of implicit wander/teleport behavior
+- keep the next pass narrow: Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`
+- answer only what can make an already-dispatched group abandon, shadow, probe, or switch away from its original plan, and only touch adjacent stale wording when that diversion pass directly forces the correction
+- do not drift into code or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
 - **Plan status summary command**
@@ -331,8 +332,9 @@ Current bounded slice:
 - landed: Package 2, micro-item 17, `Return-clock rule`, now freezes a calm-condition outing leash with starter job clocks and a plain-return threshold, so groups prefer home before one chase turns into endless free pressure
 - landed: Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, now freezes a bounded additive burden table so cargo, wounds, and panic only shrink useful travel and remaining leash instead of secretly reopening distance scoring or fallback law
 - landed: Package 2, micro-item 19, `No-target fallback rule`, now freezes `hold / chill` as the score-`0` stay-home baseline, so camps keep manpower home unless a real outward job beats that bar
-- next: Package 2, micro-item 20, `No-path fallback rule`
-- keep the pass to one fallback rule before touching the later Package 2 diversion law
+- landed: Package 2, micro-item 20, `No-path fallback rule`, now freezes unreachable targets as dispatch-time `no_path` rejects that fall back to other reachable jobs or `hold / chill`, with a soft route-blocked memory instead of implicit wander behavior
+- next: Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`
+- keep the pass to one diversion rule before touching the later Package 3 cross-layer packet
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

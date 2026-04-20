@@ -599,7 +599,7 @@ Guardrails from this rule:
 - **This only shrinks the outing that already exists.** It does not create extra range, free stamina, or a new mission clock.
 - **Cargo, wounds, and panic are the whole bounded starter set here.** Losses matter elsewhere as weaker future group strength, not as a second hidden movement tax on top of the wound/panic state already recorded.
 - **Burden changes only when the state changes for real.** Cargo dropped, wounds stabilized, or panic eased under safety can reduce pressure; silent timer melt should not.
-- **This still does not answer no-target fallback, no-path behavior, or mid-route diversion.** Those belong to micro-items 19-21.
+- **This still does not answer fallback/diversion behavior.** Those belong to micro-items 19-21.
 
 ### F. Fallback and diversion law
 
@@ -645,6 +645,39 @@ Guardrails from this rule:
 - **Question:** What happens when a target exists but has no sensible reachable route?
 - **Expected output:** One explicit no-path rule.
 - **Done when:** The packet no longer leaves unreachable targets to implicit engine behavior.
+
+Current answer:
+- Freeze no-path fallback as a **dispatch-time invalidation**, not as a forced roam, teleport, or free target substitution.
+- If a target still looks worthwhile on bounty/threat terms but the camp cannot produce a **sensible reachable route** from its current origin under the already-landed movement / return / burden law, mark that candidate **`no_path` for this dispatch pass** and remove it from the winner set.
+- `No sensible reachable route` means no currently known route that:
+  - actually connects the origin to the intended target region
+  - fits inside the outing's current movement / return-clock envelope
+  - does not require magical gap-jumps, blind random-walk rescue, or pretending a lethal blocked choke is ordinary travel
+- After dropping the no-path candidate, score the remaining reachable jobs honestly:
+
+```text
+reachable_jobs = [ job for job in candidates if job.route_state != no_path ]
+best_reachable_job_score = max( reachable_job_scores ) if any exist else none
+dispatch best reachable job only if best_reachable_job_score > hold_chill_score
+otherwise choose hold_chill
+```
+
+- A rejected no-path job spends **no** travel budget, **no** dispatch provisioning cost, and **no** outbound manpower packet. The group does not leave camp just to improvise around a route that is already known bad.
+- Write a bounded **route-blocked / unreachable-from-here** memory on that target/carrier so the same camp does not immediately rediscover the identical impossible dispatch on the next wake. That memory is a soft routing damper, not a permanent deletion: it may clear when a new corridor, staging point, bridge, season/weather shift, or fresh recon materially changes reachability.
+- This rule only answers **pre-dispatch no-path rejection**. It does **not** answer mid-route rerouting, obstacle-circling, shadowing, or opportunistic target switching after departure. Those still belong to micro-item 21.
+
+Starter examples:
+
+| Situation | Route read | Result |
+| --- | --- | --- |
+| A camp sees a high-bounty farm across a river gap with no known crossing inside the outing's leash | worthwhile target, but `no_path` | Drop that job for this dispatch pass. If nothing else beats `hold / chill`, stay home instead of minting a fake wander packet toward the river. |
+| A route-ambush mark exists beyond a currently impassable choke, but a nearer reachable toll/scavenge job also scores well | primary candidate is `no_path`, secondary is reachable | Discard the unreachable job and let the reachable candidate compete honestly. No free teleport or auto-detour makes the blocked job win anyway. |
+| A previously blocked house target later gets a new bridge / corridor clue from fresh recon | route memory changed materially | The old `no_path` damper may clear and the target may re-enter normal scoring on a later wake. |
+
+Guardrails from this rule:
+- **No path means no launch.** The system should fail closed at dispatch time, not hide route ignorance behind speculative marching.
+- **No-path is softer than no-target.** The target may still be real and desirable; it is just not currently dispatchable from here.
+- **This rule does not grant a free substitute mission.** Rejecting one unreachable target only reopens comparison among already-generated reachable jobs plus `hold / chill`.
 
 #### 21. Mid-route abort / divert / shadow rule
 - **Question:** What can make a group abandon, shadow, probe, or switch away from its original plan mid-route?
