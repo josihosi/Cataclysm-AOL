@@ -39,9 +39,17 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now **one active greenlit lane**: **Bandit concept formalization follow-through**.
+There is currently **no active greenlit lane**.
 
 Fresh checkpoints just closed:
+- **Plan status summary command** is now honestly checkpointed too:
+  - `tools/plan_status_summary.py` now provides a deliberately small read-only seam for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
+  - it reads `Plan.md` only, preserves greenlit ordering, and warns when canon is thin or contradictory instead of inventing certainty
+  - narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct current-canon samples for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
+- **Bandit concept formalization follow-through** is now honestly checkpointed too:
+  - Package 3, micro-item 31, `Invariants and non-goals packet`, is now landed, so the follow-through finally carries the explicit must-never-happen sheet that the earlier starter numbers and worked scenarios were waiting on
+  - the full 3-package / 31-micro-item packet now has explicit law slices, starter numbers, worked scenarios, and red-line invariants/non-goals, which makes the parked bandit chain materially easier to pick up later without rediscovering the whole control law from scratch
+  - this closes the greenlit doc/spec follow-through cleanly, but it still does **not** greenlight bandit implementation
 - **Plan/Aux pipeline helper** is honestly checkpointed:
   - `tools/plan_aux_pipeline_helper.py` now lets `emit` produce reviewer-visible aux/canon snippets plus optional downstream `andi.handoff.md` output from the same validated classified contract
   - the bounded patch path still stays on known existing headings instead of pretending broad freeform canon mutation is solved
@@ -61,52 +69,17 @@ Fresh checkpoints just closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- continue the active bandit formalization follow-through as doc/spec work only
-- Package 1, micro-item 1, `Terrain bounty bucket table`, is now landed in the follow-through packet with explicit 0-5 starter buckets for open street, field, forest, cabin, house, farm, city structure, and camp footprint
-- Package 1, micro-item 2, `Structural bounty harvest trigger rule`, is now landed too: mere visitation/scouting does not deplete structural bounty; only actual extraction, stripping, or meaningful denial of site-bound value does
-- Package 1, micro-item 3, `Structural bounty reappearance rule`, is now landed too: structural bounty does not passively grow back and only returns when the site itself gains new site-bound value through real resupply, rebuilding, or reoccupation
-- Package 1, micro-item 4, `Moving bounty source table`, is now landed too: moving bounty now explicitly names direct human sightings, repeated route traffic, caravans/haul convoys, basecamp routine, smoke, ordinary visible light, defensive scanning light, and sound/contact clues as separate live source families
-- Package 1, micro-item 5, `Moving bounty attachment rule`, is now landed too: moving bounty now stays source-shaped instead of smearing into terrain, with explicit actor/group, route/corridor, and site-centered activity attachments
-- Package 1, micro-item 6, `Moving bounty clear / rewrite rule`, is now landed too: moving bounty cleanup now happens by evidence-driven refresh, overwrite, clear, replacement, or coexistence on the source carrier rather than by fake passive melt
-- Package 1, micro-item 7, `Threat source table`, is now landed too: threat marks now explicitly come from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure instead of from generic bounty clues
-- Package 1, micro-item 8, `Threat rewrite rule`, is now landed too: threat now rewrites source-by-source through real recheck only, with explicit raise / confirm / lower cases instead of passive threat melt
-- Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, is now landed too: bounty and threat now stay as separate concurrent reads, so one region/carrier can remain worth attacking and risky to approach at the same time unless a source-specific recheck actually disproves one side
-- Package 1, micro-item 10, `Destination-only vs along-route collection rule`, is now landed too: outings may skim opportunistic value on the current corridor or immediate intercept envelope, but not turn into vacuum-cleaner side-sweep harvesting or free goal rewrites
-- Package 1, micro-item 11, `Collection yield rule`, is now landed too: one outing converts at most 0-3 haul steps into stockpile, route-side skims stay inside that same cap, and rich regions still need repeat exploitation instead of one magic vacuum pass
-- Package 1, micro-item 12, `Camp stockpile consumption rule`, is now landed too: camp stockpile now drains only by explicit daily housekeeping plus explicit dispatch/return mission costs, with pressure coming from uncovered named costs rather than hidden decay
-- Package 1, micro-item 13, `Forest yield rule`, is now landed too: pure forest now cashes out as thin food/fuel/basic-material value, usually 0-1 haul, while richer hidden sites in the woods should score as those site classes rather than as magical forest bounty
-- Package 2, micro-item 14, `Daily movement budget rule`, is now landed too: daily travel is now frozen as a job-shaped 1-6 OMT/day envelope from local forage skim through rare strategic redeploy, instead of vague "a few tiles" mush or player-distance-ring canon drift
-- Package 2, micro-item 15, `Cadence budget-spend rule`, is now landed too: cadence now spends only elapsed-time-earned travel credit from that daily budget, carrying fractional progress forward instead of rounding each wake into fake free OMT movement
-- Package 2, micro-item 16, `Distance burden rule`, is now landed too: target desirability now falls by the round-trip share of the outing's daily travel budget, so the same destination reads cheaper for a raid than for a scout and far mediocre targets stop tying with nearby ones by accident
-- Package 2, micro-item 17, `Return-clock rule`, is now landed too: each outing now carries a job-shaped elapsed-time leash, fresh sightings do not refresh it for free, and once the remaining clock shrinks to plain return time the default should flip toward home/disengage
-- Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, is now landed too: additive cargo/wound/panic burden tiers now only shrink useful travel and remaining return clock after the calm-condition movement law is already set, instead of secretly reopening range scoring or fallback behavior
-- Package 2, micro-item 19, `No-target fallback rule`, is now landed too: when no outward job beats the always-available `hold / chill` baseline, the camp stays home instead of minting speculative random-wander pressure
-- Package 2, micro-item 20, `No-path fallback rule`, is now landed too: unreachable targets now fail closed at dispatch time, write a soft route-blocked damper, and fall back to other reachable jobs or `hold / chill` instead of implicit wander/teleport behavior
-- Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`, is now landed too: an outing may only continue, probe, shadow, divert, or abort from fresh same-envelope evidence, while spending the same remaining travel/leash instead of minting a new mission rewrite
-- Package 3, micro-item 22, `Job candidate generation rule`, is now landed too: the board now freezes as `hold / chill` plus one deduped compatible template per still-valid lead envelope whose hard preconditions already hold, before later scoring/veto/no-path passes decide winners
-- Package 3, micro-item 23, `Job scoring formula shape`, is now landed too: job comparison now freezes as positive pull from lead bounty, lead confidence, job-lead fit, mild need alignment, soft temperament bias, and job-type bias, shaped by the existing distance-burden multiplier, then reduced by soft threat and active-pressure penalties before later override/veto passes
-- Package 3, micro-item 24, `Need-pressure override rule`, is now landed too: only `low`/`critical` shortage bands may add a capped reward-profile-matched rescue bonus to a mediocre real lead near `hold / chill`, without conjuring fake targets or rescuing deep-negative suicide jobs
-- Package 3, micro-item 25, `Threat veto vs soft-veto rule`, is now landed too: ordinary danger stays in the soft subtraction pass, confirmed serious danger only leaves capped marginal info/pressure jobs alive, and fresh catastrophic recent-loss / failed-probe style reads hard-veto the dispatch outright
-- Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`, is now landed too: local handoff now freezes to a deterministic chooser from winning job, lead carrier, contact certainty, threat posture, and return pressure, with bounded `scout` / `probe` / `harvest` / `ambush` / `raid` / `shadow` / `withdrawal` entry modes instead of generic spawn-and-vibes
-- Package 3, micro-item 27, `Bubble-to-overmap return-state packet`, is now landed too: bubble collapse now returns one compact writeback covering survivors, anchored identities, wound/panic burden, carried cargo vs delivered stockpile delta, mission result, lead resolution, mark rewrites, and return posture instead of letting local consequences vanish into smoke
-- Package 3, micro-item 28, `Save/load persistence boundary`, is now landed too: save/load now keeps camp ledgers, source-shaped marks, active abstract groups, bounded anchored identities, carried cargo/burden/leash, and minimal bubble-ownership keys, while exact local tactical NPC truth stays on the ordinary bubble save and one-wake score math/routes may recompute on load
-- Package 3, micro-item 29, `Starter numbers table`, is now landed too: the packet now centralizes one shared starter-number sheet for structural bounty, mark bands, haul scale, movement budgets, distance burden, return clocks, burden multipliers, score-factor ranges, need rescue, threat caps, and anchored-identity count instead of scattering constants across prose
-- Package 3, micro-item 30, `Worked scenarios packet`, is now landed too: the packet now pressure-tests the combined law through concrete cases for forest-edge activity, harvested houses, scary city edges, long-distance temptation, unreachable marks, moving-target stalking, shortage rescue, bloodied withdrawal, and save/load continuity
-- keep the next pass narrow: Package 3, micro-item 31, `Invariants and non-goals packet`
-- answer only the must-never-happen and explicitly-out-of-scope sheet for v1, without reopening the already-landed law or quietly drifting into implementation design
-- do not drift into code or reopened locker/basecamp slices while doing this
+- none right now
+- do not improvise a new active lane from parked docs, checkpointed packets, or old chat history
+- if Josef wants Andi moving again, he needs to greenlight the next slice explicitly
 
 Explicit greenlit backlog behind the current slice:
-- **Plan status summary command**
-  - read-only plan visibility tooling for `/plan active`, `/plan greenlit`, and `/plan parked`, with optional combined `/plan`
-  - keep numbering meaningful, especially for the greenlit order, and fold bottom-of-stack items into that order instead of surfacing a separate command
+- none right now
 
 Meaning:
-- the bandit follow-through lane is now the only active slice
-- the only greenlit backlog item behind it right now is the plan status summary command
-- it does **not** need another permission round
-- it is doc/spec work only, not code greenlight
-- Andi should still move one micro-item at a time instead of freestyling across the buffet
+- the plan status summary command is checkpointed closed
+- the bandit follow-through lane is checkpointed closed too
+- there is no active greenlit lane left for Andi to advance without a new greenlight
 
 ---
 
@@ -300,13 +273,13 @@ Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 
 ---
 
-## 12. Active — Bandit concept formalization follow-through
+## 12. Checkpointed — Bandit concept formalization follow-through
 
-**Status:** ACTIVE / GREENLIT DOC/SPEC
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef wants Andi to start tightening the remaining bandit control-law gaps after the current basecamp fixes are honestly closed, but still as conceptualization/doc work rather than implementation.
+Josef wanted the remaining loose bandit control-law gaps tightened after the current basecamp fixes were honestly closed, but still as conceptualization/doc work rather than implementation.
 
-This follow-through should turn the still-loose bandit economy, cadence, and cross-layer interaction rules into explicit packets without reopening code or pretending the whole bandit system is now active.
+This follow-through has now done that: the packet turns the remaining bandit economy, cadence, and cross-layer interaction rules into explicit doc slices without reopening code or pretending the whole bandit system is now active.
 
 Frozen footing for this follow-through:
 - no passive decay for bounty
@@ -353,32 +326,31 @@ Current bounded slice:
 - landed: Package 3, micro-item 28, `Save/load persistence boundary`, now freezes the cheap durable boundary: persist camp ledgers, source-shaped marks, active abstract group state, bounded anchored identities, carried cargo/burden/leash, and minimal bubble-owned join keys, while exact loaded tactical NPC truth and one-wake score math stay outside the bandit save schema
 - landed: Package 3, micro-item 29, `Starter numbers table`, now freezes one shared starter-number sheet for the whole packet, so structural bounty, mark bands, haul scale, movement budgets, distance burden, return clocks, burden multipliers, score-factor ranges, need rescue, threat caps, and anchored-identity count stop competing across leaf prose
 - landed: Package 3, micro-item 30, `Worked scenarios packet`, now pushes the frozen law through concrete situation reads for forest-edge activity, depleted houses, scary city edges, long-distance temptation, unreachable paths, moving trails, shortage rescue, burdened withdrawal, and save/load continuity
-- next: Package 3, micro-item 31, `Invariants and non-goals packet`
-- keep the pass to the explicit must-never-happen / out-of-scope sheet only
+- landed: Package 3, micro-item 31, `Invariants and non-goals packet`, now freezes the explicit must-never-happen sheet plus the deliberate v1 omissions, so later review can reject nonsense fast without reopening the already-landed law
+- the 3-package / 31-micro-item follow-through is now complete as doc/spec cleanup inside the parked chain
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 
-Do not treat this as permission to start coding bandit AI.
-This is now the active **concept formalization** lane, still doc/spec work only, meant to make the parked packet cleaner and implementation-legible later.
+Keep this lane closed unless later canon or review finds a real contradiction in the packet.
+Do not treat it as permission to start coding bandit AI.
+It is now a cleaner parked-chain substrate, not implementation approval.
 
 ---
 
-## 13. Greenlit backlog — Plan status summary command
+## 13. Checkpointed — Plan status summary command
 
-**Status:** GREENLIT / BACKLOG TOOLING
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef wants a small read-only command surface that prints current plan categories from `Plan.md` so active, greenlit, and parked work stop feeling like a black box when Andi or Schani reshuffle canon.
+Josef wanted a small read-only command surface that prints current plan categories from `Plan.md` so active, greenlit, and parked work stop feeling like a black box when Andi or Schani reshuffle canon.
 
-What this item should do:
-- provide a compact plan-status readout with `active`, `greenlit`, and `parked` views, plus an optional combined `/plan`
-- treat `Plan.md` as the only source of truth rather than chat history, agent summaries, or Andi's self-reporting
-- keep numbered output where ordering matters, especially for the greenlit stack, with bottom-of-stack items folded in by position rather than split into a separate command
-- warn when canon headings or status labels are too contradictory or too thin to classify cleanly instead of inventing certainty
+Current honest state:
+- `tools/plan_status_summary.py` now provides a deliberately small read-only seam for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
+- the script reads `Plan.md` only, classifies sections from explicit status lines first, and falls back to heading wording only when canon is thin enough that a warning is warranted
+- greenlit ordering stays meaningful: active first, queued greenlit next, and bottom-of-stack entries last instead of as a separate printed class
+- the current `Hackathon feature lanes` heading already exercises the thin-canon warning path because it is parked by heading text without an explicit `**Status:**` line
+- narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct sample readouts from current canon for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
 
-Non-goals:
-- do not mutate canon or reclassify items from the command path
-- do not infer plan state from chat memory when `Plan.md` disagrees
-- do not create a separate bottom-of-stack command or broaden this into workflow redesign
+Keep this lane closed unless later evidence shows the parser is lying about canon, the output shape is too noisy to trust, or Josef explicitly wants a second-stage integration slice.
 
 Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 
@@ -390,7 +362,7 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 
 Josef wants the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet is coherent enough as a whole.
 Do not quietly treat partial bandit notes as an active lane or as already-greenlit implementation.
-The new bottom-of-stack formalization follow-through above is greenlit only for doc/spec cleanup inside this chain; implementation still stays parked.
+The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain; implementation still stays parked.
 
 Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`

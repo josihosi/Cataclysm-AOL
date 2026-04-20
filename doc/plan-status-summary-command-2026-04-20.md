@@ -1,6 +1,6 @@
 # Plan status summary command (2026-04-20)
 
-Status: greenlit tooling contract
+Status: checkpointed tooling contract
 
 This packages Josef's request for a small read-only command surface that prints current plan categories from `Plan.md` so active, greenlit, and parked work stop feeling like a black box when Andi or Schani reshuffle canon.
 
@@ -55,18 +55,22 @@ The intended v1 surface is:
 
 ## Success state
 
-- [ ] A user can request a plan readout and see compact numbered `active`, `greenlit`, and `parked` summaries derived from current `Plan.md` canon.
-- [ ] The greenlit readout preserves execution order, with active first and any bottom-of-stack entries simply appearing last in that numbered list.
-- [ ] If canon headings are contradictory or missing enough structure to classify cleanly, the command warns instead of inventing certainty.
-- [ ] The output stays short and Discord-friendly rather than dumping whole roadmap prose.
+- [x] A user can request a plan readout and see compact numbered `active`, `greenlit`, and `parked` summaries derived from current `Plan.md` canon.
+- [x] The greenlit readout preserves execution order, with active first and any bottom-of-stack entries simply appearing last in that numbered list.
+- [x] If canon headings are contradictory or missing enough structure to classify cleanly, the command warns instead of inventing certainty.
+- [x] The output stays short and Discord-friendly rather than dumping whole roadmap prose.
 
 ## Testing impact
 
-- needed: no for this packaging pass
-- when implementation starts, validate the readout against representative `Plan.md` states instead of broad game builds
+- needed: yes, but still narrow and command-level rather than game-build-level
+- landed validation: `python3 tools/plan_status_summary.py --self-test` plus direct sample readouts from current canon via `python3 tools/plan_status_summary.py /plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
+- contradictory/thin-canon handling is covered by the built-in self-test cases instead of broad game builds
 
 ## Notes on packaging
 
 This greenlight was first normalized through `tools/plan_aux_pipeline_helper.py` in preview/emit mode.
 The current helper was useful for schema validation, contract preview, and reviewer-visible snippet emission.
 The final canon paste was still manual because the helper's bounded `apply` path only patches known existing headings and does not yet conjure brand-new roadmap or success sections.
+
+The landed first-pass implementation seam is `tools/plan_status_summary.py`.
+It stays deliberately small: read `Plan.md`, classify sections from explicit status lines first, fall back to heading keywords only when canon is thin, and print compact summaries without mutating anything.

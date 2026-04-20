@@ -1242,6 +1242,44 @@ Guardrails from these scenarios:
 - **Expected output:** One invariants/non-goals sheet.
 - **Done when:** Later implementation and review can spot nonsense immediately instead of arguing from vibes.
 
+Current answer:
+- Freeze micro-item 31 as the **red-line sheet** for the whole 31-item packet. The laws above only help if later implementation and review can reject the wrong shape immediately.
+- The invariant rows below are hard "this packet was violated" checks, not optional style advice.
+- The non-goals below are explicit v1 omissions. If later work needs one of them, reopen the concept packet honestly instead of smuggling it in as "just implementation detail."
+
+##### Invariants that must hold
+
+| Invariant | Must never happen | Why |
+| --- | --- | --- |
+| Source-shaped outward action only | Camps must not mint outward jobs from empty air. Beyond the always-available `hold / chill` baseline, every outward candidate must still come from a real compatible lead envelope or current hard state. | The whole packet is built around signals, marks, and remembered causes rather than ambient random-bandit-pressure theater. |
+| No passive-decay laundering | Structural bounty, confirmed threat, and camp stockpile pressure must not silently drift by idle timer. Durable change comes from harvesting, fresh activity, real recheck, or explicit consumption. | Otherwise the packet collapses back into invisible cleanup math that erases causality. |
+| Threat and bounty stay separate truths | A region, corridor, actor, or site may remain both lucrative and dangerous at once. One side must not zero the other just because the read feels messy. | The model only stays legible if value and danger can coexist until source-specific evidence rewrites one side. |
+| One outing, one budget, one leash | A dispatched group must not refresh movement credit or return patience for free just because it spotted something interesting. Continue, probe, shadow, divert, and abort all spend the same outing's remaining travel and return pressure. | This is the brake that stops immortal chase squads and free theater-scale mission rewrites. |
+| Fail closed on impossible or catastrophic jobs | `no_path` and `hard_veto` outcomes must not degrade into teleporting, random wandering, or desperation-math resurrection. `soft_veto` survivors stay capped marginal only. | If the failure paths cheat open again, the earlier scoring/veto law becomes decorative. |
+| One group has one owner at a time | A bandit group is either abstract overmap state or live bubble-owned tactical state at full fidelity, never both. Return consequences apply once. | This prevents duplicate squads, drift between two truths, and double-counted outcomes. |
+| Carried cargo and delivered stockpile stay distinct | Later logic must not guess whether loot is still on the group or already home. `cargo_profile_carried` and `camp_stockpile_delta` stay explicitly separate until delivery is applied. | Otherwise return packets become replay-prone mush and camp consumption starts lying. |
+| Identity continuity stays bounded | The player should re-encounter the same group problem, but v1 must not demand full biography persistence for every grunt. Group continuity plus a small anchored slice is the ceiling. | This preserves causal continuity without turning v1 into per-bandit save sludge. |
+| `hold / chill` remains a real winner | If no outward candidate clears the bar, staying home is the correct answer. The system must not invent activity just because bandits "should be doing something." | The packet needs a real no-go baseline or every scoring layer quietly becomes pressure cosplay. |
+| Distance, burden, and return pressure are real brakes | Long travel, wounds, panic, and cargo must be able to push a group into withdrawal or plain return even when revenge or loot still look tempting. | Without this, range law, burden law, and return clocks all become decorative prose. |
+
+##### Explicit v1 non-goals
+
+| Non-goal | Explicitly not solved here |
+| --- | --- |
+| Final balance or realism tuning | The starter numbers table is a shared first-pass knob sheet, not a promise that these constants are already globally balanced or realism-perfect. |
+| Implementation design | This packet does not choose class layout, save-field names, parser/UI contracts, scheduler architecture, or exact code ownership beyond the abstract persistence and return-packet boundaries already stated. |
+| Full tactical bubble AI | Cover use, flanking, exact reveal timing, combat micro, ammo discipline, and local dialogue flow are later local-AI problems, not part of this control-law pass. |
+| Full economy / item simulation | V1 does not promise exact per-item cargo manifests everywhere, spoilage systems, civilian market loops, or deep logistics realism. It stays at stockpile buckets, haul steps, and bounded cargo profiles. |
+| Full per-bandit persistence | Beyond the bounded anchored slice, v1 does not try to serialize or preserve every individual bandit's life story across every seam. |
+| Coalition strategy, diplomacy, or extortion layers | Deliberate alliances, tribute/negotiation systems, cross-camp campaign planning, and similar politics are outside this packet. V1 camps mostly act independently. |
+| Bandit-versus-zombie tactical simulation | Zombie pressure matters as threat and target-coherence pressure only. This packet does not build a second tactical strategy game for bandits fighting hordes. |
+| Automatic implementation greenlight | Finishing all 31 micro-items makes the parked concept chain cleaner. It does not by itself authorize coding the whole bandit system. |
+
+Guardrails from this sheet:
+- **If later code violates one invariant, the doc packet was not "mostly right".** Reopen the concept seam and fix it honestly.
+- **If a review asks for one of the listed non-goals, split a new packet or reopen scope.** Do not hide it inside v1 as a "small extension."
+- **This sheet exists to make nonsense obvious fast.** It is not a license to re-argue every upstream law from scratch.
+
 ### Package 3 acceptance bar
 - all 10 micro-items above exist as separate answers or tables
 - starter numbers, worked scenarios, and invariants are explicit enough to pressure-test the whole control law

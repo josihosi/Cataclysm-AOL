@@ -268,40 +268,40 @@ Notes:
 
 ## Bandit concept formalization follow-through
 
-Status: ACTIVE / GREENLIT DOC/SPEC
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] A follow-through packet exists that turns the loose remaining bandit logic into three explicit doc slices: bounty source/harvesting/stockpile rules, cadence/distance/fallback rules, and cross-layer interactions/worked scenarios.
-- [ ] Those three slices are further decomposed into narrow single-question micro-items so Andi can freeze one law at a time instead of hiding several assumptions inside one paragraph.
-- [ ] The packet makes the no-passive-decay footing explicit: structural bounty changes via harvesting/exploitation, moving bounty via current activity and collection, threat via real recheck, and camp stockpile via explicit consumption instead of background decay math.
-- [ ] Each micro-item includes a clear question plus a concrete answer shape, and the packet as a whole includes starter numbers/tables, clear scope/non-goals, and enough worked examples that later implementation planning does not have to rediscover the control law from scratch.
-- [ ] The result remains conceptualization/backlog work only and does not silently greenlight bandit implementation.
+- [x] A follow-through packet exists that turns the loose remaining bandit logic into three explicit doc slices: bounty source/harvesting/stockpile rules, cadence/distance/fallback rules, and cross-layer interactions/worked scenarios.
+- [x] Those three slices are further decomposed into narrow single-question micro-items so Andi can freeze one law at a time instead of hiding several assumptions inside one paragraph.
+- [x] The packet makes the no-passive-decay footing explicit: structural bounty changes via harvesting/exploitation, moving bounty via current activity and collection, threat via real recheck, and camp stockpile via explicit consumption instead of background decay math.
+- [x] Each micro-item includes a clear question plus a concrete answer shape, and the packet as a whole includes starter numbers/tables, clear scope/non-goals, and enough worked examples that later implementation planning does not have to rediscover the control law from scratch.
+- [x] The result remains conceptualization/backlog work only and does not silently greenlight bandit implementation.
 
 Notes:
 - Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
-- This is now the active doc/spec lane.
-- The first landed micro-items are now Package 1, micro-item 1 (`Terrain bounty bucket table`), micro-item 2 (`Structural bounty harvest trigger rule`), micro-item 3 (`Structural bounty reappearance rule`), micro-item 4 (`Moving bounty source table`), micro-item 5 (`Moving bounty attachment rule`), micro-item 6 (`Moving bounty clear / rewrite rule`), micro-item 7 (`Threat source table`), micro-item 8 (`Threat rewrite rule`), micro-item 9 (`Threat-and-bounty coexistence rule`), micro-item 10 (`Destination-only vs along-route collection rule`), micro-item 11 (`Collection yield rule`), micro-item 12 (`Camp stockpile consumption rule`), micro-item 13 (`Forest yield rule`), micro-item 14 (`Daily movement budget rule`), micro-item 15 (`Cadence budget-spend rule`), micro-item 16 (`Distance burden rule`), micro-item 17 (`Return-clock rule`), micro-item 18 (`Cargo / wounds / panic burden rule`), micro-item 19 (`No-target fallback rule`), micro-item 20 (`No-path fallback rule`), micro-item 21 (`Mid-route abort / divert / shadow rule`), micro-item 22 (`Job candidate generation rule`), micro-item 23 (`Job scoring formula shape`), micro-item 24 (`Need-pressure override rule`), micro-item 25 (`Threat veto vs soft-veto rule`), micro-item 26 (`Overmap-to-bubble entry-mode chooser`), micro-item 27 (`Bubble-to-overmap return-state packet`), micro-item 28 (`Save/load persistence boundary`), micro-item 29 (`Starter numbers table`), and micro-item 30 (`Worked scenarios packet`); keep the next pass on Package 3, micro-item 31 (`Invariants and non-goals packet`) so one law is frozen at a time.
-- No bandit implementation is greenlit here; keep this as conceptualization/packaging work only.
+- This lane is now honestly checkpointed instead of active.
+- The follow-through is complete as a 3-package / 31-micro-item docs packet: micro-item 31 (`Invariants and non-goals packet`) is now landed on top of the already-closed starter-number and worked-scenario layers, so later implementation planning has both sanity checks and explicit red lines.
+- No bandit implementation is greenlit here; keep this as conceptualization/packaging work only unless later canon explicitly reopens it.
 
 ---
 
 ## Plan status summary command
 
-Status: GREENLIT / BACKLOG TOOLING
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] A user can request a plan readout and see compact numbered `active`, `greenlit`, and `parked` summaries derived from current `Plan.md` canon.
-- [ ] The greenlit readout preserves execution order, with active first and any bottom-of-stack entries simply appearing last in that numbered list.
-- [ ] If canon headings are contradictory or missing enough structure to classify cleanly, the command warns instead of inventing certainty.
-- [ ] The output stays short and Discord-friendly rather than dumping whole roadmap prose.
+- [x] A user can request a plan readout and see compact numbered `active`, `greenlit`, and `parked` summaries derived from current `Plan.md` canon.
+- [x] The greenlit readout preserves execution order, with active first and any bottom-of-stack entries simply appearing last in that numbered list.
+- [x] If canon headings are contradictory or missing enough structure to classify cleanly, the command warns instead of inventing certainty.
+- [x] The output stays short and Discord-friendly rather than dumping whole roadmap prose.
 
 Notes:
 - Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
-- This is a greenlit backlog tooling item, not the active bandit lane.
-- The intended readout surface is `/plan active`, `/plan greenlit`, `/plan parked`, with optional compact combined `/plan`.
-- Source of truth stays `Plan.md`; the command must not invent state from chat memory or agent narration.
-- Keep bottom-of-stack as ordering inside the numbered greenlit output rather than as a separate printed category.
-- The greenlit packaging for this item was previewed through `tools/plan_aux_pipeline_helper.py` before the canon sections were pasted in manually, because the current bounded `apply` path still only patches known existing headings.
+- The landed first-pass command seam is `tools/plan_status_summary.py`.
+- The intended readout surface is `/plan active`, `/plan greenlit`, `/plan parked`, with optional compact combined `/plan`; the current script accepts those slash-style tokens directly.
+- Source of truth stays `Plan.md`; the command does not invent state from chat memory or agent narration.
+- Greenlit ordering stays active first, then any queued greenlit items, with bottom-of-stack entries appearing last instead of as a separate printed class.
+- Thin or contradictory canon now warns instead of pretending certainty, with the current Hackathon parked heading already exercising the thin-canon fallback path.
 
 ---
 
