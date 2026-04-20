@@ -176,6 +176,96 @@ std::string effective_region_id( const signal_input &signal )
     return effective_envelope_id( signal );
 }
 
+bool is_repeated_site_signal_kind( const std::string &kind )
+{
+    return kind == "smoke" || kind == "light" || kind == "route_activity";
+}
+
+void record_repeated_site_signal_kind( repeated_site_reinforcement_packet &packet,
+                                       const std::string &kind )
+{
+    if( kind == "smoke" ) {
+        packet.saw_smoke = true;
+    } else if( kind == "light" ) {
+        packet.saw_light = true;
+    } else if( kind == "route_activity" ) {
+        packet.saw_route_activity = true;
+    }
+
+    packet.distinct_signal_count = ( packet.saw_smoke ? 1 : 0 ) +
+                                   ( packet.saw_light ? 1 : 0 ) +
+                                   ( packet.saw_route_activity ? 1 : 0 );
+}
+
+std::string repeated_site_signal_mix( const repeated_site_reinforcement_packet &packet )
+{
+    std::vector<std::string> kinds;
+    if( packet.saw_smoke ) {
+        kinds.emplace_back( "smoke" );
+    }
+    if( packet.saw_light ) {
+        kinds.emplace_back( "light" );
+    }
+    if( packet.saw_route_activity ) {
+        kinds.emplace_back( "route_activity" );
+    }
+    return join_notes( kinds );
+}
+
+bool qualifies_for_repeated_site_reinforcement( const signal_input &signal )
+{
+    return signal.family == bandit_dry_run::lead_family::site &&
+           !signal.confirmed_threat &&
+           is_repeated_site_signal_kind( signal.kind );
+}
+
+void seed_repeated_site_reinforcement( typed_mark &mark, const signal_input &signal )
+{
+    if( !qualifies_for_repeated_site_reinforcement( signal ) ) {
+        return;
+    }
+
+    repeated_site_reinforcement_packet &packet = mark.repeated_site_reinforcement;
+    packet.total_site_hits = 1;
+    record_repeated_site_signal_kind( packet, signal.kind );
+}
+
+void apply_repeated_site_reinforcement( typed_mark &mark, const signal_input &signal )
+{
+    if( !qualifies_for_repeated_site_reinforcement( signal ) ) {
+        return;
+    }
+
+    repeated_site_reinforcement_packet &packet = mark.repeated_site_reinforcement;
+    if( packet.total_site_hits <= 0 ) {
+        seed_repeated_site_reinforcement( mark, signal );
+        return;
+    }
+
+    const int old_confidence_bonus = packet.confidence_bonus;
+    const int old_bounty_bonus = packet.bounty_bonus;
+
+    packet.total_site_hits = std::min( 6, packet.total_site_hits + 1 );
+    record_repeated_site_signal_kind( packet, signal.kind );
+    packet.viable = packet.total_site_hits >= 2 && packet.distinct_signal_count >= 2;
+    if( packet.viable ) {
+        packet.confidence_bonus = std::clamp( packet.distinct_signal_count - 1, 0, 2 );
+        packet.bounty_bonus = std::clamp( packet.distinct_signal_count - 1, 0, 2 );
+    } else {
+        packet.confidence_bonus = 0;
+        packet.bounty_bonus = 0;
+    }
+
+    const int confidence_delta = packet.confidence_bonus - old_confidence_bonus;
+    const int bounty_delta = packet.bounty_bonus - old_bounty_bonus;
+    if( confidence_delta > 0 ) {
+        mark.confidence = std::min( 6, mark.confidence + confidence_delta );
+    }
+    if( bounty_delta > 0 ) {
+        mark.bounty_add = std::min( 6, mark.bounty_add + bounty_delta );
+    }
+}
+
 bool same_mark_key( const typed_mark &mark, const signal_input &signal )
 {
     return mark.family == signal.family && mark.envelope_id == effective_envelope_id( signal );
@@ -280,6 +370,22 @@ void sort_ledger( ledger_state &state )
     std::sort( state.heat.begin(), state.heat.end(), []( const heat_cell &lhs, const heat_cell &rhs ) {
         return lhs.region_id < rhs.region_id;
     } );
+}
+
+std::string describe_repeated_site_reinforcement( const repeated_site_reinforcement_packet &packet )
+{
+    if( packet.total_site_hits <= 0 ) {
+        return "none";
+    }
+
+    std::ostringstream out;
+    out << "hits=" << packet.total_site_hits
+        << ", kinds=" << repeated_site_signal_mix( packet )
+        << ", distinct=" << packet.distinct_signal_count
+        << ", confidence_bonus=" << packet.confidence_bonus
+        << ", bounty_bonus=" << packet.bounty_bonus
+        << ", viable=" << ( packet.viable ? "yes" : "no" );
+    return out.str();
 }
 } // namespace
 
@@ -641,6 +747,7 @@ update_result advance_state( ledger_state &state, int tick, cadence_tier tier,
             mark.soft_decay = signal.soft_decay;
             mark.last_refresh_tick = tick;
             mark.age_turns = 0;
+            seed_repeated_site_reinforcement( mark, signal );
             mark.notes = signal.notes;
             if( mark.notes.empty() ) {
                 mark.notes.push_back( "created from " + mark.kind + " signal" );
@@ -674,6 +781,7 @@ update_result advance_state( ledger_state &state, int tick, cadence_tier tier,
         mark.soft_decay = mark.soft_decay && signal.soft_decay;
         mark.last_refresh_tick = tick;
         mark.age_turns = 0;
+        apply_repeated_site_reinforcement( mark, signal );
         if( !signal.notes.empty() ) {
             mark.notes = signal.notes;
         }
@@ -761,6 +869,10 @@ std::vector<bandit_dry_run::lead_input> emit_leads( const ledger_state &state,
         lead.hard_blocked_jobs = mark.hard_blocked_jobs;
         lead.validity_notes = mark.notes;
         lead.validity_notes.push_back( "generated from " + mark.kind + " mark in " + mark.region_id );
+        if( mark.repeated_site_reinforcement.total_site_hits > 0 ) {
+            lead.validity_notes.push_back( "repeated-site reinforcement packet: " +
+                                           describe_repeated_site_reinforcement( mark.repeated_site_reinforcement ) );
+        }
         if( mark.confirmed_threat ) {
             lead.validity_notes.push_back( "confirmed threat stays sticky until a later real rewrite" );
         }
@@ -827,7 +939,9 @@ std::string render_report( const ledger_state &state,
                 << ", confirmed_threat=" << ( mark.confirmed_threat ? "yes" : "no" )
                 << ", soft_decay=" << ( mark.soft_decay ? "yes" : "no" )
                 << ", age_turns=" << mark.age_turns
-                << ", last_refresh_tick=" << mark.last_refresh_tick << "]\n";
+                << ", last_refresh_tick=" << mark.last_refresh_tick
+                << ", repeated_site_reinforcement="
+                << describe_repeated_site_reinforcement( mark.repeated_site_reinforcement ) << "]\n";
             out << "  notes=" << join_notes( mark.notes ) << "\n";
         }
     }

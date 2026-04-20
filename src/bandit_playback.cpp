@@ -892,6 +892,91 @@ scenario_definition make_generated_shared_route_refresh_stays_corridor()
     return scenario;
 }
 
+scenario_definition make_generated_repeated_site_reinforcement_stays_bounded()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_repeated_site_reinforcement_stays_bounded";
+    scenario.title = "Generated repeated site reinforcement stays bounded";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Can mixed repeated site-centered activity strengthen one site mark cleanly without unlocking free extraction jobs or a magical settlement-signature class?"
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "first_smoke_trace",
+        make_camp( 2 ),
+        {},
+        {
+            "A first smoke trace should create only tentative scout pressure on the site-shaped mark."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {
+            make_smoke_packet( "farmstead_trace", "farmstead_trace", "farmstead_edge", 9, 3, 2, 1, 0,
+                               smoke_weather_band::clear,
+                               lead_family::site,
+                               { "One smoke trace alone is only a tentative site clue." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "night_light_confirms_site",
+        make_camp( 2 ),
+        {},
+        {
+            "A second light clue at the same site should reinforce one mark instead of cloning a new one or unlocking extraction."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "farmstead_trace", "farmstead_trace", "farmstead_edge", 8, 2, 1, 1,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::site,
+                               { "Night light at the same site should reinforce revisit value first." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        40,
+        "route_activity_reinforces_same_site",
+        make_camp( 2 ),
+        {},
+        {
+            "Corroborated traffic at the same site can strengthen the same mark again, but it should still stay bounded scout pressure."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {},
+        {
+            make_human_route_packet( "farmstead_trace", "farmstead_trace", "farmstead_edge", 5, 2, 1,
+                                     human_route_kind::route_activity,
+                                     human_route_origin::external,
+                                     human_route_corroboration::site,
+                                     lead_family::site,
+                                     { "Mixed repeated site activity should strengthen revisit interest, not mint free extraction truth." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "bounded_reinforcement_survives_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Even after a cleanup pass the reinforced site should stay a bounded scout clue, not a free raid warrant."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
 scenario_definition make_generated_confirmed_threat_stays_sticky()
 {
     scenario_definition scenario;
@@ -1098,6 +1183,7 @@ const std::vector<scenario_definition> &reference_scenarios()
         make_generated_corridor_mark_refreshes_cleanly(),
         make_generated_human_sighting_tracks_moving_carrier(),
         make_generated_shared_route_refresh_stays_corridor(),
+        make_generated_repeated_site_reinforcement_stays_bounded(),
         make_generated_confirmed_threat_stays_sticky(),
     };
     return scenarios;
