@@ -1,18 +1,18 @@
 # Bandit human / route visibility mark seam v0 (2026-04-20)
 
-Status: active greenlit contract.
+Status: checkpointed done for now.
 
 ## Promotion audit verdict
 
 The smoke bridge is checkpointed.
 The light bridge is checkpointed.
-The next narrow visibility promotion is the human / route activity bridge.
+The human / route bridge is checkpointed too.
+The next narrow visibility promotion is the repeated site-centered reinforcement bridge.
 
-Current bandit seams already know how to reason about `moving_carrier`, `corridor`, and `site` envelopes.
-What they still do not have is a bounded adapter that turns direct human sightings and repeated route-shaped activity into those envelopes without magical certainty.
+Current bandit seams already know how to reason about `moving_carrier`, `corridor`, and `site` envelopes, and this contract captures the bounded adapter that now lands those envelopes from explicit direct-sighting and route-activity packets.
 
-This contract is the next honest bite after light.
-It keeps the visibility packet moving without jumping into full concealment law, settlement-signature mythology, or a broad traffic simulator.
+This contract was the next honest bite after light.
+It moved the visibility packet forward without jumping into full concealment law, settlement-signature mythology, or a broad traffic simulator.
 
 ## Scope
 

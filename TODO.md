@@ -8,9 +8,10 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Bandit human / route visibility mark seam v0**.
+Active lane: **Bandit repeated site activity reinforcement seam v0**.
 
 - Bandit smoke visibility mark seam v0 is checkpointed closed; do not reopen it unless new evidence says the packet lied.
 - Bandit light visibility mark seam v0 is checkpointed closed; do not reopen it unless new evidence says the packet lied, oversold range, or flattened the threat distinction.
-- Next implementation slice is a bounded human / route adapter from direct sightings and repeated route-shaped activity into moving-carrier, corridor, or bounded site marks and leads.
-- Keep this packet narrow: direct sighting versus repeated corridor reinforcement, moving-carrier attachment versus site inflation, same-camp routine suppression, and no settlement-signature mythology or broad concealment jump.
+- Bandit human / route visibility mark seam v0 is checkpointed closed; do not reopen it unless new evidence says the packet lied, self-poisoned routine traffic, or inflated mobile sightings into magical sites.
+- Next implementation slice is a bounded repeated-site reinforcement adapter from mixed repeated smoke/light/traffic into modest site-mark confidence and bounty amplification.
+- Keep this packet narrow: one site mark refreshed by mixed ordinary signals, weak repetition staying weak, self-corroboration staying bounded, no free extraction unlocks, and no settlement-signature mythology or broad concealment jump.

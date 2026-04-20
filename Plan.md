@@ -39,11 +39,18 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now one active greenlit lane: **Bandit human / route visibility mark seam v0**.
+There is now one active greenlit lane: **Bandit repeated site activity reinforcement seam v0**.
 Josef has standing approval for the next narrow bandit slices until the first honest 500-turn proof, unless a real product ambiguity, scope jump, or priority collision appears.
-The current job is to turn the parked visibility/recon packet into one bounded human / route signal bridge now that the smoke and light bridges are honestly checkpointed, instead of breeding more parked feeder docs.
+The current job is to turn the parked visibility/recon packet into one bounded repeated-site reinforcement bridge now that the smoke, light, and human / route bridges are honestly checkpointed, instead of breeding more parked feeder docs.
 
 Fresh checkpoints that stay closed:
+- **Bandit human / route visibility mark seam v0** is now honestly checkpointed too:
+  - `src/bandit_mark_generation.{h,cpp}` now adds deterministic human/route packets plus a bounded adapter, translating direct sightings and repeated route-shaped activity into moving-carrier, corridor, or bounded site marks instead of leaving traffic clues as parked prose
+  - `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam, with one direct human-sighting case and one shared-route refresh case proving the bridge into evaluator/playback output
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: direct sightings stay mobile, same-camp routine traffic is suppressed, shared/external route activity can reinforce corridors, and only site-correlated traffic yields bounded site clues with extraction still blocked
+  - the product rules stay frozen here: direct human sightings are strong bounty clues, route activity only hardens when it plausibly belongs to somebody else or a shared corridor, and the camp's own routine traffic does not self-poison into hostile-contact truth
+  - the slice stayed bounded: no smoke/light rewrite, no broad concealment implementation, no settlement-signature mythology, no full traffic simulator, and no 500-turn proof theater
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Bandit light visibility mark seam v0** is now honestly checkpointed too:
   - `src/bandit_mark_generation.{h,cpp}` now adds deterministic light packets plus a bounded light adapter, translating exposed night light and searchlight-style packets into coarse overmap-readable marks instead of leaving light clues as parked prose
   - `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam, with one ordinary exposed night-light case and one searchlight corridor case proving the bridge into evaluator/playback output
@@ -73,7 +80,7 @@ Fresh checkpoints that stay closed:
   - it reads `Plan.md` only, preserves greenlit ordering, and warns when canon is thin or contradictory instead of inventing certainty
   - narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct current-canon samples for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
 - **Bandit scenario fixture + playback suite v0** is now honestly checkpointed too:
-  - `src/bandit_playback.{h,cpp}` now defines eleven stable named reference scenarios on top of the dry-run evaluator seam, including the generated smoke, ordinary night-light, searchlight corridor, and sticky-threat cases added by the visibility/mark packets, instead of pretending a full overmap simulator already exists
+  - `src/bandit_playback.{h,cpp}` now defines thirteen stable named reference scenarios on top of the dry-run evaluator seam, including the generated smoke, ordinary night-light, searchlight corridor, direct human-sighting, shared-route, and sticky-threat cases added by the visibility/mark packets, instead of pretending a full overmap simulator already exists
   - `run_scenario()` now replays those cases at stable checkpoints (`tick 0`, `tick 5`, `tick 20`, `tick 100`), and `render_report()` exposes winner drift plus generated mark/heat state so idle, smoke-investigation, corridor stalking, moving-carrier attachment, peel-off, and sticky-threat behavior can be inspected reviewer-cleanly
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Bandit concept formalization follow-through** is now honestly checkpointed too:
@@ -109,8 +116,9 @@ Meaning:
 - the locker lag-threshold probe is checkpointed closed too, with no clear knee found through `20000` top-level locker items
 - the smoke-specific bridge is checkpointed closed too
 - the light-specific bridge is checkpointed closed too
-- the active lane is now the human / route bridge from direct sightings and repeated route-shaped activity into moving-carrier, corridor, or bounded site marks
-- direct human sightings should stay strong mobile bounty clues, but same-camp routine traffic must not self-poison into magical hostile-contact truth
+- the human / route bridge is checkpointed closed too
+- the active lane is now the repeated site-centered reinforcement bridge, turning repeated mixed smoke/light/traffic evidence into bounded confidence and bounty amplification on existing site marks
+- repeated site activity should raise revisit interest first, not mint free settlement truth or free extraction permission
 - the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
@@ -123,19 +131,34 @@ Meaning:
 
 ---
 
-## Active — Bandit human / route visibility mark seam v0
+## Active — Bandit repeated site activity reinforcement seam v0
 
 **Status:** ACTIVE / GREENLIT
 
-The smoke and light bridges are honestly checkpointed, so the next narrow promotion from the parked visibility packet is the human / route signal bridge.
-The canonical contract lives at `doc/bandit-human-route-visibility-mark-seam-v0-2026-04-20.md`.
+The smoke, light, and human / route bridges are honestly checkpointed, so the next narrow promotion from the parked visibility packet is the repeated site-centered reinforcement bridge.
+The canonical contract lives at `doc/bandit-repeated-site-activity-reinforcement-seam-v0-2026-04-20.md`.
 
 Current contract:
-- the bounded human / route adapter is the next target on the current bandit seam, translating direct sightings and repeated route-shaped activity into coarse overmap-readable moving-carrier, corridor, or bounded site signal state
-- human / route packets should feed the current bandit mark-generation / playback seam as reviewer-readable traffic clues instead of staying parked prose
-- the product rules stay preserved: direct human sightings are strong mobile bounty clues, repeated route activity only reinforces when plausibly external or corroborated, and the camp's own routine traffic must not self-poison into magical hostile-contact truth
-- the slice must stay bounded: no light/smoke rewrite, no broad concealment pass, no settlement-signature mythology, no full traffic simulator, and no first 500-turn proof yet
-- current evidence burden is still docs-first promotion plus the existing recon-backed movement/route footing; the next honest proof after code lands is narrow deterministic bandit coverage and reviewer-readable report output on the existing seams
+- the bounded repeated-site reinforcement adapter is the next target on the current bandit seam, translating mixed repeated smoke/light/traffic activity into modest confidence and bounty amplification on existing site-shaped marks
+- repeated-site reinforcement should feed the current bandit mark-generation / playback seam as reviewer-readable strengthening of ordinary signals instead of staying parked prose
+- the product rules stay preserved: repeated ordinary signals should raise revisit value first, not mint free identity truth, free loot truth, or a magical settlement-signature class
+- the slice must stay bounded: no smoke/light/human-route rewrite, no broad concealment pass, no city-signature mythology, no full traffic-history simulator, and no first 500-turn proof yet
+- current evidence burden is still docs-first promotion plus the existing recon-backed repeated-site footing; the next honest proof after code lands is narrow deterministic bandit coverage and reviewer-readable report output on the existing seams
+
+## Checkpointed — Bandit human / route visibility mark seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The third promoted visibility bridge now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-human-route-visibility-mark-seam-v0-2026-04-20.md`
+- the bounded human / route adapter now exists on the current bandit seam, turning deterministic human/route packets into moving-carrier, corridor, or bounded site signal state
+- human / route now feeds the current bandit mark-generation / playback seam as reviewer-readable traffic clues instead of staying parked prose
+- the product rules stay preserved: direct human sightings stay mobile bounty clues, same-camp routine traffic stays suppressed, and only external/shared/corroborated route activity hardens into corridor or bounded site pressure
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the packet is lying, too generous, too timid, or needs a truly different adapter class.
 
 ## Checkpointed — Bandit light visibility mark seam v0
 
@@ -541,9 +564,9 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 **Status:** PARKED / COHERENT SUBSTRATE
 
 Josef wanted the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet was coherent enough as a whole.
-That coherence audit now passes for three narrow promotions so far: the smoke-specific visibility -> mark bridge is checkpointed above, the light-specific bridge is checkpointed above, and the human / route bridge is now the active next slice.
-Do not quietly treat the rest of the parked notes as broad implementation approval just because three bounded slices were promoted.
-The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain, and the broader concept still stays parked outside the explicit promoted v0 slices above plus the active human / route seam.
+That coherence audit now passes for four narrow promotions so far: the smoke-specific visibility -> mark bridge is checkpointed above, the light-specific bridge is checkpointed above, the human / route bridge is checkpointed above, and the repeated site-centered reinforcement bridge is now the active next slice.
+Do not quietly treat the rest of the parked notes as broad implementation approval just because four bounded slices were promoted.
+The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain, and the broader concept still stays parked outside the explicit promoted v0 slices above plus the active repeated-site seam.
 
 Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
@@ -586,7 +609,7 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. promotion audit, now passed narrowly for smoke first, light second, and human / route third, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
+6. promotion audit, now passed narrowly for smoke first, light second, human / route third, and repeated-site fourth, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
 If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
