@@ -942,7 +942,8 @@ private:
                                   bool require_available,
                                   std::string *reason = nullptr) const;
   bool service_camp_locker_impl(npc &worker,
-                                camp_locker_service_probe *probe);
+                                camp_locker_service_probe *probe,
+                                bool verbose_logging = true);
   npc_ptr resolve_crafting_worker(
       const recipe &making, int batch_size,
       const character_id &preferred_worker_id = character_id(),

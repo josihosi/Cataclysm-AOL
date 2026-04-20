@@ -15,6 +15,129 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Bandit mark-generation + heatmap seam v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] A bounded overmap-side mark ledger and broad bounty/threat heat-pressure seam exist for deterministic bandit inputs.
+- [x] Deterministic coverage proves mark creation, refresh, selective cooling, and sticky confirmed threat on named reference cases.
+- [x] The existing evaluator / playback footing can consume generated mark output reviewer-cleanly instead of relying only on hand-authored leads.
+- [x] The slice stays bounded: no bubble handoff, no broad visibility adapter, and no full hostile-world simulation are smuggled in.
+
+Notes:
+- Canonical contract lives at `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`.
+- The current tree now has the bounded writer-side seam in `src/bandit_mark_generation.{h,cpp}`, the playback bridge in `src/bandit_playback.{h,cpp}`, and deterministic coverage in `tests/bandit_mark_generation_test.cpp` plus `tests/bandit_playback_test.cpp`.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
+
+---
+
+## Bandit overmap-to-bubble pursuit handoff seam v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded pursuit / investigation handoff exists from abstract overmap group state into local play.
+- [x] The return path preserves meaningful abstract consequences such as updated mark/threat knowledge, losses, panic, cargo, or retreat state instead of dropping them on the floor.
+- [x] Entry payload and return packet stay explicit, small, and reviewer-readable.
+- [x] The slice stays bounded: no full raid / ambush suite, no broad tactical AI rewrite, and no full per-bandit biography persistence are smuggled in.
+
+Notes:
+- Canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`.
+- The bounded handoff seam now lives in `src/bandit_pursuit_handoff.{h,cpp}` and stays on abstract group state plus explicit `entry_payload` / `return_packet` packets instead of pretending full local combat AI already exists.
+- Deterministic coverage in `tests/bandit_pursuit_handoff_test.cpp` proves the bounded scout entry packet, explicit return consequences, moving-carrier shadow routing, and reviewer-readable report output.
+- Narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, and `./tests/cata_test "[bandit]"`.
+
+---
+
+## Locker lag-threshold probe v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One honest threshold packet exists for the real `CAMP_LOCKER` service path.
+- [x] The packet distinguishes top-level item pressure from worker-count pressure instead of flattening them together.
+- [x] The result can name an approximate fine / suspicious / bad range, or honestly report that no clear threshold was found within the tested bound.
+- [x] If the threshold looks bad, the packet ends with a small cheap-first guardrail recommendation order instead of architecture opera, and if it does not, the packet says so plainly.
+
+Notes:
+- Canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`.
+- This follow-up exists because `Locker clutter / perf guardrail probe v0` answered shape better than the sharper player-facing lag-threshold question.
+- Current packet result: no clear knee was found through `20000` top-level locker items, and the `5000`-clutter worker sweep stayed around `1.0 ms` per worker across `1 / 5 / 10`.
+
+---
+
+## Bandit evaluator dry-run seam v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] A deterministic dry-run evaluator exists for controlled bandit camp inputs.
+- [x] The evaluator always includes `hold / chill` and only emits outward candidates from real compatible leads or current hard state.
+- [x] The first explanation surface shows leads considered, the full candidate board, per-candidate score inputs/final score, veto/soft-veto reasons, and winner versus `hold / chill`.
+- [x] Narrow deterministic coverage exists for the first pure reasoning reference cases.
+- [x] The slice stays bounded: no full autonomous bandit world behavior, no broad scenario playback suite, and no broad persistence architecture are smuggled in.
+
+Notes:
+- Canonical contract lives at `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`.
+- This is the first promoted implementation slice from the parked bandit concept chain; broader bandit implementation still stays parked outside the explicitly greenlit v0 slices.
+
+---
+
+## Bandit scenario fixture + playback suite v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] Named deterministic bandit scenarios exist for the first reference cases.
+- [x] The playback contract can inspect behavior at multiple checkpoints such as `tick 0`, `tick 5`, `tick 20`, and one longer horizon.
+- [x] The scenario packet can answer whether camps stay idle, investigate smoke, stalk edges, peel off under pressure, or mis-upgrade whole regions from moving clues.
+- [x] The suite stays bounded and does not turn into broad worldgen mutation or live-harness-first theater.
+
+Notes:
+- Canonical contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`.
+- The landed playback seam is `src/bandit_playback.{h,cpp}` plus `tests/bandit_playback_test.cpp`, with seven stable named scenarios and checkpoint replay at `tick 0`, `tick 5`, `tick 20`, and `tick 100`.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
+
+---
+
+## Bandit perf + persistence budget probe v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] Repeatable cost measurements exist for the named bandit scenarios.
+- [x] Obvious evaluator churn signals such as candidate-count growth, repeated scoring/path checks, or similar waste are visible instead of hidden.
+- [x] Save-size growth has an honest first estimate tied to the actually persisted bandit state shape.
+- [x] The packet can say whether the current design looks cheap enough, suspicious, or clearly too bloated before broader rollout.
+
+Notes:
+- Canonical contract lives at `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`.
+- `src/bandit_playback.{h,cpp}` now provides `measure_scenario_budget()`, `measure_reference_suite_budget()`, `estimate_v0_persistence_budget()`, and `render_budget_report()` on top of the named playback suite, so the v0 measurement seam exists without smuggling in a broader optimization lane.
+- `bandit_dry_run::evaluation_metrics` now exposes lead filtering, candidate generation, score/path checks, veto/no-path invalidations, and winner-comparison churn, while the first bounded persistence sample lands at about `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 shape.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
+
+---
+
+## Locker clutter / perf guardrail probe v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One honest measurement packet exists for the real `CAMP_LOCKER` service path across a first bounded clutter sweep such as `50 / 100 / 200 / 500 / 1000` top-level items.
+- [x] The packet distinguishes realistic worker-count pressure from item-hoard pressure instead of pretending twenty-to-fifty camp workers are the main threat.
+- [x] The packet answers whether loaded magazines and ordinary container shapes mostly behave like one top-level locker item or create meaningful nested-content pain.
+- [x] The packet can end with a usable verdict: fine for now, watch this, or land a guardrail now, plus the first cheap mitigation order if needed.
+
+Notes:
+- Canonical contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`.
+- The current tree now meets the first bounded packet goal through `camp_locker_service_probe`, `basecamp::measure_camp_locker_service( npc & )`, and the deterministic locker-service probe coverage in `tests/faction_camp_test.cpp`.
+- That coverage now includes top-level clutter sweeps, worker-count sweeps, the first junk-heavy / locker-candidate-heavy / ammo-magazine-container-heavy stock-shape comparison, and the nested-content question for loaded magazines and ordinary filled bags.
+- Current honest verdict: `fine for now`. The observed service-path cost grows with top-level locker items and worker passes, while loaded magazines and ordinary filled bags still behave like one top-level locker item on this path.
+- Probe bias should match likely play: item hoarding is common, while camp populations above about ten assigned NPCs are much less common.
+
+---
+
 ## Controlled locker / basecamp follow-through packet
 
 Status: CHECKPOINTED / PACKAGE 5 DONE FOR NOW
@@ -246,39 +369,62 @@ Notes:
 
 ## Combat-oriented locker policy
 
-Status: ACTIVE / IN PROGRESS
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] Future locker behavior strongly supports sensible common guard/combat gear: gloves, belts, masks, holsters, and the usual practical clothing/loadout pieces.
 - [x] A bulletin-board / locker-surface bulletproof toggle exists and meaningfully shifts outfit preference toward ballistic gear.
 - [x] Ballistic vest and plate handling becomes explicit enough to replace damaged (`XX`) ballistic components sensibly.
-- [ ] Clearly superior full-body battle/protective suits are preferred when appropriate instead of being split into worse piecemeal junk.
-- [ ] Future deterministic tests lean more toward combat/guard outfit behavior and less toward endlessly widening exotic garment edge-case law.
+- [x] Clearly superior full-body battle/protective suits are preferred when appropriate instead of being split into worse piecemeal junk.
+- [x] Future deterministic tests lean more toward combat/guard outfit behavior and less toward endlessly widening exotic garment edge-case law.
 
 Notes:
 - Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
-- This is now the current active lane.
-- The opening 2026-04-19 audit found the first honest combat-policy seam, and the current tree now has three landed narrow slices from that audit: explicit `gloves` / `mask` / `belt` / `holster` locker footing, a persisted `Prefer bulletproof gear` locker-policy toggle that shifts body-armor and helmet scoring toward stronger ballistic protection, and explicit ablative-plate-aware ballistic vest scoring/replacement behavior.
-- The ballistic-maintenance slice is now covered by focused deterministic checks for loaded vs empty vest scoring, damaged insert scoring, and same-type healthy-plate upgrades.
-- The next active seam is clearly superior full-body battle/protective suit preference built on top of that ballistic footing, not another round of rediscovering whether the policy menu exists.
-- This future direction preserves the current weird-garment safety work instead of replacing it.
+- This lane is now checkpointed instead of active.
+- The opening 2026-04-19 audit found the first honest combat-policy seam, and the current tree now has landed narrow slices for explicit `gloves` / `mask` / `belt` / `holster` locker footing, a persisted `Prefer bulletproof gear` locker-policy toggle that shifts body-armor and helmet scoring toward stronger ballistic protection, explicit ablative-plate-aware ballistic vest scoring/replacement behavior, missing-shirt filler suppression under protective full-body suits, and the direct-current comparisons where a superior full-body suit can now also displace weaker currently worn shirts, vests, and body armor while still keeping stronger current ballistic armor.
+- The ballistic-maintenance slice is now covered by focused deterministic checks for loaded vs empty vest scoring, damaged insert scoring, same-type healthy-plate upgrades, and the new positive/negative full-body-suit-vs-current-body-armor tradeoffs.
+- The final closure audit found one real remaining proof gap, namely end-to-end service evidence for the newly explicit combat-support slots.
+- That gap is now closed by `camp_locker_service_equips_common_combat_support_slots`, and focused deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "camp_locker_service_equips_common_combat_support_slots"`, and `./tests/cata_test "[camp][locker]"`.
+- This future direction preserved the current weird-garment safety work instead of replacing it.
 
 ---
 
 ## Bandit concept formalization follow-through
 
-Status: GREENLIT / BOTTOM-OF-STACK
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] A follow-through packet exists that turns the loose remaining bandit logic into three explicit doc slices: bounty source/harvesting/stockpile rules, cadence/distance/fallback rules, and cross-layer interactions/worked scenarios.
-- [ ] Those three slices are further decomposed into narrow single-question micro-items so Andi can freeze one law at a time instead of hiding several assumptions inside one paragraph.
-- [ ] The packet makes the no-passive-decay footing explicit: structural bounty changes via harvesting/exploitation, moving bounty via current activity and collection, threat via real recheck, and camp stockpile via explicit consumption instead of background decay math.
-- [ ] Each micro-item includes a clear question plus a concrete answer shape, and the packet as a whole includes starter numbers/tables, clear scope/non-goals, and enough worked examples that later implementation planning does not have to rediscover the control law from scratch.
-- [ ] The result remains conceptualization/backlog work only and does not silently greenlight bandit implementation.
+- [x] A follow-through packet exists that turns the loose remaining bandit logic into three explicit doc slices: bounty source/harvesting/stockpile rules, cadence/distance/fallback rules, and cross-layer interactions/worked scenarios.
+- [x] Those three slices are further decomposed into narrow single-question micro-items so Andi can freeze one law at a time instead of hiding several assumptions inside one paragraph.
+- [x] The packet makes the no-passive-decay footing explicit: structural bounty changes via harvesting/exploitation, moving bounty via current activity and collection, threat via real recheck, and camp stockpile via explicit consumption instead of background decay math.
+- [x] Each micro-item includes a clear question plus a concrete answer shape, and the packet as a whole includes starter numbers/tables, clear scope/non-goals, and enough worked examples that later implementation planning does not have to rediscover the control law from scratch.
+- [x] The result remains conceptualization/backlog work only and does not silently greenlight bandit implementation.
 
 Notes:
 - Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
-- This is bottom-of-stack greenlit doc/spec work that sits behind the current locker/basecamp queue and the other already-greenlit backlog items.
+- This lane is now honestly checkpointed instead of active.
+- The follow-through is complete as a 3-package / 31-micro-item docs packet: micro-item 31 (`Invariants and non-goals packet`) is now landed on top of the already-closed starter-number and worked-scenario layers, so later implementation planning has both sanity checks and explicit red lines.
+- No bandit implementation is greenlit here; keep this as conceptualization/packaging work only unless later canon explicitly reopens it.
+
+---
+
+## Plan status summary command
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] A user can request a plan readout and see compact numbered `active`, `greenlit`, and `parked` summaries derived from current `Plan.md` canon.
+- [x] The greenlit readout preserves execution order, with active first and any bottom-of-stack entries simply appearing last in that numbered list.
+- [x] If canon headings are contradictory or missing enough structure to classify cleanly, the command warns instead of inventing certainty.
+- [x] The output stays short and Discord-friendly rather than dumping whole roadmap prose.
+
+Notes:
+- Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
+- The landed first-pass command seam is `tools/plan_status_summary.py`.
+- The intended readout surface is `/plan active`, `/plan greenlit`, `/plan parked`, with optional compact combined `/plan`; the current script accepts those slash-style tokens directly.
+- Source of truth stays `Plan.md`; the command does not invent state from chat memory or agent narration.
+- Greenlit ordering stays active first, then any queued greenlit items, with bottom-of-stack entries appearing last instead of as a separate printed class.
+- Thin or contradictory canon now warns instead of pretending certainty, with the current Hackathon parked heading already exercising the thin-canon fallback path.
 
 ---
 
@@ -314,21 +460,24 @@ Notes:
 - Current visibility sub-item: `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`.
 - Supporting recon note for the visibility item: `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`.
 - The cleanup/follow-through packet for the remaining control-law gaps lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md` and is greenlit doc/spec work only, not code greenlight.
-- This is parked concept work, not active queue work and not an implementation greenlight.
+- This broad packet remains parked concept substrate outside the explicitly greenlit v0 evaluator / fixture / perf slices.
 
 ---
 
 ## Plan/Aux pipeline helper
 
-Status: GREENLIT / BACKLOG TOOLING
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] A small helper can take a proposed item/greenlight and print the contract back for verification before canon files are changed.
-- [ ] The helper can collect corrections and then classify the item cleanly as active, parked, or bottom-of-stack.
-- [ ] The helper can update the relevant canon files consistently (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md` when needed, plus the auxiliary doc).
-- [ ] The helper reduces manual file carpentry for already-understood greenlights without bypassing the frozen workflow.
-- [ ] The helper can optionally generate the Andi handoff packet from the same classified contract.
+- [x] A small helper can take a proposed item/greenlight and print the contract back for verification before canon files are changed.
+- [x] The helper can collect corrections and then classify the item cleanly as active, parked, or bottom-of-stack.
+- [x] The helper can update the relevant canon files consistently (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md` when needed, plus the auxiliary doc).
+- [x] The helper reduces manual file carpentry for already-understood greenlights without bypassing the frozen workflow.
+- [x] The helper can optionally generate the Andi handoff packet from the same classified contract.
 
 Notes:
 - Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
-- This is greenlit backlog tooling meant to improve workflow speed and consistency, not a current-lane feature.
+- The suspicion-first tooling audit is now closed, and the current bounded helper path landed at `tools/plan_aux_pipeline_helper.py`.
+- Current helper shape now covers spec validation, review-packet preview, explicit correction merge, reviewer-visible snippet emission, optional downstream `andi.handoff.md` output, and bounded in-place patching of known existing canon headings / active-lane anchors.
+- Narrow validation passed on a sample spec via `python3 -m py_compile tools/plan_aux_pipeline_helper.py`, `schema`, `show`, `emit`, emitted `andi.handoff.md` review, and `apply` on a temp repo copy.
+- Keep this lane closed unless future evidence shows the handoff output or bounded patch path lying about what the canon actually says.

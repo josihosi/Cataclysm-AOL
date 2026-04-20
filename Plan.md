@@ -39,9 +39,49 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now **one active greenlit implementation lane**: **Combat-oriented locker policy**.
+There is currently **no active greenlit lane**.
+The last active lane is now checkpointed, so the repo is waiting on Josef to greenlight the next one.
 
-Fresh checkpoint just closed:
+Fresh checkpoints that stay closed:
+- **Locker lag-threshold probe v0** is now honestly checkpointed too:
+  - `src/basecamp.{h,cpp}` now keeps the real `camp_locker_service_probe` seam quiet during timing runs, while `tests/faction_camp_test.cpp` drives the threshold packet through real multi-tile `CAMP_LOCKER` zones so counts stay honest past the single-tile `MAX_ITEM_IN_SQUARE` ceiling
+  - the threshold packet now covers top-level clutter at `1000 / 2000 / 5000 / 10000 / 20000` plus worker-count sweeps at `1 / 5 / 10` on `5000` clutter, staying on the real service path instead of synthetic guesswork
+  - the current verdict is `not found within tested bound`: median service cost stayed roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and the `5000`-clutter worker sweep stayed around `1.0 ms` per worker across `1 / 5 / 10`
+  - this packet does **not** justify a fresh guardrail yet; if the lane reopens later, keep the cheap-first guardrail order instead of jumping straight to architecture opera
+  - narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
+- **Locker clutter / perf guardrail probe v0** is now honestly checkpointed too:
+  - `src/basecamp.{h,cpp}` now contains a real locker-service probe seam through `camp_locker_service_probe`, `basecamp::measure_camp_locker_service( npc & )`, and `render_camp_locker_service_probe()` instead of fake-path guesswork
+  - the first bounded direct packet now covers top-level clutter sweeps at `50 / 100 / 200 / 500 / 1000`, worker-count sweeps at `1 / 5 / 10`, the first junk-heavy / locker-candidate-heavy / ammo-magazine-container-heavy stock-shape comparison, and the nested-content question for loaded magazines and ordinary filled bags on the real `CAMP_LOCKER` service path
+  - the current verdict is `fine for now`: observed service cost grows with top-level locker items and worker passes, while loaded magazines and ordinary filled bags still behave like one top-level locker item on this path instead of producing an obvious nested-content cliff
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[camp][locker]"`
+- **Plan status summary command** is now honestly checkpointed too:
+  - `tools/plan_status_summary.py` now provides a deliberately small read-only seam for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
+  - it reads `Plan.md` only, preserves greenlit ordering, and warns when canon is thin or contradictory instead of inventing certainty
+  - narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct current-canon samples for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
+- **Bandit scenario fixture + playback suite v0** is now honestly checkpointed too:
+  - `src/bandit_playback.{h,cpp}` now defines ten stable named reference scenarios on top of the dry-run evaluator seam, including the three writer-side generated-mark cases added by the mark-generation packet, instead of pretending a full overmap simulator already exists
+  - `run_scenario()` now replays those cases at stable checkpoints (`tick 0`, `tick 5`, `tick 20`, `tick 100`), and `render_report()` exposes winner drift plus generated mark/heat state so idle, smoke-investigation, corridor stalking, moving-carrier attachment, peel-off, and sticky-threat behavior can be inspected reviewer-cleanly
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+- **Bandit concept formalization follow-through** is now honestly checkpointed too:
+  - Package 3, micro-item 31, `Invariants and non-goals packet`, is now landed, so the follow-through finally carries the explicit must-never-happen sheet that the earlier starter numbers and worked scenarios were waiting on
+  - the full 3-package / 31-micro-item packet now has explicit law slices, starter numbers, worked scenarios, and red-line invariants/non-goals, which makes the parked bandit chain materially easier to pick up later without rediscovering the whole control law from scratch
+- **Bandit evaluator dry-run seam v0** is now honestly checkpointed too:
+  - `src/bandit_dry_run.{h,cpp}` now provides a bounded abstract evaluator that always seeds `hold / chill`, generates outward candidates only from compatible valid lead envelopes, and applies visible pre-veto scoring, need-pressure rescue, threat gating, and downstream `no_path` invalidation without pretending full autonomous bandit world behavior exists
+  - `render_report()` exposes leads considered, the full candidate board, per-candidate score terms, veto / soft-veto reasons, the winner versus `hold / chill`, and explicitly says no return-packet fields are touched in v0
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit][dry_run]"`
+- **Bandit perf + persistence budget probe v0** is now honestly checkpointed too:
+  - `src/bandit_playback.{h,cpp}` now provides `measure_scenario_budget()`, `measure_reference_suite_budget()`, `estimate_v0_persistence_budget()`, and `render_budget_report()` on top of the named playback suite, so reviewer-readable runtime/churn/save-budget packets exist without pretending a full profiler or persistence architecture landed
+  - `bandit_dry_run::evaluation_metrics` now exposes lead filtering, candidate generation, score/path checks, veto/no-path invalidations, and winner-comparison churn, while the first bounded persistence sample stays around `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 shape
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+- **Plan/Aux pipeline helper** is honestly checkpointed:
+  - `tools/plan_aux_pipeline_helper.py` now lets `emit` produce reviewer-visible aux/canon snippets plus optional downstream `andi.handoff.md` output from the same validated classified contract
+  - the bounded patch path still stays on known existing headings instead of pretending broad freeform canon mutation is solved
+  - narrow validation passed on a sample spec via `python3 -m py_compile tools/plan_aux_pipeline_helper.py`, `schema`, `show`, `emit`, emitted handoff review, and `apply` on a temp repo copy
+- **Combat-oriented locker policy** is honestly checkpointed:
+  - the explicit `gloves`, `mask`, `belt`, and `holster` locker slots are real, the `Prefer bulletproof gear` toggle is real, ballistic vest scoring/replacement now notices loaded vs damaged ablative plates, and the full-body combat-suit packet now reaches weaker current shirts, vests, and body armor while stronger ballistic armor still stays put
+  - the final suspicion-first audit found one real remaining proof gap, namely that the new common combat-support slots had classification/candidate coverage but no direct service proof yet
+  - that gap is now closed by deterministic test `camp_locker_service_equips_common_combat_support_slots`, which drives real `CAMP_LOCKER` service and shows gloves, dust mask, tool belt, and holster actually being equipped from locker stock
+  - focused deterministic validation passed on the current tree: `make -j4 tests`, `./tests/cata_test "camp_locker_service_equips_common_combat_support_slots"`, and `./tests/cata_test "[camp][locker]"`
 - **Package 5, basecamp carried-item dump lane** is honestly closed on the documented `bandages` acceptance item.
 - **Package 4, locker zone policy + control-surface cleanup** is now honestly reclosed too:
   - `.userdata/dev-harness/harness_runs/20260419_141422/` shows the real McWilliams `CAMP_LOCKER` Zone Manager seam creating `Basecamp: Locker`, renaming it to `Probe Locker`, closing through the single-`Esc` save prompt, and reopening Zone Manager with `Probe Locker` still present
@@ -51,29 +91,114 @@ Fresh checkpoint just closed:
   - live run `.userdata/dev-harness/harness_runs/20260419_154244/` used the real camp-assignment seam, asked `what needs making`, and showed Katharina answering `Board's got 1 live and 1 old - 1 x bandages.` with no visible request-id glue
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
-Current target:
-- move the now-active combat-oriented locker policy lane through its next honest narrow slice after the new explicit ballistic-maintenance footing landed
-- the current tree now has three explicit combat-policy footholds instead of vague roadmap prose:
-  - `camp_locker_slot`, `all_camp_locker_slots()`, locker policy persistence, and `locker_policy_ui()` already expose explicit `gloves`, `mask`, `belt`, and `holster` controls
-  - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle that raises body-armor and helmet bullet-resistance weighting instead of leaving ballistic preference as hidden scoring folklore
-  - body-armor scoring now also treats loaded ablative plates as real ballistic value, and same-type ballistic vests can upgrade over damaged-plate variants instead of pretending equal item ids mean equal armor state
-  - the current locker footing still keeps the useful safety scaffolding, like weird-garment preservation, weather sensitivity, and full-body suit protection, so the next slice should extend that spine instead of replacing it
-- keep this separate from the already-closed board speech cleanup, deeper locker V3 doctrine soup, and bandit/threat design lanes
-
-Best concrete next states for this lane:
-1. use the now-explicit ballistic footing as the stable seam for the next full-body combat-policy slice, most likely clearly superior battle/protective suits versus worse piecemeal replacements
-2. keep that next code proof deterministic first, centered on explicit combat-suit tradeoff behavior, before demanding live locker service proof
-3. only broaden into wider doctrine/fashion nuance once the full-body combat-suit preference is real on the current tree
-
-Explicit greenlit backlog behind the current slice:
-- **Plan/Aux pipeline helper**
-- **Bandit concept formalization follow-through** (bottom-of-stack, conceptual docs only)
-
 Meaning:
-- these items are defined enough and explicitly greenlit
-- they do **not** need another permission round
-- they are **not** all active at once
-- Andi should still be judged against one chosen current slice, not allowed to freestyle across the buffet
+- the locker lag-threshold probe is checkpointed closed too, with no clear knee found through `20000` top-level locker items
+- there is currently no active greenlit lane, so the next real move needs a fresh Josef greenlight
+- the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
+- the bandit mark-generation + heatmap seam is checkpointed closed too
+- the plan status summary command is checkpointed closed
+- the locker clutter / perf packet is checkpointed closed too
+- the bandit scenario playback suite is checkpointed closed too
+- the bandit follow-through lane is checkpointed closed too
+- the first bandit evaluator seam is checkpointed closed too
+- the bandit perf/persistence probe is checkpointed closed too
+- the broad bandit concept chain stays parked outside those explicit promoted slices
+
+---
+
+## Checkpointed — Locker lag-threshold probe v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The sharper locker threshold packet is now honest enough to stay closed for now.
+
+Current contract:
+- the canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`
+- `src/basecamp.{h,cpp}` now suppresses locker `DebugLog` noise for probe timing runs, and `tests/faction_camp_test.cpp` now drives the threshold packet through real multi-tile `CAMP_LOCKER` zones so `5000 / 10000 / 20000` top-level clutter counts stay honest instead of colliding with the single-tile `MAX_ITEM_IN_SQUARE` cap
+- the top-level clutter sweep now reaches `1000 / 2000 / 5000 / 10000 / 20000`, while the worker-count sweep stays realistic at `1 / 5 / 10` on `5000` clutter
+- the current result is an honest `not found within tested bound`: median service time stayed roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and the `5000`-clutter worker packet stayed around `1.0 ms` per worker across `1 / 5 / 10`
+- no fresh guardrail is justified from this packet alone; if later evidence reopens the lane, keep the cheap-first guardrail order instead of architecture opera
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
+
+Keep this lane closed unless later evidence shows the threshold packet was dishonest, player-facing hitching appears below this tested bound, or a genuinely justified cheap guardrail answer appears.
+
+## Checkpointed — Bandit overmap-to-bubble pursuit handoff seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The first bounded bandit handoff now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
+- `src/bandit_pursuit_handoff.{h,cpp}` now provides the bounded overmap-to-bubble seam, translating a winning pursuit candidate plus small abstract group state into an explicit `entry_payload` and explicit `return_packet`
+- the current chooser stays intentionally narrow on `scout` / `probe` / `shadow` / `withdrawal`, preserving one pursuit / investigation slice instead of widening into raid or ambush theater
+- `apply_return_packet()` now carries back meaningful abstract consequences such as losses, wound / morale burden, carried-vs-delivered cargo, threat / bounty writeback, learned marks, and retreat pressure instead of dropping them on the floor
+- `render_report()` plus deterministic coverage in `tests/bandit_pursuit_handoff_test.cpp` keep the seam reviewer-readable and prove the bounded scout entry case, explicit return consequences, and moving-carrier shadow path
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the packet is lying, no longer bounded enough, or needs a truly different local handoff class.
+
+---
+
+## Checkpointed — Bandit mark-generation + heatmap seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The writer-side bandit seam now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-mark-generation-heatmap-seam-v0-2026-04-20.md`
+- `src/bandit_mark_generation.{h,cpp}` now provides a bounded overmap-side mark ledger with deterministic signal ingestion, refresh, selective cooling, sticky confirmed threat, generated lead emission, and a reviewer-readable mark/heat report instead of hand-authored lead theater
+- `src/bandit_playback.{h,cpp}` now bridges generated marks/leads into the existing playback/evaluator footing, carries generated mark state through checkpoints, and exposes that state in playback reports
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves mark creation, refresh, selective cooling, sticky confirmed threat, and the clean bridge into the evaluator / playback seam
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the writer-side ledger/report bridge is lying, too thin, or no longer bounded enough for reviewer trust.
+
+## Checkpointed — Locker clutter / perf guardrail probe v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+This follow-up existed because player hoarding is ordinary play, while camp populations above about ten NPCs are comparatively rare.
+The believable failure mode was a curated locker zone turning into a universal junk carpet and making service cost spike in ways the player could not read.
+
+Current honest state:
+- the canonical contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
+- `src/basecamp.{h,cpp}` now contains a real locker-service probe seam through `camp_locker_service_probe`, `basecamp::measure_camp_locker_service( npc & )`, and `render_camp_locker_service_probe()` instead of fake-path guesswork
+- the first bounded direct packet now covers top-level clutter sweeps at `50 / 100 / 200 / 500 / 1000`, worker-count sweeps at `1 / 5 / 10`, the first junk-heavy / locker-candidate-heavy / ammo-magazine-container-heavy stock-shape comparison, and the nested-content question for loaded magazines and ordinary filled bags on the real `CAMP_LOCKER` service path
+- the current verdict is `fine for now`: observed service cost grows with top-level locker items and worker passes, while loaded magazines and ordinary filled bags still behave like one top-level locker item on this path instead of producing an obvious nested-content cliff
+- if later timing evidence says the still-linear top-level scan is too expensive, prefer cheap guardrails such as early junk-ignore, bounded candidate consideration, or a simple curated-stock warning/cap before inventing broad architecture
+
+Keep this lane closed unless later timing-specific evidence says the current direct packet is lying or too thin.
+
+## Checkpointed — Bandit perf + persistence budget probe v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The first bandit budget packet now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the authoritative contract lives at `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`
+- `src/bandit_playback.{h,cpp}` now provides `measure_scenario_budget()`, `measure_reference_suite_budget()`, `estimate_v0_persistence_budget()`, and `render_budget_report()` so the named scenarios can report runtime, churn, and save-budget answers reviewer-cleanly
+- `bandit_dry_run::evaluation_metrics` now exposes lead filtering, candidate generation, score/path checks, invalidations, and winner-comparison churn instead of hiding that work inside the evaluator
+- the first bounded persistence sample stays around `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 state shape, with the main bloat warning remaining duplicated tactical truth or historical-delta sludge
+- deterministic coverage in `tests/bandit_dry_run_test.cpp` and `tests/bandit_playback_test.cpp` now proves the new measurement counters, short-vs-long horizon drift, persistence estimate, and report rendering
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+## Checkpointed — Bandit scenario fixture + playback suite v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The first named playback packet now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the authoritative contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`
+- `src/bandit_playback.{h,cpp}` now defines ten stable deterministic reference scenarios on top of the bounded dry-run evaluator, including three generated-mark writer-side cases, instead of inventing a broader world simulator
+- the playback seam now reruns those scenarios at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, which is enough to inspect idle, smoke, corridor, moving-carrier, split-route, city-edge peel-off, generated cooling, refresh, and sticky-threat drift without smuggling in a bigger system
+- `render_report()` now provides a reviewer-readable checkpoint summary plus generated mark/heat state when present, and deterministic coverage in `tests/bandit_playback_test.cpp` proves the named scenario set, the stable checkpoints, and the expected drift answers
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the playback cases are lying, too thin to answer the intended product questions, or no longer stable enough to rerun honestly.
 
 ---
 
@@ -223,66 +348,57 @@ Canonical contract lives at `doc/organic-bulletin-board-speech-2026-04-09.md`.
 
 ---
 
-## 10. Greenlit backlog — Plan/Aux pipeline helper
+## 10. Checkpointed — Plan/Aux pipeline helper
 
-**Status:** GREENLIT / BACKLOG TOOLING
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef explicitly wants a small helper for the `Plan.md` / auxiliary-doc pipeline because greenlighting already-existing lanes should not require slow manual file carpentry every time.
+Josef explicitly wanted a small helper for the `Plan.md` / auxiliary-doc pipeline so already-understood lanes stop requiring slow manual canon carpentry every time.
 
-What this future tool should do:
-- take a proposed item, greenlight, or parked-lane request
-- print the contract back for verification
-- collect corrections before touching canon files
-- ask the final classification question (active, parked, or bottom-of-stack)
-- patch the relevant canon files consistently:
-  - `Plan.md`
-  - `TODO.md`
-  - `SUCCESS.md`
-  - `TESTING.md` when needed
-  - the auxiliary doc itself
-- optionally generate the Andi handoff packet too
+Current honest state:
+- `tools/plan_aux_pipeline_helper.py` now provides a spec-driven preview/merge/emit/apply path for this repo's Plan/Aux workflow
+- `emit` can now also write a terse downstream `andi.handoff.md` packet from the same validated classified contract when `handoff_needed` is `yes`
+- the `apply` path still stays bounded to known existing canon headings and current active-lane anchors, so the workflow law is real without pretending broad freeform mutation is solved
+- when a heading does not already exist, the honest fallback is still `emit` output for reviewer-visible paste/review instead of magical guessing
+- narrow validation passed on a sample spec via `python3 -m py_compile tools/plan_aux_pipeline_helper.py`, `schema`, `show`, `emit`, emitted handoff review, and `apply` on a temp repo copy
 
-The point is leverage and consistency, not ceremony:
-- preserve the frozen intake/classification/packaging workflow
-- reduce slow manual canon edits
-- make parked-vs-active-vs-bottom-of-stack updates faster and less error-prone
+Keep this lane closed unless later evidence shows the handoff output or bounded patch path lying about what the canon actually says.
 
 Canonical contract lives at `doc/plan-aux-pipeline-helper-2026-04-09.md`.
 
 ---
 
-## 11. Active — combat-oriented locker policy
+## 11. Checkpointed — combat-oriented locker policy
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
 Josef wants locker development to lean harder toward sensible guard/combat outfits without throwing away the already-earned weird-garment safety wins.
 
-The first four narrow slices are now landed on the current tree:
+The current narrow combat-policy slices are now landed on the current tree:
 - `camp_locker_slot`, `all_camp_locker_slots()`, and the persisted locker-policy surface now include explicit `gloves`, `mask`, `belt`, and `holster` slots instead of the older 12-slot-only footing
 - `classify_camp_locker_item()` now gives common combat support gear an explicit locker-policy home instead of dropping holsters on the floor or letting belt-like waist gear get lost in generic clothing logic
 - the locker policy surface now also has a persisted `Prefer bulletproof gear` toggle, and body-armor / helmet scoring now leans harder toward higher bullet protection when that control is enabled
 - body-armor scoring now also counts loaded ablative plates as real armor value, and same-type ballistic vests can be upgraded over damaged-plate variants instead of treating identical item ids as an automatic tie
-- focused deterministic coverage now exercises loaded-vs-empty ballistic vest scoring, damaged insert scoring, and same-type healthy-plate replacement behavior on the current tree
+- focused deterministic coverage now exercises loaded-vs-empty ballistic vest scoring, damaged insert scoring, same-type healthy-plate replacement behavior, and the positive/negative full-body-suit-vs-current-body-armor tradeoffs on the current tree
 - protective full-body suits in the pants lane now also suppress missing-current shirt filler when the suit itself is already the better combat/protective packet, so survivor-style suits stop inviting junk T-shirts underneath them just because the shirt lane is empty
+- that same protective-suit seam now also handles the direct current-outfit comparisons all the way through weaker body armor: when the suit wins the pants-lane upgrade honestly, weaker current shirts, vests, and body armor can be demoted into duplicate cleanup instead of being layered under the new suit, while stronger current ballistic armor remains equipped
 - the current locker safety spine stayed intact while doing that: weird-garment preservation, weather-sensitive outerwear/legwear handling, full-body suit protection, and the earlier great-helm / holster safety cases still survive the filtered locker suite
-- broader explicit full-body battle/protective suit preference is still missing, so the active seam is no longer the ballistic-maintenance rule itself but the next direct suit-vs-piecemeal preference slice built on top of it
+- the final closure audit found one real remaining proof gap, namely end-to-end service evidence for the newly explicit combat-support slots
+- that gap is now closed by deterministic test `camp_locker_service_equips_common_combat_support_slots`, which proves real `CAMP_LOCKER` service equips gloves, dust mask, tool belt, and holster from locker stock
+- focused deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "camp_locker_service_equips_common_combat_support_slots"`, and `./tests/cata_test "[camp][locker]"`
 
-What this active lane should do next:
-- prefer clearly superior full-body battle suits over inferior currently worn piecemeal outfits when appropriate instead of splitting into worse piecemeal junk
-- keep extending deterministic combat/guard outfit proof before asking for live locker service proof
-- bias future deterministic tests toward combat/guard outfit behavior rather than endlessly widening exotic garment law
+Keep this lane closed unless later code or runtime evidence breaks one of those claims.
 
 Canonical contract lives at `doc/locker-combat-oriented-policy-2026-04-09.md`.
 
 ---
 
-## 12. Greenlit bottom-of-stack — bandit concept formalization follow-through
+## 12. Checkpointed — Bandit concept formalization follow-through
 
-**Status:** GREENLIT / BOTTOM-OF-STACK
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef wants Andi to start tightening the remaining bandit control-law gaps after the current basecamp fixes are honestly closed, but still as conceptualization/doc work rather than implementation.
+Josef wanted the remaining loose bandit control-law gaps tightened after the current basecamp fixes were honestly closed, but still as conceptualization/doc work rather than implementation.
 
-This follow-through should turn the still-loose bandit economy, cadence, and cross-layer interaction rules into explicit packets without reopening code or pretending the whole bandit system is now active.
+This follow-through has now done that: the packet turns the remaining bandit economy, cadence, and cross-layer interaction rules into explicit doc slices without reopening code or pretending the whole bandit system is now active.
 
 Frozen footing for this follow-through:
 - no passive decay for bounty
@@ -298,20 +414,74 @@ Default package order:
 
 The auxiliary contract intentionally decomposes those three packages into **31 narrow single-question micro-items** so Andi can freeze one law at a time instead of hiding several assumptions inside one friendly paragraph.
 
+Current bounded slice:
+- landed: Package 1, micro-item 1, `Terrain bounty bucket table`, now freezes a 0-5 starter site-class prior with the intended ordering `open street/field < forest < cabin < house < farm/city structure < camp footprint`
+- landed: Package 1, micro-item 2, `Structural bounty harvest trigger rule`, now freezes that structural bounty only depletes once bandits actually extract, strip, or meaningfully deny site-bound value; scouting, visitation, and failed approaches do not count
+- landed: Package 1, micro-item 3, `Structural bounty reappearance rule`, now freezes that depleted structural bounty stays down until the world adds new site-bound value back through real resupply, rebuilding, or reoccupation; fresh traffic or signals only restore moving interest
+- landed: Package 1, micro-item 4, `Moving bounty source table`, now freezes the starter live source families for moving bounty instead of leaving humans, traffic, caravans, basecamp routine, smoke, light, and sound cues as one blurry blob
+- landed: Package 1, micro-item 5, `Moving bounty attachment rule`, now freezes that moving bounty stays source-shaped, with actor/group, route/corridor, and site-centered activity attachments instead of being dumped back into structural terrain value
+- landed: Package 1, micro-item 6, `Moving bounty clear / rewrite rule`, now freezes that moving bounty is cleaned up by evidence-driven refresh, overwrite, clear, replacement, or coexistence on the current carrier rather than by passive timer shave
+- landed: Package 1, micro-item 7, `Threat source table`, now freezes that threat comes from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure rather than from ordinary bounty-first activity clues
+- landed: Package 1, micro-item 8, `Threat rewrite rule`, now freezes that threat only changes through source-specific recheck, with explicit raise / confirm / lower cases and no passive decay shortcut
+- landed: Package 1, micro-item 9, `Threat-and-bounty coexistence rule`, now freezes that threat and bounty remain separate concurrent reads on the same region/carrier when the evidence supports both, with only source-specific contradiction clearing one side
+- landed: Package 1, micro-item 10, `Destination-only vs along-route collection rule`, now freezes that outings may collect opportunistically on the current corridor or immediate intercept envelope, but not by broad side-sweep harvesting or free mission rewrites
+- landed: Package 1, micro-item 11, `Collection yield rule`, now freezes a 0-3 per-outing haul cap so ingress stays bounded, route-side skims stay inside the same packet, and rich regions still need repeat exploitation
+- landed: Package 1, micro-item 12, `Camp stockpile consumption rule`, now freezes one daily housekeeping drain plus explicit dispatch/return mission costs, with food/ammo/med pressure driven by those named costs rather than by hidden stockpile decay
+- landed: Package 1, micro-item 13, `Forest yield rule`, now freezes forest as thin food/fuel/basic-material value, usually 0-1 haul, unless the outing actually touches a richer embedded site that should score by its own site class
+- landed: Package 2, micro-item 14, `Daily movement budget rule`, now freezes a job-shaped 1-6 OMT/day starter envelope so local forage skims, probes, convoy hits, scavenge runs, raids, and rare redeploys stop sharing one mushy "few tiles" assumption
+- landed: Package 2, micro-item 15, `Cadence budget-spend rule`, now freezes travel as elapsed-time-earned credit so cadence wakes can spend only what real world time has accrued instead of minting fresh movement every pass
+- landed: Package 2, micro-item 16, `Distance burden rule`, now freezes target desirability as a round-trip-share discount against the outing's daily travel budget instead of a flat map-distance tax
+- landed: Package 2, micro-item 17, `Return-clock rule`, now freezes a calm-condition outing leash with starter job clocks and a plain-return threshold, so groups prefer home before one chase turns into endless free pressure
+- landed: Package 2, micro-item 18, `Cargo / wounds / panic burden rule`, now freezes a bounded additive burden table so cargo, wounds, and panic only shrink useful travel and remaining leash instead of secretly reopening distance scoring or fallback law
+- landed: Package 2, micro-item 19, `No-target fallback rule`, now freezes `hold / chill` as the score-`0` stay-home baseline, so camps keep manpower home unless a real outward job beats that bar
+- landed: Package 2, micro-item 20, `No-path fallback rule`, now freezes unreachable targets as dispatch-time `no_path` rejects that fall back to other reachable jobs or `hold / chill`, with a soft route-blocked memory instead of implicit wander behavior
+- landed: Package 2, micro-item 21, `Mid-route abort / divert / shadow rule`, now freezes one bounded mid-route rewrite ladder, where an outing may only continue, probe, shadow, divert to a materially better same-envelope opportunity, or abort/reroute while spending the same remaining movement and leash
+- landed: Package 3, micro-item 22, `Job candidate generation rule`, now freezes a separate board-building pass where `hold / chill` is always present and outward jobs only enter from deduped compatible lead envelopes before later scoring/veto/no-path filtering
+- landed: Package 3, micro-item 23, `Job scoring formula shape`, now freezes a pre-veto comparison pass where positive pull (lead bounty, confidence, job-lead fit, mild need alignment, soft temperament bias, job-type bias) is shaped by the landed distance multiplier, then softened by threat and active-pressure penalties before later override/veto passes
+- landed: Package 3, micro-item 24, `Need-pressure override rule`, now freezes one bounded post-score rescue where only `low`/`critical` shortage bands may add a capped reward-profile-matched bonus to mediocre real leads near `hold / chill`
+- landed: Package 3, micro-item 25, `Threat veto vs soft-veto rule`, now freezes a three-step post-score danger ladder, where ordinary threat remains a subtraction, confirmed serious threat only preserves capped marginal info/pressure jobs, and catastrophic recent-loss / failed-probe style reads hard-veto the dispatch
+- landed: Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`, now freezes local handoff as a deterministic chooser from winning job, lead carrier, contact certainty, danger posture, and return pressure into bounded `scout` / `probe` / `harvest` / `ambush` / `raid` / `shadow` / `withdrawal` modes
+- landed: Package 3, micro-item 27, `Bubble-to-overmap return-state packet`, now freezes a compact writeback field list covering survivors, anchored identities, wound/panic burden, carried cargo vs delivered stockpile delta, mission result, lead resolution, mark rewrites, and return posture
+- landed: Package 3, micro-item 28, `Save/load persistence boundary`, now freezes the cheap durable boundary: persist camp ledgers, source-shaped marks, active abstract group state, bounded anchored identities, carried cargo/burden/leash, and minimal bubble-owned join keys, while exact loaded tactical NPC truth and one-wake score math stay outside the bandit save schema
+- landed: Package 3, micro-item 29, `Starter numbers table`, now freezes one shared starter-number sheet for the whole packet, so structural bounty, mark bands, haul scale, movement budgets, distance burden, return clocks, burden multipliers, score-factor ranges, need rescue, threat caps, and anchored-identity count stop competing across leaf prose
+- landed: Package 3, micro-item 30, `Worked scenarios packet`, now pushes the frozen law through concrete situation reads for forest-edge activity, depleted houses, scary city edges, long-distance temptation, unreachable paths, moving trails, shortage rescue, burdened withdrawal, and save/load continuity
+- landed: Package 3, micro-item 31, `Invariants and non-goals packet`, now freezes the explicit must-never-happen sheet plus the deliberate v1 omissions, so later review can reject nonsense fast without reopening the already-landed law
+- the 3-package / 31-micro-item follow-through is now complete as doc/spec cleanup inside the parked chain
+
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 
-Do not treat this as permission to start coding bandit AI.
-This is greenlit **concept formalization** at the bottom of the stack, meant to make the parked packet cleaner and implementation-legible later.
+Keep this lane closed unless later canon or review finds a real contradiction in the packet.
+Do not treat it as permission to start coding bandit AI.
+It is now a cleaner parked-chain substrate, not implementation approval.
 
 ---
 
-## 13. Parked concept chain — bandit overmap AI
+## 13. Checkpointed — Plan status summary command
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+Josef wanted a small read-only command surface that prints current plan categories from `Plan.md` so active, greenlit, and parked work stop feeling like a black box when Andi or Schani reshuffle canon.
+
+Current honest state:
+- `tools/plan_status_summary.py` now provides a deliberately small read-only seam for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
+- the script reads `Plan.md` only, classifies sections from explicit status lines first, and falls back to heading wording only when canon is thin enough that a warning is warranted
+- greenlit ordering stays meaningful: active first, queued greenlit next, and bottom-of-stack entries last instead of as a separate printed class
+- the current `Hackathon feature lanes` heading already exercises the thin-canon warning path because it is parked by heading text without an explicit `**Status:**` line
+- narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct sample readouts from current canon for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
+
+Keep this lane closed unless later evidence shows the parser is lying about canon, the output shape is too noisy to trust, or Josef explicitly wants a second-stage integration slice.
+
+Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
+
+---
+
+## 14. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / CONCEPT CHAIN
 
 Josef wants the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet is coherent enough as a whole.
 Do not quietly treat partial bandit notes as an active lane or as already-greenlit implementation.
-The new bottom-of-stack formalization follow-through above is greenlit only for doc/spec cleanup inside this chain; implementation still stays parked.
+The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain; broader bandit implementation still stays parked outside the explicit promoted v0 slices above.
 
 Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
@@ -361,7 +531,7 @@ If the packet is revisited later, the next planning discussion should be about w
 
 ---
 
-## 14. Documentation discipline
+## 15. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute
