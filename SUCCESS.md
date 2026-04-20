@@ -51,17 +51,35 @@ Notes:
 
 ## Bandit perf + persistence budget probe v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] Repeatable cost measurements exist for the named bandit scenarios.
-- [ ] Obvious evaluator churn signals such as candidate-count growth, repeated scoring/path checks, or similar waste are visible instead of hidden.
-- [ ] Save-size growth has an honest first estimate tied to the actually persisted bandit state shape.
-- [ ] The packet can say whether the current design looks cheap enough, suspicious, or clearly too bloated before broader rollout.
+- [x] Repeatable cost measurements exist for the named bandit scenarios.
+- [x] Obvious evaluator churn signals such as candidate-count growth, repeated scoring/path checks, or similar waste are visible instead of hidden.
+- [x] Save-size growth has an honest first estimate tied to the actually persisted bandit state shape.
+- [x] The packet can say whether the current design looks cheap enough, suspicious, or clearly too bloated before broader rollout.
 
 Notes:
 - Canonical contract lives at `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`.
-- This queue stays behind the evaluator seam and playback suite, not beside them.
+- `src/bandit_playback.{h,cpp}` now provides `measure_scenario_budget()`, `measure_reference_suite_budget()`, `estimate_v0_persistence_budget()`, and `render_budget_report()` on top of the named playback suite, so the v0 measurement seam exists without smuggling in a broader optimization lane.
+- `bandit_dry_run::evaluation_metrics` now exposes lead filtering, candidate generation, score/path checks, veto/no-path invalidations, and winner-comparison churn, while the first bounded persistence sample lands at about `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 shape.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
+
+---
+
+## Locker clutter / perf guardrail probe v0
+
+Status: GREENLIT / BOTTOM-OF-STACK
+
+Success state:
+- [ ] One honest measurement packet exists for the real `CAMP_LOCKER` service path across a first bounded clutter sweep such as `50 / 100 / 200 / 500 / 1000` top-level items.
+- [ ] The packet distinguishes realistic worker-count pressure from item-hoard pressure instead of pretending twenty-to-fifty camp workers are the main threat.
+- [ ] The packet answers whether loaded magazines and ordinary container shapes mostly behave like one top-level locker item or create meaningful nested-content pain.
+- [ ] The packet can end with a usable verdict: fine for now, watch this, or land a guardrail now, plus the first cheap mitigation order if needed.
+
+Notes:
+- Canonical contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`.
+- Probe bias should match likely play: item hoarding is common, while camp populations above about ten assigned NPCs are much less common.
 
 ---
 

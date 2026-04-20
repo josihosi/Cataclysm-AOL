@@ -40,6 +40,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 ## Current status
 
 There is currently **one active greenlit lane**.
+There is also **one queued greenlit follow-up** behind it.
 
 Fresh checkpoints that stay closed:
 - **Plan status summary command** is now honestly checkpointed too:
@@ -87,6 +88,7 @@ Meaning:
 - the bandit follow-through lane is checkpointed closed too
 - the first bandit evaluator seam is checkpointed closed too
 - Andi now has one active bandit lane, with the earlier evaluator and playback slices both available as substrate
+- a locker clutter / perf guardrail follow-up is now explicitly greenlit backlog, because item hoarding is ordinary play and `CAMP_LOCKER` invites players to dump a lot of stock onto it
 - the broad bandit concept chain stays parked outside those explicit greenlit slices
 
 ---
@@ -104,6 +106,20 @@ Current honest state:
 - the named deterministic playback footing is now real via `src/bandit_playback.{h,cpp}` and `tests/bandit_playback_test.cpp`
 - this slice is allowed to measure evaluator-loop cost, expose obvious churn, and estimate bounded save-size pressure on those named scenarios
 - the slice must stay out of broad optimization theater, schema sprawl, and live-harness-first ritual unless the measurement work honestly forces one of those seams
+
+## Greenlit backlog — Locker clutter / perf guardrail probe v0
+
+**Status:** GREENLIT / BOTTOM-OF-STACK
+
+This follow-up exists because player hoarding is ordinary play, while camp populations above about ten NPCs are comparatively rare.
+The more believable locker failure mode is a curated zone getting used like a universal junk carpet and then making locker service cost spike in ways the player cannot read.
+
+Current honest state:
+- the authoritative queued contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
+- this slice is only meant to measure the real `CAMP_LOCKER` service path under clutter and recommend a small mitigation order if the curve looks bad
+- the first matrix should bias toward top-level item count and realistic worker counts, roughly `50 / 100 / 200 / 500 / 1000` items and `1 / 5 / 10` workers
+- the nested-content question is explicit scope: loaded magazines and common container shapes should be measured honestly enough to say whether they mostly behave like one top-level scan unit or create meaningful extra cost
+- if the curve looks bad, prefer cheap guardrails such as early junk-ignore, bounded candidate consideration, or a simple curated-stock warning/cap before inventing broad architecture
 
 ## Checkpointed — Bandit scenario fixture + playback suite v0
 
