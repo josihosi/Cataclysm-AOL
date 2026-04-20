@@ -34,23 +34,24 @@ Notes:
 
 ## Bandit scenario fixture + playback suite v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] Named deterministic bandit scenarios exist for the first reference cases.
-- [ ] The playback contract can inspect behavior at multiple checkpoints such as `tick 0`, `tick 5`, `tick 20`, and one longer horizon.
-- [ ] The scenario packet can answer whether camps stay idle, investigate smoke, stalk edges, peel off under pressure, or mis-upgrade whole regions from moving clues.
-- [ ] The suite stays bounded and does not turn into broad worldgen mutation or live-harness-first theater.
+- [x] Named deterministic bandit scenarios exist for the first reference cases.
+- [x] The playback contract can inspect behavior at multiple checkpoints such as `tick 0`, `tick 5`, `tick 20`, and one longer horizon.
+- [x] The scenario packet can answer whether camps stay idle, investigate smoke, stalk edges, peel off under pressure, or mis-upgrade whole regions from moving clues.
+- [x] The suite stays bounded and does not turn into broad worldgen mutation or live-harness-first theater.
 
 Notes:
 - Canonical contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`.
-- This is now the active bandit lane, on purpose, because the dry-run evaluator seam exists honestly.
+- The landed playback seam is `src/bandit_playback.{h,cpp}` plus `tests/bandit_playback_test.cpp`, with seven stable named scenarios and checkpoint replay at `tick 0`, `tick 5`, `tick 20`, and `tick 100`.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 
 ## Bandit perf + persistence budget probe v0
 
-Status: GREENLIT / BACKLOG
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] Repeatable cost measurements exist for the named bandit scenarios.

@@ -39,17 +39,21 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Active lane — Bandit scenario fixture + playback suite v0
+### Active lane — Bandit perf + persistence budget probe v0
 
 Current honest state:
 - the dry-run evaluator seam now exists in `src/bandit_dry_run.{h,cpp}` and stays deliberately abstract instead of pretending full autonomous bandit behavior exists already
-- `render_report()` now exposes leads considered, the full candidate board including `hold / chill`, per-candidate score terms, veto / soft-veto reasons, the winner versus `hold / chill`, and an explicit `none in v0` return-packet note
-- deterministic coverage now exists in `tests/bandit_dry_run_test.cpp` for the first pure reasoning reference cases: no real lead fallback, unreachable attractive lead fail-closed, bounded need-pressure rescue, soft-veto clamp with threat-compatible survivors, and a strong honest local lead beating `hold / chill`
-- validation passed proportionally for this code slice via `make -j4 tests` and `./tests/cata_test "[bandit][dry_run]"`
-- the queued follow-on is now `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`; do not merge it into the new active playback lane by habit
+- the named playback seam now exists in `src/bandit_playback.{h,cpp}`, with seven stable deterministic scenarios and replay checkpoints at `tick 0`, `tick 5`, `tick 20`, and `tick 100`
+- deterministic coverage now exists in `tests/bandit_playback_test.cpp` for idle fallback, smoke investigation/cool-off, corridor stalking, forest-vs-town pivoting, moving-carrier attachment, split-route selection, city-edge peel-off, and report rendering
+- validation passed proportionally for the landed evaluator + playback footing via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+- the missing evidence is now measurement: repeatable cost, visible churn, and first-pass save-size pressure on those named scenarios
 
 ### Recently closed, do not casually reopen
 
+- Bandit scenario fixture + playback suite v0 is now honestly checkpointed:
+  - `src/bandit_playback.{h,cpp}` provides seven stable named deterministic scenarios on top of the bounded dry-run evaluator instead of pretending a broader world simulator already exists
+  - `run_scenario()` replays those cases at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, while `render_report()` gives a reviewer-readable checkpoint summary for drift questions
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - Bandit evaluator dry-run seam v0 is now honestly checkpointed:
   - `src/bandit_dry_run.{h,cpp}` provides the bounded abstract evaluator, candidate board, visible scoring ladder, threat gating, and downstream `no_path` rejection without smuggling in playback or persistence architecture
   - `render_report()` provides the first inspectable explanation surface instead of ghost-hunting through debugger soup
@@ -81,26 +85,20 @@ Current honest state:
 
 ### Meaning
 
-- the bounded evaluator seam is no longer the missing evidence class, it is the foundation for the new active lane
-- the missing evidence is now deterministic multi-turn playback on named scenarios, not live harness ritual
-- perf/save-budget work stays queued until the playback suite exists honestly
+- the evaluator seam and the named playback seam are no longer the missing evidence class, they are the substrate for the new active lane
+- the missing evidence is now repeatable cost / churn / save-budget measurement on those scenarios, not more playback theater
+- broader optimization or persistence architecture still stays out of scope until this measurement slice says it is actually needed
 
 ---
 
 ## Pending probes
 
-- on the first scenario/playback slice, run the narrowest honest compile/test for the touched seam only
-- build the first named deterministic scenario families from the playback contract:
-  - empty region / nothing around
-  - smoke-only distant clue
-  - smoke plus searchlight corridor
-  - forest plus town
-  - single traveler in forest
-  - strong camp near weaker split-off route
-  - city edge with moving hordes
-- add playback checkpoints that can inspect behavior at `tick 0`, `tick 5`, `tick 20`, and one honestly justified longer horizon
-- make the packet answer whether camps stay idle, investigate, stalk, peel off, or wrongly upgrade whole regions from moving clues
-- do **not** jump to harness/live play until the active playback seam stops being honestly testable through deterministic fixtures
+- on the first perf/persistence slice, run the narrowest honest compile/test for the touched seam only
+- measure evaluator-loop cost on the named playback scenarios and keep the readout repeatable
+- expose obvious churn counters or similarly cheap visibility for candidate generation / scoring / path-check style work
+- estimate save-size impact from the bounded bandit state shape the current v0 docs actually claim
+- compare at least the shorter and longer playback horizons so cost drift is visible instead of flattened into one number
+- do **not** jump to harness/live play unless the measurement seam honestly stops being answerable through deterministic fixtures
 
 ---
 
