@@ -17,12 +17,13 @@ Current target:
    - micro-item 3, `Structural bounty reappearance rule`, is now landed
    - micro-item 4, `Moving bounty source table`, is now landed
    - micro-item 5, `Moving bounty attachment rule`, is now landed
-   - stay on micro-item 6, `Moving bounty clear / rewrite rule`
+   - micro-item 6, `Moving bounty clear / rewrite rule`, is now landed
+   - stay on micro-item 7, `Threat source table`
 2. keep the law honest and narrow
-   - answer exactly how moving bounty is rewritten, cleared, or replaced when the source moves, disappears, or is reobserved
-   - make later implementation stop guessing between stale soft decay, hard deletion, overwrite, refresh, or coexistence when live sources change
-   - only touch adjacent stale wording when that rewrite rule directly forces it
-   - do not answer micro-items 7-13 at the same time just because the laws smell related
+   - answer exactly which source families create threat marks in the first place
+   - make later implementation stop guessing between defenders, zombies, losses, fortification signs, failed probes, and similar pressure sources when writing threat inputs
+   - only touch adjacent stale wording when that threat-source pass directly forces it
+   - do not answer micro-items 8-13 at the same time just because the laws smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

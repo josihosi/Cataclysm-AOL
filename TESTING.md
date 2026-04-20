@@ -49,8 +49,10 @@ Current honest state:
 - Package 1, micro-item 3 is now answered too: depleted structural bounty stays down until the site itself gains new site-bound value again through real resupply, rebuilding, or reoccupation; fresh traffic/signals may justify renewed interest, but only as moving bounty
 - Package 1, micro-item 4 is now answered too: moving bounty source families are now named explicitly for direct humans/NPC groups, repeated route traffic, caravans/haul convoys, basecamp routine, smoke, ordinary visible light, defensive scanning light, and sound/contact clues
 - Package 1, micro-item 5 is now answered too: moving bounty now stays source-shaped, with explicit actor/group, route/corridor, and site-centered activity attachments instead of blurring back into structural terrain value
-- the next honest active slice is Package 1, micro-item 6, `Moving bounty clear / rewrite rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define how moving bounty is rewritten, cleared, or replaced when the source changes, without smuggling in threat-law or stockpile-law decisions
+- Package 1, micro-item 6 is now answered too: moving bounty cleanup now happens by evidence-driven refresh, overwrite, clear, replacement, or coexistence on the current carrier instead of passive timer-shave language
+- adjacent parked substrate wording was tightened too: the scoring/concept docs now say moving bounty is rewritten or cleared by changed evidence or negative recheck, while cheap cleanup only prunes weak unsupported clutter
+- the next honest active slice is Package 1, micro-item 7, `Threat source table`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should name the source families that create threat marks in the first place without smuggling in threat rewrite, coexistence, or stockpile-law decisions
 
 ### Recently closed, do not casually reopen
 
@@ -81,8 +83,8 @@ Current honest state:
 
 ## Pending probes
 
-- land Package 1, micro-item 6, `Moving bounty clear / rewrite rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that clear/rewrite rule consistent and free of fake passive-decay slop
+- land Package 1, micro-item 7, `Threat source table`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that threat-source table consistent and separate from later threat rewrite/coexistence law
 
 ---
 

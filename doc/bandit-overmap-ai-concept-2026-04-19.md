@@ -443,7 +443,7 @@ At short cadence passes:
 
 At daily cleanup:
 - weak stale soft marks get deleted or collapsed
-- lingering bounty/transient regional pressure fades
+- unsupported transient regional pressure can be collapsed or cleared, but moving bounty should be rewritten or removed by changed evidence rather than timer-melted away
 - strong unresolved pressure can remain as lower-confidence background memory
 - harvested areas can keep reduced structural bounty until the site is materially resupplied, rebuilt, or reoccupied with new site-bound value; new mobile activity or new signals may justify renewed interest without restoring the structural bucket
 - serious threat/loss reads should remain sticky unless later observation honestly downgrades them

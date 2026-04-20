@@ -178,6 +178,25 @@ Guardrails from this rule:
 - **Expected output:** One rule for source-gone, source-moved, and source-confirmed cases.
 - **Done when:** Later implementation does not need to invent fake "soft decay" language to clean up stale moving signals.
 
+Current answer:
+- Moving bounty is rewritten by **new evidence about the carrier**, not by a background timer shaving numbers off an old hunch.
+- Treat each moving-bounty carrier as the current best read of one live source family, then apply the smallest honest rewrite when fresh evidence arrives.
+
+| New evidence about the source | Rewrite action | Why |
+| --- | --- | --- |
+| The same actor/group, convoy, or site activity is reobserved on the same carrier | Refresh or overwrite that same carrier's current read | The opportunity is still live in the same abstract place, so the model should update the read instead of minting a second ghost copy. |
+| The same actor/group or convoy is now clearly somewhere else | Move the actor-attached moving bounty to the new position/path and clear the old location attachment unless separate route/site evidence still supports it | Mobile value travels with the carrier. The old spot does not keep fake bounty just because the last sighting happened there. |
+| Repeated corridor traffic is seen again without one fixed actor identity | Refresh the route-attached carrier on that corridor | The opportunity still lives on the intercept path rather than on a specific remembered traveler or on the ground itself. |
+| A site-centered cue is honestly disproved by a negative recheck, quiet revisit, or other close look that finds no current activity | Clear that moving-bounty carrier; if later systems want recently-checked or false-lead memory, store that separately from bounty | This is the honest way to remove stale moving interest without pretending it numerically decayed away on its own. |
+| A different live source now explains the same region better, such as smoke resolving into a caravan or vague route traffic resolving into a defended occupied site | Rewrite to the smallest carrier class the new evidence supports, replacing the old read if it is the same opportunity or coexisting only if both live sources are separately evidenced | Better evidence should sharpen the carrier instead of leaving every earlier rough guess alive forever. |
+| Fresh evidence shows multiple independent live sources in one region | Keep multiple carriers side by side | A farm can still have site-centered activity while a caravan is also passing nearby; one true signal should not erase another unrelated one. |
+
+Guardrails from this rule:
+- **No passive moving-bounty melt.** Source change, negative recheck, or better replacement evidence should do the cleanup work.
+- **Do not convert vanished moving bounty into structural bounty.** If the live source is gone, the live source is gone.
+- **Carrier class may change when evidence sharpens.** Vague site smoke can later become a known convoy, or recurring convoy sightings can collapse back into a route-level intercept read if only the corridor remains well supported.
+- **Low-value stale clutter may be pruned later, but pruning is cleanup, not hidden decay law.** The real conceptual rule is still overwrite, clear, replace, or coexist based on evidence.
+
 ### C. Threat law
 
 #### 7. Threat source table

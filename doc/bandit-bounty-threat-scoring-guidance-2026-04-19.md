@@ -345,19 +345,19 @@ Good v1 read:
 
 ---
 
-## Mark refresh and selective decay
+## Mark refresh and selective pruning
 
 Marks should not all get weaker the same way over time.
 And v1 should prefer **overwrite / refresh / selective pruning** over a costly fantasy where every remembered thing is constantly re-decayed in detail.
 
 ### Daily drift idea
-Once per day, marks can:
-- lose confidence
-- lose bounty if stale
-- gain uncertainty if not refreshed
-- be deleted if they fall below a minimum threshold
+Once per day, cheap cleanup can:
+- lose confidence on weak unsupported soft marks
+- gain uncertainty when a soft read was not refreshed
+- delete low-value clutter that has been superseded, visibility-cleared, or left unsupported
 
 But:
+- moving bounty should be cleared or rewritten by source change, negative recheck, or stronger replacement evidence, not numerically shaved down by an idle timer
 - confirmed threat should not passively decay away just because nobody looked
 - threat should be downgraded mainly by scout/team visibility or another close outcome that actually rechecks the area
 - the implementation should keep this cheap, with important marks persisting until overwritten or honestly revised rather than numerically melted every tick
@@ -368,6 +368,7 @@ A mark can be refreshed or updated by:
 - a scout pass
 - a successful raid/toll/stalk observation
 - a team visibility pass that actually sees the region
+- a negative recheck that honestly clears the prior moving-bounty read
 - a new related mark merging into it
 
 Strong v1 default:
