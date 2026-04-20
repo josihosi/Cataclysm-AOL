@@ -40,7 +40,6 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 ## Current status
 
 There is currently **one active greenlit lane**.
-There is also **one queued greenlit follow-up** behind it.
 
 Fresh checkpoints that stay closed:
 - **Plan status summary command** is now honestly checkpointed too:
@@ -58,6 +57,10 @@ Fresh checkpoints that stay closed:
   - `src/bandit_dry_run.{h,cpp}` now provides a bounded abstract evaluator that always seeds `hold / chill`, generates outward candidates only from compatible valid lead envelopes, and applies visible pre-veto scoring, need-pressure rescue, threat gating, and downstream `no_path` invalidation without pretending full autonomous bandit world behavior exists
   - `render_report()` exposes leads considered, the full candidate board, per-candidate score terms, veto / soft-veto reasons, the winner versus `hold / chill`, and explicitly says no return-packet fields are touched in v0
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit][dry_run]"`
+- **Bandit perf + persistence budget probe v0** is now honestly checkpointed too:
+  - `src/bandit_playback.{h,cpp}` now provides `measure_scenario_budget()`, `measure_reference_suite_budget()`, `estimate_v0_persistence_budget()`, and `render_budget_report()` on top of the named playback suite, so reviewer-readable runtime/churn/save-budget packets exist without pretending a full profiler or persistence architecture landed
+  - `bandit_dry_run::evaluation_metrics` now exposes lead filtering, candidate generation, score/path checks, veto/no-path invalidations, and winner-comparison churn, while the first bounded persistence sample stays around `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 shape
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Plan/Aux pipeline helper** is honestly checkpointed:
   - `tools/plan_aux_pipeline_helper.py` now lets `emit` produce reviewer-visible aux/canon snippets plus optional downstream `andi.handoff.md` output from the same validated classified contract
   - the bounded patch path still stays on known existing headings instead of pretending broad freeform canon mutation is solved
@@ -77,49 +80,49 @@ Fresh checkpoints that stay closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- `Bandit perf + persistence budget probe v0`
-  - authoritative active contract: `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`
-  - now that the evaluator seam and playback suite both exist honestly, the next job is cost / churn / save-budget measurement on those named scenarios
-  - keep it bounded to reviewer-readable measurement and tiny unavoidable counters or persistence hooks, not broad optimization theater or schema ambition
+- `Locker clutter / perf guardrail probe v0`
+  - authoritative active contract: `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
+  - now that the bandit perf lane is honestly checkpointed, the next job is to measure the real `CAMP_LOCKER` service path under clutter-heavy stock and keep the answer reviewer-readable
+  - keep it bounded to a first honest clutter matrix and cheap mitigation order, not broad locker architecture theater
 
 Meaning:
 - the plan status summary command is checkpointed closed
 - the bandit scenario playback suite is checkpointed closed too
 - the bandit follow-through lane is checkpointed closed too
 - the first bandit evaluator seam is checkpointed closed too
-- Andi now has one active bandit lane, with the earlier evaluator and playback slices both available as substrate
-- a locker clutter / perf guardrail follow-up is now explicitly greenlit backlog, because item hoarding is ordinary play and `CAMP_LOCKER` invites players to dump a lot of stock onto it
+- the bandit perf/persistence probe is checkpointed closed too
+- Andi now has one active locker clutter / perf guardrail lane, because item hoarding is ordinary play and `CAMP_LOCKER` invites players to dump a lot of stock onto it
 - the broad bandit concept chain stays parked outside those explicit greenlit slices
 
 ---
 
-## Active lane — Bandit perf + persistence budget probe v0
+## Active lane — Locker clutter / perf guardrail probe v0
 
 **Status:** ACTIVE / GREENLIT
-
-The evaluator seam and playback suite now both exist and are inspectable.
-That still does **not** greenlight the whole bandit system.
-
-Current honest state:
-- the authoritative active contract lives at `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`
-- the evaluator/report footing is now real via `src/bandit_dry_run.{h,cpp}` and `tests/bandit_dry_run_test.cpp`
-- the named deterministic playback footing is now real via `src/bandit_playback.{h,cpp}` and `tests/bandit_playback_test.cpp`
-- this slice is allowed to measure evaluator-loop cost, expose obvious churn, and estimate bounded save-size pressure on those named scenarios
-- the slice must stay out of broad optimization theater, schema sprawl, and live-harness-first ritual unless the measurement work honestly forces one of those seams
-
-## Greenlit backlog — Locker clutter / perf guardrail probe v0
-
-**Status:** GREENLIT / BOTTOM-OF-STACK
 
 This follow-up exists because player hoarding is ordinary play, while camp populations above about ten NPCs are comparatively rare.
 The more believable locker failure mode is a curated zone getting used like a universal junk carpet and then making locker service cost spike in ways the player cannot read.
 
 Current honest state:
-- the authoritative queued contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
+- the authoritative active contract lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
 - this slice is only meant to measure the real `CAMP_LOCKER` service path under clutter and recommend a small mitigation order if the curve looks bad
 - the first matrix should bias toward top-level item count and realistic worker counts, roughly `50 / 100 / 200 / 500 / 1000` items and `1 / 5 / 10` workers
 - the nested-content question is explicit scope: loaded magazines and common container shapes should be measured honestly enough to say whether they mostly behave like one top-level scan unit or create meaningful extra cost
 - if the curve looks bad, prefer cheap guardrails such as early junk-ignore, bounded candidate consideration, or a simple curated-stock warning/cap before inventing broad architecture
+
+## Checkpointed — Bandit perf + persistence budget probe v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The first bandit budget packet now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the authoritative contract lives at `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`
+- `src/bandit_playback.{h,cpp}` now provides `measure_scenario_budget()`, `measure_reference_suite_budget()`, `estimate_v0_persistence_budget()`, and `render_budget_report()` so the named scenarios can report runtime, churn, and save-budget answers reviewer-cleanly
+- `bandit_dry_run::evaluation_metrics` now exposes lead filtering, candidate generation, score/path checks, invalidations, and winner-comparison churn instead of hiding that work inside the evaluator
+- the first bounded persistence sample stays around `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 state shape, with the main bloat warning remaining duplicated tactical truth or historical-delta sludge
+- deterministic coverage in `tests/bandit_dry_run_test.cpp` and `tests/bandit_playback_test.cpp` now proves the new measurement counters, short-vs-long horizon drift, persistence estimate, and report rendering
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
 ## Checkpointed — Bandit scenario fixture + playback suite v0
 

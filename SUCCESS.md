@@ -69,7 +69,7 @@ Notes:
 
 ## Locker clutter / perf guardrail probe v0
 
-Status: GREENLIT / BOTTOM-OF-STACK
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] One honest measurement packet exists for the real `CAMP_LOCKER` service path across a first bounded clutter sweep such as `50 / 100 / 200 / 500 / 1000` top-level items.

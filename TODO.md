@@ -8,29 +8,27 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Bandit perf + persistence budget probe v0**.
+Active lane: **Locker clutter / perf guardrail probe v0**.
 
 Current target:
-1. measure evaluator-loop cost on the named deterministic playback scenarios
-   - use `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md` as the active contract
-   - reuse `src/bandit_playback.{h,cpp}` instead of inventing fresh one-off probes
-2. expose obvious churn signals instead of hand-waving them away
-   - candidate counts
-   - repeated evaluation / path-check style work
-   - any other cheap visible waste in the current bounded seam
-3. estimate save-size pressure from the bounded bandit state shape the v0 docs actually need
-   - marks
-   - pressure / threat memory
-   - any explicitly persisted return-state payload or map-knowledge slice we now claim
-4. keep the measurement glue smaller than a full optimization or persistence-architecture lane
+1. identify and instrument the real `CAMP_LOCKER` service path in `basecamp.cpp`
+   - use `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md` as the active contract
+   - prefer deterministic or directly instrumented service evidence before any harness theater
+2. sweep a first bounded clutter matrix that matches likely play
+   - top-level item counts around `50 / 100 / 200 / 500 / 1000`
+   - worker counts around `1 / 5 / 10`
+   - at least junk-heavy, locker-candidate-heavy, and ammo/magazine/container-heavy stock shapes
+3. answer the nested-content question explicitly
+   - do loaded magazines and ordinary containers mostly behave like one top-level locker item
+   - or do their contents create meaningful extra cost on the service path
+4. if the curve looks bad, finish with the cheapest guardrail order first
+   - early junk-ignore
+   - bounded candidate consideration
+   - simple curated-stock warning/cap
 
 Out of scope right now:
-- broad optimization theater
-- final persistence schema freeze
-- live harness theater as the primary first answer
-- broad mutation of normal world generation
-- full autonomous bandit world behavior
-- extortion / diplomacy / coalition strategy
-- full tactical bubble AI
-- broad save-schema ambition beyond the first honest estimate
-- reopening checkpointed unrelated lanes for entertainment
+- redesigning the whole locker system
+- broad caching or persistence architecture unless measurement clearly forces it
+- reopening checkpointed locker claims for entertainment
+- pretending giant NPC populations are the primary risk when real games hoard items much harder than they grow camp staff
+- smuggling this locker perf lane back into bandit work just because both slices say `perf`

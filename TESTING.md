@@ -39,17 +39,21 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Active lane — Bandit perf + persistence budget probe v0
+### Active lane — Locker clutter / perf guardrail probe v0
 
 Current honest state:
-- the dry-run evaluator seam now exists in `src/bandit_dry_run.{h,cpp}` and stays deliberately abstract instead of pretending full autonomous bandit behavior exists already
-- the named playback seam now exists in `src/bandit_playback.{h,cpp}`, with seven stable deterministic scenarios and replay checkpoints at `tick 0`, `tick 5`, `tick 20`, and `tick 100`
-- deterministic coverage now exists in `tests/bandit_playback_test.cpp` for idle fallback, smoke investigation/cool-off, corridor stalking, forest-vs-town pivoting, moving-carrier attachment, split-route selection, city-edge peel-off, and report rendering
-- validation passed proportionally for the landed evaluator + playback footing via `make -j4 tests` and `./tests/cata_test "[bandit]"`
-- the missing evidence is now measurement: repeatable cost, visible churn, and first-pass save-size pressure on those named scenarios
+- the authoritative active contract now lives at `doc/locker-clutter-perf-guardrail-probe-v0-2026-04-20.md`
+- the missing evidence is a first honest measurement packet for the real `CAMP_LOCKER` service path under clutter-heavy stock, not more locker-surface or bandit-proof theater
+- the stress shape should bias toward heavy item hoards and realistic worker counts, because that is the normal play pattern this lane is meant to protect
+- deterministic or directly instrumented locker-service evidence is still the preferred first class; broader live/harness ritual only belongs here if the real service-path measurement cannot answer the question cleanly
 
 ### Recently closed, do not casually reopen
 
+- Bandit perf + persistence budget probe v0 is now honestly checkpointed:
+  - `bandit_dry_run::evaluation_metrics` now makes lead filtering, candidate generation, score/path checks, invalidations, and winner-comparison churn visible instead of hand-waved away inside the evaluator
+  - `src/bandit_playback.{h,cpp}` now provides `measure_scenario_budget()`, `measure_reference_suite_budget()`, `estimate_v0_persistence_budget()`, and `render_budget_report()` so the named scenarios can answer runtime, churn, save-budget, and cheap-enough-vs-suspicious questions reviewer-cleanly
+  - the first bounded persistence sample lands at about `512` payload bytes before serializer overhead and still reads cheap enough for the abstract v0 shape, with duplicated tactical truth remaining the main obvious future bloat risk
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - Bandit scenario fixture + playback suite v0 is now honestly checkpointed:
   - `src/bandit_playback.{h,cpp}` provides seven stable named deterministic scenarios on top of the bounded dry-run evaluator instead of pretending a broader world simulator already exists
   - `run_scenario()` replays those cases at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, while `render_report()` gives a reviewer-readable checkpoint summary for drift questions
@@ -85,20 +89,20 @@ Current honest state:
 
 ### Meaning
 
-- the evaluator seam and the named playback seam are no longer the missing evidence class, they are the substrate for the new active lane
-- the missing evidence is now repeatable cost / churn / save-budget measurement on those scenarios, not more playback theater
-- broader optimization or persistence architecture still stays out of scope until this measurement slice says it is actually needed
+- the missing evidence is now locker-service cost under clutter-heavy stock, not more bandit measurement reruns or locker-surface archaeology
+- item-hoard pressure is the primary stress shape to answer first; worker-count scaling matters too, but should stay subordinate to realistic camp sizes
+- broader locker architecture or live harness play still stays out of scope until the first direct service-path measurement says it is actually needed
 
 ---
 
 ## Pending probes
 
-- on the first perf/persistence slice, run the narrowest honest compile/test for the touched seam only
-- measure evaluator-loop cost on the named playback scenarios and keep the readout repeatable
-- expose obvious churn counters or similarly cheap visibility for candidate generation / scoring / path-check style work
-- estimate save-size impact from the bounded bandit state shape the current v0 docs actually claim
-- compare at least the shorter and longer playback horizons so cost drift is visible instead of flattened into one number
-- do **not** jump to harness/live play unless the measurement seam honestly stops being answerable through deterministic fixtures
+- identify the real `CAMP_LOCKER` service path and the narrowest honest instrumentation seam for measuring it
+- sweep the first bounded clutter matrix across likely hoard counts (`50 / 100 / 200 / 500 / 1000`) and realistic worker counts (`1 / 5 / 10`)
+- compare at least junk-heavy, locker-candidate-heavy, and ammo/magazine/container-heavy item mixes
+- answer whether loaded magazines and common containers mostly behave like one top-level locker item or create meaningful extra cost
+- if the curve looks bad, end with the first cheap mitigation order instead of jumping straight to architecture opera
+- do **not** jump to harness/live play unless the service-path measurement honestly stops being answerable through deterministic or directly instrumented footing
 
 ---
 

@@ -1,6 +1,6 @@
 # Locker clutter / perf guardrail probe v0 (2026-04-20)
 
-Status: greenlit backlog contract.
+Status: active lane contract.
 
 ## Why this exists
 
@@ -22,7 +22,7 @@ If that behavior makes locker service expensive, the likely fixes are small and 
 
 ## Non-goals
 
-- making this the active lane right now
+- broadening this into adjacent locker work just because it is the active lane now
 - redesigning the whole locker system
 - broad caching or persistence architecture unless measurement clearly forces it
 - reopening already-closed locker claims for sport
@@ -45,5 +45,5 @@ This item is good enough when:
 
 ## Dependency note
 
-This item stays queued behind the current active bandit perf lane.
-Do not smuggle locker-clutter work into that bandit lane just because both contain the word `perf`.
+This item is active because the bandit perf lane is now honestly checkpointed.
+Do not smuggle old bandit perf questions back into this locker lane just because both slices contain the word `perf`.
