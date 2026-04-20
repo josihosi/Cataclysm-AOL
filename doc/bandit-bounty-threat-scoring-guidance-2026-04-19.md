@@ -335,6 +335,10 @@ Where the named factors mean:
 - `threat_penalty`: the current soft danger subtraction from the lead's threat read
 - `active_pressure_penalty`: extra damp for already-hot regions, recent failed pressure, or overlapping disruption
 
+Starter-number ownership note:
+- later follow-through micro-item 29 now centralizes the current starter constants and numeric bands for this packet
+- keep this scoring note as shape/explanation, not as a second competing source of exact knobs when a number example drifts
+
 A job is valid only if:
 - manpower is sufficient
 - travel radius is allowed

@@ -282,6 +282,11 @@ Suggested v1 return fields:
 - `retreat_destination_or_home_bias`
 - `anchored_identity_updates`
 
+Follow-through persistence boundary note:
+- later micro-item 28 now freezes save/load as **camp ledger + mark ledger + active abstract group state + bounded anchored identities + carried cargo/burden/leash + minimal bubble-owned join keys**
+- exact loaded-bubble truth such as precise NPC positions, HP, inventories, and current combat state should stay in the ordinary game save rather than being duplicated in a second bandit schema
+- once a bubble return packet is applied, keep the resulting durable camp/group/mark state, not a second ghost copy of already-consumed deltas
+
 ---
 
 ## Return-path examples

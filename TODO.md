@@ -39,12 +39,15 @@ Current target:
    - micro-item 25, `Threat veto vs soft-veto rule`, is now landed
    - micro-item 26, `Overmap-to-bubble entry-mode chooser`, is now landed
    - micro-item 27, `Bubble-to-overmap return-state packet`, is now landed
-   - stay on micro-item 28, `Save/load persistence boundary`
+   - micro-item 28, `Save/load persistence boundary`, is now landed
+   - micro-item 29, `Starter numbers table`, is now landed
+   - micro-item 30, `Worked scenarios packet`, is now landed
+   - stay on micro-item 31, `Invariants and non-goals packet`
 2. keep the law honest and narrow
-   - answer exactly which bandit-side state must survive save/load after the now-landed return-state packet, without silently solving starter-number cleanup or worked scenarios in the same pass
-   - keep candidate generation, score shape, need-pressure rescue, threat-veto law, and the new handoff/return packet frozen as already-landed law, not as a back door to re-litigate job scoring
-   - keep micro-item 28 separate from later Package 3 starter-number / scenario / invariant work
-   - do not quietly solve micro-items 29-31 just because persistence edges smell related
+   - answer exactly the must-never-happen and explicit-out-of-scope sheet for the now-landed Package 1-3 law, without silently reopening the already-frozen rule packet
+   - keep candidate generation, score shape, need-pressure rescue, threat-veto law, handoff/return packet, save/load boundary, starter-number sheet, and worked scenarios frozen as already-landed law, not as a back door to re-litigate job scoring
+   - keep micro-item 31 separate from implementation design or balance-the-whole-world scope creep
+   - do not quietly solve later coding or greenlight questions just because invariants sound foundational
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

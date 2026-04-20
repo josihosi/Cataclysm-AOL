@@ -89,8 +89,11 @@ Current target:
 - Package 3, micro-item 25, `Threat veto vs soft-veto rule`, is now landed too: ordinary danger stays in the soft subtraction pass, confirmed serious danger only leaves capped marginal info/pressure jobs alive, and fresh catastrophic recent-loss / failed-probe style reads hard-veto the dispatch outright
 - Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`, is now landed too: local handoff now freezes to a deterministic chooser from winning job, lead carrier, contact certainty, threat posture, and return pressure, with bounded `scout` / `probe` / `harvest` / `ambush` / `raid` / `shadow` / `withdrawal` entry modes instead of generic spawn-and-vibes
 - Package 3, micro-item 27, `Bubble-to-overmap return-state packet`, is now landed too: bubble collapse now returns one compact writeback covering survivors, anchored identities, wound/panic burden, carried cargo vs delivered stockpile delta, mission result, lead resolution, mark rewrites, and return posture instead of letting local consequences vanish into smoke
-- keep the next pass narrow: Package 3, micro-item 28, `Save/load persistence boundary`
-- answer only which bandit-side state must actually survive save/load, without silently solving the later starter-number or scenario packets in the same pass
+- Package 3, micro-item 28, `Save/load persistence boundary`, is now landed too: save/load now keeps camp ledgers, source-shaped marks, active abstract groups, bounded anchored identities, carried cargo/burden/leash, and minimal bubble-ownership keys, while exact local tactical NPC truth stays on the ordinary bubble save and one-wake score math/routes may recompute on load
+- Package 3, micro-item 29, `Starter numbers table`, is now landed too: the packet now centralizes one shared starter-number sheet for structural bounty, mark bands, haul scale, movement budgets, distance burden, return clocks, burden multipliers, score-factor ranges, need rescue, threat caps, and anchored-identity count instead of scattering constants across prose
+- Package 3, micro-item 30, `Worked scenarios packet`, is now landed too: the packet now pressure-tests the combined law through concrete cases for forest-edge activity, harvested houses, scary city edges, long-distance temptation, unreachable marks, moving-target stalking, shortage rescue, bloodied withdrawal, and save/load continuity
+- keep the next pass narrow: Package 3, micro-item 31, `Invariants and non-goals packet`
+- answer only the must-never-happen and explicitly-out-of-scope sheet for v1, without reopening the already-landed law or quietly drifting into implementation design
 - do not drift into code or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
@@ -347,8 +350,11 @@ Current bounded slice:
 - landed: Package 3, micro-item 25, `Threat veto vs soft-veto rule`, now freezes a three-step post-score danger ladder, where ordinary threat remains a subtraction, confirmed serious threat only preserves capped marginal info/pressure jobs, and catastrophic recent-loss / failed-probe style reads hard-veto the dispatch
 - landed: Package 3, micro-item 26, `Overmap-to-bubble entry-mode chooser`, now freezes local handoff as a deterministic chooser from winning job, lead carrier, contact certainty, danger posture, and return pressure into bounded `scout` / `probe` / `harvest` / `ambush` / `raid` / `shadow` / `withdrawal` modes
 - landed: Package 3, micro-item 27, `Bubble-to-overmap return-state packet`, now freezes a compact writeback field list covering survivors, anchored identities, wound/panic burden, carried cargo vs delivered stockpile delta, mission result, lead resolution, mark rewrites, and return posture
-- next: Package 3, micro-item 28, `Save/load persistence boundary`
-- keep the pass to one persistence-boundary note before touching the later starter-number or scenario packet
+- landed: Package 3, micro-item 28, `Save/load persistence boundary`, now freezes the cheap durable boundary: persist camp ledgers, source-shaped marks, active abstract group state, bounded anchored identities, carried cargo/burden/leash, and minimal bubble-owned join keys, while exact loaded tactical NPC truth and one-wake score math stay outside the bandit save schema
+- landed: Package 3, micro-item 29, `Starter numbers table`, now freezes one shared starter-number sheet for the whole packet, so structural bounty, mark bands, haul scale, movement budgets, distance burden, return clocks, burden multipliers, score-factor ranges, need rescue, threat caps, and anchored-identity count stop competing across leaf prose
+- landed: Package 3, micro-item 30, `Worked scenarios packet`, now pushes the frozen law through concrete situation reads for forest-edge activity, depleted houses, scary city edges, long-distance temptation, unreachable paths, moving trails, shortage rescue, burdened withdrawal, and save/load continuity
+- next: Package 3, micro-item 31, `Invariants and non-goals packet`
+- keep the pass to the explicit must-never-happen / out-of-scope sheet only
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

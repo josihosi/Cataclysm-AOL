@@ -730,6 +730,7 @@ A good v1 lean is:
 - the follow-through canon now also freezes cargo/wounds/panic pressure as additive burden tiers that only shrink useful travel and remaining return clock after the calm-condition movement law is already set
 - the follow-through canon now also freezes `hold / chill` as the no-target fallback, so weak marks should collapse to stay-home behavior instead of accidental random wandering
 - the follow-through canon now also freezes no-path fallback: unreachable jobs fail closed for that dispatch pass and fall back to other reachable jobs or `hold / chill` instead of implicit engine wandering
+- later follow-through micro-item 29 now centralizes the starter constants for movement budgets, distance burden, return clocks, burden multipliers, score-factor ranges, and other cross-packet knobs, so this broad concept doc should not be treated as a second competing source of exact numbers
 - later follow-through micro-items may still decide player-relevance chunking plus diversion behavior
 - cadence should control **how often they reconsider and spend budget**, not silently multiply their total daily travel into nonsense
 
@@ -826,7 +827,10 @@ Current lean:
 - leave exact constants and edge cases to later fitting-based tuning
 
 ### 4. Persistence cost
-How much bandit memory and group state is affordable across save/load without becoming ugly or expensive?
+Current lean:
+- later follow-through micro-item 28 now freezes the conceptual boundary: persist camp ledger, source-shaped marks, active abstract groups, bounded anchored identities, carried cargo/burden/leash, and minimal bubble-owned join keys
+- do **not** duplicate exact loaded-bubble NPC positions, inventories, combat state, or one-wake score math in a second bandit save schema
+- the remaining open question is implementation cost and storage shape, not which side of the boundary conceptually owns the state
 
 ### 5. Readability versus exploitation
 How much ambient pressure readability is enough to feel fair without making stalking and attacks trivial to cheese every time?

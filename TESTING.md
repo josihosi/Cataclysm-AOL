@@ -83,8 +83,14 @@ Current honest state:
 - adjacent parked substrate wording was tightened again where it still treated threat veto as an unfrozen future blob instead of the now-landed post-score danger ladder
 - Package 3, micro-item 26 is now answered too: local handoff now freezes as a deterministic chooser from winning job, lead carrier, contact certainty, danger posture, and return pressure into bounded `scout` / `probe` / `harvest` / `ambush` / `raid` / `shadow` / `withdrawal` entry modes
 - Package 3, micro-item 27 is now answered too: bubble collapse now returns one compact writeback covering survivors, anchored identities, wound/panic burden, carried cargo vs delivered stockpile delta, mission result, lead resolution, mark rewrites, and return posture
-- the next honest active slice is Package 3, micro-item 28, `Save/load persistence boundary`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should name which bandit-side state must survive save/load, without quietly solving the later starter-number/scenario packet in the same pass
+- Package 3, micro-item 28 is now answered too: save/load now keeps camp ledgers, source-shaped marks, active abstract groups, bounded anchored identities, carried cargo/burden/leash, and minimal bubble-owned join keys, while exact loaded tactical NPC truth stays on the ordinary bubble save and one-wake score math/routes recompute on load
+- adjacent parked substrate wording was tightened once more where the handoff/concept docs still left save/load ownership as a vague open seam instead of the now-landed cheap persistence boundary
+- Package 3, micro-item 29 is now answered too: one shared starter-number sheet now centralizes structural bounty, mark bands, haul scale, movement budgets, distance burden, return clocks, burden multipliers, score-factor ranges, need rescue, threat caps, and anchored-identity count instead of letting constants compete across leaf prose
+- adjacent parked substrate wording was tightened again where the broad concept/scoring docs still risked reading like a second source of exact numeric truth
+- Package 3, micro-item 30 is now answered too: the packet now pressure-tests the frozen law with concrete worked reads for forest-edge activity, harvested houses, scary city edges, long-distance temptation, unreachable paths, moving-target stalking, shortage rescue, burdened withdrawal, and save/load continuity
+- no additional parked-substrate repair was needed this pass; the missing evidence really was the worked scenario layer in the follow-through packet itself
+- the next honest active slice is Package 3, micro-item 31, `Invariants and non-goals packet`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should land the must-never-happen / explicit-out-of-scope sheet without quietly reopening scoring, handoff, persistence, or implementation design
 
 ### Recently closed, do not casually reopen
 
@@ -108,15 +114,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the score-shape, need-pressure, threat-veto, entry-mode, and return-packet laws are no longer open either; the next honest move is the save/load persistence boundary, not another return-path rerun
+- the score-shape, need-pressure, threat-veto, entry-mode, return-packet, persistence-boundary, starter-number, and worked-scenario layers are no longer open either; the next honest move is the invariant/non-goals sheet, not another law rerun
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 3, micro-item 28, `Save/load persistence boundary`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that persistence-boundary note separate from later Package 3 starter-number / scenario work
+- land Package 3, micro-item 31, `Invariants and non-goals packet`, as one bounded doc/spec slice
+- reread only the immediate bandit substrate needed to keep that invariant sheet separate from implementation design or reopened broad synthesis
 
 ---
 

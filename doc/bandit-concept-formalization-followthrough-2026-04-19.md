@@ -1104,6 +1104,29 @@ Guardrails from this rule:
 - **Expected output:** One persistence-boundary note.
 - **Done when:** The concept has a real schema boundary instead of a vague "save all the important stuff" gesture.
 
+Current answer:
+- Freeze save/load at the cheapest bandit-side boundary that preserves **causal continuity** across camps, marks, and active outings.
+- Persist durable abstract causes, not one wake's derived score math, and never serialize the same live tactical truth twice.
+- Use three buckets: state that must survive, state that belongs to a currently loaded bubble encounter, and state cheap enough to recompute on load.
+
+| State bucket | Must survive save/load? | Cheapest honest saved shape | Why |
+| --- | --- | --- | --- |
+| Camp ledger | Yes | `camp_id`, home region, stockpile buckets, shortage bands, manpower / available-strength state, dispatch load / cooldown state | Need pressure, dispatch eligibility, and recovery truth should not reset just because the save reloaded. |
+| Source-shaped mark ledger | Yes | current `site`, `corridor`, `actor`, `loss`, `route_blocked`, `harvested`, and similar marks with carrier id, bounty/threat strength band, confidence band, and the small state flags later scoring actually reads | The world knowledge the camp already earned must survive without forcing full raw history replay. |
+| Active abstract outing ledger (when the group is not currently bubble-owned) | Yes | `group_id`, source camp, current job template, current lead/carrier, mission posture / return posture, `survivors_remaining`, bounded anchored-identity slice, `cargo_profile_carried`, wound/panic burden state, remaining earned travel credit, remaining return-pressure state | A live overmap outing should reload as the same ongoing group problem, not as fresh idle mush. |
+| Camp/group hard links | Yes | which camp owns which dispatched group, reserve/commitment state, and whether a return writeback is still pending | Prevents duplicate dispatch, orphaned groups, or fake free resets after load. |
+| Bubble-owned seam key | Yes, minimal only | `group_id`, source camp, active mission key, and a `bubble_owned` / `return_pending` style flag | The abstract layer must know the outing is already instantiated locally, without duplicating local NPC truth in a second schema. |
+| Exact bubble-local tactical truth | No separate bandit save copy | ordinary save/NPC state should own precise positions, HP, morale, ammo, per-item inventories, current combat/contact state, and exact local targets while the group is loaded | Two truths would drift and become expensive. Loaded tactical state already has a natural owner. |
+| Derived comparison math | No, recompute on load | candidate board, pre-veto scores, need-override result, threat-gate result, exact distance multiplier application, exact route choice | These are cheap derived opinions from persisted facts, not durable world state worth ossifying. |
+| Applied return delta | No separate long-lived copy after application | once a bubble return packet is consumed, persist the resulting stockpile, carried cargo, marks, burden, and group state, not a second ghost copy of `camp_stockpile_delta` or old rewrite deltas | Avoids double-counting and stale replay artifacts. |
+
+Guardrails from this rule:
+- **One outfit has one owner at a time.** A bandit group is either abstract overmap state or live bubble NPC state, never both at full fidelity.
+- **Persist group continuity plus a bounded anchored slice, not full biography for every grunt.** Unanchored members may stay as survivor count / rough strength / burden state.
+- **Persist resolved consequences, not raw event logs.** Current marks, losses, cargo, stockpile, burden, and leash state matter; the whole blow-by-blow local transcript does not.
+- **Exact routes and score subtotals may be recomputed from persisted facts.** What matters is the durable cause, not the last scheduler's temporary arithmetic.
+- **This micro-item does not pick starter constants, worked scenarios, or invariants.** It only freezes the save/load boundary.
+
 ### I. Sanity-check packet
 
 #### 29. Starter numbers table
@@ -1111,10 +1134,108 @@ Guardrails from this rule:
 - **Expected output:** One cross-cutting table covering the still-open control-law numbers.
 - **Done when:** The packet stops scattering provisional numbers across prose.
 
+Current answer:
+- The packet now uses one shared **starter-number sheet**. Local micro-items may still explain context, but if two prose snippets disagree, this sheet wins until later rebalance.
+- Keep the values coarse and inspectable. These are starter knobs for v1 reasoning, not fake realism cosplay.
+- If a later slice needs a new constant, add it here instead of sneaking another mini-table into one leaf rule.
+
+| Control-law family | Starter values | Shared use across the packet |
+| --- | --- | --- |
+| Structural bounty base | `open street/field=0`, `forest=1`, `cabin=2`, `house=3`, `farm/city structure=4`, `camp footprint=5` | Package 1 site-class prior before moving bounty, threat, distance, and depletion rules shape the read further. |
+| Mark strength band | `none=0`, `weak=1`, `medium=2`, `strong=3`, `severe=4` | Shared ladder for bounty/threat strength bands, return writebacks, and persisted mark ledgers. |
+| Lead confidence bonus | `stale/soft=0`, `fresh=1`, `corroborated/repeated=2` | Shared freshness/corroboration pull for scoring and "act now" urgency. |
+| Haul-step scale | `0=empty/broken contact`, `1=light skim`, `2=ordinary successful haul`, `3=exceptional capped haul`; pure forest usually tops out at `1` unless it hides a richer embedded site | Collection yield, forest yield, carried cargo profile, and delivered stockpile delta all use the same 0-3 packet language. |
+| Daily movement budget | `forage=1`, `scout/probe/shadow=2`, `toll/ambush=3`, `scavenge/steal=4`, `raid/reinforce=5`, `rare redeploy=6 OMT/day` | Job-shaped travel envelope for already-generated outings. |
+| Distance burden multiplier | round-trip share `<=0.25 -> x1.00`, `<=0.50 -> x0.85`, `<=0.75 -> x0.65`, `<=1.00 -> x0.40`, `<=1.25 -> x0.20`, `>1.25 -> x0.05` | Pre-veto travel shaping from the outing's round-trip share of its daily budget. |
+| Base return clock | `scout/probe/shadow=1.25 days`, `toll/ambush=1.5`, `scavenge/steal=1.5`, `raid/reinforce=1.75`, `rare redeploy=2.5` | Calm-condition leash before burden or route collapse shortens it. |
+| Burden family scale | `cargo`, `wounds`, and `panic` each score `0..3`; combined burden caps at `6` | Shared severity ladder for already-committed outings after contact, loot, or morale change. |
+| Burden multipliers | total burden `0-1 -> move x1.00 / leash x1.00`, `2 -> x0.85 / x0.80`, `3 -> x0.75 / x0.70`, `4 -> x0.65 / x0.55`, `5 -> x0.50 / x0.40`, `6 -> x0.35 / x0.25` | Converts burden points into reduced useful travel and remaining outing patience. |
+| Pre-veto positive-pull ranges | `lead_bounty_value=0..8`, `lead_confidence_bonus=0..2`, `job_lead_fit_bonus=0..3`, `ordinary_need_alignment=0..2`, `temperament_bias=-1..+1`, `job_type_bonus=-1..+1` | Shared input bounds for the landed score-shape formula. |
+| Soft subtraction ranges | `threat_penalty=0..8`, `active_pressure_penalty=0..3`, `hold / chill=0 baseline` | Shared negative side of the same comparison pass. |
+| Need-pressure rescue | shortage `stable/thin=0`, `low=1`, `critical=2`; relief match `none=0`, `partial=1`, `direct=2`; rescue bonus = `shortage * match`, capped at `+4`; do not rescue `pre_veto_job_score < about -2` | Shared bounded desperation rule from micro-item 24. |
+| Threat-gate caps | `soft_veto` survivors cap at `final_job_score=+1`; `hard_veto` invalidates the candidate | Shared numeric stop line from micro-item 25. |
+| Anchored identity cap | usually `1-3` anchored individuals per active group | Shared continuity cap for return packets and save/load persistence without full-biography sludge. |
+
+Guardrails from this sheet:
+- **If a parked broad-concept doc still carries an older ad-hoc number, this sheet wins.** Keep one canonical starter constant set.
+- **Numbers may rebalance later without reopening the whole law.** Changing `x0.65` to `x0.60` is not the same as re-arguing what distance burden means.
+- **Worked scenarios still belong to micro-item 30.** This sheet defines constants, not the concrete situation walkthroughs.
+
 #### 30. Worked scenarios packet
 - **Question:** Do the combined laws still make sense when pushed through concrete situations?
 - **Expected output:** At least 8 worked scenarios.
 - **Done when:** The packet includes cases such as forest-adjacent low structural bounty with visible activity, harvested houses, scary city edges, long-distance tempting targets, unreachable targets, moving-activity trails, and stockpile-pressure decisions.
+
+Current answer:
+- Freeze micro-item 30 as a **worked-situations sanity packet**. These are not promises of final balance. They are concrete checks that the already-landed law produces legible, non-stupid outcomes when the pieces interact.
+- Use the starter-number sheet from micro-item 29 whenever a number is needed below. If a prose aside elsewhere disagrees, the starter sheet still wins.
+
+##### Scenario 1. Forest edge with low structural bounty, but fresh human activity
+- **Setup:** A camp sees only ordinary forest structure nearby (`forest=1`), but a fresh corroborated moving-activity lead sits right on the forest edge 1 OMT away. Threat is only `weak`.
+- **Board read:** `hold / chill=0`. A `scout` or `stalk` candidate is valid because the lead is a real moving-activity envelope, not empty woods. A rough `scout` read like `lead_bounty_value=4`, `confidence=2`, `fit=2`, distance share `1.00 -> x0.40`, `threat_penalty=1`, `active_pressure=0` still clears zero.
+- **Expected winner:** `scout`, with local entry mode `scout`, not `raid`. The low structural bounty should not erase fresh visible activity, but neither should one forest-edge hint magically become an assault target.
+- **Expected writeback:** If the group only confirms trail direction, return as `mission_result=scouted`, `lead_resolution=narrowed`, maybe add/refresh one `corridor` or `actor` mark, and keep cargo at zero.
+- **What this pressure-tests:** Low structural bounty must still allow movement-driven suspicion, but only in a cautious mode.
+
+##### Scenario 2. Harvested houses should stop minting repeat loot runs
+- **Setup:** Two houses 2 OMT away were already hit recently and now carry `harvested` / `cleared` memory plus only stale confidence. Threat is mild, but there is no fresh signal.
+- **Board read:** A `scavenge` or `steal` candidate may still be generated from the remembered site, but its current bounty should be heavily reduced by the harvested state. With stale confidence and a round-trip share around `1.00 -> x0.40`, the remaining pull should fall to tie or below `hold / chill`, especially once any small active-pressure or recent-check penalty is applied.
+- **Expected winner:** `hold / chill`, unless a completely different real lead also exists. The system should not keep sending repetitive house-loot errands just because `house=3` was once true.
+- **Expected writeback:** None beyond ordinary stale mark persistence or eventual weak-clutter pruning.
+- **What this pressure-tests:** Structural bounty is finite, remembered depletion matters, and no-target fallback should absorb exhausted sites instead of faking endless content.
+
+##### Scenario 3. Scary city edge stays tempting, but danger gates the job class
+- **Setup:** A city-edge block 1 OMT away still looks juicy (`farm/city structure=4`, moving activity nearby, possible distracted prey), but the camp also carries a strong threat read from recent contact. Not catastrophic enough for `hard_veto`, but bad enough for `soft_veto`.
+- **Board read:** A committed `steal` or `raid` candidate can still score well on raw pull, yet the later threat gate should collapse those jobs back out. Only threat-compatible jobs like `scout`, `stalk`, `toll`, or maybe `reinforce` survive, and they cap at marginal value.
+- **Expected winner:** A cautious `scout` or `stalk` survives at about the `+1` soft-veto ceiling, or else the camp falls back to `hold / chill` if even that margin disappears. The answer should never be "city means automatic raid" when the area already reads dangerous.
+- **Expected writeback:** If the outing goes, it should usually come back with `mission_result=scouted` or `withdrawn`, not with fake rich loot, and it should either confirm or sharpen one specific threat carrier.
+- **What this pressure-tests:** City opportunity and zombie-chaos temptation may exist, but threat gates still dominate job selection.
+
+##### Scenario 4. Long-distance tempting target loses to a nearer ordinary one
+- **Setup:** A rich farm/camp-shaped lead 3 OMT away looks more valuable on paper than an ordinary house/worksite 1 OMT away.
+- **Board read:** The far committed job pays a brutal distance share, for example a `raid` using `6/5` round-trip share and taking the `x0.20` multiplier. A nearer modest `steal` or `scavenge` job may start with lower raw pull but keep a much healthier travel multiplier, so its final score stays clearly higher.
+- **Expected winner:** The nearer modest job wins. If nothing nearby exists, the far target may still lose outright to `hold / chill`.
+- **Expected writeback:** Ordinary local results for the nearer target. The far mark stays remembered, but it does not hijack every dispatch just because its headline bounty number looks sexy.
+- **What this pressure-tests:** Distance burden must actually change behavior instead of being decorative math.
+
+##### Scenario 5. Unreachable target fails closed for the pass
+- **Setup:** The best visible lead sits across a route the camp currently cannot traverse honestly, while a second-best reachable corridor mark also exists.
+- **Board read:** Candidate generation may still emit jobs against the attractive unreachable lead because the lead itself is real. Later the no-path pass rejects those candidates for this dispatch. The reachable second-best candidate remains valid.
+- **Expected winner:** The camp either takes the reachable fallback job or collapses to `hold / chill` if no other candidate clears zero. It must not silently wander toward the unreachable prize anyway.
+- **Expected writeback:** The failed path can add or refresh a soft `route_blocked` memory on that carrier/approach, damping blind immediate retries without pretending the target vanished.
+- **What this pressure-tests:** Candidate generation, no-path rejection, and route-block memory stay separate instead of being smeared into one vague "AI felt weird" blob.
+
+##### Scenario 6. Moving-activity trail should prefer stalking over site-raiding
+- **Setup:** The camp has a corroborated moving `actor` / `corridor` lead, no fixed defended site, and moderate prey value 1 OMT away. Threat is uncertain rather than high.
+- **Board read:** `stalk` fits the lead family better than `raid` or `scavenge`. The board should reward the moving-target template match and freshness instead of forcing everything through site-theft logic.
+- **Expected winner:** `stalk`, with local entry mode `shadow` if the contact stays mobile and patience still beats direct collision.
+- **Expected writeback:** `mission_result=scouted` or `partial_success`, `lead_resolution=narrowed` or `still_valid`, maybe a fresher corridor/actor mark, and no fake stockpile delta unless the group actually stole something.
+- **What this pressure-tests:** Moving carriers should behave like moving prey, not like buildings with legs.
+
+##### Scenario 7. Stockpile pressure may rescue a mediocre real lead, but only a little
+- **Setup:** The camp is `critical` on meds. A nearby mediocre pharmacy-edge or work-party lead 1 OMT away looks only slightly worse than `hold / chill` after ordinary scoring.
+- **Board read:** Suppose the best `steal` or `scavenge` candidate lands around `pre_veto_job_score=-1`, but it is a real lead with direct meds relevance. Shortage `critical=2` plus relief match `direct=2` yields the capped `+4` rescue, lifting it cleanly above zero. A deep-negative suicide target, for example `-5`, would still stay dead.
+- **Expected winner:** The matching meds-oriented job wins narrowly, usually with local entry mode `harvest` or `probe` depending on contact certainty.
+- **Expected writeback:** If successful, return with carried or delivered meds in the haul profile and let the camp shortage band improve later through the normal ledger rules.
+- **What this pressure-tests:** Need pressure should influence close calls without inventing fake targets or overruling obviously terrible danger math.
+
+##### Scenario 8. Bloodied partial success should flip into withdrawal, not one more heroic push
+- **Setup:** A `raid` reaches a defended site, steals some ammo and meds, but comes out with total burden about `5` from cargo plus wounds plus panic. Return pressure is already down near `plain_return_only`.
+- **Board read:** The outing already happened. Now the burden multipliers slash remaining useful travel and leash. The local chooser should be willing to enter or remain in `withdrawal` immediately rather than pretending the same group can chain another opportunistic contact for free.
+- **Expected winner:** No new outward job at all. The correct local posture is `withdrawal`, and the correct overmap posture after collapse is `escape_home` or `escape_safe`.
+- **Expected writeback:** `mission_result=partial_success` or `withdrawn`, `cargo_profile_carried` with the loot actually still on them, reduced survivors if applicable, raised threat on the defended site, and `remaining_return_pressure_state=plain_return_only` or `collapsed`.
+- **What this pressure-tests:** Return clocks and burden are real brakes, not flavor text that revenge or greed can casually ignore.
+
+##### Scenario 9. Save/load during an active outing should preserve continuity without double-owning the group
+- **Setup:** A wounded group from scenario 8 is midway home when the game is saved and reloaded, or a local bubble encounter based on that same outing unloads and reloads later.
+- **Persistence read:** The save should preserve the camp ledger, current marks, active abstract group state, bounded anchored identities, carried cargo, burden, and remaining return pressure. It should **not** preserve an old candidate board, stale pre-veto subtotals, or a second full tactical NPC copy.
+- **Expected result after load:** The same group remains the same problem. If it was bubble-owned, the ordinary NPC save owns exact local truth. If it was abstract-owned, it reloads as the same burdened returning outing. No duplicate bandit squad appears, no free raid reset happens, and any comparison math simply recomputes from the persisted durable state.
+- **What this pressure-tests:** The persistence boundary is cheap, causal, and single-owner instead of magical or duplicative.
+
+Guardrails from these scenarios:
+- **Worked scenarios are sanity checks, not hidden new law.** If a scenario implies a new invariant or new non-goal, that belongs in micro-item 31 instead of being smuggled in here.
+- **The starter sheet still owns the numbers.** These walkthroughs should use the shared constants, not quietly fork them.
+- **Return and save/load examples stay outcome-shaped.** They illustrate the already-landed packet/boundary rather than reopening exact item schema or implementation structure.
 
 #### 31. Invariants and non-goals packet
 - **Question:** What must never happen, and what is explicitly out of scope for v1?
