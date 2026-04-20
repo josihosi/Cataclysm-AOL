@@ -426,6 +426,39 @@ Guardrails from this rule:
 - **Expected output:** One explicit cadence-spend rule.
 - **Done when:** The concept cannot accidentally teleport groups across the map just because the AI woke often.
 
+Current answer:
+- Treat daily movement budget as an **elapsed-time-earned travel credit**, not as a per-wake grant.
+- Each active outing carries three separate movement values:
+  - **daily_budget_omt** from micro-item 14
+  - **spent_today_omt** or an equivalent remaining-budget counter
+  - **fractional_progress_omt** or equivalent carried travel credit
+- On each cadence wake, first add only the travel the group has honestly earned since the last update:
+
+```text
+earned_travel = daily_budget_omt * elapsed_time_since_last_update / 1 day
+available_travel = min( remaining_daily_budget, carried_fractional_progress + earned_travel )
+```
+
+- The wake may then spend only that **available travel** along the current route or current search pattern.
+- Any unused remainder stays carried forward as fractional progress. Do **not** round every wake up to a whole OMT just because the scheduler looked again.
+- The daily budget refreshes only when a real new outing day begins, not because the group hit another 20-minute or 2-hour cadence boundary.
+
+Starter examples:
+
+| Outing type | Daily budget | Honest cadence spend shape | Why this avoids fake travel |
+| --- | --- | --- | --- |
+| Local forage skim | 1 OMT/day | earns about 1 OMT every 24 hours of elapsed world time | A camp-edge skim stays truly local instead of hopping one full tile every wake. |
+| Scout / short shadow | 2 OMT/day | earns about 1 OMT every 12 hours | Recon can keep creeping outward, but only because time passed, not because the AI twitched repeatedly. |
+| Ordinary scavenge / steal run | 4 OMT/day | earns about 1 OMT every 6 hours | A serious haul trip can cover ground within a day, but a string of 20-minute wakes still cannot mint half-county teleporting. |
+| Raid / hard reinforce | 5 OMT/day | earns about 1 OMT every 4.8 hours | High-commitment hostile jobs move faster, while still needing real elapsed time to cross distance. |
+| Rare theater redeploy | 6 OMT/day | earns about 1 OMT every 4 hours | The rare top-end packet is still broad strategic motion, not free instant reposition on every scheduler pass. |
+
+Guardrails from this rule:
+- **Cadence is a decision opportunity, not a fuel grant.** Wakes let groups reconsider, observe, divert, or spend already-earned movement. They do not print extra distance.
+- **Elapsed world time is what earns travel.** One 6-hour sleep, three 2-hour wakes, or eighteen 20-minute wakes should all expose the same total spendable movement.
+- **Fractional travel must carry forward honestly.** If the implementation dislikes raw fractions, it still needs an equivalent partial-progress ledger instead of wake-by-wake rounding gifts.
+- **This rule still does not answer desirability falloff, outing endurance, or burden trimming.** Distance burden remains micro-item 16, return clock remains micro-item 17, and cargo/wounds/panic remain micro-item 18.
+
 #### 16. Distance burden rule
 - **Question:** How does target desirability fall off with travel distance and return burden?
 - **Expected output:** One discount rule or starter table.

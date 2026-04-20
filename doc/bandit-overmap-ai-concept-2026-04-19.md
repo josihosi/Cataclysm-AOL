@@ -710,9 +710,10 @@ A good v1 lean is:
 Important correction:
 - movement budget should be frozen as a **per-day allowance**, not "one fresh hop every cadence tick"
 - otherwise a 20-minute cadence would accidentally permit absurd long-distance travel just because the AI woke up often
+- the current narrow follow-through answer now leans on **elapsed-time-earned travel credit**: groups only spend the fraction of their daily budget that real world time has earned since the last update, carrying partial progress forward instead of rounding each wake up to a free whole OMT
 
 That keeps the broader strategic theater meaningful without turning ordinary same-day jobs into nonsense map-crossing.
-The exact cadence-spend rule and any later distance/relevance modifier still belong to the narrower follow-through micro-items, not to this broad parked concept note.
+Later distance/relevance burden and return-clock law still belong to the narrower follow-through micro-items, not to this broad parked concept note.
 
 The strategic tick should broadly do this:
 1. apply ledger drift
