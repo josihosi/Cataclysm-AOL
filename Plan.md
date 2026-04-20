@@ -39,9 +39,9 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently **no active greenlit lane**.
+There is currently **one active greenlit lane**.
 
-Fresh checkpoints just closed:
+Fresh checkpoints that stay closed:
 - **Plan status summary command** is now honestly checkpointed too:
   - `tools/plan_status_summary.py` now provides a deliberately small read-only seam for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
   - it reads `Plan.md` only, preserves greenlit ordering, and warns when canon is thin or contradictory instead of inventing certainty
@@ -49,7 +49,6 @@ Fresh checkpoints just closed:
 - **Bandit concept formalization follow-through** is now honestly checkpointed too:
   - Package 3, micro-item 31, `Invariants and non-goals packet`, is now landed, so the follow-through finally carries the explicit must-never-happen sheet that the earlier starter numbers and worked scenarios were waiting on
   - the full 3-package / 31-micro-item packet now has explicit law slices, starter numbers, worked scenarios, and red-line invariants/non-goals, which makes the parked bandit chain materially easier to pick up later without rediscovering the whole control law from scratch
-  - this closes the greenlit doc/spec follow-through cleanly, but it still does **not** greenlight bandit implementation
 - **Plan/Aux pipeline helper** is honestly checkpointed:
   - `tools/plan_aux_pipeline_helper.py` now lets `emit` produce reviewer-visible aux/canon snippets plus optional downstream `andi.handoff.md` output from the same validated classified contract
   - the bounded patch path still stays on known existing headings instead of pretending broad freeform canon mutation is solved
@@ -69,17 +68,54 @@ Fresh checkpoints just closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- none right now
-- do not improvise a new active lane from parked docs, checkpointed packets, or old chat history
-- if Josef wants Andi moving again, he needs to greenlight the next slice explicitly
+- `Bandit evaluator dry-run seam v0`
+  - authoritative active contract: `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`
+  - this is the first promoted implementation slice from the parked bandit concept chain
+  - keep it bounded to evaluator/explainability/test footing, not full autonomous bandit behavior
 
 Explicit greenlit backlog behind the current slice:
-- none right now
+1. `Bandit scenario fixture + playback suite v0`
+   - contract: `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`
+2. `Bandit perf + persistence budget probe v0`
+   - contract: `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`
 
 Meaning:
 - the plan status summary command is checkpointed closed
 - the bandit follow-through lane is checkpointed closed too
-- there is no active greenlit lane left for Andi to advance without a new greenlight
+- Andi now has one active bandit lane plus two queued follow-ons
+- the broad bandit concept chain stays parked outside those explicit greenlit slices
+
+---
+
+## Active lane — Bandit evaluator dry-run seam v0
+
+**Status:** ACTIVE / GREENLIT
+
+The broad bandit concept chain is finally coherent enough to support one narrow implementation slice.
+That does **not** greenlight the whole bandit system.
+
+Current honest state:
+- the authoritative active contract lives at `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`
+- the slice is allowed to land the dry-run evaluator, candidate board, score/veto explanation, and narrow deterministic tests
+- the slice must stay out of full autonomous bandit behavior, broad scenario/playback work, and broad persistence architecture
+
+## Greenlit backlog — Bandit scenario fixture + playback suite v0
+
+**Status:** GREENLIT / BACKLOG
+
+Once the evaluator seam exists, the next job is named deterministic scenarios plus multi-turn playback checkpoints.
+Do not broaden the active lane into this item early unless the evaluator seam cannot be tested honestly without one tiny fixture helper.
+
+Current contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`.
+
+## Greenlit backlog — Bandit perf + persistence budget probe v0
+
+**Status:** GREENLIT / BACKLOG
+
+After the evaluator seam and playback suite exist, the next job is to measure runtime cost and save-size pressure on the named scenarios.
+Do not turn the active evaluator slice into a premature perf or persistence-architecture lane.
+
+Current contract lives at `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`.
 
 ---
 
@@ -362,7 +398,7 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 
 Josef wants the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet is coherent enough as a whole.
 Do not quietly treat partial bandit notes as an active lane or as already-greenlit implementation.
-The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain; implementation still stays parked.
+The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain; broader bandit implementation still stays parked outside the explicit promoted v0 slices above.
 
 Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`

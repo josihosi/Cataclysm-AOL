@@ -8,21 +8,25 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **none**.
+Active lane: **Bandit evaluator dry-run seam v0**.
 
 Current target:
-1. there is no active greenlit lane right now
-   - do not invent one from parked or checkpointed docs
-   - do not reopen closed packets just to stay busy
-2. wait for the next explicit greenlight
-   - Josef needs to choose the next slice before Andi resumes repo work
+1. land the narrow dry-run evaluator seam from the current bandit concept packet
+   - use `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md` as the active contract
+2. expose one inspectable explanation path
+   - leads considered
+   - full candidate board including `hold / chill`
+   - score inputs / final score
+   - veto / soft-veto reasons
+   - winner versus `hold / chill`
+3. add the first narrow deterministic reasoning fixtures for the reference cases
+4. if tiny bounded return-state or persistence scaffolding is needed, keep it explicitly smaller than the later perf/persistence lane
 
 Out of scope right now:
-- bandit implementation
-- reopening the checkpointed bandit follow-through without a new contradiction
-- reopening the checkpointed plan status summary command without a new contradiction or explicit follow-on ask
-- canon mutation for entertainment
-- reopening the closed combat-oriented locker lane without a new contradiction
-- reopening the closed Package 4 locker surface/control slice without a new contradiction
-- reopening the closed organic bulletin-board speech slice without a new contradiction
-- hackathon feature lanes
+- full autonomous bandit world behavior
+- broad scenario fixture/playback work from the queued next item
+- broad perf/save-budget work from the queued later item
+- extortion / diplomacy / coalition strategy
+- full tactical bubble AI
+- broad save-schema ambition
+- reopening checkpointed unrelated lanes for entertainment

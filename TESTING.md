@@ -39,14 +39,14 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### No active greenlit lane at the moment
+### Active lane — Bandit evaluator dry-run seam v0
 
 Current honest state:
-- the plan status summary command is now checkpointed closed, and its canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`
-- the landed first-pass seam is `tools/plan_status_summary.py`, which reads `Plan.md` only and prints compact summaries for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
-- greenlit ordering is preserved inside the output, and thin/contradictory canon now warns instead of being silently guessed over
-- narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct current-canon samples for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
-- there is no further active technical probe until Josef greenlights the next lane
+- the first implementation-facing bandit lane is now greenlit, and its canonical contract lives at `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`
+- the parked concept packet remains the product substrate, but the active code scope is deliberately narrower: evaluator, explanation surface, and narrow deterministic reasoning fixtures first
+- the queued follow-ons are `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md` and `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`; do not merge them into the active slice by habit
+- no code evidence exists yet for this newly greenlit lane; the current change is canon packaging only
+- validation for this packaging stayed proportional: docs-only canon rewrite, so no compile or harness ritual was needed yet
 
 ### Recently closed, do not casually reopen
 
@@ -77,15 +77,21 @@ Current honest state:
 
 ### Meaning
 
-- there is no active technical blocker, only the absence of a new greenlit lane
-- Andi should not reopen checkpointed packets just because the queue is empty
-- the next meaningful move is a Josef greenlight, not more local ritual
+- there is now an active technical lane again, and it is intentionally narrower than "bandit AI" as a blob
+- the missing evidence is evaluator behavior on controlled reasoning fixtures, not live harness ritual
+- playback and perf/save-budget work stay queued until the evaluator seam exists honestly
 
 ---
 
 ## Pending probes
 
-- none until Josef greenlights the next lane
+- on the first code slice, run the narrowest honest compile/test for the touched files only
+- add pure reasoning fixture coverage for the first reference cases:
+  - no real lead -> `hold / chill`
+  - unreachable attractive lead -> fail closed, no fake wander
+  - weak but real need-aligned lead can beat `hold / chill` only when the documented override allows it
+  - serious threat can clamp opportunistic extraction while preserving bounded threat-compatible behavior when appropriate
+- do **not** jump to harness/live play until the active evaluator seam stops being honestly testable through deterministic reasoning fixtures
 
 ---
 

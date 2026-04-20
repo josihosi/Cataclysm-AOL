@@ -15,6 +15,55 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Bandit evaluator dry-run seam v0
+
+Status: ACTIVE / GREENLIT
+
+Success state:
+- [ ] A deterministic dry-run evaluator exists for controlled bandit camp inputs.
+- [ ] The evaluator always includes `hold / chill` and only emits outward candidates from real compatible leads or current hard state.
+- [ ] The first explanation surface shows leads considered, the full candidate board, per-candidate score inputs/final score, veto/soft-veto reasons, and winner versus `hold / chill`.
+- [ ] Narrow deterministic coverage exists for the first pure reasoning reference cases.
+- [ ] The slice stays bounded: no full autonomous bandit world behavior, no broad scenario playback suite, and no broad persistence architecture are smuggled in.
+
+Notes:
+- Canonical contract lives at `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`.
+- This is the first promoted implementation slice from the parked bandit concept chain; broader bandit implementation still stays parked outside the explicitly greenlit v0 slices.
+
+---
+
+## Bandit scenario fixture + playback suite v0
+
+Status: GREENLIT / BACKLOG
+
+Success state:
+- [ ] Named deterministic bandit scenarios exist for the first reference cases.
+- [ ] The playback contract can inspect behavior at multiple checkpoints such as `tick 0`, `tick 5`, `tick 20`, and one longer horizon.
+- [ ] The scenario packet can answer whether camps stay idle, investigate smoke, stalk edges, peel off under pressure, or mis-upgrade whole regions from moving clues.
+- [ ] The suite stays bounded and does not turn into broad worldgen mutation or live-harness-first theater.
+
+Notes:
+- Canonical contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`.
+- This queue stays behind the active evaluator seam even if the fixtures sound adjacent.
+
+---
+
+## Bandit perf + persistence budget probe v0
+
+Status: GREENLIT / BACKLOG
+
+Success state:
+- [ ] Repeatable cost measurements exist for the named bandit scenarios.
+- [ ] Obvious evaluator churn signals such as candidate-count growth, repeated scoring/path checks, or similar waste are visible instead of hidden.
+- [ ] Save-size growth has an honest first estimate tied to the actually persisted bandit state shape.
+- [ ] The packet can say whether the current design looks cheap enough, suspicious, or clearly too bloated before broader rollout.
+
+Notes:
+- Canonical contract lives at `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`.
+- This queue stays behind the evaluator seam and playback suite, not beside them.
+
+---
+
 ## Controlled locker / basecamp follow-through packet
 
 Status: CHECKPOINTED / PACKAGE 5 DONE FOR NOW
@@ -337,7 +386,7 @@ Notes:
 - Current visibility sub-item: `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`.
 - Supporting recon note for the visibility item: `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`.
 - The cleanup/follow-through packet for the remaining control-law gaps lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md` and is greenlit doc/spec work only, not code greenlight.
-- This is parked concept work, not active queue work and not an implementation greenlight.
+- This broad packet remains parked concept substrate outside the explicitly greenlit v0 evaluator / fixture / perf slices.
 
 ---
 
