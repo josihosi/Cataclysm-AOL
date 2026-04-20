@@ -39,17 +39,17 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-There is now one active greenlit lane: **Bandit first 500-turn playback proof v0**.
+There is currently no active greenlit lane.
 
-### Active lane — Bandit first 500-turn playback proof v0
+### Latest closed lane — Bandit first 500-turn playback proof v0
 
 Current honest state:
-- no 500-turn proof code is claimed yet; this run only promotes the next narrow slice after the smoke, light, human / route, and repeated-site bridge checkpoints
-- the current abstract bandit seams are ready consumers for this proof packet: the playback suite, mark reports, evaluator reports, and perf packet already exist, so the next honest move is long-horizon drift proof rather than another feeder adapter
-- the named scenario footing is already rich enough for the first honest packet: current smoke cooling, city-edge peel-off, and repeated-site boundedness cases can answer long-horizon questions without smuggling in a broader simulator
-- this retarget was docs-only, so no compile or harness ritual was needed here; the next honest proof after code lands is narrow deterministic bandit coverage plus reviewer-readable long-horizon report output on the existing seams
+- the current abstract bandit seams now have a first-class long-horizon proof path: `src/bandit_playback.{h,cpp}` adds `proof_packet_result`, `run_first_500_turn_playback_proof()`, and `render_first_500_turn_playback_proof( const proof_packet_result &result )`
+- the proof packet stays bounded on the named `smoke_only_distant_clue`, `city_edge_moving_hordes`, and `generated_repeated_site_reinforcement_stays_bounded` scenarios, with explicit `tick 500` framing so reviewer-readable winner drift and generated-mark state can be inspected without debugger soup
+- the repeated-site case now cools honestly on the idle horizon instead of remaining immortal scout pressure, and the proof packet still does not unlock magical settlement truth, free extraction, or broader world-sim claims
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
-### Latest closed lane — Bandit repeated site activity reinforcement seam v0
+### Recently closed lane — Bandit repeated site activity reinforcement seam v0
 
 Current honest state:
 - the bounded repeated-site seam now lands in code: `src/bandit_mark_generation.{h,cpp}` carries a `repeated_site_reinforcement_packet`, and `src/bandit_playback.cpp` now feeds that packet through the existing generated-mark seam with the named `generated_repeated_site_reinforcement_stays_bounded` scenario

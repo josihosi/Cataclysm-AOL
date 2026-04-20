@@ -17,19 +17,19 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Bandit first 500-turn playback proof v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] At least one honest deterministic 500-turn bandit playback packet exists on the current abstract seams.
-- [ ] Reviewer-readable report output exposes long-horizon checkpoints and winner drift cleanly enough to inspect the 500-turn answers without debugger soup.
-- [ ] Deterministic coverage proves the chosen long-horizon scenarios stay bounded, including cooldown, peel-off, and repeated-site reinforcement behavior that does not magically harden into free raid truth.
-- [ ] The proof reuses the current mark-generation / playback / evaluator seams instead of smuggling in a broader overmap simulator or persistence rewrite.
-- [ ] The slice stays bounded: no new visibility adapter family, no live-harness-first theater, and no broad AI architecture jump.
+- [x] At least one honest deterministic 500-turn bandit playback packet exists on the current abstract seams.
+- [x] Reviewer-readable report output exposes long-horizon checkpoints and winner drift cleanly enough to inspect the 500-turn answers without debugger soup.
+- [x] Deterministic coverage proves the chosen long-horizon scenarios stay bounded, including cooldown, peel-off, and repeated-site reinforcement behavior that does not magically harden into free raid truth.
+- [x] The proof reuses the current mark-generation / playback / evaluator seams instead of smuggling in a broader overmap simulator or persistence rewrite.
+- [x] The slice stays bounded: no new visibility adapter family, no live-harness-first theater, and no broad AI architecture jump.
 
 Notes:
 - Canonical contract lives at `doc/bandit-first-500-turn-playback-proof-v0-2026-04-20.md`.
-- This is the first long-horizon proof packet after the smoke, light, human / route, and repeated-site bridge checkpoints, not permission to quietly ship broad autonomous bandit world behavior.
-- The current promotion is docs-only retargeting; no 500-turn proof code is claimed yet.
+- The current tree now has the 500-turn proof packet in `src/bandit_playback.{h,cpp}` with deterministic coverage in `tests/bandit_playback_test.cpp`.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 

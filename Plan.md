@@ -39,11 +39,18 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is now one active greenlit lane: **Bandit first 500-turn playback proof v0**.
-Josef has standing approval for the next narrow bandit slices until the first honest 500-turn proof, unless a real product ambiguity, scope jump, or priority collision appears.
-The repeated site-centered reinforcement bridge is now honestly checkpointed, so the current job is to land the first bounded 500-turn playback proof on the existing abstract bandit seams instead of breeding more parked feeder docs.
+There is currently no active greenlit lane.
+The first honest 500-turn playback proof is now honestly checkpointed on the current abstract bandit seams.
+Josef's standing approval for the next narrow bandit slices carried through that first honest 500-turn proof and is now spent, so the next promotion needs a fresh explicit greenlight.
 
 Fresh checkpoints that stay closed:
+- **Bandit first 500-turn playback proof v0** is now honestly checkpointed too:
+  - `src/bandit_playback.{h,cpp}` now carries `proof_packet_result`, `run_first_500_turn_playback_proof()`, and `render_first_500_turn_playback_proof( const proof_packet_result &result )` so reviewer-readable long-horizon proof output exists on the current playback seam instead of living as debugger folklore
+  - the first bounded proof packet reuses three named scenario cases, `smoke_only_distant_clue`, `city_edge_moving_hordes`, and `generated_repeated_site_reinforcement_stays_bounded`, with explicit `tick 500` checkpoint framing so cooldown, peel-off, and repeated-site boundedness stay inspectable without hand-waving
+  - `generated_repeated_site_reinforcement_stays_bounded` now includes additional idle-horizon frames on ordinary inactive cadence, which keeps repeated site interest bounded over five hundred turns instead of letting one reinforced clue become immortal scout pressure
+  - deterministic coverage in `tests/bandit_playback_test.cpp` now proves the packet honestly: smoke cools back to `hold_chill`, the city-edge peel-off stays bounded, and the repeated-site case eventually cools back out instead of unlocking magical settlement truth or free extraction
+  - the slice stayed bounded: no new visibility adapter family, no broader overmap simulator, no persistence rewrite, and no live-harness-first theater
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Bandit repeated site activity reinforcement seam v0** is now honestly checkpointed too:
   - `src/bandit_mark_generation.{h,cpp}` now carries a bounded `repeated_site_reinforcement_packet` on site marks, requiring mixed repeated smoke/light/route activity before modest confidence and bounty amplification appears
   - `src/bandit_playback.cpp` now adds `generated_repeated_site_reinforcement_stays_bounded`, while reviewer-readable mark/lead reports expose the reinforcement packet instead of hiding it in debugger soup
@@ -126,7 +133,8 @@ Meaning:
 - the human / route bridge is checkpointed closed too
 - the repeated site-centered reinforcement bridge is checkpointed closed too, with mixed repeated smoke/light/traffic now yielding bounded confidence and bounty amplification on one site mark
 - repeated site activity raises revisit interest first and still does not mint free settlement truth or free extraction permission
-- the active lane is now the first honest 500-turn playback proof on the current abstract bandit seams
+- the first honest 500-turn playback proof is checkpointed closed too on the current abstract bandit seams
+- there is currently no active greenlit lane, so the next promotion needs a fresh explicit greenlight
 - the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
@@ -139,19 +147,21 @@ Meaning:
 
 ---
 
-## Active — Bandit first 500-turn playback proof v0
+## Checkpointed — Bandit first 500-turn playback proof v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-The smoke, light, human / route, and repeated-site bridges are honestly checkpointed, so the next narrow slice is the first long-horizon proof packet on the existing playback seam.
+The first honest deterministic 500-turn playback proof now exists and is honest enough to stay closed for now.
 The canonical contract lives at `doc/bandit-first-500-turn-playback-proof-v0-2026-04-20.md`.
 
-Current contract:
-- build the first honest 500-turn deterministic playback proof on the current abstract bandit seams instead of pretending a broader overmap simulator already exists
-- reuse a small named scenario packet, initially the smoke-cooling, city-edge peel-off, and repeated-site-boundedness cases, so long-horizon drift becomes reviewer-readable without debugger soup
-- prove the system can stay bounded for 500 turns without magical settlement truth, free extraction unlocks, or immortal pressure theater
-- keep the slice bounded: no new visibility adapter family, no live-harness-first proof, no persistence rewrite, and no broader AI architecture jump
-- the next honest proof after code lands is still narrow deterministic bandit coverage plus reviewer-readable long-horizon reports on the named scenarios
+Current honest state:
+- `src/bandit_playback.{h,cpp}` now provides `proof_packet_result`, `run_first_500_turn_playback_proof()`, and `render_first_500_turn_playback_proof( const proof_packet_result &result )` so the long-horizon packet is a first-class report path on the existing playback seam
+- the first bounded proof packet reuses the named `smoke_only_distant_clue`, `city_edge_moving_hordes`, and `generated_repeated_site_reinforcement_stays_bounded` scenarios, with explicit `tick 500` framing so reviewer-readable winner drift and generated-mark state stay visible on the longer horizon
+- the repeated-site case now cools honestly on the idle horizon instead of becoming immortal scout pressure, while smoke and city-edge peel-off also stay bounded at `tick 500`
+- the slice stayed bounded: no new visibility adapter family, no broader overmap simulator, no persistence rewrite, and no live-harness-first theater
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the long-horizon packet is lying, too optimistic about cooling, or too noisy to trust as reviewer-readable proof.
 
 ## Checkpointed — Bandit repeated site activity reinforcement seam v0
 
@@ -588,8 +598,8 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 
 Josef wanted the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet was coherent enough as a whole.
 That coherence audit now passes for four narrow promotions so far: the smoke-specific visibility -> mark bridge is checkpointed above, the light-specific bridge is checkpointed above, the human / route bridge is checkpointed above, and the repeated site-centered reinforcement bridge is checkpointed above too.
-Do not quietly treat the rest of the parked notes as broad implementation approval just because four bounded slices were promoted.
-The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain, and the broader concept still stays parked outside the explicit promoted v0 slices above plus the active first-500-turn proof packet.
+Do not quietly treat the rest of the parked notes as broad implementation approval just because several bounded slices were promoted.
+The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain, and the broader concept still stays parked outside the explicit promoted v0 slices above plus the now-checkpointed first-500-turn proof packet.
 
 Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
