@@ -17,14 +17,14 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Bandit evaluator dry-run seam v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] A deterministic dry-run evaluator exists for controlled bandit camp inputs.
-- [ ] The evaluator always includes `hold / chill` and only emits outward candidates from real compatible leads or current hard state.
-- [ ] The first explanation surface shows leads considered, the full candidate board, per-candidate score inputs/final score, veto/soft-veto reasons, and winner versus `hold / chill`.
-- [ ] Narrow deterministic coverage exists for the first pure reasoning reference cases.
-- [ ] The slice stays bounded: no full autonomous bandit world behavior, no broad scenario playback suite, and no broad persistence architecture are smuggled in.
+- [x] A deterministic dry-run evaluator exists for controlled bandit camp inputs.
+- [x] The evaluator always includes `hold / chill` and only emits outward candidates from real compatible leads or current hard state.
+- [x] The first explanation surface shows leads considered, the full candidate board, per-candidate score inputs/final score, veto/soft-veto reasons, and winner versus `hold / chill`.
+- [x] Narrow deterministic coverage exists for the first pure reasoning reference cases.
+- [x] The slice stays bounded: no full autonomous bandit world behavior, no broad scenario playback suite, and no broad persistence architecture are smuggled in.
 
 Notes:
 - Canonical contract lives at `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`.
@@ -34,7 +34,7 @@ Notes:
 
 ## Bandit scenario fixture + playback suite v0
 
-Status: GREENLIT / BACKLOG
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] Named deterministic bandit scenarios exist for the first reference cases.
@@ -44,7 +44,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`.
-- This queue stays behind the active evaluator seam even if the fixtures sound adjacent.
+- This is now the active bandit lane, on purpose, because the dry-run evaluator seam exists honestly.
 
 ---
 

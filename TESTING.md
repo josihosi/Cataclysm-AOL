@@ -39,17 +39,21 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-### Active lane — Bandit evaluator dry-run seam v0
+### Active lane — Bandit scenario fixture + playback suite v0
 
 Current honest state:
-- the first implementation-facing bandit lane is now greenlit, and its canonical contract lives at `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`
-- the parked concept packet remains the product substrate, but the active code scope is deliberately narrower: evaluator, explanation surface, and narrow deterministic reasoning fixtures first
-- the queued follow-ons are `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md` and `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`; do not merge them into the active slice by habit
-- no code evidence exists yet for this newly greenlit lane; the current change is canon packaging only
-- validation for this packaging stayed proportional: docs-only canon rewrite, so no compile or harness ritual was needed yet
+- the dry-run evaluator seam now exists in `src/bandit_dry_run.{h,cpp}` and stays deliberately abstract instead of pretending full autonomous bandit behavior exists already
+- `render_report()` now exposes leads considered, the full candidate board including `hold / chill`, per-candidate score terms, veto / soft-veto reasons, the winner versus `hold / chill`, and an explicit `none in v0` return-packet note
+- deterministic coverage now exists in `tests/bandit_dry_run_test.cpp` for the first pure reasoning reference cases: no real lead fallback, unreachable attractive lead fail-closed, bounded need-pressure rescue, soft-veto clamp with threat-compatible survivors, and a strong honest local lead beating `hold / chill`
+- validation passed proportionally for this code slice via `make -j4 tests` and `./tests/cata_test "[bandit][dry_run]"`
+- the queued follow-on is now `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`; do not merge it into the new active playback lane by habit
 
 ### Recently closed, do not casually reopen
 
+- Bandit evaluator dry-run seam v0 is now honestly checkpointed:
+  - `src/bandit_dry_run.{h,cpp}` provides the bounded abstract evaluator, candidate board, visible scoring ladder, threat gating, and downstream `no_path` rejection without smuggling in playback or persistence architecture
+  - `render_report()` provides the first inspectable explanation surface instead of ghost-hunting through debugger soup
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit][dry_run]"`
 - Plan status summary command is now honestly checkpointed:
   - `tools/plan_status_summary.py` provides the deliberately small read-only command seam for current canon
   - thin/contradictory handling is covered by the built-in self-test plus the live thin-canon warning on the current `Hackathon feature lanes` heading
@@ -77,21 +81,26 @@ Current honest state:
 
 ### Meaning
 
-- there is now an active technical lane again, and it is intentionally narrower than "bandit AI" as a blob
-- the missing evidence is evaluator behavior on controlled reasoning fixtures, not live harness ritual
-- playback and perf/save-budget work stay queued until the evaluator seam exists honestly
+- the bounded evaluator seam is no longer the missing evidence class, it is the foundation for the new active lane
+- the missing evidence is now deterministic multi-turn playback on named scenarios, not live harness ritual
+- perf/save-budget work stays queued until the playback suite exists honestly
 
 ---
 
 ## Pending probes
 
-- on the first code slice, run the narrowest honest compile/test for the touched files only
-- add pure reasoning fixture coverage for the first reference cases:
-  - no real lead -> `hold / chill`
-  - unreachable attractive lead -> fail closed, no fake wander
-  - weak but real need-aligned lead can beat `hold / chill` only when the documented override allows it
-  - serious threat can clamp opportunistic extraction while preserving bounded threat-compatible behavior when appropriate
-- do **not** jump to harness/live play until the active evaluator seam stops being honestly testable through deterministic reasoning fixtures
+- on the first scenario/playback slice, run the narrowest honest compile/test for the touched seam only
+- build the first named deterministic scenario families from the playback contract:
+  - empty region / nothing around
+  - smoke-only distant clue
+  - smoke plus searchlight corridor
+  - forest plus town
+  - single traveler in forest
+  - strong camp near weaker split-off route
+  - city edge with moving hordes
+- add playback checkpoints that can inspect behavior at `tick 0`, `tick 5`, `tick 20`, and one honestly justified longer horizon
+- make the packet answer whether camps stay idle, investigate, stalk, peel off, or wrongly upgrade whole regions from moving clues
+- do **not** jump to harness/live play until the active playback seam stops being honestly testable through deterministic fixtures
 
 ---
 
@@ -109,6 +118,10 @@ Use these when they are actually the missing evidence, not as ritual.
 - `python3 tools/plan_status_summary.py /plan active`
 - `python3 tools/plan_status_summary.py /plan greenlit`
 - `python3 tools/plan_status_summary.py /plan parked`
+
+### Bandit dry-run evaluator seam foundation
+- `make -j4 tests`
+- `./tests/cata_test "[bandit][dry_run]"`
 
 ### Fresh tiles rebuild only if a later combat-policy handoff really needs live proof
 - `make -j4 TILES=1 cataclysm-tiles`

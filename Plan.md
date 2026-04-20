@@ -49,6 +49,10 @@ Fresh checkpoints that stay closed:
 - **Bandit concept formalization follow-through** is now honestly checkpointed too:
   - Package 3, micro-item 31, `Invariants and non-goals packet`, is now landed, so the follow-through finally carries the explicit must-never-happen sheet that the earlier starter numbers and worked scenarios were waiting on
   - the full 3-package / 31-micro-item packet now has explicit law slices, starter numbers, worked scenarios, and red-line invariants/non-goals, which makes the parked bandit chain materially easier to pick up later without rediscovering the whole control law from scratch
+- **Bandit evaluator dry-run seam v0** is now honestly checkpointed too:
+  - `src/bandit_dry_run.{h,cpp}` now provides a bounded abstract evaluator that always seeds `hold / chill`, generates outward candidates only from compatible valid lead envelopes, and applies visible pre-veto scoring, need-pressure rescue, threat gating, and downstream `no_path` invalidation without pretending full autonomous bandit world behavior exists
+  - `render_report()` exposes leads considered, the full candidate board, per-candidate score terms, veto / soft-veto reasons, the winner versus `hold / chill`, and explicitly says no return-packet fields are touched in v0
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit][dry_run]"`
 - **Plan/Aux pipeline helper** is honestly checkpointed:
   - `tools/plan_aux_pipeline_helper.py` now lets `emit` produce reviewer-visible aux/canon snippets plus optional downstream `andi.handoff.md` output from the same validated classified contract
   - the bounded patch path still stays on known existing headings instead of pretending broad freeform canon mutation is solved
@@ -68,52 +72,43 @@ Fresh checkpoints that stay closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Current target:
-- `Bandit evaluator dry-run seam v0`
-  - authoritative active contract: `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`
-  - this is the first promoted implementation slice from the parked bandit concept chain
-  - keep it bounded to evaluator/explainability/test footing, not full autonomous bandit behavior
+- `Bandit scenario fixture + playback suite v0`
+  - authoritative active contract: `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`
+  - now that the dry-run evaluator seam exists, the next honest job is named deterministic scenarios plus multi-turn playback checkpoints
+  - keep it bounded to replayable fixture/playback evidence, not broad worldgen mutation, live harness theater, or perf/save-budget work
 
 Explicit greenlit backlog behind the current slice:
-1. `Bandit scenario fixture + playback suite v0`
-   - contract: `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`
-2. `Bandit perf + persistence budget probe v0`
+1. `Bandit perf + persistence budget probe v0`
    - contract: `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`
 
 Meaning:
 - the plan status summary command is checkpointed closed
 - the bandit follow-through lane is checkpointed closed too
-- Andi now has one active bandit lane plus two queued follow-ons
+- the first bandit evaluator seam is checkpointed closed too
+- Andi now has one active bandit lane plus one queued follow-on
 - the broad bandit concept chain stays parked outside those explicit greenlit slices
 
 ---
 
-## Active lane — Bandit evaluator dry-run seam v0
+## Active lane — Bandit scenario fixture + playback suite v0
 
 **Status:** ACTIVE / GREENLIT
 
-The broad bandit concept chain is finally coherent enough to support one narrow implementation slice.
-That does **not** greenlight the whole bandit system.
+The dry-run evaluator seam now exists and is inspectable.
+That still does **not** greenlight the whole bandit system.
 
 Current honest state:
-- the authoritative active contract lives at `doc/bandit-evaluator-dry-run-seam-v0-2026-04-20.md`
-- the slice is allowed to land the dry-run evaluator, candidate board, score/veto explanation, and narrow deterministic tests
-- the slice must stay out of full autonomous bandit behavior, broad scenario/playback work, and broad persistence architecture
-
-## Greenlit backlog — Bandit scenario fixture + playback suite v0
-
-**Status:** GREENLIT / BACKLOG
-
-Once the evaluator seam exists, the next job is named deterministic scenarios plus multi-turn playback checkpoints.
-Do not broaden the active lane into this item early unless the evaluator seam cannot be tested honestly without one tiny fixture helper.
-
-Current contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`.
+- the authoritative active contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`
+- the dry-run evaluator/report/test footing is now real via `src/bandit_dry_run.{h,cpp}` and `tests/bandit_dry_run_test.cpp`
+- this slice is allowed to land named deterministic scenarios, playback checkpoints, and only the minimal helper glue needed to inspect multi-turn drift honestly
+- the slice must stay out of broad worldgen mutation, live harness-first theater, and the queued perf/persistence lane
 
 ## Greenlit backlog — Bandit perf + persistence budget probe v0
 
 **Status:** GREENLIT / BACKLOG
 
 After the evaluator seam and playback suite exist, the next job is to measure runtime cost and save-size pressure on the named scenarios.
-Do not turn the active evaluator slice into a premature perf or persistence-architecture lane.
+Do not turn the active playback slice into a premature perf or persistence-architecture lane.
 
 Current contract lives at `doc/bandit-perf-persistence-budget-probe-v0-2026-04-20.md`.
 
