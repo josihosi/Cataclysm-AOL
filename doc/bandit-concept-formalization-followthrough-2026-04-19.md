@@ -464,6 +464,45 @@ Guardrails from this rule:
 - **Expected output:** One discount rule or starter table.
 - **Done when:** Range pressure is concrete enough to compare two targets honestly.
 
+Current answer:
+- Freeze distance burden as a **round-trip share of the outing's daily travel budget**.
+- The same destination must feel cheaper for a 5 OMT/day raid than for a 2 OMT/day scout, so do not score distance as a flat raw-tile penalty divorced from job shape.
+- Until later micro-items add extra penalties, treat the return burden as the ordinary trip home on the same route, not as cargo, wounds, panic, or lingering combat delay.
+
+Starter rule:
+
+```text
+distance_burden_share = ( outbound_route_omt + assumed_return_route_omt ) / daily_budget_omt
+assumed_return_route_omt = outbound_route_omt   # until return-clock / cargo rules add more pressure
+```
+
+Use this starter desirability discount table:
+
+| Round-trip burden share | Starter desirability multiplier | Reading |
+| --- | --- | --- |
+| `<= 0.25` | `x1.00` | Doorstep / cheap reach. The target barely taxes the outing and should compete mostly on bounty/threat. |
+| `> 0.25` to `0.50` | `x0.85` | Comfortable reach. Travel matters, but it is still a normal same-day candidate. |
+| `> 0.50` to `0.75` | `x0.65` | Committed reach. The group is spending enough of its day on transit that only clearly better targets should win. |
+| `> 0.75` to `1.00` | `x0.40` | Long reach. The target is still possible, but it needs strong bounty, urgency, or job fit to beat nearer options. |
+| `> 1.00` to `1.25` | `x0.20` | Stretch reach. Treat as exceptional same-day pressure rather than routine income behavior. |
+| `> 1.25` | `x0.05` | Usually reject for ordinary same-day choice. Keep only for staged multi-day pressure, rare redeploy, or unusually compelling targets. |
+
+Starter examples:
+
+| Outing type | One-way route distance | Round-trip burden share | Starter read |
+| --- | --- | --- | --- |
+| Scout / cautious probe (`2 OMT/day`) | `1 OMT` | `1.00` | A one-tile-out scout is already a long-reach use of that day. It must justify spending almost the whole outing on transit. |
+| Ordinary scavenge / steal run (`4 OMT/day`) | `1 OMT` | `0.50` | The same target is a comfortable routine candidate for a committed haul trip. |
+| Raid / hard reinforce (`5 OMT/day`) | `2 OMT` | `0.80` | Two tiles out is still viable for a strong strike, but it should lose to a materially similar nearer target. |
+| Rare redeploy (`6 OMT/day`) | `3 OMT` | `1.00` | Even top-end same-day reposition is expensive at this depth and should read as a serious commitment, not casual roaming. |
+
+Guardrails from this rule:
+- **Use route distance, not player distance ring shortcuts.** The burden is about how much of the outing the trip consumes, not about abstract proximity to the player.
+- **Round trip is the default burden lens.** A target that is easy to reach but expensive to get home from is not "cheap" just because the outbound leg looked short.
+- **This is a desirability discount, not the return-clock law.** Micro-item 17 still decides how long groups stay out before preferring home.
+- **This rule does not yet model cargo, wounds, panic, or pursuit drag.** Those extra burdens belong to micro-item 18.
+- **High-value far targets can still win, but they must win honestly.** The point is to stop mediocre distant targets from tying with nearby ones simply because the system forgot transit cost.
+
 #### 17. Return-clock rule
 - **Question:** How long can a group stay out before it should prefer turning home?
 - **Expected output:** One return-clock rule with starter values.

@@ -62,9 +62,10 @@ Current honest state:
 - Package 1, micro-item 13 is now answered too: pure forest now cashes out as thin food/fuel/basic-material value, usually 0-1 haul, while richer hidden sites in the woods should score as those site classes rather than as magical forest bounty
 - Package 2, micro-item 14 is now answered too: daily travel is now frozen as a job-shaped 1-6 OMT/day starter envelope, with local forage skims at the bottom, raids/reinforce packets near the top, and cadence spending explicitly deferred instead of hidden inside the table
 - Package 2, micro-item 15 is now answered too: cadence now spends only elapsed-time-earned travel credit from that daily budget, carrying fractional progress forward instead of rounding each wake into a fresh free OMT hop
-- adjacent parked substrate wording was tightened again: the broad concept and visibility docs now point at that elapsed-time-earned cadence spend instead of leaving wake frequency as accidental movement fuel
-- the next honest active slice is Package 2, micro-item 16, `Distance burden rule`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define how target desirability falls off with travel distance and return burden without smuggling in return-clock or cargo/wounds/panic law
+- Package 2, micro-item 16 is now answered too: target desirability now falls by the round-trip share of the outing's daily travel budget, with starter discount bands that make the same destination cheaper for higher-commitment jobs and keep mediocre far targets from tying with nearer ones by accident
+- adjacent parked substrate wording was tightened again: the broad concept doc now points at the landed round-trip-share distance burden instead of treating it as still-undecided future law
+- the next honest active slice is Package 2, micro-item 17, `Return-clock rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define how long a group can stay out before preferring home without smuggling cargo/wounds/panic burden law into the same pass
 
 ### Recently closed, do not casually reopen
 
@@ -88,15 +89,15 @@ Current honest state:
 ### Meaning
 
 - the missing evidence for the active lane is not another locker rerun or compile ritual
-- the movement-budget table and cadence-spend rule are no longer open either; the next honest move is one bounded distance-burden rule
+- the movement-budget table, cadence-spend rule, and distance-burden rule are no longer open either; the next honest move is one bounded return-clock rule
 - the now-closed helper and locker/basecamp packets stay closed unless a fresh contradiction appears
 
 ---
 
 ## Pending probes
 
-- land Package 2, micro-item 16, `Distance burden rule`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that distance-burden note separate from later return-clock and cargo/wounds/panic law
+- land Package 2, micro-item 17, `Return-clock rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that return-clock note separate from later cargo/wounds/panic law
 
 ---
 

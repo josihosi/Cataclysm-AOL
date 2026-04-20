@@ -77,9 +77,10 @@ Current target:
 - Package 1, micro-item 13, `Forest yield rule`, is now landed too: pure forest now cashes out as thin food/fuel/basic-material value, usually 0-1 haul, while richer hidden sites in the woods should score as those site classes rather than as magical forest bounty
 - Package 2, micro-item 14, `Daily movement budget rule`, is now landed too: daily travel is now frozen as a job-shaped 1-6 OMT/day envelope from local forage skim through rare strategic redeploy, instead of vague "a few tiles" mush or player-distance-ring canon drift
 - Package 2, micro-item 15, `Cadence budget-spend rule`, is now landed too: cadence now spends only elapsed-time-earned travel credit from that daily budget, carrying fractional progress forward instead of rounding each wake into fake free OMT movement
-- keep the next pass narrow: Package 2, micro-item 16, `Distance burden rule`
-- answer only how target desirability falls off with travel distance and return burden, and only touch adjacent stale wording when that distance-burden pass directly forces the correction
-- do not drift into the later Package 2 return-clock / cargo-burden law, code, or reopened locker/basecamp slices while doing this
+- Package 2, micro-item 16, `Distance burden rule`, is now landed too: target desirability now falls by the round-trip share of the outing's daily travel budget, so the same destination reads cheaper for a raid than for a scout and far mediocre targets stop tying with nearby ones by accident
+- keep the next pass narrow: Package 2, micro-item 17, `Return-clock rule`
+- answer only how long a group can stay out before it should prefer turning home, and only touch adjacent stale wording when that return-clock pass directly forces the correction
+- do not drift into the later Package 2 cargo/wounds/panic burden law, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
 - **Plan status summary command**
@@ -323,8 +324,9 @@ Current bounded slice:
 - landed: Package 1, micro-item 13, `Forest yield rule`, now freezes forest as thin food/fuel/basic-material value, usually 0-1 haul, unless the outing actually touches a richer embedded site that should score by its own site class
 - landed: Package 2, micro-item 14, `Daily movement budget rule`, now freezes a job-shaped 1-6 OMT/day starter envelope so local forage skims, probes, convoy hits, scavenge runs, raids, and rare redeploys stop sharing one mushy "few tiles" assumption
 - landed: Package 2, micro-item 15, `Cadence budget-spend rule`, now freezes travel as elapsed-time-earned credit so cadence wakes can spend only what real world time has accrued instead of minting fresh movement every pass
-- next: Package 2, micro-item 16, `Distance burden rule`
-- keep the pass to one distance-burden rule before touching the later Package 2 return-clock / cargo-burden law
+- landed: Package 2, micro-item 16, `Distance burden rule`, now freezes target desirability as a round-trip-share discount against the outing's daily travel budget instead of a flat map-distance tax
+- next: Package 2, micro-item 17, `Return-clock rule`
+- keep the pass to one return-clock rule before touching the later Package 2 cargo/wounds/panic burden law
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 
