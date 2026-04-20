@@ -1057,6 +1057,48 @@ Guardrails from this rule:
 - **Expected output:** One return-state field list.
 - **Done when:** Cargo, wounds, losses, morale/panic, mark changes, and stockpile delta are named concretely enough to serialize later.
 
+Current answer:
+- Freeze the bubble -> overmap return packet as one **compact writeback from the just-finished local episode**. It is not a full NPC save dump and not the later save/load boundary. It carries only the state that overmap logic must immediately inherit once the group collapses back into abstraction.
+- Required v1 fields:
+
+| Field | Starter shape / values | Why it must come back |
+| --- | --- | --- |
+| `group_id` | persistent group key | The return packet must rewrite the same overmap outfit, not generic bandit mush. |
+| `survivors_remaining` | integer `0..N` | Future manpower, dispatch eligibility, and replacement pressure depend on the surviving headcount. |
+| `anchored_identity_updates` | bounded list of anchored members tagged `alive`, `wounded`, `dead`, `missing`, or `captured` | Known faces, leaders, and memorable casualties should survive the seam without requiring full biography persistence for every grunt. |
+| `wound_burden_state` | `none`, `light`, `moderate`, `heavy`, `crippled` | The next overmap step needs the post-contact injury burden that should shrink movement, leash, and appetite for risk. |
+| `panic_or_morale_state` | `steady`, `shaken`, `breaking`, `routed` | A bloodied frightened group should not re-abstract as if it were still calm and fully willing to press. |
+| `cargo_profile_carried` | 0-3 haul steps split across `food`, `meds`, `ammo`, `gear`, `fuel`, `trade` | The group must keep what it actually stole or gathered even if it has not reached home yet. |
+| `camp_stockpile_delta` | same profile buckets, usually all zero unless collapse happens on or immediately into home/camp abstraction | Delivered supplies must be distinguished from loot still physically carried by the group. |
+| `mission_result` | `no_contact`, `scouted`, `partial_success`, `clean_success`, `withdrawn`, `repelled`, `broken`, `destroyed` | Overmap memory and future scoring need one compact outcome tag instead of rereading full local history. |
+| `lead_resolution` | `still_valid`, `narrowed`, `harvested`, `cleared`, `route_blocked`, `target_lost` | The system must know whether the same lead should stay live, become more specific, or stop generating the same outing again. |
+| `threat_writeback` | bounded per-carrier rewrites such as `lower`, `confirm`, or `raise` with resulting strength band | Local contact must feed back into threat memory instead of vanishing when the bubble unloads. |
+| `bounty_writeback` | bounded per-carrier rewrites such as `lower`, `confirm`, or `raise` with resulting strength band | Harvest, disappointment, or richer-than-expected finds must rewrite bounty memory on the affected site/corridor/carrier. |
+| `new_marks_learned` | bounded list of new or sharpened `site`, `corridor`, `actor`, `loss`, or `route_blocked` marks | The outing should be able to teach the overmap layer something new, not only mutate older estimates. |
+| `loss_site_if_any` | carrier/region id or `null` | Serious casualties need a sticky place-memory so later threat and avoidance logic has an anchor. |
+| `return_posture` | `resume_route`, `escape_home`, `escape_safe`, `shadow_then_break`, or `broken_flee` | Re-abstraction needs one honest statement of how the surviving group is leaving local relevance right now. |
+| `remaining_return_pressure_state` | `ample`, `tight`, `plain_return_only`, `collapsed` | The overmap layer must inherit whether the same outing still has leash left or is already in forced disengagement mode. |
+
+Field interaction rules:
+- **`cargo_profile_carried` and `camp_stockpile_delta` are separate on purpose.** Loot carried by a group is not the same as stockpile already delivered at home. If a collapse event delivers goods directly into camp, subtract that delivered share from carried cargo instead of counting it twice.
+- **Threat/bounty writeback is carrier-specific, not one global scalar.** A failed probe at one house edge, one corridor ambush site, or one moving carrier should not magically rewrite the whole region equally.
+- **`mission_result` is outcome summary, not the only truth.** It helps scoring and reporting, but the more structural updates live in `lead_resolution`, mark writebacks, burden state, and cargo/stockpile deltas.
+- **This is still an outing result packet, not the save schema.** Exact tile positions, per-item inventories, and long-lived dormant-state persistence boundaries belong to micro-item 28.
+
+Starter reads:
+
+| Local outcome | Key return fields |
+| --- | --- |
+| A stealthy `steal` outing grabs meds and ammo, takes one light wound, and peels home cleanly | `mission_result=partial_success`, `cargo_profile_carried={ meds:+1, ammo:+1 }`, `camp_stockpile_delta=0`, `wound_burden_state=light`, `panic_or_morale_state=steady`, `lead_resolution=harvested`, `return_posture=escape_home`, `remaining_return_pressure_state=tight` |
+| A cautious `probe` hits defenders, loses two grunts including one anchored scout, and breaks contact with no loot | `mission_result=repelled`, `survivors_remaining` reduced, `anchored_identity_updates` marks the anchored scout `dead`, `panic_or_morale_state=breaking`, `cargo_profile_carried=0`, `loss_site_if_any=<that site>`, `threat_writeback=raise`, `lead_resolution=still_valid` or `route_blocked` depending on what was learned, `return_posture=broken_flee` |
+| A local collapse happens right as the battered group reaches home footprint with scavenged food | `cargo_profile_carried` drops by the delivered share, `camp_stockpile_delta={ food:+1 }`, `mission_result=withdrawn` or `partial_success`, and the wounds/panic fields still carry home for later dispatch scoring |
+
+Guardrails from this rule:
+- **Losses are not only headcount.** `survivors_remaining` plus `anchored_identity_updates` together preserve both generic attrition and memorable named losses.
+- **Return posture is not a fresh mission picker.** It only tells overmap abstraction how this same outing is exiting local relevance.
+- **Stockpile delta must be explicit.** Do not make later camp-consumption logic guess whether loot is still on the bandits or already delivered.
+- **This micro-item does not answer dormant-state persistence, save/load survival, or exact item schema.** Those remain micro-item 28.
+
 #### 28. Save/load persistence boundary
 - **Question:** Which bandit-side state must survive save/load and which may stay abstract?
 - **Expected output:** One persistence-boundary note.
