@@ -105,10 +105,33 @@ struct candidate_debug {
     std::vector<std::string> notes;
 };
 
+struct evaluation_metrics {
+    size_t input_lead_count = 0;
+    size_t accepted_lead_count = 0;
+    size_t rejected_no_envelope_count = 0;
+    size_t rejected_invalid_lead_count = 0;
+    size_t deduped_lead_count = 0;
+    size_t compatible_job_checks = 0;
+    size_t hard_blocked_job_count = 0;
+    size_t manpower_rejection_count = 0;
+    size_t candidates_generated = 0;
+    size_t score_evaluations = 0;
+    size_t path_checks = 0;
+    size_t valid_outward_candidates = 0;
+    size_t invalid_outward_candidates = 0;
+    size_t need_override_rescues = 0;
+    size_t soft_veto_caps = 0;
+    size_t soft_veto_collapses = 0;
+    size_t hard_veto_invalidations = 0;
+    size_t no_path_invalidations = 0;
+    size_t winner_comparisons = 0;
+};
+
 struct evaluation_result {
     std::vector<lead_debug> leads;
     std::vector<candidate_debug> candidates;
     std::vector<std::string> return_packet_fields_touched;
+    evaluation_metrics metrics;
     size_t winner_index = 0;
     std::string winner_reason;
 };

@@ -178,3 +178,46 @@ TEST_CASE( "bandit_playback_report_renders_named_checkpoints", "[bandit][playbac
     CHECK( report.find( "winner=stalk @ lone_traveler" ) != std::string::npos );
     CHECK( report.find( "winner=hold / chill" ) != std::string::npos );
 }
+
+TEST_CASE( "bandit_playback_budget_measurement_exposes_short_vs_long_horizon_churn", "[bandit][playback]" )
+{
+    const bandit_playback::scenario_definition *scenario =
+        bandit_playback::find_reference_scenario( "forest_plus_town" );
+    REQUIRE( scenario != nullptr );
+
+    const bandit_playback::scenario_budget budget = bandit_playback::measure_scenario_budget( *scenario, 3,
+            { 0, 100 } );
+
+    REQUIRE( budget.checkpoints.size() == 2 );
+    CHECK( budget.checkpoints[0].tick == 0 );
+    CHECK( budget.checkpoints[0].iterations == 3 );
+    CHECK( budget.checkpoints[0].metrics.input_lead_count == 2 );
+    CHECK( budget.checkpoints[0].metrics.candidates_generated == 5 );
+    CHECK( budget.checkpoints[0].metrics.path_checks == 5 );
+    CHECK( budget.checkpoints[0].metrics.winner_comparisons == 5 );
+    CHECK( budget.checkpoints[0].checksum != 0 );
+    CHECK( budget.checkpoints[1].tick == 100 );
+    CHECK( budget.checkpoints[1].metrics.input_lead_count == 0 );
+    CHECK( budget.checkpoints[1].metrics.candidates_generated == 0 );
+    CHECK( budget.checkpoints[1].metrics.path_checks == 0 );
+    CHECK( budget.checkpoints[1].metrics.winner_comparisons == 0 );
+}
+
+TEST_CASE( "bandit_playback_reference_suite_budget_reports_perf_churn_and_persistence", "[bandit][playback]" )
+{
+    const bandit_playback::reference_suite_budget budget =
+        bandit_playback::measure_reference_suite_budget( 2 );
+    const std::string report = bandit_playback::render_budget_report( budget );
+
+    REQUIRE( budget.scenarios.size() == 7 );
+    CHECK( budget.persistence.sample_total_bytes == 512 );
+    CHECK( budget.persistence.lines.size() == 6 );
+    CHECK( budget.persistence.verdict.find( "cheap enough" ) != std::string::npos );
+    CHECK( report.find( "bandit budget report" ) != std::string::npos );
+    CHECK( report.find( "smoke_only_distant_clue" ) != std::string::npos );
+    CHECK( report.find( "average_runtime_us=" ) != std::string::npos );
+    CHECK( report.find( "candidates_generated=" ) != std::string::npos );
+    CHECK( report.find( "persistence sample:" ) != std::string::npos );
+    CHECK( report.find( "sample_total_bytes=512" ) != std::string::npos );
+    CHECK( report.find( "overall_verdict:" ) != std::string::npos );
+}
