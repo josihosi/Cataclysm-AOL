@@ -18,12 +18,13 @@ Current target:
    - micro-item 4, `Moving bounty source table`, is now landed
    - micro-item 5, `Moving bounty attachment rule`, is now landed
    - micro-item 6, `Moving bounty clear / rewrite rule`, is now landed
-   - stay on micro-item 7, `Threat source table`
+   - micro-item 7, `Threat source table`, is now landed
+   - stay on micro-item 8, `Threat rewrite rule`
 2. keep the law honest and narrow
-   - answer exactly which source families create threat marks in the first place
-   - make later implementation stop guessing between defenders, zombies, losses, fortification signs, failed probes, and similar pressure sources when writing threat inputs
-   - only touch adjacent stale wording when that threat-source pass directly forces it
-   - do not answer micro-items 8-13 at the same time just because the laws smell related
+   - answer exactly what kinds of recheck or observation can raise, confirm, or lower threat
+   - make later implementation stop guessing between fresh re-observation, negative recheck, repeated danger confirmation, and stale-memory cleanup when rewriting threat inputs
+   - only touch adjacent stale wording when that threat-rewrite pass directly forces it
+   - do not answer micro-items 9-13 at the same time just because the laws smell related
 3. keep this doc/spec only
    - no bandit AI code
    - no reopening locker/basecamp lanes while this bandit slice is active

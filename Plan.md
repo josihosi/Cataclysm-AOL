@@ -68,9 +68,10 @@ Current target:
 - Package 1, micro-item 4, `Moving bounty source table`, is now landed too: moving bounty now explicitly names direct human sightings, repeated route traffic, caravans/haul convoys, basecamp routine, smoke, ordinary visible light, defensive scanning light, and sound/contact clues as separate live source families
 - Package 1, micro-item 5, `Moving bounty attachment rule`, is now landed too: moving bounty now stays source-shaped instead of smearing into terrain, with explicit actor/group, route/corridor, and site-centered activity attachments
 - Package 1, micro-item 6, `Moving bounty clear / rewrite rule`, is now landed too: moving bounty cleanup now happens by evidence-driven refresh, overwrite, clear, replacement, or coexistence on the source carrier rather than by fake passive melt
-- keep the next pass narrow: Package 1, micro-item 7, `Threat source table`
-- answer only which source families create threat marks in the first place, and only touch adjacent stale wording when that threat-source pass directly forces the correction
-- do not drift into threat-law, stockpile math, code, or reopened locker/basecamp slices while doing this
+- Package 1, micro-item 7, `Threat source table`, is now landed too: threat marks now explicitly come from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure instead of from generic bounty clues
+- keep the next pass narrow: Package 1, micro-item 8, `Threat rewrite rule`
+- answer only what kinds of recheck or observation can raise, confirm, or lower threat, and only touch adjacent stale wording when that threat-rewrite pass directly forces the correction
+- do not drift into threat/bounty coexistence, stockpile math, code, or reopened locker/basecamp slices while doing this
 
 Explicit greenlit backlog behind the current slice:
 - **Plan status summary command**
@@ -305,8 +306,9 @@ Current bounded slice:
 - landed: Package 1, micro-item 4, `Moving bounty source table`, now freezes the starter live source families for moving bounty instead of leaving humans, traffic, caravans, basecamp routine, smoke, light, and sound cues as one blurry blob
 - landed: Package 1, micro-item 5, `Moving bounty attachment rule`, now freezes that moving bounty stays source-shaped, with actor/group, route/corridor, and site-centered activity attachments instead of being dumped back into structural terrain value
 - landed: Package 1, micro-item 6, `Moving bounty clear / rewrite rule`, now freezes that moving bounty is cleaned up by evidence-driven refresh, overwrite, clear, replacement, or coexistence on the current carrier rather than by passive timer shave
-- next: Package 1, micro-item 7, `Threat source table`
-- keep the pass to one explicit threat-source table before touching threat rewrite or coexistence questions
+- landed: Package 1, micro-item 7, `Threat source table`, now freezes that threat comes from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure rather than from ordinary bounty-first activity clues
+- next: Package 1, micro-item 8, `Threat rewrite rule`
+- keep the pass to one explicit threat-rewrite rule before touching threat/bounty coexistence questions
 
 Canonical contract lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md`.
 

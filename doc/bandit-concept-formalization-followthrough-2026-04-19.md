@@ -204,6 +204,27 @@ Guardrails from this rule:
 - **Expected output:** One source table covering zombies, defenders, fortification signs, recent losses, gunfire, failed probes, and similar causes.
 - **Done when:** Threat sources are explicit enough that the later score law can point to concrete inputs.
 
+Current answer:
+- Threat marks start from **danger evidence**, not from generic attractiveness. The model should write threat when bandits see resistance, hostile pressure, costly uncertainty, or remembered bad outcomes.
+- Ordinary smoke, routine occupancy light, and generic route activity stay **bounty-first** unless they arrive with one of the threat-source families below.
+
+| Threat source family | Creates threat? | Starter severity | Why this counts |
+| --- | --- | --- | --- |
+| Direct visible humans or NPC groups | Conditional | Weak to medium until force is clearer | People are never perfectly safe free loot. Even a plain sighting can justify a low-confidence threat seed, but broad threat confidence should stay below bounty until closer evidence sharpens it. |
+| Armed defenders, sentries, patrol groups, or other obvious organized human force | Yes | Strong | Clear hostile or defensive manpower is the cleanest direct human threat source. |
+| Fortification signs, barricades, firing positions, traps, or obviously controlled chokepoints | Yes | Medium to strong | Static defensive preparation makes a place harder and riskier even before defenders are fully counted. |
+| Searchlights, scanning beams, active watch routines, or obvious alert patrol behavior | Yes | Strong | These are live defender-control signals, not cozy occupancy clues. They should mint threat immediately rather than being flattened into ordinary light. |
+| Gunfire, explosions, alarm noise, shouted contact, or other clear combat/contact cues | Yes | Medium, rising to strong with repetition or corroboration | Active violence or alarm says the region is dangerous now, whether the cause is defenders, bandit competition, or chaotic fighting. |
+| Failed probes, blocked approaches, near-ambushes, hard withdrawals, or other costly close attempts | Yes | Strong | A bad close look is better threat evidence than distant rumor. If a probe gets repelled or turns ugly, the region deserves a serious threat mark. |
+| Recent bandit losses, missing returners, or wounded survivors tied to the region | Yes | Very strong | This is hard mission-result memory. A place that already bloodied one group should stay scary until later recheck really changes the read. |
+| Dense zombie or other monster pressure | Yes | Medium to strong | Nonhuman danger still creates real threat even when no defenders are present, because it raises approach, fight, and retreat risk. |
+
+Guardrails from this table:
+- **Threat is not created by every bounty clue.** Smoke, ordinary static light, repeated route traffic, and vague occupancy noise remain bounty-first unless paired with defenders, monsters, losses, failed probes, or other hard-danger evidence.
+- **Human presence can seed low-confidence threat, but organized force is the real sharpener.** This preserves the intended asymmetry where bounty is often visible earlier than threat.
+- **Searchlights and patrol-style scanning count as threat-first evidence.** Ordinary lamps, campfires, and lit windows do not.
+- **Recent losses and failed probes count as source families in their own right.** Exact rewrite or downgrade rules belong to micro-item 8, not here.
+
 #### 8. Threat rewrite rule
 - **Question:** What kinds of recheck or observation can raise, confirm, or lower threat?
 - **Expected output:** One explicit rewrite rule that replaces any lingering passive-threat language.

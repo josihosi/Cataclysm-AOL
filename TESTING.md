@@ -51,8 +51,9 @@ Current honest state:
 - Package 1, micro-item 5 is now answered too: moving bounty now stays source-shaped, with explicit actor/group, route/corridor, and site-centered activity attachments instead of blurring back into structural terrain value
 - Package 1, micro-item 6 is now answered too: moving bounty cleanup now happens by evidence-driven refresh, overwrite, clear, replacement, or coexistence on the current carrier instead of passive timer-shave language
 - adjacent parked substrate wording was tightened too: the scoring/concept docs now say moving bounty is rewritten or cleared by changed evidence or negative recheck, while cheap cleanup only prunes weak unsupported clutter
-- the next honest active slice is Package 1, micro-item 7, `Threat source table`
-- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should name the source families that create threat marks in the first place without smuggling in threat rewrite, coexistence, or stockpile-law decisions
+- Package 1, micro-item 7 is now answered too: threat marks now explicitly come from direct humans, organized defenders, fortification signs, searchlights/watch routines, combat-contact cues, failed probes, recent losses, and zombie/monster pressure, while ordinary smoke/light/traffic stays bounty-first unless paired with harder danger evidence
+- the next honest active slice is Package 1, micro-item 8, `Threat rewrite rule`
+- the immediate evidence bar is still documentation consistency, not compile or harness proof: the next patch should define exactly which rechecks and observations raise, confirm, or lower threat without smuggling in threat/bounty coexistence or stockpile-law decisions
 
 ### Recently closed, do not casually reopen
 
@@ -83,8 +84,8 @@ Current honest state:
 
 ## Pending probes
 
-- land Package 1, micro-item 7, `Threat source table`, as one bounded doc/spec slice
-- reread only the adjacent parked bandit substrate needed to keep that threat-source table consistent and separate from later threat rewrite/coexistence law
+- land Package 1, micro-item 8, `Threat rewrite rule`, as one bounded doc/spec slice
+- reread only the adjacent parked bandit substrate needed to keep that threat-rewrite rule consistent and separate from later threat/bounty coexistence law
 
 ---
 
