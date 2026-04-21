@@ -8,9 +8,9 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Bandit concealment seam v0`
+Active lane: `Bandit scoring refinement seam v0`
 
-- Freeze the active contract at `doc/bandit-concealment-seam-v0-2026-04-21.md` and keep the lane framed as light concealment first, not broad weather/concealment expansion.
-- Land one bounded concealment adapter on the current light signal seam by reusing existing local light truth, collapsing it into coarse directional outward exposure, and reducing it via daylight, weather/visibility penalties, and containment/terrain.
-- Prove the key bounded distinctions honestly: daylight suppression, weather penalty, contained versus exposed light, and side-dependent leakage/suppression.
-- Keep the slice cheap and inspectable; if the implementation starts looking computationally suspicious, include one small reviewer-readable cost/probe angle instead of hand-waving.
+- Freeze the active contract at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md` and keep the lane framed as scoring refinement on the current evaluator seam, not a fresh threat/world architecture pass.
+- Inspect the current dry-run threat/danger footing first and identify the smallest bounded collapse that can sharpen job choice without inventing new signal machinery.
+- Land one bounded scoring-refinement adapter that preserves the product split: avoid clearly strong targets, but pounce when zombie pressure or other distraction lowers effective target coherence.
+- Prove the key bounded distinctions honestly: one clearly too-strong target gets rejected or deferred, one distracted target becomes materially more attractive, and reviewer-readable output explains why.

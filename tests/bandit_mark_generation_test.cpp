@@ -137,6 +137,7 @@ TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_bu
         bandit_mark_generation::light_weather_band::clear,
         bandit_mark_generation::light_exposure_band::exposed,
         bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::open,
         { "Exposed night light can be worth scoping out from far away." }
     };
     const bandit_mark_generation::light_packet contained_night_packet = {
@@ -152,6 +153,7 @@ TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_bu
         bandit_mark_generation::light_weather_band::clear,
         bandit_mark_generation::light_exposure_band::contained,
         bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::built_cover,
         { "Contained night light should not become a world-map beacon." }
     };
     const bandit_mark_generation::light_packet daylight_packet = {
@@ -167,6 +169,7 @@ TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_bu
         bandit_mark_generation::light_weather_band::clear,
         bandit_mark_generation::light_exposure_band::exposed,
         bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::open,
         { "Daylight should suppress distant light usefulness." }
     };
     const bandit_mark_generation::light_packet screened_side_packet = {
@@ -182,6 +185,7 @@ TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_bu
         bandit_mark_generation::light_weather_band::clear,
         bandit_mark_generation::light_exposure_band::screened,
         bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::open,
         { "One side leak should extend the readable range compared to flat screened glow." }
     };
     const bandit_mark_generation::light_packet searchlight_packet = {
@@ -197,6 +201,7 @@ TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_bu
         bandit_mark_generation::light_weather_band::clear,
         bandit_mark_generation::light_exposure_band::exposed,
         bandit_mark_generation::light_source_band::searchlight,
+        bandit_mark_generation::light_terrain_band::open,
         { "Searchlight exposure should lean threat-first." }
     };
 
@@ -227,6 +232,65 @@ TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_bu
     CHECK( searchlight_projection.signal.bounty_add == 0 );
     CHECK( searchlight_projection.signal.threat_add == 1 );
     CHECK( searchlight_projection.signal.threat_gate_result == bandit_dry_run::threat_gate::soft_veto );
+    CHECK( exposed_projection.review_summary.find( "verdict=allowed" ) != std::string::npos );
+    CHECK( screened_side_projection.review_summary.find( "verdict=reduced" ) != std::string::npos );
+    CHECK( contained_projection.review_summary.find( "verdict=blocked" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_mark_generation_light_concealment_reports_weather_and_terrain_reduction",
+           "[bandit][marks]" )
+{
+    const bandit_mark_generation::light_packet forest_screen_packet = {
+        "forest_lantern",
+        "forest_lantern",
+        "tree_line_farm",
+        bandit_dry_run::lead_family::site,
+        4,
+        2,
+        1,
+        2,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::rain,
+        bandit_mark_generation::light_exposure_band::screened,
+        bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::forest,
+        { "Forest cover and rain should keep this clue narrow." }
+    };
+    const bandit_mark_generation::light_packet blocked_day_packet = {
+        "day_forest_glow",
+        "day_forest_glow",
+        "tree_line_farm",
+        bandit_dry_run::lead_family::site,
+        2,
+        2,
+        1,
+        0,
+        bandit_mark_generation::light_time_band::daylight,
+        bandit_mark_generation::light_weather_band::fog,
+        bandit_mark_generation::light_exposure_band::screened,
+        bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::forest,
+        { "Daylight plus heavy concealment should block this clue outright." }
+    };
+
+    const bandit_mark_generation::light_projection reduced_projection =
+        bandit_mark_generation::adapt_light_packet( forest_screen_packet );
+    const bandit_mark_generation::light_projection blocked_projection =
+        bandit_mark_generation::adapt_light_packet( blocked_day_packet );
+
+    CHECK( reduced_projection.viable );
+    CHECK( reduced_projection.projected_range_omt == 4 );
+    CHECK( reduced_projection.review_summary.find( "verdict=reduced" ) != std::string::npos );
+    CHECK( reduced_projection.review_summary.find( "weather_penalty=2" ) != std::string::npos );
+    CHECK( reduced_projection.review_summary.find( "terrain=forest" ) != std::string::npos );
+    REQUIRE( reduced_projection.signal.notes.size() >= 3 );
+    CHECK( reduced_projection.signal.notes[2].find( "verdict=reduced" ) != std::string::npos );
+
+    CHECK_FALSE( blocked_projection.viable );
+    CHECK( blocked_projection.projected_range_omt == 0 );
+    CHECK( blocked_projection.review_summary.find( "verdict=blocked" ) != std::string::npos );
+    CHECK( blocked_projection.review_summary.find( "time_penalty=6" ) != std::string::npos );
+    CHECK( blocked_projection.review_summary.find( "terrain_penalty=2" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_mark_generation_human_route_adapter_keeps_sightings_mobile_and_routine_suppressed",

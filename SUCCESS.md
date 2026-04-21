@@ -17,24 +17,25 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Bandit concealment seam v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded concealment adapter exists on the current light signal seam, weakening outward light legibility when exposure is poor instead of inventing a second fake visibility machine.
-- [ ] Deterministic coverage proves the key bounded distinctions honestly: daylight suppression, weather penalty, containment, and side-dependent leakage/suppression.
-- [ ] Reviewer-readable output shows why a light-born mark was reduced, blocked, or allowed instead of hiding the answer in debugger soup.
-- [ ] The slice stays bounded: no broad all-signals concealment rewrite, no new fog-sound law, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion.
-- [ ] If the concealment adapter starts looking computationally suspicious, the packet carries one small readable cost/probe angle instead of deferring perf truth to later folklore.
+- [x] One bounded concealment adapter exists on the current light signal seam, weakening outward light legibility when exposure is poor instead of inventing a second fake visibility machine.
+- [x] Deterministic coverage proves the key bounded distinctions honestly: daylight suppression, weather penalty, containment, and side-dependent leakage/suppression.
+- [x] Reviewer-readable output shows why a light-born mark was reduced, blocked, or allowed instead of hiding the answer in debugger soup.
+- [x] The slice stays bounded: no broad all-signals concealment rewrite, no new fog-sound law, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion.
+- [x] If the concealment adapter starts looking computationally suspicious, the packet carries one small readable cost/probe angle instead of deferring perf truth to later folklore.
 
 Notes:
 - Canonical contract lives at `doc/bandit-concealment-seam-v0-2026-04-21.md`.
-- This greenlight is the next narrow promotion after the first honest 500-turn playback proof, but the scope is explicitly **light concealment first** with weather only as a reducer.
+- This narrow promotion is now checkpointed on the current light seam: `src/bandit_mark_generation.{h,cpp}` carries the concealment reduction and reviewer-readable verdict summary, with deterministic proof in `tests/bandit_mark_generation_test.cpp` plus `tests/bandit_playback_test.cpp`.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 
 ## Bandit scoring refinement seam v0
 
-Status: GREENLIT / QUEUED NEXT
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] One bounded scoring-refinement adapter exists on the current bandit dry-run/evaluator seam, refining how existing camp ledger state plus existing marks become job choice.
@@ -45,7 +46,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`.
-- This is the queued greenlit follow-up behind the active concealment lane, not permission to preempt the current active item.
+- This is now the active greenlit follow-up after the concealment checkpoint closed, not permission to widen into broader world-sim work.
 
 ---
 

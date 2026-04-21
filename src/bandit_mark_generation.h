@@ -2,6 +2,7 @@
 
 #include "bandit_dry_run.h"
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -41,6 +42,12 @@ enum class light_exposure_band {
 enum class light_source_band {
     ordinary,
     searchlight,
+};
+
+enum class light_terrain_band {
+    open,
+    built_cover,
+    forest,
 };
 
 enum class human_route_kind {
@@ -117,15 +124,29 @@ struct light_packet {
     light_weather_band weather = light_weather_band::clear;
     light_exposure_band exposure = light_exposure_band::screened;
     light_source_band source = light_source_band::ordinary;
+    light_terrain_band terrain = light_terrain_band::open;
     std::vector<std::string> notes;
+};
+
+struct light_concealment_packet {
+    int daylight_penalty = 0;
+    int weather_penalty = 0;
+    int exposure_bonus = 0;
+    int side_leakage_bonus = 0;
+    int terrain_penalty = 0;
+    int visibility_modifier = 0;
+    std::string verdict;
+    std::string summary;
 };
 
 struct light_projection {
     light_packet packet;
     signal_input signal;
+    light_concealment_packet concealment;
     int visibility_score = 0;
     int projected_range_omt = 0;
     bool viable = false;
+    std::string review_summary;
 };
 
 struct human_route_packet {
@@ -230,6 +251,7 @@ std::string to_string( light_time_band time );
 std::string to_string( light_weather_band weather );
 std::string to_string( light_exposure_band exposure );
 std::string to_string( light_source_band source );
+std::string to_string( light_terrain_band terrain );
 std::string to_string( human_route_kind kind );
 std::string to_string( human_route_origin origin );
 std::string to_string( human_route_corroboration corroboration );

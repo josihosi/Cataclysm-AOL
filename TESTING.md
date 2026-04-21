@@ -39,17 +39,26 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-There is currently one active greenlit lane: `Bandit concealment seam v0`.
+There is currently one active greenlit lane: `Bandit scoring refinement seam v0`.
 
-### Active lane — Bandit concealment seam v0
+### Active lane — Bandit scoring refinement seam v0
 
 Current honest evidence burden:
-- this canon patch only freezes the active contract at `doc/bandit-concealment-seam-v0-2026-04-21.md`; there is no new code evidence yet
-- the active slice is bounded to **light concealment first** on top of the existing light-mark seam, with weather only as a reducer rather than a new subsystem
-- the first honest code proof should stay narrow and deterministic on the current bandit seam, proving daylight suppression, weather penalty, containment, and side-dependent leakage/suppression reviewer-cleanly
-- if the concealment adapter starts thickening the cost story, include one small readable perf/cost angle with the same narrow packet instead of saving that question for later review theater
+- this canon patch promotes the active contract to `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`; there is no new scoring code evidence yet
+- the active slice is bounded to the current dry-run/evaluator seam, refining how existing camp state plus existing marks become job choice without inventing new signal machinery
+- the first honest code proof should stay narrow and deterministic on the current bandit seam, proving the opportunism split reviewer-cleanly: one clearly too-strong target gets rejected or deferred, one distracted target becomes materially more attractive, and one neutral case stays sane
+- reviewer-readable output should explain why a target was avoided, deferred, or exploited instead of hiding the refined choice in score soup
 
-### Latest closed lane — Bandit first 500-turn playback proof v0
+### Latest closed lane — Bandit concealment seam v0
+
+Current honest state:
+- `src/bandit_mark_generation.{h,cpp}` now carries a bounded concealment reduction on the current light seam, applying daylight, weather, containment/terrain, and side-leakage modifiers on top of existing local light truth instead of inventing a second visibility machine
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: daylight suppression, weather penalty, containment, side-dependent leakage/suppression, and reviewer-readable reduced/blocked/allowed verdicts
+- the reviewer-readable report path now exposes the concealment summary directly in generated light-mark output instead of hiding it in debugger soup
+- the slice stayed bounded and cheap: no broad all-signals concealment rewrite, no fog-sound law, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion, so no extra perf probe was needed
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+### Recently closed lane — Bandit first 500-turn playback proof v0
 
 Current honest state:
 - the current abstract bandit seams now have a first-class long-horizon proof path: `src/bandit_playback.{h,cpp}` adds `proof_packet_result`, `run_first_500_turn_playback_proof()`, and `render_first_500_turn_playback_proof( const proof_packet_result &result )`
@@ -152,8 +161,8 @@ Current honest state:
 
 ### Meaning
 
-- there is currently no active greenlit lane, so there is no current missing evidence packet to keep rerunning
-- do not reopen the smoke bridge, light bridge, human / route bridge, repeated-site reinforcement seam, first 500-turn proof, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
+- there is currently one active greenlit lane again, namely Bandit scoring refinement seam v0
+- do not reopen the concealment seam, smoke bridge, light bridge, human / route bridge, repeated-site reinforcement seam, first 500-turn proof, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
 - the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
 - the writer-side bandit mark-generation seam is now checkpointed closed too
 
@@ -161,8 +170,8 @@ Current honest state:
 
 ## Pending probes
 
-- For `Bandit concealment seam v0`, the first honest code packet should use the narrowest deterministic `[bandit]` coverage that proves daylight suppression, weather penalty, containment, and side-dependent leakage/suppression on the current light seam.
-- If the implementation adds suspicious fan-out or hidden per-candidate work, add one bounded reviewer-readable cost/probe angle to the same packet.
+- For `Bandit scoring refinement seam v0`, the first honest code packet should use the narrowest deterministic `[bandit]` coverage that proves one too-strong target gets rejected or deferred, one distracted target becomes materially more attractive, and one neutral case stays sane on the current evaluator seam.
+- If the scoring refinement starts layering hidden churn or extra passes across the current evaluator seam, add one bounded reviewer-readable cost/probe angle to the same packet.
 
 ---
 

@@ -2,12 +2,12 @@
 
 ## Status
 
-This is **ACTIVE / GREENLIT**.
-It is the next narrow bandit promotion after the first honest 500-turn playback proof.
+This is **CHECKPOINTED / DONE FOR NOW**.
+It is the closed narrow concealment promotion after the first honest 500-turn playback proof.
 
-This is **not** permission to implement the whole visibility/concealment system.
-For v0, the lane is explicitly **light concealment first**.
-Weather belongs only as a reducer/modifier, not as the main feature.
+This was **not** permission to implement the whole visibility/concealment system.
+For v0, the lane stayed explicitly **light concealment first**.
+Weather stayed only as a reducer/modifier, not as the main feature.
 
 ---
 
