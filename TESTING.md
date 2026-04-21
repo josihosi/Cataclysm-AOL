@@ -60,6 +60,7 @@ Queued proof burden:
 - the queued contract lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`
 - nearby cross-z visibility should stay sane instead of acting like stairs are amnesia beams
 - elevated exposed light may stay legible or actionable farther than ordinary hidden light under the right conditions without becoming magical global sight
+- the packet should include one flagship exposed-high-fire benchmark, for example a radio-tower fire in a dead dark world, where very long-range visibility is required product truth instead of a vague maybe
 - the same meaningful elevated light should matter to zombie-horde pressure too instead of becoming private bandit-only theater
 - smoke should stay honest on the vertical axis too, with no magical extra general reach just because the source changed floors
 - keep the slice bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim

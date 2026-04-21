@@ -42,6 +42,7 @@ Success state:
 - [ ] One bounded elevated-light and z-level visibility packet exists on the current bandit playback / proof seam.
 - [ ] Deterministic proof shows nearby cross-z visibility behaves sensibly instead of collapsing into floor-bound amnesia.
 - [ ] Deterministic proof shows elevated exposed light can stay legible or actionable farther than ordinary hidden light under the right conditions without turning into magical global sight.
+- [ ] A flagship exposed-high-fire scenario, for example a radio-tower fire in a dead dark world, proves genuinely long-range visibility instead of timid toy-local range.
 - [ ] Matching scenarios prove the same meaningful elevated light can influence zombie-horde pressure too instead of living in private bandit-only theater.
 - [ ] Deterministic proof shows smoke does **not** gain magical extra general reach merely from floor changes.
 - [ ] Reviewer-readable output exposes the visibility read and benchmark outcomes clearly enough that later playtesting can argue about tuning instead of first principles.

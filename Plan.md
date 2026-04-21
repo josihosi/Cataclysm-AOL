@@ -821,6 +821,7 @@ Current queued contract:
 - the authoritative contract lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`
 - nearby cross-z visibility should stay sane instead of acting like stairs are amnesia beams
 - elevated exposed light may stay legible or actionable farther than ordinary hidden light under the right conditions, without turning into magical global sight
+- a flagship exposed-high-fire case, for example a radio-tower fire in a dead dark world, should be visible from very far away instead of collapsing into timid toy-local range
 - the same meaningful light should matter to zombie-horde pressure too instead of becoming private bandit-only theater
 - smoke should stay honest on the vertical axis too: do not smuggle in magical extra general reach just because the source changed floors
 - the slice stays bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim
