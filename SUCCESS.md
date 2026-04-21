@@ -15,6 +15,61 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Bandit long-range directional light proof packet v0
+
+Status: ACTIVE / GREENLIT
+
+Success state:
+- [ ] One bounded long-range directional-light proof packet exists on the current bandit scenario / playback seam.
+- [ ] Deterministic multi-turn proof up to `500` turns shows the hidden-side leakage case stays non-actionable while the visible-side leakage case becomes actionable under the same broader footing.
+- [ ] The matching zombie-horde corridor variant proves the same light can influence horde pressure too instead of existing in isolated bandit-only theater.
+- [ ] Each scenario carries explicit goals and tuning metrics, and reviewer-readable output shows whether those benchmarks were met.
+- [ ] The slice stays bounded: no z-level expansion, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump.
+
+Notes:
+- Canonical contract lives at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`.
+- Josef explicitly tightened the testing bar here: single-turn proofs are not enough by themselves. This packet needs real overmap-side multi-turn scenario proof with explicit benchmarks.
+
+---
+
+## Bandit overmap/local pressure rewrite packet v0
+
+Status: GREENLIT / QUEUED NEXT
+
+Success state:
+- [ ] One bounded overmap/local pressure-rewrite proof packet exists on the current bandit scenario / playback footing.
+- [ ] Deterministic multi-turn proof shows a stalking or intercept posture can honestly cool, retreat, or reroute after local reality makes the original posture too dangerous.
+- [ ] Reviewer-readable output shows the pressure rewrite clearly enough to explain why the stale pursuit no longer holds.
+- [ ] Each scenario carries explicit goals and tuning metrics, and benchmark outcomes are visible in the report.
+- [ ] The slice stays bounded: no broad handoff redesign, no tactical local combat AI expansion, and no fresh world-sim jump.
+
+Notes:
+- Canonical contract lives at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`.
+- This is greenlit behind the active directional-light proof packet, not permission to preempt it.
+
+---
+
+## Bandit bounded scout/explore seam v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One explicit bounded scout/explore option exists on the current dry-run evaluator seam, for map uncovering only.
+- [x] Unreachable jobs still fail closed and do not auto-mint explore as a consolation prize.
+- [x] Deterministic coverage proves the key bounded distinctions honestly: explicit explore can beat `hold / chill`, blocked routes do not create explore without explicit greenlight, and strong real reachable leads still outrank exploratory wandering.
+- [x] Reviewer-readable dry-run output says plainly that the outing is explicit map uncovering and not accidental random wandering.
+- [x] One small playback/reference scenario packet proves the same rule on the current scenario seam, with explicit goals and tuning metrics.
+- [x] The slice stays bounded: no coalition logic, no fresh visibility family, no broad pathfinding rewrite, and no handoff expansion.
+
+Notes:
+- Canonical contract lives at `doc/bandit-bounded-scout-explore-seam-v0-2026-04-21.md`.
+- The current tree now carries the bounded evaluator packet in `src/bandit_dry_run.{h,cpp}`, using explicit `camp_input` footing for bounded explore instead of smuggling wandering out of failed routes.
+- Deterministic coverage in `tests/bandit_dry_run_test.cpp` now proves the explicit-greenlight, blocked-route, and strong-real-lead splits reviewer-cleanly.
+- `src/bandit_playback.cpp` now carries the named `bounded_explore_frontier_tripwire` scenario packet with explicit goals and tuning metrics, and `tests/bandit_playback_test.cpp` proves the same rule on the scenario seam.
+- Narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][dry_run]"`, and `./tests/cata_test "[bandit][playback]"`.
+
+---
+
 ## Bandit concealment seam v0
 
 Status: CHECKPOINTED / DONE FOR NOW
@@ -35,35 +90,40 @@ Notes:
 
 ## Bandit scoring refinement seam v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded scoring-refinement adapter exists on the current bandit dry-run/evaluator seam, refining how existing camp ledger state plus existing marks become job choice.
-- [ ] The threat side first inspects and collapses usable existing threat/danger footing instead of inventing a fresh bespoke threat ontology.
-- [ ] Deterministic coverage proves the key opportunism split honestly: bandits avoid strong opponents, but pounce when zombie pressure or other distraction lowers effective target coherence.
-- [ ] Reviewer-readable output shows the refined choice breakdown clearly enough to explain why a target was avoided, deferred, or exploited.
-- [ ] The slice stays bounded: no new visibility signal family, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion.
+- [x] One bounded scoring-refinement adapter exists on the current bandit dry-run/evaluator seam, refining how existing camp ledger state plus existing marks become job choice.
+- [x] The threat side first inspects and collapses usable existing threat/danger footing instead of inventing a fresh bespoke threat ontology.
+- [x] Deterministic coverage proves the key opportunism split honestly: bandits avoid strong opponents, but pounce when zombie pressure or other distraction lowers effective target coherence.
+- [x] Reviewer-readable output shows the refined choice breakdown clearly enough to explain why a target was avoided, deferred, or exploited.
+- [x] The slice stays bounded: no new visibility signal family, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion.
 
 Notes:
 - Canonical contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`.
-- This is now the active greenlit follow-up after the concealment checkpoint closed, not permission to widen into broader world-sim work.
+- The current tree now carries the bounded scoring packet in `src/bandit_dry_run.{h,cpp}` plus the mark-to-evaluator bridge update in `src/bandit_mark_generation.cpp`, with deterministic proof in `tests/bandit_dry_run_test.cpp` and `tests/bandit_mark_generation_test.cpp`.
+- The landed packet keeps the danger collapse small and inspectable: existing monster pressure plus target-coherence loss now reduce effective threat and add a bounded opportunism push on aggressive jobs instead of inventing a fresh threat cosmology.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 
 ## Bandit moving-bounty memory seam v0
 
-Status: GREENLIT / QUEUED NEXT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded moving-bounty memory object exists for live `actor` or `corridor` style bounty, while structural bounty stays on site state instead of gaining chase memory.
-- [ ] Structural sites keep only cheap state such as harvested / recently-checked / false-lead / sticky-threat footing, with no stalking logic glued onto them.
-- [ ] Deterministic coverage proves the key bounded pursuit split honestly: live moving prey can be stalked briefly, but the memory collapses cleanly on lost contact, split, bad recheck, rising threat, or leash expiry instead of retrying forever.
-- [ ] Reviewer-readable output shows whether a moving lead was refreshed, narrowed, converted, or dropped instead of hiding the memory state in debugger soup.
-- [ ] The slice stays computationally cheap: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, no endless retry loop, and no broad memory-palace world model.
+- [x] One bounded moving-bounty memory object exists for live `actor` or `corridor` style bounty, while structural bounty stays on site state instead of gaining chase memory.
+- [x] Structural sites keep only cheap state such as harvested / recently-checked / false-lead / sticky-threat footing, with no stalking logic glued onto them.
+- [x] Deterministic coverage proves the key bounded pursuit split honestly: live moving prey can be stalked briefly, but the memory collapses cleanly on lost contact, split, bad recheck, rising threat, or leash expiry instead of retrying forever.
+- [x] Reviewer-readable output shows whether a moving lead was refreshed, narrowed, or dropped instead of hiding the memory state in debugger soup.
+- [x] The slice stays computationally cheap: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, no endless retry loop, and no broad memory-palace world model.
 
 Notes:
 - Canonical contract lives at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`.
-- This is the queued greenlit follow-up behind the active scoring lane, not permission to preempt the current active item.
+- The current tree now carries the bounded moving-memory packet in `src/bandit_mark_generation.{h,cpp}`, keeping moving-carrier and corridor leads briefly stalkable while structural/site state stays cheap and non-chasing.
+- Deterministic coverage in `tests/bandit_mark_generation_test.cpp` proves the bounded split honestly: moving prey persists briefly after raw signal cooling, structural sites do not gain chase memory, and stale moving contact drops reviewer-cleanly on leash expiry.
+- `tests/bandit_playback_test.cpp` now keeps the corridor playback packet aligned with the bounded pursuit window instead of pretending the corridor mark evaporates immediately.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 

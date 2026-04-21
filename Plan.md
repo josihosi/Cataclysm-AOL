@@ -39,16 +39,21 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently no active greenlit lane.
+There is currently one active greenlit lane: **Bandit long-range directional light proof packet v0**.
+Josef also explicitly greenlit the next follow-up behind it: **Bandit overmap/local pressure rewrite packet v0**.
 
-The earlier **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, and now **Bandit bounded scout/explore seam v0** are checkpointed closed.
+The earlier **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, and **Bandit bounded scout/explore seam v0** are checkpointed closed.
 Do not reopen them just because they are nearby.
 
-Current canon implication:
-- the explicit bounded scout/explore packet is now closed with dry-run plus playback/reference proof
-- unreachable jobs still fail closed and do **not** mint accidental random wandering
-- camps stay independent with their own maps and bounty reads, and other camps still read more like threat-bearing spots than default allies
-- the next throughput pass needs the next bounded parked-chain promotion to be chosen honestly instead of smuggling in a wider scope jump
+Current active contract:
+- the authoritative contract lives at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
+- prove the directional long-range light split honestly on the current playback/proof seam: hidden-side leakage stays non-actionable, visible-side leakage becomes actionable, and the matching corridor case still shares consequences with zombie pressure
+- this packet must carry real overmap-side multi-turn proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics instead of only single-turn unit theater
+- keep the slice bounded: no z-level expansion, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump
+
+Queued greenlit next item:
+- **Bandit overmap/local pressure rewrite packet v0** is now greenlit behind the active directional-light proof, with the contract at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
+- the intended product direction is to prove that stale pursuit posture can cool or retreat when local reality turns much hotter, using the same multi-turn benchmark discipline rather than more single-turn legality checks
 
 Fresh checkpoints that stay closed:
 - **Bandit moving-bounty memory seam v0** is now honestly checkpointed too:
@@ -647,7 +652,44 @@ Keep this lane closed unless later canon or later evidence says the memory packe
 
 ---
 
-## 16. Checkpointed — Bandit bounded scout/explore seam v0
+## 16. Active greenlit — Bandit long-range directional light proof packet v0
+
+**Status:** ACTIVE / GREENLIT
+
+Josef explicitly greenlit this as the next active narrow bandit promotion.
+He also tightened the testing bar here: single-turn proofs are not enough by themselves.
+The packet needs real overmap-side multi-turn scenario proof with explicit benchmarks, up to `500` turns where that is the honest horizon.
+
+Current contract:
+- the authoritative contract lives at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
+- prove the hidden-side versus visible-side directional-light split honestly on the current playback/proof seam
+- the hidden-side case must stay non-actionable, while the visible-side case becomes actionable under the same broader footing
+- include the matching zombie-horde corridor variant so the same light does not become private bandit-only truth
+- keep the slice bounded: no z-level packet, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump
+
+Keep this item active greenlit unless later canon finds a contradiction in the proof shape or the implementation surfaces a real blocker.
+
+---
+
+## 17. Greenlit next — Bandit overmap/local pressure rewrite packet v0
+
+**Status:** GREENLIT / QUEUED NEXT
+
+Josef explicitly greenlit this too, but not as the first active lane.
+It stays queued behind the active directional-light proof packet.
+
+Current contract:
+- the authoritative contract lives at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
+- prove that a stalking or intercept posture can be rewritten honestly after local contact makes the tile much hotter than the old overmap read
+- keep the proof reviewer-readable, with explicit before/after posture output plus per-scenario goals and tuning metrics
+- land it as real multi-turn overmap-side proof rather than another single-turn legality check
+- keep the slice bounded: no broad handoff redesign, no tactical local combat AI pass, and no fresh world-sim jump
+
+Keep this item queued greenlit unless the active lane changes priority or later canon finds a contradiction in the rewrite contract.
+
+---
+
+## 18. Checkpointed — Bandit bounded scout/explore seam v0
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -667,7 +709,7 @@ The next throughput pass should choose the next bounded parked-chain promotion i
 
 ---
 
-## 17. Parked concept chain — Bandit overmap AI
+## 19. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / COHERENT SUBSTRATE
 
@@ -685,6 +727,8 @@ Current parked sub-items:
 - player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
 
 Promoted out of the parked chain into explicit canon lanes:
+- active now: long-range directional light proof packet v0 at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
+- queued greenlit next: overmap/local pressure rewrite packet v0 at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
 - checkpointed now: bounded scout/explore seam v0 at `doc/bandit-bounded-scout-explore-seam-v0-2026-04-21.md`
 - checkpointed now: concealment seam v0 at `doc/bandit-concealment-seam-v0-2026-04-21.md`
 - checkpointed now: scoring refinement seam v0 at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
@@ -722,6 +766,7 @@ What the current parked sub-items should do:
 - resolved note-5 anti-dogpile footing: territoriality, distance burden, depletion, sticky threat, and fresh active-pressure penalties should suppress repeated multi-camp pile-ons against the same region
 - resolved note-5 scope footing: deliberate alliances, campaign planning, and explicit multi-camp coordination are later-layer strategy material, not part of the current parked v1 shape
 - resolved testing-priority footing: before reopening hazy handoff elaboration as a planning focus, prefer a complete multi-turn overmap AI scenario packet with per-scenario goals and tuning metrics so later balancing can ask whether behavior is actually rad, cool, and fun instead of merely mathematically legal
+- resolved testing-bar footing: for the remaining parked-chain proof packets, single-turn unit checks are not enough by themselves; the honest bar now includes real overmap-side multi-turn benchmark scenarios, up to `500` turns where needed
 
 The intended parked-chain order for now is:
 1. broad concept vessel
@@ -729,14 +774,14 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, then concealment, scoring refinement, moving-bounty memory, and the currently active bounded scout/explore packet, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
+6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, then concealment, scoring refinement, moving-bounty memory, bounded scout/explore, the currently active directional-light proof packet, and the queued pressure-rewrite packet behind it, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
 If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
 
 ---
 
-## 18. Documentation discipline
+## 20. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

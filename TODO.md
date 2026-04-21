@@ -8,9 +8,10 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Bandit scoring refinement seam v0`
+Current active lane: `Bandit long-range directional light proof packet v0`.
 
-- Freeze the active contract at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md` and keep the lane framed as scoring refinement on the current evaluator seam, not a fresh threat/world architecture pass.
-- Inspect the current dry-run threat/danger footing first and identify the smallest bounded collapse that can sharpen job choice without inventing new signal machinery.
-- Land one bounded scoring-refinement adapter that preserves the product split: avoid clearly strong targets, but pounce when zombie pressure or other distraction lowers effective target coherence.
-- Prove the key bounded distinctions honestly: one clearly too-strong target gets rejected or deferred, one distracted target becomes materially more attractive, and reviewer-readable output explains why.
+- Land the bounded long-range directional-light proof packet on the current bandit scenario / playback seam.
+- Add real overmap-side multi-turn benchmark scenarios, up to `500` turns where needed, instead of stopping at single-turn proof.
+- Prove the hidden-side leakage case stays non-actionable, while the visible-side leakage case becomes actionable under the same broader footing.
+- Include the matching zombie-horde corridor variant so the light does not become private bandit-only truth.
+- Keep the slice bounded: no z-level packet, no broad light rewrite, no handoff redesign, and no fresh world-sim jump.

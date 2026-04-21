@@ -35,21 +35,53 @@ Do not keep rerunning the same startup or test packet when it is no longer the m
 If startup/load is already green, and the missing proof is live behavior, then the next probe must target live behavior.
 If a target is merely waiting on Josef, do not keep revalidating it unless the code changed.
 
+### Bandit overmap-proof rule
+
+For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
+The honest bar now includes real overmap-side multi-turn scenario proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics.
+
 ---
 
 ## Current relevant evidence
 
-There is currently one active greenlit lane: `Bandit scoring refinement seam v0`.
+### Current active lane — Bandit long-range directional light proof packet v0
 
-### Active lane — Bandit scoring refinement seam v0
+Current expected evidence shape:
+- the next landed packet should add real multi-turn scenario proof on the current bandit playback/proof seam, not only one-tick mark tests
+- the proof should cover the directional split honestly: hidden-side leakage stays non-actionable, visible-side leakage becomes actionable, and the matching corridor case still shares consequences with zombie pressure
+- scenarios should carry explicit goals and tuning metrics, with reviewer-readable output showing whether those benchmarks were met across the multi-turn horizon
+- up to `500` turns is now part of the honest target where that longer horizon is what proves the behavior instead of just asserting it
 
-Current honest evidence burden:
-- this canon patch promotes the active contract to `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`; there is no new scoring code evidence yet
-- the active slice is bounded to the current dry-run/evaluator seam, refining how existing camp state plus existing marks become job choice without inventing new signal machinery
-- the first honest code proof should stay narrow and deterministic on the current bandit seam, proving the opportunism split reviewer-cleanly: one clearly too-strong target gets rejected or deferred, one distracted target becomes materially more attractive, and one neutral case stays sane
-- reviewer-readable output should explain why a target was avoided, deferred, or exploited instead of hiding the refined choice in score soup
+### Latest closed lane — Bandit bounded scout/explore seam v0
 
-### Latest closed lane — Bandit concealment seam v0
+Current honest state:
+- `src/bandit_dry_run.{h,cpp}` now carries one explicit bounded scout/explore packet on the current evaluator seam via `camp_input`, for map uncovering only instead of accidental random wandering
+- unreachable leads still fail closed as `no_path`, and the evaluator seam does not auto-mint explore just because a route is blocked
+- deterministic coverage in `tests/bandit_dry_run_test.cpp` proves the key bounded distinctions honestly: explicit explore can beat `hold / chill`, blocked routes do not create explore without the explicit greenlight, and strong real reachable leads still stay ahead when they score better
+- `src/bandit_playback.cpp` now carries the named `bounded_explore_frontier_tripwire` scenario packet with explicit goals and tuning metrics, and `tests/bandit_playback_test.cpp` proves the same rule on the scenario seam
+- reviewer-readable dry-run output now says plainly that the outing is explicit map uncovering and not accidental random wandering
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][dry_run]"`, and `./tests/cata_test "[bandit][playback]"`
+
+### Latest closed lane — Bandit moving-bounty memory seam v0
+
+Current honest state:
+- `src/bandit_mark_generation.{h,cpp}` now carries a bounded moving-memory packet for moving-carrier and corridor marks only, with leash, opportunity/threat bands, and reviewer-readable transition state instead of a broad memory architecture pass
+- structural/site marks stay on cheap site footing and do not gain chase memory
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` now proves the key bounded distinctions honestly: one moving lead persists for a short honest window after raw signal cooling, one structural/site lead does not gain chase memory, and one stale moving lead drops reviewer-cleanly on leash expiry instead of being chased forever
+- reviewer-readable output now explains whether a moving lead was refreshed, narrowed, or dropped instead of hiding the memory state in debugger soup
+- `tests/bandit_playback_test.cpp` now keeps the corridor playback packet aligned with the bounded memory window instead of pretending the mark cools all the way to quiet immediately
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+### Latest closed lane — Bandit scoring refinement seam v0
+
+Current honest state:
+- `src/bandit_dry_run.{h,cpp}` now carries a bounded danger-collapse packet on the current evaluator seam, forwarding existing monster-pressure and target-coherence footing into `effective_threat_penalty` plus a small opportunism bonus instead of inventing a fresh threat ontology
+- `src/bandit_mark_generation.cpp` now forwards existing `monster_pressure_add` and `target_coherence_subtract` into emitted leads so current marks actually drive the refined score choice instead of burying that footing inside one undifferentiated threat number
+- deterministic coverage in `tests/bandit_dry_run_test.cpp` and `tests/bandit_mark_generation_test.cpp` now proves the key bounded distinctions honestly: one clearly strong target still gets deferred, one distracted target becomes materially more attractive, one neutral case stays sane, and reviewer-readable output exposes raw threat, collapsed threat, and the bounded opportunism window
+- the slice stayed bounded: no new visibility signal family, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+### Recently closed lane — Bandit concealment seam v0
 
 Current honest state:
 - `src/bandit_mark_generation.{h,cpp}` now carries a bounded concealment reduction on the current light seam, applying daylight, weather, containment/terrain, and side-leakage modifiers on top of existing local light truth instead of inventing a second visibility machine
@@ -161,8 +193,9 @@ Current honest state:
 
 ### Meaning
 
-- there is currently one active greenlit lane again, namely Bandit scoring refinement seam v0
-- do not reopen the concealment seam, smoke bridge, light bridge, human / route bridge, repeated-site reinforcement seam, first 500-turn proof, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
+- there is currently no active greenlit lane in repo canon
+- the bounded scout/explore seam is now checkpointed closed with dry-run plus playback/reference proof
+- do not reopen the scoring seam, concealment seam, smoke bridge, light bridge, human / route bridge, repeated-site reinforcement seam, first 500-turn proof, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
 - the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
 - the writer-side bandit mark-generation seam is now checkpointed closed too
 
@@ -170,8 +203,8 @@ Current honest state:
 
 ## Pending probes
 
-- For `Bandit scoring refinement seam v0`, the first honest code packet should use the narrowest deterministic `[bandit]` coverage that proves one too-strong target gets rejected or deferred, one distracted target becomes materially more attractive, and one neutral case stays sane on the current evaluator seam.
-- For queued `Bandit moving-bounty memory seam v0`, do not start active proof work yet; when it becomes active later, the first honest code packet should prove live moving prey can be stalked briefly, but the memory collapses cleanly on loss, split, bad recheck, rising threat, or leash expiry.
+- Active next proof obligation: land the multi-turn directional-light benchmark packet on the current bandit playback/proof seam.
+- After that, the next queued proof obligation is `Bandit overmap/local pressure rewrite packet v0`, also with explicit multi-turn goals and tuning metrics instead of single-turn legality checks.
 
 ---
 
