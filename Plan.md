@@ -49,6 +49,10 @@ Current active contract:
 - preserve the product read that bandits avoid strong opponents but opportunistically pounce when zombie pressure or other distraction lowers effective target coherence
 - keep the slice bounded: no new visibility signals, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
 
+Queued greenlit next item:
+- **Bandit moving-bounty memory seam v0** is now greenlit as the next queued follow-up after scoring, with the contract at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
+- the intended product direction is tiny and cheap: structural bounty stays on site state, while only moving/NPC bounty gets a bounded source-shaped pursuit memory with confidence plus leash so camps can stalk briefly without becoming immortal GPS idiots
+
 Fresh checkpoints that stay closed:
 - **Bandit concealment seam v0** is now honestly checkpointed too:
   - `src/bandit_mark_generation.{h,cpp}` now carries a bounded light concealment reduction on the current light-mark seam, reusing existing local light truth while applying daylight, weather, containment/terrain, and side-leakage modifiers instead of inventing a second visibility machine
@@ -623,7 +627,26 @@ Keep this item active greenlit unless later canon changes priority or finds a co
 
 ---
 
-## 15. Parked concept chain — Bandit overmap AI
+## 15. Greenlit next — Bandit moving-bounty memory seam v0
+
+**Status:** GREENLIT / QUEUED NEXT
+
+Josef explicitly greenlit this as the next queued bandit item behind the active scoring lane.
+Keep it small, cheap, and stupid in the good way.
+Do not quietly widen it into a general memory architecture pass.
+
+Current contract:
+- the authoritative contract lives at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
+- structural bounty stays on site state such as harvested / recently-checked / false-lead / sticky threat, not chase memory
+- only moving/NPC bounty gets a tiny source-shaped memory object so camps can briefly stalk, shadow, or intercept live prey
+- the moving memory must stay bounded by confidence plus leash and collapse cleanly on loss, split, bad recheck, rising threat, or outing expiry instead of retrying forever
+- keep the slice computationally cheap: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, and no broad memory-palace world model
+
+Keep this item queued greenlit unless the active scoring lane changes priority or later canon finds a contradiction in the memory contract.
+
+---
+
+## 16. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / COHERENT SUBSTRATE
 
@@ -643,6 +666,7 @@ Current parked sub-items:
 Promoted out of the parked chain into explicit canon lanes:
 - checkpointed now: concealment seam v0 at `doc/bandit-concealment-seam-v0-2026-04-21.md`
 - active now: scoring refinement seam v0 at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- queued greenlit next: moving-bounty memory seam v0 at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
 - checkpointed earlier: smoke, light, human / route, repeated-site reinforcement, and the first honest 500-turn proof
 
 Supporting recon note for the visibility item:
@@ -676,14 +700,14 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, concealment now checkpointed closed, and scoring refinement promoted active, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
+6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, concealment now checkpointed closed, scoring refinement promoted active, and moving-bounty memory promoted queued greenlit next, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
 If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
 
 ---
 
-## 16. Documentation discipline
+## 17. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

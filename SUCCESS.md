@@ -50,6 +50,23 @@ Notes:
 
 ---
 
+## Bandit moving-bounty memory seam v0
+
+Status: GREENLIT / QUEUED NEXT
+
+Success state:
+- [ ] One bounded moving-bounty memory object exists for live `actor` or `corridor` style bounty, while structural bounty stays on site state instead of gaining chase memory.
+- [ ] Structural sites keep only cheap state such as harvested / recently-checked / false-lead / sticky-threat footing, with no stalking logic glued onto them.
+- [ ] Deterministic coverage proves the key bounded pursuit split honestly: live moving prey can be stalked briefly, but the memory collapses cleanly on lost contact, split, bad recheck, rising threat, or leash expiry instead of retrying forever.
+- [ ] Reviewer-readable output shows whether a moving lead was refreshed, narrowed, converted, or dropped instead of hiding the memory state in debugger soup.
+- [ ] The slice stays computationally cheap: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, no endless retry loop, and no broad memory-palace world model.
+
+Notes:
+- Canonical contract lives at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`.
+- This is the queued greenlit follow-up behind the active scoring lane, not permission to preempt the current active item.
+
+---
+
 ## Bandit first 500-turn playback proof v0
 
 Status: CHECKPOINTED / DONE FOR NOW
