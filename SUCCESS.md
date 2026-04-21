@@ -622,6 +622,25 @@ Notes:
 
 ---
 
+## Live bandit + Basecamp playtesting feasibility probe v0
+
+Status: GREENLIT / QUEUED LIVE PROBE
+
+Success state:
+- [ ] One bounded live playtesting feasibility packet exists for current bandits plus current Basecamp footing.
+- [ ] The packet says plainly whether live playtesting is already practical on the current tree.
+- [ ] The packet says plainly whether overmap-bandit setup/spawn control is currently available, narrowly restageable, or still missing.
+- [ ] The packet separates screen/tests/artifacts cleanly instead of flattening them into one soup verdict.
+- [ ] Any blocker is stated as a concrete missing setup/control path rather than vague playtesting hand-wringing.
+- [ ] The slice stays bounded and does not turn into open-ended live playtesting theater.
+
+Notes:
+- Canonical contract lives at `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`.
+- This is a greenlit live-probe packet, not the repo's single active `TODO.md` lane.
+- This packet exists to tell us whether current bandit-plus-Basecamp playtesting is already real, narrowly reachable with setup help, or still blocked by missing scenario/control footing.
+
+---
+
 ## Post-Locker-V1 Basecamp follow-through
 
 Status: CHECKPOINTED / DONE FOR NOW

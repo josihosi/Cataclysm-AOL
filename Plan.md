@@ -53,6 +53,7 @@ Current honest state:
 - together these two packets are the current playtesting-readiness train: the point is to get to a finite playtesting gate where later notes mostly classify as blockers, queued follow-through, or tuning, instead of restarting first-principles confusion every session
 - the camp-handling half is now explicit again: `Locker Zone V3` is reopened as the current greenlit camp-side follow-through at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`, but `TODO.md` stays on the repo's single active bandit lane until that packet moves
 - a separate bounded map-of-the-territory packet is also greenlit on the camp side: `Basecamp AI capability audit/readout packet v0` at `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`, so later prompt/cleanup decisions stop happening in fog
+- a bounded live-probe packet is also greenlit: `Live bandit + Basecamp playtesting feasibility probe v0` at `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`, so current playtesting reachability stops being guesswork too
 - the authoritative contract for the newly closed repeated-site follow-through still lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
 - the authoritative contract for the now-closed benchmark lane still lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
 - `Bandit z-level visibility proof packet v0` does not come back as a vague parked branch; the now-greenlit visibility packet above is the bounded vehicle for the remaining elevated-light / cross-z work
@@ -452,6 +453,23 @@ Current honest state:
 - keep it bounded: this is a map-of-the-territory packet, not fresh Basecamp feature architecture, not prompt externalization itself, and not a replacement for the active bandit queue or the reopened Locker Zone V3 follow-through
 
 Keep this lane greenlit until the packet exists or until the audit proves the idea was misclassified and needs repackaging.
+
+---
+
+## Greenlit live-probe packet — Live bandit + Basecamp playtesting feasibility probe v0
+
+**Status:** GREENLIT / QUEUED LIVE PROBE
+
+Josef explicitly wants Andi to try starting the game and find out whether live playtesting is already practical with the new bandits plus the current Basecamp work in place.
+The uncertain seam is setup reality: whether the current tree can be brought to a credible live probe state, and whether overmap-bandit setup/spawn control is already reachable or still folklore.
+
+Current honest state:
+- the authoritative contract now lives at `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`
+- the point is to determine whether current bandit-plus-Basecamp playtesting is feasible now, feasible with narrow restage/setup help, or blocked on a concrete missing control path
+- the packet should separate startup/live screen behavior, deterministic guarantees, and artifact/log evidence instead of flattening them into one fake verdict
+- keep it bounded: this is a feasibility probe, not broad game-readiness theater, not fresh feature work, and not a replacement for the active bandit visibility queue
+
+Keep this lane greenlit until the packet exists or until the live probe proves the idea needs a different narrower setup packet first.
 
 ---
 
