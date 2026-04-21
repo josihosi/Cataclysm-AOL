@@ -15,16 +15,55 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
-## Bandit repeated-site revisit behavior packet v0
+## Bandit overmap/local handoff interaction packet v0
 
 Status: ACTIVE / GREENLIT
 
 Success state:
-- [ ] One bounded repeated-site follow-through exists on the current playback / evaluator footing, producing one more deliberate revisit / cautious-watch posture than plain early scout bookkeeping.
-- [ ] Deterministic coverage proves repeated same-site corroboration still does **not** unlock free `scavenge`, `steal`, or `raid` truth, and does not become immortal pressure.
-- [ ] Scenario `repeated_site_interest_stays_bounded` exposes the benchmark-facing long-horizon metrics reviewer-cleanly: `site_visit_count_500`, `site_revisit_count_500`, `cooldown_turn`, and `endless_pressure_flag`.
-- [ ] The honest `500`-turn proof shows the strengthened site cooling back out instead of regrowing forever.
-- [ ] The slice stays narrow: no site-type-sensitive branching, no settlement taxonomy pass, no broad visibility rewrite, and no z-level smuggling.
+- [ ] One bounded overmap/local handoff interaction packet exists on the current bandit playback / proof seam.
+- [ ] Deterministic proof shows overmap intent entering local play as posture rather than exact-square puppetry or stale route puppetry.
+- [ ] Deterministic proof shows local engagement, obvious danger, or contact loss can honestly rewrite, cool, or drop the prior posture instead of preserving immortal certainty.
+- [ ] At least one player-present context beyond a static toy camp is covered, for example basecamp pressure, follower travel, or vehicle / convoy interception.
+- [ ] Reviewer-readable output exposes the entry posture, any local rewrite, and the returned abstract-state change clearly enough to debug the seam without guessing from side effects.
+- [ ] The slice stays bounded: no full local combat AI rewrite, no coalition strategy layer, no broad visibility rewrite, and no magical omniscience by the back door.
+
+Notes:
+- Canonical contract lives at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`.
+- This is the active first half of the current bandit playtesting-readiness train.
+- The point is to get later playtesting notes down to blockers, queued follow-through, or tuning instead of fresh first-principles confusion.
+
+---
+
+## Bandit elevated-light and z-level visibility packet v0
+
+Status: GREENLIT / QUEUED NEXT
+
+Success state:
+- [ ] One bounded elevated-light and z-level visibility packet exists on the current bandit playback / proof seam.
+- [ ] Deterministic proof shows nearby cross-z visibility behaves sensibly instead of collapsing into floor-bound amnesia.
+- [ ] Deterministic proof shows elevated exposed light can stay legible or actionable farther than ordinary hidden light under the right conditions without turning into magical global sight.
+- [ ] Matching scenarios prove the same meaningful elevated light can influence zombie-horde pressure too instead of living in private bandit-only theater.
+- [ ] Deterministic proof shows smoke does **not** gain magical extra general reach merely from floor changes.
+- [ ] Reviewer-readable output exposes the visibility read and benchmark outcomes clearly enough that later playtesting can argue about tuning instead of first principles.
+- [ ] The slice stays bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim.
+
+Notes:
+- Canonical contract lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`.
+- This is the queued second half of the current bandit playtesting-readiness train.
+- Keep it queued behind the active handoff packet unless Josef explicitly reorders the train.
+
+---
+
+## Bandit repeated-site revisit behavior packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded repeated-site follow-through exists on the current playback / evaluator footing, producing one more deliberate revisit / cautious-watch posture than plain early scout bookkeeping.
+- [x] Deterministic coverage proves repeated same-site corroboration still does **not** unlock free `scavenge`, `steal`, or `raid` truth, and does not become immortal pressure.
+- [x] Scenario `repeated_site_interest_stays_bounded` exposes the benchmark-facing long-horizon metrics reviewer-cleanly: `site_visit_count_500`, `site_revisit_count_500`, `cooldown_turn`, and `endless_pressure_flag`.
+- [x] The honest `500`-turn proof shows the strengthened site cooling back out instead of regrowing forever.
+- [x] The slice stays narrow: no site-type-sensitive branching, no settlement taxonomy pass, no broad visibility rewrite, and no z-level smuggling.
 
 Notes:
 - Canonical contract lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`.

@@ -44,14 +44,25 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-### Active lane — Bandit repeated-site revisit behavior packet v0
+### Active lane — Bandit overmap/local handoff interaction packet v0
 
 Current proof burden:
-- the active contract lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
-- the key change is behavioral, not merely numeric: repeated same-site corroboration should produce one more deliberate bounded revisit / cautious-watch posture than plain confidence bookkeeping
-- the metric/report burden is explicit too: scenario `repeated_site_interest_stays_bounded` should expose `site_visit_count_500`, `site_revisit_count_500`, `cooldown_turn`, and `endless_pressure_flag` reviewer-cleanly on the rendered packet path
-- deterministic coverage should prove both halves honestly: the richer behavior exists, and it still cools back out by the honest `500`-turn horizon instead of minting immortal pressure or free extraction truth
-- keep the slice narrow: no site-type-sensitive branching, no broad visibility rewrite, and no z-level detour
+- the active contract lives at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`
+- the key change is interactional, not merely numeric: overmap intent should enter local play as posture instead of exact-square puppetry or stale route puppetry
+- deterministic coverage should prove that local engagement, obvious danger, or contact loss can honestly rewrite, cool, or drop the prior posture instead of preserving stale certainty forever
+- the packet should include at least one player-present context beyond a static toy camp, for example basecamp pressure, follower travel, or vehicle / convoy interception
+- the rendered packet should expose entry posture, local rewrite, and returned abstract-state change reviewer-cleanly enough to debug the seam by reading it
+- keep the slice narrow: no full combat AI rewrite, no broad visibility rewrite, and no magical omniscience by the back door
+
+### Queued next — Bandit elevated-light and z-level visibility packet v0
+
+Queued proof burden:
+- the queued contract lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`
+- nearby cross-z visibility should stay sane instead of acting like stairs are amnesia beams
+- elevated exposed light may stay legible or actionable farther than ordinary hidden light under the right conditions without becoming magical global sight
+- the same meaningful elevated light should matter to zombie-horde pressure too instead of becoming private bandit-only theater
+- smoke should stay honest on the vertical axis too, with no magical extra general reach just because the source changed floors
+- keep the slice bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim
 
 ### Latest closed lane — Bandit overmap benchmark suite packet v0
 
@@ -231,21 +242,24 @@ Current honest state:
 
 ### Meaning
 
-- the active greenlit bandit lane is now `Bandit repeated-site revisit behavior packet v0`
-- the bounded scout/explore seam is now checkpointed closed with dry-run plus playback/reference proof
+- the active greenlit bandit lane is now `Bandit overmap/local handoff interaction packet v0`
+- the queued-next follow-through behind it is `Bandit elevated-light and z-level visibility packet v0`
+- together they are the current playtesting-readiness train, meant to turn later Josef playtesting into finite blocker/queue/tuning triage instead of endless first-principles debug soup
+- the bounded scout/explore seam is checkpointed closed with dry-run plus playback/reference proof
 - do not reopen the scoring seam, concealment seam, smoke bridge, light bridge, human / route bridge, repeated-site reinforcement seam, first 500-turn proof, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
-- the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
-- the writer-side bandit mark-generation seam is now checkpointed closed too
-- `Bandit z-level visibility proof packet v0` remains ungreenlit and should stay parked while the active repeated-site revisit packet is in flight
+- the earlier bandit pursuit handoff seam is checkpointed closed, but the new active packet is the stricter anti-puppetry / rewrite / carryback follow-through on top of that substrate
+- the writer-side bandit mark-generation seam is checkpointed closed too
+- the new queued visibility packet is now the bounded home for the remaining elevated-light / cross-z work; do not reopen `Bandit z-level visibility proof packet v0` as a vague separate branch beside it
 
 ---
 
 ## Pending probes
 
-- Active proof obligation: land `Bandit repeated-site revisit behavior packet v0` on the current playback / benchmark seam.
+- Active proof obligation: land `Bandit overmap/local handoff interaction packet v0` on the current playback / proof seam.
+- The active packet should prove posture-not-puppetry, local rewrite on danger/contact loss, honest return-state carryback, and at least one player-present context beyond a static toy camp.
+- Queued next after that: land `Bandit elevated-light and z-level visibility packet v0` on the same broader seam.
 - Do not keep rerunning `Bandit overmap benchmark suite packet v0` unless new evidence says the landed packet is dishonest or stale.
-- The next honest evidence should prove the new bounded revisit behavior plus the promised scenario-9 long-horizon metrics, not just reassert the already-closed reinforcement seam.
-- Keep `Bandit z-level visibility proof packet v0` parked until Josef explicitly promotes it.
+- Keep the active and queued packets bounded. The point is playtesting readiness, not reopening broad architecture theater.
 
 ---
 

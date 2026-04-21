@@ -8,9 +8,10 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Current active lane: `Bandit repeated-site revisit behavior packet v0`.
+Current active lane: `Bandit overmap/local handoff interaction packet v0`.
 
-- Land one more deliberate bounded revisit / cautious-watch behavior on top of `repeated_site_interest_stays_bounded`, instead of leaving the scenario as plain confidence bookkeeping.
-- Expose the promised long-horizon scenario-9 metrics reviewer-cleanly: `site_visit_count_500`, `site_revisit_count_500`, `cooldown_turn`, and `endless_pressure_flag`.
-- Extend deterministic proof so the strengthened site still stays bounded and cools back out by the honest `500`-turn horizon.
-- Do **not** widen this into site-type-sensitive branching, free extraction truth, or `Bandit z-level visibility proof packet v0` by the back door.
+- Land one bounded handoff interaction packet on the current playback / proof seam so overmap intent enters local play as posture instead of exact-square puppetry.
+- Prove that local engagement, obvious danger, and contact loss can honestly rewrite, cool, or drop the prior overmap posture instead of preserving stale certainty forever.
+- Include at least one player-present context beyond a static toy camp, for example basecamp pressure, follower travel, or vehicle / convoy interception.
+- Keep return-state carryback reviewer-clean: wounds, panic, losses, cargo change, threat change, and target-confidence change should flow back into abstract state clearly enough to debug the seam.
+- Do **not** widen this into a full combat AI rewrite, a broad visibility rewrite, or early activation of `Bandit elevated-light and z-level visibility packet v0`.
