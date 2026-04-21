@@ -39,21 +39,24 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently one active greenlit lane: **Bandit scoring refinement seam v0**.
-Josef has now explicitly kept scoring as the current top lane while greenlighting moving-bounty memory behind it.
+There is currently no active greenlit lane.
 
-Current active contract:
-- the authoritative contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
-- refine how existing camp ledger state plus existing marks become job choice on the current dry-run/evaluator seam
-- inspect existing threat/danger footing first and collapse whatever usable truth already exists instead of inventing fresh threat astrology
-- preserve the product read that bandits avoid strong opponents but opportunistically pounce when zombie pressure or other distraction lowers effective target coherence
-- keep the slice bounded: no new visibility signals, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
+The last active follow-up, **Bandit moving-bounty memory seam v0**, is now honestly checkpointed too.
+The earlier **Bandit scoring refinement seam v0** also stays closed.
 
-Queued greenlit next item:
-- **Bandit moving-bounty memory seam v0** is now greenlit as the next queued follow-up behind scoring, with the contract at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
-- the intended product direction is tiny and cheap: structural bounty stays on site state, while only moving/NPC bounty gets a bounded source-shaped pursuit memory with confidence plus leash so camps can stalk briefly without becoming immortal GPS idiots
+Current canon implication:
+- no further bandit slice is greenlit yet
+- do not reopen the now-closed scoring or moving-memory packets just because they are nearby
+- if Josef wants the next throughput pass to continue, he needs to greenlight the next bounded lane explicitly
 
 Fresh checkpoints that stay closed:
+- **Bandit moving-bounty memory seam v0** is now honestly checkpointed too:
+  - `src/bandit_mark_generation.{h,cpp}` now keeps a bounded moving-memory packet on moving-carrier and corridor marks only, with leash, opportunity/threat bands, reviewer-readable transition state, and prune behavior that preserves active moving memory instead of dropping it the moment raw signal values cool
+  - structural/site marks stay on cheap site footing, so harvested or revisited places do not quietly grow stalking logic
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` now proves the key bounded distinctions honestly: moving prey can be stalked briefly after raw signal cooling, structural/site marks do not gain chase memory, and stale moving contact drops reviewer-cleanly on leash expiry
+  - `tests/bandit_playback_test.cpp` now keeps the corridor playback expectation aligned with the bounded memory window instead of pretending the mark cools straight to quiet
+  - the slice stayed bounded: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, no endless retry loop, and no broad memory-palace world model
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Bandit first 500-turn playback proof v0** is now honestly checkpointed too:
   - `src/bandit_playback.{h,cpp}` now carries `proof_packet_result`, `run_first_500_turn_playback_proof()`, and `render_first_500_turn_playback_proof( const proof_packet_result &result )` so reviewer-readable long-horizon proof output exists on the current playback seam instead of living as debugger folklore
   - the first bounded proof packet reuses three named scenario cases, `smoke_only_distant_clue`, `city_edge_moving_hordes`, and `generated_repeated_site_reinforcement_stays_bounded`, with explicit `tick 500` checkpoint framing so cooldown, peel-off, and repeated-site boundedness stay inspectable without hand-waving
@@ -145,7 +148,7 @@ Meaning:
 - repeated site activity raises revisit interest first and still does not mint free settlement truth or free extraction permission
 - the first honest 500-turn playback proof is checkpointed closed too on the current abstract bandit seams
 - the concealment seam is checkpointed closed too on the current light-mark footing
-- there is currently one active greenlit lane again, namely Bandit scoring refinement seam v0
+- there is currently no active greenlit lane in repo canon
 - the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
@@ -678,15 +681,18 @@ What the current parked sub-items should do:
 - resolved note-2 fairness footing: sustained pressure and stalking against legible camps is desired, but decisive full camp assault stays player-present only for current scope
 - resolved note-2 attack-signaling footing: fairness should come from bounded offscreen consequence scope, not from requiring bandits to presignal attacks
 - resolved note-2 repo footing: existing overmap-NPC persistence, travel, and companion plumbing is valid substrate for following outbound groups and route interception, but the current need-driven wandering policy is not the finished hostile model
+- resolved no-path exploration footing: unreachable jobs should still fail closed for that dispatch pass, but if a camp honestly chooses to uncover more map it may do so only through a bounded scout/explore outing with leash and return discipline instead of inheriting engine random-goal nonsense by accident
 - resolved note-3 identity footing: persistent overmap group continuity is mandatory, with only a small anchored-individual slice surviving handoffs directly while the remaining membership stays fungible
 - resolved note-3 goal-sustainability footing: smoke/mark destinations are provisional mission leads, not sacred tile commitments, and local observations may continue, divert, shadow, or abort the current goal
 - resolved note-3 scope footing: v1 should cap anchored continuity at roughly 1-3 individuals rather than forcing full per-bandit persistence everywhere
 - resolved note-4 city-opportunism footing: cities may support one-off or occasional opportunistic bandit action under zombie chaos, but not persistent farming, because structural bounty depletes while threat remains high
 - resolved note-4 zombie-model footing: zombies currently matter as threat and target-coherence pressure only, not as a separately simulated bandit-versus-zombie tactical system
 - resolved note-4 sticky-threat footing: if a group leaves due to threat, the area should keep a sticky scary mark that is only meaningfully reevaluated on close revisit or when some other attraction pulls the group back nearby
-- resolved note-5 independence footing: v1 camps should behave as mostly independent actors rather than a coordinated coalition strategy layer, so overlap may happen by accident but routine dogpile convergence should not be the norm
+- resolved note-5 independence footing: v1 camps should behave as mostly independent actors with their own maps, bounty reads, and local pressures rather than a coordinated coalition strategy layer, so overlap may happen by accident but routine dogpile convergence should not be the norm
+- resolved note-5 other-camps footing: other bandit camps should usually read as threat-bearing spots on a camp's own map, broadly more like hostile pressure sources than allies; occasional same-target opportunism may still happen indirectly when two camps both read the same opening, but not through shared planning
 - resolved note-5 anti-dogpile footing: territoriality, distance burden, depletion, sticky threat, and fresh active-pressure penalties should suppress repeated multi-camp pile-ons against the same region
 - resolved note-5 scope footing: deliberate alliances, campaign planning, and explicit multi-camp coordination are later-layer strategy material, not part of the current parked v1 shape
+- resolved testing-priority footing: before reopening hazy handoff elaboration as a planning focus, prefer a complete multi-turn overmap AI scenario packet with per-scenario goals and tuning metrics so later balancing can ask whether behavior is actually rad, cool, and fun instead of merely mathematically legal
 
 The intended parked-chain order for now is:
 1. broad concept vessel

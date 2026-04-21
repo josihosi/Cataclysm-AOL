@@ -156,8 +156,10 @@ That way two camps can read the same region differently without turning the mode
 
 V1 does **not** need a deliberate inter-camp coalition layer.
 Camps should mostly act from their own maps, operating radii, and pressures.
-Occasional overlap is fine.
+Other bandit camps should usually read more like threat-bearing spots than friendly shared assets.
+Occasional overlap is fine, including two camps opportunistically leaning on the same weakened target by coincidence.
 Routine multi-camp dogpile behavior is not.
+That overlap should emerge from shared threat/bounty reads, not from coordinated planning.
 
 ### Overmap groups
 Camps dispatch temporary abstract groups for specific jobs.
@@ -730,6 +732,7 @@ A good v1 lean is:
 - the follow-through canon now also freezes cargo/wounds/panic pressure as additive burden tiers that only shrink useful travel and remaining return clock after the calm-condition movement law is already set
 - the follow-through canon now also freezes `hold / chill` as the no-target fallback, so weak marks should collapse to stay-home behavior instead of accidental random wandering
 - the follow-through canon now also freezes no-path fallback: unreachable jobs fail closed for that dispatch pass and fall back to other reachable jobs or `hold / chill` instead of implicit engine wandering
+- if a camp genuinely wants to uncover more map, that should be a separate bounded scout/explore outing with leash and return discipline, not an accidental side effect of path failure
 - later follow-through micro-item 29 now centralizes the starter constants for movement budgets, distance burden, return clocks, burden multipliers, score-factor ranges, and other cross-packet knobs, so this broad concept doc should not be treated as a second competing source of exact numbers
 - later follow-through micro-items may still decide player-relevance chunking plus diversion behavior
 - cadence should control **how often they reconsider and spend budget**, not silently multiply their total daily travel into nonsense
@@ -878,16 +881,21 @@ It is to catch behavior that is obviously stupid, frozen, over-omniscient, or pa
 A rough packet of maybe 5-10 scenarios would already be useful.
 That is enough to expose whether the system actually explores, converges on promising regions, and reacts sensibly to repeated signals.
 
+Important current priority lean:
+- before polishing hazy handoff questions into a bigger planning focus, prefer a complete multi-turn overmap AI scenario packet
+- each scenario should carry its own explicit goal and tuning metrics so balancing can be adjusted intentionally instead of by vibe drift alone
+- the real question for that packet is not just whether the math passes, but whether the resulting behavior feels rad, cool, and fun without becoming psychic or deranged
+
 ### Later perception and handover test family worth preserving
 
 When the earlier overmap-side proofs are real, later validation should also include a second packet for the ugly interplay cases instead of pretending the seams solved themselves automatically.
 
 Preserve at least these future checks:
-- **Directional light leakage at sensible long range.** If a player camp north of a bandit camp leaks light only toward the east, that should not magically justify north-side staking-out from the bandit camp. If the same camp leaks visible light toward the south, it should become actionable from the bandit side.
-- **Zombie horde interaction.** If a meaningful visible light sits between camps with a zombie horde in the corridor, the world should not turn into bandit-only theater. The same light should plausibly attract the horde too.
+- **Directional light leakage at sensible long range.** Scenario 1: a player camp north of a bandit camp has light that leaks only toward the east, and that should not magically justify north-side staking-out from the bandit camp. Scenario 2: the same north-side player camp has light visible toward the south, and that should become actionable from the bandit side.
+- **Zombie horde interaction.** Scenario 3: the same as scenario 2, but with a zombie horde sitting in the corridor between the camps. The world should not turn into bandit-only theater. The same light should plausibly attract the horde too.
 - **Distance discipline.** These fixtures should sit near the maximum meaningful visibility envelope implied by the current hard-coded game footing, not in toy adjacent spacing. Ordinary visible light should likely stay near general overmap visibility under the right conditions, while smoke should project farther because the plume can read above ordinary local-sight assumptions.
 - **Overmap/local handover pressure rewrite.** If bandits stalk a camp but local reality turns the tile into a much hotter threat state, for example the player intersects them directly and the encounter becomes obviously dangerous, a later overmap cadence should be able to rewrite the posture toward retreat rather than homing forever on the stale approach goal.
-- **Vertical visibility edge cases.** Nearby z-level differences should not behave like magical amnesia planes. Fire on `z -1` may still be visible from `z 0`, and light on `z +1` or `z +2` may still be visible from `z 0` when line and exposure support it. The current lean is that elevation may extend exposed light usefulness under the right conditions, while smoke should not gain silly extra strategic range merely because the source changed floors.
+- **Vertical visibility edge cases.** Preserve this as a later explicit test family. Nearby z-level differences should not behave like magical amnesia planes. Fire on `z -1` may still be visible from `z 0`, and light on `z +1` or `z +2` may still be visible from `z 0` when line and exposure support it. The current product lean is that smoke should not gain magical extra general visibility merely because the source changed floors, while elevated exposed light may deserve somewhat longer effective visibility and attraction reach for both bandits and zombie hordes under the right conditions.
 
 These should stay late-stage validation, not early implementation scope creep.
 The point is to preserve the future honesty packet now, so the later system does not quietly go blind whenever directionality, hordes, or verticality become inconvenient.
