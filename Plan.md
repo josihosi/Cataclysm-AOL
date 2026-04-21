@@ -39,23 +39,28 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently one active greenlit lane: **Bandit long-range directional light proof packet v0**.
-Josef also explicitly greenlit the next follow-up behind it: **Bandit overmap/local pressure rewrite packet v0**.
-
-The earlier **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, and **Bandit bounded scout/explore seam v0** are checkpointed closed.
+There is currently one active greenlit lane: **Bandit overmap/local pressure rewrite packet v0**.
+The earlier **Bandit long-range directional light proof packet v0**, **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, and **Bandit bounded scout/explore seam v0** are checkpointed closed.
 Do not reopen them just because they are nearby.
 
 Current active contract:
-- the authoritative contract lives at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
-- prove the directional long-range light split honestly on the current playback/proof seam: hidden-side leakage stays non-actionable, visible-side leakage becomes actionable, and the matching corridor case still shares consequences with zombie pressure
-- this packet must carry real overmap-side multi-turn proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics instead of only single-turn unit theater
-- keep the slice bounded: no z-level expansion, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump
+- the authoritative contract lives at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
+- prove that a stalking or intercept posture can be rewritten honestly after local contact makes the tile much hotter than the old overmap read
+- keep the proof reviewer-readable, with explicit before/after posture output plus per-scenario goals and tuning metrics
+- land it as real multi-turn overmap-side proof rather than another single-turn legality check
+- keep the slice bounded: no broad handoff redesign, no tactical local combat AI pass, and no fresh world-sim jump
 
 Queued greenlit next item:
-- **Bandit overmap/local pressure rewrite packet v0** is now greenlit behind the active directional-light proof, with the contract at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
-- the intended product direction is to prove that stale pursuit posture can cool or retreat when local reality turns much hotter, using the same multi-turn benchmark discipline rather than more single-turn legality checks
+- **Bandit weather concealment refinement packet v0** is now greenlit behind the active pressure-rewrite packet, with the contract at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
+- the intended product direction is to refine weather concealment honestly: wind should fuzz or de-precise smoke instead of acting only as a token penalty, portal storms should be handled explicitly for smoke and light, and rain should stay an explicit reducer instead of disappearing into vague cloudiness
+- keep the slice bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility-system opera
 
 Fresh checkpoints that stay closed:
+- **Bandit long-range directional light proof packet v0** is now honestly checkpointed too:
+  - the authoritative contract lives at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
+  - `src/bandit_playback.{h,cpp}` now carries three named directional-light multi-turn scenarios plus `run_long_range_directional_light_proof_packet()` and `render_long_range_directional_light_proof_packet( const proof_packet_result &result )` on the current playback seam
+  - deterministic coverage in `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: hidden-side leakage stays non-actionable, visible-side leakage becomes actionable under the same surrounding footing, and the matching corridor packet still carries shared zombie-pressure consequences instead of private bandit-only truth
+  - narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
 - **Bandit moving-bounty memory seam v0** is now honestly checkpointed too:
   - `src/bandit_mark_generation.{h,cpp}` now keeps a bounded moving-memory packet on moving-carrier and corridor marks only, with leash, opportunity/threat bands, reviewer-readable transition state, and prune behavior that preserves active moving memory instead of dropping it the moment raw signal values cool
   - structural/site marks stay on cheap site footing, so harvested or revisited places do not quietly grow stalking logic
@@ -113,7 +118,7 @@ Fresh checkpoints that stay closed:
   - it reads `Plan.md` only, preserves greenlit ordering, and warns when canon is thin or contradictory instead of inventing certainty
   - narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct current-canon samples for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
 - **Bandit scenario fixture + playback suite v0** is now honestly checkpointed too:
-  - `src/bandit_playback.{h,cpp}` now defines fourteen stable named reference scenarios on top of the dry-run evaluator seam, including the generated smoke, ordinary night-light, searchlight corridor, direct human-sighting, shared-route, repeated-site, and sticky-threat cases added by the visibility/mark packets, instead of pretending a full overmap simulator already exists
+  - `src/bandit_playback.{h,cpp}` now defines eighteen stable named reference scenarios on top of the dry-run evaluator seam, including the generated smoke, ordinary night-light, directional hidden/visible split, shared horde-pressure corridor, direct human-sighting, shared-route, repeated-site, and sticky-threat cases added by the visibility/mark packets, instead of pretending a full overmap simulator already exists
   - `run_scenario()` now replays those cases at stable checkpoints (`tick 0`, `tick 5`, `tick 20`, `tick 100`), and `render_report()` exposes winner drift plus generated mark/heat state so idle, smoke-investigation, corridor stalking, moving-carrier attachment, peel-off, repeated-site boundedness, and sticky-threat behavior can be inspected reviewer-cleanly
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Bandit concept formalization follow-through** is now honestly checkpointed too:
@@ -330,7 +335,7 @@ The first named playback packet now exists and is honest enough to stay closed f
 
 Current honest state:
 - the authoritative contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`
-- `src/bandit_playback.{h,cpp}` now defines fourteen stable deterministic reference scenarios on top of the bounded dry-run evaluator, including seven generated-mark writer-side cases, instead of inventing a broader world simulator
+- `src/bandit_playback.{h,cpp}` now defines eighteen stable deterministic reference scenarios on top of the bounded dry-run evaluator, including the generated directional-light split and shared horde-pressure corridor cases layered onto the earlier writer-side suite, instead of inventing a broader world simulator
 - the playback seam now reruns those scenarios at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, which is enough to inspect idle, smoke, corridor, moving-carrier, split-route, city-edge peel-off, repeated-site boundedness, generated cooling, refresh, and sticky-threat drift without smuggling in a bigger system
 - `render_report()` now provides a reviewer-readable checkpoint summary plus generated mark/heat state when present, and deterministic coverage in `tests/bandit_playback_test.cpp` proves the named scenario set, the stable checkpoints, and the expected drift answers
 - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
@@ -652,31 +657,31 @@ Keep this lane closed unless later canon or later evidence says the memory packe
 
 ---
 
-## 16. Active greenlit — Bandit long-range directional light proof packet v0
+## 16. Checkpointed — Bandit long-range directional light proof packet v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef explicitly greenlit this as the next active narrow bandit promotion.
-He also tightened the testing bar here: single-turn proofs are not enough by themselves.
-The packet needs real overmap-side multi-turn scenario proof with explicit benchmarks, up to `500` turns where that is the honest horizon.
+Josef explicitly greenlit this as a narrow bandit promotion, and it is now honestly landed on the current tree.
+The proof stayed on the current playback/generated-mark footing.
+It used real overmap-side multi-turn scenarios instead of one-tick theater.
 
-Current contract:
+Current honest state:
 - the authoritative contract lives at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
-- prove the hidden-side versus visible-side directional-light split honestly on the current playback/proof seam
-- the hidden-side case must stay non-actionable, while the visible-side case becomes actionable under the same broader footing
-- include the matching zombie-horde corridor variant so the same light does not become private bandit-only truth
-- keep the slice bounded: no z-level packet, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump
+- `src/bandit_playback.{h,cpp}` now carries the named `generated_directional_light_hidden_side_stays_inert`, `generated_directional_light_visible_side_becomes_actionable`, and `generated_directional_light_corridor_shares_horde_pressure` scenarios on the current playback seam
+- the same file now also exposes `run_long_range_directional_light_proof_packet()` plus `render_long_range_directional_light_proof_packet( const proof_packet_result &result )`, so the reviewer-readable packet is first-class instead of debugger folklore
+- deterministic coverage in `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: hidden-side leakage stays non-actionable, visible-side leakage becomes actionable under the same broader footing, and the matching corridor variant still carries shared zombie-pressure consequences instead of becoming private bandit-only truth
+- narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
 
-Keep this item active greenlit unless later canon finds a contradiction in the proof shape or the implementation surfaces a real blocker.
+Keep this lane checkpointed closed unless later evidence shows the packet was dishonest, too generous, or missing an honest reviewer-readable benchmark.
 
 ---
 
-## 17. Greenlit next — Bandit overmap/local pressure rewrite packet v0
+## 17. Active greenlit — Bandit overmap/local pressure rewrite packet v0
 
-**Status:** GREENLIT / QUEUED NEXT
+**Status:** ACTIVE / GREENLIT
 
-Josef explicitly greenlit this too, but not as the first active lane.
-It stays queued behind the active directional-light proof packet.
+Josef explicitly greenlit this too, and it is now the current active lane after directional light landed.
+It should keep the same multi-turn proof discipline instead of slipping back into one-turn legality theater.
 
 Current contract:
 - the authoritative contract lives at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
@@ -685,11 +690,29 @@ Current contract:
 - land it as real multi-turn overmap-side proof rather than another single-turn legality check
 - keep the slice bounded: no broad handoff redesign, no tactical local combat AI pass, and no fresh world-sim jump
 
-Keep this item queued greenlit unless the active lane changes priority or later canon finds a contradiction in the rewrite contract.
+Keep this item active greenlit unless later canon finds a contradiction in the rewrite contract or the implementation surfaces a real blocker.
 
 ---
 
-## 18. Checkpointed — Bandit bounded scout/explore seam v0
+## 18. Greenlit next — Bandit weather concealment refinement packet v0
+
+**Status:** GREENLIT / QUEUED NEXT
+
+Josef explicitly greenlit this as the next bounded weather follow-up.
+It should stay behind the active pressure-rewrite packet instead of preempting it.
+
+Current contract:
+- the authoritative contract lives at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
+- refine the current smoke/light weather footing so wind meaningfully fuzzes or de-precises smoke output instead of acting only as a token range haircut
+- handle portal-storm weather explicitly for smoke and light instead of silently treating it as an ordinary clear/rain/fog case
+- keep rain explicit for both smoke and light, and expose the weather/fuzziness interpretation reviewer-readably
+- keep the slice bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility architecture rewrite
+
+Keep this item queued greenlit unless the active lane changes priority or later canon finds a contradiction in the weather-refinement contract.
+
+---
+
+## 19. Checkpointed — Bandit bounded scout/explore seam v0
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -709,7 +732,7 @@ The next throughput pass should choose the next bounded parked-chain promotion i
 
 ---
 
-## 19. Parked concept chain — Bandit overmap AI
+## 20. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / COHERENT SUBSTRATE
 
@@ -727,8 +750,9 @@ Current parked sub-items:
 - player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
 
 Promoted out of the parked chain into explicit canon lanes:
-- active now: long-range directional light proof packet v0 at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
-- queued greenlit next: overmap/local pressure rewrite packet v0 at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
+- active now: overmap/local pressure rewrite packet v0 at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
+- queued greenlit next: weather concealment refinement packet v0 at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
+- checkpointed now: long-range directional light proof packet v0 at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
 - checkpointed now: bounded scout/explore seam v0 at `doc/bandit-bounded-scout-explore-seam-v0-2026-04-21.md`
 - checkpointed now: concealment seam v0 at `doc/bandit-concealment-seam-v0-2026-04-21.md`
 - checkpointed now: scoring refinement seam v0 at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`

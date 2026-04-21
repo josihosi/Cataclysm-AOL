@@ -17,24 +17,24 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Bandit long-range directional light proof packet v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded long-range directional-light proof packet exists on the current bandit scenario / playback seam.
-- [ ] Deterministic multi-turn proof up to `500` turns shows the hidden-side leakage case stays non-actionable while the visible-side leakage case becomes actionable under the same broader footing.
-- [ ] The matching zombie-horde corridor variant proves the same light can influence horde pressure too instead of existing in isolated bandit-only theater.
-- [ ] Each scenario carries explicit goals and tuning metrics, and reviewer-readable output shows whether those benchmarks were met.
-- [ ] The slice stays bounded: no z-level expansion, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump.
+- [x] One bounded long-range directional-light proof packet exists on the current bandit scenario / playback seam.
+- [x] Deterministic multi-turn proof up to `500` turns shows the hidden-side leakage case stays non-actionable while the visible-side leakage case becomes actionable under the same broader footing.
+- [x] The matching zombie-horde corridor variant proves the same light can influence horde pressure too instead of existing in isolated bandit-only theater.
+- [x] Each scenario carries explicit goals and tuning metrics, and reviewer-readable output shows whether those benchmarks were met.
+- [x] The slice stays bounded: no z-level expansion, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump.
 
 Notes:
 - Canonical contract lives at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`.
-- Josef explicitly tightened the testing bar here: single-turn proofs are not enough by themselves. This packet needs real overmap-side multi-turn scenario proof with explicit benchmarks.
+- The landed packet now closes honestly on the current tree, and the current active lane moved on to the pressure-rewrite follow-up.
 
 ---
 
 ## Bandit overmap/local pressure rewrite packet v0
 
-Status: GREENLIT / QUEUED NEXT
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] One bounded overmap/local pressure-rewrite proof packet exists on the current bandit scenario / playback footing.
@@ -45,7 +45,24 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`.
-- This is greenlit behind the active directional-light proof packet, not permission to preempt it.
+- This is now the active lane, not queued backlog.
+
+---
+
+## Bandit weather concealment refinement packet v0
+
+Status: GREENLIT / QUEUED NEXT
+
+Success state:
+- [ ] One bounded weather-refinement packet exists on the current smoke/light mark-generation footing.
+- [ ] Deterministic coverage proves wind meaningfully fuzzes or de-precises smoke output instead of acting only as a token penalty.
+- [ ] Deterministic coverage proves portal-storm weather is handled explicitly for smoke and light instead of falling through as an unmodeled special case.
+- [ ] Reviewer-readable output explains how weather changed clue quality, for example reduced range, fuzzier origin, displaced/corridor-ish smoke read, or preserved bright-light legibility under dark storm conditions.
+- [ ] The slice stays bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility architecture rework.
+
+Notes:
+- Canonical contract lives at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`.
+- This is greenlit behind the active pressure-rewrite packet, not permission to preempt it.
 
 ---
 
