@@ -2,11 +2,11 @@
 
 ## Status
 
-This is **GREENLIT / QUEUED NEXT**.
-It is approved as the next follow-up behind the active scoring lane.
+This is **GREENLIT / LATER**.
+It is approved as a later follow-up behind the active concealment lane and the queued scoring lane.
 
-This is **not** permission to preempt the active scoring seam.
-It is the next bounded memory packet once the active lane reaches its next real state.
+This is **not** permission to preempt either earlier lane.
+It is a later bounded memory packet once those earlier lanes reach their next real states.
 
 ---
 

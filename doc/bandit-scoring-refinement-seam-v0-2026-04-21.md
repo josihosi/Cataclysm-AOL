@@ -2,11 +2,11 @@
 
 ## Status
 
-This is **ACTIVE / GREENLIT**.
-It is the current bounded follow-up after the concealment checkpoint closed.
+This is **GREENLIT / QUEUED NEXT**.
+It is approved as the next bounded follow-up behind the active concealment lane.
 
-This is **not** permission to widen into broader bandit world-sim work.
-It is the current narrow scoring packet on the dry-run/evaluator seam.
+This is **not** permission to preempt the active concealment seam or widen into broader bandit world-sim work.
+It is the next narrow scoring packet on the dry-run/evaluator seam once concealment reaches its next real state.
 
 ---
 

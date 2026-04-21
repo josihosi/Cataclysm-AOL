@@ -39,27 +39,21 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently one active greenlit lane: **Bandit scoring refinement seam v0**.
-Josef has now explicitly greenlit the next narrow scoring promotion after the concealment checkpoint closed honestly.
+There is currently one active greenlit lane: **Bandit concealment seam v0**.
+Josef has now explicitly kept concealment as the current top lane while greenlighting scoring behind it.
 
 Current active contract:
-- the authoritative contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
-- refine how existing camp ledger state plus existing marks become job choice on the current dry-run/evaluator seam
-- inspect existing threat/danger footing first and collapse whatever usable truth already exists instead of inventing fresh threat astrology
-- preserve the product read that bandits avoid strong opponents but opportunistically pounce when zombie pressure or other distraction lowers effective target coherence
-- keep the slice bounded: no new visibility signals, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
+- the authoritative contract lives at `doc/bandit-concealment-seam-v0-2026-04-21.md`
+- this is **light concealment first**, not the whole weather/concealment religion
+- reuse existing local light truth, collapse it into coarse directional outward exposure, and reduce it by daylight, weather/visibility penalties, and containment/terrain
+- allow honest one-sided leakage such as visible from one approach and concealed from another
+- keep the slice bounded: no new fake weather law, no broad all-signals concealment rewrite, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion
 
 Queued greenlit next item:
-- **Bandit moving-bounty memory seam v0** is now greenlit as the next queued follow-up after scoring, with the contract at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
-- the intended product direction is tiny and cheap: structural bounty stays on site state, while only moving/NPC bounty gets a bounded source-shaped pursuit memory with confidence plus leash so camps can stalk briefly without becoming immortal GPS idiots
+- **Bandit scoring refinement seam v0** is now greenlit as the next queued follow-up behind concealment, with the contract at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- the intended product direction is to inspect existing threat/danger footing first and collapse it into bandit job scoring so camps avoid strong opponents but opportunistically pounce when zombie pressure or other distraction lowers effective target coherence
 
 Fresh checkpoints that stay closed:
-- **Bandit concealment seam v0** is now honestly checkpointed too:
-  - `src/bandit_mark_generation.{h,cpp}` now carries a bounded light concealment reduction on the current light-mark seam, reusing existing local light truth while applying daylight, weather, containment/terrain, and side-leakage modifiers instead of inventing a second visibility machine
-  - reviewer-readable concealment output now states whether a light-born mark was allowed, reduced, or blocked, with the reduction summary flowing through the existing mark/playback report path instead of hiding in debugger soup
-  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: daylight suppression, weather penalty, containment, side-dependent leakage/suppression, and readable concealment verdicts
-  - the slice stayed bounded and cheap: no broad all-signals concealment rewrite, no fog-sound law, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion, so no extra perf probe was warranted here
-  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Bandit first 500-turn playback proof v0** is now honestly checkpointed too:
   - `src/bandit_playback.{h,cpp}` now carries `proof_packet_result`, `run_first_500_turn_playback_proof()`, and `render_first_500_turn_playback_proof( const proof_packet_result &result )` so reviewer-readable long-horizon proof output exists on the current playback seam instead of living as debugger folklore
   - the first bounded proof packet reuses three named scenario cases, `smoke_only_distant_clue`, `city_edge_moving_hordes`, and `generated_repeated_site_reinforcement_stays_bounded`, with explicit `tick 500` checkpoint framing so cooldown, peel-off, and repeated-site boundedness stay inspectable without hand-waving
@@ -149,9 +143,8 @@ Meaning:
 - the human / route bridge is checkpointed closed too
 - the repeated site-centered reinforcement bridge is checkpointed closed too, with mixed repeated smoke/light/traffic now yielding bounded confidence and bounty amplification on one site mark
 - repeated site activity raises revisit interest first and still does not mint free settlement truth or free extraction permission
-- the concealment seam is checkpointed closed too on the current light-mark footing
 - the first honest 500-turn playback proof is checkpointed closed too on the current abstract bandit seams
-- there is currently one active greenlit lane again, namely Bandit scoring refinement seam v0
+- there is currently one active greenlit lane, namely Bandit concealment seam v0
 - the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
@@ -609,12 +602,31 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 
 ---
 
-## 14. Active greenlit — Bandit scoring refinement seam v0
+## 14. Active greenlit — Bandit concealment seam v0
 
 **Status:** ACTIVE / GREENLIT
 
-Josef explicitly greenlit this scoring slice, and it is now the active narrow bandit item after the concealment checkpoint closed.
-Do not widen it into vague parked lore or fresh world-sim theater.
+Josef explicitly kept concealment as the current active bandit lane.
+Do not widen it into whole-system visibility theology or fresh world-sim theater.
+
+Current contract:
+- the authoritative contract lives at `doc/bandit-concealment-seam-v0-2026-04-21.md`
+- this is light concealment first on the current light signal seam, not a broad concealment rewrite
+- reuse existing local light truth instead of inventing a second fake light simulator
+- collapse outward visibility into coarse directional exposure buckets or equivalent bounded side-leakage summary
+- reduce visibility via daylight, weather/visibility penalties, and containment/terrain while allowing honest one-sided leakage
+- keep the slice bounded: no full weather modeling, no fog-sound law, no broad all-signals rewrite, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion
+
+Keep this item active greenlit unless later canon changes priority or finds a contradiction in the concealment contract.
+
+---
+
+## 15. Greenlit next — Bandit scoring refinement seam v0
+
+**Status:** GREENLIT / QUEUED NEXT
+
+Josef explicitly greenlit this as the next queued bandit item behind the active concealment lane.
+Do not steal focus from concealment, but do preserve this as the next approved follow-up.
 
 Current contract:
 - the authoritative contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
@@ -623,15 +635,15 @@ Current contract:
 - the product goal is opportunistic bandit choice: avoid strong opponents, but pounce when zombie pressure or other distraction weakens target coherence
 - keep the slice bounded: no new visibility signals, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
 
-Keep this item active greenlit unless later canon changes priority or finds a contradiction in the scoring contract.
+Keep this item queued greenlit unless the active concealment lane changes priority or later canon finds a contradiction in the scoring contract.
 
 ---
 
-## 15. Greenlit next — Bandit moving-bounty memory seam v0
+## 16. Greenlit later — Bandit moving-bounty memory seam v0
 
-**Status:** GREENLIT / QUEUED NEXT
+**Status:** GREENLIT / LATER
 
-Josef explicitly greenlit this as the next queued bandit item behind the active scoring lane.
+Josef explicitly greenlit this as a later bandit item behind concealment and the queued scoring follow-up.
 Keep it small, cheap, and stupid in the good way.
 Do not quietly widen it into a general memory architecture pass.
 
@@ -642,11 +654,11 @@ Current contract:
 - the moving memory must stay bounded by confidence plus leash and collapse cleanly on loss, split, bad recheck, rising threat, or outing expiry instead of retrying forever
 - keep the slice computationally cheap: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, and no broad memory-palace world model
 
-Keep this item queued greenlit unless the active scoring lane changes priority or later canon finds a contradiction in the memory contract.
+Keep this item greenlit later unless the queued scoring lane changes priority or later canon finds a contradiction in the memory contract.
 
 ---
 
-## 16. Parked concept chain — Bandit overmap AI
+## 17. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / COHERENT SUBSTRATE
 
@@ -664,9 +676,9 @@ Current parked sub-items:
 - player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
 
 Promoted out of the parked chain into explicit canon lanes:
-- checkpointed now: concealment seam v0 at `doc/bandit-concealment-seam-v0-2026-04-21.md`
-- active now: scoring refinement seam v0 at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
-- queued greenlit next: moving-bounty memory seam v0 at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
+- active now: concealment seam v0 at `doc/bandit-concealment-seam-v0-2026-04-21.md`
+- queued greenlit next: scoring refinement seam v0 at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- greenlit later: moving-bounty memory seam v0 at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
 - checkpointed earlier: smoke, light, human / route, repeated-site reinforcement, and the first honest 500-turn proof
 
 Supporting recon note for the visibility item:
@@ -700,7 +712,7 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, concealment now checkpointed closed, scoring refinement promoted active, and moving-bounty memory promoted queued greenlit next, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
+6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, concealment kept active, scoring refinement promoted queued greenlit next, and moving-bounty memory kept greenlit later, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
 If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
