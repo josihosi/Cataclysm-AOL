@@ -15,22 +15,43 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
-## Bandit overmap benchmark suite packet v0
+## Bandit repeated-site revisit behavior packet v0
 
 Status: ACTIVE / GREENLIT
 
 Success state:
-- [ ] One complete named overmap benchmark-suite packet exists on the current bandit playback / proof seam.
-- [ ] Every required scenario carries a clear `100`-turn benchmark packet that is easy to read and easy to fail.
-- [ ] The scenarios that honestly need the longer horizon also carry `500`-turn carry-through checks instead of pretending `100` turns proves everything.
-- [ ] Reviewer-readable output explains why each scenario passed or failed, including timing / cadence / revisit counters where they matter.
-- [ ] The explicit empty-frontier scenario proves that a camp with nothing useful nearby ventures out and increases frontier visibility through bounded scout/explore behavior instead of sitting forever.
-- [ ] The slice stays bounded: no z-level implementation, no broad architecture rewrite, no vague benchmark theater, and no hand-waved passes when routing logic is still wrong.
+- [ ] One bounded repeated-site follow-through exists on the current playback / evaluator footing, producing one more deliberate revisit / cautious-watch posture than plain early scout bookkeeping.
+- [ ] Deterministic coverage proves repeated same-site corroboration still does **not** unlock free `scavenge`, `steal`, or `raid` truth, and does not become immortal pressure.
+- [ ] Scenario `repeated_site_interest_stays_bounded` exposes the benchmark-facing long-horizon metrics reviewer-cleanly: `site_visit_count_500`, `site_revisit_count_500`, `cooldown_turn`, and `endless_pressure_flag`.
+- [ ] The honest `500`-turn proof shows the strengthened site cooling back out instead of regrowing forever.
+- [ ] The slice stays narrow: no site-type-sensitive branching, no settlement taxonomy pass, no broad visibility rewrite, and no z-level smuggling.
+
+Notes:
+- Canonical contract lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`.
+- This is the active follow-through on top of the already checkpointed repeated-site reinforcement seam and the already checkpointed benchmark suite.
+- Josef explicitly liked the bounded revisit behavior plus metric-alignment follow-through, and explicitly rejected widening this packet into the broader site-type-sensitive branch.
+
+---
+
+## Bandit overmap benchmark suite packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One complete named overmap benchmark-suite packet exists on the current bandit playback / proof seam.
+- [x] Every required scenario carries a clear `100`-turn benchmark packet that is easy to read and easy to fail.
+- [x] The scenarios that honestly need the longer horizon also carry `500`-turn carry-through checks instead of pretending `100` turns proves everything.
+- [x] Reviewer-readable output explains why each scenario passed or failed, including timing / cadence / revisit counters where they matter, such as first non-idle turn, first actionable turn, first scout departure, first arrival, revisit count, and route-flip / back-and-forth count by turn `500`.
+- [x] The explicit empty-frontier scenario proves that a camp with nothing useful nearby ventures out and increases frontier visibility through bounded scout/explore behavior instead of sitting forever, with the packet plainly reporting first scout, first arrival, visit/revisit totals, and obvious reversals.
+- [x] The packet is reviewer-readable enough that Schani or Josef can answer plainly whether it is leiwand, actually fun, alive on the map, and showing real emergent activity rather than inert legal-but-boring behavior.
+- [x] The slice stays bounded: no z-level implementation, no broad architecture rewrite, no vague benchmark theater, and no hand-waved passes when routing logic is still wrong.
 
 Notes:
 - Canonical contract lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`.
-- Josef explicitly held the z-level packet back again. This test-suite packet is the active lane instead.
-- Benchmark failures in this packet should drive routing-logic fixes rather than softer benchmarks.
+- The current tree now closes honestly on the current playback/proof seam via `run_overmap_benchmark_suite_packet()` plus `render_overmap_benchmark_suite_packet( const benchmark_suite_result &result )` in `src/bandit_playback.{h,cpp}`.
+- Deterministic coverage in `tests/bandit_playback_test.cpp` now proves the benchmark-suite contract, metric surface, empty-frontier packet, weather edge packet, and independence packet honestly.
+- Narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`.
+- Josef explicitly kept the z-level packet ungreenlit. The benchmark suite is closed, and the next bandit lane needs a fresh explicit greenlight.
 
 ---
 

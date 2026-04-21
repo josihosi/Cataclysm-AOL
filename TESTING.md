@@ -44,6 +44,26 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
+### Active lane — Bandit repeated-site revisit behavior packet v0
+
+Current proof burden:
+- the active contract lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
+- the key change is behavioral, not merely numeric: repeated same-site corroboration should produce one more deliberate bounded revisit / cautious-watch posture than plain confidence bookkeeping
+- the metric/report burden is explicit too: scenario `repeated_site_interest_stays_bounded` should expose `site_visit_count_500`, `site_revisit_count_500`, `cooldown_turn`, and `endless_pressure_flag` reviewer-cleanly on the rendered packet path
+- deterministic coverage should prove both halves honestly: the richer behavior exists, and it still cools back out by the honest `500`-turn horizon instead of minting immortal pressure or free extraction truth
+- keep the slice narrow: no site-type-sensitive branching, no broad visibility rewrite, and no z-level detour
+
+### Latest closed lane — Bandit overmap benchmark suite packet v0
+
+Current honest state:
+- `src/bandit_playback.{h,cpp}` now carries one complete named overmap benchmark-suite packet on the current playback/proof seam, with fourteen named scenarios, explicit `100`-turn benchmark checks, and `500`-turn carry-through checks where the longer horizon is the honest burden
+- reviewer-readable packet output now exposes cadence metrics directly per scenario, including first non-idle turn, first actionable turn, scout/explore departure timing, overlap/revisit counts, and route-flip counts instead of leaving the packet as pass/fail theater
+- the explicit empty-frontier packet now says plainly when bounded exploration first broke idle, when frontier growth first appeared, how many visits/revisits happened, and whether the run stayed bounded rather than bouncing forever
+- the packet should also stay readable enough for product judgment, so Schani or Josef can answer plainly whether it is leiwand, actually fun, alive on the map, and showing real emergent activity rather than legal-but-boring behavior
+- deterministic coverage in `tests/bandit_playback_test.cpp` now proves the metric output itself for the empty-frontier, blocked-route, weather, and independence packets instead of assuming the rendered report is honest because the scenarios exist
+- narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
+- the packet now closes honestly on the current tree, so further work should move to a freshly greenlit next lane instead of ceremonial reruns here
+
 ### Latest closed lane — Bandit weather concealment refinement packet v0
 
 Current honest state:
@@ -211,25 +231,21 @@ Current honest state:
 
 ### Meaning
 
-- there is currently no active greenlit bandit lane in repo canon
+- the active greenlit bandit lane is now `Bandit repeated-site revisit behavior packet v0`
 - the bounded scout/explore seam is now checkpointed closed with dry-run plus playback/reference proof
 - do not reopen the scoring seam, concealment seam, smoke bridge, light bridge, human / route bridge, repeated-site reinforcement seam, first 500-turn proof, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
 - the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
 - the writer-side bandit mark-generation seam is now checkpointed closed too
-- the next honest bandit step is a fresh bounded greenlight from the parked chain, not more ceremonial reruns of the closed weather packet
+- `Bandit z-level visibility proof packet v0` remains ungreenlit and should stay parked while the active repeated-site revisit packet is in flight
 
 ---
 
 ## Pending probes
 
-- Active proof obligation now: `Bandit overmap benchmark suite packet v0` at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`.
-- Build one complete named overmap scenario family on the current playback/proof seam instead of leaving the benchmark burden split across isolated narrow packets.
-- Every required scenario must carry an easy-to-read `100`-turn benchmark packet.
-- Scenarios that honestly need the longer horizon must also carry `500`-turn carry-through proof instead of pretending `100` turns proves everything.
-- The benchmark output should expose timing and cadence data where the scenario is about motion or persistence, for example first scout turn, first arrival turn, visit counts, revisit counts, and back-and-forth counts by turn `500`.
-- The suite must explicitly include the empty-frontier case where nothing useful is nearby and the camp should venture out through bounded scout/explore behavior and increase frontier visibility instead of sitting forever.
-- Benchmark misses should be treated as routing-logic failures to fix, not as excuses to blur the benchmark until it passes.
-- `Bandit z-level visibility proof packet v0` stays ungreenlit until this suite exists and has started surfacing the next real problems.
+- Active proof obligation: land `Bandit repeated-site revisit behavior packet v0` on the current playback / benchmark seam.
+- Do not keep rerunning `Bandit overmap benchmark suite packet v0` unless new evidence says the landed packet is dishonest or stale.
+- The next honest evidence should prove the new bounded revisit behavior plus the promised scenario-9 long-horizon metrics, not just reassert the already-closed reinforcement seam.
+- Keep `Bandit z-level visibility proof packet v0` parked until Josef explicitly promotes it.
 
 ---
 

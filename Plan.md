@@ -39,16 +39,22 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently one active greenlit bandit lane: **Bandit overmap benchmark suite packet v0**.
-The earlier **Bandit weather concealment refinement packet v0**, **Bandit overmap/local pressure rewrite packet v0**, **Bandit long-range directional light proof packet v0**, **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, and **Bandit bounded scout/explore seam v0** are checkpointed closed.
+The current active greenlit bandit lane is **Bandit repeated-site revisit behavior packet v0**.
+The earlier **Bandit weather concealment refinement packet v0**, **Bandit overmap/local pressure rewrite packet v0**, **Bandit long-range directional light proof packet v0**, **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, **Bandit bounded scout/explore seam v0**, and **Bandit overmap benchmark suite packet v0** are checkpointed closed.
 Do not reopen them just because they are nearby.
 
-Current active contract:
-- the authoritative contract lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
-- build one complete named overmap scenario family with explicit `100`-turn benchmarks plus `500`-turn carry-through checks where the longer horizon is the honest proof burden
-- include the empty-frontier / increase-visibility case explicitly, so a camp with nothing useful nearby ventures out through bounded scout/explore behavior instead of sitting forever
-- keep `Bandit z-level visibility proof packet v0` not greenlit until this suite exists and has already surfaced the next real routing problems
-- treat benchmark misses as routing-logic failures to fix, not as excuses to water the benchmarks down
+Current honest state:
+- the authoritative active contract now lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
+- this packet is the narrow follow-through on scenario `repeated_site_interest_stays_bounded`: repeated same-site corroboration should produce one more deliberate bounded revisit / cautious-watch posture than plain confidence bookkeeping, then cool back out on the honest long horizon
+- the reporting burden is explicit now too: scenario 9 should expose `site_visit_count_500`, `site_revisit_count_500`, `cooldown_turn`, and `endless_pressure_flag` reviewer-cleanly instead of only thinner reinforcement counters
+- the packet stays narrow by design: no site-type taxonomy, no broad visibility rewrite, no free extraction truth, and no z-level promotion
+- the authoritative contract for the now-closed benchmark lane lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
+- `src/bandit_playback.{h,cpp}` now carries one complete named overmap benchmark-suite packet on the current playback/proof seam via `run_overmap_benchmark_suite_packet()` plus `render_overmap_benchmark_suite_packet( const benchmark_suite_result &result )`
+- the packet now covers all required scenarios with explicit `100`-turn benchmark checks and `500`-turn carry-through where the longer horizon is the honest proof burden
+- reviewer-readable packet output now exposes cadence metrics directly, including first non-idle turn, first actionable turn, scout/explore departure timing, revisit/overlap counts, and route-flip counts instead of pass/fail theater
+- the explicit empty-frontier packet now says plainly when bounded exploration first broke idle, when frontier growth first appeared, how many visits/revisits happened, and whether the run stayed bounded instead of bouncing forever
+- deterministic coverage in `tests/bandit_playback_test.cpp` now proves the benchmark-suite contract and rendered metric/report surface honestly, and narrow validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
+- `Bandit z-level visibility proof packet v0` remains ungreenlit; Josef explicitly chose this repeated-site follow-through instead of the broader z-level branch
 
 Fresh checkpoint that now stays closed:
 - **Bandit weather concealment refinement packet v0** is now honestly checkpointed too:
@@ -168,7 +174,7 @@ Meaning:
 - repeated site activity raises revisit interest first and still does not mint free settlement truth or free extraction permission
 - the first honest 500-turn playback proof is checkpointed closed too on the current abstract bandit seams
 - the concealment seam is checkpointed closed too on the current light-mark footing
-- there is currently no active greenlit bandit lane in repo canon
+- the active greenlit bandit lane is now `Bandit repeated-site revisit behavior packet v0`
 - the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
@@ -724,23 +730,25 @@ Keep this lane checkpointed closed unless later evidence shows the weather packe
 
 ---
 
-## 19. Active greenlit — Bandit overmap benchmark suite packet v0
+## 19. Checkpointed — Bandit overmap benchmark suite packet v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef explicitly redirected the next lane away from z-level and toward the test burden itself.
-This packet should turn the current bandit proof staircase into one coherent scenario family with easy-to-read benchmark hooks.
+Josef explicitly redirected the lane away from z-level and toward the test burden itself.
+That benchmark burden now lands honestly on the current tree.
 
-Current contract:
+Current honest state:
 - the authoritative contract lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
-- give every required scenario a clear `100`-turn benchmark packet that is easy to read and easy to fail
-- keep or add `500`-turn carry-through checks where the long horizon is the honest proof burden
-- expose richer timing and cadence metrics where they matter, for example first non-idle turn, first scout departure, first arrival, revisit count, and route-flip / back-and-forth count by turn `500`
-- include the explicit empty-frontier scenario, where a camp with nothing useful nearby should venture out and increase frontier visibility through bounded explore instead of sitting idle forever
-- keep z-level work ungreenlit for now; this lane is the proof-suite packet first
-- if a scenario misses its benchmark, treat that as a routing-logic problem to fix rather than a reason to mush the benchmark into passing prose
+- `src/bandit_playback.{h,cpp}` now carries the named overmap benchmark-suite packet on the current playback/proof seam via `run_overmap_benchmark_suite_packet()` plus `render_overmap_benchmark_suite_packet( const benchmark_suite_result &result )`
+- the packet now covers fourteen required scenarios with explicit `100`-turn benchmark checks and `500`-turn carry-through checks where the longer horizon is the honest proof burden
+- reviewer-readable output now exposes cadence metrics directly, including first non-idle turn, first actionable turn, scout/explore departure timing, revisit/overlap counts, and route-flip counts instead of bare pass/fail theater
+- the explicit empty-frontier packet now reports first scout/departure timing, frontier growth timing, revisit counts, and bounded long-horizon behavior plainly enough to prove scout/explore is real instead of inert waiting
+- the packet stays human-readable enough for product judgment: the scenario questions, cadence metrics, pass/fail checks, and checkpoint winners now make it plain whether the map activity reads as alive or boring
+- deterministic coverage in `tests/bandit_playback_test.cpp` now proves the benchmark-suite contract, metric surface, empty-frontier packet, weather edge packet, and independence packet honestly
+- narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
+- the slice stayed bounded: no z-level implementation, no broad architecture rewrite, no vague benchmark theater, and no softened passes for bad routing logic
 
-Keep this item active greenlit unless later canon finds a contradiction in the suite contract or the implementation surfaces a real blocker.
+Keep this lane checkpointed closed unless later evidence shows the benchmark packet lied, hid the cadence picture again, or stops being reviewer-readable enough to trust.
 
 ---
 
@@ -764,7 +772,26 @@ The next throughput pass should choose the next bounded parked-chain promotion i
 
 ---
 
-## 21. Parked concept chain — Bandit overmap AI
+## 21. Active — Bandit repeated-site revisit behavior packet v0
+
+**Status:** ACTIVE / GREENLIT
+
+Josef explicitly greenlit the narrow repeated-site follow-through after the benchmark packet was already closed.
+The approved shape is simple: do items 1 and 2, do not do item 3.
+
+Current active contract:
+- the authoritative contract lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
+- repeated same-site corroboration should now produce one more deliberate bounded revisit / cautious-watch posture than plain confidence bookkeeping, while still staying clearly below free extraction or raid truth
+- scenario `repeated_site_interest_stays_bounded` should expose the benchmark-facing long-horizon metrics it already claims to care about, namely `site_visit_count_500`, `site_revisit_count_500`, `cooldown_turn`, and `endless_pressure_flag`
+- deterministic proof should show the strengthened site staying bounded on the long horizon and cooling back out instead of regrowing forever
+- the slice stays narrow: no site-type-sensitive branching, no settlement taxonomy, no broad visibility/concealment rewrite, and no z-level work
+
+This lane is active now.
+Do not quietly widen it into a broader site-behavior design pass.
+
+---
+
+## 22. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / COHERENT SUBSTRATE
 
@@ -782,7 +809,8 @@ Current parked sub-items:
 - player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
 
 Promoted out of the parked chain into explicit canon lanes:
-- active now: overmap benchmark suite packet v0 at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
+- active now: repeated-site revisit behavior packet v0 at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
+- checkpointed now: overmap benchmark suite packet v0 at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
 - checkpointed now: weather concealment refinement packet v0 at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
 - checkpointed now: overmap/local pressure rewrite packet v0 at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
 - checkpointed now: long-range directional light proof packet v0 at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
@@ -831,7 +859,7 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, then concealment, scoring refinement, moving-bounty memory, bounded scout/explore, long-range directional light, overmap/local pressure rewrite, weather concealment refinement, and now the active overmap benchmark suite packet, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
+6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, then concealment, scoring refinement, moving-bounty memory, bounded scout/explore, long-range directional light, overmap/local pressure rewrite, weather concealment refinement, and now the checkpointed overmap benchmark suite packet, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
 If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
