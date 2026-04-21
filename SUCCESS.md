@@ -17,7 +17,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Bandit concealment seam v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] One bounded concealment adapter exists on the current light signal seam, weakening outward light legibility when exposure is poor instead of inventing a second fake visibility machine.
@@ -28,14 +28,14 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-concealment-seam-v0-2026-04-21.md`.
-- The current tree already carries a bounded concealment packet on the light seam in `src/bandit_mark_generation.{h,cpp}`, with reviewer-readable verdict summary coverage in `tests/bandit_mark_generation_test.cpp` plus `tests/bandit_playback_test.cpp`.
-- The lane remains the current active priority in canon; if the code changes again, revalidate with the narrowest honest deterministic `[bandit]` packet first.
+- This narrow promotion is now checkpointed on the current light seam: `src/bandit_mark_generation.{h,cpp}` carries the concealment reduction and reviewer-readable verdict summary, with deterministic proof in `tests/bandit_mark_generation_test.cpp` plus `tests/bandit_playback_test.cpp`.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 
 ## Bandit scoring refinement seam v0
 
-Status: GREENLIT / QUEUED NEXT
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] One bounded scoring-refinement adapter exists on the current bandit dry-run/evaluator seam, refining how existing camp ledger state plus existing marks become job choice.
@@ -46,13 +46,13 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`.
-- This is the queued greenlit follow-up behind the active concealment lane, not permission to preempt the current active item.
+- This is now the active greenlit follow-up after the concealment checkpoint closed, not permission to widen into broader world-sim work.
 
 ---
 
 ## Bandit moving-bounty memory seam v0
 
-Status: GREENLIT / LATER
+Status: GREENLIT / QUEUED NEXT
 
 Success state:
 - [ ] One bounded moving-bounty memory object exists for live `actor` or `corridor` style bounty, while structural bounty stays on site state instead of gaining chase memory.
@@ -63,7 +63,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`.
-- This is a later greenlit follow-up behind concealment and the queued scoring lane, not permission to preempt either earlier item.
+- This is the queued greenlit follow-up behind the active scoring lane, not permission to preempt the current active item.
 
 ---
 
