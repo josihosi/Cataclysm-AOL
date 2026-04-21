@@ -226,6 +226,7 @@ Current honest state:
 - Build one complete named overmap scenario family on the current playback/proof seam instead of leaving the benchmark burden split across isolated narrow packets.
 - Every required scenario must carry an easy-to-read `100`-turn benchmark packet.
 - Scenarios that honestly need the longer horizon must also carry `500`-turn carry-through proof instead of pretending `100` turns proves everything.
+- The benchmark output should expose timing and cadence data where the scenario is about motion or persistence, for example first scout turn, first arrival turn, visit counts, revisit counts, and back-and-forth counts by turn `500`.
 - The suite must explicitly include the empty-frontier case where nothing useful is nearby and the camp should venture out through bounded scout/explore behavior and increase frontier visibility instead of sitting forever.
 - Benchmark misses should be treated as routing-logic failures to fix, not as excuses to blur the benchmark until it passes.
 - `Bandit z-level visibility proof packet v0` stays ungreenlit until this suite exists and has started surfacing the next real problems.

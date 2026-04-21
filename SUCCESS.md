@@ -23,7 +23,7 @@ Success state:
 - [ ] One complete named overmap benchmark-suite packet exists on the current bandit playback / proof seam.
 - [ ] Every required scenario carries a clear `100`-turn benchmark packet that is easy to read and easy to fail.
 - [ ] The scenarios that honestly need the longer horizon also carry `500`-turn carry-through checks instead of pretending `100` turns proves everything.
-- [ ] Reviewer-readable output explains why each scenario passed or failed.
+- [ ] Reviewer-readable output explains why each scenario passed or failed, including timing / cadence / revisit counters where they matter.
 - [ ] The explicit empty-frontier scenario proves that a camp with nothing useful nearby ventures out and increases frontier visibility through bounded scout/explore behavior instead of sitting forever.
 - [ ] The slice stays bounded: no z-level implementation, no broad architecture rewrite, no vague benchmark theater, and no hand-waved passes when routing logic is still wrong.
 

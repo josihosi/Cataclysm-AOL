@@ -735,6 +735,7 @@ Current contract:
 - the authoritative contract lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
 - give every required scenario a clear `100`-turn benchmark packet that is easy to read and easy to fail
 - keep or add `500`-turn carry-through checks where the long horizon is the honest proof burden
+- expose richer timing and cadence metrics where they matter, for example first non-idle turn, first scout departure, first arrival, revisit count, and route-flip / back-and-forth count by turn `500`
 - include the explicit empty-frontier scenario, where a camp with nothing useful nearby should venture out and increase frontier visibility through bounded explore instead of sitting idle forever
 - keep z-level work ungreenlit for now; this lane is the proof-suite packet first
 - if a scenario misses its benchmark, treat that as a routing-logic problem to fix rather than a reason to mush the benchmark into passing prose
