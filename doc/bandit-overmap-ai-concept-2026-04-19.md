@@ -324,6 +324,26 @@ Current scope boundary:
 - offscreen systems can create pressure, delays, interceptions, wounds, small losses, or missing returners, but not an invisible total camp devastation
 - attack intent does not need presignaling; fairness here comes from bounded offscreen consequence scope, not courtesy telegraphs
 
+### Player-present extortion / toll lean
+When a bandit group directly intercepts the player or a player-basecamp actor in a scene that still reads like a shakedown instead of a hot rolling ambush, the current product lean is to use an explicit chat window.
+The first fork is deliberately blunt:
+- pay
+- fight
+
+Good v1 shape:
+- the extortion UI can use a trading-style window rather than pure bark parsing
+- the toll should be painful, likely a meaningful percentage of the honest reachable goods pool rather than a tiny scripted fee
+- basecamp-side scenes may expose player inventory, relevant nearby NPC inventories, and basecamp inventory
+- off-base scenes should expose only what the player, companions, and current vehicle actually carry, not remote camp stock by magic
+- surrendered goods do not need to survive as item-perfect cargo; they can be abstracted into bandit bounty and the group can head home
+- if a player-present fight kills defenders or materially lowers local basecamp threat, a later pressure pass may reopen negotiations from a stronger bandit position with a higher toll instead of pretending nothing changed
+
+Important exception:
+- if the player is driving a car or the encounter reads like a convoy/travel-group hit, bandits should usually skip the polite toll window and open with violence, because that context reads as a rolling attack opportunity rather than a stable extortion posture
+
+This is still not permission to build a giant diplomacy opera.
+The point is one hard readable pressure fork, not a full social minigame.
+
 ## Existing repo footing for offscreen actors
 We do not need to invent offscreen actor existence from nothing.
 The current game already has a barebones overmap-NPC substrate, including:

@@ -41,13 +41,14 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 There is currently no active greenlit lane.
 
-The last active follow-up, **Bandit moving-bounty memory seam v0**, is now honestly checkpointed too.
-The earlier **Bandit scoring refinement seam v0** also stays closed.
+The earlier **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, and now **Bandit bounded scout/explore seam v0** are checkpointed closed.
+Do not reopen them just because they are nearby.
 
 Current canon implication:
-- no further bandit slice is greenlit yet
-- do not reopen the now-closed scoring or moving-memory packets just because they are nearby
-- if Josef wants the next throughput pass to continue, he needs to greenlight the next bounded lane explicitly
+- the explicit bounded scout/explore packet is now closed with dry-run plus playback/reference proof
+- unreachable jobs still fail closed and do **not** mint accidental random wandering
+- camps stay independent with their own maps and bounty reads, and other camps still read more like threat-bearing spots than default allies
+- the next throughput pass needs the next bounded parked-chain promotion to be chosen honestly instead of smuggling in a wider scope jump
 
 Fresh checkpoints that stay closed:
 - **Bandit moving-bounty memory seam v0** is now honestly checkpointed too:
@@ -606,44 +607,67 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 
 ---
 
-## 14. Active greenlit — Bandit scoring refinement seam v0
+## 14. Checkpointed — Bandit scoring refinement seam v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef explicitly kept this scoring slice as the current active narrow bandit item.
+The bounded scoring packet now exists on the current bandit dry-run/evaluator seam and is honest enough to stay closed for now.
 Do not widen it into vague parked lore or fresh world-sim theater.
 
-Current contract:
+Current honest state:
 - the authoritative contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
-- the seam should refine how existing camp ledger state plus existing marks become job choice on the current dry-run evaluator footing
-- first inspect existing threat/danger mechanics and collapse them, do not invent a fresh bespoke threat astrology chart
-- the product goal is opportunistic bandit choice: avoid strong opponents, but pounce when zombie pressure or other distraction weakens target coherence
-- keep the slice bounded: no new visibility signals, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
+- `src/bandit_dry_run.{h,cpp}` now carries the bounded danger-collapse packet on the current evaluator seam, forwarding existing monster-pressure and target-coherence footing into `effective_threat_penalty` plus a small opportunism bonus instead of inventing a fresh threat astrology chart
+- `src/bandit_mark_generation.cpp` now forwards `monster_pressure_add` and `target_coherence_subtract` into emitted leads so the current marks actually drive the refined score choice instead of burying that footing inside one undifferentiated threat number
+- deterministic coverage in `tests/bandit_dry_run_test.cpp` and `tests/bandit_mark_generation_test.cpp` now proves the key bounded distinctions honestly: one clearly strong target still gets deferred, one distracted target becomes materially more attractive, one neutral case stays sane, and reviewer-readable output exposes raw threat, collapsed threat, and the bounded opportunism window
+- the slice stayed bounded: no new visibility signals, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
+- narrow deterministic validation passed on the current tree via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
-Keep this item active greenlit unless later canon changes priority or finds a contradiction in the scoring contract.
+Keep this lane closed unless later canon or later evidence says the scoring packet is dishonest, too weak, or too generous.
 
 ---
 
-## 15. Greenlit next — Bandit moving-bounty memory seam v0
+## 15. Checkpointed — Bandit moving-bounty memory seam v0
 
-**Status:** GREENLIT / QUEUED NEXT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef explicitly greenlit this as the next queued bandit item behind the active scoring lane.
+The bounded moving-memory packet now exists on the current bandit seam and is honest enough to stay closed for now.
 Keep it small, cheap, and stupid in the good way.
 Do not quietly widen it into a general memory architecture pass.
 
-Current contract:
+Current honest state:
 - the authoritative contract lives at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
-- structural bounty stays on site state such as harvested / recently-checked / false-lead / sticky threat, not chase memory
-- only moving/NPC bounty gets a tiny source-shaped memory object so camps can briefly stalk, shadow, or intercept live prey
-- the moving memory must stay bounded by confidence plus leash and collapse cleanly on loss, split, bad recheck, rising threat, or outing expiry instead of retrying forever
-- keep the slice computationally cheap: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, and no broad memory-palace world model
+- `src/bandit_mark_generation.{h,cpp}` now keeps a bounded `moving_bounty_memory` packet on moving-carrier and corridor marks only, with leash, opportunity/threat bands, and reviewer-readable transition state
+- structural/site marks stay on cheap site footing such as harvested / recently-checked / false-lead / sticky threat and do not gain chase memory
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: moving prey can be stalked briefly after raw signal cooling, structural sites do not gain chase memory, and stale moving contact drops reviewer-cleanly instead of retrying forever
+- reviewer-readable output now shows whether a moving lead was refreshed, narrowed, or dropped instead of hiding the memory state in debugger soup
+- the slice stayed computationally cheap: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, no endless retry loop, and no broad memory-palace world model
+- narrow deterministic validation passed on the current tree via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
-Keep this item queued greenlit unless the active scoring lane changes priority or later canon finds a contradiction in the memory contract.
+Keep this lane closed unless later canon or later evidence says the memory packet is dishonest, too generous, or too sticky.
 
 ---
 
-## 16. Parked concept chain — Bandit overmap AI
+## 16. Checkpointed — Bandit bounded scout/explore seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+Josef explicitly re-enabled narrow bandit throughput, and this bounded slice is now honestly landed.
+It stayed small.
+It did not turn blocked routes into accidental random wandering.
+
+Current honest state:
+- the authoritative contract lives at `doc/bandit-bounded-scout-explore-seam-v0-2026-04-21.md`
+- `src/bandit_dry_run.{h,cpp}` now carries one explicit bounded scout/explore option on the current evaluator seam via `camp_input`, instead of minting fake wandering from failed routes
+- unreachable leads still fail closed as `no_path`, and deterministic coverage in `tests/bandit_dry_run_test.cpp` proves the key bounded distinctions honestly: explicit explore can beat `hold / chill`, blocked routes do not auto-create explore without the explicit greenlight, and strong real reachable leads still stay ahead when they score better
+- `src/bandit_playback.cpp` now carries the named `bounded_explore_frontier_tripwire` scenario packet with explicit goals and tuning metrics, and `tests/bandit_playback_test.cpp` proves the same rule on the current scenario seam
+- reviewer-readable dry-run output says plainly that the explore packet is explicit map uncovering and not accidental random wandering
+
+This lane is checkpointed closed.
+The next throughput pass should choose the next bounded parked-chain promotion instead of widening scope by accident.
+
+---
+
+## 17. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / COHERENT SUBSTRATE
 
@@ -661,9 +685,10 @@ Current parked sub-items:
 - player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
 
 Promoted out of the parked chain into explicit canon lanes:
+- checkpointed now: bounded scout/explore seam v0 at `doc/bandit-bounded-scout-explore-seam-v0-2026-04-21.md`
 - checkpointed now: concealment seam v0 at `doc/bandit-concealment-seam-v0-2026-04-21.md`
-- active now: scoring refinement seam v0 at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
-- queued greenlit next: moving-bounty memory seam v0 at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
+- checkpointed now: scoring refinement seam v0 at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- checkpointed now: moving-bounty memory seam v0 at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
 - checkpointed earlier: smoke, light, human / route, repeated-site reinforcement, and the first honest 500-turn proof
 
 Supporting recon note for the visibility item:
@@ -680,6 +705,8 @@ What the current parked sub-items should do:
 - resolved note-1 dampers: false-lead / recently-checked / harvested memory and self-signal filtering should stop camps from spiraling into pseudo-psychic fixation
 - resolved note-2 fairness footing: sustained pressure and stalking against legible camps is desired, but decisive full camp assault stays player-present only for current scope
 - resolved note-2 attack-signaling footing: fairness should come from bounded offscreen consequence scope, not from requiring bandits to presignal attacks
+- resolved note-2 extortion footing: when bandits directly intercept player/basecamp actors in a player-present scene and the context still reads like a shakedown rather than a hot convoy hit, the first interaction may open in an explicit chat window with a hard choice to pay or fight instead of forcing pure bark-only negotiation or instant murder
+- resolved note-2 payment-pool footing: the toll should draw from the honest local inventory pool for that scene, for example basecamp-side interception may expose player inventory plus nearby NPC and basecamp stock, while off-base pounces should only expose what the player, companions, and current vehicle actually carry
 - resolved note-2 repo footing: existing overmap-NPC persistence, travel, and companion plumbing is valid substrate for following outbound groups and route interception, but the current need-driven wandering policy is not the finished hostile model
 - resolved no-path exploration footing: unreachable jobs should still fail closed for that dispatch pass, but if a camp honestly chooses to uncover more map it may do so only through a bounded scout/explore outing with leash and return discipline instead of inheriting engine random-goal nonsense by accident
 - resolved note-3 identity footing: persistent overmap group continuity is mandatory, with only a small anchored-individual slice surviving handoffs directly while the remaining membership stays fungible
@@ -687,9 +714,11 @@ What the current parked sub-items should do:
 - resolved note-3 scope footing: v1 should cap anchored continuity at roughly 1-3 individuals rather than forcing full per-bandit persistence everywhere
 - resolved note-4 city-opportunism footing: cities may support one-off or occasional opportunistic bandit action under zombie chaos, but not persistent farming, because structural bounty depletes while threat remains high
 - resolved note-4 zombie-model footing: zombies currently matter as threat and target-coherence pressure only, not as a separately simulated bandit-versus-zombie tactical system
+- resolved note-4 vehicle-ambush footing: if the player is driving a car or the scene reads like a convoy/travel-group hit, bandits should usually skip polite toll talk and lean straight into violent interception because that context reads as a hot attack window, not a calm shakedown
 - resolved note-4 sticky-threat footing: if a group leaves due to threat, the area should keep a sticky scary mark that is only meaningfully reevaluated on close revisit or when some other attraction pulls the group back nearby
 - resolved note-5 independence footing: v1 camps should behave as mostly independent actors with their own maps, bounty reads, and local pressures rather than a coordinated coalition strategy layer, so overlap may happen by accident but routine dogpile convergence should not be the norm
 - resolved note-5 other-camps footing: other bandit camps should usually read as threat-bearing spots on a camp's own map, broadly more like hostile pressure sources than allies; occasional same-target opportunism may still happen indirectly when two camps both read the same opening, but not through shared planning
+- resolved note-5 renegotiation footing: if bandits kill a basecamp NPC or otherwise materially reduce local defender threat in a player-present pressure scene, a later toll pass may reopen at a higher demanded percentage rather than pretending the old bargaining position still holds
 - resolved note-5 anti-dogpile footing: territoriality, distance burden, depletion, sticky threat, and fresh active-pressure penalties should suppress repeated multi-camp pile-ons against the same region
 - resolved note-5 scope footing: deliberate alliances, campaign planning, and explicit multi-camp coordination are later-layer strategy material, not part of the current parked v1 shape
 - resolved testing-priority footing: before reopening hazy handoff elaboration as a planning focus, prefer a complete multi-turn overmap AI scenario packet with per-scenario goals and tuning metrics so later balancing can ask whether behavior is actually rad, cool, and fun instead of merely mathematically legal
@@ -700,14 +729,14 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, concealment now checkpointed closed, scoring refinement kept active, and moving-bounty memory promoted queued greenlit next, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
+6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, then concealment, scoring refinement, moving-bounty memory, and the currently active bounded scout/explore packet, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
 If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
 
 ---
 
-## 17. Documentation discipline
+## 18. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute
