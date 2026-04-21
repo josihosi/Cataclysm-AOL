@@ -177,6 +177,76 @@ scenario_definition make_empty_region()
     return scenario;
 }
 
+scenario_definition make_bounded_explore_frontier_tripwire()
+{
+    scenario_definition scenario;
+    scenario.id = "bounded_explore_frontier_tripwire";
+    scenario.title = "Bounded explore frontier tripwire";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Goal: explicit bounded scout/explore should beat hold / chill only when a camp deliberately chooses map uncovering.",
+        "Goal: blocked routes should stay fail-closed instead of minting accidental random wandering.",
+        "Tuning metrics: tick 0 winner = scout on `bounded_explore`, tick 20 winner = hold / chill on a blocked route without greenlight, tick 100 winner = a stronger real reachable lead instead of exploratory drift."
+    };
+
+    camp_input quiet_frontier_camp = make_camp( 2 );
+    quiet_frontier_camp.allow_bounded_explore = true;
+    quiet_frontier_camp.explore_pressure = 2;
+    quiet_frontier_camp.explore_distance_multiplier = 0.40;
+    scenario.frames.push_back( {
+        0,
+        "quiet_frontier",
+        quiet_frontier_camp,
+        {},
+        {
+            "Goal: explicit frontier uncovering should justify one bounded scout when nothing real beats it.",
+            "Tuning metric: the winner should be `scout` on the synthetic `bounded_explore` envelope, not `hold / chill`."
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    lead_input blocked_route = make_lead( "blocked_bridge_farm", "blocked_bridge_farm",
+                                          lead_family::site, 5, 1, 0.80, 1 );
+    blocked_route.has_path = false;
+    scenario.frames.push_back( {
+        20,
+        "blocked_route_no_greenlight",
+        make_camp( 2 ),
+        { blocked_route },
+        {
+            "Goal: a blocked route without explicit explore greenlight should fail closed instead of inventing wander behavior.",
+            "Tuning metric: the winner should collapse to `hold / chill`, and no synthetic explore candidate should appear."
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    camp_input reachable_lead_camp = make_camp( 2 );
+    reachable_lead_camp.allow_bounded_explore = true;
+    reachable_lead_camp.explore_pressure = 1;
+    reachable_lead_camp.explore_distance_multiplier = 0.30;
+    scenario.frames.push_back( {
+        100,
+        "real_lead_beats_explore",
+        reachable_lead_camp,
+        {
+            make_lead( "quiet_house", "quiet_house", lead_family::site, 5, 1, 0.85, 1,
+                       0, 2, threat_gate::discount_only,
+                       {},
+                       { "A real reachable scoreable lead should outrank exploratory wandering once it exists." } )
+        },
+        {
+            "Goal: explicit explore stays secondary once a stronger real reachable lead shows up.",
+            "Tuning metric: the winner should be the real `quiet_house` lead, not the synthetic explore packet."
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    return scenario;
+}
+
 scenario_definition make_smoke_only_distant_clue()
 {
     scenario_definition scenario;
@@ -652,6 +722,283 @@ scenario_definition make_generated_night_light_mark_scopes_out()
     return scenario;
 }
 
+scenario_definition make_generated_directional_light_hidden_side_stays_inert()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_directional_light_hidden_side_stays_inert";
+    scenario.title = "Generated directional light hidden side stays inert";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Goal: a north-side camp whose night light only leaks away from the bandit-facing side should stay non-actionable on the current playback seam.",
+        "Benchmark: ticks 0, 20, 100, and 500 should all stay `hold / chill`, with no generated lead or mark surviving from the hidden-side packet.",
+        "Tuning metrics: use the same observed range and ordinary night-light footing as the visible-side twin, but keep side leakage at 0 so the projected range stays below the bandit-side read."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "hidden_side_first_glimpse",
+        make_camp( 2 ),
+        {},
+        {
+            "The north camp leaks east, not south toward the bandits, so the bandit-facing read should stay inert.",
+            "Reviewer checkpoint: no generated lead should appear even though the broader night-light footing matches the visible-side twin."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "north_farm_hidden_side_light", "north_farm_hidden_side_light",
+                               "north_farmstead", 7, 2, 1, 0,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::screened, light_source_band::ordinary,
+                               lead_family::site,
+                               { "North-side camp leaks east only, so the bandit-facing south read should stay below actionable range." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "hidden_side_recheck",
+        make_camp( 2 ),
+        {},
+        {
+            "A second hidden-side packet under the same footing should stay equally inert instead of gradually teaching the bandits psychic vision."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "north_farm_hidden_side_light", "north_farm_hidden_side_light",
+                               "north_farmstead", 7, 2, 1, 0,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::screened, light_source_band::ordinary,
+                               lead_family::site,
+                               { "Repeated east-only leakage should still stay hidden from the bandit-facing side." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        60,
+        "hidden_side_stays_quiet",
+        make_camp( 2 ),
+        {},
+        {
+            "Nothing actionable should have entered the ledger, so the intermediate horizon should stay quiet too."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "hidden_side_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Cleanup should remain empty because the hidden-side packet never honestly crossed into the bandit-facing read."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "hidden_side_long_horizon",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later this should still be quiet, because hidden-side leakage is not magical long-range truth."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_directional_light_visible_side_becomes_actionable()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_directional_light_visible_side_becomes_actionable";
+    scenario.title = "Generated directional light visible side becomes actionable";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Goal: when the same north-side camp honestly leaks toward the bandit-facing side, the current playback seam should emit a bounded actionable clue.",
+        "Benchmark: ticks 0 and 20 should win with `scout` on the generated light envelope, then ticks 100 and 500 should cool back to `hold / chill` once refreshes stop.",
+        "Tuning metrics: keep the same observed range, source strength, persistence, and screened exposure as the hidden-side twin, but raise side leakage to 2 so the projected range reaches the bandit-side read."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "visible_side_first_glimpse",
+        make_camp( 2 ),
+        {},
+        {
+            "The only material change from the hidden-side twin is that the light now leaks toward the bandits, so a bounded scout should appear.",
+            "Reviewer checkpoint: this should stay occupancy-first ordinary light, not threat-first searchlight panic."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "north_farm_visible_side_light", "north_farm_visible_side_light",
+                               "north_farmstead", 7, 2, 1, 2,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::screened, light_source_band::ordinary,
+                               lead_family::site,
+                               { "The same north camp now leaks toward the bandit-facing side, so the clue should become actionable." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "visible_side_recheck",
+        make_camp( 2 ),
+        {},
+        {
+            "A second honest visible-side packet should refresh the same mark instead of inventing a stronger class of magic knowledge."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "north_farm_visible_side_light", "north_farm_visible_side_light",
+                               "north_farmstead", 7, 2, 1, 2,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::screened, light_source_band::ordinary,
+                               lead_family::site,
+                               { "Repeated south-visible leakage should refresh one bounded actionable mark." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        60,
+        "visible_side_cooling",
+        make_camp( 2 ),
+        {},
+        {
+            "Once the visible-side leakage stops refreshing, the clue should cool instead of hardening into immortal omniscience."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "visible_side_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Cleanup should prune the ordinary light clue after the refresh window closes."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "visible_side_long_horizon",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the ordinary light clue should be gone again instead of persisting as a fake permanent target."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_directional_light_corridor_shares_horde_pressure()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_directional_light_corridor_shares_horde_pressure";
+    scenario.title = "Generated directional light corridor shares horde pressure";
+    scenario.default_checkpoints = { 0, 5, 20, 100 };
+    scenario.questions = {
+        "Goal: the same visible-side directional light should stay on a shared corridor seam where zombie pressure can still shape the outcome, not in private bandit-only theater.",
+        "Benchmark: tick 0 should create a corridor action on the generated light envelope, tick 20 should still act on that corridor while carrying shared horde-pressure fields, tick 100 should remain corridor-shaped under moving memory, and tick 500 should cool back to `hold / chill`.",
+        "Tuning metrics: keep the visible-side leakage footing, switch the family to corridor, then refresh the same envelope with monster-pressure and coherence pressure so the emitted lead shows shared-world pressure instead of private knowledge."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "corridor_light_opens",
+        make_camp( 2 ),
+        {},
+        {
+            "Visible-side leakage along a road corridor should create bounded corridor pressure, not a site raid fantasy."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "south_visible_corridor_light", "south_visible_corridor_light",
+                               "south_road", 7, 2, 1, 2,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::screened, light_source_band::ordinary,
+                               lead_family::corridor,
+                               { "The same south-visible leakage now sits on a corridor, so the evaluator should treat it as route pressure rather than a site anchor." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "corridor_light_shared_with_horde_pressure",
+        make_camp( 2 ),
+        {},
+        {
+            "The corridor stays actionable, but now the same envelope also carries zombie pressure and broken-coherence consequences.",
+            "Reviewer checkpoint: the emitted lead should show shared pressure fields rather than a private bandit-only light clue."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "south_visible_corridor_horde_pressure", "route_pressure",
+                         "south_visible_corridor_light", "south_road",
+                         lead_family::corridor, 0, 0, 0, 0, 0.35,
+                         0, threat_gate::discount_only, 2, 1, false, true,
+                         {},
+                         { "The same lit corridor is also noisy enough to attract zombie pressure, so the packet should stay shared-world rather than private bandit theater." } )
+        },
+        {},
+        {
+            make_light_packet( "south_visible_corridor_light", "south_visible_corridor_light",
+                               "south_road", 7, 2, 1, 2,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::screened, light_source_band::ordinary,
+                               lead_family::corridor,
+                               { "Repeated corridor leakage should refresh the same envelope while leaving room for shared zombie pressure to matter." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "corridor_memory_holds_shape",
+        make_camp( 2 ),
+        {},
+        {
+            "Moving-memory persistence should keep the corridor clue shaped like a route for a while instead of collapsing instantly or inflating into a site."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "corridor_long_horizon_cools",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the shared corridor clue should finally cool off instead of living forever."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
 scenario_definition make_generated_corridor_mark_refreshes_cleanly()
 {
     scenario_definition scenario;
@@ -1116,6 +1463,165 @@ scenario_definition make_generated_confirmed_threat_stays_sticky()
     return scenario;
 }
 
+scenario_definition make_generated_local_loss_rewrites_corridor_to_withdrawal()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_local_loss_rewrites_corridor_to_withdrawal";
+    scenario.title = "Generated local loss rewrites corridor to withdrawal";
+    scenario.default_checkpoints = { 0, 20, 100, 500 };
+    scenario.questions = {
+        "Goal: a plausible corridor stalk should withdraw once the same region gets a confirmed local loss that makes the tile much hotter than the old overmap read.",
+        "Benchmark hook for later review: tick 0 should still pressure `granary_road_corridor`, while ticks 20, 100, and 500 should stay off that stale route after the loss signal lands.",
+        "Tuning hook: Josef and Schani still need to lock the exact scenario-specific benchmark line later; for now the suite should expose winner drift, generated heat, and active-pressure penalties reviewer-cleanly."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "granary_route_plausible",
+        make_camp( 2 ),
+        {},
+        {
+            "The old overmap read still looks barely worth stalking, so a marginal corridor posture is allowed to exist before the local rewrite arrives."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "granary_route_activity", "route_activity",
+                         "granary_road_corridor", "granary_edge",
+                         lead_family::corridor, 4, 2, 1, 0, 0.65,
+                         0, threat_gate::soft_veto, 0, 0, false, true,
+                         { job_template::scout, job_template::toll },
+                         { "A still-plausible corridor read exists before the camp learns the granary edge has gone hot." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "granary_local_loss_turns_tile_hot",
+        make_camp( 2 ),
+        {},
+        {
+            "Local contact rewrites the same region as ugly enough that the old corridor posture should collapse instead of homing forever.",
+            "Reviewer checkpoint: the old corridor lead may still exist in generated output, but active regional pressure should keep it from winning."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "granary_loss_site", "loss_site", "granary_loss_site", "granary_edge",
+                         lead_family::site, 1, 2, 6, 0, 0.60,
+                         0, threat_gate::hard_veto, 0, 0, true, true,
+                         { job_template::scavenge, job_template::steal, job_template::raid },
+                         { "Fresh local loss says the granary edge is hotter than the old overmap stalk read." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "granary_route_stays_abandoned",
+        make_camp( 2 ),
+        {},
+        {
+            "At the short aftermath horizon the stale corridor should still stay abandoned while the scary read remains sticky."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "granary_long_horizon_stays_off",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the packet should still show no forced return to the stale granary route."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_local_loss_reroutes_to_safer_detour()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_local_loss_reroutes_to_safer_detour";
+    scenario.title = "Generated local loss reroutes to safer detour";
+    scenario.default_checkpoints = { 0, 20, 100, 500 };
+    scenario.questions = {
+        "Goal: when one intercept corridor becomes locally too dangerous, the same outing should be able to reroute toward a narrower safer detour instead of pretending stale intent is destiny.",
+        "Benchmark hook for later review: tick 0 should act on `river_bridge_intercept`, tick 20 should switch away from that envelope onto `ridge_detour_watch`, and the later horizons should not drift back into the burned bridge route on their own.",
+        "Tuning hook: the exact winner spread still needs Josef and Schani to lock the scenario-specific benchmark later, but the setup should already expose the old corridor's pressure penalty beside the safer reroute candidate."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "bridge_intercept_open",
+        make_camp( 2 ),
+        {},
+        {
+            "Before the local rewrite, the bridge intercept still looks like the honest pressure seam."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "river_bridge_route_activity", "route_activity",
+                         "river_bridge_intercept", "river_bridge",
+                         lead_family::corridor, 4, 2, 1, 0, 0.70,
+                         0, threat_gate::soft_veto, 0, 0, false, true,
+                         {},
+                         { "The bridge corridor is initially plausible enough to justify a bounded intercept posture." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "bridge_loss_promotes_detour",
+        make_camp( 2 ),
+        {
+            make_lead( "ridge_detour_watch", "ridge_detour_watch", lead_family::corridor, 3, 1, 0.75, 0,
+                       0, 0, threat_gate::discount_only,
+                       {},
+                       { "A ridge detour stays cooler than the burned bridge and offers a bounded reroute instead of blind persistence." } )
+        },
+        {
+            "The bridge route should stop winning once the same region gets a confirmed ugly loss, and the safer detour should become the honest outlet.",
+            "Reviewer checkpoint: this is a reroute proof, not a claim that every hot route should collapse straight to hold / chill."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "river_bridge_loss_site", "loss_site", "river_bridge_loss_site", "river_bridge",
+                         lead_family::site, 1, 2, 6, 0, 0.60,
+                         0, threat_gate::hard_veto, 0, 0, true, true,
+                         { job_template::scavenge, job_template::steal, job_template::raid },
+                         { "Local contact says the bridge is now hotter than the old intercept plan admitted." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "detour_cools_without_bridge_relapse",
+        make_camp( 2 ),
+        {},
+        {
+            "After the short reroute window, the camp should be free to cool off instead of snapping back to the burned bridge route."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "bridge_remains_non_destiny",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the packet should still not regrow the stale bridge intercept as if nothing happened."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
 const scenario_frame &frame_for_tick( const scenario_definition &scenario, int tick )
 {
     const scenario_frame *active = &scenario.frames.front();
@@ -1256,6 +1762,7 @@ const std::vector<scenario_definition> &reference_scenarios()
 {
     static const std::vector<scenario_definition> scenarios = {
         make_empty_region(),
+        make_bounded_explore_frontier_tripwire(),
         make_smoke_only_distant_clue(),
         make_smoke_searchlight_corridor(),
         make_forest_plus_town(),
@@ -1264,11 +1771,16 @@ const std::vector<scenario_definition> &reference_scenarios()
         make_city_edge_moving_hordes(),
         make_generated_smoke_mark_cools_off(),
         make_generated_night_light_mark_scopes_out(),
+        make_generated_directional_light_hidden_side_stays_inert(),
+        make_generated_directional_light_visible_side_becomes_actionable(),
+        make_generated_directional_light_corridor_shares_horde_pressure(),
         make_generated_corridor_mark_refreshes_cleanly(),
         make_generated_human_sighting_tracks_moving_carrier(),
         make_generated_shared_route_refresh_stays_corridor(),
         make_generated_repeated_site_reinforcement_stays_bounded(),
         make_generated_confirmed_threat_stays_sticky(),
+        make_generated_local_loss_rewrites_corridor_to_withdrawal(),
+        make_generated_local_loss_reroutes_to_safer_detour(),
     };
     return scenarios;
 }
@@ -1308,6 +1820,51 @@ proof_packet_result run_first_500_turn_playback_proof()
 
     proof_packet_result result;
     result.packet_id = "bandit_first_500_turn_playback_proof_v0";
+    result.checkpoints = proof_checkpoints;
+
+    for( const std::string &scenario_id : proof_scenarios ) {
+        const scenario_definition *scenario = find_reference_scenario( scenario_id );
+        if( scenario != nullptr ) {
+            result.scenarios.push_back( run_scenario( *scenario, proof_checkpoints ) );
+        }
+    }
+
+    return result;
+}
+
+proof_packet_result run_long_range_directional_light_proof_packet()
+{
+    static const std::vector<int> proof_checkpoints = { 0, 20, 100, 500 };
+    static const std::vector<std::string> proof_scenarios = {
+        "generated_directional_light_hidden_side_stays_inert",
+        "generated_directional_light_visible_side_becomes_actionable",
+        "generated_directional_light_corridor_shares_horde_pressure",
+    };
+
+    proof_packet_result result;
+    result.packet_id = "bandit_long_range_directional_light_proof_packet_v0";
+    result.checkpoints = proof_checkpoints;
+
+    for( const std::string &scenario_id : proof_scenarios ) {
+        const scenario_definition *scenario = find_reference_scenario( scenario_id );
+        if( scenario != nullptr ) {
+            result.scenarios.push_back( run_scenario( *scenario, proof_checkpoints ) );
+        }
+    }
+
+    return result;
+}
+
+proof_packet_result run_overmap_local_pressure_rewrite_proof_packet()
+{
+    static const std::vector<int> proof_checkpoints = { 0, 20, 100, 500 };
+    static const std::vector<std::string> proof_scenarios = {
+        "generated_local_loss_rewrites_corridor_to_withdrawal",
+        "generated_local_loss_reroutes_to_safer_detour",
+    };
+
+    proof_packet_result result;
+    result.packet_id = "bandit_overmap_local_pressure_rewrite_proof_packet_v0";
     result.checkpoints = proof_checkpoints;
 
     for( const std::string &scenario_id : proof_scenarios ) {
@@ -1462,6 +2019,70 @@ std::string render_first_500_turn_playback_proof( const proof_packet_result &res
                 out << " @ " << winner.envelope_id;
             }
             out << "\n";
+        }
+    }
+
+    return out.str();
+}
+
+std::string render_long_range_directional_light_proof_packet( const proof_packet_result &result )
+{
+    std::ostringstream out;
+    out << "bandit long-range directional light proof packet\n";
+    out << "packet: " << result.packet_id << "\n";
+    out << "checkpoints:";
+    for( int tick : result.checkpoints ) {
+        out << " " << tick;
+    }
+    out << "\n";
+
+    for( const playback_result &scenario : result.scenarios ) {
+        out << "scenario: " << scenario.scenario_id << " - " << scenario.title << "\n";
+        for( const std::string &question : scenario.questions ) {
+            out << "  - " << question << "\n";
+        }
+        for( const checkpoint_result &checkpoint : scenario.checkpoints ) {
+            const candidate_debug &winner = winner_candidate( checkpoint.evaluation );
+            out << "  - tick " << checkpoint.tick << " [phase=" << checkpoint.phase << "] winner="
+                << bandit_dry_run::to_string( winner.job );
+            if( !winner.envelope_id.empty() ) {
+                out << " @ " << winner.envelope_id;
+            }
+            out << ", generated_leads=" << checkpoint.generated_leads.size()
+                << ", generated_marks=" << checkpoint.generated_marks.marks.size()
+                << ", reason=" << checkpoint.evaluation.winner_reason << "\n";
+        }
+    }
+
+    return out.str();
+}
+
+std::string render_overmap_local_pressure_rewrite_proof_packet( const proof_packet_result &result )
+{
+    std::ostringstream out;
+    out << "bandit overmap/local pressure rewrite proof packet\n";
+    out << "packet: " << result.packet_id << "\n";
+    out << "checkpoints:";
+    for( int tick : result.checkpoints ) {
+        out << " " << tick;
+    }
+    out << "\n";
+
+    for( const playback_result &scenario : result.scenarios ) {
+        out << "scenario: " << scenario.scenario_id << " - " << scenario.title << "\n";
+        for( const std::string &question : scenario.questions ) {
+            out << "  - " << question << "\n";
+        }
+        for( const checkpoint_result &checkpoint : scenario.checkpoints ) {
+            const candidate_debug &winner = winner_candidate( checkpoint.evaluation );
+            out << "  - tick " << checkpoint.tick << " [phase=" << checkpoint.phase << "] winner="
+                << bandit_dry_run::to_string( winner.job );
+            if( !winner.envelope_id.empty() ) {
+                out << " @ " << winner.envelope_id;
+            }
+            out << ", generated_leads=" << checkpoint.generated_leads.size()
+                << ", generated_marks=" << checkpoint.generated_marks.marks.size()
+                << ", reason=" << checkpoint.evaluation.winner_reason << "\n";
         }
     }
 

@@ -115,6 +115,8 @@ const scenario_definition *find_reference_scenario( const std::string &id );
 playback_result run_scenario( const scenario_definition &scenario,
                               const std::vector<int> &checkpoints = {} );
 proof_packet_result run_first_500_turn_playback_proof();
+proof_packet_result run_long_range_directional_light_proof_packet();
+proof_packet_result run_overmap_local_pressure_rewrite_proof_packet();
 scenario_budget measure_scenario_budget( const scenario_definition &scenario,
         size_t iterations_per_checkpoint = 1,
         const std::vector<int> &checkpoints = {} );
@@ -122,5 +124,7 @@ persistence_budget estimate_v0_persistence_budget();
 reference_suite_budget measure_reference_suite_budget( size_t iterations_per_checkpoint = 1 );
 std::string render_report( const playback_result &result );
 std::string render_first_500_turn_playback_proof( const proof_packet_result &result );
+std::string render_long_range_directional_light_proof_packet( const proof_packet_result &result );
+std::string render_overmap_local_pressure_rewrite_proof_packet( const proof_packet_result &result );
 std::string render_budget_report( const reference_suite_budget &result );
 } // namespace bandit_playback
