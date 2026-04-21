@@ -218,7 +218,7 @@ Current honest state:
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit][dry_run]"`
 - Plan status summary command is now honestly checkpointed:
   - `tools/plan_status_summary.py` provides the deliberately small read-only command seam for current canon
-  - thin/contradictory handling is covered by the built-in self-test plus the live thin-canon warning on the current `Hackathon feature lanes` heading
+  - thin/contradictory handling is covered by the built-in self-test plus direct command-level proof that heading fallback still works when canon is genuinely thin
   - validation stayed proportional: command-level proof only, no build or harness ritual
 - Bandit concept formalization follow-through is now honestly checkpointed:
   - Package 3, micro-item 31 (`Invariants and non-goals packet`) is now landed, so the full 3-package / 31-micro-item packet finally has explicit red-line invariants/non-goals on top of its starter numbers and worked scenarios

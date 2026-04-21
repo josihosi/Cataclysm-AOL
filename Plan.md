@@ -468,9 +468,9 @@ Keep this out of the active queue unless later code changes break the route agai
 
 ---
 
-## 8. Hackathon feature lanes — parked far back / do not touch anytime soon
+## 8. Future feature lanes — parked far back
 
-These lanes are **not part of the current basecamp work and not part of the near-term queue**.
+These lanes are **not part of the current camp-handling or bandit queue**.
 Keep them visibly separate so scaffolding/support work is not mistaken for partial feature delivery.
 
 1. **Chat interface over in-game dialogue branches**
@@ -478,10 +478,10 @@ Keep them visibly separate so scaffolding/support work is not mistaken for parti
 2. **Tiny ambient-trigger NPC model**
    - future feature lane, parked far back
 
-Do not reopen them during the current locker/basecamp slice.
-Do not treat them as the next natural follow-up after Package 5.
-Current ordering intent is that they stay buried until much later threat/worldwork exists, with Josef explicitly saying they are not for anytime soon and not before the later Mongol riders lane.
-Do not describe adjacent harness or UI work as partial completion of those features.
+Do not reopen them by drift just because nearby harness or UI work exists.
+Do not treat them as the next automatic follow-up after the current packets.
+Current ordering intent is simply that they stay buried until Josef explicitly promotes them.
+Do not describe adjacent harness or observability work as partial completion of those features.
 
 ---
 
@@ -622,7 +622,7 @@ Current honest state:
 - `tools/plan_status_summary.py` now provides a deliberately small read-only seam for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
 - the script reads `Plan.md` only, classifies sections from explicit status lines first, and falls back to heading wording only when canon is thin enough that a warning is warranted
 - greenlit ordering stays meaningful: active first, queued greenlit next, and bottom-of-stack entries last instead of as a separate printed class
-- the current `Hackathon feature lanes` heading already exercises the thin-canon warning path because it is parked by heading text without an explicit `**Status:**` line
+- the script still falls back to heading wording only when canon is thin enough to warrant a warning, but current canon no longer keeps a deliberately thin parked heading around just to exercise that path
 - narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct sample readouts from current canon for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
 
 Keep this lane closed unless later evidence shows the parser is lying about canon, the output shape is too noisy to trust, or Josef explicitly wants a second-stage integration slice.

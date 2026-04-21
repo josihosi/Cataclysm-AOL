@@ -17,20 +17,21 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## Bandit overmap/local handoff interaction packet v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded overmap/local handoff interaction packet exists on the current bandit playback / proof seam.
-- [ ] Deterministic proof shows overmap intent entering local play as posture rather than exact-square puppetry or stale route puppetry.
-- [ ] Deterministic proof shows local engagement, obvious danger, or contact loss can honestly rewrite, cool, or drop the prior posture instead of preserving immortal certainty.
-- [ ] At least one player-present context beyond a static toy camp is covered, for example basecamp pressure, follower travel, or vehicle / convoy interception.
-- [ ] Reviewer-readable output exposes the entry posture, any local rewrite, and the returned abstract-state change clearly enough to debug the seam without guessing from side effects.
-- [ ] The slice stays bounded: no full local combat AI rewrite, no coalition strategy layer, no broad visibility rewrite, and no magical omniscience by the back door.
+- [x] One bounded overmap/local handoff interaction packet exists on the current bandit playback / proof seam.
+- [x] Deterministic proof shows overmap intent entering local play as posture rather than exact-square puppetry or stale route puppetry.
+- [x] Deterministic proof shows local engagement, obvious danger, or contact loss can honestly rewrite, cool, or drop the prior posture instead of preserving immortal certainty.
+- [x] At least one player-present context beyond a static toy camp is covered, for example basecamp pressure, follower travel, or vehicle / convoy interception.
+- [x] Reviewer-readable output exposes the entry posture, any local rewrite, and the returned abstract-state change clearly enough to debug the seam without guessing from side effects.
+- [x] The slice stays bounded: no full local combat AI rewrite, no coalition strategy layer, no broad visibility rewrite, and no magical omniscience by the back door.
 
 Notes:
 - Canonical contract lives at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`.
-- This is the active first half of the current bandit playtesting-readiness train.
-- The point is to get later playtesting notes down to blockers, queued follow-through, or tuning instead of fresh first-principles confusion.
+- The current tree now closes this packet honestly on the playback/proof seam through `run_overmap_local_handoff_interaction_packet()` plus `render_overmap_local_handoff_interaction_packet( const handoff_packet_result &result )` in `src/bandit_playback.{h,cpp}`.
+- Deterministic coverage in `tests/bandit_playback_test.cpp` now proves three bounded interaction slices directly: smoke posture narrows to a sharper mark, local danger can break a corridor probe hard enough to come home wounded, and a player-present follower-travel sighting degrades to rough search after contact loss instead of preserving exact-carrier certainty.
+- Narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`.
 
 ---
 
@@ -502,18 +503,18 @@ Success state:
 - [x] A fixture or restaging path exists that contains a real `CAMP_LOCKER` zone and suitable locker-state/NPC-state for `locker.weather_wait`.
 - [x] `locker.weather_wait` is no longer blocked on missing fixture shape.
 - [x] A fresh packaged `locker.weather_wait` run reports **screen** / **tests** / **artifacts** separately on the repaired fixture path.
-- [x] The result is described reviewer-cleanly as harness/fixture work on existing locker behavior, not as early hackathon feature work.
+- [x] The result is described reviewer-cleanly as harness/fixture work on existing locker behavior, not as premature delivery of the later chat/ambient feature lanes.
 
 Notes:
 - This lane existed because the shipped `basecamp_dev_manual_2026-04-02` save fixture did not contain a `CAMP_LOCKER` zone even though the live dev save did.
 - The repair is the captured harness-owned save fixture `tools/openclaw_harness/fixtures/saves/dev/locker_ready_dev_2026-04-06/`, plus the scenario update that restores the usual `basecamp_dev_manual_2026-04-02` profile snapshot while installing that locker-ready save.
 - Latest packaged proof: `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait` -> `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json` with `verdict: artifacts_matched` and separate screen/tests/artifacts reporting.
 - The goal was not new locker gameplay; it was to make existing locker behavior probeable and regressible.
-- Keep the hackathon-reserved chat/ambient feature lanes clearly separate.
+- Keep the later chat/ambient feature lanes clearly separate.
 
 ---
 
-## Hackathon runway — stabilization + harness
+## Stabilization + harness runway
 
 Status: CHECKPOINTED / DONE FOR NOW
 
@@ -535,7 +536,7 @@ Notes:
 - Harness screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely demote a runtime-compatible captured game window to `inconclusive_version_mismatch`.
 - `ambient.weird_item_reaction` now tails the correct repo-level `config/llm_intent.log`; its latest packaged run at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` is honest about the remaining gap: `inconclusive_no_new_artifacts` on a runtime-compatible build, not a fake no-artifact result from watching `debug.log`.
 - `locker.weather_wait` is now explicitly demoted back to blocked status until a locker-capable fixture/restaging path exists.
-- Important reviewer-facing distinction: the packaged `chat.nearby_npc_basic` and `ambient.weird_item_reaction` scenarios are harness scaffolding only. They are **not** the hackathon feature work for "chat interface over dialogue branches" or the "tiny ambient-trigger NPC model," and must not be described as partial completion of those feature lanes.
+- Important reviewer-facing distinction: the packaged `chat.nearby_npc_basic` and `ambient.weird_item_reaction` scenarios are harness scaffolding only. They are **not** the real feature work for "chat interface over dialogue branches" or the "tiny ambient-trigger NPC model," and must not be described as partial completion of those feature lanes.
 
 ---
 
@@ -712,7 +713,7 @@ Notes:
 - The intended readout surface is `/plan active`, `/plan greenlit`, `/plan parked`, with optional compact combined `/plan`; the current script accepts those slash-style tokens directly.
 - Source of truth stays `Plan.md`; the command does not invent state from chat memory or agent narration.
 - Greenlit ordering stays active first, then any queued greenlit items, with bottom-of-stack entries appearing last instead of as a separate printed class.
-- Thin or contradictory canon now warns instead of pretending certainty, with the current Hackathon parked heading already exercising the thin-canon fallback path.
+- Thin or contradictory canon now warns instead of pretending certainty, and the command still keeps explicit fallback behavior when canon is too thin to classify cleanly.
 
 ---
 
