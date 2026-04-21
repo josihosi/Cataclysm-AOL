@@ -581,7 +581,7 @@ Notes:
 
 ## Locker Zone V3
 
-Status: PARKED / PARTIALLY LANDED
+Status: GREENLIT / REOPENED CAMP-SIDE FOLLOW-THROUGH
 
 Success state:
 - [ ] Seasonal dressing / winter-vs-summer wardrobe logic exists.
@@ -592,13 +592,14 @@ Success state:
 - [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
-- V3 is not the current delivery target. The active controlled follow-through packet is now moving through Package 5, so keep V3 parked unless Josef explicitly reopens locker nuance.
+- Canonical contract lives at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`.
+- V3 is the reopened camp-side follow-through, but it does **not** replace the repo's current single active `TODO.md` lane while the bandit visibility packet is active.
 - The first landed V3 lane is intentionally narrow: local temperature nudges shirt/vest-slot torso+arm outerwear toward warmer gear in cold weather and lighter gear in hot weather.
 - The next landed V3 lane is still narrow: pants-slot legwear now distinguishes shorts-like coverage from full-length coverage so cold weather prefers full-length legwear and hot weather prefers shorts-like legwear.
 - Outerwear and the currently landed legwear lane now both have proportional runtime proof on the recorded current-binary / current-save path.
 - The `antarvasa` return-to-locker outcome is currently accepted as the honest one-item-per-slot pants policy: keep the best current pants item for comparison, and return extra pants-slot duplicates to the locker when a hot/cold swap lands.
-- If Josef explicitly reopens locker work, resume from the remaining unchecked V3 rows instead of pretending the whole lane is already done.
-- Do not quietly let V3 nuance undo the simpler V1/V2 deterministic spine.
+- Resume from the remaining unchecked V3 rows instead of pretending the whole lane is already done.
+- Do not quietly let V3 nuance undo the simpler V1/V2 deterministic spine or sprawl into smart-zoning/basecamp-automation work.
 
 ---
 

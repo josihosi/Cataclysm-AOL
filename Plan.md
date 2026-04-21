@@ -39,18 +39,19 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit bandit lane is now **Bandit overmap/local handoff interaction packet v0**.
-The queued-next follow-through behind it is **Bandit elevated-light and z-level visibility packet v0**.
+The active greenlit bandit lane is now **Bandit elevated-light and z-level visibility packet v0**.
+The just-checkpointed first half of this readiness train is **Bandit overmap/local handoff interaction packet v0**.
 The earlier **Bandit repeated-site revisit behavior packet v0**, **Bandit weather concealment refinement packet v0**, **Bandit overmap/local pressure rewrite packet v0**, **Bandit long-range directional light proof packet v0**, **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, **Bandit bounded scout/explore seam v0**, and **Bandit overmap benchmark suite packet v0** are checkpointed closed.
 Do not reopen them just because they are nearby.
 
 Current honest state:
-- the authoritative active contract now lives at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`
-- the handoff packet is the main anti-weirdness slice: overmap intent should enter local play as posture instead of exact-square puppetry, local engagement/danger should be able to rewrite that posture, and return-state changes should flow back out reviewer-cleanly enough to debug the seam honestly
+- the authoritative active contract now lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`
+- the handoff packet is now closed on the current playback/proof seam, including posture-not-puppetry, local rewrite/cool/drop behavior, player-present follower-travel coverage, and reviewer-readable return-state carryback
 - the active packet should also cover at least one player-present context beyond a static toy camp, for example basecamp pressure, follower travel, or vehicle / convoy interception, so the seam does not look fine only in the easiest lab case
 - the authoritative queued contract now lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`
 - the queued packet should clear the most obvious remaining perception weirdness before broader playtesting: nearby cross-z visibility should stay sane, elevated exposed light may stay legible farther under the right conditions, and the same meaningful light should matter to zombie hordes too instead of becoming private bandit theater
 - together these two packets are the current playtesting-readiness train: the point is to get to a finite playtesting gate where later notes mostly classify as blockers, queued follow-through, or tuning, instead of restarting first-principles confusion every session
+- the camp-handling half is now explicit again: `Locker Zone V3` is reopened as the current greenlit camp-side follow-through at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`, but `TODO.md` stays on the repo's single active bandit lane until that packet moves
 - the authoritative contract for the newly closed repeated-site follow-through still lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
 - the authoritative contract for the now-closed benchmark lane still lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
 - `Bandit z-level visibility proof packet v0` does not come back as a vague parked branch; the now-greenlit visibility packet above is the bounded vehicle for the remaining elevated-light / cross-z work
@@ -416,6 +417,24 @@ V2 is now considered done for now because the bundled V2 task set in `SUCCESS.md
 - proportional runtime proof is recorded on the current binary
 
 If later code work or runtime evidence shows any one of those bundled claims is false or incomplete, reopen V2 immediately.
+
+---
+
+## Reopened camp-side follow-through — Locker Zone V3
+
+**Status:** GREENLIT / REOPENED CAMP-SIDE FOLLOW-THROUGH
+
+Josef explicitly wants the camp-handling half to stay real instead of quietly collapsing into bandits-only drift.
+The honest reopen target is `Locker Zone V3`.
+
+Current honest state:
+- the authoritative contract now lives at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`
+- the partly landed V3 footing stays real: torso/arm outerwear already biases warmer in cold weather and lighter in hot weather, and pants-slot legwear already distinguishes shorts-like from full-length coverage under hot/cold pressure
+- the remaining honest work is still the same narrow unfinished set from `SUCCESS.md`: seasonal dressing, weather-sensitive wardrobe choice, and per-NPC nuance that does **not** undo the simpler V1/V2 deterministic spine
+- this is the reopened camp-side follow-through, but it does **not** replace the repo's current single active `TODO.md` lane while the bandit visibility packet is active
+- do not widen this into Smart Zone Manager, basecamp zone-presets automation, prompt-routing work, or general basecamp-AI architecture just because those ideas live in the same neighborhood
+
+Keep this lane greenlit until the remaining unchecked V3 rows are either honestly landed or deliberately re-parked.
 
 ---
 
@@ -786,38 +805,38 @@ Checkpointed shape:
 - the slice stayed narrow: no site-type-sensitive branching, no settlement taxonomy, no broad visibility/concealment rewrite, and no z-level work
 
 This lane is checkpointed closed.
-The next throughput pass is no longer an abstract parked-option discussion. The active handoff packet below is the next bounded promotion.
+The next throughput pass is no longer an abstract parked-option discussion. The active visibility packet below is the next bounded promotion.
 
 ---
 
-## 22. Active — Bandit overmap/local handoff interaction packet v0
+## 22. Checkpointed — Bandit overmap/local handoff interaction packet v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+Josef explicitly greenlit the broader playtesting-prep follow-through and wanted the remaining work packaged as a deliberate readiness train rather than endless debug-note soup.
+The now-closed handoff slice carried the main anti-weirdness burden first, and the current tree closes it honestly.
+
+Checkpointed shape:
+- the authoritative contract lives at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`
+- `src/bandit_playback.{h,cpp}` now carries `run_overmap_local_handoff_interaction_packet()` plus `render_overmap_local_handoff_interaction_packet( const handoff_packet_result &result )` on the current playback/proof seam
+- deterministic proof now shows posture-not-puppetry directly through bounded `scout`, `probe`, and `shadow` entry modes instead of implied exact-square omniscience
+- deterministic proof now shows local danger and contact loss can break or cool the prior posture, while return-state carryback exposes wounds, morale, cargo, threat, bounty, and target changes reviewer-cleanly
+- the packet now includes a player-present follower-travel slice beyond a static toy camp, so the seam is not only tested against the easiest lab case
+- the slice stayed bounded: no full local combat AI rewrite, no coalition strategy layer, no broad visibility rewrite, and no magical omniscience by the back door
+
+This lane is checkpointed closed.
+The next throughput pass should move to the queued visibility packet instead of reopening this one ceremonially.
+
+---
+
+## 23. Active — Bandit elevated-light and z-level visibility packet v0
 
 **Status:** ACTIVE / GREENLIT
 
-Josef explicitly greenlit the broader playtesting-prep follow-through and wanted the remaining work packaged as a deliberate readiness train rather than endless debug-note soup.
-The active next slice is the handoff interaction packet because it carries the main anti-weirdness burden.
+Josef explicitly wants the broader post-benchmark playtesting-prep set greenlit, not just the smallest polite minimum.
+The active visibility packet is now the second half of the current readiness train after the handoff packet closed.
 
 Current active contract:
-- the authoritative contract lives at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`
-- overmap intent should enter local play as posture, not exact-square puppetry or stale route puppetry
-- local engagement, obvious danger, and contact loss should be able to rewrite, cool, or drop the prior posture instead of preserving immortal certainty
-- the packet should include at least one player-present context beyond a static toy camp, for example basecamp pressure, follower travel, or vehicle / convoy interception
-- return-state carryback should stay honest enough to read: wounds, panic, losses, cargo change, threat change, and target-confidence change should be able to flow back into abstract state reviewer-cleanly
-- the slice stays bounded: no full local combat AI rewrite, no coalition strategy layer, no broad visibility rewrite, and no magical omniscience by the back door
-
-This lane is active now.
-The point is to get the bandit seam to a playtesting-ready point where later notes mostly classify as blocker, queued follow-through, or tuning, rather than restarting first-principles confusion.
-
----
-
-## 23. Greenlit next — Bandit elevated-light and z-level visibility packet v0
-
-**Status:** GREENLIT / QUEUED NEXT
-
-Josef explicitly wants the broader post-benchmark playtesting-prep set greenlit, not just the smallest polite minimum.
-The queued-next visibility packet is the second half of the current readiness train behind the active handoff work.
-
-Current queued contract:
 - the authoritative contract lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`
 - nearby cross-z visibility should stay sane instead of acting like stairs are amnesia beams
 - elevated exposed light may stay legible or actionable farther than ordinary hidden light under the right conditions, without turning into magical global sight
@@ -826,8 +845,8 @@ Current queued contract:
 - smoke should stay honest on the vertical axis too: do not smuggle in magical extra general reach just because the source changed floors
 - the slice stays bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim
 
-Do not activate this packet early just because it is nearby.
-It is queued behind the handoff interaction packet and should stay there unless Josef explicitly reorders the train.
+This lane is active now.
+Do not reopen the checkpointed handoff packet just because it sits nearby.
 
 ---
 
@@ -849,8 +868,8 @@ Current parked sub-items:
 - player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
 
 Promoted out of the parked chain into explicit canon lanes:
-- active now: overmap/local handoff interaction packet v0 at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`
-- queued next now: elevated-light and z-level visibility packet v0 at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`
+- checkpointed now: overmap/local handoff interaction packet v0 at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`
+- active now: elevated-light and z-level visibility packet v0 at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`
 - checkpointed now: repeated-site revisit behavior packet v0 at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
 - checkpointed now: overmap benchmark suite packet v0 at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
 - checkpointed now: weather concealment refinement packet v0 at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
