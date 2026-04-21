@@ -39,7 +39,15 @@ If a target is merely waiting on Josef, do not keep revalidating it unless the c
 
 ## Current relevant evidence
 
-There is currently no active greenlit lane.
+There is currently one active greenlit lane: `Bandit concealment seam v0`.
+
+### Active lane — Bandit concealment seam v0
+
+Current honest evidence burden:
+- this canon patch only freezes the active contract at `doc/bandit-concealment-seam-v0-2026-04-21.md`; there is no new code evidence yet
+- the active slice is bounded to **light concealment first** on top of the existing light-mark seam, with weather only as a reducer rather than a new subsystem
+- the first honest code proof should stay narrow and deterministic on the current bandit seam, proving daylight suppression, weather penalty, containment, and side-dependent leakage/suppression reviewer-cleanly
+- if the concealment adapter starts thickening the cost story, include one small readable perf/cost angle with the same narrow packet instead of saving that question for later review theater
 
 ### Latest closed lane — Bandit first 500-turn playback proof v0
 
@@ -144,8 +152,8 @@ Current honest state:
 
 ### Meaning
 
-- the active bandit evidence burden is now the first honest repeated-site reinforcement bridge, not a rerun of the already-closed smoke, light, or human / route packets
-- do not reopen the smoke bridge, light bridge, human / route bridge, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
+- there is currently no active greenlit lane, so there is no current missing evidence packet to keep rerunning
+- do not reopen the smoke bridge, light bridge, human / route bridge, repeated-site reinforcement seam, first 500-turn proof, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
 - the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
 - the writer-side bandit mark-generation seam is now checkpointed closed too
 
@@ -153,10 +161,8 @@ Current honest state:
 
 ## Pending probes
 
-### After the first 500-turn playback proof code slice lands
-- `make -j4 tests`
-- `./tests/cata_test "[bandit]"`
-- long-horizon deterministic cases on the current playback/report footing, proving the chosen 500-turn smoke/city-edge/repeated-site packet stays bounded and reviewer-readable instead of drifting into immortal pressure, magical settlement truth, or free extraction jobs
+- For `Bandit concealment seam v0`, the first honest code packet should use the narrowest deterministic `[bandit]` coverage that proves daylight suppression, weather penalty, containment, and side-dependent leakage/suppression on the current light seam.
+- If the implementation adds suspicious fan-out or hidden per-candidate work, add one bounded reviewer-readable cost/probe angle to the same packet.
 
 ---
 

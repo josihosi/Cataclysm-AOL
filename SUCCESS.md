@@ -15,6 +15,23 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Bandit concealment seam v0
+
+Status: ACTIVE / GREENLIT
+
+Success state:
+- [ ] One bounded concealment adapter exists on the current light signal seam, weakening outward light legibility when exposure is poor instead of inventing a second fake visibility machine.
+- [ ] Deterministic coverage proves the key bounded distinctions honestly: daylight suppression, weather penalty, containment, and side-dependent leakage/suppression.
+- [ ] Reviewer-readable output shows why a light-born mark was reduced, blocked, or allowed instead of hiding the answer in debugger soup.
+- [ ] The slice stays bounded: no broad all-signals concealment rewrite, no new fog-sound law, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion.
+- [ ] If the concealment adapter starts looking computationally suspicious, the packet carries one small readable cost/probe angle instead of deferring perf truth to later folklore.
+
+Notes:
+- Canonical contract lives at `doc/bandit-concealment-seam-v0-2026-04-21.md`.
+- This greenlight is the next narrow promotion after the first honest 500-turn playback proof, but the scope is explicitly **light concealment first** with weather only as a reducer.
+
+---
+
 ## Bandit first 500-turn playback proof v0
 
 Status: CHECKPOINTED / DONE FOR NOW

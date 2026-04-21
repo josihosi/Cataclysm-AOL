@@ -39,9 +39,15 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently no active greenlit lane.
-The first honest 500-turn playback proof is now honestly checkpointed on the current abstract bandit seams.
-Josef's standing approval for the next narrow bandit slices carried through that first honest 500-turn proof and is now spent, so the next promotion needs a fresh explicit greenlight.
+There is currently one active greenlit lane: **Bandit concealment seam v0**.
+Josef has now explicitly greenlit the next narrow bandit promotion after the first honest 500-turn playback proof.
+
+Current active contract:
+- the authoritative contract lives at `doc/bandit-concealment-seam-v0-2026-04-21.md`
+- this is **light concealment first**, not the whole weather/concealment religion
+- reuse existing local light truth, collapse it into coarse directional outward exposure, and reduce it by daylight, weather/visibility penalties, and containment/terrain
+- allow honest one-sided leakage such as visible from one approach and concealed from another
+- keep the slice bounded: no new fake weather law, no broad all-signals concealment rewrite, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion
 
 Fresh checkpoints that stay closed:
 - **Bandit first 500-turn playback proof v0** is now honestly checkpointed too:
