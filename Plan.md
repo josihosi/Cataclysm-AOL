@@ -39,16 +39,25 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently one active greenlit lane: **Bandit weather concealment refinement packet v0**.
-The earlier **Bandit overmap/local pressure rewrite packet v0**, **Bandit long-range directional light proof packet v0**, **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, and **Bandit bounded scout/explore seam v0** are checkpointed closed.
+There is currently one active greenlit bandit lane: **Bandit overmap benchmark suite packet v0**.
+The earlier **Bandit weather concealment refinement packet v0**, **Bandit overmap/local pressure rewrite packet v0**, **Bandit long-range directional light proof packet v0**, **Bandit scoring refinement seam v0**, **Bandit moving-bounty memory seam v0**, and **Bandit bounded scout/explore seam v0** are checkpointed closed.
 Do not reopen them just because they are nearby.
 
 Current active contract:
-- the authoritative contract lives at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
-- refine the current smoke/light weather footing so wind meaningfully fuzzes or de-precises smoke output instead of acting only as a token range haircut
-- handle portal-storm weather explicitly for smoke and light instead of silently treating it as an ordinary clear/rain/fog case
-- keep rain explicit for both smoke and light, and expose the weather/fuzziness interpretation reviewer-readably
-- keep the slice bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility architecture rewrite
+- the authoritative contract lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
+- build one complete named overmap scenario family with explicit `100`-turn benchmarks plus `500`-turn carry-through checks where the longer horizon is the honest proof burden
+- include the empty-frontier / increase-visibility case explicitly, so a camp with nothing useful nearby ventures out through bounded scout/explore behavior instead of sitting forever
+- keep `Bandit z-level visibility proof packet v0` not greenlit until this suite exists and has already surfaced the next real routing problems
+- treat benchmark misses as routing-logic failures to fix, not as excuses to water the benchmarks down
+
+Fresh checkpoint that now stays closed:
+- **Bandit weather concealment refinement packet v0** is now honestly checkpointed too:
+  - the authoritative contract lives at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
+  - `src/bandit_mark_generation.{h,cpp}` now carries one bounded weather-refinement packet on the current smoke/light seam, with windy smoke losing source precision and confidence instead of taking only a token range haircut, plus explicit `portal_storm` handling for smoke and light
+  - reviewer-readable smoke/light summaries now expose the weather read directly, including fuzzed, reduced, blocked, displaced/corridor-ish, and preserved bright-light cases instead of hiding the interpretation in debugger soup
+  - `src/bandit_playback.cpp` now carries explicit windy-smoke and portal-storm exposed-light scenarios on the current generated-mark seam, and `tests/bandit_playback_test.cpp` keeps the broader reference suite count aligned with those additions instead of pretending the suite froze in amber
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the bounded weather distinctions honestly: windy smoke stays scoutable but fuzzier, portal-storm smoke is harder to localize, exposed bright portal-storm light can stay legible while sheltered ordinary light stays bounded, and rain remains an explicit reducer
+  - narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][marks]"`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
 
 Fresh checkpoints that stay closed:
 - **Bandit overmap/local pressure rewrite packet v0** is now honestly checkpointed too:
@@ -159,7 +168,7 @@ Meaning:
 - repeated site activity raises revisit interest first and still does not mint free settlement truth or free extraction permission
 - the first honest 500-turn playback proof is checkpointed closed too on the current abstract bandit seams
 - the concealment seam is checkpointed closed too on the current light-mark footing
-- the weather concealment refinement packet is now the active greenlit lane in repo canon
+- there is currently no active greenlit bandit lane in repo canon
 - the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
@@ -695,25 +704,46 @@ Keep this lane checkpointed closed unless later evidence shows the packet was di
 
 ---
 
-## 18. Active greenlit — Bandit weather concealment refinement packet v0
+## 18. Checkpointed — Bandit weather concealment refinement packet v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-Josef explicitly greenlit this as the bounded weather follow-up, and it is now the current active lane after pressure rewrite landed.
-Keep it narrow instead of using weather as an excuse to reopen the whole visibility opera.
+Josef explicitly greenlit this as the bounded weather follow-up, and it now lands honestly on the current tree without reopening the whole visibility opera.
+It stayed small.
+It did not turn weather into a full simulation vanity project.
 
-Current contract:
+Current honest state:
 - the authoritative contract lives at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
-- refine the current smoke/light weather footing so wind meaningfully fuzzes or de-precises smoke output instead of acting only as a token range haircut
-- handle portal-storm weather explicitly for smoke and light instead of silently treating it as an ordinary clear/rain/fog case
-- keep rain explicit for both smoke and light, and expose the weather/fuzziness interpretation reviewer-readably
-- keep the slice bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility architecture rewrite
+- `src/bandit_mark_generation.{h,cpp}` now carries one bounded weather-refinement packet on the current smoke/light seam, with windy smoke losing source precision and confidence instead of taking only a token range haircut, plus explicit `portal_storm` handling for smoke and light
+- reviewer-readable smoke/light summaries now expose the weather read directly, including fuzzed, reduced, blocked, displaced/corridor-ish, and preserved bright-light cases instead of hiding the interpretation in debugger soup
+- `src/bandit_playback.cpp` now carries explicit windy-smoke and portal-storm exposed-light scenarios on the current generated-mark seam, and `tests/bandit_playback_test.cpp` keeps the broader reference suite count aligned with those additions instead of pretending the suite froze in amber
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the bounded weather distinctions honestly: windy smoke stays scoutable but fuzzier, portal-storm smoke is harder to localize, exposed bright portal-storm light can stay legible while sheltered ordinary light stays bounded, and rain remains an explicit reducer
+- narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][marks]"`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
 
-Keep this item active greenlit unless later canon changes priority or the implementation surfaces a real contradiction in the weather-refinement contract.
+Keep this lane checkpointed closed unless later evidence shows the weather packet was dishonest, too generous, too timid, or not reviewer-readable enough to trust.
 
 ---
 
-## 19. Checkpointed — Bandit bounded scout/explore seam v0
+## 19. Active greenlit — Bandit overmap benchmark suite packet v0
+
+**Status:** ACTIVE / GREENLIT
+
+Josef explicitly redirected the next lane away from z-level and toward the test burden itself.
+This packet should turn the current bandit proof staircase into one coherent scenario family with easy-to-read benchmark hooks.
+
+Current contract:
+- the authoritative contract lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
+- give every required scenario a clear `100`-turn benchmark packet that is easy to read and easy to fail
+- keep or add `500`-turn carry-through checks where the long horizon is the honest proof burden
+- include the explicit empty-frontier scenario, where a camp with nothing useful nearby should venture out and increase frontier visibility through bounded explore instead of sitting idle forever
+- keep z-level work ungreenlit for now; this lane is the proof-suite packet first
+- if a scenario misses its benchmark, treat that as a routing-logic problem to fix rather than a reason to mush the benchmark into passing prose
+
+Keep this item active greenlit unless later canon finds a contradiction in the suite contract or the implementation surfaces a real blocker.
+
+---
+
+## 20. Checkpointed — Bandit bounded scout/explore seam v0
 
 **Status:** CHECKPOINTED / DONE FOR NOW
 
@@ -733,7 +763,7 @@ The next throughput pass should choose the next bounded parked-chain promotion i
 
 ---
 
-## 20. Parked concept chain — Bandit overmap AI
+## 21. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / COHERENT SUBSTRATE
 
@@ -751,7 +781,8 @@ Current parked sub-items:
 - player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
 
 Promoted out of the parked chain into explicit canon lanes:
-- active now: weather concealment refinement packet v0 at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
+- active now: overmap benchmark suite packet v0 at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
+- checkpointed now: weather concealment refinement packet v0 at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
 - checkpointed now: overmap/local pressure rewrite packet v0 at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
 - checkpointed now: long-range directional light proof packet v0 at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
 - checkpointed now: bounded scout/explore seam v0 at `doc/bandit-bounded-scout-explore-seam-v0-2026-04-21.md`
@@ -799,14 +830,14 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, then concealment, scoring refinement, moving-bounty memory, bounded scout/explore, the currently active directional-light proof packet, and the queued pressure-rewrite packet behind it, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
+6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, then concealment, scoring refinement, moving-bounty memory, bounded scout/explore, long-range directional light, overmap/local pressure rewrite, weather concealment refinement, and now the active overmap benchmark suite packet, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
 If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
 
 ---
 
-## 20. Documentation discipline
+## 22. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

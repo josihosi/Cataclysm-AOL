@@ -44,13 +44,14 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-### Current active lane — Bandit weather concealment refinement packet v0
+### Latest closed lane — Bandit weather concealment refinement packet v0
 
-Current expected evidence shape:
-- the next landed packet should add one bounded weather-refinement packet on the current smoke/light mark-generation footing instead of reopening the whole visibility stack
-- the proof should show wind meaningfully fuzzing or de-precising smoke output, not merely shaving a token range number
-- the proof should handle portal-storm weather explicitly for smoke and light, with reviewer-readable output that explains narrowed, displaced, fuzzed, reduced, or blocked clue quality honestly
-- rain should stay an explicit reducer for both smoke and light, and the slice should stay bounded away from full plume physics, sound-law rewrite, or z-level expansion
+Current honest state:
+- `src/bandit_mark_generation.{h,cpp}` now carries a bounded weather refinement on the current smoke/light seam: windy smoke loses source precision and confidence instead of taking only a token range haircut, while portal-storm weather is explicit for both smoke and light
+- reviewer-readable smoke/light summaries now expose the weather read directly, including fuzzed, reduced, blocked, displaced/corridor-ish, and preserved bright-light cases instead of hiding the interpretation in debugger soup
+- `src/bandit_playback.cpp` now carries explicit windy-smoke and portal-storm exposed-light scenarios on the current generated-mark seam, and the broader playback reference suite count is updated to include them instead of pretending the suite froze in amber
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the bounded weather distinctions honestly: windy smoke stays scoutable but fuzzier, portal-storm smoke is harder to localize, exposed bright portal-storm light can stay legible while sheltered ordinary light stays bounded, and rain remains an explicit reducer
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][marks]"`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
 
 ### Latest closed lane — Bandit overmap/local pressure rewrite packet v0
 
@@ -210,18 +211,24 @@ Current honest state:
 
 ### Meaning
 
-- the weather concealment refinement packet is now the active greenlit lane in repo canon
+- there is currently no active greenlit bandit lane in repo canon
 - the bounded scout/explore seam is now checkpointed closed with dry-run plus playback/reference proof
 - do not reopen the scoring seam, concealment seam, smoke bridge, light bridge, human / route bridge, repeated-site reinforcement seam, first 500-turn proof, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
 - the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
 - the writer-side bandit mark-generation seam is now checkpointed closed too
+- the next honest bandit step is a fresh bounded greenlight from the parked chain, not more ceremonial reruns of the closed weather packet
 
 ---
 
 ## Pending probes
 
-- Active next proof obligation: land the bounded weather-refinement packet on the current smoke/light mark-generation footing.
-- Keep the same honest bar: explicit weather/fuzziness interpretation, reviewer-readable output, and bounded deterministic proof for wind, portal storms, and rain without reopening the whole visibility system.
+- Active proof obligation now: `Bandit overmap benchmark suite packet v0` at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`.
+- Build one complete named overmap scenario family on the current playback/proof seam instead of leaving the benchmark burden split across isolated narrow packets.
+- Every required scenario must carry an easy-to-read `100`-turn benchmark packet.
+- Scenarios that honestly need the longer horizon must also carry `500`-turn carry-through proof instead of pretending `100` turns proves everything.
+- The suite must explicitly include the empty-frontier case where nothing useful is nearby and the camp should venture out through bounded scout/explore behavior and increase frontier visibility instead of sitting forever.
+- Benchmark misses should be treated as routing-logic failures to fix, not as excuses to blur the benchmark until it passes.
+- `Bandit z-level visibility proof packet v0` stays ungreenlit until this suite exists and has started surfacing the next real problems.
 
 ---
 

@@ -15,6 +15,25 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Bandit overmap benchmark suite packet v0
+
+Status: ACTIVE / GREENLIT
+
+Success state:
+- [ ] One complete named overmap benchmark-suite packet exists on the current bandit playback / proof seam.
+- [ ] Every required scenario carries a clear `100`-turn benchmark packet that is easy to read and easy to fail.
+- [ ] The scenarios that honestly need the longer horizon also carry `500`-turn carry-through checks instead of pretending `100` turns proves everything.
+- [ ] Reviewer-readable output explains why each scenario passed or failed.
+- [ ] The explicit empty-frontier scenario proves that a camp with nothing useful nearby ventures out and increases frontier visibility through bounded scout/explore behavior instead of sitting forever.
+- [ ] The slice stays bounded: no z-level implementation, no broad architecture rewrite, no vague benchmark theater, and no hand-waved passes when routing logic is still wrong.
+
+Notes:
+- Canonical contract lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`.
+- Josef explicitly held the z-level packet back again. This test-suite packet is the active lane instead.
+- Benchmark failures in this packet should drive routing-logic fixes rather than softer benchmarks.
+
+---
+
 ## Bandit long-range directional light proof packet v0
 
 Status: CHECKPOINTED / DONE FOR NOW
@@ -53,18 +72,20 @@ Notes:
 
 ## Bandit weather concealment refinement packet v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded weather-refinement packet exists on the current smoke/light mark-generation footing.
-- [ ] Deterministic coverage proves wind meaningfully fuzzes or de-precises smoke output instead of acting only as a token penalty.
-- [ ] Deterministic coverage proves portal-storm weather is handled explicitly for smoke and light instead of falling through as an unmodeled special case.
-- [ ] Reviewer-readable output explains how weather changed clue quality, for example reduced range, fuzzier origin, displaced/corridor-ish smoke read, or preserved bright-light legibility under dark storm conditions.
-- [ ] The slice stays bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility architecture rework.
+- [x] One bounded weather-refinement packet exists on the current smoke/light mark-generation footing.
+- [x] Deterministic coverage proves wind meaningfully fuzzes or de-precises smoke output instead of acting only as a token penalty.
+- [x] Deterministic coverage proves portal-storm weather is handled explicitly for smoke and light instead of falling through as an unmodeled special case.
+- [x] Reviewer-readable output explains how weather changed clue quality, for example reduced range, fuzzier origin, displaced/corridor-ish smoke read, or preserved bright-light legibility under dark storm conditions.
+- [x] The slice stays bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility architecture rework.
 
 Notes:
 - Canonical contract lives at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`.
-- This is now the active lane after the pressure-rewrite packet honestly closed.
+- The current tree now carries the bounded weather packet in `src/bandit_mark_generation.{h,cpp}` plus reviewer-readable smoke/light weather summaries, with matching scenario coverage in `src/bandit_playback.cpp`.
+- Deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the bounded weather distinctions honestly: windy smoke stays actionable but fuzzier, portal-storm smoke is harder to localize, exposed bright portal-storm light can stay legible while sheltered ordinary light stays bounded, and rain remains an explicit reducer.
+- Narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][marks]"`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`.
 
 ---
 
