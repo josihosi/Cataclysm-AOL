@@ -603,6 +603,25 @@ Notes:
 
 ---
 
+## Basecamp AI capability audit/readout packet v0
+
+Status: GREENLIT / QUEUED CAMP-SIDE AUDIT
+
+Success state:
+- [ ] One bounded capability audit/readout packet exists for the current Basecamp AI surface.
+- [ ] The packet distinguishes player-facing spoken behaviors from internal structured actions/tokens instead of mushing them together.
+- [ ] The packet says plainly what board/job actions are actually supported now.
+- [ ] The packet says plainly whether any prompt-shaped interpretation layer still matters, or whether the current behavior is already mostly deterministic plumbing.
+- [ ] The packet is grounded in current code/tests/evidence strongly enough that later cleanup decisions do not rely on stale folklore.
+- [ ] The slice stays bounded and does not mutate into implementation work by accident.
+
+Notes:
+- Canonical contract lives at `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`.
+- This is a greenlit camp-side audit packet, not the repo's single active `TODO.md` lane.
+- This packet exists so later prompt-externalization or cleanup decisions can target the right layer instead of guessing.
+
+---
+
 ## Post-Locker-V1 Basecamp follow-through
 
 Status: CHECKPOINTED / DONE FOR NOW

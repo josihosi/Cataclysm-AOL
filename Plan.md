@@ -52,6 +52,7 @@ Current honest state:
 - the queued packet should clear the most obvious remaining perception weirdness before broader playtesting: nearby cross-z visibility should stay sane, elevated exposed light may stay legible farther under the right conditions, and the same meaningful light should matter to zombie hordes too instead of becoming private bandit theater
 - together these two packets are the current playtesting-readiness train: the point is to get to a finite playtesting gate where later notes mostly classify as blockers, queued follow-through, or tuning, instead of restarting first-principles confusion every session
 - the camp-handling half is now explicit again: `Locker Zone V3` is reopened as the current greenlit camp-side follow-through at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`, but `TODO.md` stays on the repo's single active bandit lane until that packet moves
+- a separate bounded map-of-the-territory packet is also greenlit on the camp side: `Basecamp AI capability audit/readout packet v0` at `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`, so later prompt/cleanup decisions stop happening in fog
 - the authoritative contract for the newly closed repeated-site follow-through still lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
 - the authoritative contract for the now-closed benchmark lane still lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
 - `Bandit z-level visibility proof packet v0` does not come back as a vague parked branch; the now-greenlit visibility packet above is the bounded vehicle for the remaining elevated-light / cross-z work
@@ -435,6 +436,22 @@ Current honest state:
 - do not widen this into Smart Zone Manager, basecamp zone-presets automation, prompt-routing work, or general basecamp-AI architecture just because those ideas live in the same neighborhood
 
 Keep this lane greenlit until the remaining unchecked V3 rows are either honestly landed or deliberately re-parked.
+
+---
+
+## Greenlit camp-side audit packet — Basecamp AI capability audit/readout packet v0
+
+**Status:** GREENLIT / QUEUED CAMP-SIDE AUDIT
+
+Josef explicitly wants a real read on what Basecamp AI can already do, because the original craft-by-sentence goal has accreted enough extra command/board/token plumbing that the current surface is no longer obvious.
+
+Current honest state:
+- the authoritative contract now lives at `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`
+- the point is to inventory the current Basecamp AI surface cleanly enough to separate player-facing spoken commands, internal structured actions/tokens, board/job inspection/control behavior, and any still-prompt-shaped interpretation layer if one remains
+- this packet is the right precursor to any later prompt-externalization discussion, because externalizing the wrong layer first would just bottle confusion
+- keep it bounded: this is a map-of-the-territory packet, not fresh Basecamp feature architecture, not prompt externalization itself, and not a replacement for the active bandit queue or the reopened Locker Zone V3 follow-through
+
+Keep this lane greenlit until the packet exists or until the audit proves the idea was misclassified and needs repackaging.
 
 ---
 
