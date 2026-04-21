@@ -8,15 +8,9 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: **Bandit overmap-to-bubble pursuit handoff seam v0**.
+Active lane: `Bandit scoring refinement seam v0`
 
-Current target:
-1. freeze the implementation contract from `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
-2. build one bounded pursuit / investigation handoff from abstract overmap group state into local play
-3. keep the entry payload and return packet explicit, small, and reviewer-readable, carrying real mark/threat/cargo/loss/panic consequences back out
-4. prove the handoff on deterministic or tightly controlled footing before asking for broader live drama
-
-Queued behind this active lane:
-- `Locker lag-threshold probe v0`
-
-Do not widen the new active bandit lane into full raids, broad tactical AI, or visibility/concealment sprawl.
+- Freeze the active contract at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md` and keep the lane framed as scoring refinement on the current evaluator seam, not a fresh threat/world architecture pass.
+- Inspect the current dry-run threat/danger footing first and identify the smallest bounded collapse that can sharpen job choice without inventing new signal machinery.
+- Land one bounded scoring-refinement adapter that preserves the product split: avoid clearly strong targets, but pounce when zombie pressure or other distraction lowers effective target coherence.
+- Prove the key bounded distinctions honestly: one clearly too-strong target gets rejected or deferred, one distracted target becomes materially more attractive, and reviewer-readable output explains why.

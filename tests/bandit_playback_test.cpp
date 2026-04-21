@@ -401,6 +401,8 @@ TEST_CASE( "bandit_playback_report_renders_named_checkpoints", "[bandit][playbac
     CHECK( light_report.find( "kind=light" ) != std::string::npos );
     CHECK( light_report.find( "projected_range_omt=9" ) != std::string::npos );
     CHECK( light_report.find( "time=night" ) != std::string::npos );
+    CHECK( light_report.find( "light concealment: verdict=allowed" ) != std::string::npos );
+    CHECK( light_report.find( "terrain=open" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_playback_first_500_turn_proof_stays_bounded", "[bandit][playback]" )

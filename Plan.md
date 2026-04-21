@@ -39,10 +39,63 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently **one active greenlit lane**.
-There are also **two queued greenlit follow-ups** behind it.
+There is currently one active greenlit lane: **Bandit scoring refinement seam v0**.
+Josef has now explicitly greenlit the next narrow scoring promotion after the concealment checkpoint closed honestly.
+
+Current active contract:
+- the authoritative contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- refine how existing camp ledger state plus existing marks become job choice on the current dry-run/evaluator seam
+- inspect existing threat/danger footing first and collapse whatever usable truth already exists instead of inventing fresh threat astrology
+- preserve the product read that bandits avoid strong opponents but opportunistically pounce when zombie pressure or other distraction lowers effective target coherence
+- keep the slice bounded: no new visibility signals, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
 
 Fresh checkpoints that stay closed:
+- **Bandit concealment seam v0** is now honestly checkpointed too:
+  - `src/bandit_mark_generation.{h,cpp}` now carries a bounded light concealment reduction on the current light-mark seam, reusing existing local light truth while applying daylight, weather, containment/terrain, and side-leakage modifiers instead of inventing a second visibility machine
+  - reviewer-readable concealment output now states whether a light-born mark was allowed, reduced, or blocked, with the reduction summary flowing through the existing mark/playback report path instead of hiding in debugger soup
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: daylight suppression, weather penalty, containment, side-dependent leakage/suppression, and readable concealment verdicts
+  - the slice stayed bounded and cheap: no broad all-signals concealment rewrite, no fog-sound law, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion, so no extra perf probe was warranted here
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+- **Bandit first 500-turn playback proof v0** is now honestly checkpointed too:
+  - `src/bandit_playback.{h,cpp}` now carries `proof_packet_result`, `run_first_500_turn_playback_proof()`, and `render_first_500_turn_playback_proof( const proof_packet_result &result )` so reviewer-readable long-horizon proof output exists on the current playback seam instead of living as debugger folklore
+  - the first bounded proof packet reuses three named scenario cases, `smoke_only_distant_clue`, `city_edge_moving_hordes`, and `generated_repeated_site_reinforcement_stays_bounded`, with explicit `tick 500` checkpoint framing so cooldown, peel-off, and repeated-site boundedness stay inspectable without hand-waving
+  - `generated_repeated_site_reinforcement_stays_bounded` now includes additional idle-horizon frames on ordinary inactive cadence, which keeps repeated site interest bounded over five hundred turns instead of letting one reinforced clue become immortal scout pressure
+  - deterministic coverage in `tests/bandit_playback_test.cpp` now proves the packet honestly: smoke cools back to `hold_chill`, the city-edge peel-off stays bounded, and the repeated-site case eventually cools back out instead of unlocking magical settlement truth or free extraction
+  - the slice stayed bounded: no new visibility adapter family, no broader overmap simulator, no persistence rewrite, and no live-harness-first theater
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+- **Bandit repeated site activity reinforcement seam v0** is now honestly checkpointed too:
+  - `src/bandit_mark_generation.{h,cpp}` now carries a bounded `repeated_site_reinforcement_packet` on site marks, requiring mixed repeated smoke/light/route activity before modest confidence and bounty amplification appears
+  - `src/bandit_playback.cpp` now adds `generated_repeated_site_reinforcement_stays_bounded`, while reviewer-readable mark/lead reports expose the reinforcement packet instead of hiding it in debugger soup
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: mixed repeated signals reinforce one site mark cleanly, weak repetition stays weak, self-corroboration stays bounded, and strengthened site interest still keeps extraction jobs blocked
+  - the product rules stay frozen here: repeated ordinary site signals raise revisit interest first, not free settlement truth, free loot truth, or a magical raid warrant
+  - the slice stayed bounded: no smoke/light/human-route rewrite, no broad concealment implementation, no settlement-signature mythology, and no 500-turn proof smuggling
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+- **Bandit human / route visibility mark seam v0** is now honestly checkpointed too:
+  - `src/bandit_mark_generation.{h,cpp}` now adds deterministic human/route packets plus a bounded adapter, translating direct sightings and repeated route-shaped activity into moving-carrier, corridor, or bounded site marks instead of leaving traffic clues as parked prose
+  - `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam, with one direct human-sighting case and one shared-route refresh case proving the bridge into evaluator/playback output
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: direct sightings stay mobile, same-camp routine traffic is suppressed, shared/external route activity can reinforce corridors, and only site-correlated traffic yields bounded site clues with extraction still blocked
+  - the product rules stay frozen here: direct human sightings are strong bounty clues, route activity only hardens when it plausibly belongs to somebody else or a shared corridor, and the camp's own routine traffic does not self-poison into hostile-contact truth
+  - the slice stayed bounded: no smoke/light rewrite, no broad concealment implementation, no settlement-signature mythology, no full traffic simulator, and no 500-turn proof theater
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+- **Bandit light visibility mark seam v0** is now honestly checkpointed too:
+  - `src/bandit_mark_generation.{h,cpp}` now adds deterministic light packets plus a bounded light adapter, translating exposed night light and searchlight-style packets into coarse overmap-readable marks instead of leaving light clues as parked prose
+  - `src/bandit_playback.{h,cpp}` now feeds those packets through the existing generated-mark seam, with one ordinary exposed night-light case and one searchlight corridor case proving the bridge into evaluator/playback output
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: daylight suppression, contained versus exposed night light, side leakage, ordinary occupancy light versus searchlight-like threat light, and reviewer-readable packet reporting
+  - the product rule stays frozen here: meaningful exposed night light can be legible from quite far away, but daylight and containment suppress the magical house-glow fantasy
+  - the slice stayed bounded: no smoke rewrite, no broad concealment implementation, no sound/horde expansion, no global offscreen light sim, and no 500-turn proof theater
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+- **Bandit smoke visibility mark seam v0** is now honestly checkpointed too:
+  - `src/bandit_mark_generation.{h,cpp}` now adds deterministic smoke packets plus a bounded smoke adapter, while `src/bandit_playback.{h,cpp}` feeds those packets through the existing generated-mark seam instead of leaving smoke as hand-authored scenario lore
+  - deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the coarse long-range rule honestly: sustained clear-weather smoke stays several OMT legible with a hard cap, while weak fogged smoke does not fake long-range truth
+  - reviewer-readable playback / mark reports now expose the smoke packet projection and resulting mark/lead path instead of hiding the bridge in debugger soup
+  - the slice stayed bounded: no light/searchlight adapter, no broad visibility/concealment implementation, no global offscreen smoke sim, and no 500-turn proof theater
+  - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+- **Locker lag-threshold probe v0** is now honestly checkpointed too:
+  - `src/basecamp.{h,cpp}` now keeps the real `camp_locker_service_probe` seam quiet during timing runs, while `tests/faction_camp_test.cpp` drives the threshold packet through real multi-tile `CAMP_LOCKER` zones so counts stay honest past the single-tile `MAX_ITEM_IN_SQUARE` ceiling
+  - the threshold packet now covers top-level clutter at `1000 / 2000 / 5000 / 10000 / 20000` plus worker-count sweeps at `1 / 5 / 10` on `5000` clutter, staying on the real service path instead of synthetic guesswork
+  - the current verdict is `not found within tested bound`: median service cost stayed roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and the `5000`-clutter worker sweep stayed around `1.0 ms` per worker across `1 / 5 / 10`
+  - this packet does **not** justify a fresh guardrail yet; if the lane reopens later, keep the cheap-first guardrail order instead of jumping straight to architecture opera
+  - narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
 - **Locker clutter / perf guardrail probe v0** is now honestly checkpointed too:
   - `src/basecamp.{h,cpp}` now contains a real locker-service probe seam through `camp_locker_service_probe`, `basecamp::measure_camp_locker_service( npc & )`, and `render_camp_locker_service_probe()` instead of fake-path guesswork
   - the first bounded direct packet now covers top-level clutter sweeps at `50 / 100 / 200 / 500 / 1000`, worker-count sweeps at `1 / 5 / 10`, the first junk-heavy / locker-candidate-heavy / ammo-magazine-container-heavy stock-shape comparison, and the nested-content question for loaded magazines and ordinary filled bags on the real `CAMP_LOCKER` service path
@@ -53,8 +106,8 @@ Fresh checkpoints that stay closed:
   - it reads `Plan.md` only, preserves greenlit ordering, and warns when canon is thin or contradictory instead of inventing certainty
   - narrow validation passed via `python3 tools/plan_status_summary.py --self-test` plus direct current-canon samples for `/plan`, `/plan active`, `/plan greenlit`, and `/plan parked`
 - **Bandit scenario fixture + playback suite v0** is now honestly checkpointed too:
-  - `src/bandit_playback.{h,cpp}` now defines ten stable named reference scenarios on top of the dry-run evaluator seam, including the three writer-side generated-mark cases added by the mark-generation packet, instead of pretending a full overmap simulator already exists
-  - `run_scenario()` now replays those cases at stable checkpoints (`tick 0`, `tick 5`, `tick 20`, `tick 100`), and `render_report()` exposes winner drift plus generated mark/heat state so idle, smoke-investigation, corridor stalking, moving-carrier attachment, peel-off, and sticky-threat behavior can be inspected reviewer-cleanly
+  - `src/bandit_playback.{h,cpp}` now defines fourteen stable named reference scenarios on top of the dry-run evaluator seam, including the generated smoke, ordinary night-light, searchlight corridor, direct human-sighting, shared-route, repeated-site, and sticky-threat cases added by the visibility/mark packets, instead of pretending a full overmap simulator already exists
+  - `run_scenario()` now replays those cases at stable checkpoints (`tick 0`, `tick 5`, `tick 20`, `tick 100`), and `render_report()` exposes winner drift plus generated mark/heat state so idle, smoke-investigation, corridor stalking, moving-carrier attachment, peel-off, repeated-site boundedness, and sticky-threat behavior can be inspected reviewer-cleanly
   - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 - **Bandit concept formalization follow-through** is now honestly checkpointed too:
   - Package 3, micro-item 31, `Invariants and non-goals packet`, is now landed, so the follow-through finally carries the explicit must-never-happen sheet that the earlier starter numbers and worked scenarios were waiting on
@@ -86,8 +139,16 @@ Fresh checkpoints that stay closed:
   - that same live packet still had Robbie chime in as ordinary follower crosstalk on the McWilliams fixture, but no fresh machine-speech seam appeared
 
 Meaning:
-- the active lane is now `Bandit overmap-to-bubble pursuit handoff seam v0`
-- the queued greenlit follow-up is `Locker lag-threshold probe v0`
+- the locker lag-threshold probe is checkpointed closed too, with no clear knee found through `20000` top-level locker items
+- the smoke-specific bridge is checkpointed closed too
+- the light-specific bridge is checkpointed closed too
+- the human / route bridge is checkpointed closed too
+- the repeated site-centered reinforcement bridge is checkpointed closed too, with mixed repeated smoke/light/traffic now yielding bounded confidence and bounty amplification on one site mark
+- repeated site activity raises revisit interest first and still does not mint free settlement truth or free extraction permission
+- the concealment seam is checkpointed closed too on the current light-mark footing
+- the first honest 500-turn playback proof is checkpointed closed too on the current abstract bandit seams
+- there is currently one active greenlit lane again, namely Bandit scoring refinement seam v0
+- the bandit overmap-to-bubble pursuit handoff seam is checkpointed closed too
 - the bandit mark-generation + heatmap seam is checkpointed closed too
 - the plan status summary command is checkpointed closed
 - the locker clutter / perf packet is checkpointed closed too
@@ -99,36 +160,113 @@ Meaning:
 
 ---
 
-## Active lane — Bandit overmap-to-bubble pursuit handoff seam v0
+## Checkpointed — Bandit first 500-turn playback proof v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-The bounded bandit evaluator, playback suite, budget packet, and writer-side mark seam are now good enough that the next honest missing slice is the first local handoff.
-The right first anchor remains pursuit / investigation, not a full raid circus.
+The first honest deterministic 500-turn playback proof now exists and is honest enough to stay closed for now.
+The canonical contract lives at `doc/bandit-first-500-turn-playback-proof-v0-2026-04-20.md`.
 
-Current contract:
-- the canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
-- the first honest handoff case is pursuit / investigation, not a full raid circus
-- the slice should carry one small explicit entry payload plus one small explicit return packet for losses, panic, cargo, and updated mark/threat knowledge
-- keep continuity group-first and bounded, with at most a tiny anchored-identity slice where that is honestly needed
+Current honest state:
+- `src/bandit_playback.{h,cpp}` now provides `proof_packet_result`, `run_first_500_turn_playback_proof()`, and `render_first_500_turn_playback_proof( const proof_packet_result &result )` so the long-horizon packet is a first-class report path on the existing playback seam
+- the first bounded proof packet reuses the named `smoke_only_distant_clue`, `city_edge_moving_hordes`, and `generated_repeated_site_reinforcement_stays_bounded` scenarios, with explicit `tick 500` framing so reviewer-readable winner drift and generated-mark state stay visible on the longer horizon
+- the repeated-site case now cools honestly on the idle horizon instead of becoming immortal scout pressure, while smoke and city-edge peel-off also stay bounded at `tick 500`
+- the slice stayed bounded: no new visibility adapter family, no broader overmap simulator, no persistence rewrite, and no live-harness-first theater
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
-Why this is active now:
-- the handoff lane now has real overmap-side state to inherit instead of placeholder writer-side fiction
-- the next real missing question is how one bounded abstract group crosses into local play and comes back with meaningful consequences, not whether the mark ledger exists
+Keep this lane closed unless later evidence shows the long-horizon packet is lying, too optimistic about cooling, or too noisy to trust as reviewer-readable proof.
 
-## Greenlit backlog — Locker lag-threshold probe v0
+## Checkpointed — Bandit repeated site activity reinforcement seam v0
 
-**Status:** GREENLIT / BACKLOG
+**Status:** CHECKPOINTED / DONE FOR NOW
 
-This queued follow-up exists because the first locker clutter / perf packet answered shape better than threshold.
+The fourth promoted visibility bridge now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-repeated-site-activity-reinforcement-seam-v0-2026-04-20.md`
+- the bounded repeated-site reinforcement packet now exists on the current bandit seam, turning mixed repeated smoke/light/traffic activity into modest confidence and bounty amplification on one existing site mark instead of a magical settlement-signature class
+- repeated-site reinforcement now feeds the current bandit mark-generation / playback seam as reviewer-readable strengthening of ordinary signals instead of staying parked prose
+- the product rules stay preserved: weak repetition stays weak, mixed repeated signals raise revisit interest first, and extraction jobs stay blocked on that packet
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the packet is lying, too generous, too timid, or needs a truly different reinforcement law.
+
+## Checkpointed — Bandit human / route visibility mark seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The third promoted visibility bridge now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-human-route-visibility-mark-seam-v0-2026-04-20.md`
+- the bounded human / route adapter now exists on the current bandit seam, turning deterministic human/route packets into moving-carrier, corridor, or bounded site signal state
+- human / route now feeds the current bandit mark-generation / playback seam as reviewer-readable traffic clues instead of staying parked prose
+- the product rules stay preserved: direct human sightings stay mobile bounty clues, same-camp routine traffic stays suppressed, and only external/shared/corroborated route activity hardens into corridor or bounded site pressure
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the packet is lying, too generous, too timid, or needs a truly different adapter class.
+
+## Checkpointed — Bandit light visibility mark seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The second promoted visibility bridge now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-light-visibility-mark-seam-v0-2026-04-20.md`
+- the bounded light adapter now exists on the current bandit seam, turning deterministic light packets into coarse overmap-readable light signal state for ordinary night light and searchlight-style threat reads
+- light now feeds the current bandit mark-generation / playback seam as reviewer-readable occupancy/bounty or searchlight/threat clues instead of staying parked prose
+- the product rules stay preserved: meaningful exposed night light can stay several OMT legible with a hard cap, while daylight and contained light do not fake distant truth
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the light packet is lying, too generous, too timid, or needs a truly different adapter class.
+
+## Checkpointed — Bandit smoke visibility mark seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The first promoted visibility bridge now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-smoke-visibility-mark-seam-v0-2026-04-20.md`
+- the bounded smoke adapter now exists on the current bandit seam, turning deterministic smoke packets into coarse overmap-readable smoke signal state
+- smoke now feeds the current bandit mark-generation / playback seam as bounty-first, reviewer-readable `worth scoping out` leads instead of staying hand-authored scenario lore
+- the product rule stays preserved: sustained clear-weather smoke remains several OMT legible with a hard cap instead of shrinking into comically short-range OMT intuition
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the smoke packet is lying, too thin, or needs a truly different adapter class.
+
+## Checkpointed — Locker lag-threshold probe v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The sharper locker threshold packet is now honest enough to stay closed for now.
 
 Current contract:
 - the canonical contract lives at `doc/locker-lag-threshold-probe-v0-2026-04-20.md`
-- stay on the real `CAMP_LOCKER` service path and extend the top-level clutter sweep beyond the first `50 / 100 / 200 / 500 / 1000` packet until a rough knee, suspicious zone, bad zone, or honest `not found within tested bound` answer appears
-- keep worker-count sweeps realistic (`1 / 5 / 10`) and treat item-hoard pressure as the primary stress axis instead of fantasy NPC populations
-- if the curve starts looking bad, end with the cheapest guardrail order first instead of jumping straight to architecture opera
+- `src/basecamp.{h,cpp}` now suppresses locker `DebugLog` noise for probe timing runs, and `tests/faction_camp_test.cpp` now drives the threshold packet through real multi-tile `CAMP_LOCKER` zones so `5000 / 10000 / 20000` top-level clutter counts stay honest instead of colliding with the single-tile `MAX_ITEM_IN_SQUARE` cap
+- the top-level clutter sweep now reaches `1000 / 2000 / 5000 / 10000 / 20000`, while the worker-count sweep stays realistic at `1 / 5 / 10` on `5000` clutter
+- the current result is an honest `not found within tested bound`: median service time stayed roughly linear from about `210 us` at `1000` clutter to about `4152 us` at `20000`, and the `5000`-clutter worker packet stayed around `1.0 ms` per worker across `1 / 5 / 10`
+- no fresh guardrail is justified from this packet alone; if later evidence reopens the lane, keep the cheap-first guardrail order instead of architecture opera
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[camp][locker]~[threshold]"`, and `./tests/cata_test "[camp][locker][threshold]"`
 
-Do not reopen the earlier locker packet just to restate the same shape answer more loudly.
+Keep this lane closed unless later evidence shows the threshold packet was dishonest, player-facing hitching appears below this tested bound, or a genuinely justified cheap guardrail answer appears.
+
+## Checkpointed — Bandit overmap-to-bubble pursuit handoff seam v0
+
+**Status:** CHECKPOINTED / DONE FOR NOW
+
+The first bounded bandit handoff now exists and is honest enough to stay closed for now.
+
+Current honest state:
+- the canonical contract lives at `doc/bandit-overmap-to-bubble-pursuit-handoff-seam-v0-2026-04-20.md`
+- `src/bandit_pursuit_handoff.{h,cpp}` now provides the bounded overmap-to-bubble seam, translating a winning pursuit candidate plus small abstract group state into an explicit `entry_payload` and explicit `return_packet`
+- the current chooser stays intentionally narrow on `scout` / `probe` / `shadow` / `withdrawal`, preserving one pursuit / investigation slice instead of widening into raid or ambush theater
+- `apply_return_packet()` now carries back meaningful abstract consequences such as losses, wound / morale burden, carried-vs-delivered cargo, threat / bounty writeback, learned marks, and retreat pressure instead of dropping them on the floor
+- `render_report()` plus deterministic coverage in `tests/bandit_pursuit_handoff_test.cpp` keep the seam reviewer-readable and prove the bounded scout entry case, explicit return consequences, and moving-carrier shadow path
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, and `./tests/cata_test "[bandit]"`
+
+Keep this lane closed unless later evidence shows the packet is lying, no longer bounded enough, or needs a truly different local handoff class.
 
 ---
 
@@ -185,8 +323,8 @@ The first named playback packet now exists and is honest enough to stay closed f
 
 Current honest state:
 - the authoritative contract lives at `doc/bandit-scenario-fixture-playback-suite-v0-2026-04-20.md`
-- `src/bandit_playback.{h,cpp}` now defines ten stable deterministic reference scenarios on top of the bounded dry-run evaluator, including three generated-mark writer-side cases, instead of inventing a broader world simulator
-- the playback seam now reruns those scenarios at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, which is enough to inspect idle, smoke, corridor, moving-carrier, split-route, city-edge peel-off, generated cooling, refresh, and sticky-threat drift without smuggling in a bigger system
+- `src/bandit_playback.{h,cpp}` now defines fourteen stable deterministic reference scenarios on top of the bounded dry-run evaluator, including seven generated-mark writer-side cases, instead of inventing a broader world simulator
+- the playback seam now reruns those scenarios at `tick 0`, `tick 5`, `tick 20`, and `tick 100`, which is enough to inspect idle, smoke, corridor, moving-carrier, split-route, city-edge peel-off, repeated-site boundedness, generated cooling, refresh, and sticky-threat drift without smuggling in a bigger system
 - `render_report()` now provides a reviewer-readable checkpoint summary plus generated mark/heat state when present, and deterministic coverage in `tests/bandit_playback_test.cpp` proves the named scenario set, the stable checkpoints, and the expected drift answers
 - narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
@@ -467,28 +605,50 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 
 ---
 
-## 14. Parked concept chain — Bandit overmap AI
+## 14. Active greenlit — Bandit scoring refinement seam v0
 
-**Status:** PARKED / CONCEPT CHAIN
+**Status:** ACTIVE / GREENLIT
 
-Josef wants the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet is coherent enough as a whole.
-Do not quietly treat partial bandit notes as an active lane or as already-greenlit implementation.
-The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain; broader bandit implementation still stays parked outside the explicit promoted v0 slices above.
+Josef explicitly greenlit this scoring slice, and it is now the active narrow bandit item after the concealment checkpoint closed.
+Do not widen it into vague parked lore or fresh world-sim theater.
+
+Current contract:
+- the authoritative contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- the seam should refine how existing camp ledger state plus existing marks become job choice on the current dry-run evaluator footing
+- first inspect existing threat/danger mechanics and collapse them, do not invent a fresh bespoke threat astrology chart
+- the product goal is opportunistic bandit choice: avoid strong opponents, but pounce when zombie pressure or other distraction weakens target coherence
+- keep the slice bounded: no new visibility signals, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
+
+Keep this item active greenlit unless later canon changes priority or finds a contradiction in the scoring contract.
+
+---
+
+## 15. Parked concept chain — Bandit overmap AI
+
+**Status:** PARKED / COHERENT SUBSTRATE
+
+Josef wanted the larger bandit / overmap-threat idea developed as a parked concept chain first, then re-evaluated for greenlight only after the concept packet was coherent enough as a whole.
+That coherence audit now passes for four narrow promotions so far: the smoke-specific visibility -> mark bridge is checkpointed above, the light-specific bridge is checkpointed above, the human / route bridge is checkpointed above, and the repeated site-centered reinforcement bridge is checkpointed above too.
+Do not quietly treat the rest of the parked notes as broad implementation approval just because several bounded slices were promoted.
+The now-checkpointed formalization follow-through above was greenlit only for doc/spec cleanup inside this chain, and the broader concept still stays parked outside the explicit promoted v0 slices above plus the now-checkpointed first-500-turn proof packet.
 
 Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
 
 Current parked sub-items:
-- deterministic bounty/threat scoring guidance v1 at `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`
 - overmap mark-generation and heatmap model v1 at `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`
 - bidirectional overmap-to-bubble handoff seam v1 at `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`
 - player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
+
+Promoted out of the parked chain into explicit canon lanes:
+- checkpointed now: concealment seam v0 at `doc/bandit-concealment-seam-v0-2026-04-21.md`
+- active now: scoring refinement seam v0 at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- checkpointed earlier: smoke, light, human / route, repeated-site reinforcement, and the first honest 500-turn proof
 
 Supporting recon note for the visibility item:
 - physical-systems recon at `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`
 
 What the current parked sub-items should do:
-- scoring guidance: define deterministic camp-ledger and map-mark inputs for bandit decision-making, then score bounty/threat/job desirability from those inputs
 - mark/heatmap guidance: define how overmap-only marks get created, rechecked, harvested, and folded into broad threat/bounty heatmaps on the same cadence family without passive decay math
 - handoff guidance: define how abstract overmap groups enter local play and how cargo, wounds, panic, losses, and updated threat/bounty knowledge return back into overmap state
 - visibility/concealment guidance: define signal sources, environmental filters, bounty/threat interpretation outputs, and player/basecamp exposure-reduction levers on recon-backed footing
@@ -516,14 +676,14 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. only then decide whether the whole bandit concept is ready to be promoted into greenlit backlog
+6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, concealment now checkpointed closed, and scoring refinement promoted active, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
-If the packet is revisited later, the next planning discussion should be about whether the packet is coherent enough for future greenlight consideration, not about spawning more disconnected feeder docs by default.
+If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
 
 ---
 
-## 15. Documentation discipline
+## 16. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute

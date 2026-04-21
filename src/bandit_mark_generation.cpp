@@ -100,6 +100,51 @@ int light_source_bonus( light_source_band source )
     return 0;
 }
 
+int light_terrain_penalty( light_terrain_band terrain )
+{
+    switch( terrain ) {
+        case light_terrain_band::open:
+            return 0;
+        case light_terrain_band::built_cover:
+            return 1;
+        case light_terrain_band::forest:
+            return 2;
+    }
+
+    return 0;
+}
+
+std::string light_concealment_verdict( const light_packet &packet,
+                                       const light_concealment_packet &concealment,
+                                       bool viable )
+{
+    if( !viable ) {
+        return "blocked";
+    }
+    if( concealment.daylight_penalty == 0 && concealment.weather_penalty == 0 &&
+        concealment.terrain_penalty == 0 && packet.exposure == light_exposure_band::exposed ) {
+        return "allowed";
+    }
+    return "reduced";
+}
+
+std::string describe_light_concealment( const light_packet &packet,
+                                        const light_concealment_packet &concealment,
+                                        int projected_range_omt,
+                                        int visibility_score,
+                                        bool viable )
+{
+    return "light concealment: verdict=" + light_concealment_verdict( packet, concealment, viable ) +
+           ", time_penalty=" + std::to_string( concealment.daylight_penalty ) +
+           ", weather_penalty=" + std::to_string( concealment.weather_penalty ) +
+           ", exposure=" + to_string( packet.exposure ) +
+           ", side_leakage=" + std::to_string( concealment.side_leakage_bonus ) +
+           ", terrain=" + to_string( packet.terrain ) +
+           ", terrain_penalty=" + std::to_string( concealment.terrain_penalty ) +
+           ", projected_range_omt=" + std::to_string( projected_range_omt ) +
+           ", visibility_score=" + std::to_string( visibility_score );
+}
+
 int human_route_origin_bonus( human_route_origin origin )
 {
     switch( origin ) {
@@ -473,6 +518,20 @@ std::string to_string( light_source_band source )
     return "unknown";
 }
 
+std::string to_string( light_terrain_band terrain )
+{
+    switch( terrain ) {
+        case light_terrain_band::open:
+            return "open";
+        case light_terrain_band::built_cover:
+            return "built_cover";
+        case light_terrain_band::forest:
+            return "forest";
+    }
+
+    return "unknown";
+}
+
 std::string to_string( human_route_kind kind )
 {
     switch( kind ) {
@@ -570,19 +629,29 @@ light_projection adapt_light_packet( const light_packet &packet )
     light_projection projection;
     projection.packet = packet;
 
-    const int weather_penalty = light_weather_penalty( packet.weather );
-    const int time_penalty = light_time_penalty( packet.time );
-    const int exposure_bonus = light_exposure_bonus( packet.exposure );
-    const int side_leakage = std::clamp( packet.side_leakage, 0, 2 );
     const int source_bonus = light_source_bonus( packet.source );
+    projection.concealment.daylight_penalty = light_time_penalty( packet.time );
+    projection.concealment.weather_penalty = light_weather_penalty( packet.weather );
+    projection.concealment.exposure_bonus = light_exposure_bonus( packet.exposure );
+    projection.concealment.side_leakage_bonus = std::clamp( packet.side_leakage, 0, 2 );
+    projection.concealment.terrain_penalty = light_terrain_penalty( packet.terrain );
+    projection.concealment.visibility_modifier = projection.concealment.exposure_bonus +
+                                                 projection.concealment.side_leakage_bonus -
+                                                 projection.concealment.terrain_penalty -
+                                                 projection.concealment.weather_penalty -
+                                                 projection.concealment.daylight_penalty;
     projection.visibility_score = std::max( 0, packet.source_strength + packet.persistence +
-                                            exposure_bonus + side_leakage + source_bonus -
-                                            weather_penalty - time_penalty );
+                                            source_bonus + projection.concealment.visibility_modifier );
     projection.projected_range_omt = std::clamp( 1 + packet.source_strength * 2 + packet.persistence +
-                                     exposure_bonus + side_leakage + source_bonus -
-                                     weather_penalty - time_penalty, 0, 12 );
+                                     source_bonus + projection.concealment.visibility_modifier, 0, 12 );
     projection.viable = projection.visibility_score > 0 &&
                         packet.observed_range_omt <= projection.projected_range_omt;
+    projection.concealment.verdict = light_concealment_verdict( packet, projection.concealment,
+                                    projection.viable );
+    projection.concealment.summary = describe_light_concealment( packet, projection.concealment,
+                                    projection.projected_range_omt, projection.visibility_score,
+                                    projection.viable );
+    projection.review_summary = projection.concealment.summary;
 
     if( !projection.viable ) {
         return projection;
@@ -622,10 +691,12 @@ light_projection adapt_light_packet( const light_packet &packet )
                             ", weather=" + to_string( packet.weather ) +
                             ", exposure=" + to_string( packet.exposure ) +
                             ", source=" + to_string( packet.source ) +
-                            ", side_leakage=" + std::to_string( side_leakage ) +
+                            ", side_leakage=" + std::to_string( projection.concealment.side_leakage_bonus ) +
+                            ", terrain=" + to_string( packet.terrain ) +
                             ", observed_range_omt=" + std::to_string( packet.observed_range_omt ) +
                             ", projected_range_omt=" + std::to_string( projection.projected_range_omt ) +
                             ", visibility_score=" + std::to_string( projection.visibility_score ) );
+    signal.notes.push_back( projection.concealment.summary );
     if( packet.source == light_source_band::searchlight ) {
         signal.notes.push_back( "searchlight stays threat-first: this is a guarded clue, not a free extraction lane" );
     } else {
