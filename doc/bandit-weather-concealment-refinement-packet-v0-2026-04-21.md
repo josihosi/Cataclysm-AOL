@@ -2,8 +2,8 @@
 
 ## Status
 
-This is **GREENLIT / QUEUED NEXT**.
-It is approved behind the current overmap/local pressure rewrite packet.
+This is **ACTIVE / GREENLIT**.
+It is now the current bounded follow-up after the overmap/local pressure rewrite packet landed.
 
 This is a bounded refinement follow-up on the already-landed smoke, light, and concealment seams.
 It is not permission to reopen the whole visibility stack just because weather is nearby and dramatic.
@@ -37,7 +37,7 @@ This lane should **not** do any of the following:
 - invent a new fog-based sound law
 - solve z-level visibility in the same packet
 - widen into a broader weather-system redesign or portal-storm architecture opera
-- preempt the currently active pressure-rewrite packet
+- reopen the already-closed pressure-rewrite packet just because it sits next door in the same bandit chain
 
 ---
 

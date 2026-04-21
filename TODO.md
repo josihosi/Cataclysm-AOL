@@ -8,10 +8,10 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Current active lane: `Bandit long-range directional light proof packet v0`.
+Current active lane: `Bandit weather concealment refinement packet v0`.
 
-- Land the bounded long-range directional-light proof packet on the current bandit scenario / playback seam.
-- Add real overmap-side multi-turn benchmark scenarios, up to `500` turns where needed, instead of stopping at single-turn proof.
-- Prove the hidden-side leakage case stays non-actionable, while the visible-side leakage case becomes actionable under the same broader footing.
-- Include the matching zombie-horde corridor variant so the light does not become private bandit-only truth.
-- Keep the slice bounded: no z-level packet, no broad light rewrite, no handoff redesign, and no fresh world-sim jump.
+- Land the bounded weather-refinement packet on the current smoke/light mark-generation footing.
+- Prove that wind meaningfully fuzzes or de-precises smoke output instead of acting only as a token range haircut.
+- Add explicit portal-storm handling for smoke and light, with reviewer-readable output that explains narrowed, displaced, fuzzed, reduced, or blocked clue quality honestly.
+- Keep rain explicit for both smoke and light instead of hand-waving it back into vague cloudiness.
+- Keep the slice bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility architecture rewrite.

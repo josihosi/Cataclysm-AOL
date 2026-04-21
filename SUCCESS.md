@@ -34,24 +34,26 @@ Notes:
 
 ## Bandit overmap/local pressure rewrite packet v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded overmap/local pressure-rewrite proof packet exists on the current bandit scenario / playback footing.
-- [ ] Deterministic multi-turn proof shows a stalking or intercept posture can honestly cool, retreat, or reroute after local reality makes the original posture too dangerous.
-- [ ] Reviewer-readable output shows the pressure rewrite clearly enough to explain why the stale pursuit no longer holds.
-- [ ] Each scenario carries explicit goals and tuning metrics, and benchmark outcomes are visible in the report.
-- [ ] The slice stays bounded: no broad handoff redesign, no tactical local combat AI expansion, and no fresh world-sim jump.
+- [x] One bounded overmap/local pressure-rewrite proof packet exists on the current bandit scenario / playback footing.
+- [x] Deterministic multi-turn proof shows a stalking or intercept posture can honestly cool, retreat, or reroute after local reality makes the original posture too dangerous.
+- [x] Reviewer-readable output shows the pressure rewrite clearly enough to explain why the stale pursuit no longer holds.
+- [x] Each scenario carries explicit goals plus scenario-specific benchmark hooks, and the later locked benchmark outcomes stay visible on the same report path.
+- [x] The slice stays bounded: no broad handoff redesign, no tactical local combat AI expansion, and no fresh world-sim jump.
 
 Notes:
 - Canonical contract lives at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`.
-- This is now the active lane, not queued backlog.
+- The current tree now carries the bounded pressure-rewrite packet in `src/bandit_playback.{h,cpp}` through the named `generated_local_loss_rewrites_corridor_to_withdrawal` and `generated_local_loss_reroutes_to_safer_detour` scenarios plus the first-class `run_overmap_local_pressure_rewrite_proof_packet()` / `render_overmap_local_pressure_rewrite_proof_packet( const proof_packet_result &result )` path.
+- Deterministic coverage in `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: one stale corridor posture collapses to `hold / chill`, one parallel intercept case reroutes onto a safer detour, and the long horizon stays off the burned route instead of regrowing it by habit.
+- Narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`.
 
 ---
 
 ## Bandit weather concealment refinement packet v0
 
-Status: GREENLIT / QUEUED NEXT
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] One bounded weather-refinement packet exists on the current smoke/light mark-generation footing.
@@ -62,7 +64,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`.
-- This is greenlit behind the active pressure-rewrite packet, not permission to preempt it.
+- This is now the active lane after the pressure-rewrite packet honestly closed.
 
 ---
 

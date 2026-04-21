@@ -44,13 +44,30 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-### Current active lane — Bandit long-range directional light proof packet v0
+### Current active lane — Bandit weather concealment refinement packet v0
 
 Current expected evidence shape:
-- the next landed packet should add real multi-turn scenario proof on the current bandit playback/proof seam, not only one-tick mark tests
-- the proof should cover the directional split honestly: hidden-side leakage stays non-actionable, visible-side leakage becomes actionable, and the matching corridor case still shares consequences with zombie pressure
-- scenarios should carry explicit goals and tuning metrics, with reviewer-readable output showing whether those benchmarks were met across the multi-turn horizon
-- up to `500` turns is now part of the honest target where that longer horizon is what proves the behavior instead of just asserting it
+- the next landed packet should add one bounded weather-refinement packet on the current smoke/light mark-generation footing instead of reopening the whole visibility stack
+- the proof should show wind meaningfully fuzzing or de-precising smoke output, not merely shaving a token range number
+- the proof should handle portal-storm weather explicitly for smoke and light, with reviewer-readable output that explains narrowed, displaced, fuzzed, reduced, or blocked clue quality honestly
+- rain should stay an explicit reducer for both smoke and light, and the slice should stay bounded away from full plume physics, sound-law rewrite, or z-level expansion
+
+### Latest closed lane — Bandit overmap/local pressure rewrite packet v0
+
+Current honest state:
+- `src/bandit_playback.{h,cpp}` now carries the named `generated_local_loss_rewrites_corridor_to_withdrawal` and `generated_local_loss_reroutes_to_safer_detour` multi-turn scenarios on the current playback seam
+- the same file now also exposes `run_overmap_local_pressure_rewrite_proof_packet()` plus `render_overmap_local_pressure_rewrite_proof_packet( const proof_packet_result &result )` so the reviewer-readable packet is first-class output instead of debugger folklore
+- deterministic coverage in `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: one stale corridor posture collapses to `hold / chill` once local loss makes the tile too hot, one parallel intercept case reroutes onto a safer detour instead of homing forever on stale pressure, and the long horizon stays off the burned route instead of regrowing it by habit
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
+
+### Latest closed lane — Bandit long-range directional light proof packet v0
+
+Current honest state:
+- `src/bandit_playback.{h,cpp}` now carries three named directional-light multi-turn scenarios on the generated-mark / playback seam: hidden-side inert, visible-side actionable, and shared corridor pressure
+- the same file now also exposes `run_long_range_directional_light_proof_packet()` plus `render_long_range_directional_light_proof_packet( const proof_packet_result &result )` so the reviewer-readable packet is first-class output rather than debugger folklore
+- deterministic coverage in `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: hidden-side leakage stays non-actionable, visible-side leakage becomes actionable under the same broader footing, and the matching corridor case still carries shared zombie-pressure consequences instead of becoming private bandit-only theater
+- the playback reference suite now includes those directional-light scenarios directly, so the broader bandit playback suite keeps the packet visible instead of burying it in one bespoke spot check
+- narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`
 
 ### Latest closed lane — Bandit bounded scout/explore seam v0
 
@@ -193,7 +210,7 @@ Current honest state:
 
 ### Meaning
 
-- there is currently no active greenlit lane in repo canon
+- the weather concealment refinement packet is now the active greenlit lane in repo canon
 - the bounded scout/explore seam is now checkpointed closed with dry-run plus playback/reference proof
 - do not reopen the scoring seam, concealment seam, smoke bridge, light bridge, human / route bridge, repeated-site reinforcement seam, first 500-turn proof, locker threshold packet, or earlier locker shape packet unless new evidence says the answer was dishonest or incomplete
 - the bandit pursuit handoff seam is now checkpointed closed with deterministic proof and reviewer-readable packet output
@@ -203,8 +220,8 @@ Current honest state:
 
 ## Pending probes
 
-- Active next proof obligation: land the multi-turn directional-light benchmark packet on the current bandit playback/proof seam.
-- After that, the next queued proof obligation is `Bandit overmap/local pressure rewrite packet v0`, also with explicit multi-turn goals and tuning metrics instead of single-turn legality checks.
+- Active next proof obligation: land the bounded weather-refinement packet on the current smoke/light mark-generation footing.
+- Keep the same honest bar: explicit weather/fuzziness interpretation, reviewer-readable output, and bounded deterministic proof for wind, portal storms, and rain without reopening the whole visibility system.
 
 ---
 
