@@ -32,6 +32,23 @@ Notes:
 
 ---
 
+## Bandit scoring refinement seam v0
+
+Status: GREENLIT / QUEUED NEXT
+
+Success state:
+- [ ] One bounded scoring-refinement adapter exists on the current bandit dry-run/evaluator seam, refining how existing camp ledger state plus existing marks become job choice.
+- [ ] The threat side first inspects and collapses usable existing threat/danger footing instead of inventing a fresh bespoke threat ontology.
+- [ ] Deterministic coverage proves the key opportunism split honestly: bandits avoid strong opponents, but pounce when zombie pressure or other distraction lowers effective target coherence.
+- [ ] Reviewer-readable output shows the refined choice breakdown clearly enough to explain why a target was avoided, deferred, or exploited.
+- [ ] The slice stays bounded: no new visibility signal family, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion.
+
+Notes:
+- Canonical contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`.
+- This is the queued greenlit follow-up behind the active concealment lane, not permission to preempt the current active item.
+
+---
+
 ## Bandit first 500-turn playback proof v0
 
 Status: CHECKPOINTED / DONE FOR NOW

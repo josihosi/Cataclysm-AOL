@@ -49,6 +49,10 @@ Current active contract:
 - allow honest one-sided leakage such as visible from one approach and concealed from another
 - keep the slice bounded: no new fake weather law, no broad all-signals concealment rewrite, no global smoke/world simulation, no tactical stealth doctrine, and no pursuit/handoff expansion
 
+Queued greenlit next item:
+- **Bandit scoring refinement seam v0** is now greenlit as the next queued follow-up after concealment, with the contract at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- the intended product direction is to inspect existing threat/danger footing first and collapse it into bandit job scoring so camps avoid strong opponents but opportunistically pounce when zombie pressure or other distraction lowers effective target coherence
+
 Fresh checkpoints that stay closed:
 - **Bandit first 500-turn playback proof v0** is now honestly checkpointed too:
   - `src/bandit_playback.{h,cpp}` now carries `proof_packet_result`, `run_first_500_turn_playback_proof()`, and `render_first_500_turn_playback_proof( const proof_packet_result &result )` so reviewer-readable long-horizon proof output exists on the current playback seam instead of living as debugger folklore
@@ -598,7 +602,25 @@ Canonical contract lives at `doc/plan-status-summary-command-2026-04-20.md`.
 
 ---
 
-## 14. Parked concept chain — Bandit overmap AI
+## 14. Greenlit next — Bandit scoring refinement seam v0
+
+**Status:** GREENLIT / QUEUED NEXT
+
+Josef explicitly greenlit this as the next queued bandit item behind the active concealment lane.
+Do not steal focus from the active concealment seam, but do preserve this as the next approved follow-up instead of letting it fall back into vague parked lore.
+
+Current contract:
+- the authoritative contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- the seam should refine how existing camp ledger state plus existing marks become job choice on the current dry-run evaluator footing
+- first inspect existing threat/danger mechanics and collapse them, do not invent a fresh bespoke threat astrology chart
+- the product goal is opportunistic bandit choice: avoid strong opponents, but pounce when zombie pressure or other distraction weakens target coherence
+- keep the slice bounded: no new visibility signals, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion
+
+Keep this item queued greenlit unless the active concealment lane changes priority or later canon finds a contradiction in the scoring contract.
+
+---
+
+## 15. Parked concept chain — Bandit overmap AI
 
 **Status:** PARKED / COHERENT SUBSTRATE
 
@@ -611,16 +633,19 @@ Current parked-chain anchor:
 - the broad synthesis paper lives at `doc/bandit-overmap-ai-concept-2026-04-19.md`
 
 Current parked sub-items:
-- deterministic bounty/threat scoring guidance v1 at `doc/bandit-bounty-threat-scoring-guidance-2026-04-19.md`
 - overmap mark-generation and heatmap model v1 at `doc/bandit-mark-generation-and-heatmap-model-2026-04-19.md`
 - bidirectional overmap-to-bubble handoff seam v1 at `doc/bandit-overmap-to-bubble-handoff-seam-2026-04-19.md`
 - player/basecamp visibility and concealment v1 at `doc/bandit-player-basecamp-visibility-and-concealment-2026-04-19.md`
+
+Promoted out of the parked chain into explicit canon lanes:
+- active now: concealment seam v0 at `doc/bandit-concealment-seam-v0-2026-04-21.md`
+- queued greenlit next: scoring refinement seam v0 at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
+- checkpointed earlier: smoke, light, human / route, repeated-site reinforcement, and the first honest 500-turn proof
 
 Supporting recon note for the visibility item:
 - physical-systems recon at `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`
 
 What the current parked sub-items should do:
-- scoring guidance: define deterministic camp-ledger and map-mark inputs for bandit decision-making, then score bounty/threat/job desirability from those inputs
 - mark/heatmap guidance: define how overmap-only marks get created, rechecked, harvested, and folded into broad threat/bounty heatmaps on the same cadence family without passive decay math
 - handoff guidance: define how abstract overmap groups enter local play and how cargo, wounds, panic, losses, and updated threat/bounty knowledge return back into overmap state
 - visibility/concealment guidance: define signal sources, environmental filters, bounty/threat interpretation outputs, and player/basecamp exposure-reduction levers on recon-backed footing
@@ -648,14 +673,14 @@ The intended parked-chain order for now is:
 3. overmap mark-generation and heatmap model
 4. bidirectional overmap-to-bubble handoff seam
 5. player/basecamp visibility and concealment, informed by the physical-systems recon note
-6. promotion audit, now passed narrowly for smoke first, light second, human / route third, and repeated-site fourth, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
+6. promotion audit, now passed narrowly for smoke first, light second, human / route third, repeated-site fourth, concealment promoted active, and scoring refinement promoted queued greenlit next, with any later promotions requiring the same bounded review instead of more disconnected feeder docs
 
 The broad anchor doc has now been rewritten into the synthesis paper for the parked chain.
 If the packet is revisited later, the next planning discussion should be about the next bounded promotion or a real contradiction in the current packet, not about spawning more disconnected feeder docs by default.
 
 ---
 
-## 15. Documentation discipline
+## 16. Documentation discipline
 
 If the structure starts bloating again, apply this rule:
 - `Plan.md` should be readable in a minute
