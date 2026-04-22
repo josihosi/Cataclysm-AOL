@@ -480,9 +480,10 @@ That topic stays design-sensitive and should not be treated as settled just beca
 
 #### Bandit live-world ownership seam v0
 - The first real live-world hostile-bandit substrate now lives in `src/bandit_live_world.{h,cpp}` and persists through `overmap_global_state.bandit_live_world`.
-- This seam is intentionally just the owner ledger, not the full control brain: it claims tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns at `map::place_npc` time and stores explicit site/member/spawn-tile records for later control/writeback.
+- This seam started as the owner ledger and now carries one first bounded control hook too: tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns claim at `map::place_npc` time, and nearby owned sites can now mint one bounded scout dispatch through `plan_site_dispatch(...)` / `apply_dispatch_plan(...)` instead of staying pure post-hoc bookkeeping.
 - Site identity is source-shaped and save-stable: overmap specials anchor to their bounded footprint, while map extras stay single-OMT micro-sites instead of inventing a giant settlement taxonomy early.
 - Membership is keyed by `character_id` plus the home spawn tile/template id so later dispatch and writeback can start from real spawned NPC continuity instead of folklore reconstruction.
+- The first cadence hook is intentionally narrow: `overmap_npc_move()` may select one nearby owned site, mark selected members outbound, and hand those actual NPCs normal `NPC_MISSION_TRAVELLING` overmap routes toward the current nearby player target; broader restage, messy local writeback, and richer cadence still belong to later slices.
 
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:

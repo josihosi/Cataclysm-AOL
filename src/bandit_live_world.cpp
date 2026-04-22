@@ -89,6 +89,104 @@ bool omt_less( const tripoint_abs_omt &lhs, const tripoint_abs_omt &rhs )
     }
     return lhs.x() < rhs.x();
 }
+
+int required_dispatch_members( bandit_dry_run::job_template job )
+{
+    switch( job ) {
+        case bandit_dry_run::job_template::hold_chill:
+            return 0;
+        case bandit_dry_run::job_template::scout:
+        case bandit_dry_run::job_template::scavenge:
+        case bandit_dry_run::job_template::stalk:
+        case bandit_dry_run::job_template::steal:
+            return 1;
+        case bandit_dry_run::job_template::toll:
+        case bandit_dry_run::job_template::raid:
+        case bandit_dry_run::job_template::reinforce:
+            return 2;
+    }
+
+    return 0;
+}
+
+bandit_dry_run::camp_input make_dispatch_camp_input( const bandit_live_world::site_record &site )
+{
+    bandit_dry_run::camp_input camp;
+    camp.available_manpower = site.count_members_in_state( member_state::at_home );
+    if( camp.available_manpower >= 3 ) {
+        camp.shortage = bandit_dry_run::shortage_band::stable;
+    } else if( camp.available_manpower == 2 ) {
+        camp.shortage = bandit_dry_run::shortage_band::low;
+    } else {
+        camp.shortage = bandit_dry_run::shortage_band::critical;
+    }
+    camp.job_type_bonus[bandit_dry_run::job_template::scout] = 1;
+    return camp;
+}
+
+bandit_dry_run::lead_input make_nearby_target_lead( const bandit_live_world::site_record &site,
+        const tripoint_abs_omt &target_omt, const std::string &target_id )
+{
+    bandit_dry_run::lead_input lead;
+    lead.id = target_id;
+    lead.envelope_id = target_id;
+    lead.family = bandit_dry_run::lead_family::site;
+    const int distance = rl_dist( site.anchor, target_omt );
+    lead.distance_multiplier = std::clamp( 1.0 - static_cast<double>( distance ) / 20.0, 0.35, 1.0 );
+    lead.lead_bounty_value = distance <= 10 ? 2 : 1;
+    lead.lead_confidence_bonus = 1;
+    lead.threat_penalty = 1;
+    lead.threat_gate_result = bandit_dry_run::threat_gate::soft_veto;
+    lead.hard_blocked_jobs = {
+        bandit_dry_run::job_template::scavenge,
+        bandit_dry_run::job_template::steal,
+        bandit_dry_run::job_template::raid,
+    };
+    lead.validity_notes.push_back( "live-world nearby target envelope from owned site " + site.site_id );
+    lead.validity_notes.push_back( "bounded v0 dispatch only promotes scout pursuit from real owned members" );
+    return lead;
+}
+
+std::vector<character_id> select_dispatch_members( const bandit_live_world::site_record &site, int count )
+{
+    std::vector<character_id> member_ids;
+    member_ids.reserve( std::max( count, 0 ) );
+    for( const bandit_live_world::member_record &member : site.members ) {
+        if( member.state != member_state::at_home ) {
+            continue;
+        }
+        member_ids.push_back( member.npc_id );
+        if( static_cast<int>( member_ids.size() ) >= count ) {
+            break;
+        }
+    }
+    return member_ids;
+}
+
+bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_live_world::site_record &site,
+        const std::vector<character_id> &member_ids, const std::string &target_id )
+{
+    bandit_pursuit_handoff::abstract_group_state group;
+    group.group_id = site.site_id + "#dispatch";
+    group.source_camp_id = site.site_id;
+    group.group_strength = member_ids.size();
+    group.confidence = std::clamp( site.count_members_in_state( member_state::at_home ), 1, 3 );
+    group.panic_threshold = std::max( 1, static_cast<int>( member_ids.size() ) );
+    group.cargo_capacity = std::max( 1, static_cast<int>( member_ids.size() ) * 2 );
+    group.current_target_or_mark = target_id;
+    group.current_threat_estimate = 1;
+    group.current_bounty_estimate = 2;
+    group.mission_urgency = 1;
+    group.retreat_bias = site.site_kind == owned_site_kind::bandit_cabin ? 2 : 1;
+    group.goal_stickiness = 1;
+    group.goal_preemption_posture = 1;
+    group.return_clock = 2;
+    for( const character_id &member_id : member_ids ) {
+        group.anchored_identities.push_back( { std::to_string( member_id.get_value() ), "alive" } );
+    }
+    group.known_recent_marks.push_back( target_id );
+    return group;
+}
 } // namespace
 
 namespace bandit_live_world
@@ -222,6 +320,22 @@ bool site_record::has_member( character_id target_npc_id ) const
     } );
 }
 
+member_record *site_record::find_member( character_id target_npc_id )
+{
+    auto iter = std::find_if( members.begin(), members.end(), [target_npc_id]( const member_record & member ) {
+        return member.npc_id == target_npc_id;
+    } );
+    return iter != members.end() ? &*iter : nullptr;
+}
+
+const member_record *site_record::find_member( character_id target_npc_id ) const
+{
+    auto iter = std::find_if( members.begin(), members.end(), [target_npc_id]( const member_record & member ) {
+        return member.npc_id == target_npc_id;
+    } );
+    return iter != members.end() ? &*iter : nullptr;
+}
+
 spawn_tile_record *site_record::find_spawn_tile( const tripoint_abs_ms &tile )
 {
     auto iter = std::find_if( spawn_tiles.begin(), spawn_tiles.end(), [&tile]( const spawn_tile_record & record ) {
@@ -236,6 +350,14 @@ const spawn_tile_record *site_record::find_spawn_tile( const tripoint_abs_ms &ti
         return record.tile == tile;
     } );
     return iter != spawn_tiles.end() ? &*iter : nullptr;
+}
+
+int site_record::count_members_in_state( member_state target_state ) const
+{
+    return static_cast<int>( std::count_if( members.begin(), members.end(),
+    [target_state]( const member_record & member ) {
+        return member.state == target_state;
+    } ) );
 }
 
 void world_state::clear()
@@ -442,6 +564,90 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
         spawn_tile_record_ptr = &site->spawn_tiles.back();
     }
     spawn_tile_record_ptr->headcount++;
+    return true;
+}
+
+dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
+                                  const std::string &target_id )
+{
+    dispatch_plan plan;
+    plan.site_id = site.site_id;
+    plan.target_id = target_id;
+    plan.target_omt = target_omt;
+
+    if( target_id.empty() ) {
+        plan.notes.push_back( "dispatch blocked: missing target id" );
+        return plan;
+    }
+
+    if( site.count_members_in_state( member_state::outbound ) > 0 ||
+        site.count_members_in_state( member_state::local_contact ) > 0 ) {
+        plan.notes.push_back( "dispatch blocked: site already has an active outbound/contact group" );
+        return plan;
+    }
+
+    const bandit_dry_run::camp_input camp = make_dispatch_camp_input( site );
+    if( camp.available_manpower <= 0 ) {
+        plan.notes.push_back( "dispatch blocked: no at-home members available" );
+        return plan;
+    }
+
+    const bandit_dry_run::lead_input lead = make_nearby_target_lead( site, target_omt, target_id );
+    plan.evaluation = bandit_dry_run::evaluate( camp, { lead } );
+    const bandit_dry_run::candidate_debug &winner = plan.evaluation.candidates[plan.evaluation.winner_index];
+    if( !bandit_pursuit_handoff::supports_pursuit_handoff( winner ) ) {
+        plan.notes.push_back( "dispatch blocked: " + plan.evaluation.winner_reason );
+        return plan;
+    }
+
+    const int required_members = required_dispatch_members( winner.job );
+    if( required_members <= 0 ) {
+        plan.notes.push_back( "dispatch blocked: winning job needs no live member handoff" );
+        return plan;
+    }
+
+    plan.member_ids = select_dispatch_members( site, required_members );
+    if( static_cast<int>( plan.member_ids.size() ) != required_members ) {
+        plan.notes.push_back( "dispatch blocked: not enough at-home members survived selection" );
+        return plan;
+    }
+
+    plan.group = make_dispatch_group( site, plan.member_ids, target_id );
+    bandit_pursuit_handoff::entry_context context;
+    context.contact = rl_dist( site.anchor, target_omt ) <= 4 ?
+                      bandit_pursuit_handoff::contact_certainty::localized :
+                      bandit_pursuit_handoff::contact_certainty::broad;
+    plan.entry = bandit_pursuit_handoff::build_entry_payload( plan.group, winner, context );
+    plan.notes = plan.entry.notes;
+    if( !plan.entry.valid ) {
+        plan.notes.push_back( "dispatch blocked: entry payload stayed outside the bounded handoff contract" );
+        return plan;
+    }
+
+    plan.valid = true;
+    plan.notes.push_back( "dispatch ready: " + bandit_dry_run::to_string( winner.job ) + " toward " + target_id );
+    return plan;
+}
+
+bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
+{
+    if( !plan.valid || plan.site_id != site.site_id || plan.member_ids.empty() ) {
+        return false;
+    }
+
+    for( const character_id &member_id : plan.member_ids ) {
+        if( site.find_member( member_id ) == nullptr ) {
+            return false;
+        }
+    }
+
+    const std::string summary = "dispatch " + bandit_dry_run::to_string( plan.entry.job_type ) +
+                                " toward " + plan.target_id;
+    for( const character_id &member_id : plan.member_ids ) {
+        member_record *member = site.find_member( member_id );
+        member->state = member_state::outbound;
+        member->last_writeback_summary = summary;
+    }
     return true;
 }
 } // namespace bandit_live_world

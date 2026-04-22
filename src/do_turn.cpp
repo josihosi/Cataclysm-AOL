@@ -12,6 +12,7 @@
 #include <ostream>
 #include <ratio>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -104,6 +105,95 @@ extern bool add_best_key_for_action_to_quick_shortcuts( action_id action,
 #endif
 
 #define dbg(x) DebugLog((x),D_GAME) << __FILE__ << ":" << __LINE__ << ": "
+
+namespace
+{
+std::string live_bandit_player_target_id( const tripoint_abs_omt &player_omt )
+{
+    std::ostringstream out;
+    out << "player@" << player_omt.x() << ',' << player_omt.y() << ',' << player_omt.z();
+    return out.str();
+}
+
+bool steer_live_bandit_dispatch_toward_player()
+{
+    avatar &u = get_avatar();
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    if( state.sites.empty() ) {
+        return false;
+    }
+
+    std::vector<std::pair<int, size_t>> candidate_sites;
+    candidate_sites.reserve( state.sites.size() );
+    for( size_t i = 0; i < state.sites.size(); ++i ) {
+        const bandit_live_world::site_record &site = state.sites[i];
+        const int distance = rl_dist( site.anchor, u.pos_abs_omt() );
+        if( distance <= 10 ) {
+            candidate_sites.emplace_back( distance, i );
+        }
+    }
+
+    if( candidate_sites.empty() ) {
+        return false;
+    }
+
+    std::sort( candidate_sites.begin(), candidate_sites.end() );
+    const std::string target_id = live_bandit_player_target_id( u.pos_abs_omt() );
+    for( const std::pair<int, size_t> &candidate_site : candidate_sites ) {
+        bandit_live_world::site_record &site = state.sites[candidate_site.second];
+        const bandit_live_world::dispatch_plan plan =
+            bandit_live_world::plan_site_dispatch( site, u.pos_abs_omt(), target_id );
+        if( !plan.valid ) {
+            continue;
+        }
+
+        std::vector<shared_ptr_fast<npc>> dispatched_npcs;
+        dispatched_npcs.reserve( plan.member_ids.size() );
+        bool missing_member = false;
+        for( const character_id &member_id : plan.member_ids ) {
+            shared_ptr_fast<npc> bandit = overmap_buffer.find_npc( member_id );
+            if( !bandit ) {
+                missing_member = true;
+                break;
+            }
+            dispatched_npcs.push_back( bandit );
+        }
+        if( missing_member || dispatched_npcs.empty() ) {
+            continue;
+        }
+
+        std::vector<std::vector<tripoint_abs_omt>> dispatch_paths;
+        dispatch_paths.reserve( dispatched_npcs.size() );
+        bool route_missing = false;
+        for( const shared_ptr_fast<npc> &bandit : dispatched_npcs ) {
+            std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( bandit->pos_abs_omt(),
+                                               u.pos_abs_omt(), overmap_path_params::for_npc() ).points;
+            if( path.empty() ) {
+                route_missing = true;
+                break;
+            }
+            dispatch_paths.push_back( std::move( path ) );
+        }
+        if( route_missing ) {
+            continue;
+        }
+
+        if( !bandit_live_world::apply_dispatch_plan( site, plan ) ) {
+            continue;
+        }
+
+        for( size_t i = 0; i < dispatched_npcs.size(); ++i ) {
+            const shared_ptr_fast<npc> &bandit = dispatched_npcs[i];
+            bandit->goal = u.pos_abs_omt();
+            bandit->omt_path = std::move( dispatch_paths[i] );
+            bandit->set_mission( NPC_MISSION_TRAVELLING );
+        }
+        return true;
+    }
+
+    return false;
+}
+} // namespace
 
 namespace turn_handler
 {
@@ -414,6 +504,9 @@ void monmove()
 void overmap_npc_move()
 {
     avatar &u = get_avatar();
+    if( calendar::once_every( 30_minutes ) ) {
+        steer_live_bandit_dispatch_toward_player();
+    }
     std::vector<npc *> travelling_npcs;
     static constexpr int move_search_radius = 600;
     for( auto &elem : overmap_buffer.get_npcs_near_player( move_search_radius ) ) {

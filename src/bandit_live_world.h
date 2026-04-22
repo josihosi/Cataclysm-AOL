@@ -1,5 +1,8 @@
 #pragma once
 
+#include "bandit_dry_run.h"
+#include "bandit_pursuit_handoff.h"
+
 #include <functional>
 #include <optional>
 #include <string>
@@ -70,8 +73,11 @@ struct site_record {
     void deserialize( const JsonObject &jo );
 
     bool has_member( character_id npc_id ) const;
+    member_record *find_member( character_id npc_id );
+    const member_record *find_member( character_id npc_id ) const;
     spawn_tile_record *find_spawn_tile( const tripoint_abs_ms &tile );
     const spawn_tile_record *find_spawn_tile( const tripoint_abs_ms &tile ) const;
+    int count_members_in_state( member_state state ) const;
 };
 
 struct world_state {
@@ -91,6 +97,18 @@ struct footprint_snapshot {
     std::vector<tripoint_abs_omt> footprint;
 };
 
+struct dispatch_plan {
+    bool valid = false;
+    std::string site_id;
+    std::string target_id;
+    tripoint_abs_omt target_omt;
+    std::vector<character_id> member_ids;
+    bandit_dry_run::evaluation_result evaluation;
+    bandit_pursuit_handoff::abstract_group_state group;
+    bandit_pursuit_handoff::entry_payload entry;
+    std::vector<std::string> notes;
+};
+
 bool is_tracked_bandit_template( const std::string &npc_template_id );
 std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind source_kind,
         const std::string &source_id );
@@ -104,6 +122,9 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
                           const std::optional<std::string> &overmap_special_id,
                           const std::optional<std::string> &map_extra_id,
                           const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
+dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
+                                  const std::string &target_id );
+bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 
 std::string to_string( anchor_source_kind source_kind );
 std::string to_string( owned_site_kind site_kind );
