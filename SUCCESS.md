@@ -688,6 +688,28 @@ Notes:
 
 ---
 
+## Bandit + Basecamp playtest kit packet v0
+
+Status: GREENLIT / QUEUED NEXT
+
+Success state:
+- [ ] The current named-bandit helper path has honest repeatability evidence instead of one lucky run.
+- [ ] The artifact/report surface for that helper path is screen-first and reviewer-readable enough that later playtest discussion does not depend on folklore.
+- [ ] The helper path cleans up after itself well enough that repeated probes do not leave stale game windows or obvious session clutter behind.
+- [ ] One purpose-built playtest fixture/save pack exists with a fast reinstall/load path for current bandit + Basecamp probing.
+- [ ] That fixture/save pack exposes a small named scenario family suitable for Josef playtesting and debugging rather than one brittle operator-only restage ritual.
+- [ ] The packet says plainly what still remains ugly or manual instead of laundering it into magic.
+- [ ] The slice stays cohesive and bounded rather than mutating into a general harness/world-authoring rewrite.
+
+Notes:
+- Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`.
+- This is the explicitly greenlit queued-next follow-through behind the current active encounter/readability lane, not a silent replacement for it.
+- The intended shape is one cohesive pre-playtest kit packet: repeatability soak, screen-first artifact polish, probe auto-cleanup, and one small purpose-built playtest fixture/save pack.
+- The fixture may use a clear spawn anchor such as an LMOE-or-similar shelter, but the packet must stay honest if the cleanest first version still depends on a captured save rather than a fully declarative authored-world system.
+- Non-goal reminder: no fresh bandit mechanics, no zoning reopen, no generic custom-map framework, and no infinite scenario sandbox.
+
+---
+
 ## Post-Locker-V1 Basecamp follow-through
 
 Status: CHECKPOINTED / DONE FOR NOW

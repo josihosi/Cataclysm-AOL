@@ -47,6 +47,7 @@ Current honest state:
 - the landed helper is `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`, packaging the already-proved named-bandit restage seam on reused McWilliams/Basecamp footing
 - fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/` now means the next live pass can judge encounter readability instead of arguing about setup existence
 - the active job now is one bounded first-pass live encounter/readability packet on top of that helper path, focused on what the player can actually read and understand on screen when a hostile bandit is intentionally restaged on real Basecamp footing
+- Josef explicitly greenlit one larger cohesive queued-next follow-through, `Bandit + Basecamp playtest kit packet v0`, to harden the playtest surface before his near-term manual playtest window without widening into a custom-map framework or fresh mechanics spree
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this live packet should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, and repeated-site revisit follow-through
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
@@ -65,6 +66,16 @@ Canonical contract lives at `doc/bandit-basecamp-first-pass-encounter-readabilit
 
 ---
 
+## Greenlit next - Bandit + Basecamp playtest kit packet v0
+
+**Status:** GREENLIT / QUEUED NEXT
+
+Package one cohesive pre-playtest kit on current bandit + Basecamp footing: harden `bandit.basecamp_named_spawn_mcw` for repeatable operator use, improve screen-first artifact readability, clean up leftover live-window/session clutter, and add one purpose-built fast-reload playtest fixture/save pack with a small named scenario family.
+
+Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`.
+
+---
+
 ## Checkpointed packet index
 
 Use the auxiliary docs below when a later discussion needs the canonical contract or the honest closed verdict, not as permission to reopen the lane automatically.
@@ -72,6 +83,7 @@ Use the auxiliary docs below when a later discussion needs the canonical contrac
 ### Camp / Basecamp packets
 
 - `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md` (active)
+- `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md` (greenlit / queued next)
 - `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
 - `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`
 - `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`
