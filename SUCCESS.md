@@ -710,6 +710,49 @@ Notes:
 
 ---
 
+## Bandit + Basecamp playtest kit packet v1
+
+Status: GREENLIT / QUEUED AFTER V0
+
+Success state:
+- [ ] A small named family of rich prepared-base fixtures exists for current Basecamp-management and bandit-interplay probing.
+- [ ] The fixtures are meaningfully management-ready rather than empty camp shells.
+- [ ] The player-side debugging/readability footing includes both clairvoyance mutations.
+- [ ] The fixture method is honest and reusable: captured save for structure, live restage for variants.
+- [ ] The scenario family is reviewer-readable enough that Schani, Andi, and Josef can tell which fixture is for which kind of playtest without folklore.
+- [ ] The packet says plainly what still remains manual, brittle, or not yet fixture-backed.
+- [ ] The slice stays about rich prepared fixtures rather than sprawling into a generic world-authoring platform.
+
+Notes:
+- Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`.
+- This is the richer prepared-base follow-through behind playtest kit `v0`, not a replacement for the current active lane.
+- The intended base footing includes the relevant management/interplay setup such as Basecamp zone, fireplace, smart zones, locker zones, patrol zones, armed NPCs, and food/supplies where appropriate for the named fixture.
+- The player fixture should carry both clairvoyance mutations explicitly for cleaner live debugging/readability.
+- Method reminder: captured save for structure, live restage for variants.
+
+---
+
+## Bandit + Basecamp playtest kit packet v2
+
+Status: GREENLIT / QUEUED AFTER V1
+
+Success state:
+- [ ] The harness can apply a meaningful set of named scenario mutations beyond the tiny current helper subset.
+- [ ] Important near-term playtest variants can be produced from prepared footing without duplicating whole saves for every minor difference.
+- [ ] The operator can tell what was changed, what state was forced, and what on-screen consequences should now be expected.
+- [ ] Schani and Andi can set up a materially broader slice of the Cataclysm-AOL plan surface without rebuilding everything by hand.
+- [ ] Recurring manual debug rituals shrink because the important ones became named reusable helpers.
+- [ ] The packet stays focused on scenario surgery and observability rather than turning into abstract infrastructure vanity.
+
+Notes:
+- Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`.
+- This is the debug-power scenario-surgery follow-through behind `v1`, intended to exploit more of the existing practical debug surface before asking for deeper engine surgery.
+- The intended named mutation surface includes things like mutations/traits, NPC gear/loadouts, faction or hostility posture, wounds/status, weather/time/light, food/stockpile fill, and camp role/stationing/patrol readiness.
+- The intended shape includes reusable transforms/presets on top of prepared fixtures, not only static save duplication.
+- Non-goal reminder: no speculative mechanics work disguised as harness work, and no infinite general-purpose modding platform.
+
+---
+
 ## Post-Locker-V1 Basecamp follow-through
 
 Status: CHECKPOINTED / DONE FOR NOW

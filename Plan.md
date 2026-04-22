@@ -48,6 +48,7 @@ Current honest state:
 - fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/` now means the next live pass can judge encounter readability instead of arguing about setup existence
 - the active job now is one bounded first-pass live encounter/readability packet on top of that helper path, focused on what the player can actually read and understand on screen when a hostile bandit is intentionally restaged on real Basecamp footing
 - Josef explicitly greenlit one larger cohesive queued-next follow-through, `Bandit + Basecamp playtest kit packet v0`, to harden the playtest surface before his near-term manual playtest window without widening into a custom-map framework or fresh mechanics spree
+- Josef then widened that runway further into a deliberate playtest-kit stack: `v1` as a rich prepared-base fixture family and `v2` as a debug-power scenario-surgery layer, both ordered behind `v0` instead of left as chat vapor
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this live packet should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, and repeated-site revisit follow-through
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
@@ -76,6 +77,26 @@ Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-
 
 ---
 
+## Greenlit after v0 - Bandit + Basecamp playtest kit packet v1
+
+**Status:** GREENLIT / QUEUED AFTER V0
+
+Build a small rich prepared-base fixture family for current Basecamp-management and bandit-interplay probing: management-ready camp footing, relevant zones and supplies, armed NPCs, patrol/locker/smart-zone support, and a player fixture carrying both clairvoyance mutations for cleaner live debugging/readability.
+
+Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`.
+
+---
+
+## Greenlit after v1 - Bandit + Basecamp playtest kit packet v2
+
+**Status:** GREENLIT / QUEUED AFTER V1
+
+Turn the harness into a broader scenario-surgery surface on top of prepared fixtures: use more of the practical debug power, add named mutations/transforms for common setup states, and make the operator-visible change report strong enough that Schani and Andi can probe much more of the plan without hand-rebuilding worlds.
+
+Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`.
+
+---
+
 ## Checkpointed packet index
 
 Use the auxiliary docs below when a later discussion needs the canonical contract or the honest closed verdict, not as permission to reopen the lane automatically.
@@ -84,6 +105,8 @@ Use the auxiliary docs below when a later discussion needs the canonical contrac
 
 - `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md` (active)
 - `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md` (greenlit / queued next)
+- `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md` (greenlit / queued after v0)
+- `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md` (greenlit / queued after v1)
 - `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
 - `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`
 - `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`
