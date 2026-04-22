@@ -2,11 +2,11 @@
 
 ## Status
 
-This is **ACTIVE / GREENLIT**.
-It is the current bounded follow-up after the concealment checkpoint closed.
+This is **CHECKPOINTED / DONE FOR NOW**.
+The bounded scoring packet now exists on the current bandit dry-run/evaluator seam.
 
-This is **not** permission to widen into broader bandit world-sim work.
-It is the current narrow scoring packet on the dry-run/evaluator seam.
+This is still **not** permission to widen into broader bandit world-sim work.
+Keep this lane closed unless later canon or later evidence says the current packet is dishonest, too weak, or too generous.
 
 ---
 

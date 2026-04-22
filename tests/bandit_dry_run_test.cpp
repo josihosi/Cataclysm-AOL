@@ -62,6 +62,10 @@ TEST_CASE( "bandit_dry_run_strong_local_site_lead_can_beat_hold_chill", "[bandit
 
     REQUIRE( scavenge != nullptr );
     CHECK( scavenge->valid );
+    CHECK( scavenge->score.monster_pressure_bonus == 0 );
+    CHECK( scavenge->score.target_coherence_bonus == 0 );
+    CHECK( scavenge->score.effective_threat_penalty == 2 );
+    CHECK( scavenge->score.opportunism_bonus == 0 );
     CHECK( scavenge->score.pre_veto_job_score > 0.0 );
     CHECK( result.candidates[result.winner_index].job == bandit_dry_run::job_template::scavenge );
     CHECK( result.winner_reason.find( "quiet_house" ) != std::string::npos );
@@ -133,6 +137,151 @@ TEST_CASE( "bandit_dry_run_need_pressure_can_rescue_a_mediocre_real_lead", "[ban
 
     const std::string report = bandit_dry_run::render_report( result );
     CHECK( report.find( "need_override_bonus=2" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_dry_run_explicit_bounded_explore_can_beat_hold_chill_without_real_leads", "[bandit][dry_run]" )
+{
+    bandit_dry_run::camp_input camp;
+    camp.available_manpower = 2;
+    camp.allow_bounded_explore = true;
+    camp.explore_pressure = 2;
+    camp.explore_distance_multiplier = 0.40;
+
+    const bandit_dry_run::evaluation_result result = bandit_dry_run::evaluate( camp, {} );
+    const bandit_dry_run::candidate_debug *scout = find_candidate( result,
+            bandit_dry_run::job_template::scout, "bounded_explore" );
+
+    REQUIRE( scout != nullptr );
+    CHECK( scout->valid );
+    CHECK( scout->score.lead_bounty_value == 2 );
+    CHECK( scout->score.distance_multiplier == Approx( 0.40 ) );
+    CHECK( scout->score.pre_veto_job_score > 0.0 );
+    CHECK( result.candidates[result.winner_index].job == bandit_dry_run::job_template::scout );
+    CHECK( result.candidates[result.winner_index].envelope_id == "bounded_explore" );
+
+    const std::string report = bandit_dry_run::render_report( result );
+    CHECK( report.find( "explicit bounded scout/explore outing for map uncovering" ) != std::string::npos );
+    CHECK( report.find( "not a no_path fallback and not accidental random wandering" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_dry_run_unreachable_targets_do_not_mint_explore_without_explicit_greenlight", "[bandit][dry_run]" )
+{
+    bandit_dry_run::camp_input camp;
+    camp.available_manpower = 2;
+
+    bandit_dry_run::lead_input lead;
+    lead.id = "blocked_bridge_farm";
+    lead.envelope_id = "blocked_bridge_farm";
+    lead.family = bandit_dry_run::lead_family::site;
+    lead.lead_bounty_value = 5;
+    lead.lead_confidence_bonus = 1;
+    lead.distance_multiplier = 0.80;
+    lead.has_path = false;
+
+    const bandit_dry_run::evaluation_result result = bandit_dry_run::evaluate( camp, { lead } );
+
+    CHECK( find_candidate( result, bandit_dry_run::job_template::scout, "bounded_explore" ) == nullptr );
+    CHECK( result.candidates[result.winner_index].job == bandit_dry_run::job_template::hold_chill );
+}
+
+TEST_CASE( "bandit_dry_run_explicit_bounded_explore_stays_secondary_to_strong_real_leads", "[bandit][dry_run]" )
+{
+    bandit_dry_run::camp_input camp;
+    camp.available_manpower = 2;
+    camp.allow_bounded_explore = true;
+    camp.explore_pressure = 1;
+    camp.explore_distance_multiplier = 0.30;
+
+    bandit_dry_run::lead_input lead;
+    lead.id = "quiet_house";
+    lead.envelope_id = "quiet_house";
+    lead.family = bandit_dry_run::lead_family::site;
+    lead.lead_bounty_value = 5;
+    lead.lead_confidence_bonus = 1;
+    lead.threat_penalty = 1;
+    lead.distance_multiplier = 0.85;
+    lead.reward_profile_match = 2;
+
+    const bandit_dry_run::evaluation_result result = bandit_dry_run::evaluate( camp, { lead } );
+    const bandit_dry_run::candidate_debug *scout = find_candidate( result,
+            bandit_dry_run::job_template::scout, "bounded_explore" );
+    const bandit_dry_run::candidate_debug *scavenge = find_candidate( result,
+            bandit_dry_run::job_template::scavenge, "quiet_house" );
+
+    REQUIRE( scout != nullptr );
+    REQUIRE( scavenge != nullptr );
+    CHECK( scout->score.final_job_score < scavenge->score.final_job_score );
+    CHECK( result.candidates[result.winner_index].job == bandit_dry_run::job_template::scavenge );
+}
+
+TEST_CASE( "bandit_dry_run_strong_targets_stay_deferred_without_a_real_opening", "[bandit][dry_run]" )
+{
+    bandit_dry_run::camp_input camp;
+    camp.available_manpower = 2;
+
+    bandit_dry_run::lead_input lead;
+    lead.id = "guarded_convoy";
+    lead.envelope_id = "guarded_convoy";
+    lead.family = bandit_dry_run::lead_family::moving_carrier;
+    lead.lead_bounty_value = 4;
+    lead.lead_confidence_bonus = 1;
+    lead.threat_penalty = 6;
+    lead.distance_multiplier = 0.60;
+
+    const bandit_dry_run::evaluation_result result = bandit_dry_run::evaluate( camp, { lead } );
+    const bandit_dry_run::candidate_debug *stalk = find_candidate( result,
+            bandit_dry_run::job_template::stalk, "guarded_convoy" );
+
+    REQUIRE( stalk != nullptr );
+    CHECK( stalk->valid );
+    CHECK( stalk->score.threat_penalty == 6 );
+    CHECK( stalk->score.effective_threat_penalty == 6 );
+    CHECK( stalk->score.opportunism_bonus == 0 );
+    CHECK( stalk->score.pre_veto_job_score < 0.0 );
+    CHECK( result.candidates[result.winner_index].job == bandit_dry_run::job_template::hold_chill );
+
+    const std::string report = bandit_dry_run::render_report( result );
+    CHECK( report.find( "effective_threat_penalty=6" ) != std::string::npos );
+    CHECK( report.find( "opportunism_bonus=0" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_dry_run_target_distraction_opens_a_bounded_opportunistic_window", "[bandit][dry_run]" )
+{
+    bandit_dry_run::camp_input camp;
+    camp.available_manpower = 2;
+
+    bandit_dry_run::lead_input lead;
+    lead.id = "guarded_convoy";
+    lead.envelope_id = "guarded_convoy";
+    lead.family = bandit_dry_run::lead_family::moving_carrier;
+    lead.lead_bounty_value = 4;
+    lead.lead_confidence_bonus = 1;
+    lead.threat_penalty = 6;
+    lead.monster_pressure_bonus = 2;
+    lead.target_coherence_bonus = 1;
+    lead.distance_multiplier = 0.60;
+
+    const bandit_dry_run::evaluation_result result = bandit_dry_run::evaluate( camp, { lead } );
+    const bandit_dry_run::candidate_debug *stalk = find_candidate( result,
+            bandit_dry_run::job_template::stalk, "guarded_convoy" );
+
+    REQUIRE( stalk != nullptr );
+    CHECK( stalk->valid );
+    CHECK( stalk->score.threat_penalty == 6 );
+    CHECK( stalk->score.monster_pressure_bonus == 2 );
+    CHECK( stalk->score.target_coherence_bonus == 1 );
+    CHECK( stalk->score.effective_threat_penalty == 3 );
+    CHECK( stalk->score.opportunism_bonus == 2 );
+    CHECK( stalk->score.pre_veto_job_score > 0.0 );
+    CHECK( result.candidates[result.winner_index].job == bandit_dry_run::job_template::stalk );
+
+    const std::string report = bandit_dry_run::render_report( result );
+    CHECK( report.find( "monster_pressure_bonus=2" ) != std::string::npos );
+    CHECK( report.find( "target_coherence_bonus=1" ) != std::string::npos );
+    CHECK( report.find( "effective_threat_penalty=3" ) != std::string::npos );
+    CHECK( report.find( "opportunism_bonus=2" ) != std::string::npos );
+    CHECK( report.find( "danger collapse: raw threat 6 minus monster pressure 2 and coherence break 1 -> effective threat 3" ) != std::string::npos );
+    CHECK( report.find( "opportunism window: degraded target coherence adds a bounded push" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_dry_run_soft_veto_clamps_extraction_but_keeps_pressure_jobs", "[bandit][dry_run]" )

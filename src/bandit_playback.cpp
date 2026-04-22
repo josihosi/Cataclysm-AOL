@@ -82,12 +82,221 @@ signal_input make_signal( const std::string &id, const std::string &kind,
     return signal;
 }
 
+struct handoff_case_definition {
+    std::string scenario_id;
+    std::string title;
+    std::string playback_scenario_id;
+    std::vector<std::string> questions;
+    bandit_pursuit_handoff::abstract_group_state group;
+    int entry_tick = 0;
+    bandit_pursuit_handoff::entry_context entry_context;
+    bandit_pursuit_handoff::local_outcome outcome;
+};
+
+bandit_pursuit_handoff::cargo_profile make_cargo( int food, int meds, int ammo,
+        int gear = 0, int fuel = 0, int trade_goods = 0 )
+{
+    bandit_pursuit_handoff::cargo_profile cargo;
+    cargo.food = food;
+    cargo.meds = meds;
+    cargo.ammo = ammo;
+    cargo.gear = gear;
+    cargo.fuel = fuel;
+    cargo.trade_goods = trade_goods;
+    return cargo;
+}
+
+bandit_pursuit_handoff::abstract_group_state make_handoff_group( const std::string &group_id,
+        const std::string &source_camp_id,
+        const std::string &target,
+        int strength,
+        int confidence,
+        int threat,
+        int bounty,
+        int return_clock,
+        int retreat_bias = 0,
+        int mission_urgency = 1 )
+{
+    bandit_pursuit_handoff::abstract_group_state group;
+    group.group_id = group_id;
+    group.source_camp_id = source_camp_id;
+    group.group_strength = strength;
+    group.confidence = confidence;
+    group.panic_threshold = 2;
+    group.cargo_capacity = 2;
+    group.current_target_or_mark = target;
+    group.current_threat_estimate = threat;
+    group.current_bounty_estimate = bounty;
+    group.mission_urgency = mission_urgency;
+    group.retreat_bias = retreat_bias;
+    group.goal_stickiness = 2;
+    group.goal_preemption_posture = 1;
+    group.return_clock = return_clock;
+    group.anchored_identities.push_back( { group_id + "_lead", "alive" } );
+    group.known_recent_marks.push_back( target );
+    return group;
+}
+
+const checkpoint_result *find_playback_checkpoint( const playback_result &result, int tick )
+{
+    for( const checkpoint_result &checkpoint : result.checkpoints ) {
+        if( checkpoint.tick == tick ) {
+            return &checkpoint;
+        }
+    }
+    return nullptr;
+}
+
+std::string render_handoff_group_state( const bandit_pursuit_handoff::abstract_group_state &group )
+{
+    std::ostringstream out;
+    out << "group_id=" << group.group_id
+        << ", source_camp_id=" << group.source_camp_id
+        << ", target=" << ( group.current_target_or_mark.empty() ? "none" : group.current_target_or_mark )
+        << ", group_strength=" << group.group_strength
+        << ", confidence=" << group.confidence
+        << ", threat=" << group.current_threat_estimate
+        << ", bounty=" << group.current_bounty_estimate
+        << ", return_clock=" << group.return_clock
+        << ", retreat_bias=" << group.retreat_bias
+        << ", wound_burden=" << bandit_pursuit_handoff::to_string( group.wound_burden )
+        << ", morale=" << bandit_pursuit_handoff::to_string( group.morale )
+        << ", last_return_posture=" << bandit_pursuit_handoff::to_string( group.last_return_posture )
+        << ", remaining_pressure=" << bandit_pursuit_handoff::to_string( group.remaining_pressure )
+        << ", carried_cargo=food=" << group.carried_cargo.food
+        << ",meds=" << group.carried_cargo.meds
+        << ",ammo=" << group.carried_cargo.ammo
+        << ",gear=" << group.carried_cargo.gear
+        << ",fuel=" << group.carried_cargo.fuel
+        << ",trade=" << group.carried_cargo.trade_goods;
+    if( !group.known_recent_marks.empty() ) {
+        out << ", known_recent_marks=";
+        for( size_t i = 0; i < group.known_recent_marks.size(); ++i ) {
+            if( i > 0 ) {
+                out << ",";
+            }
+            out << group.known_recent_marks[i];
+        }
+    }
+    if( !group.anchored_identities.empty() ) {
+        out << ", anchored_identities=";
+        for( size_t i = 0; i < group.anchored_identities.size(); ++i ) {
+            if( i > 0 ) {
+                out << ",";
+            }
+            out << group.anchored_identities[i].id << ":" << group.anchored_identities[i].status;
+        }
+    }
+    return out.str();
+}
+
+std::vector<handoff_case_definition> overmap_local_handoff_cases()
+{
+    using namespace bandit_pursuit_handoff;
+
+    abstract_group_state smoke_group = make_handoff_group( "ridge_pack", "oak_camp", "ridge_smoke",
+                                      2, 2, 1, 3, 3 );
+    smoke_group.anchored_identities.front().id = "leader_marta";
+
+    local_outcome smoke_outcome;
+    smoke_outcome.survivors_remaining = 2;
+    smoke_outcome.result = mission_result::scouted;
+    smoke_outcome.resolution = lead_resolution::narrowed;
+    smoke_outcome.threat_writeback = { { "ridge_smoke", "raise", 2 } };
+    smoke_outcome.bounty_writeback = { { "ridge_smoke", "confirm", 2 } };
+    smoke_outcome.new_marks_learned = { "ridge_smoke_cabin_edge" };
+    smoke_outcome.posture = return_posture::resume_route;
+    smoke_outcome.remaining_pressure = remaining_return_pressure_state::tight;
+
+    abstract_group_state granary_group = make_handoff_group( "granary_watch", "oak_camp",
+                                        "granary_road_corridor", 2, 2, 1, 4, 3 );
+    granary_group.anchored_identities.front().id = "scar_nik";
+
+    local_outcome granary_outcome;
+    granary_outcome.survivors_remaining = 1;
+    granary_outcome.anchored_identity_updates = { { "scar_nik", "wounded" } };
+    granary_outcome.wound_burden = wound_burden_state::moderate;
+    granary_outcome.morale = morale_state::shaken;
+    granary_outcome.cargo_profile_carried = make_cargo( 0, 1, 1 );
+    granary_outcome.camp_stockpile_delta = make_cargo( 0, 1, 0 );
+    granary_outcome.result = mission_result::repelled;
+    granary_outcome.resolution = lead_resolution::target_lost;
+    granary_outcome.threat_writeback = { { "granary_loss_site", "raise", 4 } };
+    granary_outcome.bounty_writeback = { { "granary_road_corridor", "collapse", 1 } };
+    granary_outcome.loss_site_if_any = "granary_loss_site";
+    granary_outcome.posture = return_posture::escape_home;
+    granary_outcome.remaining_pressure = remaining_return_pressure_state::collapsed;
+
+    abstract_group_state follower_group = make_handoff_group( "lane_riders", "oak_camp",
+                                         "road_travelers", 2, 3, 1, 4, 3 );
+    follower_group.anchored_identities.front().id = "rider_vesna";
+
+    local_outcome follower_outcome;
+    follower_outcome.survivors_remaining = 2;
+    follower_outcome.wound_burden = wound_burden_state::light;
+    follower_outcome.morale = morale_state::steady;
+    follower_outcome.result = mission_result::withdrawn;
+    follower_outcome.resolution = lead_resolution::narrowed;
+    follower_outcome.threat_writeback = { { "forest_lane_recent", "watch", 2 } };
+    follower_outcome.bounty_writeback = { { "forest_lane_recent", "soft_confirm", 2 } };
+    follower_outcome.new_marks_learned = { "forest_lane_recent" };
+    follower_outcome.posture = return_posture::shadow_then_break;
+    follower_outcome.remaining_pressure = remaining_return_pressure_state::plain_return_only;
+
+    return {
+        {
+            "smoke_scout_narrows_to_cabin_edge",
+            "Smoke scout enters as posture and returns a sharper mark",
+            "smoke_only_distant_clue",
+            {
+                "Goal: a broad smoke clue should enter local play as `scout` posture, not exact-square puppetry, and local contact should be able to return one sharper mark instead of pretending the original blob was destiny.",
+                "Carryback: the returned abstract state should now point at `ridge_smoke_cabin_edge` with a tighter clock instead of hauling the whole old smoke envelope around forever.",
+                "Playback horizon: the same overmap-side clue should still cool back to `hold / chill` by the later checkpoints instead of becoming immortal scout pressure."
+            },
+            smoke_group,
+            0,
+            { contact_certainty::broad, return_pressure_state::normal },
+            smoke_outcome
+        },
+        {
+            "granary_probe_breaks_after_local_danger",
+            "Granary pressure probe can come home wounded after local danger rewrites it",
+            "generated_local_loss_rewrites_corridor_to_withdrawal",
+            {
+                "Goal: a corridor pressure seam should enter local play as bounded `probe` posture, then local danger should be allowed to break that posture hard enough to send the group home instead of preserving stale route puppetry.",
+                "Carryback: the returned abstract state should expose wounds, morale drop, cargo change, raised threat, and a cleared active target reviewer-cleanly enough to debug the seam without guessing.",
+                "Playback horizon: the same overmap-side corridor should already stop winning once the local-loss pressure lands, and the later checkpoints should stay off it."
+            },
+            granary_group,
+            0,
+            { contact_certainty::localized, return_pressure_state::normal },
+            granary_outcome
+        },
+        {
+            "player_present_follower_travel_shadow_breaks_on_contact_loss",
+            "Player-present follower travel degrades to rough search after contact loss",
+            "generated_human_sighting_tracks_moving_carrier",
+            {
+                "Goal: a player-present follower-travel sighting should enter local play as `shadow`, not exact-carrier omniscience, and contact loss should degrade it to a rough lane read instead of immortal perfect tracking.",
+                "Carryback: after the local scene loses contact, the returned abstract state should keep only `forest_lane_recent` rather than the exact `road_travelers` carrier id, with a shorter clock and break posture.",
+                "Playback horizon: the underlying moving-carrier pressure may stay alive while sightings are fresh, but the longer checkpoints should still cool back out instead of making the lane a permanent haunted intercept."
+            },
+            follower_group,
+            0,
+            { contact_certainty::localized, return_pressure_state::normal },
+            follower_outcome
+        }
+    };
+}
+
 smoke_packet make_smoke_packet( const std::string &id, const std::string &envelope_id,
                                 const std::string &region_id, int observed_range_omt,
                                 int source_strength, int persistence, int height_bias,
                                 int spread_bias, smoke_weather_band weather,
                                 lead_family family = lead_family::site,
-                                const std::vector<std::string> &notes = {} )
+                                const std::vector<std::string> &notes = {},
+                                int vertical_offset = 0,
+                                bool vertical_sightline = false )
 {
     smoke_packet packet;
     packet.id = id;
@@ -101,6 +310,8 @@ smoke_packet make_smoke_packet( const std::string &id, const std::string &envelo
     packet.spread_bias = spread_bias;
     packet.weather = weather;
     packet.notes = notes;
+    packet.vertical_offset = vertical_offset;
+    packet.vertical_sightline = vertical_sightline;
     return packet;
 }
 
@@ -109,8 +320,11 @@ light_packet make_light_packet( const std::string &id, const std::string &envelo
                                 int source_strength, int persistence, int side_leakage,
                                 light_time_band time, light_weather_band weather,
                                 light_exposure_band exposure, light_source_band source,
-                                lead_family family = lead_family::site,
-                                const std::vector<std::string> &notes = {} )
+                                lead_family family, light_terrain_band terrain,
+                                const std::vector<std::string> &notes,
+                                int vertical_offset = 0,
+                                bool vertical_sightline = false,
+                                int elevation_bonus = 0 )
 {
     light_packet packet;
     packet.id = id;
@@ -125,8 +339,29 @@ light_packet make_light_packet( const std::string &id, const std::string &envelo
     packet.weather = weather;
     packet.exposure = exposure;
     packet.source = source;
+    packet.terrain = terrain;
     packet.notes = notes;
+    packet.vertical_offset = vertical_offset;
+    packet.vertical_sightline = vertical_sightline;
+    packet.elevation_bonus = elevation_bonus;
     return packet;
+}
+
+light_packet make_light_packet( const std::string &id, const std::string &envelope_id,
+                                const std::string &region_id, int observed_range_omt,
+                                int source_strength, int persistence, int side_leakage,
+                                light_time_band time, light_weather_band weather,
+                                light_exposure_band exposure, light_source_band source,
+                                lead_family family = lead_family::site,
+                                const std::vector<std::string> &notes = {},
+                                int vertical_offset = 0,
+                                bool vertical_sightline = false,
+                                int elevation_bonus = 0 )
+{
+    return make_light_packet( id, envelope_id, region_id, observed_range_omt, source_strength,
+                              persistence, side_leakage, time, weather, exposure, source,
+                              family, light_terrain_band::open, notes, vertical_offset,
+                              vertical_sightline, elevation_bonus );
 }
 
 human_route_packet make_human_route_packet( const std::string &id, const std::string &envelope_id,
@@ -722,6 +957,118 @@ scenario_definition make_generated_night_light_mark_scopes_out()
     return scenario;
 }
 
+scenario_definition make_generated_windy_smoke_mark_stays_fuzzy()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_windy_smoke_mark_stays_fuzzy";
+    scenario.title = "Generated windy smoke mark stays fuzzy";
+    scenario.default_checkpoints = { 0, 20, 100 };
+    scenario.questions = {
+        "Can windy smoke stay actionable while still reading as a fuzzier, drift-prone clue instead of crisp site truth?"
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "fresh_windy_smoke",
+        make_camp( 2 ),
+        {},
+        {
+            "Wind should leave a scoutable smoke clue, but the notes should say it drifted instead of pretending the origin is perfectly pinned."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {
+            make_smoke_packet( "ridge_smoke_windy", "ridge_smoke_windy", "ridge_rim", 7, 3, 2, 1, 1,
+                               smoke_weather_band::windy,
+                               lead_family::site,
+                               { "Wind should keep this clue useful but obviously fuzzier." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "windy_smoke_cooled_without_refresh",
+        make_camp( 2 ),
+        {},
+        {
+            "A distant inactive pass should still cool the windy smoke clue instead of letting fuzz become immortality."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "daily_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Daily cleanup should prune the stale windy smoke clutter too."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_portal_storm_exposed_light_stays_legible()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_portal_storm_exposed_light_stays_legible";
+    scenario.title = "Generated portal-storm exposed light stays legible";
+    scenario.default_checkpoints = { 0, 20, 100 };
+    scenario.questions = {
+        "Can dark portal-storm weather keep a bright exposed light legible without turning sheltered ordinary light into nonsense?"
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "fresh_portal_storm_light",
+        make_camp( 2 ),
+        {},
+        {
+            "Portal-storm darkness can still leave an exposed bright light worth scouting, and the review notes should admit that directly."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "storm_watchfire", "storm_watchfire", "storm_ridge", 6, 3, 1, 1,
+                               light_time_band::night, light_weather_band::portal_storm,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::site,
+                               { "Dark portal-storm conditions can still leave bright exposed light legible." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "portal_storm_light_cooled_without_refresh",
+        make_camp( 2 ),
+        {},
+        {
+            "Once the light is gone, the usual cooling path should still win instead of preserving mythical storm clairvoyance."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "daily_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Daily cleanup should prune the stale portal-storm light clutter as well."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
 scenario_definition make_generated_directional_light_hidden_side_stays_inert()
 {
     scenario_definition scenario;
@@ -991,6 +1338,425 @@ scenario_definition make_generated_directional_light_corridor_shares_horde_press
         {},
         {
             "Five hundred turns later the shared corridor clue should finally cool off instead of living forever."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_nearby_cross_z_light_stays_actionable()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_nearby_cross_z_light_stays_actionable";
+    scenario.title = "Generated nearby cross-z light stays actionable";
+    scenario.default_checkpoints = { 0, 20, 100, 500 };
+    scenario.questions = {
+        "Goal: nearby cross-z exposed light should stay visible instead of acting like stairs are amnesia beams.",
+        "Benchmark: ticks 0 and 20 should keep one bounded scout on the same envelope while the one-floor vertical sightline stays open, then ticks 100 and 500 should cool back to `hold / chill` once refreshes stop.",
+        "Tuning metrics: reviewer-readable notes should show vertical_offset=-1, nearby_cross_z_visible=yes, and nearby_cross_z_bonus=1 without pretending every upstairs glow is magical global sight."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "basement_fire_first_glimpse",
+        make_camp( 2 ),
+        {},
+        {
+            "A one-floor-open basement fire should still register from ground level instead of being erased by z-level amnesia."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "basement_fire_cross_z", "basement_fire_cross_z", "mill_basement", 7, 2, 1, 1,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::site,
+                               { "The basement fire is one floor down but plainly visible through the open stairwell." },
+                               -1, true, 0 )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "basement_fire_recheck",
+        make_camp( 2 ),
+        {},
+        {
+            "The same nearby cross-z light should refresh one bounded mark instead of blinking in and out of existence."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "basement_fire_cross_z", "basement_fire_cross_z", "mill_basement", 7, 2, 1, 1,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::site,
+                               { "A second look through the same stairwell should keep the one-floor clue honest." },
+                               -1, true, 0 )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        60,
+        "cross_z_light_fades",
+        make_camp( 2 ),
+        {},
+        {
+            "After the nearby cross-z light goes dark, the clue should start cooling instead of staying suspiciously vivid."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "cross_z_light_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Once the cross-z light stops refreshing, the clue should cool back out like ordinary bounded light."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "cross_z_light_long_horizon",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the nearby cross-z light should be gone again instead of haunting the map forever."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_ground_hidden_light_stays_bounded()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_ground_hidden_light_stays_bounded";
+    scenario.title = "Generated ground hidden light stays bounded";
+    scenario.default_checkpoints = { 0, 20, 100, 500 };
+    scenario.questions = {
+        "Goal: ordinary hidden ground light should stay bounded even when a brighter elevated twin would be worth acting on.",
+        "Benchmark: ticks 0, 20, 100, and 500 should all stay `hold / chill`, with no generated lead surviving from the hidden ground packet.",
+        "Tuning metrics: keep the same rough source strength and longish observed range as the elevated twin, but trap it in covered hidden footing so it does not become a fake world beacon."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "hidden_ground_lantern_first_glimpse",
+        make_camp( 2 ),
+        {},
+        {
+            "A tucked-away ground lantern behind cover should not suddenly become long-range actionable truth."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "ridge_hidden_lantern", "ridge_hidden_lantern", "ridge_shed", 10, 2, 1, 0,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::contained, light_source_band::ordinary,
+                               lead_family::site, light_terrain_band::built_cover,
+                               { "This hidden ground lantern should stay politely bounded." },
+                               0, false, 0 )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "hidden_ground_lantern_recheck",
+        make_camp( 2 ),
+        {},
+        {
+            "A second look should stay equally inert instead of teaching the system clairvoyance."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "ridge_hidden_lantern", "ridge_hidden_lantern", "ridge_shed", 10, 2, 1, 0,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::contained, light_source_band::ordinary,
+                               lead_family::site, light_terrain_band::built_cover,
+                               { "Repeated hidden ground light still should not leak into magical long-range truth." },
+                               0, false, 0 )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "hidden_ground_light_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Cleanup should remain empty because the hidden ground light never honestly crossed the actionable line."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "hidden_ground_light_long_horizon",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later this should still be quiet, because a hidden ground lantern is not orbital surveillance."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_elevated_exposed_light_becomes_actionable()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_elevated_exposed_light_becomes_actionable";
+    scenario.title = "Generated elevated exposed light becomes actionable";
+    scenario.default_checkpoints = { 0, 20, 100, 500 };
+    scenario.questions = {
+        "Goal: elevated exposed light can stay legible farther than ordinary hidden ground light under the same broad night footing without becoming global omniscience.",
+        "Benchmark: ticks 0 and 20 should win with `scout` on the elevated exposed envelope, then ticks 100 and 500 should cool back to `hold / chill` once refreshes stop.",
+        "Tuning metrics: require reviewer-readable notes to show elevated_exposure_extended=yes and a positive elevation bonus instead of quietly sneaking in magical universal sight."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "ridge_bonfire_first_glimpse",
+        make_camp( 2 ),
+        {},
+        {
+            "The only honest difference from the hidden-ground twin is exposed elevated footing, so this one should cross into bounded actionability."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "ridge_bonfire_elevated", "ridge_bonfire_elevated", "ridge_watch", 10, 2, 1, 0,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::site,
+                               { "An exposed ridge bonfire should stay legible farther than a hidden ground lantern, but only under bounded footing." },
+                               2, true, 2 )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "ridge_bonfire_recheck",
+        make_camp( 2 ),
+        {},
+        {
+            "A second exposed elevated packet should refresh the same bounded clue instead of inventing a stronger class of magic knowledge."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "ridge_bonfire_elevated", "ridge_bonfire_elevated", "ridge_watch", 10, 2, 1, 0,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::site,
+                               { "Repeated exposed elevated light should refresh one bounded actionable mark." },
+                               2, true, 2 )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        60,
+        "elevated_light_fades",
+        make_camp( 2 ),
+        {},
+        {
+            "After the elevated fire drops out, the clue should start cooling instead of clinging to the map forever."
+        },
+        cadence_tier::distant_inactive,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "elevated_light_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Once the elevated light goes away, the clue should cool instead of turning into immortal certainty."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "elevated_light_long_horizon",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the elevated clue should be gone again rather than living forever."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_radio_tower_fire_shares_horde_pressure()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_radio_tower_fire_shares_horde_pressure";
+    scenario.title = "Generated radio tower fire shares horde pressure";
+    scenario.default_checkpoints = { 0, 20, 100, 500 };
+    scenario.questions = {
+        "Goal: a strong exposed elevated fire in a dead dark world should read as a long-range event, not an upstairs candle.",
+        "Benchmark: tick 0 should open a bounded corridor posture on the same far-away tower-fire envelope, tick 20 should still act on it while carrying zombie-horde pressure, tick 100 should stay corridor-shaped under bounded memory, and tick 500 should cool back to `hold / chill`.",
+        "Tuning metrics: reviewer-readable notes should show projected_range_omt=30, elevated_exposure_extended=yes, and the shared horde-pressure footing instead of private bandit theater."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "radio_tower_fire_seen_far_off",
+        make_camp( 2 ),
+        {},
+        {
+            "A radio-tower fire in dead darkness should be visible from very far away and should open shared-world corridor pressure, not toy-local gossip."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "radio_tower_fire_corridor", "radio_tower_fire_corridor", "north_highway", 24, 8, 4, 2,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::corridor,
+                               { "The radio tower is burning hard enough that the whole corridor can read it from far away." },
+                               2, true, 6 )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "radio_tower_fire_draws_horde_pressure",
+        make_camp( 2 ),
+        {},
+        {
+            "The same long-range fire should stay shared-world: zombie pressure now rides the same corridor instead of living in private bandit-only theater.",
+            "Reviewer checkpoint: the emitted corridor clue should still mention zombie pressure instead of pretending the fire belongs to bandits alone."
+        },
+        cadence_tier::nearby_active,
+        {
+            make_signal( "radio_tower_fire_horde_pressure", "route_pressure",
+                         "radio_tower_fire_corridor", "north_highway",
+                         lead_family::corridor, 0, 0, 0, 0, 0.30,
+                         0, threat_gate::discount_only, 2, 1, false, true,
+                         {},
+                         { "The same tower-fire corridor now has zombie pressure piling onto it too." } )
+        },
+        {},
+        {
+            make_light_packet( "radio_tower_fire_corridor", "radio_tower_fire_corridor", "north_highway", 24, 8, 4, 2,
+                               light_time_band::night, light_weather_band::clear,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::corridor,
+                               { "Repeated visibility from the radio-tower fire should refresh the same long corridor clue." },
+                               2, true, 6 )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "radio_tower_fire_memory_holds_shape",
+        make_camp( 2 ),
+        {},
+        {
+            "Bounded moving-memory persistence should keep the long-range fire corridor shaped like a corridor for a while instead of collapsing instantly or inflating into a site raid."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "radio_tower_fire_long_horizon_cools",
+        make_camp( 2 ),
+        {},
+        {
+            "Five hundred turns later the long-range fire clue should finally cool instead of haunting the map forever."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_generated_vertical_smoke_stays_bounded()
+{
+    scenario_definition scenario;
+    scenario.id = "generated_vertical_smoke_stays_bounded";
+    scenario.title = "Generated vertical smoke stays bounded";
+    scenario.default_checkpoints = { 0, 20, 100, 500 };
+    scenario.questions = {
+        "Goal: smoke can stay nearby cross-z legible without gaining magical extra general reach merely from floor changes.",
+        "Benchmark: tick 0 should yield two bounded scoutable smoke marks, one same-floor and one one-floor-up, and the reviewer-readable notes should keep the vertical packet on vertical_range_bonus=0 instead of quietly extending range.",
+        "Tuning metrics: the same source stats should keep the same projected range on both packets; only the nearby_cross_z_visible flag should flip."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "paired_ground_and_vertical_smoke",
+        make_camp( 2 ),
+        {},
+        {
+            "Smoke can be seen nearby across one floor, sure, but the upper-floor packet must not get free extra range just because the source changed z-levels."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {
+            make_smoke_packet( "yard_smoke_ground", "yard_smoke_ground", "mill_yard", 10, 3, 1, 1, 0,
+                               smoke_weather_band::clear,
+                               lead_family::site,
+                               { "Same-floor control smoke for the vertical honesty comparison." },
+                               0, false ),
+            make_smoke_packet( "yard_smoke_upper", "yard_smoke_upper", "mill_yard_upper", 10, 3, 1, 1, 0,
+                               smoke_weather_band::clear,
+                               lead_family::site,
+                               { "One-floor-up smoke should stay nearby legible without gaining free long-range reach." },
+                               1, true )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "vertical_smoke_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Cleanup should prune both smoke marks once the packet stops refreshing."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "vertical_smoke_long_horizon",
+        make_camp( 2 ),
+        {},
+        {
+            "Long after the smoke is gone, there should be no magical leftover range advantage from the vertical packet."
         },
         cadence_tier::daily_cleanup,
         {}
@@ -1345,13 +2111,14 @@ scenario_definition make_generated_repeated_site_reinforcement_stays_bounded()
         {}
     } );
 
+    camp_input cooling_camp = make_camp( 0 );
     scenario.frames.push_back( {
         140,
-        "reinforcement_no_new_contact_1",
-        make_camp( 2 ),
+        "reinforcement_cools_while_no_scout_is_free",
+        cooling_camp,
         {},
         {
-            "Once corroboration stops, the reinforced site should start cooling on ordinary inactive cadence instead of staying magically hot."
+            "Once corroboration stops, the camp can briefly fall back to hold / chill when no scout is free, but the strengthened site should not be forgotten outright."
         },
         cadence_tier::distant_inactive,
         {}
@@ -1359,11 +2126,11 @@ scenario_definition make_generated_repeated_site_reinforcement_stays_bounded()
 
     scenario.frames.push_back( {
         220,
-        "reinforcement_no_new_contact_2",
+        "reinforcement_one_last_cautious_revisit",
         make_camp( 2 ),
         {},
         {
-            "The same site should keep losing pressure when nothing fresh happens there."
+            "Once a scout is free again, the corroborated site can justify one last bounded cautious revisit before the clue finally dies."
         },
         cadence_tier::distant_inactive,
         {}
@@ -1622,6 +2389,1197 @@ scenario_definition make_generated_local_loss_reroutes_to_safer_detour()
     return scenario;
 }
 
+scenario_definition renamed_scenario( const scenario_definition &base,
+                                      const std::string &id,
+                                      const std::string &title,
+                                      const std::vector<int> &checkpoints,
+                                      const std::vector<std::string> &questions )
+{
+    scenario_definition scenario = base;
+    scenario.id = id;
+    scenario.title = title;
+    scenario.default_checkpoints = checkpoints;
+    scenario.questions = questions;
+    return scenario;
+}
+
+scenario_definition make_empty_frontier_expands_visibility()
+{
+    scenario_definition scenario;
+    scenario.id = "empty_frontier_expands_visibility";
+    scenario.title = "Empty frontier expands visibility";
+    scenario.default_checkpoints = { 0, 20, 100, 500 };
+    scenario.questions = {
+        "Goal: when nothing useful is nearby, the camp should leave indefinite hold / chill behind through one explicit bounded scout/explore outing.",
+        "Benchmark: inside the first 100 turns the winner should stay on `bounded_explore`, and the notes should show frontier visibility climbing relative to tick 0.",
+        "Carry-through: by tick 500 the packet should still read as a bounded frontier-expansion pass rather than immortal random wandering."
+    };
+
+    camp_input opening_camp = make_camp( 2 );
+    opening_camp.allow_bounded_explore = true;
+    opening_camp.explore_pressure = 1;
+    opening_camp.explore_distance_multiplier = 0.40;
+    scenario.frames.push_back( {
+        0,
+        "frontier_initial_probe",
+        opening_camp,
+        {},
+        {
+            "No real site, corridor, or moving-carrier lead exists yet, so the only honest outward pressure is explicit bounded exploration.",
+            "frontier_visibility=1/4"
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    camp_input mid_camp = opening_camp;
+    mid_camp.explore_pressure = 2;
+    scenario.frames.push_back( {
+        20,
+        "frontier_arc_extends",
+        mid_camp,
+        {},
+        {
+            "The same bounded scout arc keeps uncovering nearby frontier instead of collapsing immediately back into passivity.",
+            "frontier_visibility=2/4"
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "frontier_visibility_now_wider",
+        mid_camp,
+        {},
+        {
+            "The report should now show more uncovered frontier than tick 0 while still staying on the explicit bounded explore envelope.",
+            "frontier_visibility=4/4"
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "frontier_arc_exhausted",
+        make_camp( 2 ),
+        {},
+        {
+            "The bounded scout pass has done its limited uncover work and now stops cleanly instead of degrading into immortal random wandering.",
+            "frontier_visibility=4/4"
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_blocked_route_stays_fail_closed_until_explicit_explore()
+{
+    scenario_definition scenario;
+    scenario.id = "blocked_route_stays_fail_closed_until_explicit_explore";
+    scenario.title = "Blocked route stays fail-closed until explicit explore";
+    scenario.default_checkpoints = { 0, 20, 100 };
+    scenario.questions = {
+        "Goal: unreachable work should fail closed instead of quietly inheriting engine random-goal nonsense.",
+        "Benchmark: ticks 0 and 20 should stay on `hold / chill` with no synthetic explore candidate present.",
+        "Benchmark: only the later explicit explore greenlight may break idle, and it should do so on the bounded `bounded_explore` envelope instead of mutating the blocked route into fake path success."
+    };
+
+    lead_input blocked_route = make_lead( "blocked_bridge_farm", "blocked_bridge_farm",
+                                          lead_family::site, 5, 1, 0.80, 1 );
+    blocked_route.has_path = false;
+    scenario.frames.push_back( {
+        0,
+        "blocked_route_fail_closed",
+        make_camp( 2 ),
+        { blocked_route },
+        {
+            "The bridge farm is tempting on paper but unreachable this dispatch pass, so hold / chill should win cleanly.",
+            "no implicit bounded_explore candidate should appear"
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "blocked_route_stays_closed",
+        make_camp( 2 ),
+        { blocked_route },
+        {
+            "Repeated blocked-route truth still does not justify accidental wander behavior."
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    camp_input explore_greenlit_camp = make_camp( 2 );
+    explore_greenlit_camp.allow_bounded_explore = true;
+    explore_greenlit_camp.explore_pressure = 2;
+    explore_greenlit_camp.explore_distance_multiplier = 0.40;
+    scenario.frames.push_back( {
+        100,
+        "explicit_explore_breaks_idle",
+        explore_greenlit_camp,
+        { blocked_route },
+        {
+            "The blocked route stays blocked, but explicit frontier work is now allowed, so bounded explore may finally beat hold / chill.",
+            "frontier_visibility=2/4"
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_portal_storm_smoke_is_harder_to_localize()
+{
+    scenario_definition scenario;
+    scenario.id = "portal_storm_smoke_is_harder_to_localize";
+    scenario.title = "Portal-storm smoke is harder to localize";
+    scenario.default_checkpoints = { 0, 20, 100 };
+    scenario.questions = {
+        "Goal: portal-storm smoke should stay explicit, weird, and less trustworthy than the ordinary baseline instead of looking like normal night smoke with a cosmetic label.",
+        "Benchmark: the 100-turn packet should show a baseline clear-weather read first, then a portal-storm refresh with materially worse localization notes.",
+        "Tuning metrics: reviewer-readable smoke notes should surface `weather=portal_storm` plus a corridor-ish or otherwise displaced origin hint."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "ordinary_smoke_baseline",
+        make_camp( 2 ),
+        {},
+        {
+            "Baseline for comparison: ordinary smoke should stay more direct and less weird than the later portal-storm read."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {
+            make_smoke_packet( "stormline_smoke", "stormline_smoke", "stormline_ridge", 7, 3, 2, 1, 1,
+                               smoke_weather_band::clear,
+                               lead_family::site,
+                               { "Ordinary smoke baseline before the portal-storm distortion arrives." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "portal_storm_refreshes_same_smoke",
+        make_camp( 2 ),
+        {},
+        {
+            "The same source now sits under portal-storm weather, so the review notes should become darker, stranger, and less precise."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {
+            make_smoke_packet( "stormline_smoke", "stormline_smoke", "stormline_ridge", 7, 3, 2, 1, 1,
+                               smoke_weather_band::portal_storm,
+                               lead_family::site,
+                               { "Portal-storm smoke should read as less trustworthy and more corridor-ish than the ordinary baseline." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "portal_smoke_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Cleanup should eventually prune the weird storm smoke too instead of leaving permanent paranormal certainty behind."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_portal_storm_exposed_light_stays_legible_but_sheltered_light_stays_bounded()
+{
+    scenario_definition scenario;
+    scenario.id = "portal_storm_exposed_light_stays_legible_but_sheltered_light_stays_bounded";
+    scenario.title = "Portal-storm exposed light stays legible but sheltered light stays bounded";
+    scenario.default_checkpoints = { 0, 20, 100 };
+    scenario.questions = {
+        "Goal: sheltered ordinary light should not become a magical portal-storm beacon.",
+        "Goal: the matching exposed bright light can still stay legible when that is the honest read.",
+        "Benchmark: the 100-turn packet should show the sheltered ordinary case staying bounded while the exposed bright case later becomes actionable under the same storm family."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "sheltered_portal_light_stays_bounded",
+        make_camp( 2 ),
+        {},
+        {
+            "A contained ordinary lantern under portal-storm weather should stay materially more bounded than an exposed bright light."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "storm_cabin_lantern", "storm_cabin_lantern", "storm_ridge", 3, 2, 1, 0,
+                               light_time_band::night, light_weather_band::portal_storm,
+                               light_exposure_band::contained, light_source_band::ordinary,
+                               lead_family::site, light_terrain_band::built_cover,
+                               { "A sheltered ordinary lantern should not become a magical portal-storm beacon." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "exposed_portal_light_stays_legible",
+        make_camp( 2 ),
+        {},
+        {
+            "Dark portal-storm conditions can still leave a bright exposed light worth scouting, and the packet should say so plainly."
+        },
+        cadence_tier::nearby_active,
+        {},
+        {},
+        {
+            make_light_packet( "storm_watchfire", "storm_watchfire", "storm_ridge", 6, 3, 1, 1,
+                               light_time_band::night, light_weather_band::portal_storm,
+                               light_exposure_band::exposed, light_source_band::ordinary,
+                               lead_family::site, light_terrain_band::open,
+                               { "Dark portal-storm conditions can still leave bright exposed light legible." } )
+        }
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "portal_light_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Cleanup should prune both readings later without preserving mystical storm clairvoyance."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_independent_camps_do_not_dogpile_by_default()
+{
+    scenario_definition scenario;
+    scenario.id = "independent_camps_do_not_dogpile_by_default";
+    scenario.title = "Independent camps do not dogpile by default";
+    scenario.default_checkpoints = { 0, 100, 500 };
+    scenario.questions = {
+        "Goal: camps should read like mostly independent actors instead of automatic coalition spam.",
+        "Benchmark: inside the first 100 turns the packet should stay off the already-occupied target and choose a separate honest local route instead.",
+        "Carry-through: by tick 500 the same-region pile-on stays suppressed unless a later separate reason appears, which this bounded packet does not provide."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "occupied_target_suppresses_pile_on",
+        make_camp( 2 ),
+        {
+            make_lead( "occupied_granary_convoy", "occupied_granary_convoy", lead_family::corridor,
+                       4, 2, 0.75, 4, 1, 0, threat_gate::discount_only,
+                       {},
+                       { "Another armed camp is already riding this same convoy lane, so default pile-on pressure should stay suppressed." } ),
+            make_lead( "south_quarry_watch", "south_quarry_watch", lead_family::corridor,
+                       3, 1, 0.85, 1, 0, 0, threat_gate::discount_only,
+                       {},
+                       { "A separate local route gives this camp its own honest reason to act without coalition dogpile fiction." } )
+        },
+        {
+            "The already-occupied convoy should not become free coalition truth just because another camp is there first."
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "independence_still_holds",
+        make_camp( 2 ),
+        {
+            make_lead( "occupied_granary_convoy", "occupied_granary_convoy", lead_family::corridor,
+                       4, 1, 0.70, 5, 2, 0, threat_gate::soft_veto,
+                       {},
+                       { "Repeated same-region pressure still reads as somebody else's hot mess, not automatic coalition support." } ),
+            make_lead( "south_quarry_watch", "south_quarry_watch", lead_family::corridor,
+                       2, 1, 0.80, 1, 0, 0, threat_gate::discount_only,
+                       {},
+                       { "The local separate route is still the cleaner independent option." } )
+        },
+        {
+            "Without a fresh local reason, the packet should keep suppressing dogpile behavior."
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        500,
+        "pile_on_stays_suppressed",
+        make_camp( 2 ),
+        {},
+        {
+            "No later separate reason arrived, so the packet should still stay off the occupied target by the long horizon."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+scenario_definition make_other_camps_read_as_threat_bearing_not_default_allies()
+{
+    scenario_definition scenario;
+    scenario.id = "other_camps_read_as_threat_bearing_not_default_allies";
+    scenario.title = "Other camps read as threat-bearing, not default allies";
+    scenario.default_checkpoints = { 0, 20, 100 };
+    scenario.questions = {
+        "Goal: another camp should usually read as threat-bearing pressure, not as free coalition support on first read.",
+        "Benchmark: the packet should not mint a `reinforce` answer or other automatic ally truth from the first sight of another camp.",
+        "Tuning metrics: a threatening rival-camp signal should keep the winner on bounded caution or hold / chill instead of acting like a friendly-pressure invite."
+    };
+
+    scenario.frames.push_back( {
+        0,
+        "rival_camp_first_read",
+        make_camp( 2 ),
+        {
+            make_lead( "ridge_rival_camp", "ridge_rival_camp", lead_family::corridor,
+                       2, 1, 0.70, 6, 1, 0, threat_gate::hard_veto,
+                       {},
+                       { "First read: another camp on the ridge is an armed separate actor, not automatic ally truth." } )
+        },
+        {
+            "The honest first reaction is caution, not coalition spam."
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        20,
+        "rival_camp_stays_threat_bearing",
+        make_camp( 2 ),
+        {
+            make_lead( "ridge_rival_camp", "ridge_rival_camp", lead_family::corridor,
+                       2, 1, 0.70, 6, 1, 0, threat_gate::hard_veto,
+                       {},
+                       { "A repeated first-family sighting still reads as risk, not free support." } )
+        },
+        {
+            "Nothing about the same rival-camp read should magically convert it into friendly pressure."
+        },
+        cadence_tier::nearby_active,
+        {}
+    } );
+
+    scenario.frames.push_back( {
+        100,
+        "rival_camp_cleanup",
+        make_camp( 2 ),
+        {},
+        {
+            "Longer-horizon cleanup should return to quiet without ever pretending the rival camp was allied truth by default."
+        },
+        cadence_tier::daily_cleanup,
+        {}
+    } );
+
+    return scenario;
+}
+
+const checkpoint_result *find_checkpoint_result( const playback_result &result, int tick )
+{
+    for( const checkpoint_result &checkpoint : result.checkpoints ) {
+        if( checkpoint.tick == tick ) {
+            return &checkpoint;
+        }
+    }
+    return nullptr;
+}
+
+std::string winner_summary( const checkpoint_result &checkpoint )
+{
+    const candidate_debug &winner = checkpoint.evaluation.candidates[checkpoint.evaluation.winner_index];
+    std::ostringstream out;
+    out << "tick " << checkpoint.tick << " winner=" << bandit_dry_run::to_string( winner.job );
+    if( !winner.envelope_id.empty() ) {
+        out << " @ " << winner.envelope_id;
+    }
+    return out.str();
+}
+
+bool checkpoint_has_text( const checkpoint_result &checkpoint, const std::string &needle )
+{
+    for( const std::string &note : checkpoint.notes ) {
+        if( note.find( needle ) != std::string::npos ) {
+            return true;
+        }
+    }
+    for( const bandit_mark_generation::typed_mark &mark : checkpoint.generated_marks.marks ) {
+        for( const std::string &note : mark.notes ) {
+            if( note.find( needle ) != std::string::npos ) {
+                return true;
+            }
+        }
+    }
+    if( checkpoint.evaluation.winner_reason.find( needle ) != std::string::npos ) {
+        return true;
+    }
+    return false;
+}
+
+bool has_candidate( const bandit_dry_run::evaluation_result &evaluation,
+                    bandit_dry_run::job_template job,
+                    const std::string &envelope_id )
+{
+    for( const candidate_debug &candidate : evaluation.candidates ) {
+        if( candidate.job == job && candidate.envelope_id == envelope_id ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+const candidate_debug *winner_at_or_null( const checkpoint_result *checkpoint )
+{
+    if( checkpoint == nullptr || checkpoint->evaluation.candidates.empty() ) {
+        return nullptr;
+    }
+    return &checkpoint->evaluation.candidates[checkpoint->evaluation.winner_index];
+}
+
+int first_tick_with_winner( const playback_result &playback,
+                            const std::function<bool( const checkpoint_result &, const candidate_debug & )> &predicate,
+                            int up_to_tick )
+{
+    for( const checkpoint_result &checkpoint : playback.checkpoints ) {
+        if( checkpoint.tick > up_to_tick ) {
+            break;
+        }
+        const candidate_debug *winner = winner_at_or_null( &checkpoint );
+        if( winner != nullptr && predicate( checkpoint, *winner ) ) {
+            return checkpoint.tick;
+        }
+    }
+    return -1;
+}
+
+int first_tick_with_note( const playback_result &playback, const std::string &needle, int up_to_tick )
+{
+    for( const checkpoint_result &checkpoint : playback.checkpoints ) {
+        if( checkpoint.tick > up_to_tick ) {
+            break;
+        }
+        if( checkpoint_has_text( checkpoint, needle ) ) {
+            return checkpoint.tick;
+        }
+    }
+    return -1;
+}
+
+int first_hold_after_non_idle_turn( const playback_result &playback, int up_to_tick )
+{
+    bool saw_non_idle = false;
+    for( const checkpoint_result &checkpoint : playback.checkpoints ) {
+        if( checkpoint.tick > up_to_tick ) {
+            break;
+        }
+        const candidate_debug *winner = winner_at_or_null( &checkpoint );
+        if( winner == nullptr ) {
+            continue;
+        }
+        if( winner->job != job_template::hold_chill ) {
+            saw_non_idle = true;
+            continue;
+        }
+        if( saw_non_idle ) {
+            return checkpoint.tick;
+        }
+    }
+    return -1;
+}
+
+int first_hold_after_last_match( const playback_result &playback,
+                                 const std::function<bool( const checkpoint_result &, const candidate_debug & )> &predicate,
+                                 int up_to_tick )
+{
+    int last_matching_tick = -1;
+    for( const checkpoint_result &checkpoint : playback.checkpoints ) {
+        if( checkpoint.tick > up_to_tick ) {
+            break;
+        }
+        const candidate_debug *winner = winner_at_or_null( &checkpoint );
+        if( winner != nullptr && predicate( checkpoint, *winner ) ) {
+            last_matching_tick = checkpoint.tick;
+        }
+    }
+
+    if( last_matching_tick < 0 ) {
+        return -1;
+    }
+
+    for( const checkpoint_result &checkpoint : playback.checkpoints ) {
+        if( checkpoint.tick <= last_matching_tick ) {
+            continue;
+        }
+        if( checkpoint.tick > up_to_tick ) {
+            break;
+        }
+        const candidate_debug *winner = winner_at_or_null( &checkpoint );
+        if( winner != nullptr && winner->job == job_template::hold_chill ) {
+            return checkpoint.tick;
+        }
+    }
+
+    return -1;
+}
+
+size_t count_winner_segments( const playback_result &playback,
+                              const std::function<bool( const checkpoint_result &, const candidate_debug & )> &predicate,
+                              int up_to_tick )
+{
+    size_t count = 0;
+    bool active = false;
+    for( const checkpoint_result &checkpoint : playback.checkpoints ) {
+        if( checkpoint.tick > up_to_tick ) {
+            break;
+        }
+        const candidate_debug *winner = winner_at_or_null( &checkpoint );
+        const bool matches = winner != nullptr && predicate( checkpoint, *winner );
+        if( matches && !active ) {
+            ++count;
+        }
+        active = matches;
+    }
+    return count;
+}
+
+size_t count_route_flips( const playback_result &playback, int up_to_tick )
+{
+    std::string previous_envelope;
+    bool have_previous = false;
+    size_t flips = 0;
+
+    for( const checkpoint_result &checkpoint : playback.checkpoints ) {
+        if( checkpoint.tick > up_to_tick ) {
+            break;
+        }
+        const candidate_debug *winner = winner_at_or_null( &checkpoint );
+        if( winner == nullptr || winner->job == job_template::hold_chill || winner->envelope_id.empty() ) {
+            continue;
+        }
+        if( have_previous && previous_envelope != winner->envelope_id ) {
+            ++flips;
+        }
+        previous_envelope = winner->envelope_id;
+        have_previous = true;
+    }
+
+    return flips;
+}
+
+int extract_frontier_visibility( const checkpoint_result &checkpoint )
+{
+    static const std::string prefix = "frontier_visibility=";
+    for( const std::string &note : checkpoint.notes ) {
+        const size_t pos = note.find( prefix );
+        if( pos == std::string::npos ) {
+            continue;
+        }
+        const size_t start = pos + prefix.size();
+        const size_t slash = note.find( '/', start );
+        if( slash == std::string::npos ) {
+            continue;
+        }
+        return std::stoi( note.substr( start, slash - start ) );
+    }
+    return -1;
+}
+
+std::string metric_value_or_none( int value )
+{
+    return value >= 0 ? std::to_string( value ) : "none";
+}
+
+void add_metric( std::vector<benchmark_metric> &metrics, const std::string &name,
+                 const std::string &value )
+{
+    metrics.push_back( { name, value } );
+}
+
+std::vector<benchmark_metric> collect_overmap_benchmark_metrics( const playback_result &playback )
+{
+    std::vector<benchmark_metric> metrics;
+
+    const int first_non_idle_turn = first_tick_with_winner( playback,
+    []( const checkpoint_result &, const candidate_debug &winner ) {
+        return winner.job != job_template::hold_chill;
+    }, 500 );
+    const int first_actionable_turn = first_tick_with_winner( playback,
+    []( const checkpoint_result &checkpoint, const candidate_debug &winner ) {
+        return winner.job != job_template::hold_chill || !checkpoint.generated_leads.empty();
+    }, 500 );
+
+    if( playback.scenario_id == "empty_frontier_expands_visibility" ) {
+        const checkpoint_result *tick0 = find_checkpoint_result( playback, 0 );
+        const int base_visibility = tick0 != nullptr ? extract_frontier_visibility( *tick0 ) : -1;
+        int first_growth_turn = -1;
+        for( const checkpoint_result &checkpoint : playback.checkpoints ) {
+            const int visibility = extract_frontier_visibility( checkpoint );
+            if( visibility > base_visibility ) {
+                first_growth_turn = checkpoint.tick;
+                break;
+            }
+        }
+        const size_t trip_count = count_winner_segments( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.job == job_template::scout && winner.envelope_id == "bounded_explore";
+        }, 500 );
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_actionable_turn", metric_value_or_none( first_actionable_turn ) );
+        add_metric( metrics, "first_scout_departure_turn", metric_value_or_none( first_tick_with_winner( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.job == job_template::scout && winner.envelope_id == "bounded_explore";
+        }, 500 ) ) );
+        add_metric( metrics, "first_frontier_growth_turn", metric_value_or_none( first_growth_turn ) );
+        add_metric( metrics, "frontier_trip_count_500", std::to_string( trip_count ) );
+        add_metric( metrics, "frontier_revisit_count_500", std::to_string( trip_count > 0 ? trip_count - 1 : 0 ) );
+        add_metric( metrics, "route_flip_count_500", std::to_string( count_route_flips( playback, 500 ) ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "blocked_route_stays_fail_closed_until_explicit_explore" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_actionable_turn", metric_value_or_none( first_actionable_turn ) );
+        add_metric( metrics, "first_explicit_explore_turn", metric_value_or_none( first_tick_with_winner( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.job == job_template::scout && winner.envelope_id == "bounded_explore";
+        }, 100 ) ) );
+        add_metric( metrics, "route_flip_count_100", std::to_string( count_route_flips( playback, 100 ) ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "hidden_side_light_stays_inert" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_actionable_turn", metric_value_or_none( first_actionable_turn ) );
+        add_metric( metrics, "generated_lead_count_100", std::to_string( find_checkpoint_result( playback, 100 ) != nullptr ?
+                    find_checkpoint_result( playback, 100 )->generated_leads.size() : 0 ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "visible_side_light_becomes_actionable" ) {
+        const size_t visit_count = count_winner_segments( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.envelope_id == "north_farm_visible_side_light";
+        }, 100 );
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_actionable_turn", metric_value_or_none( first_actionable_turn ) );
+        add_metric( metrics, "first_scout_departure_turn", metric_value_or_none( first_tick_with_winner( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.job == job_template::scout && winner.envelope_id == "north_farm_visible_side_light";
+        }, 100 ) ) );
+        add_metric( metrics, "target_visit_count_100", std::to_string( visit_count ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "corridor_light_shares_horde_pressure" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_actionable_turn", metric_value_or_none( first_actionable_turn ) );
+        add_metric( metrics, "first_shared_pressure_turn", metric_value_or_none( first_tick_with_note( playback, "zombie pressure", 500 ) ) );
+        add_metric( metrics, "route_flip_count_500", std::to_string( count_route_flips( playback, 500 ) ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "local_loss_rewrites_to_withdrawal" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_withdrawal_turn", metric_value_or_none( first_hold_after_non_idle_turn( playback, 500 ) ) );
+        add_metric( metrics, "stale_route_revisit_count_500", std::to_string( count_winner_segments( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.envelope_id == "granary_road_corridor";
+        }, 500 ) > 0 ? count_winner_segments( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.envelope_id == "granary_road_corridor";
+        }, 500 ) - 1 : 0 ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "local_loss_reroutes_to_safer_detour" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_detour_turn", metric_value_or_none( first_tick_with_winner( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.envelope_id == "ridge_detour_watch";
+        }, 500 ) ) );
+        add_metric( metrics, "route_flip_count_100", std::to_string( count_route_flips( playback, 100 ) ) );
+        add_metric( metrics, "stale_route_revisit_count_500", std::to_string( count_winner_segments( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.envelope_id == "river_bridge_intercept";
+        }, 500 ) > 0 ? count_winner_segments( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.envelope_id == "river_bridge_intercept";
+        }, 500 ) - 1 : 0 ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "moving_prey_memory_stays_bounded" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_actionable_turn", metric_value_or_none( first_actionable_turn ) );
+        add_metric( metrics, "first_drop_turn", metric_value_or_none( first_hold_after_non_idle_turn( playback, 500 ) ) );
+        add_metric( metrics, "route_flip_count_500", std::to_string( count_route_flips( playback, 500 ) ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "repeated_site_interest_stays_bounded" ) {
+        const checkpoint_result *tick100 = find_checkpoint_result( playback, 100 );
+        int total_site_hits = -1;
+        int confidence_bonus = -1;
+        if( tick100 != nullptr && !tick100->generated_marks.marks.empty() ) {
+            total_site_hits = tick100->generated_marks.marks.front().repeated_site_reinforcement.total_site_hits;
+            confidence_bonus = tick100->generated_marks.marks.front().repeated_site_reinforcement.confidence_bonus;
+        }
+        const auto repeated_site_visit = []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.family == lead_family::site && winner.job == job_template::scout;
+        };
+        const size_t site_visit_count = count_winner_segments( playback, repeated_site_visit, 500 );
+        const int cooldown_turn = first_hold_after_last_match( playback, repeated_site_visit, 500 );
+        const bool endless_pressure = first_tick_with_winner( playback, repeated_site_visit, 500 ) >= 0 &&
+                                      cooldown_turn < 0;
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_revisit_turn", metric_value_or_none( first_tick_with_winner( playback,
+        []( const checkpoint_result &checkpoint, const candidate_debug &winner ) {
+            return checkpoint.tick >= 20 && winner.family == lead_family::site &&
+                   winner.job == job_template::scout;
+        }, 500 ) ) );
+        add_metric( metrics, "repeated_site_hits_100", metric_value_or_none( total_site_hits ) );
+        add_metric( metrics, "repeated_site_confidence_bonus_100", metric_value_or_none( confidence_bonus ) );
+        add_metric( metrics, "site_visit_count_500", std::to_string( site_visit_count ) );
+        add_metric( metrics, "site_revisit_count_500",
+                    std::to_string( site_visit_count > 0 ? site_visit_count - 1 : 0 ) );
+        add_metric( metrics, "cooldown_turn", metric_value_or_none( cooldown_turn ) );
+        add_metric( metrics, "endless_pressure_flag", endless_pressure ? "true" : "false" );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "windy_smoke_stays_scoutable_but_fuzzy" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_fuzzed_weather_turn", metric_value_or_none( first_tick_with_note( playback, "weather=windy", 100 ) ) );
+        add_metric( metrics, "first_cooldown_turn", metric_value_or_none( first_hold_after_non_idle_turn( playback, 100 ) ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "portal_storm_smoke_is_harder_to_localize" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_portal_storm_turn", metric_value_or_none( first_tick_with_note( playback, "weather=portal_storm", 100 ) ) );
+        add_metric( metrics, "first_corridorish_origin_hint_turn", metric_value_or_none( first_tick_with_note( playback, "origin_hint=corridorish", 100 ) ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "portal_storm_exposed_light_stays_legible_but_sheltered_light_stays_bounded" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_actionable_turn", metric_value_or_none( first_actionable_turn ) );
+        add_metric( metrics, "sheltered_light_actionable_turn", metric_value_or_none( first_tick_with_winner( playback,
+        []( const checkpoint_result &checkpoint, const candidate_debug &winner ) {
+            return checkpoint.tick == 0 && winner.job != job_template::hold_chill;
+        }, 0 ) ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "independent_camps_do_not_dogpile_by_default" ) {
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "first_independent_route_turn", metric_value_or_none( first_tick_with_winner( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.envelope_id == "south_quarry_watch";
+        }, 500 ) ) );
+        add_metric( metrics, "other_camp_overlap_count_500", std::to_string( count_winner_segments( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.envelope_id == "occupied_granary_convoy";
+        }, 500 ) ) );
+        add_metric( metrics, "route_flip_count_500", std::to_string( count_route_flips( playback, 500 ) ) );
+        return metrics;
+    }
+
+    if( playback.scenario_id == "other_camps_read_as_threat_bearing_not_default_allies" ) {
+        const checkpoint_result *tick0 = find_checkpoint_result( playback, 0 );
+        const bool assumes_ally = tick0 != nullptr && has_candidate( tick0->evaluation,
+                                  job_template::reinforce, "ridge_rival_camp" );
+        add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+        add_metric( metrics, "threat_bearing_read_turn", metric_value_or_none( first_tick_with_winner( playback,
+        []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.job == job_template::hold_chill;
+        }, 100 ) ) );
+        add_metric( metrics, "ally_assumption_flag", assumes_ally ? "true" : "false" );
+        return metrics;
+    }
+
+    add_metric( metrics, "first_non_idle_turn", metric_value_or_none( first_non_idle_turn ) );
+    add_metric( metrics, "first_actionable_turn", metric_value_or_none( first_actionable_turn ) );
+    return metrics;
+}
+
+benchmark_check_result make_benchmark_check( int tick, const std::string &label,
+        bool passed, const std::string &details )
+{
+    benchmark_check_result result;
+    result.tick = tick;
+    result.label = label;
+    result.passed = passed;
+    result.details = details;
+    return result;
+}
+
+std::vector<scenario_definition> overmap_benchmark_suite_scenarios()
+{
+    return {
+        make_empty_frontier_expands_visibility(),
+        make_blocked_route_stays_fail_closed_until_explicit_explore(),
+        renamed_scenario( make_generated_directional_light_hidden_side_stays_inert(),
+                          "hidden_side_light_stays_inert",
+                          "Hidden-side light stays inert",
+                          { 0, 20, 100, 500 },
+                          {
+                              "Goal: directional light that does not leak to the bandit-facing side stays non-actionable.",
+                              "Benchmark: through tick 100 the packet should stay inert with no honest pursuit posture.",
+                              "Carry-through: the long horizon should stay equally quiet instead of learning psychic vision later."
+                          } ),
+        renamed_scenario( make_generated_directional_light_visible_side_becomes_actionable(),
+                          "visible_side_light_becomes_actionable",
+                          "Visible-side light becomes actionable",
+                          { 0, 20, 100 },
+                          {
+                              "Goal: the visible-side twin of the same directional-light footing should become actionable instead of staying inert.",
+                              "Benchmark: inside the 100-turn packet the light-born clue should produce a real bounded posture reviewer-cleanly.",
+                              "Tuning metrics: keep the same broader footing as the hidden-side twin and only change the honest visible-side leakage."
+                          } ),
+        renamed_scenario( make_generated_directional_light_corridor_shares_horde_pressure(),
+                          "corridor_light_shares_horde_pressure",
+                          "Corridor light shares horde pressure",
+                          { 0, 20, 100, 500 },
+                          {
+                              "Goal: corridor light should stay shared-world pressure instead of private bandit omniscience.",
+                              "Benchmark: inside the 100-turn packet the same corridor clue should still carry zombie-pressure consequences reviewer-readably.",
+                              "Carry-through: the clue should cool later without changing family or becoming magical site truth."
+                          } ),
+        renamed_scenario( make_generated_local_loss_rewrites_corridor_to_withdrawal(),
+                          "local_loss_rewrites_to_withdrawal",
+                          "Local loss rewrites to withdrawal",
+                          { 0, 20, 100, 500 },
+                          {
+                              "Goal: stale pursuit should collapse once local reality makes the tile too hot.",
+                              "Benchmark: by tick 100 the old corridor posture should have rewritten to withdrawal or hold / chill.",
+                              "Carry-through: tick 500 should stay off the burned route instead of regrowing stale pursuit by habit."
+                          } ),
+        renamed_scenario( make_generated_local_loss_reroutes_to_safer_detour(),
+                          "local_loss_reroutes_to_safer_detour",
+                          "Local loss reroutes to safer detour",
+                          { 0, 20, 100, 500 },
+                          {
+                              "Goal: some hot-route cases should reroute instead of merely giving up.",
+                              "Benchmark: inside the first 100 turns the packet should show a safer detour rather than recommitting to the burned path.",
+                              "Carry-through: later cooling should stay off the stale bridge route."
+                          } ),
+        renamed_scenario( make_generated_human_sighting_tracks_moving_carrier(),
+                          "moving_prey_memory_stays_bounded",
+                          "Moving prey memory stays bounded",
+                          { 0, 20, 100, 500 },
+                          {
+                              "Goal: moving bounty can stay warm briefly without turning into immortal pursuit.",
+                              "Benchmark: by tick 100 the moving-memory packet should still support a bounded moving-carrier posture while the clue remains warm enough.",
+                              "Carry-through: by tick 500 stale moving contact should have dropped cleanly instead of retrying forever."
+                          } ),
+        renamed_scenario( make_generated_repeated_site_reinforcement_stays_bounded(),
+                          "repeated_site_interest_stays_bounded",
+                          "Repeated site interest stays bounded",
+                          { 0, 20, 100, 140, 220, 300, 380, 500 },
+                          {
+                              "Goal: repeated mixed site signals can strengthen revisit interest without unlocking immortal settlement truth.",
+                              "Benchmark: by tick 100 the repeated site mark may be modestly stronger, but it must stay reviewer-readable and bounded.",
+                              "Carry-through: by tick 500 the packet should show one last bounded revisit, a real cooldown turn, and no endless pressure."
+                          } ),
+        renamed_scenario( make_generated_windy_smoke_mark_stays_fuzzy(),
+                          "windy_smoke_stays_scoutable_but_fuzzy",
+                          "Windy smoke stays scoutable but fuzzy",
+                          { 0, 20, 100 },
+                          {
+                              "Goal: strong wind should leave smoke potentially scoutable while clearly degrading source precision.",
+                              "Benchmark: inside the 100-turn packet the weather notes should show a fuzzier, drifted read than the ordinary clear-weather baseline.",
+                              "Tuning metrics: keep the clue bounded and reviewer-readable, not accidentally promoted to magical source certainty."
+                          } ),
+        make_portal_storm_smoke_is_harder_to_localize(),
+        make_portal_storm_exposed_light_stays_legible_but_sheltered_light_stays_bounded(),
+        make_independent_camps_do_not_dogpile_by_default(),
+        make_other_camps_read_as_threat_bearing_not_default_allies(),
+    };
+}
+
+std::vector<benchmark_check_result> evaluate_overmap_benchmark_100( const playback_result &playback )
+{
+    const checkpoint_result *tick0 = find_checkpoint_result( playback, 0 );
+    const checkpoint_result *tick20 = find_checkpoint_result( playback, 20 );
+    const checkpoint_result *tick100 = find_checkpoint_result( playback, 100 );
+
+    if( playback.scenario_id == "empty_frontier_expands_visibility" ) {
+        const bool bounded_outing = tick100 != nullptr &&
+                                    tick100->evaluation.candidates[tick100->evaluation.winner_index].job == job_template::scout &&
+                                    tick100->evaluation.candidates[tick100->evaluation.winner_index].envelope_id == "bounded_explore";
+        const bool frontier_grew = tick0 != nullptr && tick100 != nullptr &&
+                                   checkpoint_has_text( *tick0, "frontier_visibility=1/4" ) &&
+                                   checkpoint_has_text( *tick100, "frontier_visibility=4/4" );
+        return {
+            make_benchmark_check( 100, "bounded frontier outing replaces indefinite idle", bounded_outing,
+                                  tick100 != nullptr ? winner_summary( *tick100 ) : "missing tick 100" ),
+            make_benchmark_check( 100, "frontier visibility increased relative to tick 0", frontier_grew,
+                                  frontier_grew ? "notes show frontier_visibility=1/4 -> 4/4" : "frontier visibility notes missing or unchanged" )
+        };
+    }
+
+    if( playback.scenario_id == "blocked_route_stays_fail_closed_until_explicit_explore" ) {
+        const bool fail_closed = tick0 != nullptr &&
+                                 tick0->evaluation.candidates[tick0->evaluation.winner_index].job == job_template::hold_chill &&
+                                 !has_candidate( tick0->evaluation, job_template::scout, "bounded_explore" );
+        const bool explicit_explore_breaks_idle = tick100 != nullptr &&
+                                                  tick100->evaluation.candidates[tick100->evaluation.winner_index].job == job_template::scout &&
+                                                  tick100->evaluation.candidates[tick100->evaluation.winner_index].envelope_id == "bounded_explore";
+        return {
+            make_benchmark_check( 0, "blocked route stays fail-closed before explore is greenlit", fail_closed,
+                                  tick0 != nullptr ? winner_summary( *tick0 ) : "missing tick 0" ),
+            make_benchmark_check( 100, "only explicit bounded explore may break idle", explicit_explore_breaks_idle,
+                                  tick100 != nullptr ? winner_summary( *tick100 ) : "missing tick 100" )
+        };
+    }
+
+    if( playback.scenario_id == "hidden_side_light_stays_inert" ) {
+        const bool inert = tick0 != nullptr && tick20 != nullptr && tick100 != nullptr &&
+                           tick0->evaluation.candidates[tick0->evaluation.winner_index].job == job_template::hold_chill &&
+                           tick20->evaluation.candidates[tick20->evaluation.winner_index].job == job_template::hold_chill &&
+                           tick100->evaluation.candidates[tick100->evaluation.winner_index].job == job_template::hold_chill &&
+                           tick0->generated_leads.empty() && tick20->generated_leads.empty() && tick100->generated_leads.empty();
+        return {
+            make_benchmark_check( 100, "hidden-side light stays inert through the 100-turn packet", inert,
+                                  inert ? "ticks 0, 20, and 100 all stay on hold / chill with no generated lead" : "one hidden-side checkpoint became actionable" )
+        };
+    }
+
+    if( playback.scenario_id == "visible_side_light_becomes_actionable" ) {
+        const bool actionable = tick0 != nullptr && tick20 != nullptr &&
+                                tick0->evaluation.candidates[tick0->evaluation.winner_index].job == job_template::scout &&
+                                !tick0->generated_leads.empty() &&
+                                tick20->evaluation.candidates[tick20->evaluation.winner_index].job == job_template::scout;
+        return {
+            make_benchmark_check( 100, "visible-side light becomes a real actionable posture", actionable,
+                                  tick0 != nullptr ? winner_summary( *tick0 ) : "missing tick 0" )
+        };
+    }
+
+    if( playback.scenario_id == "corridor_light_shares_horde_pressure" ) {
+        const bool shared_pressure = tick20 != nullptr &&
+                                     tick20->evaluation.candidates[tick20->evaluation.winner_index].family == lead_family::corridor &&
+                                     checkpoint_has_text( *tick20, "zombie pressure" );
+        return {
+            make_benchmark_check( 100, "corridor light keeps shared horde-pressure footing", shared_pressure,
+                                  tick20 != nullptr ? winner_summary( *tick20 ) : "missing tick 20" )
+        };
+    }
+
+    if( playback.scenario_id == "local_loss_rewrites_to_withdrawal" ) {
+        const bool withdrawal = tick100 != nullptr &&
+                                tick100->evaluation.candidates[tick100->evaluation.winner_index].job == job_template::hold_chill;
+        return {
+            make_benchmark_check( 100, "stale corridor posture has rewritten to withdrawal or hold / chill by tick 100", withdrawal,
+                                  tick100 != nullptr ? winner_summary( *tick100 ) : "missing tick 100" )
+        };
+    }
+
+    if( playback.scenario_id == "local_loss_reroutes_to_safer_detour" ) {
+        const bool rerouted = tick20 != nullptr &&
+                              tick20->evaluation.candidates[tick20->evaluation.winner_index].envelope_id == "ridge_detour_watch";
+        return {
+            make_benchmark_check( 100, "hot-route loss reroutes to a safer detour", rerouted,
+                                  tick20 != nullptr ? winner_summary( *tick20 ) : "missing tick 20" )
+        };
+    }
+
+    if( playback.scenario_id == "moving_prey_memory_stays_bounded" ) {
+        const bool warm_memory = tick100 != nullptr &&
+                                 tick100->evaluation.candidates[tick100->evaluation.winner_index].job == job_template::stalk &&
+                                 tick100->evaluation.candidates[tick100->evaluation.winner_index].family == lead_family::moving_carrier;
+        return {
+            make_benchmark_check( 100, "moving prey memory stays warm enough to matter through tick 100", warm_memory,
+                                  tick100 != nullptr ? winner_summary( *tick100 ) : "missing tick 100" )
+        };
+    }
+
+    if( playback.scenario_id == "repeated_site_interest_stays_bounded" ) {
+        const bool bounded_revisit = tick100 != nullptr &&
+                                     tick100->evaluation.candidates[tick100->evaluation.winner_index].job == job_template::scout &&
+                                     !tick100->generated_marks.marks.empty() &&
+                                     tick100->generated_marks.marks[0].repeated_site_reinforcement.confidence_bonus >= 1;
+        return {
+            make_benchmark_check( 100, "repeated site interest strengthens modestly but stays bounded", bounded_revisit,
+                                  bounded_revisit ? "tick 100 keeps a bounded scout with visible repeated-site reinforcement" : "repeated-site reinforcement did not stay visible at tick 100" )
+        };
+    }
+
+    if( playback.scenario_id == "windy_smoke_stays_scoutable_but_fuzzy" ) {
+        const bool fuzzy = tick0 != nullptr &&
+                           tick0->evaluation.candidates[tick0->evaluation.winner_index].job == job_template::scout &&
+                           checkpoint_has_text( *tick0, "weather=windy" ) &&
+                           checkpoint_has_text( *tick0, "verdict=fuzzed" ) &&
+                           checkpoint_has_text( *tick0, "origin_hint=drifted" );
+        return {
+            make_benchmark_check( 100, "windy smoke stays scoutable but reviewer-readably fuzzier", fuzzy,
+                                  tick0 != nullptr ? winner_summary( *tick0 ) : "missing tick 0" )
+        };
+    }
+
+    if( playback.scenario_id == "portal_storm_smoke_is_harder_to_localize" ) {
+        const bool harder = tick0 != nullptr && tick20 != nullptr &&
+                            checkpoint_has_text( *tick20, "weather=portal_storm" ) &&
+                            checkpoint_has_text( *tick20, "origin_hint=corridorish" ) &&
+                            !checkpoint_has_text( *tick0, "origin_hint=corridorish" );
+        return {
+            make_benchmark_check( 100, "portal-storm smoke reads darker and less localizable than the ordinary baseline", harder,
+                                  harder ? "tick 20 portal-storm notes become corridor-ish while the baseline does not" : "portal-storm smoke did not look materially stranger than baseline" )
+        };
+    }
+
+    if( playback.scenario_id == "portal_storm_exposed_light_stays_legible_but_sheltered_light_stays_bounded" ) {
+        const bool sheltered_bounded = tick0 != nullptr &&
+                                       tick0->evaluation.candidates[tick0->evaluation.winner_index].job == job_template::hold_chill &&
+                                       tick0->generated_leads.empty();
+        const bool exposed_legible = tick20 != nullptr &&
+                                     tick20->evaluation.candidates[tick20->evaluation.winner_index].job == job_template::scout &&
+                                     checkpoint_has_text( *tick20, "weather=portal_storm" ) &&
+                                     checkpoint_has_text( *tick20, "storm_bright_light_preserved=yes" );
+        return {
+            make_benchmark_check( 0, "sheltered ordinary light stays materially bounded under portal-storm weather", sheltered_bounded,
+                                  tick0 != nullptr ? winner_summary( *tick0 ) : "missing tick 0" ),
+            make_benchmark_check( 20, "exposed bright light stays legible under the same storm family", exposed_legible,
+                                  tick20 != nullptr ? winner_summary( *tick20 ) : "missing tick 20" )
+        };
+    }
+
+    if( playback.scenario_id == "independent_camps_do_not_dogpile_by_default" ) {
+        const bool independent = tick0 != nullptr && tick100 != nullptr &&
+                                 tick0->evaluation.candidates[tick0->evaluation.winner_index].envelope_id == "south_quarry_watch" &&
+                                 tick100->evaluation.candidates[tick100->evaluation.winner_index].envelope_id == "south_quarry_watch";
+        return {
+            make_benchmark_check( 100, "camp stays on its own honest route instead of dogpiling the occupied target", independent,
+                                  tick100 != nullptr ? winner_summary( *tick100 ) : "missing tick 100" )
+        };
+    }
+
+    if( playback.scenario_id == "other_camps_read_as_threat_bearing_not_default_allies" ) {
+        bool minted_reinforce = false;
+        if( tick0 != nullptr ) {
+            for( const candidate_debug &candidate : tick0->evaluation.candidates ) {
+                if( candidate.job == job_template::reinforce ) {
+                    minted_reinforce = true;
+                    break;
+                }
+            }
+        }
+        const bool threat_bearing = tick0 != nullptr &&
+                                    tick0->evaluation.candidates[tick0->evaluation.winner_index].job == job_template::hold_chill &&
+                                    !minted_reinforce;
+        return {
+            make_benchmark_check( 100, "other camp stays threat-bearing and does not mint default ally truth", threat_bearing,
+                                  tick0 != nullptr ? winner_summary( *tick0 ) : "missing tick 0" )
+        };
+    }
+
+    return {};
+}
+
+std::vector<benchmark_check_result> evaluate_overmap_benchmark_500( const playback_result &playback )
+{
+    const checkpoint_result *tick500 = find_checkpoint_result( playback, 500 );
+
+    if( playback.scenario_id == "empty_frontier_expands_visibility" ) {
+        const bool bounded = tick500 != nullptr &&
+                             tick500->evaluation.candidates[tick500->evaluation.winner_index].job == job_template::hold_chill &&
+                             checkpoint_has_text( *tick500, "frontier_visibility=4/4" );
+        return {
+            make_benchmark_check( 500, "frontier outing stays bounded on the long horizon", bounded,
+                                  tick500 != nullptr ? winner_summary( *tick500 ) : "missing tick 500" )
+        };
+    }
+
+    if( playback.scenario_id == "local_loss_rewrites_to_withdrawal" ) {
+        const bool stays_off_burned_route = tick500 != nullptr &&
+                                            tick500->evaluation.candidates[tick500->evaluation.winner_index].job == job_template::hold_chill;
+        return {
+            make_benchmark_check( 500, "burned route stays abandoned through tick 500", stays_off_burned_route,
+                                  tick500 != nullptr ? winner_summary( *tick500 ) : "missing tick 500" )
+        };
+    }
+
+    if( playback.scenario_id == "moving_prey_memory_stays_bounded" ) {
+        const bool cooled = tick500 != nullptr &&
+                            tick500->evaluation.candidates[tick500->evaluation.winner_index].job == job_template::hold_chill;
+        return {
+            make_benchmark_check( 500, "stale moving prey memory drops cleanly by tick 500", cooled,
+                                  tick500 != nullptr ? winner_summary( *tick500 ) : "missing tick 500" )
+        };
+    }
+
+    if( playback.scenario_id == "repeated_site_interest_stays_bounded" ) {
+        const auto repeated_site_visit = []( const checkpoint_result &, const candidate_debug &winner ) {
+            return winner.family == lead_family::site && winner.job == job_template::scout;
+        };
+        const size_t site_visit_count = count_winner_segments( playback, repeated_site_visit, 500 );
+        const int cooldown_turn = first_hold_after_last_match( playback, repeated_site_visit, 500 );
+        const bool endless_pressure = first_tick_with_winner( playback, repeated_site_visit, 500 ) >= 0 &&
+                                      cooldown_turn < 0;
+        const bool extraction_unlocked = std::any_of( playback.checkpoints.begin(), playback.checkpoints.end(),
+        []( const checkpoint_result &checkpoint ) {
+            if( checkpoint.tick > 500 ) {
+                return false;
+            }
+            const candidate_debug *winner = winner_at_or_null( &checkpoint );
+            return winner != nullptr && ( winner->job == job_template::scavenge ||
+                                          winner->job == job_template::steal ||
+                                          winner->job == job_template::raid );
+        } );
+        return {
+            make_benchmark_check( 500, "repeated site visit count stays in the bounded target band",
+                                  site_visit_count >= 1 && site_visit_count <= 3,
+                                  "site_visit_count_500=" + std::to_string( site_visit_count ) ),
+            make_benchmark_check( 500, "repeated site revisit count stays modest",
+                                  site_visit_count > 0 ? site_visit_count - 1 <= 2 : true,
+                                  "site_revisit_count_500=" + std::to_string( site_visit_count > 0 ? site_visit_count - 1 : 0 ) ),
+            make_benchmark_check( 500, "repeated site pressure cools back out instead of becoming endless",
+                                  !endless_pressure && cooldown_turn >= 0 && tick500 != nullptr &&
+                                  tick500->evaluation.candidates[tick500->evaluation.winner_index].job == job_template::hold_chill,
+                                  "cooldown_turn=" + metric_value_or_none( cooldown_turn ) +
+                                  ", endless_pressure_flag=" + ( endless_pressure ? std::string( "true" ) : std::string( "false" ) ) +
+                                  ( tick500 != nullptr ? ", " + winner_summary( *tick500 ) : ", missing tick 500" ) ),
+            make_benchmark_check( 500, "repeated site corroboration still never unlocks free extraction truth",
+                                  !extraction_unlocked,
+                                  extraction_unlocked ? "an extraction winner appeared inside the bounded packet" :
+                                  "no sampled checkpoint promoted scavenge, steal, or raid" )
+        };
+    }
+
+    if( playback.scenario_id == "independent_camps_do_not_dogpile_by_default" ) {
+        const bool suppressed = tick500 != nullptr &&
+                                tick500->evaluation.candidates[tick500->evaluation.winner_index].job == job_template::hold_chill;
+        return {
+            make_benchmark_check( 500, "same-region pile-on pressure stays suppressed on the long horizon", suppressed,
+                                  tick500 != nullptr ? winner_summary( *tick500 ) : "missing tick 500" )
+        };
+    }
+
+    return {};
+}
+
 const scenario_frame &frame_for_tick( const scenario_definition &scenario, int tick )
 {
     const scenario_frame *active = &scenario.frames.front();
@@ -1771,6 +3729,8 @@ const std::vector<scenario_definition> &reference_scenarios()
         make_city_edge_moving_hordes(),
         make_generated_smoke_mark_cools_off(),
         make_generated_night_light_mark_scopes_out(),
+        make_generated_windy_smoke_mark_stays_fuzzy(),
+        make_generated_portal_storm_exposed_light_stays_legible(),
         make_generated_directional_light_hidden_side_stays_inert(),
         make_generated_directional_light_visible_side_becomes_actionable(),
         make_generated_directional_light_corridor_shares_horde_pressure(),
@@ -1855,6 +3815,28 @@ proof_packet_result run_long_range_directional_light_proof_packet()
     return result;
 }
 
+proof_packet_result run_elevated_light_z_level_visibility_packet()
+{
+    static const std::vector<int> proof_checkpoints = { 0, 20, 100, 500 };
+    static const std::vector<scenario_definition> proof_scenarios = {
+        make_generated_nearby_cross_z_light_stays_actionable(),
+        make_generated_ground_hidden_light_stays_bounded(),
+        make_generated_elevated_exposed_light_becomes_actionable(),
+        make_generated_radio_tower_fire_shares_horde_pressure(),
+        make_generated_vertical_smoke_stays_bounded(),
+    };
+
+    proof_packet_result result;
+    result.packet_id = "bandit_elevated_light_z_level_visibility_packet_v0";
+    result.checkpoints = proof_checkpoints;
+
+    for( const scenario_definition &scenario : proof_scenarios ) {
+        result.scenarios.push_back( run_scenario( scenario, proof_checkpoints ) );
+    }
+
+    return result;
+}
+
 proof_packet_result run_overmap_local_pressure_rewrite_proof_packet()
 {
     static const std::vector<int> proof_checkpoints = { 0, 20, 100, 500 };
@@ -1872,6 +3854,66 @@ proof_packet_result run_overmap_local_pressure_rewrite_proof_packet()
         if( scenario != nullptr ) {
             result.scenarios.push_back( run_scenario( *scenario, proof_checkpoints ) );
         }
+    }
+
+    return result;
+}
+
+handoff_packet_result run_overmap_local_handoff_interaction_packet()
+{
+    static const std::vector<int> proof_checkpoints = { 0, 20, 160, 500 };
+
+    handoff_packet_result result;
+    result.packet_id = "bandit_overmap_local_handoff_interaction_packet_v0";
+    result.checkpoints = proof_checkpoints;
+
+    for( const handoff_case_definition &definition : overmap_local_handoff_cases() ) {
+        const scenario_definition *scenario = find_reference_scenario( definition.playback_scenario_id );
+        if( scenario == nullptr ) {
+            continue;
+        }
+
+        handoff_packet_scenario_result packet_scenario;
+        packet_scenario.scenario_id = definition.scenario_id;
+        packet_scenario.title = definition.title;
+        packet_scenario.playback_scenario_id = definition.playback_scenario_id;
+        packet_scenario.questions = definition.questions;
+        packet_scenario.playback = run_scenario( *scenario, proof_checkpoints );
+
+        const checkpoint_result *entry_checkpoint = find_playback_checkpoint( packet_scenario.playback,
+                                                 definition.entry_tick );
+        if( entry_checkpoint == nullptr ) {
+            continue;
+        }
+
+        packet_scenario.entry = bandit_pursuit_handoff::build_entry_payload( definition.group,
+                               winner_candidate( entry_checkpoint->evaluation ),
+                               definition.entry_context );
+        packet_scenario.local_return = bandit_pursuit_handoff::build_return_packet( packet_scenario.entry,
+                                      definition.outcome );
+        packet_scenario.returned_group = definition.group;
+        bandit_pursuit_handoff::apply_return_packet( packet_scenario.returned_group,
+                packet_scenario.local_return );
+        result.scenarios.push_back( packet_scenario );
+    }
+
+    return result;
+}
+
+benchmark_suite_result run_overmap_benchmark_suite_packet()
+{
+    benchmark_suite_result result;
+    result.packet_id = "bandit_overmap_benchmark_suite_packet_v0";
+
+    for( const scenario_definition &scenario : overmap_benchmark_suite_scenarios() ) {
+        benchmark_scenario_result benchmark_scenario;
+        benchmark_scenario.benchmark_id = scenario.id;
+        benchmark_scenario.benchmark_title = scenario.title;
+        benchmark_scenario.playback = run_scenario( scenario, scenario.default_checkpoints );
+        benchmark_scenario.metrics = collect_overmap_benchmark_metrics( benchmark_scenario.playback );
+        benchmark_scenario.benchmark_100 = evaluate_overmap_benchmark_100( benchmark_scenario.playback );
+        benchmark_scenario.benchmark_500 = evaluate_overmap_benchmark_500( benchmark_scenario.playback );
+        result.scenarios.push_back( benchmark_scenario );
     }
 
     return result;
@@ -2057,6 +4099,57 @@ std::string render_long_range_directional_light_proof_packet( const proof_packet
     return out.str();
 }
 
+std::vector<std::string> visibility_reads( const checkpoint_result &checkpoint )
+{
+    std::vector<std::string> reads;
+    for( const bandit_mark_generation::typed_mark &mark : checkpoint.generated_marks.marks ) {
+        for( const std::string &note : mark.notes ) {
+            if( note.find( "light concealment:" ) == 0 || note.find( "smoke weather:" ) == 0 ) {
+                reads.push_back( mark.envelope_id + ": " + note );
+            }
+        }
+    }
+    return reads;
+}
+
+std::string render_elevated_light_z_level_visibility_packet( const proof_packet_result &result )
+{
+    std::ostringstream out;
+    out << "bandit elevated-light and z-level visibility packet\n";
+    out << "packet: " << result.packet_id << "\n";
+    out << "checkpoints:";
+    for( int tick : result.checkpoints ) {
+        out << " " << tick;
+    }
+    out << "\n";
+
+    for( const playback_result &scenario : result.scenarios ) {
+        out << "scenario: " << scenario.scenario_id << " - " << scenario.title << "\n";
+        for( const std::string &question : scenario.questions ) {
+            out << "  - " << question << "\n";
+        }
+        for( const checkpoint_result &checkpoint : scenario.checkpoints ) {
+            const candidate_debug &winner = winner_candidate( checkpoint.evaluation );
+            out << "  - tick " << checkpoint.tick << " [phase=" << checkpoint.phase << "] winner="
+                << bandit_dry_run::to_string( winner.job );
+            if( !winner.envelope_id.empty() ) {
+                out << " @ " << winner.envelope_id;
+            }
+            out << ", generated_leads=" << checkpoint.generated_leads.size()
+                << ", generated_marks=" << checkpoint.generated_marks.marks.size()
+                << ", reason=" << checkpoint.evaluation.winner_reason << "\n";
+            for( const std::string &note : checkpoint.notes ) {
+                out << "    note: " << note << "\n";
+            }
+            for( const std::string &read : visibility_reads( checkpoint ) ) {
+                out << "    visibility_read: " << read << "\n";
+            }
+        }
+    }
+
+    return out.str();
+}
+
 std::string render_overmap_local_pressure_rewrite_proof_packet( const proof_packet_result &result )
 {
     std::ostringstream out;
@@ -2083,6 +4176,100 @@ std::string render_overmap_local_pressure_rewrite_proof_packet( const proof_pack
             out << ", generated_leads=" << checkpoint.generated_leads.size()
                 << ", generated_marks=" << checkpoint.generated_marks.marks.size()
                 << ", reason=" << checkpoint.evaluation.winner_reason << "\n";
+        }
+    }
+
+    return out.str();
+}
+
+std::string render_overmap_local_handoff_interaction_packet( const handoff_packet_result &result )
+{
+    std::ostringstream out;
+    out << "bandit overmap/local handoff interaction packet\n";
+    out << "packet: " << result.packet_id << "\n";
+    out << "checkpoints:";
+    for( int tick : result.checkpoints ) {
+        out << " " << tick;
+    }
+    out << "\n";
+
+    for( const handoff_packet_scenario_result &scenario : result.scenarios ) {
+        out << "scenario: " << scenario.scenario_id << " - " << scenario.title << "\n";
+        out << "  playback_source: " << scenario.playback_scenario_id << "\n";
+        for( const std::string &question : scenario.questions ) {
+            out << "  - " << question << "\n";
+        }
+        out << "  playback checkpoints:\n";
+        for( const checkpoint_result &checkpoint : scenario.playback.checkpoints ) {
+            const candidate_debug &winner = winner_candidate( checkpoint.evaluation );
+            out << "    - tick " << checkpoint.tick << " [phase=" << checkpoint.phase << "] winner="
+                << bandit_dry_run::to_string( winner.job );
+            if( !winner.envelope_id.empty() ) {
+                out << " @ " << winner.envelope_id;
+            }
+            out << ", reason=" << checkpoint.evaluation.winner_reason << "\n";
+        }
+        out << "  handoff contract: posture_only=yes, exact_square_targeting=no, stale_route_puppetry=no\n";
+        const std::string handoff_report = bandit_pursuit_handoff::render_report( scenario.entry,
+                                           scenario.local_return );
+        std::istringstream handoff_stream( handoff_report );
+        std::string line;
+        while( std::getline( handoff_stream, line ) ) {
+            out << "    " << line << "\n";
+        }
+        out << "  returned_abstract_state:\n";
+        out << "    - " << render_handoff_group_state( scenario.returned_group ) << "\n";
+    }
+
+    return out.str();
+}
+
+std::string render_overmap_benchmark_suite_packet( const benchmark_suite_result &result )
+{
+    std::ostringstream out;
+    out << "bandit overmap benchmark suite packet\n";
+    out << "packet: " << result.packet_id << "\n";
+
+    for( const benchmark_scenario_result &scenario : result.scenarios ) {
+        out << "scenario: " << scenario.benchmark_id << " - " << scenario.benchmark_title << "\n";
+        for( const std::string &question : scenario.playback.questions ) {
+            out << "  - " << question << "\n";
+        }
+
+        if( !scenario.metrics.empty() ) {
+            out << "  cadence metrics:\n";
+            for( const benchmark_metric &metric : scenario.metrics ) {
+                out << "    - " << metric.name << "=" << metric.value << "\n";
+            }
+        }
+
+        out << "  100-turn benchmark:\n";
+        for( const benchmark_check_result &check : scenario.benchmark_100 ) {
+            out << "    - " << ( check.passed ? "PASS" : "FAIL" ) << " [tick " << check.tick << "] "
+                << check.label << ": " << check.details << "\n";
+        }
+
+        if( scenario.benchmark_500.empty() ) {
+            out << "  500-turn carry-through: not required for this bounded scenario\n";
+        } else {
+            out << "  500-turn carry-through:\n";
+            for( const benchmark_check_result &check : scenario.benchmark_500 ) {
+                out << "    - " << ( check.passed ? "PASS" : "FAIL" ) << " [tick " << check.tick << "] "
+                    << check.label << ": " << check.details << "\n";
+            }
+        }
+
+        out << "  checkpoints:\n";
+        for( const checkpoint_result &checkpoint : scenario.playback.checkpoints ) {
+            const candidate_debug &winner = winner_candidate( checkpoint.evaluation );
+            out << "    - tick " << checkpoint.tick << " [phase=" << checkpoint.phase << "] winner="
+                << bandit_dry_run::to_string( winner.job );
+            if( !winner.envelope_id.empty() ) {
+                out << " @ " << winner.envelope_id;
+            }
+            out << ", generated_leads=" << checkpoint.generated_leads.size()
+                << ", generated_marks=" << checkpoint.generated_marks.marks.size()
+                << "\n";
         }
     }
 

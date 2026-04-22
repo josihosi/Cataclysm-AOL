@@ -160,6 +160,70 @@ bool is_threat_compatible( job_template job )
     return false;
 }
 
+bool is_opportunism_job( job_template job )
+{
+    switch( job ) {
+        case job_template::toll:
+        case job_template::stalk:
+        case job_template::steal:
+        case job_template::raid:
+            return true;
+        case job_template::hold_chill:
+        case job_template::scout:
+        case job_template::scavenge:
+        case job_template::reinforce:
+            return false;
+    }
+
+    return false;
+}
+
+int collapsed_effective_threat( const lead_input &lead )
+{
+    const int distraction_window = std::max( 0, lead.monster_pressure_bonus ) +
+                                   std::max( 0, lead.target_coherence_bonus );
+    return std::max( 0, lead.threat_penalty - distraction_window );
+}
+
+int opportunism_bonus_for( job_template job, const lead_input &lead )
+{
+    if( !is_opportunism_job( job ) ) {
+        return 0;
+    }
+
+    const int distraction_window = std::max( 0, lead.monster_pressure_bonus ) +
+                                   std::max( 0, lead.target_coherence_bonus );
+    return std::min( 2, ( distraction_window + 1 ) / 2 );
+}
+
+candidate_debug make_bounded_explore_candidate( const camp_input &camp )
+{
+    candidate_debug candidate;
+    candidate.job = job_template::scout;
+    candidate.lead_id = "bounded_explore";
+    candidate.envelope_id = "bounded_explore";
+    candidate.family = lead_family::none;
+    candidate.generated = true;
+    candidate.score.lead_bounty_value = std::clamp( camp.explore_pressure, 0, 2 );
+    candidate.score.job_lead_fit_bonus = 1;
+    candidate.score.temperament_bias = lookup_or_zero( camp.temperament_bias, job_template::scout );
+    candidate.score.job_type_bonus = lookup_or_zero( camp.job_type_bonus, job_template::scout );
+    candidate.score.positive_pull = candidate.score.lead_bounty_value +
+                                    candidate.score.job_lead_fit_bonus +
+                                    candidate.score.temperament_bias +
+                                    candidate.score.job_type_bonus;
+    candidate.score.distance_multiplier = std::clamp( camp.explore_distance_multiplier, 0.15, 0.60 );
+    candidate.score.travel_shaped_pull = candidate.score.positive_pull * candidate.score.distance_multiplier;
+    candidate.score.pre_veto_job_score = candidate.score.travel_shaped_pull;
+    candidate.score.need_adjusted_job_score = candidate.score.pre_veto_job_score;
+    candidate.score.threat_gate_result = threat_gate::discount_only;
+    candidate.score.final_job_score = candidate.score.need_adjusted_job_score;
+    candidate.notes.push_back( "explicit bounded scout/explore outing for map uncovering" );
+    candidate.notes.push_back( "not a no_path fallback and not accidental random wandering" );
+    candidate.notes.push_back( "kept bounded on the current evaluator seam by a short explore envelope" );
+    return candidate;
+}
+
 std::string describe_valid_lead( const lead_input &lead )
 {
     return "valid " + to_string( lead.family ) + " lead envelope";
@@ -348,10 +412,15 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
             candidate.score.distance_multiplier = std::clamp( lead.distance_multiplier, 0.0, 1.0 );
             candidate.score.travel_shaped_pull = candidate.score.positive_pull * candidate.score.distance_multiplier;
             candidate.score.threat_penalty = lead.threat_penalty;
+            candidate.score.monster_pressure_bonus = std::max( 0, lead.monster_pressure_bonus );
+            candidate.score.target_coherence_bonus = std::max( 0, lead.target_coherence_bonus );
+            candidate.score.effective_threat_penalty = collapsed_effective_threat( lead );
             candidate.score.active_pressure_penalty = lead.active_pressure_penalty;
+            candidate.score.opportunism_bonus = opportunism_bonus_for( job, lead );
             candidate.score.pre_veto_job_score = candidate.score.travel_shaped_pull -
-                                                 candidate.score.threat_penalty -
-                                                 candidate.score.active_pressure_penalty;
+                                                 candidate.score.effective_threat_penalty -
+                                                 candidate.score.active_pressure_penalty +
+                                                 candidate.score.opportunism_bonus;
             candidate.score.shortage_band_bonus = shortage_band_bonus( camp.shortage );
             candidate.score.reward_profile_match = std::clamp( lead.reward_profile_match, 0, 2 );
 
@@ -368,6 +437,17 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
             candidate.score.final_job_score = candidate.score.need_adjusted_job_score;
             candidate.notes.push_back( "generated from " + to_string( lead.family ) + " envelope" );
 
+            if( candidate.score.monster_pressure_bonus > 0 || candidate.score.target_coherence_bonus > 0 ) {
+                std::ostringstream danger_note;
+                danger_note << "danger collapse: raw threat " << candidate.score.threat_penalty
+                            << " minus monster pressure " << candidate.score.monster_pressure_bonus
+                            << " and coherence break " << candidate.score.target_coherence_bonus
+                            << " -> effective threat " << candidate.score.effective_threat_penalty;
+                candidate.notes.push_back( danger_note.str() );
+            }
+            if( candidate.score.opportunism_bonus > 0 ) {
+                candidate.notes.push_back( "opportunism window: degraded target coherence adds a bounded push" );
+            }
             if( candidate.score.need_override_bonus > 0 ) {
                 result.metrics.need_override_rescues++;
                 candidate.notes.push_back( "need-pressure override rescued a mediocre real lead" );
@@ -410,6 +490,16 @@ evaluation_result evaluate( const camp_input &camp, const std::vector<lead_input
             }
 
             result.candidates.push_back( candidate );
+        }
+    }
+
+    if( camp.allow_bounded_explore ) {
+        if( camp.available_manpower < required_min_manpower( job_template::scout ) ) {
+            result.metrics.manpower_rejection_count++;
+        } else {
+            result.metrics.candidates_generated++;
+            result.metrics.score_evaluations++;
+            result.candidates.push_back( make_bounded_explore_candidate( camp ) );
         }
     }
 
@@ -475,7 +565,11 @@ std::string render_report( const evaluation_result &result )
             << ", distance_multiplier=" << candidate.score.distance_multiplier
             << ", travel_shaped_pull=" << candidate.score.travel_shaped_pull << "\n";
         out << "  threat_penalty=" << candidate.score.threat_penalty
+            << ", monster_pressure_bonus=" << candidate.score.monster_pressure_bonus
+            << ", target_coherence_bonus=" << candidate.score.target_coherence_bonus
+            << ", effective_threat_penalty=" << candidate.score.effective_threat_penalty
             << ", active_pressure_penalty=" << candidate.score.active_pressure_penalty
+            << ", opportunism_bonus=" << candidate.score.opportunism_bonus
             << ", pre_veto_job_score=" << candidate.score.pre_veto_job_score << "\n";
         out << "  shortage_band_bonus=" << candidate.score.shortage_band_bonus
             << ", reward_profile_match=" << candidate.score.reward_profile_match
