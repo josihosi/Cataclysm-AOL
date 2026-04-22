@@ -55,7 +55,13 @@ The helper-packaging question and the first-pass readability question are both n
   - `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`
   - fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/`
   - fresh current-build first-pass readability proof under `.userdata/dev-harness/harness_runs/20260422_144921/`
-- honest missing proof now: the current restage surface needs repeatability evidence, screen-first artifact polish, cleanup, and one small fast-reload fixture/scenario family so later playtesting does not depend on window litter or folklore
+- fresh harness-side repeatability/reporting/cleanup proof now lives under `.userdata/dev-harness/harness_runs/20260422_151547/`, via `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
+  - the packaged helper reran three times on the same McWilliams footing
+  - `filter_bandit_template.after` matched the expected filtered-bandit menu lines on all three runs
+  - each probe report now records a `cleanup` block, and all three repeatability runs exited with `cleanup.status = terminated`
+  - the run stayed runtime-current (`version_matches_runtime_paths = true`) while `version_matches_repo_head = false`, which is expected here because the tree changed only in harness/scenario files and no fresh tiles rebuild was required for this slice
+  - the new `repeatability.summary.txt` / `repeatability.report.json` surface is screen-first enough to show the remaining rough edge honestly: the right-panel anger line only OCR-matched on one of the three runs, so the operator can see capture sensitivity directly instead of pretending the generic `inconclusive_no_new_artifacts` verdict settled it
+- honest missing proof now: one small fast-reload fixture/save pack plus a named scenario family on top of this cleaned-up helper footing
 - this packet is primarily harness/helper/fixture work; live proof still matters, but another bare first-pass readability rerun is not the missing evidence class anymore
 
 ### Latest closed lane - Bandit + Basecamp first-pass encounter/readability packet v0
@@ -128,8 +134,9 @@ Current honest summary:
 A live probe is greenlit now.
 
 - Do **not** rerun the first-pass readability packet ceremonially now that its product question has an honest answer.
-- The current live question is playtest-surface quality: repeatability, better artifacts, cleanup, and faster reload/variant footing.
+- The current live question is fixture-backed playtest-kit quality on top of the now-proved repeatability/reporting/cleanup seam.
 - Prefer the named helper/readability scenarios over retyping the debug-menu choreography from memory.
+- Use `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw` when the question is whether the packaged helper still restages cleanly across reruns before or after fixture work.
 - If the kit work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
 
 ---
@@ -167,6 +174,7 @@ Use these when they are actually the missing evidence, not as ritual.
 ### Current active playtest-kit footing
 - `make -B -j4 TILES=1 cataclysm-tiles`
 - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`
+- `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
 - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_first_pass_readability_mcw`
 - preserve the screen/OCR artifacts that show repeatability, readability, cleanup behavior, and later fixture-backed variants
 
