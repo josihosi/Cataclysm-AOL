@@ -1,5 +1,19 @@
 # Technical Tome
 
+## Bandit mark-generation v0 spine
+- The bounded writer-side bandit seam is source-shaped, not world-sim theater: deterministic `signal_input` packets write or refresh typed marks, rebuild broad regional heat, and emit evaluator-ready leads without pretending a full hostile overmap ecosystem already exists.
+- Soft marks cool selectively by cadence tier, while confirmed threat stays sticky on the ledger until later real evidence rewrites it. That means weak smoke/searchlight pressure can fade back out, but recent ugly loss / hard-threat memory does not get passively wished away.
+- Playback is now the reviewer-readable bridge for this seam: generated mark state rides alongside the existing dry-run scenarios so the same reference packet can show both the overmap-side mark picture and the evaluator winner drift.
+- Human/route packets stay explicit and anti-magical: direct sightings always project to `moving_carrier`, same-camp routine traffic is suppressed instead of self-poisoning into hostile truth, shared/external repeated route activity usually projects to `corridor`, and only site-correlated traffic may yield a bounded `site` clue, with extraction jobs still blocked on that packet.
+- Repeated site reinforcement is deliberately modest: a site mark only gets reinforcement credit from mixed ordinary smoke/light/route activity, repeated one-kind noise stays weak, and the bonus tops out as bounded confidence/bounty amplification instead of unlocking magical settlement truth or free extraction jobs.
+
+## Smart Zone Manager v1 spine
+- Smart Zone Manager v1 is a one-off Basecamp helper, not an always-on rearrangement goblin: Zone Manager offers the prompt when a `CAMP_STORAGE` zone is first placed and again when that Basecamp zone is later repositioned/stretched.
+- The current v1 packet is deliberately narrow: one crafting niche, one food/drink niche, one equipment niche, plus support zones for clothing, dirty, rotten, unsorted, and blanket/quilt-on-beds.
+- The corrected fire knot is explicit and local: the fire-source tile itself gets `SOURCE_FIREWOOD`, one adjacent tile gets custom `splintered` plus `SOURCE_FIREWOOD`, and separate nearby wood storage stays distinct from that knot.
+- Rotten placement now searches outward for an outdoor passable tile instead of assuming the first ring outside the Basecamp rectangle is usable, so simple wall rings do not dump the rotten zone onto indoor or impassable junk.
+- Default posture is deterministic and non-destructive: reuse built-in loot/custom zone machinery where it fits, refuse to overwrite non-basecamp zones, and fall back to ordinary floor tiles instead of failing just because the furniture is ugly.
+
 ## Basecamp request routing spine
 - Basecamp-aware freeform/request routing now treats an NPC as a camp hearer when they are assigned to a camp and stationed there in an idle/null mission state, not only while a `FACTION_CAMP` role-id or guard mission is actively set.
 - Companion follow/lead/wait states still stay out of the camp-request lane, and `NPC_MISSION_GUARD_ALLY` still stays on the ordinary follower side even inside camp.
@@ -380,6 +394,8 @@ The richer hybrid Basecamp AI stays on `dev` until the deterministic spine is st
 ### Patrol Zone roadmap note
 - Patrol Zone V1 starts with explicit `CAMP_PATROL` tiles from Zone Manager, not invisible camp metadata.
 - The topology spine groups patrol tiles by 4-way connected components only. Diagonal touching does not merge posts, so the later planner can speak in simple cluster terms instead of fuzzy area heuristics.
+- The current intended v1 center is deliberately narrow: two shifts only, one-per-cluster coverage first, sticky on-shift roster, routine chores do not steal active guards, urgent disruption can, and hold-vs-loop behavior should stay readable enough that the player can tell why guards are standing, walking, uncovered, or off-shift.
+- Patrol Zone v1 still needs a few explicit small constants pinned down in code/spec instead of vibes: exact day/night cut, loop dwell time, reserve backfill timing, and off-shift posture.
 
 ### Follower-NPC caveat
 Do **not** blindly project the Basecamp deterministic-first rule onto follower NPCs.
@@ -447,6 +463,27 @@ That topic stays design-sensitive and should not be treated as settled just beca
 - The first live consumer is the structured Basecamp board handoff (`show_board`): when a real camp origin is available it prepends `planner_move=stay | move_omt dx=<signed_int> dy=<signed_int>` plus the shared `overmap:` block so prompt text and helper tests stay in sync.
 - Update prompt/snapshot explanation accordingly; lightweight axis/grid hints may help if the model needs better offset orientation.
 - Any malformed output resolves to `stay` (no side effects).
+
+#### Bandit dry-run evaluator seam v0
+- The first code-facing bandit seam is intentionally a **bounded abstract evaluator**, not autonomous world behavior.
+- Current implementation lives in `src/bandit_dry_run.{h,cpp}` and stays on controlled inputs / deterministic tests first.
+- The evaluator always seeds `hold / chill` as the score-0 baseline and generates outward candidates only from real valid lead envelopes with compatible template families.
+- The visible ladder is now explicit in code: positive pull -> distance shaping -> threat/pressure subtraction -> bounded need-pressure rescue -> threat gate -> downstream `no_path` invalidation.
+- `render_report()` is the first inspectable explanation surface for this seam: it prints leads considered, the full candidate board, per-candidate score terms, veto / soft-veto reasons, the winner versus `hold / chill`, and explicitly reports that no return-packet fields are touched in v0.
+- Keep later scenario playback and perf/save-budget work separate. This seam is the decision kernel footing, not permission to quietly ship the whole bandit system.
+
+#### Bandit pursuit handoff seam v0
+- The first overmap-to-bubble follow-through stays group-first and bounded: `src/bandit_pursuit_handoff.{h,cpp}` translates a winning scout/stalk candidate plus small abstract group state into an explicit local `entry_payload`, then back out through an explicit `return_packet`.
+- The entry-mode chooser is intentionally narrow for this packet: only `scout`, `probe`, `shadow`, and `withdrawal` are in play, keyed by the winning pursuit candidate, carrier family, contact certainty, and return pressure.
+- The return side preserves only the small abstract consequences this slice can honestly answer now, such as survivor count, anchored identity status, wound / morale burden, carried-vs-delivered cargo, threat/bounty writeback, learned marks, and retreat pressure.
+- `apply_return_packet()` updates abstract group continuity from that bounded packet, while `render_report()` keeps the seam reviewer-readable without pretending a full tactical AI or biography persistence stack exists.
+
+#### Bandit live-world ownership seam v0
+- The first real live-world hostile-bandit substrate now lives in `src/bandit_live_world.{h,cpp}` and persists through `overmap_global_state.bandit_live_world`.
+- This seam started as the owner ledger and now carries one first bounded control hook too: tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns claim at `map::place_npc` time, and nearby owned sites can now mint one bounded scout dispatch through `plan_site_dispatch(...)` / `apply_dispatch_plan(...)` instead of staying pure post-hoc bookkeeping.
+- Site identity is source-shaped and save-stable: overmap specials anchor to their bounded footprint, while map extras stay single-OMT micro-sites instead of inventing a giant settlement taxonomy early.
+- Membership is keyed by `character_id` plus the home spawn tile/template id so later dispatch and writeback can start from real spawned NPC continuity instead of folklore reconstruction.
+- The first cadence hook is intentionally narrow: `overmap_npc_move()` may select one nearby owned site, mark selected members outbound, and hand those actual NPCs normal `NPC_MISSION_TRAVELLING` overmap routes toward the current nearby player target; broader restage, messy local writeback, and richer cadence still belong to later slices.
 
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:
