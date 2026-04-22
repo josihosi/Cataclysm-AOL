@@ -39,31 +39,29 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is no active greenlit repo lane right now.
+The active greenlit repo lane is now **Bandit + Basecamp first-pass encounter/readability packet v0**.
 
 Current honest state:
-- the latest closed lane is now `Live bandit + Basecamp playtest packaging/helper packet v0` at `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
+- the authoritative active contract now lives at `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`
+- the latest closed lane is `Live bandit + Basecamp playtest packaging/helper packet v0` at `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
 - the landed helper is `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`, packaging the already-proved named-bandit restage seam on reused McWilliams/Basecamp footing
-- fresh current-build proof now lives under `.userdata/dev-harness/harness_runs/20260422_132353/`, with `window_title = Cataclysm: Dark Days Ahead - 7ab535f0c7`, `version_matches_repo_head = true`, and `version_matches_runtime_paths = true`
-- reviewer-readable artifacts from that run now show both the filtered `bandit` menu entries and the resulting hostile spawn (`Joshua Wilkes, Bandit gets angry!`) without needing remembered chat choreography
-- the remaining rough edges are explicit and bounded: this still rides the debug named-NPC spawn surface, still depends on the captured McWilliams fixture, and the probe artifact summary is still screen-first rather than debug-log-smart
-- `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this helper packet did not reopen zoning mechanics by drift
+- fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/` now means the next live pass can judge encounter readability instead of arguing about setup existence
+- the active job now is one bounded first-pass live encounter/readability packet on top of that helper path, focused on what the player can actually read and understand on screen when a hostile bandit is intentionally restaged on real Basecamp footing
+- `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this live packet should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, and repeated-site revisit follow-through
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-Not greenlit yet:
-- a broader `bandit + Basecamp first-pass encounter/readability` packet is now the obvious next candidate, but it stays ungreenlit until Josef explicitly promotes it
+This lane is about first-pass live readability/product truth, not fresh mechanics or broad tuning.
 
 ---
 
-## Waiting for next greenlight
+## Active lane - Bandit + Basecamp first-pass encounter/readability packet v0
 
-**Status:** WAITING FOR NEXT GREENLIGHT
+**Status:** ACTIVE / GREENLIT
 
-Latest closed packet:
-- `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
+Use the packaged helper path `bandit.basecamp_named_spawn_mcw` for the first real live encounter/readability pass on current Basecamp footing, and capture reviewer-readable artifacts strong enough to judge whether the encounter is legible, alive, and worth further follow-through.
 
-If the next live lane gets promoted, it should build on the packaged helper instead of reopening setup-existence arguments.
+Canonical contract lives at `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`.
 
 ---
 
@@ -73,7 +71,8 @@ Use the auxiliary docs below when a later discussion needs the canonical contrac
 
 ### Camp / Basecamp packets
 
-- `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md` (active)
+- `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md` (active)
+- `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
 - `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`
 - `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`
 - `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`

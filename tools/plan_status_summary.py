@@ -263,9 +263,9 @@ def run_self_test() -> None:
     current_waiting_titles = [section.title for section in parsed_current.sections if section.classification == "waiting"]
     current_parked_titles = [section.title for section in parsed_current.sections if section.classification == "parked"]
 
-    assert current_active_titles == []
+    assert current_active_titles == ["Active lane - Bandit + Basecamp first-pass encounter/readability packet v0"]
     assert current_greenlit_titles == []
-    assert current_waiting_titles == ["Waiting for next greenlight"]
+    assert current_waiting_titles == []
     assert any( "Bandit overmap AI" in title for title in current_parked_titles )
     assert any( "Future feature lanes" in title for title in current_parked_titles )
     assert any( "Checkpointed packet index" in warning for warning in parsed_current.warnings )
@@ -274,9 +274,9 @@ def run_self_test() -> None:
     active_render = render_view( parsed_current, "active" )
     greenlit_render = render_view( parsed_current, "greenlit" )
     waiting_render = render_view( parsed_current, "waiting" )
-    assert active_render == "active\n(none)"
-    assert greenlit_render == "greenlit\n(none)"
-    assert "Waiting for next greenlight" in waiting_render
+    assert "Bandit + Basecamp first-pass encounter/readability packet v0" in active_render
+    assert "Bandit + Basecamp first-pass encounter/readability packet v0" in greenlit_render
+    assert waiting_render == "waiting\n(none)"
 
     thin_parsed = parse_plan( SAMPLE_THIN_PLAN )
     assert [section.classification for section in thin_parsed.sections] == ["active", "parked"]

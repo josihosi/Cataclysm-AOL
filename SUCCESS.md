@@ -668,6 +668,26 @@ Notes:
 
 ---
 
+## Bandit + Basecamp first-pass encounter/readability packet v0
+
+Status: ACTIVE / GREENLIT
+
+Success state:
+- [ ] One bounded first-pass live encounter/readability packet exists for current bandit + Basecamp footing on top of the packaged helper path.
+- [ ] The packet says plainly what the first hostile encounter actually looks and feels like on screen, including whether the player can read what is happening without debug folklore.
+- [ ] The packet distinguishes readable gameplay pressure from leftover helper/debug awkwardness instead of mushing them together.
+- [ ] Any blocker is stated concretely, for example spawn weirdness, posture confusion, unreadable hostility, dead pacing, or Basecamp-context ambiguity.
+- [ ] The packet leaves reviewer-readable artifacts strong enough that Schani can make the next higher-level product read without reinventing the probe from memory.
+- [ ] The slice stays bounded and does not widen into fresh mechanics, broad tuning, or speculative feature expansion.
+
+Notes:
+- Canonical contract lives at `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`.
+- This packet builds directly on the closed helper seam `bandit.basecamp_named_spawn_mcw` instead of reopening setup-existence arguments.
+- The intended output is a first honest product/readability read, not a fake proof that the whole feature family is already finished.
+- If code changes become necessary, the packet must say exactly what contradiction forced them.
+
+---
+
 ## Post-Locker-V1 Basecamp follow-through
 
 Status: CHECKPOINTED / DONE FOR NOW

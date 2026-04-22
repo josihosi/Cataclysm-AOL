@@ -44,8 +44,17 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-No active probe obligation right now.
-The helper-packaging question is closed, and the next live question is not greenlit yet.
+Active probe obligation: `Bandit + Basecamp first-pass encounter/readability packet v0`.
+The helper-packaging question is closed. The missing truth is now first-pass live readability and product legibility on top of the packaged helper path.
+
+### Active lane - Bandit + Basecamp first-pass encounter/readability packet v0
+
+- canonical packet: `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`
+- starting helper footing comes from the closed packaging packet:
+  - `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`
+  - fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/`
+- honest missing proof now: one bounded live packet that shows what the hostile encounter actually looks and feels like on screen, whether the player can read what is happening, and whether the scene is meaningfully alive rather than just technically spawnable
+- this packet should preserve reviewer-readable screen/artifact evidence strong enough for later product judgment, not just shell success/failure output
 
 ### Latest closed lane - Live bandit + Basecamp playtest packaging/helper packet v0
 
@@ -103,11 +112,12 @@ Current honest summary:
 
 ## Pending probes
 
-No live probe is greenlit right now.
+A live probe is greenlit now.
 
 - Do **not** rerun the helper packet ceremonially now that the packaging question is closed.
-- The next honest live question, if Josef promotes it, is encounter/readability on top of the packaged helper path rather than another setup-existence argument.
-- If a later packet still uses this seam, prefer `bandit.basecamp_named_spawn_mcw` over retyping the debug-menu choreography from memory.
+- The current live question is encounter/readability on top of the packaged helper path rather than another setup-existence argument.
+- Prefer `bandit.basecamp_named_spawn_mcw` over retyping the debug-menu choreography from memory.
+- If this packet surfaces a real blocker, name it concretely instead of laundering dead/confusing behavior into vague vibes.
 
 ---
 
@@ -136,6 +146,11 @@ Use these when they are actually the missing evidence, not as ritual.
 ### Current live playtest-packaging/helper seam
 - `make -B -j4 TILES=1 cataclysm-tiles`
 - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`
+
+### Current first-pass encounter/readability seam
+- `make -B -j4 TILES=1 cataclysm-tiles`
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`
+- capture and preserve the screen/OCR artifacts that show the hostile encounter and immediate readability truth
 
 ## Local build caveat
 
