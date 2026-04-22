@@ -147,6 +147,80 @@ Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-pac
 
 `Writhing stalker` stays parked one step longer.
 If this stack lands cleanly, the stalker should be revisited later as the **first singleton adopter after the profile layer exists**, not crammed into the cannibal-camp proof.
+
+### Then, once that hostile-site stack is honest, the next bandit/basecamp pressure lane should be the full player-present robbery chain.
+
+Radio warfare, `writhing stalker`, and the broader Arsenic-and-Old-Lace social-threat garnish stay parked for later.
+The next bandit-specific menu should land in this order.
+
+### 4. Bandit approach / stand-off / attack-gate packet v0
+
+**Status:** GREENLIT
+
+Before bandits can rob the player or Basecamp honestly, they need one explicit local pressure law that decides whether a real dispatched group stalks, holds off, probes, opens a shakedown, attacks directly, or aborts.
+The point is to stop the robbery chain from feeling psychic, abrupt, or decorative.
+
+What this item should do:
+- land one bounded local approach / stand-off / attack-gate layer on top of the live bandit control seam
+- make the local posture explicit and reviewer-readable, using a small set such as `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, or `abort`
+- base that gate primarily on dispatch strength versus local threat/opportunity rather than folklore aggression
+- preserve readable stand-off pressure around Basecamp/player scenes without magical omniscience or instant tile collapse
+- allow convoy / vehicle / rolling-travel contexts to skip the polite shakedown posture when they honestly read as moving ambush opportunities
+
+Non-goals:
+- the pay-or-fight trading window itself
+- loot valuation or exact surrender-pool law
+- giant stealth doctrine / magical perfect sight avoidance
+- radio warfare, stalker pressure, or broader social-horror systems
+- full local combat AI rewrite
+
+Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
+
+### 5. Bandit shakedown pay-or-fight surface packet v0
+
+**Status:** GREENLIT
+
+Once the approach law can honestly decide that a scene is a shakedown instead of a hot ambush, make the actual player-present robbery surface real: bandits try to rob you, you can pay, or you can fight.
+Keep it hard, readable, and bounded.
+
+What this item should do:
+- land one honest bootstrap from the approach/gate layer into a player-present shakedown scene
+- start the encounter with a short readable stick-up bark/intent surface instead of a generic hostile aggro flip
+- expose one deliberately blunt first fork: `pay` or `fight`
+- use a trading-style surrender surface with a painful demand drawn from the honest reachable goods pool
+- let Basecamp-side scenes expose player + relevant nearby NPC + reachable Basecamp inventory, while off-base scenes expose only currently carried / vehicle-carried goods
+- allow surrendered goods to collapse into abstract bandit bounty/writeback rather than requiring perfect long-tail cargo theater
+
+Non-goals:
+- branching diplomacy theater or a fake debt economy
+- magical remote inventory access outside the honest current scene
+- convoy contexts that should honestly just open with violence
+- radio warfare, stalker pressure, hostage simulation, or reputation opera
+
+Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
+
+### 6. Bandit aftermath / renegotiation writeback packet v0
+
+**Status:** GREENLIT
+
+A robbery scene is fake if the world forgets it immediately.
+This packet makes the outcome stick: losses, wounds, taken goods, anger, caution, and the specific wanted beat where a killed Basecamp defender can let bandits reopen from a stronger position with a higher demand.
+
+What this item should do:
+- land one honest aftermath/writeback layer for player-present bandit shakedown scenes
+- write back losses, wounds, loot, failed extraction, anger, and caution into later bandit and target state
+- let partial or interrupted fights rewrite the next pressure pass instead of forcing every scene to resolve as one terminal event
+- allow one bounded renegotiation reopen when defender strength materially drops, especially if a Basecamp NPC dies and the bandits now read the scene as richer/safer prey
+- make that reopened demand explicitly harsher rather than replaying the same toll as if nothing changed
+- preserve both directions of truth: bandit losses or panic should also cool later pressure instead of only ratcheting cruelty upward
+
+Non-goals:
+- infinite renegotiation loops or endless haggling AI
+- broad diplomacy/reputation/morale opera
+- multi-camp retaliatory coalition logic
+- radio warfare, stalker pressure, or broader social-horror systems
+
+Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
 ---
 
 ## Checkpointed packet index

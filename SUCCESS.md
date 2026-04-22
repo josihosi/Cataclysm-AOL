@@ -830,6 +830,63 @@ Notes:
 
 ---
 
+## Bandit approach / stand-off / attack-gate packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One honest local approach / stand-off / attack-gate layer exists on top of the live bandit control seam.
+- [ ] Dispatched bandit groups can reviewer-readably choose among stalking, holding off, probing, opening a shakedown, attacking directly, or aborting.
+- [ ] The gate law is explicit enough that later packet work can answer `why did this become a shakedown instead of a fight` without folklore reconstruction.
+- [ ] Ordinary Basecamp/player pressure does not feel like instant psychic tile collapse because bandits can keep bounded stand-off behavior.
+- [ ] Convoy / vehicle / rolling-travel contexts are allowed to skip the polite shakedown posture when they honestly read as moving ambush opportunities.
+- [ ] The slice stays bounded: no pay-or-fight UI yet, no giant stealth doctrine, no radio/stalker widening, and no broad combat-AI rewrite.
+
+Notes:
+- Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
+- This is the first bandit-robbery packet behind the already-frozen hostile-site stack, not a reason to leapfrog the earlier greenlit order.
+- Radio warfare and `Writhing stalker` stay parked for later.
+
+---
+
+## Bandit shakedown pay-or-fight surface packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One honest player-present shakedown scene can bootstrap from the prior approach/gate packet instead of appearing as disconnected chat magic.
+- [ ] The initial interaction is clearly a robbery demand with a readable `pay` versus `fight` fork.
+- [ ] The surrender surface uses an explicit bounded goods pool that matches scene context rather than magical remote inventory reach.
+- [ ] The demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee.
+- [ ] Paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly.
+- [ ] The slice stays bounded: no branching diplomacy opera, no fake debt economy, no magical remote inventory, and no unrelated convoy-combat rewrite.
+
+Notes:
+- Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
+- This packet sits directly behind `Bandit approach / stand-off / attack-gate packet v0`.
+- The broad concept lean for explicit `pay` versus `fight` plus trading-style toll handling now has a bounded future packet instead of living only as attractive background muttering.
+
+---
+
+## Bandit aftermath / renegotiation writeback packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One honest aftermath/writeback layer exists for player-present bandit shakedown outcomes.
+- [ ] Later bandit behavior can reflect scene results such as losses, wounds, loot haul, failed extraction, anger, or caution instead of resetting to folklore.
+- [ ] A materially weakened Basecamp defense, including a killed defender, can reopen the pressure once from a stronger bandit position with a higher demand when that is the honest read.
+- [ ] The harsher reopened demand is explicit and reviewer-readable rather than hidden in vague score drift.
+- [ ] Bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet cruelty upward.
+- [ ] The slice stays bounded: no infinite haggling loops, no giant diplomacy/reputation machinery, and no multi-camp retaliation grand strategy.
+
+Notes:
+- Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
+- This packet sits directly behind `Bandit shakedown pay-or-fight surface packet v0`.
+- The specific wanted beat is frozen here: if bandits kill a Basecamp defender and the local threat read drops, they may reopen once from a stronger position with a higher toll instead of pretending nothing changed.
+
+---
+
 ## Bandit + Basecamp playtest kit packet v2
 
 Status: FOLDED INTO LATER ACTIVE LANE / SUPPORTING ONLY
