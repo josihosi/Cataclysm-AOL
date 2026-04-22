@@ -45,7 +45,7 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 ## Current relevant evidence
 
 Active probe obligation: `Bandit live-world control + playtest restage packet v0`.
-The active missing truth is no longer whether the harness can mutate one more prepared fixture. The real missing truth is whether the live bandit system actually owns, counts, restages, and writes back real spawned bandits on current build.
+The active missing truth is no longer whether the harness can mutate one more prepared fixture. The real missing truth is whether the live bandit system can move from owned spawned-bandit continuity into nearby restage, messy local contact, writeback, and perf proof on current build.
 
 ### Active lane - Bandit live-world control + playtest restage packet v0
 
@@ -54,13 +54,19 @@ The active missing truth is no longer whether the harness can mutate one more pr
   - `src/bandit_live_world.{h,cpp}` defines the saveable live owner ledger with explicit site/member/spawn-tile records
   - `map::place_npc` now claims tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns into `overmap_global_state.bandit_live_world`
   - save/load coverage now exists for that ledger through `tests/bandit_live_world_test.cpp`
-- narrow validation for this slice passed via:
-  - touched-object compile of `obj/{bandit_live_world,mapgen,overmapbuffer,savegame}.o`
+- the first bounded control seam is now landed on current tree too:
+  - `bandit_live_world::plan_site_dispatch(...)` and `apply_dispatch_plan(...)` turn one owned nearby site into a real bounded scout dispatch plan backed by the current saved member roster
+  - `overmap_npc_move()` can now apply that plan, mark the chosen members outbound, and hand those actual NPCs a normal `NPC_MISSION_TRAVELLING` overmap route toward the nearby player target
+- fresh narrow validation for the current control slice passed via:
+  - touched-object compile of `obj/{bandit_live_world,do_turn}.o`
   - exact test-object compile of `tests/bandit_live_world_test.cpp`
+  - `git diff --check`
+- earlier owner-ledger-only proof also passed on the current tree via:
+  - touched-object compile of `obj/{bandit_live_world,mapgen,overmapbuffer,savegame}.o`
   - standalone filtered run `./tests/cata_test_bandit_live_world "[bandit][live_world]"`
 - broad `make tests` is still not the honest gate for this slice today because current tree already fails earlier in unrelated code at `src/overmap_special_mutable.cpp`
 - required evidence now mixes live-world control proof, restage proof, and perf proof:
-  - fresh proof that the owned ledger actually drives real control/dispatch instead of stopping at spawn-time claim bookkeeping
+  - fresh current-build live proof that the new dispatch seam actually drives a nearby controlled site in play instead of stopping at compile-time route plumbing
   - fresh proof that dispatch party size follows the live remaining site population, so site-backed camps keep a home presence and local losses actually shrink later outings
   - fresh current-build live proof that a controlled bandit camp can be restaged about `10 OMT` away on demand
   - fresh current-build proof that the manual handoff path leaves the session alive for playtesting instead of auto-terminating after setup
