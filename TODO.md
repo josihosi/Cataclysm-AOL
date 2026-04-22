@@ -10,7 +10,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active lane: `Bandit live-world control + playtest restage packet v0`.
 
-- Wire the saved active outing summary into a real local-contact/aftermath trigger so later local outcomes can write back onto the exact owned members without folklore reconstruction, now that reserve math, loss-driven shrinkage, and deterministic return-packet application are explicit on the live owner seam.
-- Add the bounded near-player restage path: intentionally seed a controlled bandit camp about `10 OMT` away, and wire one reviewer probe/capture command plus one manual playtest command onto it now that `startup_harness.py handoff ...` can leave the session alive after setup.
-- Prove the live path on current build with real overmap/bubble interaction, local writeback, and a reviewer-clean perf readout covering baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost.
+- Establish one honest nearby bootstrap that yields a claimed owned site/member roster before any contact proof; the current `10 OMT` seed-only restage saves `bandit_live_world.owner_id` with `sites: []`, so there is nobody real to dispatch or write back.
+- Re-run or replace the moved-player bootstrap fallback on a corrected save anchor: the disposable `player_near_overmap_special` helper was only rewriting `player.location` while leaving top-level `levx/levy` on the old basecamp anchor, so the earlier nearby-site bootstrap conclusion is not honest current truth.
+- Once the nearby setup really owns members, prove the live path on current build with real overmap/bubble interaction, exact-member local writeback, and a reviewer-clean perf packet covering baseline single-turn cost, wait/pass-time cost, bandit-cadence turn cost, spike ratio, max turn cost, and at least one upper-pressure stress case on honest bandit footing.
 - Keep supporting harness work bounded and subordinate to the product: no giant generic map-authoring empire, no disconnected debug theater, and no fake integration that still leaves live bandits unmanaged.

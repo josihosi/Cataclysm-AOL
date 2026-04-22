@@ -60,25 +60,41 @@ The active missing truth is no longer whether the harness can mutate one more pr
   - `bandit_live_world::update_member_state(...)` now shrinks site and spawn-tile headcount when a member becomes `dead` or `missing`, so later writeback can reduce future dispatch capacity continuously instead of snapping back to the original claim count
   - site records now also persist one active outing summary (`active_group_id`, `active_target_id`, `active_member_ids`), and `bandit_live_world::apply_return_packet(...)` can apply a bounded handoff return packet back onto those exact owned members after save/load, clearing the active outing only when survivor accounting matches the packet instead of folklore-guessing the losses
   - `overmap_npc_move()` can now apply the dispatch plan, mark the chosen members outbound, and hand those actual NPCs a normal `NPC_MISSION_TRAVELLING` overmap route toward the nearby player target
-- fresh narrow validation for the current reserve/writeback seam passed via:
+- fresh narrow validation for the earlier reserve/writeback seam passed via:
   - touched-object compile of `obj/bandit_live_world.o`
   - exact test-object compile of `tests/bandit_live_world_test.cpp`
+  - `git diff --check`
+- the first bounded live aftermath observer is now landed on current tree too:
+  - `overmap_npc_move()` now inspects active owned outing members on the real NPC seam and records bounded `local_contact`, `dead`, and home-return observations instead of leaving the persisted outing summary inert once the dispatched bodies enter play
+  - `bandit_live_world::resolve_active_group_aftermath(...)` converts those observations into a bounded return packet only after every active member is resolved, so the owner no longer has to folklore-reconstruct which exact members died or made it back
+  - dead observed members can now shrink site/spawn-tile headcount on the live seam before the outing clears, while fully resolved aftermath still reuses the exact-member return-packet writeback path
+- fresh narrow validation for that live-aftermath hook passed via:
+  - touched-object compile of `obj/tiles/bandit_live_world.o`
+  - touched-object compile of `obj/tiles/do_turn.o`
+  - exact current-build compile of `tests/bandit_live_world_test.cpp`
   - `git diff --check`
 - earlier owner-ledger-only proof also passed on the current tree via:
   - touched-object compile of `obj/{bandit_live_world,mapgen,overmapbuffer,savegame}.o`
   - standalone filtered run `./tests/cata_test_bandit_live_world "[bandit][live_world]"`
-- the harness mode split is now real too, but only as helper plumbing so far:
+- the harness mode split is now real too, and the helper surface grew one bounded nearby-restage transform:
   - `tools/openclaw_harness/startup_harness.py handoff <scenario>` now reuses packaged scenario setup but writes `handoff.report.json`, records `cleanup.status = deferred_handoff`, and leaves the launched game alive instead of running `cleanup_game_process(...)` on success
-  - narrow helper validation passed via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, dry-run contract resolution for `handoff bandit.basecamp_playtestkit_restage_mcw`, and one real helper validation run at `.userdata/dev-harness/harness_runs/20260422_200937/` that left `cataclysm-tiles` running until Andi manually killed the validation session afterward
-  - that real helper validation stayed `version_matches_runtime_paths = false`, so it proves the handoff/no-cleanup split only; it does **not** count as current-build proof for the active nearby live-world-control packet
-- broad `make tests` is still not the honest gate for this slice today because current tree already fails earlier in unrelated code at `src/overmap_special_mutable.cpp`
+  - fixture manifests can now also apply bounded `seed_overmap_special_near_player` transforms alongside `player_mutations` and `player_near_overmap_special`, and the landed nearby-restage names stay `bandit_live_world_nearby_camp_v0_2026-04-22` plus `bandit.live_world_nearby_camp_mcw`
+  - narrow helper validation now passes via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py install-fixture bandit_live_world_nearby_camp_v0_2026-04-22 --profile andi-nearby-seed-check --fixture-profile live-debug --replace`, plus current-build `probe` / `handoff` on `bandit.live_world_nearby_camp_mcw`
+  - the seeded helper now keeps the player/basecamp footing at `om_pos [140, 41, 0]` and copies a real `bandit_camp` footprint onto `target_abs_omt [140, 51, 0]`, so the nearby site is about `10 OMT` away in the same overmap instead of by flinging the player across the world
+  - fresh current-build nearby-restage proof now lives under `.userdata/dev-harness/harness_runs/20260422_205630/` and `.userdata/dev-harness/harness_runs/20260422_205658/`; both runs stayed runtime-current (`version_matches_runtime_paths = true`), the probe auto-cleaned with `cleanup.status = terminated`, the handoff run stayed alive with `cleanup.status = deferred_handoff`, and the old `validate_camps()` / `invalid map position` load error no longer appears
+- fresh current-build `500`-turn save proof on that same nearby helper now lives under `.userdata/dev-harness/harness_runs/20260422_214610/`: the run advanced `500` turns, save-quit cleanly back to the menu, and `dimension_data.gsav` persisted `"bandit_live_world": { "owner_id": "hells_raiders_live_owner_v0", "sites": [] }`, which means the current seed-only nearby restage still has no claimed owned site/member roster to dispatch or write back
+- the disposable moved-player bootstrap retry was also not an honest workaround yet, but the current defect class is now grounded more precisely than “old popup vibes”: save inspection after `.userdata/dev-harness/harness_runs/20260422_221150/` showed `player.location = [3372,1212,0]` for target OMT `[140,50,0]` while top-level load anchor fields still stayed at `levx/levy = 275/77`, so the helper had rewritten the player position without actually moving the map-load anchor onto the seeded site footing
+- the helper bug is now fixed narrowly in `tools/openclaw_harness/startup_harness.py`: `player_near_overmap_special` also rewrites top-level `om_x/om_y/levx/levy/levz` while preserving the old player-to-bubble offset, and fresh install-only validation via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py install-fixture tmp_bandit_live_world_nearby_site2_bootstrap --profile andi-nearby-site2-fixcheck --fixture-profile live-debug --replace`, plus direct save inspection now shows `target_location = [3372,1212,0]` with matching `target_load_anchor = { om_x: 0, om_y: 0, levx: 276, levy: 96, levz: 0 }`
+- one changed diagnostic retry still sharpened the other half of the distinction instead of rerunning ceremony: immediate seed-only save probe `.userdata/dev-harness/harness_runs/20260422_220046/` again serialized `bandit_live_world ... sites: []`, while direct string inspection found no nearby bandit roster/template markers in `#Wm9yYWlkYSBWaWNr.sav.zzip`; that points the current blocker more toward “nearby roster never spawned/generated here” than “roster spawned and claim silently missed it” on the seed-only path
+- broad `make tests` is still not the honest gate for this slice today; the real next evidence remains live nearby control/writeback behavior on current build, not ceremonial broad test churn
 - required evidence now mixes live-world control proof, restage proof, and perf proof:
-  - fresh current-build live proof that the new dispatch seam actually drives a nearby controlled site in play instead of stopping at compile-time route plumbing
-  - fresh proof that the persisted active outing summary is exercised by a **real** local-contact/aftermath hook rather than only by deterministic return-packet tests
+  - fresh current-build proof that the nearby helper first produces a claimed owned site/member roster instead of only copying an overmap footprint that saves back as `sites: []`
+  - fresh current-build live proof that the new dispatch seam actually drives that honestly owned nearby site in play instead of stopping at compile-time route plumbing
+  - fresh current-build live proof that the newly landed **real** local-contact/aftermath hook actually fires on that owned nearby setup instead of only existing as code plus deterministic return-packet tests
   - fresh current-build live proof that a controlled bandit camp can be restaged about `10 OMT` away on demand
   - fresh current-build proof that the eventual nearby controlled-restage handoff path leaves the session alive for playtesting instead of auto-terminating after setup; the generic harness helper split now exists, but the active packet still needs this on the real nearby controlled site setup
-  - fresh reviewer-clean evidence that the nearby setup exercised the real overmap/bubble handoff plus local writeback path instead of stopping at persisted-but-untriggered ledger helpers
-  - a concrete perf readout on that nearby setup using baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost
+  - fresh reviewer-clean evidence that the nearby setup exercised the real overmap/bubble handoff plus local writeback path instead of stopping at a code-landed-but-unplayed observer seam
+  - a concrete perf packet on that nearby setup using baseline single-turn cost, wait/pass-time cost, bandit-cadence turn cost, spike ratio, and max turn cost
   - at least four explicit ugly-interaction/adversarial proofs, covering at minimum:
     - claim/bootstrap drift between real spawned NPC roster and owned site ledger
     - player disruption changing the scene before or during dispatch/contact
@@ -86,16 +102,18 @@ The active missing truth is no longer whether the harness can mutate one more pr
     - save/load or unload/reload without duplication, resurrection, or dropped ownership
 - the active lane is **not** honestly closed by one neat happy-path restage plus one calm perf number:
   - at least one aftermath/revisit cooling proof should show the system does not hard-reset to folklore, regrow dead members, or grow immortal pressure after contact
+  - at least one explicit wait/pass-time proof should show whether the annoying repeated-turn path stays acceptable once the live owner is active instead of only timing one isolated keypress turn
   - at least one messier-state perf proof should show whether the integrated scene stays acceptable once the player or local AI already disturbed it
 - the useful landed helper substrate from the old `v2` lane stays relevant here rather than wasted:
   - `tools/openclaw_harness/startup_harness.py` already resolves fixture-manifest `save_transforms`
-  - the current bounded shipped transform kind is `player_mutations`
-  - install/startup/probe reports already surface `applied_save_transforms`
+  - the current bounded shipped transform kinds are `player_mutations`, `player_near_overmap_special`, and `seed_overmap_special_near_player`
+  - install/startup/probe/handoff reports already surface `applied_save_transforms`
   - the first mutation-backed hostile-contact preset already exists at `tools/openclaw_harness/scenarios/bandit.basecamp_clairvoyance_contact_audit_mcw.json`
+  - the first nearby-restage preset at `tools/openclaw_harness/scenarios/bandit.live_world_nearby_camp_mcw.json` is now honest nearby-restage substrate instead of a load-breaking moved-player fakeout
 - but do **not** let that helper substrate masquerade as the answer:
   - the missing proof is live ownership/control of actual bandit spawns
   - the missing playtest bar includes a handoff mode that stays alive after setup
-  - the missing perf bar is a real nearby live setup, not abstract helper elegance
+  - the missing perf bar is a real nearby live setup, not abstract helper elegance or one calm vanity number from an undisturbed scene
 
 ### Latest closed lane - Bandit + Basecamp playtest kit packet v1
 
@@ -213,8 +231,9 @@ A live probe is still greenlit, but the next probe must answer control/restage q
 
 - Do **not** rerun the first-pass readability packet ceremonially now that its product question has an honest answer.
 - Do **not** keep rerunning the closed thin `v0` pack or the closed `v1` load audits unless a new live-control helper specifically needs that regression footing.
-- The next real live question is: can the owned ledger drive a nearby controlled bandit setup about `10 OMT` away and leave reviewer-readable evidence of real overmap/bubble interaction plus later writeback?
+- The next real live question is: does the corrected nearby-site bootstrap now honestly load beside the seeded camp and produce a claimed owned site about `10 OMT` away, so the ledger can then drive real overmap/bubble interaction plus later writeback?
 - The first missing code-side proof after this owner slice is not more serialization theater; it is one real dispatch/control path that consumes the saved site/member/spawn-tile ledger.
+- The current `seed_overmap_special_near_player` helper is not enough by itself for this packet while the saved nearby result still lands as `sites: []`; do not mistake copied terrain for owned roster truth.
 - When the next harness/probe helper lands, give it one named scenario or command path for reviewer use instead of laundering it through the old thin-pack names.
 - If the control/restage work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
 

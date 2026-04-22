@@ -33,7 +33,7 @@ So this packet binds the two needs together:
 7. Split that restage helper into two honest modes:
    - **probe / capture mode** may collect artifacts and clean up afterwards
    - **playtest handoff mode** must leave the game/session running after setup instead of auto-terminating it
-8. Produce a reviewer-clean performance readout on that real nearby setup, including baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost.
+8. Produce a reviewer-clean performance packet on that real nearby setup, including baseline single-turn cost, wait/pass-time cost, bandit-cadence turn cost, spike ratio, and max turn cost.
 9. Carry forward only the harness/helper work from `Bandit + Basecamp playtest kit packet v2` that directly serves this live-world-control packet.
 
 ## Non-goals
@@ -56,7 +56,7 @@ This packet is good enough when:
 6. that restage can be used both for reviewer capture and for manual playtesting, with the manual handoff mode **not** auto-terminating the session
 7. the setup exercises the real overmap/bubble handoff plus local writeback path rather than a fake isolated theater
 8. local outcomes change later world behavior instead of leaving the live owner stale, including later site size / dispatch capacity
-9. a reviewer-clean perf report exists for that nearby live setup, with the concrete metrics above
+9. a reviewer-clean perf report exists for that nearby live setup, with the concrete metrics above plus at least one honest upper-pressure stress pass
 10. the slice stays bounded instead of widening into a generic hostile-human or debug-platform empire
 
 ## Validation expectations
@@ -69,7 +69,7 @@ So validation should stay explicit and mixed:
 - fresh current-build live proof that the nearby controlled camp can be restaged on demand
 - fresh current-build proof that the manual handoff path leaves the playtest session running after setup
 - reviewer-readable evidence that the live system, nearby restage, and later writeback all exercised the real path instead of a private fake path
-- a concrete perf packet/report on the nearby setup using baseline turn time, cadence turn time, spike ratio, and max turn cost
+- a concrete perf packet/report on the nearby setup using baseline single-turn cost, wait/pass-time cost, cadence turn time, spike ratio, and max turn cost
 
 ## Review questions this packet should answer
 
@@ -272,6 +272,10 @@ Cleanest first shape:
 - record the chosen site id, anchor, expected roster, and any forced conditions reviewer-cleanly
 - fail loudly if placement/claiming cannot be done honestly on the current build
 
+Current grounded trap on this packet:
+- copying a `bandit_camp` footprint nearby is **not** enough by itself if the saved result still lands as `bandit_live_world.owner_id` with `sites: []`; that is only terrain placement, not owned-site truth
+- the obvious moved-player bootstrap fallback is also not automatically acceptable here, because the disposable `player_near_overmap_special` helper was caught rewriting `player.location` without moving the top-level save load anchor; until the corrected helper is re-proved live, prior nearby-site bootstrap conclusions from that path are not honest ownership proof
+
 Existing helpers should be reused, not discarded:
 - prepared McWilliams/Basecamp footing
 - fixture aliases and snapshot aliases
@@ -330,10 +334,15 @@ Good aftermath proof candidates:
 
 Josef already called out the reviewer-facing perf burden clearly.
 The packet should therefore report concrete metrics on the **same nearby live-owned setup**:
-- baseline turn time
-- bandit-cadence turn time
+- baseline single-turn cost
+- wait/pass-time cost on repeated turns, because that is where slowdown becomes actively miserable to play
+- bandit-cadence turn cost
 - spike ratio
 - max turn cost
+
+That should include at minimum:
+- one calm repeated-turn packet on the honest nearby owned setup
+- one messier or heavier stress packet on honest bandit footing, so the report does not hide behind the clean idle case
 
 The perf packet should not hide behind an abstract benchmark divorced from the actual restaged product surface.
 The abstract benchmark suite remains useful precedent for packet shape and readable metrics, but this lane needs the live nearby owned setup specifically.
@@ -392,7 +401,7 @@ The live proof should climb in deliberate steps:
 4. **aftermath/writeback proof**
    - prove later world behavior changed because of what happened locally
 5. **perf proof**
-   - record the concrete nearby metrics on the same setup
+   - record the concrete nearby metrics on the same setup, including wait/pass-time behavior instead of only one isolated turn cost
 
 The exact command names can evolve, but the evidence classes should not.
 
@@ -424,6 +433,7 @@ So closeout should include **at least four explicit ugly-interaction proofs**, c
    - failure shape we are trying to kill: endless stale pursuit, endless site pressure, or instant reset back to untouched folklore
 6. **messy-case perf proof**
    - measure not only the calm nearby setup but at least one messier interaction state where the player already disturbed the scene or local contact already happened
+   - if possible, push one honest nearby setup toward the upper pressure this packet can really generate and show whether repeated time-passing stays acceptable there too
    - failure shape we are trying to kill: a perf report that only looks fine in the clean idle setup while the real integrated scene spikes badly once play starts
 
 The exact scripts/runs can evolve.
