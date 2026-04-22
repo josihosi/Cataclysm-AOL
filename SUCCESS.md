@@ -720,23 +720,25 @@ Notes:
 
 ## Bandit + Basecamp playtest kit packet v1
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] A small named family of rich prepared-base fixtures exists for current Basecamp-management and bandit-interplay probing.
-- [ ] The fixtures are meaningfully management-ready rather than empty camp shells.
-- [ ] The player-side debugging/readability footing includes both clairvoyance mutations.
-- [ ] The fixture method is honest and reusable: captured save for structure, live restage for variants.
-- [ ] The scenario family is reviewer-readable enough that Schani, Andi, and Josef can tell which fixture is for which kind of playtest without folklore.
-- [ ] The packet says plainly what still remains manual, brittle, or not yet fixture-backed.
-- [ ] The slice stays about rich prepared fixtures rather than sprawling into a generic world-authoring platform.
+- [x] A small named family of rich prepared-base fixtures exists for current Basecamp-management and bandit-interplay probing.
+- [x] The fixtures are meaningfully management-ready rather than empty camp shells.
+- [x] The player-side debugging/readability footing includes both clairvoyance mutations.
+- [x] The fixture method is honest and reusable: captured save for structure, live restage for variants.
+- [x] The scenario family is reviewer-readable enough that Schani, Andi, and Josef can tell which fixture is for which kind of playtest without folklore.
+- [x] The packet says plainly what still remains manual, brittle, or not yet fixture-backed.
+- [x] The slice stays about rich prepared fixtures rather than sprawling into a generic world-authoring platform.
 
 Notes:
 - Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`.
-- This is now the active lane on top of the honestly closed thin `v0` footing, not a vague future idea.
-- The intended base footing includes the relevant management/interplay setup such as Basecamp zone, fireplace, smart zones, locker zones, patrol zones, armed NPCs, and food/supplies where appropriate for the named fixture.
-- The player fixture should carry both clairvoyance mutations explicitly for cleaner live debugging/readability.
-- Method reminder: captured save for structure, live restage for variants.
+- The current tree now closes this packet honestly on top of the closed thin `v0` footing instead of leaving the method row half-open.
+- The landed fixture pair stays `bandit_basecamp_prepared_base_v1_2026-04-22` and `bandit_basecamp_clairvoyance_v1_2026-04-22`, with the clairvoyance pack now reusing the prepared-base alias instead of carrying its own copied save payload.
+- `tools/openclaw_harness/startup_harness.py` now resolves fixture-manifest `save_transforms` and applies the bounded `player_mutations` restage helper during fixture install; `startup.result.json` / `probe.report.json` surface the applied transform under `fixture_install.applied_save_transforms`.
+- Fresh current-build closeout proof lives under `.userdata/dev-harness/harness_runs/20260422_172658/`, and the installed/post-load save still serializes both debug clairvoyance mutations in `traits`, `mutations`, and `cached_mutations`.
+- Narrow validation for the closeout slice passed via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py install-fixture bandit_basecamp_clairvoyance_v1_2026-04-22 --profile andi-v1-check --fixture-profile live-debug --replace`, and `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_audit_mcw`.
+- Audit honesty note still stands: the run folders contain screenshots and load-state metadata, but the generic harness artifact verdict for these screen-first audits still comes back `inconclusive_no_new_artifacts`.
 
 ---
 

@@ -8,11 +8,9 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Bandit + Basecamp playtest kit packet v1`.
+Active lane: `Bandit + Basecamp playtest kit packet v2`.
 
-- Start from the now-closed `v0` footing instead of rebuilding from folklore: the thin alias pack and the two shipped pack-family scenarios are the base, not something to throw away.
-- Build a small named family of richer prepared-base fixtures that are actually management-ready: relevant camp structures, supplies, armed NPC footing, and the important locker/patrol/smart-zone surfaces where they honestly fit.
-- Give the player-side debug/readability fixture both clairvoyance mutations and prove that footing reviewer-cleanly instead of leaving it as chat lore.
-- Keep the fixture method honest: captured save for structural camp footing, then small live/debug restage for bounded variants.
-- Say plainly what still remains manual, brittle, or not yet fixture-backed instead of pretending the first rich fixture family solved all future setup.
-- Keep it bounded: no fresh bandit mechanics, no generic custom-map empire, and no premature `v2` scenario-surgery sprawl.
+- Start from the now-landed `player_mutations` restage/report seam and choose the next smallest additional named mutation or preset that materially broadens prepared-base playtesting without duplicating whole saves.
+- Keep transform reporting explicit: what changed, where it was applied, and what the operator should now expect on screen.
+- Prove the next prepared-base variant on current build through the named transform path instead of another copied-save detour.
+- Keep it bounded: no fresh bandit mechanics, no generic custom-map empire, and no kitchen-sink debug-menu choreography layer.

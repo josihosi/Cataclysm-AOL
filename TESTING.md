@@ -44,24 +44,45 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Bandit + Basecamp playtest kit packet v1`.
-The thin `v0` pack is now closed honestly enough to build on. The missing truth is a richer prepared-base fixture family: management-ready camp footing, clearer player-side debug visibility, and honest notes about what still remains captured/manual.
+Active probe obligation: `Bandit + Basecamp playtest kit packet v2`.
+The rich `v1` fixture family is now closed honestly enough to build on. The active missing truth is broader scenario surgery and observability on top of prepared footing, not whether the prepared-base family exists.
 
-### Active lane - Bandit + Basecamp playtest kit packet v1
+### Active lane - Bandit + Basecamp playtest kit packet v2
+
+- canonical packet: `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`
+- `v2` now starts from one tiny landed mutation/reporting seam instead of a blank page:
+  - `tools/openclaw_harness/startup_harness.py` now resolves fixture-manifest `save_transforms`
+  - the current shipped bounded transform kind is `player_mutations`
+  - install/startup/probe reports now surface `applied_save_transforms`, so the harness can say what it changed instead of silently mutating the save
+- do **not** pretend that one helper closes `v2`:
+  - the current transform surface is still tiny
+  - broader prepared-base variants still need more named mutations/presets beyond the clairvoyance closeout
+  - operator-facing expectation/reporting should keep getting stronger as more transforms land
+- fresh current-build substrate proof for this seed helper lives under `.userdata/dev-harness/harness_runs/20260422_172658/` via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_audit_mcw`
+  - `startup.fixture_install.applied_save_transforms` records the `player_mutations` restage on the named clairvoyance pack
+  - the run stayed runtime-current (`version_matches_runtime_paths = true`) and cleaned up with `cleanup.status = terminated`
+  - the generic artifact verdict stayed `inconclusive_no_new_artifacts`, so screen/probe metadata remain the honest evidence class here
+- fresh narrow code check for this helper surface: `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+- until more `v2` helpers land, fresh proof should answer scenario-surgery questions, not reopen the already-closed fixture-family question
+
+### Latest closed lane - Bandit + Basecamp playtest kit packet v1
 
 - canonical packet: `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
-- the closed `v0` kit is now the starting surface, not an open question:
-  - thin alias save/profile manifests under `tools/openclaw_harness/fixtures/{saves,profiles}/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/`
-  - named pack-family scenarios `tools/openclaw_harness/scenarios/bandit.basecamp_playtestkit_restage_mcw.json` and `tools/openclaw_harness/scenarios/bandit.basecamp_playtestkit_readability_mcw.json`
-  - repeatability/reporting/cleanup proof under `.userdata/dev-harness/harness_runs/20260422_151547/`
-  - pack-backed live proof under `.userdata/dev-harness/harness_runs/20260422_152650/` and `.userdata/dev-harness/harness_runs/20260422_152819/`
-- the honest `v1` job is now richer fixture authoring on top of that closed base:
-  - ship a small named family of management-ready prepared fixtures instead of one thin alias pack
-  - make the important camp footing visible and reviewer-clean: relevant zones, armed NPCs, supplies, and general management-readiness
-  - give the player-side debug/readability fixture both clairvoyance mutations and verify that footing directly
-  - keep the method honest: captured save for structure, then small live/debug restage for bounded variants
-- fresh proof for this packet should be fixture-specific current-build reinstall/load evidence, not another ceremonial rerun of the closed `v0` readability packet
-- honest missing proof now: the richer fixtures do not exist yet, and no live evidence for their management-ready footing or clairvoyance-enabled player setup exists yet
+- the prepared-base family is now closed honestly:
+  - save/profile alias pair `tools/openclaw_harness/fixtures/{saves,profiles}/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/`
+  - save/profile alias pair `tools/openclaw_harness/fixtures/{saves,profiles}/live-debug/bandit_basecamp_clairvoyance_v1_2026-04-22/`
+  - named audit scenarios `tools/openclaw_harness/scenarios/bandit.basecamp_prepared_base_audit_mcw.json` and `tools/openclaw_harness/scenarios/bandit.basecamp_clairvoyance_audit_mcw.json`
+- the key closeout change is method honesty, not more fixture sprawl:
+  - `bandit_basecamp_clairvoyance_v1_2026-04-22` no longer needs its own copied save payload
+  - the fixture now reuses `bandit_basecamp_prepared_base_v1_2026-04-22` and applies a bounded manifest-level `player_mutations` restage for `DEBUG_CLAIRVOYANCE_PLUS` and `DEBUG_CLAIRVOYANCE`
+  - `startup.result.json` / `probe.report.json` now surface that restage in `fixture_install.applied_save_transforms`
+- fresh current-build closeout proof:
+  - load/capture audit under `.userdata/dev-harness/harness_runs/20260422_172658/`
+  - temp install proof via `python3 tools/openclaw_harness/startup_harness.py install-fixture bandit_basecamp_clairvoyance_v1_2026-04-22 --profile andi-v1-check --fixture-profile live-debug --replace`
+  - post-load save inspection on the installed dev-harness world still shows both clairvoyance mutations in `traits`, `mutations`, and `cached_mutations`
+- honest remaining rough edge from `v1` stays explicit:
+  - mutation-screen OCR still clearly catches `Debug Clairvoyance Super` better than the second entry
+  - that is an on-screen capture limitation, not a missing installed mutation state
 
 ### Latest closed lane - Bandit + Basecamp playtest kit packet v0
 
@@ -156,17 +177,20 @@ Current honest summary:
 
 ## Pending probes
 
-A live probe is still greenlit, but it should now answer `v1` fixture questions rather than re-argue closed `v0` footing.
+A live probe is still greenlit, but it should now answer `v2` scenario-surgery questions rather than reopen the already-closed `v1` fixture-method question.
 
 - Do **not** rerun the first-pass readability packet ceremonially now that its product question has an honest answer.
-- Do **not** keep rerunning the closed thin `v0` pack unless the new fixture work specifically needs a regression check against that base.
-- The current live question is richer prepared-fixture quality: can a named fixture load straight into meaningful camp-management and bandit-interplay footing, and is the player-side clairvoyance setup actually present?
-- Until new `v1` fixture probes exist, the closed `v0` commands remain the regression baseline:
+- Do **not** keep rerunning the closed thin `v0` pack or the closed `v1` load audits unless a new transform/helper specifically needs a regression check against that base.
+- The current live question is broader prepared-fixture mutation surface: can a named transform/preset change prepared-base footing materially, say what it changed, and leave reviewer-readable evidence without duplicating another whole save?
+- The new baseline helper command surface starts from the now-landed bounded seam:
+  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+  - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_audit_mcw`
+- The older closed commands remain only as regression baselines when needed:
   - `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
   - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_restage_mcw`
   - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_readability_mcw`
-- Once a richer fixture lands, add named fixture-specific load/probe paths instead of laundering them through the old thin pack names.
-- If the fixture work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
+- Once the next `v2` helper lands, add a named helper-specific load/probe path instead of laundering it through the old thin-pack or `v1` closeout names.
+- If the scenario-surgery work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
 
 ---
 
