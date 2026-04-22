@@ -750,7 +750,7 @@ Success state:
 - [x] One live saveable owner exists for the relevant current bandit spawn families tied to this lane instead of leaving them as disconnected static-content / mapgen islands.
 - [x] The owner keeps explicit per-site and per-spawn-tile bandit headcounts plus membership strongly enough that later control and writeback are honest rather than guessed.
 - [x] The live system can actually control or dispatch those spawned bandits through the real world path instead of leaving them as disconnected `place_npcs` islands with post-hoc bookkeeping or whole-camp outings.
-- [ ] Dispatch size is derived from the site's live remaining population strongly enough that site-backed camps keep a home presence and later losses/shrinkage reduce future outing size instead of snapping back to folklore counts.
+- [x] Dispatch size is derived from the site's live remaining population strongly enough that site-backed camps keep a home presence and later losses/shrinkage reduce future outing size instead of snapping back to folklore counts.
 - [ ] A bounded nearby restage path can seed a controlled bandit camp about `10 OMT` away on current build.
 - [ ] That restage path supports two honest modes: reviewer probe/capture may clean up, while manual playtest handoff leaves the game/session running instead of auto-terminating it.
 - [ ] The setup exercises the real overmap/bubble handoff plus local writeback path rather than a fake private theater.
@@ -764,7 +764,8 @@ Notes:
 - The first bounded live owner seam now exists in `src/bandit_live_world.{h,cpp}` plus `overmap_global_state.bandit_live_world`: tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns claim into one saveable owner ledger at `map::place_npc` time with explicit site/member/spawn-tile records.
 - Narrow validation for the owner-ledger slice passed earlier via touched-object compile of `obj/{bandit_live_world,mapgen,overmapbuffer,savegame}.o` plus a standalone filtered Catch binary for `tests/bandit_live_world_test.cpp`.
 - The current tree now adds the first bounded control seam on top of that ledger: `bandit_live_world::plan_site_dispatch(...)` / `apply_dispatch_plan(...)` build one real scout dispatch from owned members, and `overmap_npc_move()` can hand those selected NPCs a normal `NPC_MISSION_TRAVELLING` overmap route toward a nearby player target instead of leaving the owner as post-hoc bookkeeping only.
-- Fresh narrow validation for that control slice passed via touched-object compile of `obj/{bandit_live_world,do_turn}.o`, exact test-object compile of `tests/bandit_live_world_test.cpp`, and `git diff --check`; the wider tree still has an unrelated existing `make tests` failure in `src/overmap_special_mutable.cpp`.
+- That dispatch seam now derives outgoing capacity from the live remaining roster instead of folklore counts: site-backed camps keep one member home by rule, micro-sites can still commit their full tiny roster, and `update_member_state(...)` shrinks both site headcount and per-spawn-tile headcount when deaths/missing results land.
+- Fresh narrow validation for the reserve/shrinkage slice passed via touched-object compile of `obj/bandit_live_world.o`, exact test-object compile of `tests/bandit_live_world_test.cpp`, and `git diff --check`; the wider tree still has an unrelated existing `make tests` failure in `src/overmap_special_mutable.cpp`.
 - The restage seam is part of the product bar now: manual playtest handoff must stay alive after setup instead of rudely cleaning up as soon as things get interesting.
 
 ---

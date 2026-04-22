@@ -56,9 +56,11 @@ The active missing truth is no longer whether the harness can mutate one more pr
   - save/load coverage now exists for that ledger through `tests/bandit_live_world_test.cpp`
 - the first bounded control seam is now landed on current tree too:
   - `bandit_live_world::plan_site_dispatch(...)` and `apply_dispatch_plan(...)` turn one owned nearby site into a real bounded scout dispatch plan backed by the current saved member roster
-  - `overmap_npc_move()` can now apply that plan, mark the chosen members outbound, and hand those actual NPCs a normal `NPC_MISSION_TRAVELLING` overmap route toward the nearby player target
-- fresh narrow validation for the current control slice passed via:
-  - touched-object compile of `obj/{bandit_live_world,do_turn}.o`
+  - site-backed camps now keep one member home by rule while micro-sites can still commit their full small roster, because dispatchable capacity comes from `site_record::dispatchable_member_capacity()` instead of folklore counts
+  - `bandit_live_world::update_member_state(...)` now shrinks site and spawn-tile headcount when a member becomes `dead` or `missing`, so later writeback can reduce future dispatch capacity continuously instead of snapping back to the original claim count
+  - `overmap_npc_move()` can now apply the dispatch plan, mark the chosen members outbound, and hand those actual NPCs a normal `NPC_MISSION_TRAVELLING` overmap route toward the nearby player target
+- fresh narrow validation for the current reserve/shrinkage slice passed via:
+  - touched-object compile of `obj/bandit_live_world.o`
   - exact test-object compile of `tests/bandit_live_world_test.cpp`
   - `git diff --check`
 - earlier owner-ledger-only proof also passed on the current tree via:
@@ -67,7 +69,6 @@ The active missing truth is no longer whether the harness can mutate one more pr
 - broad `make tests` is still not the honest gate for this slice today because current tree already fails earlier in unrelated code at `src/overmap_special_mutable.cpp`
 - required evidence now mixes live-world control proof, restage proof, and perf proof:
   - fresh current-build live proof that the new dispatch seam actually drives a nearby controlled site in play instead of stopping at compile-time route plumbing
-  - fresh proof that dispatch party size follows the live remaining site population, so site-backed camps keep a home presence and local losses actually shrink later outings
   - fresh current-build live proof that a controlled bandit camp can be restaged about `10 OMT` away on demand
   - fresh current-build proof that the manual handoff path leaves the session alive for playtesting instead of auto-terminating after setup
   - fresh reviewer-clean evidence that the nearby setup exercised the real overmap/bubble handoff plus local writeback path

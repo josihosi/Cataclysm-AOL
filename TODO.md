@@ -10,8 +10,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active lane: `Bandit live-world control + playtest restage packet v0`.
 
-- Tighten the new world-side dispatch seam so outing size and eligibility come from the live remaining site population strongly enough that camps keep a home presence and later losses shrink future dispatch capacity instead of snapping back to folklore.
-- Teach the new control path to use the saved per-site, per-member, and per-spawn-tile ledger strongly enough that later local outcomes can write back without folklore reconstruction, and so kills/losses shrink later site size and dispatch capacity continuously.
+- Teach the new control path to use the saved per-site, per-member, and per-spawn-tile ledger strongly enough that later local outcomes can write back without folklore reconstruction, now that reserve/home-presence math and loss-driven capacity shrinkage are explicit on the live owner seam.
 - Add the bounded near-player restage path: intentionally seed a controlled bandit camp about `10 OMT` away, with one reviewer probe/capture mode and one manual playtest handoff mode that does **not** auto-terminate the session after setup.
 - Prove the live path on current build with real overmap/bubble interaction, local writeback, and a reviewer-clean perf readout covering baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost.
 - Keep supporting harness work bounded and subordinate to the product: no giant generic map-authoring empire, no disconnected debug theater, and no fake integration that still leaves live bandits unmanaged.
