@@ -222,6 +222,51 @@ Non-goals:
 - radio warfare, stalker pressure, or broader social-horror systems
 
 Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
+
+### 7. Bandit extortion-at-camp restage + handoff packet v0
+
+**Status:** GREENLIT
+
+Once the robbery chain is real, the harness should be able to attract a real controlled bandit group toward Basecamp and leave the scene alive at the interesting point instead of making Andi rediscover a one-off ritual every time.
+This packet is the bounded setup seam for that.
+
+What this item should do:
+- land one named restage/handoff packet for the Basecamp extortion chain
+- let the harness intentionally attract a **real controlled bandit group** toward current Basecamp/player footing through the live owner/dispatch path
+- provide one reviewer probe/capture command and one manual handoff command for that same path
+- leave the handoff session alive at a useful extortion-at-camp moment such as approach, stand-off, or opening shakedown state
+- keep the setup tied to honest current world footing rather than moved-player/basecamp hacks that break `game::validate_camps()`
+- keep the reports explicit enough that review can tell which setup mode ran and what scene state was reached
+
+Non-goals:
+- generic scenario/world-authoring empire
+- fake debug-spawn shortcuts that bypass the real controlled-bandit path
+- helper polish masquerading as the robbery chain itself
+- radio warfare, stalker pressure, or broader social-horror feature work
+
+Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
+
+### 8. Bandit extortion playthrough audit + harness-skill packet v0
+
+**Status:** GREENLIT
+
+Even with a real extortion scene and a real restage point, the job stays half-baked if only one operator remembers the magic sequence.
+This packet packages the full playthrough surface and teaches the harness/skill about it so Andi can deliberately run the whole chain.
+
+What this item should do:
+- land one named audit/playthrough packet for the full Basecamp extortion chain
+- cover at minimum: first demand, `pay`/`fight`, one fight-forward branch, one defender-loss reopen with higher demand, and the second `pay`/`fight` reconsideration fork
+- keep screen proof, deterministic proof, and artifact/report proof clearly separated instead of flattening them into one soup verdict
+- update the usable harness-facing docs/skill so later agents can discover and run the path without archaeological guessing
+- keep the packet focused on making the extortion chain playable/testable/teachable, not on reopening earlier feature-design arguments
+
+Non-goals:
+- inventing new robbery mechanics by stealth while packaging the audit
+- giant fully scripted automation that fakes every combat outcome
+- operator-only secret macro lore
+- radio warfare, stalker pressure, or broader social-horror packaging
+
+Canonical contract lives at `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md`.
 ---
 
 ## Checkpointed packet index

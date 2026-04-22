@@ -889,6 +889,43 @@ Notes:
 
 ---
 
+## Bandit extortion-at-camp restage + handoff packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One named restage path can attract a real controlled bandit group toward Basecamp through the actual live owner/dispatch seam.
+- [ ] One reviewer probe/capture command and one manual handoff command exist for that same path.
+- [ ] The handoff path leaves the session alive at a genuinely useful extortion-at-camp moment instead of cleaning up before play starts.
+- [ ] The setup does not rely on fake debug-spawn theater or on moved-player/basecamp hacks that break current camp validity.
+- [ ] Reviewer-readable reports make it obvious which setup mode ran, which real controlled group was used, and whether the scene reached approach, stand-off, or shakedown state.
+- [ ] The slice stays bounded: no generic harness empire and no helper polish masquerading as the robbery chain itself.
+
+Notes:
+- Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
+- This packet sits directly behind the robbery-chain packets and also depends on the active nearby-controlled-camp lane becoming honest first.
+- The current helper surface (`bandit_live_world_nearby_camp_v0_2026-04-22` / `bandit.live_world_nearby_camp_mcw`) is useful footing, but its moved-player McWilliams attempt still breaks `game::validate_camps()` and therefore does not yet count as this packet being done.
+
+---
+
+## Bandit extortion playthrough audit + harness-skill packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One named audit/playthrough surface exists for the full Basecamp extortion chain rather than only for the first setup moment.
+- [ ] The packaged flow can cover first demand, fight branch, defender-loss reopen, raised-price second demand, and second `pay` versus `fight` reconsideration clearly enough for review.
+- [ ] Reports separate screen, tests, and artifacts/logs cleanly enough that later debugging does not devolve into folklore.
+- [ ] The relevant harness skill/docs are updated so another agent can discover the named paths and run them without archaeological guessing.
+- [ ] The slice stays bounded: no fake total-automation empire and no feature-redesign side quest hiding inside audit packaging.
+
+Notes:
+- Canonical contract lives at `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md`.
+- This packet sits directly behind `Bandit extortion-at-camp restage + handoff packet v0`.
+- The point here is teachable reproducibility for the whole extortion chain, not another pile of operator-only secret moves.
+
+---
+
 ## Bandit + Basecamp playtest kit packet v2
 
 Status: FOLDED INTO LATER ACTIVE LANE / SUPPORTING ONLY
