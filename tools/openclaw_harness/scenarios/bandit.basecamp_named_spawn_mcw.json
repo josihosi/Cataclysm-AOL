@@ -85,5 +85,24 @@
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 18
     }
+  ],
+  "repeatability_count": 3,
+  "repeatability_expectations": [
+    {
+      "label": "filter_bandit_template.after",
+      "contains": [
+        "Choose NPC:",
+        "3 bandit",
+        "bandit_trader",
+        "bandit_mechanic",
+        "bandit_quartermaster"
+      ]
+    },
+    {
+      "label": "post_spawn_settle.after",
+      "contains": [
+        "Bandit gets angry!"
+      ]
+    }
   ]
 }

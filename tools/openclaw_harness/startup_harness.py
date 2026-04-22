@@ -21,6 +21,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -60,6 +61,13 @@ PATROL_RUNTIME_RE = re.compile(
     r"pos=(?P<pos>\([^)]*\)) target=(?P<target>\([^)]*\)) route=(?P<route>\[[^\]]*\])"
 )
 PATROL_COORD_RE = re.compile(r"\((-?\d+),(-?\d+),(-?\d+)\)")
+
+CLEANUP_ACCEPTED_STATUSES = {
+    "already_exited",
+    "terminated",
+    "terminated_during_kill_escalation",
+    "killed",
+}
 
 
 @dataclass
@@ -1599,6 +1607,66 @@ def launch_game(profile: str, target_world: str, run_dir: Path) -> subprocess.Po
     return subprocess.Popen(cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log, text=True)
 
 
+def pid_command(pid: int) -> str:
+    proc = subprocess.run(["ps", "-p", str(pid), "-o", "command="], capture_output=True, text=True, check=False)
+    return proc.stdout.strip()
+
+
+def wait_for_pid_exit(pid: int, timeout_seconds: float) -> bool:
+    deadline = time.monotonic() + max(timeout_seconds, 0.0)
+    while time.monotonic() < deadline:
+        if not pid_command(pid):
+            return True
+        time.sleep(0.1)
+    return not pid_command(pid)
+
+
+def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, Any]:
+    info: Dict[str, Any] = {
+        "pid": pid,
+        "grace_seconds": grace_seconds,
+    }
+    if pid <= 0:
+        info["status"] = "invalid_pid"
+        return info
+
+    command = pid_command(pid)
+    info["command"] = command
+    if not command:
+        info["status"] = "already_exited"
+        return info
+    if not re.search(r"cataclysm-(tiles|tlg-tiles)", command):
+        info["status"] = "skipped_non_cataclysm_process"
+        return info
+
+    try:
+        os.kill(pid, signal.SIGTERM)
+        info["signal"] = "SIGTERM"
+    except ProcessLookupError:
+        info["status"] = "already_exited"
+        return info
+    except PermissionError:
+        info["status"] = "permission_denied"
+        return info
+
+    if wait_for_pid_exit(pid, grace_seconds):
+        info["status"] = "terminated"
+        return info
+
+    try:
+        os.kill(pid, signal.SIGKILL)
+        info["signal"] = "SIGKILL"
+    except ProcessLookupError:
+        info["status"] = "terminated_during_kill_escalation"
+        return info
+    except PermissionError:
+        info["status"] = "permission_denied_on_kill"
+        return info
+
+    info["status"] = "killed" if wait_for_pid_exit(pid, 1.0) else "still_running_after_kill"
+    return info
+
+
 def load_fixture_manifest(path: Path) -> Dict[str, Any]:
     manifest_path = path / "manifest.json"
     if not manifest_path.exists():
@@ -2282,6 +2350,237 @@ def run_json_command(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
     return proc.returncode, payload, proc.stdout, proc.stderr
 
 
+def finalize_probe_report(run_dir: Optional[Path], report: Dict[str, Any], *, cleanup_pid: int = 0) -> None:
+    if cleanup_pid > 0 and "cleanup" not in report:
+        report["cleanup"] = cleanup_game_process(cleanup_pid)
+    if run_dir is not None:
+        write_json(run_dir / "probe.report.json", report)
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+
+
+def normalize_repeatability_expectations(raw_value: Any) -> List[Dict[str, Any]]:
+    expectations: List[Dict[str, Any]] = []
+    if not isinstance(raw_value, list):
+        return expectations
+    for index, raw in enumerate(raw_value, start=1):
+        if not isinstance(raw, dict):
+            raise SystemExit(f"Repeatability expectation #{index} is not an object")
+        label = str(raw.get("label", "")).strip()
+        if not label:
+            raise SystemExit(f"Repeatability expectation #{index} is missing label")
+        contains_raw = raw.get("contains", [])
+        if isinstance(contains_raw, str):
+            contains = [contains_raw.strip()] if contains_raw.strip() else []
+        elif isinstance(contains_raw, list):
+            contains = [str(value).strip() for value in contains_raw if str(value).strip()]
+        else:
+            contains = []
+        expectations.append({
+            "label": label,
+            "contains": contains,
+        })
+    return expectations
+
+
+def collect_companion_tail_lines(report: Dict[str, Any]) -> Dict[str, List[str]]:
+    lookup: Dict[str, List[str]] = {}
+    raw_helpers = report.get("companion_helpers", [])
+    if not isinstance(raw_helpers, list):
+        return lookup
+    for helper in raw_helpers:
+        if not isinstance(helper, dict):
+            continue
+        label = str(helper.get("label", "")).strip()
+        if not label or label in lookup:
+            continue
+        raw_lines = helper.get("tail_lines", [])
+        if isinstance(raw_lines, list):
+            lines = [str(line).strip() for line in raw_lines if str(line).strip()]
+        else:
+            lines = []
+        lookup[label] = lines
+    return lookup
+
+
+def evaluate_repeatability_expectations(
+    report: Dict[str, Any],
+    expectations: List[Dict[str, Any]],
+) -> Tuple[List[Dict[str, Any]], Dict[str, List[str]]]:
+    helper_lines = collect_companion_tail_lines(report)
+    results: List[Dict[str, Any]] = []
+    for expectation in expectations:
+        label = str(expectation.get("label", "")).strip()
+        contains = [str(value).strip() for value in expectation.get("contains", []) if str(value).strip()]
+        lines = helper_lines.get(label, [])
+        haystack = "\n".join(lines)
+        missing = [needle for needle in contains if needle not in haystack]
+        results.append({
+            "label": label,
+            "expected_contains": contains,
+            "matched": not missing,
+            "missing": missing,
+            "observed_tail_lines": lines,
+        })
+    return results, helper_lines
+
+
+def repeatability_run_summary(
+    ordinal: int,
+    returncode: int,
+    report: Dict[str, Any],
+    expectations: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    startup = report.get("startup", {}) if isinstance(report.get("startup"), dict) else {}
+    startup_screen = startup.get("screen", {}) if isinstance(startup.get("screen"), dict) else {}
+    cleanup = report.get("cleanup", {}) if isinstance(report.get("cleanup"), dict) else {}
+    expectation_results, helper_lines = evaluate_repeatability_expectations(report, expectations)
+    cleanup_status = str(cleanup.get("status", "")).strip()
+    return {
+        "run": ordinal,
+        "returncode": returncode,
+        "report_ok": bool(report.get("ok")),
+        "scenario": str(report.get("scenario", "")).strip(),
+        "run_dir": str(startup.get("run_dir", "") or report.get("run_dir", "")).strip(),
+        "verdict": str(report.get("verdict", "")).strip(),
+        "window_title": str(startup_screen.get("window_title", "")).strip(),
+        "version_matches_repo_head": startup_screen.get("version_matches_repo_head"),
+        "version_matches_runtime_paths": startup_screen.get("version_matches_runtime_paths"),
+        "cleanup": cleanup,
+        "cleanup_ok": cleanup_status in CLEANUP_ACCEPTED_STATUSES,
+        "expectations": expectation_results,
+        "helper_tail_lines": helper_lines,
+    }
+
+
+def render_repeatability_text_report(summary: Dict[str, Any]) -> str:
+    lines = [
+        f"Scenario: {summary.get('scenario', '')}",
+        f"Runs: {summary.get('run_count', 0)}",
+        f"Overall verdict: {summary.get('overall_verdict', '')}",
+        "",
+    ]
+    for run in summary.get("runs", []):
+        lines.append(
+            "Run {run}: verdict={verdict} cleanup={cleanup} runtime_current={runtime_current}".format(
+                run=run.get("run", "?"),
+                verdict=run.get("verdict", ""),
+                cleanup=run.get("cleanup", {}).get("status", ""),
+                runtime_current=run.get("version_matches_runtime_paths", None),
+            )
+        )
+        for expectation in run.get("expectations", []):
+            status = "ok" if expectation.get("matched") else "missing"
+            lines.append(f"  - {expectation.get('label', '')}: {status}")
+            for missing in expectation.get("missing", []):
+                lines.append(f"      missing: {missing}")
+        lines.append("")
+    aggregate = summary.get("aggregate_expectations", [])
+    if aggregate:
+        lines.append("Aggregate expectation status:")
+        for item in aggregate:
+            status = "stable" if item.get("all_runs_matched") else "mixed"
+            lines.append(f"- {item.get('label', '')}: {status} ({item.get('matched_runs', 0)}/{item.get('run_count', 0)} runs)")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def run_repeatability(args: argparse.Namespace) -> int:
+    scenario = load_scenario(args.scenario)
+    profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
+    world = args.world or str(scenario.get("world", ""))
+    fixture = args.fixture if args.fixture is not None else str(scenario.get("fixture", ""))
+    repeat_count = int(args.count if args.count is not None else scenario.get("repeatability_count", 3) or 3)
+    if repeat_count <= 0:
+        raise SystemExit("Repeatability run count must be > 0")
+
+    expectations = normalize_repeatability_expectations(scenario.get("repeatability_expectations", []))
+    base_cmd = [sys.executable, str(Path(__file__).resolve()), "probe", str(scenario.get("name", args.scenario))]
+    if args.profile:
+        base_cmd.extend(["--profile", args.profile])
+    if world:
+        base_cmd.extend(["--world", world])
+    if args.fixture is not None:
+        base_cmd.extend(["--fixture", fixture])
+    if args.replace_existing_worlds or bool(scenario.get("replace_existing_worlds", False)):
+        base_cmd.append("--replace-existing-worlds")
+
+    summary_run_dir = create_run_dir(profile)
+    if args.dry_run:
+        payload = {
+            "scenario": str(scenario.get("name", args.scenario)),
+            "profile": profile,
+            "world": world,
+            "fixture": fixture,
+            "count": repeat_count,
+            "expectations": expectations,
+            "probe_command": base_cmd,
+            "summary_run_dir": str(summary_run_dir),
+        }
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+
+    run_summaries: List[Dict[str, Any]] = []
+    raw_runs: List[Dict[str, Any]] = []
+    for ordinal in range(1, repeat_count + 1):
+        rc, payload, stdout, stderr = run_json_command(base_cmd)
+        raw_runs.append({
+            "run": ordinal,
+            "returncode": rc,
+            "stdout": stdout,
+            "stderr": stderr,
+            "report": payload,
+        })
+        run_summaries.append(repeatability_run_summary(ordinal, rc, payload, expectations))
+
+    aggregate_expectations: List[Dict[str, Any]] = []
+    for expectation in expectations:
+        label = str(expectation.get("label", "")).strip()
+        matched_runs = sum(
+            1
+            for run in run_summaries
+            for result in run.get("expectations", [])
+            if result.get("label") == label and result.get("matched")
+        )
+        aggregate_expectations.append({
+            "label": label,
+            "run_count": repeat_count,
+            "matched_runs": matched_runs,
+            "all_runs_matched": matched_runs == repeat_count,
+        })
+
+    all_runs_ok = all(run.get("returncode") == 0 and run.get("report_ok") for run in run_summaries)
+    all_runtime_current = all(run.get("version_matches_runtime_paths") is True for run in run_summaries)
+    all_cleanup_ok = all(run.get("cleanup_ok") for run in run_summaries)
+    all_expectations_ok = all(item.get("all_runs_matched") for item in aggregate_expectations) if aggregate_expectations else True
+    overall_verdict = "stable_repeatability_pass" if all_runs_ok and all_runtime_current and all_cleanup_ok and all_expectations_ok else "mixed_repeatability"
+
+    summary = {
+        "ok": True,
+        "scenario": str(scenario.get("name", args.scenario)),
+        "profile": profile,
+        "world": world,
+        "fixture": fixture,
+        "run_count": repeat_count,
+        "summary_run_dir": str(summary_run_dir),
+        "probe_command": base_cmd,
+        "expectations": expectations,
+        "runs": run_summaries,
+        "aggregate_expectations": aggregate_expectations,
+        "overall_verdict": overall_verdict,
+    }
+    write_json(summary_run_dir / "repeatability.report.json", summary)
+    write_json(summary_run_dir / "repeatability.raw_runs.json", {
+        "scenario": str(scenario.get("name", args.scenario)),
+        "runs": raw_runs,
+    })
+    (summary_run_dir / "repeatability.summary.txt").write_text(
+        render_repeatability_text_report(summary),
+        encoding="utf-8",
+    )
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    return 0
+
+
 def run_probe(args: argparse.Namespace) -> int:
     scenario = load_scenario(args.scenario)
     blocker_info = scenario_blocker_info(scenario)
@@ -2363,8 +2662,7 @@ def run_probe(args: argparse.Namespace) -> int:
             "blocked": blocker_info,
             "verdict": "blocked_helper_gap",
         }
-        write_json(run_dir / "probe.report.json", report)
-        print(json.dumps(report, indent=2, ensure_ascii=False))
+        finalize_probe_report(run_dir, report)
         return 2
 
     start_cmd = [sys.executable, str(Path(__file__).resolve()), "start", "--profile", profile]
@@ -2419,9 +2717,7 @@ def run_probe(args: argparse.Namespace) -> int:
             "start_stdout": start_stdout,
             "start_stderr": start_stderr,
         }
-        if run_dir is not None:
-            write_json(run_dir / "probe.report.json", report)
-        print(json.dumps(report, indent=2, ensure_ascii=False))
+        finalize_probe_report(run_dir, report, cleanup_pid=int(start_result.get("pid", 0)))
         return 1
 
     pid = int(start_result.get("pid", 0))
@@ -2432,7 +2728,7 @@ def run_probe(args: argparse.Namespace) -> int:
             "reason": "startup_missing_runtime_details",
             "startup": start_result,
         }
-        print(json.dumps(report, indent=2, ensure_ascii=False))
+        finalize_probe_report(run_dir, report, cleanup_pid=pid)
         return 1
 
     artifact_log, filter_debug_noise, resolved_artifact_source = resolve_artifact_source(profile, artifact_source)
@@ -2489,8 +2785,7 @@ def run_probe(args: argparse.Namespace) -> int:
             "runtime_warnings": runtime_warnings,
             "verdict": "blocked_runtime_prereqs",
         }
-        write_json(run_dir / "probe.report.json", report)
-        print(json.dumps(report, indent=2, ensure_ascii=False))
+        finalize_probe_report(run_dir, report, cleanup_pid=pid)
         return 0
 
     artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
@@ -2573,8 +2868,7 @@ def run_probe(args: argparse.Namespace) -> int:
         "runtime_warnings": runtime_warnings,
         "verdict": verdict,
     }
-    write_json(run_dir / "probe.report.json", report)
-    print(json.dumps(report, indent=2, ensure_ascii=False))
+    finalize_probe_report(run_dir, report, cleanup_pid=pid)
     return 0
 
 
@@ -2627,6 +2921,15 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--test-command", default="", help="Override the recommended deterministic test command recorded in the report.")
     probe_p.add_argument("--dry-run", action="store_true", help="Resolve the scenario contract and startup plan only.")
 
+    repeat_p = subparsers.add_parser("repeatability", help="Run the same packaged probe multiple times and summarize screen-first repeatability evidence.")
+    repeat_p.add_argument("scenario", help="Scenario name, e.g. bandit.basecamp_named_spawn_mcw")
+    repeat_p.add_argument("--count", type=int, default=None, help="How many probe runs to execute (defaults to scenario repeatability_count or 3).")
+    repeat_p.add_argument("--profile", default="", help="Override scenario profile.")
+    repeat_p.add_argument("--world", default="", help="Override scenario world.")
+    repeat_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
+    repeat_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
+    repeat_p.add_argument("--dry-run", action="store_true", help="Resolve the repeatability contract only.")
+
     return parser
 
 
@@ -2659,6 +2962,8 @@ def main() -> int:
         return 0
     if args.command == "probe":
         return run_probe(args)
+    if args.command == "repeatability":
+        return run_repeatability(args)
     parser.error(f"Unknown command: {args.command}")
     return 2
 
