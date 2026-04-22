@@ -2581,11 +2581,17 @@ def run_json_command(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
     return proc.returncode, payload, proc.stdout, proc.stderr
 
 
-def finalize_probe_report(run_dir: Optional[Path], report: Dict[str, Any], *, cleanup_pid: int = 0) -> None:
+def finalize_probe_report(
+    run_dir: Optional[Path],
+    report: Dict[str, Any],
+    *,
+    cleanup_pid: int = 0,
+    report_filename: str = "probe.report.json",
+) -> None:
     if cleanup_pid > 0 and "cleanup" not in report:
         report["cleanup"] = cleanup_game_process(cleanup_pid)
     if run_dir is not None:
-        write_json(run_dir / "probe.report.json", report)
+        write_json(run_dir / report_filename, report)
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
 
@@ -2812,7 +2818,7 @@ def run_repeatability(args: argparse.Namespace) -> int:
     return 0
 
 
-def run_probe(args: argparse.Namespace) -> int:
+def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario = load_scenario(args.scenario)
     blocker_info = scenario_blocker_info(scenario)
     profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
@@ -2839,11 +2845,14 @@ def run_probe(args: argparse.Namespace) -> int:
     steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
     raw_derived_screens = scenario.get("derived_screens", [])
     derived_screens = [entry for entry in raw_derived_screens if isinstance(entry, dict)] if isinstance(raw_derived_screens, list) else []
+    mode = "handoff" if handoff else "probe"
+    report_filename = "handoff.report.json" if handoff else "probe.report.json"
 
     if blocker_info["status"] == "blocked":
         run_dir = create_run_dir(profile)
         report = {
             "ok": False,
+            "mode": mode,
             "scenario": str(scenario.get("name", args.scenario)),
             "contract": {
                 "profile": profile,
@@ -2893,7 +2902,7 @@ def run_probe(args: argparse.Namespace) -> int:
             "blocked": blocker_info,
             "verdict": "blocked_helper_gap",
         }
-        finalize_probe_report(run_dir, report)
+        finalize_probe_report(run_dir, report, report_filename=report_filename)
         return 2
 
     start_cmd = [sys.executable, str(Path(__file__).resolve()), "start", "--profile", profile]
@@ -2915,6 +2924,7 @@ def run_probe(args: argparse.Namespace) -> int:
     start_rc, start_result, start_stdout, start_stderr = run_json_command(start_cmd)
     if args.dry_run:
         print(json.dumps({
+            "mode": mode,
             "scenario": scenario,
             "resolved_contract": {
                 "profile": profile,
@@ -2941,6 +2951,7 @@ def run_probe(args: argparse.Namespace) -> int:
     if start_rc != 0 or not start_result.get("ok"):
         report = {
             "ok": False,
+            "mode": mode,
             "scenario": str(scenario.get("name", args.scenario)),
             "reason": "startup_failed",
             "startup": start_result,
@@ -2948,27 +2959,34 @@ def run_probe(args: argparse.Namespace) -> int:
             "start_stdout": start_stdout,
             "start_stderr": start_stderr,
         }
-        finalize_probe_report(run_dir, report, cleanup_pid=int(start_result.get("pid", 0)))
+        finalize_probe_report(
+            run_dir,
+            report,
+            cleanup_pid=int(start_result.get("pid", 0)),
+            report_filename=report_filename,
+        )
         return 1
 
     pid = int(start_result.get("pid", 0))
     if pid <= 0 or run_dir is None:
         report = {
             "ok": False,
+            "mode": mode,
             "scenario": str(scenario.get("name", args.scenario)),
             "reason": "startup_missing_runtime_details",
             "startup": start_result,
         }
-        finalize_probe_report(run_dir, report, cleanup_pid=pid)
+        finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
         return 1
 
     artifact_log, filter_debug_noise, resolved_artifact_source = resolve_artifact_source(profile, artifact_source)
     runtime_blockers = probe_runtime_blockers(profile, resolved_artifact_source)
     runtime_warnings = probe_runtime_warnings(profile, resolved_artifact_source)
     if runtime_blockers:
-        blocked_screen = capture_screenshot(pid, run_dir, "probe_blocked")
+        blocked_screen = capture_screenshot(pid, run_dir, f"{mode}_blocked")
         report = {
             "ok": True,
+            "mode": mode,
             "scenario": str(scenario.get("name", args.scenario)),
             "contract": {
                 "profile": profile,
@@ -3016,17 +3034,17 @@ def run_probe(args: argparse.Namespace) -> int:
             "runtime_warnings": runtime_warnings,
             "verdict": "blocked_runtime_prereqs",
         }
-        finalize_probe_report(run_dir, report, cleanup_pid=pid)
+        finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
         return 0
 
     artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
-    screen_before = capture_screenshot(pid, run_dir, "probe_before")
+    screen_before = capture_screenshot(pid, run_dir, f"{mode}_before")
     step_reports = execute_probe_steps(pid, run_dir, steps)
     derived_screen_reports = render_derived_screens(run_dir, derived_screens)
-    screen_after = capture_screenshot(pid, run_dir, "probe_after")
+    screen_after = capture_screenshot(pid, run_dir, f"{mode}_after")
 
     artifact_text = read_log_delta(artifact_log, artifact_start, filter_debug_noise=filter_debug_noise)
-    artifact_path = run_dir / "probe.artifacts.log"
+    artifact_path = run_dir / f"{mode}.artifacts.log"
     if artifact_text:
         artifact_path.write_text(artifact_text, encoding="utf-8")
     matches_by_pattern = []
@@ -3058,6 +3076,7 @@ def run_probe(args: argparse.Namespace) -> int:
 
     report = {
         "ok": True,
+        "mode": mode,
         "scenario": str(scenario.get("name", args.scenario)),
         "contract": {
             "profile": profile,
@@ -3099,8 +3118,31 @@ def run_probe(args: argparse.Namespace) -> int:
         "runtime_warnings": runtime_warnings,
         "verdict": verdict,
     }
-    finalize_probe_report(run_dir, report, cleanup_pid=pid)
+    if handoff:
+        report["cleanup"] = {
+            "status": "deferred_handoff",
+            "pid": pid,
+            "reason": "manual_playtest_handoff",
+        }
+        report["handoff"] = {
+            "pid": pid,
+            "run_dir": str(run_dir),
+            "report_path": str(run_dir / report_filename),
+        }
+        (run_dir / "handoff.pid").write_text(f"{pid}\n", encoding="utf-8")
+        finalize_probe_report(run_dir, report, report_filename=report_filename)
+        return 0
+
+    finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
     return 0
+
+
+def run_probe(args: argparse.Namespace) -> int:
+    return run_probe_mode(args, handoff=False)
+
+
+def run_handoff(args: argparse.Namespace) -> int:
+    return run_probe_mode(args, handoff=True)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -3152,6 +3194,18 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--test-command", default="", help="Override the recommended deterministic test command recorded in the report.")
     probe_p.add_argument("--dry-run", action="store_true", help="Resolve the scenario contract and startup plan only.")
 
+    handoff_p = subparsers.add_parser("handoff", help="Run a packaged live setup and leave the game running for manual playtest handoff.")
+    handoff_p.add_argument("scenario", help="Scenario name, e.g. bandit.basecamp_playtestkit_restage_mcw")
+    handoff_p.add_argument("--profile", default="", help="Override scenario profile.")
+    handoff_p.add_argument("--world", default="", help="Override scenario world.")
+    handoff_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
+    handoff_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
+    handoff_p.add_argument("--advance-turns", type=int, default=None, help="Override the deterministic turn-advance count.")
+    handoff_p.add_argument("--settle-seconds", type=float, default=None, help="Override post-action settle time.")
+    handoff_p.add_argument("--artifact-pattern", default="", help="Override the artifact substring to match in the debug delta.")
+    handoff_p.add_argument("--test-command", default="", help="Override the recommended deterministic test command recorded in the report.")
+    handoff_p.add_argument("--dry-run", action="store_true", help="Resolve the scenario contract and startup plan only.")
+
     repeat_p = subparsers.add_parser("repeatability", help="Run the same packaged probe multiple times and summarize screen-first repeatability evidence.")
     repeat_p.add_argument("scenario", help="Scenario name, e.g. bandit.basecamp_named_spawn_mcw")
     repeat_p.add_argument("--count", type=int, default=None, help="How many probe runs to execute (defaults to scenario repeatability_count or 3).")
@@ -3193,6 +3247,8 @@ def main() -> int:
         return 0
     if args.command == "probe":
         return run_probe(args)
+    if args.command == "handoff":
+        return run_handoff(args)
     if args.command == "repeatability":
         return run_repeatability(args)
     parser.error(f"Unknown command: {args.command}")
