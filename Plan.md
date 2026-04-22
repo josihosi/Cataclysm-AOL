@@ -39,17 +39,29 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is no active greenlit repo lane right now.
-Do **not** invent one from nearby closed work.
+The active greenlit repo lane is now **Live bandit + Basecamp playtest packaging/helper packet v0**.
+Do **not** widen it into broad encounter judgment, fresh mechanics, or another feasibility lap.
 
-Current waiting state:
-- the latest closed lane is `Live bandit + Basecamp playtesting feasibility probe v0` at `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`
-- the latest camp-side audit/readout lane is `Basecamp AI capability audit/readout packet v0` at `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`
-- `Locker Zone V3` is checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`
-- the current bandit playtesting-readiness train is checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, and repeated-site revisit follow-through
-- `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet is now closed unless new evidence says it lied
+Current honest state:
+- the authoritative active contract now lives at `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
+- the latest closed lane is still `Live bandit + Basecamp playtesting feasibility probe v0` at `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`, and its key answer remains frozen: current-build bandit + Basecamp live playtesting is practical now, but the bandit restage seam is still ugly/debuggy rather than reviewer-clean packaged
+- the immediate job now is to package that already-proved named-bandit restage seam into one bounded helper/scenario path on existing Basecamp footing so later live playtests stop depending on remembered debug-menu choreography
+- `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this packet should reuse current camp footing, not reopen zoning mechanics by drift
+- the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, and repeated-site revisit follow-through
+- `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-The repo should stay in checkpointed waiting state until Josef explicitly greenlights the next bounded packet.
+Not greenlit yet:
+- a broader `bandit + Basecamp first-pass encounter/readability` packet can follow later, but only after this helper path exists and works cleanly enough that the next live pass measures gameplay rather than setup friction
+
+---
+
+## Active lane - Live bandit + Basecamp playtest packaging/helper packet v0
+
+**Status:** ACTIVE / GREENLIT
+
+Package the already-proved named-bandit restage seam into one bounded helper/scenario path on current Basecamp footing so later live playtests stop depending on remembered debug-menu choreography.
+
+Canonical contract lives at `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`.
 
 ---
 
@@ -59,6 +71,7 @@ Use the auxiliary docs below when a later discussion needs the canonical contrac
 
 ### Camp / Basecamp packets
 
+- `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md` (active)
 - `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`
 - `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`
 - `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`

@@ -647,6 +647,25 @@ Notes:
 
 ---
 
+## Live bandit + Basecamp playtest packaging/helper packet v0
+
+Status: GREENLIT / ACTIVE
+
+Success state:
+- [ ] One bounded helper or first-class harness scenario exists for current-build live bandit + Basecamp restage on real existing Basecamp footing.
+- [ ] The helper packages the already-proved named-bandit restage seam instead of relying on remembered debug-menu choreography alone.
+- [ ] One fresh live run proves the helper can reach the intended setup repeatably and leaves reviewer-readable artifacts.
+- [ ] The packet says plainly what remains manual or ugly, if anything, instead of laundering it into magic.
+- [ ] The slice stays bounded and does not widen into fresh mechanics, zoning-mechanics reopen, encounter/readability judgment, or another generic feasibility lap.
+
+Notes:
+- Canonical contract lives at `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`.
+- This packet exists because the feasibility question is closed; the missing truth is repeatable packaging/ergonomics on the already-proved restage seam.
+- Reuse the current McWilliams/Basecamp footing instead of inventing a fake toy scenario family.
+- If the packet lands as harness/helper/docs work only, keep the validation burden honest and proportionate.
+
+---
+
 ## Post-Locker-V1 Basecamp follow-through
 
 Status: CHECKPOINTED / DONE FOR NOW

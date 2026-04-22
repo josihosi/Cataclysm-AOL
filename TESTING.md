@@ -44,8 +44,17 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-No probe obligation is active right now.
-The repo is in checkpointed waiting state.
+Active probe obligation: `Live bandit + Basecamp playtest packaging/helper packet v0`.
+The missing truth is no longer feasibility. It is repeatable packaging/ergonomics on the already-proved bandit restage seam.
+
+### Active lane - Live bandit + Basecamp playtest packaging/helper packet v0
+
+- canonical packet: `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
+- starting evidence inherited from the closed feasibility packet:
+  - fresh current-build startup proof under `.userdata/dev/harness_runs/20260422_002122/`
+  - bounded named-bandit restage proof under `.userdata/dev-harness/harness_runs/20260422_002329/`
+- honest missing proof now: one reviewer-clean helper/scenario path that can restage the current Basecamp-plus-hostile-bandit live setup repeatably without relying on remembered debug-menu choreography alone
+- if this lane lands as harness/helper/docs work only, do not pretend broad rebuilds were the missing evidence class
 
 ### Latest closed lane - Live bandit + Basecamp playtesting feasibility probe v0
 
@@ -90,11 +99,12 @@ Current honest summary:
 
 ## Pending probes
 
-No active probe obligation is greenlit right now.
+Current active probe obligation is greenlit now.
 
-- Do not rerun the live-feasibility packet ceremonially.
-- Wait for a fresh greenlight before widening into packaging work or another live pass.
-- If the live-feasibility lane is deliberately reopened later, the next honest question is a packaging/helper packet for the named-bandit restage seam, not another generic feasibility lap.
+- Do **not** rerun the live-feasibility packet ceremonially.
+- The next honest live probe is the packaged helper/scenario path for the named-bandit restage seam.
+- If helper packaging lands cleanly, the later next question becomes encounter/readability, not another setup-existence argument.
+- If helper packaging cannot be made reviewer-clean without choosing between materially different operator flows or scope shapes, stop and nudge Josef with the exact choice instead of winging it.
 
 ---
 
@@ -119,6 +129,9 @@ Use these when they are actually the missing evidence, not as ritual.
 
 ### Fresh tiles rebuild only if a later combat-policy handoff really needs live proof
 - `make -j4 TILES=1 cataclysm-tiles`
+
+### Current live playtest-packaging/helper seam
+- `python3 tools/openclaw_harness/startup_harness.py probe <new-packaged-helper-scenario> --profile dev-harness --world McWilliams --fixture mcwilliams_live_debug_2026-04-07 --replace-existing-worlds`
 
 ## Local build caveat
 
