@@ -58,6 +58,11 @@ This is primarily harness/helper/fixture work, so validation should stay proport
 - Is the dedicated playtest fixture genuinely useful for debugging and scenario variation, or is it still too brittle to trust?
 - Did the packet stay a coherent pre-playtest kit, or did it start trying to become a whole harness platform?
 
+## Skill sync requirement
+
+Any helper, fixture, artifact/report surface, or operator workflow that lands from this packet should also be folded into the C-AOL harness skill instead of living only in repo canon or chat memory.
+For the broader generic skill package on this surface, Andi should draft the additions and Frau Knackal should review the skill before it is treated as settled.
+
 ## Position in the sequence
 
 This is not a replacement for the current active encounter/readability lane.

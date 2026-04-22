@@ -65,6 +65,11 @@ Validation should therefore bias toward:
 - Does the clairvoyance-enabled player fixture materially improve debug/readability work?
 - Did the packet create a useful fixture family instead of sprawling into save-hoarding chaos?
 
+## Skill sync requirement
+
+Any prepared fixtures, fixture naming conventions, reload flows, or clarity/debugging rules that land from this packet should also be reflected in the C-AOL harness skill instead of staying trapped in packet docs alone.
+For the broader generic skill package on this surface, Andi should draft the additions and Frau Knackal should review the skill before it is treated as settled.
+
 ## Position in the sequence
 
 This packet sits behind playtest kit v0.

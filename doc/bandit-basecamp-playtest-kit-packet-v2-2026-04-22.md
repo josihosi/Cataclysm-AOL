@@ -63,6 +63,11 @@ Validation should therefore stay explicit about evidence class:
 - Did the new helpers reduce duplicated save sprawl and manual setup ritual?
 - Is the observability good enough that setup failures stop disappearing into folklore?
 
+## Skill sync requirement
+
+Any named scenario mutations, transforms, debug-surface helpers, or observability/reporting conventions that land from this packet should also be folded back into the C-AOL harness skill so later agents can discover them without spelunking old packet docs.
+For the broader generic skill package on this surface, Andi should draft the additions and Frau Knackal should review the skill before it is treated as settled.
+
 ## Position in the sequence
 
 This packet sits behind playtest kit v1.
