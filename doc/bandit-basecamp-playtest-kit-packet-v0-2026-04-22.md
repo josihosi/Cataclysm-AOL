@@ -1,12 +1,12 @@
 # Bandit + Basecamp playtest kit packet v0 (2026-04-22)
 
-Status: GREENLIT / QUEUED NEXT.
+Status: ACTIVE / GREENLIT.
 
 ## Greenlight verdict
 
 Josef explicitly greenlit one larger cohesive pre-playtest infrastructure packet instead of another chain of tiny helper slices.
-The active lane stays the first-pass encounter/readability packet.
-This packet is the queued next follow-through if that active lane closes cleanly or if the missing value is now clearly playtest surface quality rather than another fresh mechanics debate.
+The first-pass encounter/readability packet is now closed with an honest verdict: real pressure exists, but the immediate read is weak enough that the missing value is clearly playtest-surface quality rather than another fresh mechanics debate.
+This packet is therefore the active follow-through.
 
 ## Why this packet exists
 
@@ -65,5 +65,5 @@ For the broader generic skill package on this surface, Andi should draft the add
 
 ## Position in the sequence
 
-This is not a replacement for the current active encounter/readability lane.
-It is the queued next cohesive infrastructure packet behind that active lane, intended to make the near-term human playtest window smoother once the first live readability truth is on the table.
+This is now the active cohesive infrastructure packet behind the closed first-pass encounter/readability lane.
+Its job is to make the near-term human playtest window smoother now that the first live readability truth is on the table.

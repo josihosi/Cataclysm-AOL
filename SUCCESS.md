@@ -670,27 +670,28 @@ Notes:
 
 ## Bandit + Basecamp first-pass encounter/readability packet v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded first-pass live encounter/readability packet exists for current bandit + Basecamp footing on top of the packaged helper path.
-- [ ] The packet says plainly what the first hostile encounter actually looks and feels like on screen, including whether the player can read what is happening without debug folklore.
-- [ ] The packet distinguishes readable gameplay pressure from leftover helper/debug awkwardness instead of mushing them together.
-- [ ] Any blocker is stated concretely, for example spawn weirdness, posture confusion, unreadable hostility, dead pacing, or Basecamp-context ambiguity.
-- [ ] The packet leaves reviewer-readable artifacts strong enough that Schani can make the next higher-level product read without reinventing the probe from memory.
-- [ ] The slice stays bounded and does not widen into fresh mechanics, broad tuning, or speculative feature expansion.
+- [x] One bounded first-pass live encounter/readability packet exists for current bandit + Basecamp footing on top of the packaged helper path.
+- [x] The packet says plainly what the first hostile encounter actually looks and feels like on screen, including whether the player can read what is happening without debug folklore.
+- [x] The packet distinguishes readable gameplay pressure from leftover helper/debug awkwardness instead of mushing them together.
+- [x] Any blocker is stated concretely, for example spawn weirdness, posture confusion, unreadable hostility, dead pacing, or Basecamp-context ambiguity.
+- [x] The packet leaves reviewer-readable artifacts strong enough that Schani can make the next higher-level product read without reinventing the probe from memory.
+- [x] The slice stays bounded and does not widen into fresh mechanics, broad tuning, or speculative feature expansion.
 
 Notes:
 - Canonical contract lives at `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`.
-- This packet builds directly on the closed helper seam `bandit.basecamp_named_spawn_mcw` instead of reopening setup-existence arguments.
-- The intended output is a first honest product/readability read, not a fake proof that the whole feature family is already finished.
-- If code changes become necessary, the packet must say exactly what contradiction forced them.
+- Fresh current-build proof lives under `.userdata/dev-harness/harness_runs/20260422_144921/` and uses the bounded live readability helper `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`.
+- The immediate read is weak and slightly puppet-show-ish: the spawn mostly lands as one more purple nearby-NPC name plus old right-panel clutter, so the player does not get a strong first-pass spatial read on why this person is the threat.
+- The encounter is still mechanically real and dangerous, not fake theater: within eight turns the same run records `Heath Griffith, Bandit gets angry!`, taunts, safe-mode survivor ping, gunfire, and the deaths of Katharina Leach and Robbie Knox.
+- The honest close-out verdict is therefore narrow and useful: real pressure exists, but first-pass readability is weak/confusing enough that the right next step is the playtest-kit surface-cleanup packet rather than another setup/readability feasibility loop.
 
 ---
 
 ## Bandit + Basecamp playtest kit packet v0
 
-Status: GREENLIT / QUEUED NEXT
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] The current named-bandit helper path has honest repeatability evidence instead of one lucky run.
@@ -703,7 +704,7 @@ Success state:
 
 Notes:
 - Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`.
-- This is the explicitly greenlit queued-next follow-through behind the current active encounter/readability lane, not a silent replacement for it.
+- This is now the active follow-through after the first-pass encounter/readability packet closed honestly.
 - The intended shape is one cohesive pre-playtest kit packet: repeatability soak, screen-first artifact polish, probe auto-cleanup, and one small purpose-built playtest fixture/save pack.
 - The fixture may use a clear spawn anchor such as an LMOE-or-similar shelter, but the packet must stay honest if the cleanest first version still depends on a captured save rather than a fully declarative authored-world system.
 - Non-goal reminder: no fresh bandit mechanics, no zoning reopen, no generic custom-map framework, and no infinite scenario sandbox.
@@ -712,7 +713,7 @@ Notes:
 
 ## Bandit + Basecamp playtest kit packet v1
 
-Status: GREENLIT / QUEUED AFTER V0
+Status: GREENLIT / QUEUED NEXT
 
 Success state:
 - [ ] A small named family of rich prepared-base fixtures exists for current Basecamp-management and bandit-interplay probing.

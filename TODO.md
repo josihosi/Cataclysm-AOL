@@ -8,10 +8,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Bandit + Basecamp first-pass encounter/readability packet v0`.
+Active lane: `Bandit + Basecamp playtest kit packet v0`.
 
-- Use `bandit.basecamp_named_spawn_mcw` for the first real live encounter/readability pass on current Basecamp footing.
-- Capture reviewer-readable artifacts that preserve what the player can actually read and understand on screen.
-- Distinguish real encounter/readability truth from leftover helper/debug awkwardness instead of mushing them together.
-- Keep it bounded: no new bandit mechanics, no zoning-mechanics reopen, no broad tuning spree.
-- If the live pass hits a real product-shape ambiguity instead of an ordinary blocker, stop and nudge Josef with the exact choice.
+- Use the closed helper/readability footing (`bandit.basecamp_named_spawn_mcw` plus `bandit.basecamp_first_pass_readability_mcw`) as the starting surface instead of reopening setup/readability feasibility.
+- Add bounded repeatability evidence for the current restage surface so later playtest runs are not riding on one lucky pass.
+- Improve the screen-first artifact/report surface so the live truth is clearer than the current generic `inconclusive_no_new_artifacts` verdict.
+- Package cleanup so repeated probes do not keep leaving a live game window behind like abandoned cutlery.
+- Build one fast-reload playtest fixture/save pack with a small named scenario family for current bandit + Basecamp probing.
+- Keep it bounded: no fresh bandit mechanics, no zoning-mechanics reopen, no broad harness-platform vanity project.

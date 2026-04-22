@@ -44,17 +44,30 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Bandit + Basecamp first-pass encounter/readability packet v0`.
-The helper-packaging question is closed. The missing truth is now first-pass live readability and product legibility on top of the packaged helper path.
+Active probe obligation: `Bandit + Basecamp playtest kit packet v0`.
+The helper-packaging question and the first-pass readability question are both now closed enough to move on. The missing truth is now repeatability, screen-first artifact clarity, cleanup, and fast-reload playtest footing on top of the proven helper paths.
 
-### Active lane - Bandit + Basecamp first-pass encounter/readability packet v0
+### Active lane - Bandit + Basecamp playtest kit packet v0
+
+- canonical packet: `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
+- starting helper/readability footing now comes from the closed helper and first-pass packets:
+  - `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`
+  - `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`
+  - fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/`
+  - fresh current-build first-pass readability proof under `.userdata/dev-harness/harness_runs/20260422_144921/`
+- honest missing proof now: the current restage surface needs repeatability evidence, screen-first artifact polish, cleanup, and one small fast-reload fixture/scenario family so later playtesting does not depend on window litter or folklore
+- this packet is primarily harness/helper/fixture work; live proof still matters, but another bare first-pass readability rerun is not the missing evidence class anymore
+
+### Latest closed lane - Bandit + Basecamp first-pass encounter/readability packet v0
 
 - canonical packet: `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`
-- starting helper footing comes from the closed packaging packet:
-  - `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`
-  - fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/`
-- honest missing proof now: one bounded live packet that shows what the hostile encounter actually looks and feels like on screen, whether the player can read what is happening, and whether the scene is meaningfully alive rather than just technically spawnable
-- this packet should preserve reviewer-readable screen/artifact evidence strong enough for later product judgment, not just shell success/failure output
+- fresh current-build proof lives under `.userdata/dev-harness/harness_runs/20260422_144921/`
+- the bounded live readability helper for this packet is now `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`
+- the packet used the already-closed helper seam and then captured immediate plus short-horizon screen artifacts (`immediate_{full,local,right_panel}` and `after_8_turns_{full,local,right_panel}`) instead of pretending the generic artifact verdict could answer the product question by itself
+- immediate on-screen read is weak: the spawn mostly reads as one more purple nearby-NPC name plus old movement/saving clutter, so the player does not get a strong first-pass spatial read on why this new person is the threat
+- eight turns later the encounter is unmistakably real and dangerous, but still mostly through the right-panel log rather than clean spatial staging: `Heath Griffith, Bandit gets angry!`, taunts, safe-mode survivor ping, gunfire, and the deaths of Katharina Leach and Robbie Knox all land in the log
+- honest verdict: the encounter is mechanically present and dangerous enough to justify more follow-through, but first-pass readability is weak/confusing enough that the correct next step is playtest-surface polish rather than another setup/readability feasibility lap
+- no deterministic tests were added or rerun because this packet stayed on live probe / artifact work only; fresh live proof came from the current tiles binary and `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_first_pass_readability_mcw`
 
 ### Latest closed lane - Live bandit + Basecamp playtest packaging/helper packet v0
 
@@ -114,10 +127,10 @@ Current honest summary:
 
 A live probe is greenlit now.
 
-- Do **not** rerun the helper packet ceremonially now that the packaging question is closed.
-- The current live question is encounter/readability on top of the packaged helper path rather than another setup-existence argument.
-- Prefer `bandit.basecamp_named_spawn_mcw` over retyping the debug-menu choreography from memory.
-- If this packet surfaces a real blocker, name it concretely instead of laundering dead/confusing behavior into vague vibes.
+- Do **not** rerun the first-pass readability packet ceremonially now that its product question has an honest answer.
+- The current live question is playtest-surface quality: repeatability, better artifacts, cleanup, and faster reload/variant footing.
+- Prefer the named helper/readability scenarios over retyping the debug-menu choreography from memory.
+- If the kit work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
 
 ---
 
@@ -147,10 +160,15 @@ Use these when they are actually the missing evidence, not as ritual.
 - `make -B -j4 TILES=1 cataclysm-tiles`
 - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`
 
-### Current first-pass encounter/readability seam
+### Closed first-pass encounter/readability seam
+- `make -B -j4 TILES=1 cataclysm-tiles`
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_first_pass_readability_mcw`
+
+### Current active playtest-kit footing
 - `make -B -j4 TILES=1 cataclysm-tiles`
 - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`
-- capture and preserve the screen/OCR artifacts that show the hostile encounter and immediate readability truth
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_first_pass_readability_mcw`
+- preserve the screen/OCR artifacts that show repeatability, readability, cleanup behavior, and later fixture-backed variants
 
 ## Local build caveat
 

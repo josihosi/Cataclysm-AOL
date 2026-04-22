@@ -1,62 +1,93 @@
 # Bandit + Basecamp first-pass encounter/readability packet v0 (2026-04-22)
 
-Status: GREENLIT / ACTIVE.
+Status: CHECKPOINTED / DONE FOR NOW.
 
-## Greenlight verdict
+## Outcome verdict
 
-The setup-existence question is closed and the helper-packaging question is closed.
-The next honest step is the first real encounter/readability pass on top of the packaged helper path.
+This packet is now closed.
 
-This packet exists to answer the first live product question now that setup friction is no longer the whole story: when a hostile bandit is intentionally restaged on real Basecamp footing, is the encounter readable, legible, and alive enough to deserve further expansion, or does it still collapse into screen-noise / setup-jank / unclear behavior.
+The setup-existence question was already closed, and this packet answered the next honest live product question on top of that helper seam:
 
-## Scope
+- the encounter is **mechanically real and immediately dangerous** on current McWilliams/Basecamp footing
+- the encounter is **not first-pass readable enough on screen** to feel clean yet
+- the main problem is not "can a hostile bandit exist here" anymore; it is that the current restage mostly reads through the right-panel log instead of through strong spatial staging on the playfield
 
-1. Use the packaged helper path `bandit.basecamp_named_spawn_mcw` on real McWilliams/Basecamp footing instead of reopening setup arguments.
-2. Run a bounded first-pass live encounter/readability probe focused on what the player can actually read and understand on screen.
-3. Produce one reviewer-readable packet that separates:
-   - screen/readability truth
-   - setup/helper truth that is already solved versus still slightly ugly
-   - concrete blockers or tuning questions
-   - artifacts that let later discussion argue about the encounter instead of folklore
-4. Classify the result honestly as something like readable enough to continue, blocked on concrete readability issues, or mechanically present but still dead/confusing.
+So the right next step is the already-greenlit **Bandit + Basecamp playtest kit packet v0**: repeatability, screen-first artifact polish, cleanup, and better fast-reload playtest footing.
 
-## Non-goals
+## What the live run actually showed
 
-- new bandit mechanics
-- reopening Basecamp zoning mechanics
-- broad benchmark or perf work
-- pretending one first-pass live packet is full game validation
-- reopening helper packaging unless this packet finds a concrete contradiction there
-- solving every future bandit encounter type in one go
+Fresh current-build proof lives under `.userdata/dev-harness/harness_runs/20260422_144921/`.
 
-## Success shape
+The bounded live helper for this packet is now:
+- `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`
 
-This packet is good enough when:
-1. one bounded first-pass live encounter/readability packet exists for current bandit + Basecamp footing on top of the packaged helper path
-2. the packet says plainly what the first hostile encounter actually looks and feels like on screen, including whether the player can read what is happening without debug folklore
-3. the packet distinguishes readable gameplay pressure from leftover helper/debug awkwardness instead of mushing them together
-4. any blocker is stated concretely, for example spawn weirdness, posture confusion, unreadable hostility, dead pacing, or Basecamp-context ambiguity
-5. the packet leaves reviewer-readable artifacts strong enough that Schani can make the next higher-level product read without reinventing the probe from memory
-6. the slice stays bounded and does not widen into fresh mechanics, broad tuning, or speculative feature expansion
+That helper reuses the closed packaging seam and captures:
+- immediate full/local/right-panel state after spawn
+- short-horizon full/local/right-panel state after eight turns
+- OCR companions for the right-panel captures
 
-## Validation expectations
+### Immediate read
 
-The missing evidence class is now live behavior and readability.
-So:
+Immediate on-screen readability is weak.
 
-- use the packaged helper path instead of retyping setup choreography
-- prefer fresh current-build live proof when the probe depends on on-screen behavior
-- capture artifacts that preserve the actual encounter/readability truth, not just pass/fail shell output
-- if code changes become necessary, add the narrowest relevant validation and say exactly what contradiction forced code work
+The spawn mostly lands as:
+- one more purple nearby-NPC name (`Heath Griffith`)
+- old movement/saving clutter still sitting in the right-panel log
+- no especially strong first-pass spatial cue explaining why this new person is the threat
 
-## Review questions this packet should answer
+So the first read still feels closer to "debug-spawn puppet show" than to a naturally legible hostile encounter.
 
-- Can the player tell what just happened and why the bandit is hostile?
-- Does the encounter feel like a real pressure event rather than a debug-spawn puppet show?
-- Does the Basecamp footing help the scene read, or does it mainly add confusion?
-- Is the current live seam interesting enough to justify a deeper follow-up, or does it first need a concrete readability/mechanics repair?
+### After eight turns
 
-## Position in the sequence
+By eight turns, the scene is unmistakably hostile and dangerous.
 
-This is the immediate next live playtest lane.
-If it lands cleanly, the next discussion can be about concrete blockers, tuning, or a next bounded encounter/mechanics follow-through rather than whether live probing is even possible.
+The same live packet records:
+- `Heath Griffith, Bandit gets angry!`
+- bandit taunts
+- safe-mode survivor ping
+- gunfire / impact lines
+- `Katharina Leach dies!`
+- `Robbie Knox dies!`
+
+That is real pressure, not fake theater.
+But it is still communicated mainly through the right-panel log rather than through a clean on-map encounter read.
+
+## Readability split
+
+### Real encounter/readability truth
+
+- A hostile bandit can be intentionally restaged on real Basecamp footing and produce immediate lethal pressure.
+- Basecamp context does matter: the scene reads as "camp under attack," not as an empty sandbox duel.
+- The first-pass encounter is alive enough to justify more follow-through.
+
+### What still reads as awkward helper/debug baggage
+
+- The immediate hostility read is too dependent on UI text instead of strong spatial staging.
+- The first visible clue is subtle enough that it can get buried under unrelated right-panel clutter.
+- The strongest proof of danger is currently the later kill-log burst, not a reviewer-clean first glance at the playfield.
+- The generic probe artifact verdict (`inconclusive_no_new_artifacts`) is still much less useful than the screen/OCR companions.
+
+## Concrete blockers handed forward
+
+This packet did not find a fresh mechanics contradiction.
+It found a **playtest-surface/readability blocker**:
+
+- first-pass hostility is readable too late and too text-log-first
+- the artifact surface still needs screen-first packaging
+- repeated use still needs less operator clutter and better cleanup
+- later human playtesting wants faster reload / clearer scenario footing than the current ad-hoc seam
+
+## Validation
+
+- Fresh rebuild used before live proof: `make -B -j4 TILES=1 cataclysm-tiles`
+- Fresh live probe used for the packet: `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_first_pass_readability_mcw`
+- No deterministic tests were added or rerun because this packet stayed bounded to live probe / artifact work only
+
+## Position in sequence
+
+This packet is closed enough to stop rerunning it ceremonially.
+
+The baton now passes to:
+- `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
+
+That follow-through should improve the live surface rather than reopening the same first-pass readability question from scratch.
