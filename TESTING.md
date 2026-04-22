@@ -50,8 +50,17 @@ The active missing truth is no longer whether the harness can mutate one more pr
 ### Active lane - Bandit live-world control + playtest restage packet v0
 
 - canonical packet: `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`
+- the first owner/headcount substrate is now landed on current tree:
+  - `src/bandit_live_world.{h,cpp}` defines the saveable live owner ledger with explicit site/member/spawn-tile records
+  - `map::place_npc` now claims tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns into `overmap_global_state.bandit_live_world`
+  - save/load coverage now exists for that ledger through `tests/bandit_live_world_test.cpp`
+- narrow validation for this slice passed via:
+  - touched-object compile of `obj/{bandit_live_world,mapgen,overmapbuffer,savegame}.o`
+  - exact test-object compile of `tests/bandit_live_world_test.cpp`
+  - standalone filtered run `./tests/cata_test_bandit_live_world "[bandit][live_world]"`
+- broad `make tests` is still not the honest gate for this slice today because current tree already fails earlier in unrelated code at `src/overmap_special_mutable.cpp`
 - required evidence now mixes live-world control proof, restage proof, and perf proof:
-  - deterministic bridge/save-load coverage where practical for the new live owner, per-site/per-spawn-tile headcounts, and writeback path
+  - fresh proof that the owned ledger actually drives real control/dispatch instead of stopping at spawn-time claim bookkeeping
   - fresh current-build live proof that a controlled bandit camp can be restaged about `10 OMT` away on demand
   - fresh current-build proof that the manual handoff path leaves the session alive for playtesting instead of auto-terminating after setup
   - fresh reviewer-clean evidence that the nearby setup exercised the real overmap/bubble handoff plus local writeback path
@@ -186,20 +195,14 @@ Current honest summary:
 
 ## Pending probes
 
-A live probe is still greenlit, but it should now answer `v2` scenario-surgery questions rather than reopen the already-closed `v1` fixture-method question.
+A live probe is still greenlit, but the next probe must answer control/restage questions on top of the now-landed owner ledger instead of reopening the already-closed fixture-method argument.
 
 - Do **not** rerun the first-pass readability packet ceremonially now that its product question has an honest answer.
-- Do **not** keep rerunning the closed thin `v0` pack or the closed `v1` load audits unless a new transform/helper specifically needs a regression check against that base.
-- The current live question is broader prepared-fixture mutation surface: can a named transform/preset change prepared-base footing materially, say what it changed, and leave reviewer-readable evidence without duplicating another whole save?
-- The new baseline helper command surface starts from the now-landed bounded seam:
-  - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-  - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_audit_mcw`
-- The older closed commands remain only as regression baselines when needed:
-  - `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
-  - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_restage_mcw`
-  - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_readability_mcw`
-- Once the next `v2` helper lands, add another named helper-specific load/probe path instead of laundering it through the old thin-pack, the closed `v1` closeout names, or the first contact preset.
-- If the scenario-surgery work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
+- Do **not** keep rerunning the closed thin `v0` pack or the closed `v1` load audits unless a new live-control helper specifically needs that regression footing.
+- The next real live question is: can the owned ledger drive a nearby controlled bandit setup about `10 OMT` away and leave reviewer-readable evidence of real overmap/bubble interaction plus later writeback?
+- The first missing code-side proof after this owner slice is not more serialization theater; it is one real dispatch/control path that consumes the saved site/member/spawn-tile ledger.
+- When the next harness/probe helper lands, give it one named scenario or command path for reviewer use instead of laundering it through the old thin-pack names.
+- If the control/restage work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
 
 ---
 

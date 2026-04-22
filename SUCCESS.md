@@ -747,8 +747,8 @@ Notes:
 Status: ACTIVE / GREENLIT
 
 Success state:
-- [ ] One live saveable owner exists for the relevant current bandit spawn families tied to this lane instead of leaving them as disconnected static-content / mapgen islands.
-- [ ] The owner keeps explicit per-site and per-spawn-tile bandit headcounts plus membership strongly enough that later control and writeback are honest rather than guessed.
+- [x] One live saveable owner exists for the relevant current bandit spawn families tied to this lane instead of leaving them as disconnected static-content / mapgen islands.
+- [x] The owner keeps explicit per-site and per-spawn-tile bandit headcounts plus membership strongly enough that later control and writeback are honest rather than guessed.
 - [ ] The live system can actually control or dispatch those spawned bandits through the real world path instead of leaving them as disconnected `place_npcs` islands with post-hoc bookkeeping.
 - [ ] A bounded nearby restage path can seed a controlled bandit camp about `10 OMT` away on current build.
 - [ ] That restage path supports two honest modes: reviewer probe/capture may clean up, while manual playtest handoff leaves the game/session running instead of auto-terminating it.
@@ -760,6 +760,8 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`.
 - This packet absorbs the useful remaining helper/tooling work from `Bandit + Basecamp playtest kit packet v2` instead of deleting it, but helper breadth no longer counts as the headline product by itself.
+- The first bounded live owner seam now exists in `src/bandit_live_world.{h,cpp}` plus `overmap_global_state.bandit_live_world`: tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns claim into one saveable owner ledger at `map::place_npc` time with explicit site/member/spawn-tile records.
+- Narrow validation for that slice passed via touched-object compile of `obj/{bandit_live_world,mapgen,overmapbuffer,savegame}.o` plus a standalone filtered Catch binary for `tests/bandit_live_world_test.cpp`; the wider tree still has an unrelated existing `make tests` failure in `src/overmap_special_mutable.cpp`.
 - The restage seam is part of the product bar now: manual playtest handoff must stay alive after setup instead of rudely cleaning up as soon as things get interesting.
 
 ---
