@@ -771,6 +771,62 @@ Notes:
 
 ---
 
+## Multi-site hostile owner scheduler packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] The live hostile-owner seam can run `2-3` simultaneous hostile sites on one world without collapsing them into one shared fake camp brain.
+- [ ] Each hostile site keeps its own anchor/home site, roster/headcount, active outing or contact state, remembered pressure/marks, and persisted writeback state.
+- [ ] Site-backed camps still keep a home presence while losses continuously shrink later outings instead of snapping back to folklore counts.
+- [ ] One site's losses, return state, or contact pressure do not silently rewrite another site's state.
+- [ ] Repeated same-target pressure can overlap occasionally without turning into routine multi-site dogpile coalition behavior.
+- [ ] Save/load stays honest for multiple hostile owners at once instead of only for the single easiest happy-path site.
+- [ ] The slice stays bounded: no faction grand strategy, no dozens-of-families explosion, and no magical shared omniscience.
+
+Notes:
+- Canonical contract lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`.
+- This is the first queued hostile-site substrate packet behind the still-active `Bandit live-world control + playtest restage packet v0` lane.
+- The point is to prove small independent hostile ownership, not to reopen the whole hostile-human architecture debate.
+
+---
+
+## Hostile site profile layer packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One shared hostile owner/cadence/persistence substrate exists with explicit profile rules instead of hardcoding everything to current bandit-camp assumptions.
+- [ ] At minimum one camp-style profile and one smaller hostile-site profile can coexist on that substrate reviewer-cleanly.
+- [ ] Dispatch, threat posture, return-clock, and writeback differences are profile-driven and readable rather than site-kind spaghetti.
+- [ ] The multi-site scheduler can consume those profiles without regressing the already-honest bandit live-owner footing.
+- [ ] The packet stays bounded: no giant faction-AI framework, no singleton stalker implementation, and no broad diplomacy/social-horror widening.
+
+Notes:
+- Canonical contract lives at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`.
+- This packet sits directly behind `Multi-site hostile owner scheduler packet v0` and is the bridge from one-family bandit machinery to a reusable hostile-site substrate.
+- `Writhing stalker` stays out of this slice on purpose; the goal here is the profile layer itself, not the first singleton proof.
+
+---
+
+## Cannibal camp first hostile-profile adopter packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One honest cannibal-camp hostile profile runs on the shared hostile-site substrate instead of faking reuse through bandit-only assumptions.
+- [ ] Cannibal-camp cadence, roster, pressure, dispatch, and writeback rules are explicit enough that later behavior can be reasoned about without folklore.
+- [ ] Cannibal-camp owned sites can coexist with bandit-owned sites without coalition nonsense or accidental shared-state corruption.
+- [ ] If the current tree lacks a real cannibal-camp site family, the packet first lands one bounded honest adopter anchor instead of attaching the new profile to vapor.
+- [ ] The slice stays bounded: no writhing-stalker singleton behavior, no giant lore/diplomacy expansion, and no every-hostile-family-at-once detour.
+
+Notes:
+- Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`.
+- This is intentionally the first non-bandit adopter because it proves the hostile-site profile layer on a second camp-shaped family before the weirder singleton/stalker case.
+- `Writhing stalker` remains parked one step longer and should be revisited later as the first singleton adopter after the profile layer exists.
+
+---
+
 ## Bandit + Basecamp playtest kit packet v2
 
 Status: FOLDED INTO LATER ACTIVE LANE / SUPPORTING ONLY

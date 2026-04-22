@@ -79,8 +79,71 @@ Canonical contract lives at `doc/bandit-live-world-control-playtest-restage-pack
 
 ## Greenlit next
 
-No later greenlit repo lane is queued behind `Bandit live-world control + playtest restage packet v0` right now.
-If this packet closes before new canon lands, prepare a short parked-options packet instead of drifting into speculative hostile-human empire.
+The next greenlit hostile-site stack is now frozen behind `Bandit live-world control + playtest restage packet v0`.
+Keep the order explicit and do **not** silently merge these packets together just because they smell related.
+
+### 1. Multi-site hostile owner scheduler packet v0
+
+**Status:** GREENLIT
+
+Prove the live hostile-owner seam can run a **small set of independent hostile sites** at once instead of one bandit camp plus folklore. Each owner should keep its own anchor/home site, roster, active outing/contact state, remembered pressure, and cadence/writeback state without collapsing into coalition mush.
+
+What this item should do:
+- extend the current live owner seam from one-site-at-a-time proof to `2-3` simultaneous hostile sites on one world
+- keep owner state independent: anchor, headcount, active outing/contact state, remembered pressure/marks, and persisted writeback
+- preserve the current product rule that camps keep a home presence while losses continuously shrink later outings
+- damp silly dogpile convergence through existing territoriality / active-pressure footing rather than magical coalition coordination
+
+Non-goals:
+- coalition brain or faction grand strategy
+- dozens of hostile families at once
+- full social-threat/extortion implementation
+- whole-world omniscient map ownership dumps
+
+Canonical contract lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`.
+
+### 2. Hostile site profile layer packet v0
+
+**Status:** GREENLIT
+
+Once multiple hostile owners can coexist, generalize that scheduler into one bounded hostile-site substrate with explicit profiles so camp-style and non-camp hostile sites can share the machinery without becoming the same creature in a fake moustache.
+
+What this item should do:
+- define one shared hostile owner/cadence/persistence substrate with explicit per-profile rules
+- support at minimum a camp-style profile and a smaller hostile-site profile without hardcoding everything to current bandit-camp assumptions
+- keep dispatch, threat posture, return-clock, and writeback differences profile-driven and reviewer-readable
+- preserve the same bounded live-world/writeback contract instead of reopening broad hostile-human architecture arguments
+
+Non-goals:
+- a giant generic faction-AI framework
+- writhing-stalker singleton behavior in this same packet
+- broad diplomacy/social-horror systems
+- magical stealth or sight-avoidance perfection
+
+Canonical contract lives at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`.
+
+### 3. Cannibal camp first hostile-profile adopter packet v0
+
+**Status:** GREENLIT
+
+Use cannibal camp as the first non-bandit adopter of the shared hostile-site profile layer so the new substrate proves itself on a second hostile family **without** jumping straight into singleton stalker weirdness.
+
+What this item should do:
+- land one honest cannibal-camp hostile profile on top of the shared hostile-site substrate
+- keep its cadence, roster, pressure, dispatch, and writeback rules explicit rather than smuggled through bandit names
+- coexist with bandit-owned sites without coalition nonsense or silent bandit-specific assumptions
+- if the current tree lacks a real cannibal-camp site family, first add one bounded honest adopter anchor instead of pretending the profile can attach to vapor
+
+Non-goals:
+- writhing-stalker singleton behavior in the same packet
+- broad hidden-psychopath / social-camouflage systems
+- faction politics or giant cannibal lore expansion
+- widening the packet into every hostile-human family at once
+
+Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`.
+
+`Writhing stalker` stays parked one step longer.
+If this stack lands cleanly, the stalker should be revisited later as the **first singleton adopter after the profile layer exists**, not crammed into the cannibal-camp proof.
 ---
 
 ## Checkpointed packet index
