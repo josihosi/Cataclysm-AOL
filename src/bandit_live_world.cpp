@@ -5,6 +5,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "json.h"
 
@@ -315,6 +316,14 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "footprint", footprint );
     json.member( "members", members );
     json.member( "spawn_tiles", spawn_tiles );
+    json.member( "active_group_id", active_group_id );
+    json.member( "active_target_id", active_target_id );
+    std::vector<int> raw_active_member_ids;
+    raw_active_member_ids.reserve( active_member_ids.size() );
+    for( const character_id &member_id : active_member_ids ) {
+        raw_active_member_ids.push_back( member_id.get_value() );
+    }
+    json.member( "active_member_ids", raw_active_member_ids );
     json.end_object();
 }
 
@@ -333,6 +342,17 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "footprint", footprint );
     jo.read( "members", members );
     jo.read( "spawn_tiles", spawn_tiles );
+    jo.read( "active_group_id", active_group_id );
+    jo.read( "active_target_id", active_target_id );
+    std::vector<int> raw_active_member_ids;
+    jo.read( "active_member_ids", raw_active_member_ids );
+    active_member_ids.clear();
+    active_member_ids.reserve( raw_active_member_ids.size() );
+    for( const int raw_member_id : raw_active_member_ids ) {
+        character_id member_id;
+        member_id.deserialize( raw_member_id );
+        active_member_ids.push_back( member_id );
+    }
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -683,6 +703,62 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
             return false;
         }
     }
+    site.active_group_id = plan.entry.group_id;
+    site.active_target_id = plan.target_id;
+    site.active_member_ids = plan.member_ids;
+    return true;
+}
+
+bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet )
+{
+    if( !packet.valid || packet.source_camp_id != site.site_id ||
+        site.active_group_id.empty() || packet.group_id != site.active_group_id ||
+        site.active_member_ids.empty() ) {
+        return false;
+    }
+
+    const auto status_for_member = [&packet]( character_id member_id ) -> std::string {
+        const std::string member_token = std::to_string( member_id.get_value() );
+        const auto iter = std::find_if( packet.anchored_identity_updates.begin(),
+        packet.anchored_identity_updates.end(), [&member_token]( const bandit_pursuit_handoff::anchored_identity_state & update ) {
+            return update.id == member_token;
+        } );
+        return iter != packet.anchored_identity_updates.end() ? iter->status : "alive";
+    };
+
+    int survivors_accounted = 0;
+    const std::string target_label = packet.current_target_or_mark.empty() ? site.active_target_id :
+                                     packet.current_target_or_mark;
+    const std::string base_summary = "return " + bandit_pursuit_handoff::to_string( packet.result ) +
+                                     " from " + target_label;
+    for( const character_id &member_id : site.active_member_ids ) {
+        const std::string status = status_for_member( member_id );
+        member_state new_state = member_state::at_home;
+        std::string summary = base_summary;
+        if( status == "dead" ) {
+            new_state = member_state::dead;
+            summary += " (dead)";
+        } else if( status == "missing" ) {
+            new_state = member_state::missing;
+            summary += " (missing)";
+        } else {
+            survivors_accounted++;
+            if( status != "alive" ) {
+                summary += " (" + status + ")";
+            }
+        }
+        if( !update_member_state( site, member_id, new_state, summary ) ) {
+            return false;
+        }
+    }
+
+    if( survivors_accounted != packet.survivors_remaining ) {
+        return false;
+    }
+
+    site.active_group_id.clear();
+    site.active_target_id.clear();
+    site.active_member_ids.clear();
     return true;
 }
 

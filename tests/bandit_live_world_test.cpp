@@ -98,6 +98,12 @@ TEST_CASE( "bandit live world survives a save-style round trip", "[bandit][live_
              tripoint_abs_ms( 984, 1224, 0 ), std::string( "bandit_work_camp" ), std::nullopt,
              special_lookup ) );
 
+    bandit_live_world::site_record &original_site = original.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( original_site, tripoint_abs_omt( 48, 50, 0 ), "player_basecamp_nearby" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( original_site, plan ) );
+
     std::ostringstream out;
     JsonOut jsout( out, true );
     original.serialize( jsout );
@@ -120,6 +126,10 @@ TEST_CASE( "bandit live world survives a save-style round trip", "[bandit][live_
     REQUIRE( site.spawn_tiles.size() == 2 );
     CHECK( site.find_spawn_tile( tripoint_abs_ms( 960, 1200, 0 ) )->headcount == 1 );
     CHECK( site.find_spawn_tile( tripoint_abs_ms( 984, 1224, 0 ) )->headcount == 1 );
+    CHECK( site.active_group_id == "overmap_special:bandit_work_camp@40,50,0#dispatch" );
+    CHECK( site.active_target_id == "player_basecamp_nearby" );
+    REQUIRE( site.active_member_ids.size() == 1 );
+    CHECK( site.active_member_ids.front() == character_id( 301 ) );
 }
 
 TEST_CASE( "bandit live world builds a bounded scout dispatch plan from owned members", "[bandit][live_world]" )
@@ -250,4 +260,43 @@ TEST_CASE( "bandit live world writeback shrinks headcount and future dispatch ca
     CHECK_FALSE( blocked_plan.valid );
     REQUIRE_FALSE( blocked_plan.notes.empty() );
     CHECK( blocked_plan.notes.back().find( "home reserve" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit live world applies a return packet onto the active owned outing", "[bandit][live_world]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 801 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 802 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player_basecamp_nearby" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    REQUIRE( site.active_member_ids == std::vector<character_id>( { character_id( 801 ) } ) );
+
+    bandit_pursuit_handoff::local_outcome outcome;
+    outcome.survivors_remaining = 0;
+    outcome.anchored_identity_updates = { { "801", "dead" } };
+    outcome.result = bandit_pursuit_handoff::mission_result::repelled;
+    outcome.resolution = bandit_pursuit_handoff::lead_resolution::target_lost;
+    outcome.posture = bandit_pursuit_handoff::return_posture::broken_flee;
+    outcome.remaining_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+    const bandit_pursuit_handoff::return_packet packet =
+        bandit_pursuit_handoff::build_return_packet( plan.entry, outcome );
+
+    REQUIRE( bandit_live_world::apply_return_packet( site, packet ) );
+    CHECK( site.find_member( character_id( 801 ) )->state == bandit_live_world::member_state::dead );
+    CHECK( site.find_member( character_id( 801 ) )->last_writeback_summary ==
+           "return repelled from player_basecamp_nearby (dead)" );
+    CHECK( site.find_member( character_id( 802 ) )->state == bandit_live_world::member_state::at_home );
+    CHECK( site.headcount == 1 );
+    CHECK( site.dispatchable_member_capacity() == 0 );
+    CHECK( site.active_group_id.empty() );
+    CHECK( site.active_target_id.empty() );
+    CHECK( site.active_member_ids.empty() );
 }

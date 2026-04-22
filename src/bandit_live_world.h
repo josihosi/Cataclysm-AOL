@@ -68,6 +68,9 @@ struct site_record {
     std::vector<tripoint_abs_omt> footprint;
     std::vector<member_record> members;
     std::vector<spawn_tile_record> spawn_tiles;
+    std::string active_group_id;
+    std::string active_target_id;
+    std::vector<character_id> active_member_ids;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
@@ -127,6 +130,7 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
+bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
 bool update_member_state( site_record &site, character_id npc_id, member_state new_state,
                           const std::string &summary );
 
