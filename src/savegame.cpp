@@ -767,9 +767,13 @@ void overmap::unserialize( const JsonObject &jsobj )
                     if( name == "placements" ) {
                         JsonArray placements_json = special_placement_member;
                         for( JsonObject placement_json : placements_json ) {
+                            tripoint_om_omt placement_origin = tripoint_om_omt::invalid;
+                            std::vector<tripoint_om_omt> placement_points;
                             for( JsonMember placement_member : placement_json ) {
                                 std::string name = placement_member.name();
-                                if( name == "points" ) {
+                                if( name == "origin" ) {
+                                    placement_member.read( placement_origin );
+                                } else if( name == "points" ) {
                                     JsonArray points_json = placement_member;
                                     for( JsonObject point_json : points_json ) {
                                         tripoint_om_omt p;
@@ -777,14 +781,21 @@ void overmap::unserialize( const JsonObject &jsobj )
                                             std::string name = point_member.name();
                                             if( name == "p" ) {
                                                 point_member.read( p );
-                                                if( !s.is_null() ) {
-                                                    overmap_special_placements[p] = s;
-                                                    if( is_safe_zone ) {
-                                                        safe_at_worldgen.emplace( p );
-                                                    }
-                                                }
+                                                placement_points.push_back( p );
                                             }
                                         }
+                                    }
+                                }
+                            }
+                            if( placement_origin == tripoint_om_omt::invalid && !placement_points.empty() ) {
+                                placement_origin = placement_points.front();
+                            }
+                            if( !s.is_null() ) {
+                                for( const tripoint_om_omt &p : placement_points ) {
+                                    overmap_special_placements[p] = s;
+                                    overmap_special_placement_origins[p] = placement_origin;
+                                    if( is_safe_zone ) {
+                                        safe_at_worldgen.emplace( p );
                                     }
                                 }
                             }
@@ -1502,11 +1513,15 @@ void overmap::serialize( std::ostream &fout ) const
     json.end_array();
     fout << std::endl;
 
-    // Condense the overmap special placements so that all placements of a given special
-    // are grouped under a single key for that special.
-    std::map<overmap_special_id, std::vector<tripoint_om_omt>> condensed_overmap_special_placements;
+    // Condense the overmap special placements by special id and placement origin so
+    // distinct live sites of the same special survive save/load as distinct groups.
+    std::map<overmap_special_id, std::map<tripoint_om_omt, std::vector<tripoint_om_omt>>>
+    condensed_overmap_special_placements;
     for( const auto &placement : overmap_special_placements ) {
-        condensed_overmap_special_placements[placement.second].emplace_back( placement.first );
+        const auto origin_it = overmap_special_placement_origins.find( placement.first );
+        const tripoint_om_omt placement_origin = origin_it != overmap_special_placement_origins.end() ?
+                                                 origin_it->second : placement.first;
+        condensed_overmap_special_placements[placement.second][placement_origin].emplace_back( placement.first );
     }
 
     json.member( "overmap_special_placements" );
@@ -1516,19 +1531,19 @@ void overmap::serialize( std::ostream &fout ) const
         json.member( "special", placement.first );
         json.member( "placements" );
         json.start_array();
-        // When we have a discriminator for different instances of a given special,
-        // we'd use that to group them, but since that doesn't exist yet we'll
-        // dump all the points of a given special into a single entry.
-        json.start_object();
-        json.member( "points" );
-        json.start_array();
-        for( const tripoint_om_omt &pos : placement.second ) {
+        for( const auto &grouped_placement : placement.second ) {
             json.start_object();
-            json.member( "p", pos );
+            json.member( "origin", grouped_placement.first );
+            json.member( "points" );
+            json.start_array();
+            for( const tripoint_om_omt &pos : grouped_placement.second ) {
+                json.start_object();
+                json.member( "p", pos );
+                json.end_object();
+            }
+            json.end_array();
             json.end_object();
         }
-        json.end_array();
-        json.end_object();
         json.end_array();
         json.end_object();
     }

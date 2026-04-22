@@ -8,6 +8,7 @@
 #include <optional>
 #include <regex>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -56,6 +57,7 @@ static const oter_str_id oter_cabin_west( "cabin_west" );
 
 static const overmap_special_id overmap_special_Cabin( "Cabin" );
 static const overmap_special_id overmap_special_Lab( "Lab" );
+static const overmap_special_id overmap_special_bandit_cabin( "bandit_cabin" );
 
 static std::vector<oter_flags> all_oter_flags()
 {
@@ -230,6 +232,63 @@ TEST_CASE( "default_overmap_generation_has_non_mandatory_specials_at_origin", "[
 
     INFO( "Failed to place optional special on origin " );
     CHECK( found_optional == true );
+}
+
+TEST_CASE( "overmap_special_instance_origins_roundtrip", "[overmap][save]" )
+{
+    const point_abs_om origin{};
+
+    overmap_buffer.clear();
+    std::vector<const overmap_special *> specials;
+    specials.push_back( &overmap_special_bandit_cabin.obj() );
+    specials.push_back( &overmap_special_bandit_cabin.obj() );
+    overmap_special_batch test_specials = overmap_special_batch( origin, specials );
+    overmap_buffer.create_custom_overmap( origin, test_specials );
+
+    int instances_placed = 0;
+    for( const overmap_special_placement &special_placement : test_specials ) {
+        instances_placed += special_placement.instances_placed;
+    }
+    REQUIRE( instances_placed == 2 );
+
+    overmap *test_overmap = overmap_buffer.get_existing( origin );
+    REQUIRE( test_overmap != nullptr );
+
+    const auto collect_origin_counts = []( const overmap &om ) {
+        std::map<tripoint_om_omt, int> counts;
+        for( int x = 0; x < OMAPX; ++x ) {
+            for( int y = 0; y < OMAPY; ++y ) {
+                for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+                    const tripoint_om_omt p{ x, y, z };
+                    const std::optional<overmap_special_id> special = om.overmap_special_at( p );
+                    if( special != overmap_special_bandit_cabin ) {
+                        continue;
+                    }
+                    const std::optional<tripoint_om_omt> placement_origin = om.overmap_special_origin_at( p );
+                    REQUIRE( placement_origin.has_value() );
+                    counts[*placement_origin]++;
+                }
+            }
+        }
+        return counts;
+    };
+
+    const std::map<tripoint_om_omt, int> live_origin_counts = collect_origin_counts( *test_overmap );
+    REQUIRE( live_origin_counts.size() == 2 );
+    for( const auto &[placement_origin, count] : live_origin_counts ) {
+        CAPTURE( placement_origin );
+        CHECK( count == 2 );
+    }
+
+    std::ostringstream serialized;
+    test_overmap->serialize( serialized );
+    CHECK( serialized.str().find( "\"origin\"" ) != std::string::npos );
+
+    overmap reloaded( origin );
+    std::istringstream serialized_input( serialized.str() );
+    reloaded.unserialize( serialized_input );
+
+    CHECK( collect_origin_counts( reloaded ) == live_origin_counts );
 }
 
 TEST_CASE( "is_ot_match", "[overmap][terrain]" )

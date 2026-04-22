@@ -1085,6 +1085,7 @@ struct mutable_overmap_placement_rule_remainder {
 };
 
 struct special_placement_result {
+    tripoint_om_omt placement_origin = tripoint_om_omt::invalid;
     std::vector<tripoint_om_omt> omts_used;
     std::vector<std::pair<om_pos_dir, std::string>> joins_used;
 };
