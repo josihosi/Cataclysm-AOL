@@ -82,3 +82,369 @@ So validation should stay explicit and mixed:
 
 This is now the active lane.
 The useful open helper work from `Bandit + Basecamp playtest kit packet v2` survives here as supporting scope, but it is no longer allowed to masquerade as the whole product by itself.
+
+## Current grounded reality this packet must consume
+
+### 1. Real hostile bandit content already exists, but mostly as static spawn footing
+
+Current-tree hostile bandit content tied to this lane is real and broad enough to matter:
+
+- overmap-special camps/cabins such as `bandit_camp`, `bandit_work_camp`, and `bandit_cabin` exist in `data/json/overmap/overmap_special/specials.json`
+- those sites still rely on fixed `place_npcs` rosters in `data/json/mapgen/hells_raiders/{bandit_camp,bandit_work_camp,bandit_cabin}.json`
+- map-extra style hostile spawns still exist through paths like `mx_looters` in `src/map_extras.cpp` and `mx_bandits_block` in `data/json/mapgen/map_extras/bandits_block.json`
+- the spawned NPC classes are concrete templates such as `bandit`, `thug`, `bandit_trader`, `bandit_quartermaster`, `bandit_mechanic`, and `hells_raiders_boss` in `data/json/npcs/hells_raiders/npc.json`
+- `hells_raiders` faction data in `data/json/npcs/factions.json` is broad faction metadata, not a live camp-population ledger
+
+That means the repo already has real bandit bodies, real sites, and real faction flavor.
+What it does **not** yet have is one live owner that can say reviewer-cleanly which site owns which members, who left, who died, who came back wounded, and which pressure/writeback facts changed later world behavior.
+
+### 2. Current mapgen spawn behavior is the first world-side trap
+
+`map::place_npc( ... )` in `src/mapgen.cpp` currently:
+- loads the NPC template
+- spawns it into the world
+- toggles `trait_NPC_STATIC_NPC`
+- inserts it into the overmap buffer
+
+So the current site-spawned bandits are not magically ready-made travelling agents just because they exist in the world.
+Any live-owner implementation must explicitly **claim and normalize** them for controlled dispatch, rather than pretending the static mapgen roster is already the same thing as the abstract bandit system.
+
+### 3. The repo already has the dynamic primitives; the missing piece is the glue
+
+The live-world-control lane does **not** need to invent bandit reasoning from nothing.
+Relevant current substrate already exists:
+
+- abstract evaluation and report surface: `src/bandit_dry_run.{h,cpp}`
+- multi-turn scenario/proof/benchmark surface: `src/bandit_playback.{h,cpp}`
+- local entry/return/writeback packet surface: `src/bandit_pursuit_handoff.{h,cpp}`
+- world-side NPC/site helpers: `overmapbuffer.insert_npc`, `overmapbuffer.overmap_special_at`, `overmapbuffer.place_special`, `overmapbuffer.get_npcs_near_player`, `npc::travel_overmap`, and `overmap_npc_move()`
+
+So the honest job here is not “invent all bandit AI”.
+The honest job is to build one bounded saved owner/control seam that feeds the already-landed abstract substrate with real world members and then writes the local result back.
+
+### 4. Playtest/helper footing is already strong enough to stop pretending feasibility is the open question
+
+The surrounding packets already settled several setup questions:
+
+- `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md` proved that live relaunch plus intentional hostile-bandit restage is already practical on the current tree
+- `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md` packaged the named-bandit debug seam into `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`
+- `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md` and `v2` already earned useful helper substrate like fixture aliasing, manifest `save_transforms`, bounded `player_mutations`, and stronger observability
+- `tools/openclaw_harness/scenarios/bandit.basecamp_playtestkit_restage_mcw.json` already shows the repeatable helper shape for menu capture plus immediate post-spawn proof
+
+So this packet should **not** rerun feasibility theater.
+It should spend that budget on turning the real live-bandit control path into the thing being restaged.
+
+### 5. Current harness behavior exposes the second trap: probe is not yet honest manual handoff
+
+`tools/openclaw_harness/startup_harness.py` already has the necessary ingredients for live setup, capture, repeatability, and fixture install.
+But the current `probe` path still finalizes through `finalize_probe_report( ... , cleanup_pid=pid )`, which falls into `cleanup_game_process(...)` unless the report already has explicit cleanup state.
+
+That is fine for reviewer capture mode.
+It is **not** yet the same thing as “leave the session alive so a human can actually play the scene.”
+So the two-mode contract in this packet is real implementation work, not wording polish.
+
+## How this packet should stay aligned with the surrounding canon
+
+The deeper path here is already constrained by earlier packets.
+Do not silently unlearn them.
+
+- **Basecamp AI capability audit/readout packet v0** means the Basecamp side is mostly deterministic craft/board routing today, not some missing general speech-intelligence layer. This lane should not widen into broad Basecamp-AI redesign just because Basecamp is nearby.
+- **Live bandit + Basecamp playtesting feasibility probe v0** means the open question is no longer “can we restage anything at all?” The open question is whether the restaged thing is the real owned system.
+- **Live bandit + Basecamp playtest packaging/helper packet v0** means debug-menu folklore is already packaged once. Keep the useful harness shape, but graduate the product proof beyond named-NPC spawn theater.
+- **Bandit overmap/local handoff interaction packet v0** means live dispatch should enter local play as coarse posture and return as explicit writeback, not as exact-tile puppetry or stale certainty.
+- **Bandit bounded scout/explore seam v0** means no-path must still fail closed; explicit explore remains deliberate bounded outing, not consolation-prize random wandering.
+- **Bandit moving-bounty memory seam v0** means moving prey can stay warm briefly, but the live owner must not turn that into immortal chase bookkeeping.
+- **Bandit repeated-site revisit behavior packet v0** means corroborated sites may earn one more bounded revisit/cautious-watch window, but not free raid truth or endless pressure.
+- **Bandit overmap benchmark suite packet v0** means reviewer-facing output should expose concrete metrics and state cleanly enough to judge whether the system is alive/leiwand or merely legal.
+- **Bandit + Basecamp first-pass encounter/readability packet v0** means the current named-spawn seam already produces real danger, but its readability is still too right-panel-log-first. That is useful playtest guidance, but it does not lower the live-ownership bar.
+
+## Complete implementation path
+
+### Phase 1 - Freeze one ownership map before code starts wandering
+
+First freeze the exact world-side population this lane is claiming.
+The minimal honest first ownership map is:
+
+1. **site-backed overmap specials**
+   - `bandit_camp`
+   - `bandit_work_camp`
+   - `bandit_cabin`
+2. **map-extra/singleton hostile spawns tied to the same lane**
+   - `mx_looters`
+   - `mx_bandits_block`
+
+The clean v0 shape is not one global faction simulation.
+It is one bounded owner/site ledger where every controlled bandit group resolves to:
+- a stable site or spawn anchor
+- a site kind
+- absolute location/origin
+- explicit member identities
+- explicit per-site and per-spawn-tile counts
+- current outing/return state if somebody is away from home
+
+For overmap specials, the anchor should come from real site footing such as the special location / origin rather than guessed folklore.
+For map extras, the owner shape can be a deliberately smaller singleton or micro-site record so the same machinery works without pretending roadside ambushers are a full camp government.
+
+### Phase 2 - Claim real NPC identities instead of inventing a second truth
+
+Once the ownership map is frozen, the first world-side implementation burden is identity.
+The owner must derive its roster from **real NPC ids** and real spawn tiles, not from vague faction membership or copied JSON counts.
+
+Minimum honest v0 member record:
+- `character_id`
+- source template/class
+- home site id
+- home spawn tile or local home slot
+- current state (`at_home`, `outbound`, `local_contact`, `dead`, `missing`, or equally bounded equivalent)
+- last known writeback summary strong enough to explain headcount change later
+
+Why this matters:
+- the current faction JSON is too coarse to be the truth
+- copied counts become stale the moment somebody dies or leaves
+- local writeback cannot stay honest if the system does not know which bodies actually belonged to the outing
+
+Important implementation caution:
+mapgen-spawned camp members begin life as static NPCs.
+So “claiming” a site must include whatever small normalization is needed so a controlled member can later travel or hand off, rather than leaving the owner attached to permanently static furniture.
+
+### Phase 3 - Bridge the live owner into the existing abstract bandit substrate
+
+After identity is real, the next job is not a broad new AI layer.
+It is the bridge.
+
+Recommended v0 flow:
+
+1. Build live-world lead inputs from the owned site state.
+   - existing marks/signals can still matter
+   - site state, repeated-site corroboration, and moving-memory refresh can still matter
+   - but every outward option must now be attributable to a real owned site/group
+2. Feed those leads into `bandit_dry_run::evaluate(...)`.
+3. Convert the winning outward intent through `bandit_pursuit_handoff` when the winner supports live local pursuit.
+4. Dispatch actual owned members on the world side.
+5. When the group hits local contact, treat the local scene as able to rewrite the plan.
+6. Apply the return packet back onto the owner/site ledger so later world behavior changes honestly.
+
+The important thing is not that every part becomes “smart”.
+The important thing is that the ownership seam now connects:
+- **who went**
+- **why they went**
+- **what posture they entered with**
+- **what happened locally**
+- **what state changed afterward**
+
+If the implementation can still only answer the middle two questions, the lane is not done.
+
+### Phase 4 - Add one bounded cadence + persistence seam, not a world-sim bureaucracy
+
+This lane does need save/load truth.
+It does **not** need a grand simulation state dump.
+
+The good v0 persistence shape is still the one earlier budget thinking was pushing toward:
+- site identity and anchor
+- member roster / headcount state
+- active outing summary if a group is away
+- bounded recent marks / moving-memory / repeated-site pressure state needed for the next decision
+- last writeback facts that materially change later behavior
+
+Bad shape:
+- per-turn path scrapbooks
+- huge terrain snapshots
+- free-form biography logs
+- “just serialize everything and pray”
+
+Cadence should stay equally bounded.
+The system needs one honest live tick/cadence that is cheap enough to measure and easy enough to reason about.
+If near-player or recently-active sites need more frequent evaluation than distant idle ones, keep that distinction explicit and cheap rather than magical.
+
+### Phase 5 - Build the real nearby restage seam around owned world content
+
+The restage seam must graduate from “spawn a hostile named NPC” to “seed a controlled nearby owned bandit site/group.”
+That is the product upgrade.
+
+Cleanest first shape:
+- intentionally restage one bounded real bandit camp about `10 OMT` away from the player or current Basecamp footing
+- use real world placement/site ownership rather than only the named-NPC debug menu
+- record the chosen site id, anchor, expected roster, and any forced conditions reviewer-cleanly
+- fail loudly if placement/claiming cannot be done honestly on the current build
+
+Existing helpers should be reused, not discarded:
+- prepared McWilliams/Basecamp footing
+- fixture aliases and snapshot aliases
+- manifest `save_transforms`
+- OCR/screenshot capture conventions
+- existing repeatability/report summary shape
+
+But the upgraded proof target must be different.
+A successful v0 restage should be able to say:
+- which owned site was seeded
+- which members belong to it
+- which ones were dispatched or activated
+- what later changed after local contact
+
+### Phase 6 - Split reviewer probe mode from manual playtest handoff mode honestly
+
+The packet already froze this, but the deeper path makes the implementation consequence clearer.
+
+**Probe / capture mode** should:
+- set up the nearby owned site/group
+- capture reviewer-readable artifacts
+- be allowed to clean up afterwards
+- optimize for repeatability and comparison
+
+**Manual playtest handoff mode** should:
+- perform the same truthful setup
+- surface what was forced and where the site landed
+- then deliberately **leave the game/session running**
+- avoid the current probe-style auto-cleanup path
+
+Because the current harness `probe` contract auto-cleans, the manual handoff path likely needs either:
+- a distinct harness verb, or
+- an explicit no-cleanup / handoff mode on top of the existing startup/setup machinery
+
+Do **not** fake this requirement with a probe run whose output merely says “you could have played here if we had not killed it.”
+That would be peak nonsense.
+
+### Phase 7 - Prove local writeback and aftermath, not just initial contact
+
+The lane is not closed when the nearby camp spawns and gets angry.
+That only proves the opening beat.
+
+A real closeout needs at least one bounded aftermath loop:
+- fight / flee / partial contact happens
+- the site roster or headcount changes
+- the owner remembers the changed state
+- a later revisit/reload shows that the world did not snap back to untouched folklore
+
+Good aftermath proof candidates:
+- one member dies or is missing and the site no longer reports the old full roster
+- one outing comes back wounded/shaken and the return packet changes later posture
+- one moving target is lost and the owner drops the pursuit state instead of stalking forever
+- one repeatedly-probed site cools back out instead of hardening into immortal pressure
+
+### Phase 8 - Land the perf packet on the honest nearby setup, not on an unrelated toy case
+
+Josef already called out the reviewer-facing perf burden clearly.
+The packet should therefore report concrete metrics on the **same nearby live-owned setup**:
+- baseline turn time
+- bandit-cadence turn time
+- spike ratio
+- max turn cost
+
+The perf packet should not hide behind an abstract benchmark divorced from the actual restaged product surface.
+The abstract benchmark suite remains useful precedent for packet shape and readable metrics, but this lane needs the live nearby owned setup specifically.
+
+## Testing ladder
+
+### A. Deterministic game-side coverage that belongs directly to this lane
+
+Add narrow deterministic coverage for the world-side truths that the older abstract packets could not prove yet:
+
+1. **ownership/bootstrap tests**
+   - relevant site/spawn families map into the intended owner/site shape
+   - multi-tile camp anchors do not lose member attribution
+   - map-extra singleton cases do not accidentally get treated like full camps
+2. **identity/headcount tests**
+   - claiming a site records real member ids and per-spawn-tile counts
+   - losses/returns update the ledger instead of leaving stale anonymous counts behind
+3. **persistence round-trip tests**
+   - the owner/site roster survives save/load
+   - active outing / return state survives save/load
+   - bounded marks/memory/writeback state survives without ballooning into junk
+4. **dispatch/handoff tests**
+   - outward winners that support pursuit produce the expected entry payload
+   - local return packets rewrite the owner/group state as intended
+   - no-path still fails closed; explicit explore remains explicit
+5. **guardrail tests**
+   - moving-prey memory still collapses cleanly
+   - repeated-site pressure still cools back out
+   - local loss can still rewrite stale intent to withdrawal or safer behavior
+
+Existing bandit tests remain part of the base footing here, especially `tests/bandit_dry_run_test.cpp`, `tests/bandit_mark_generation_test.cpp`, `tests/bandit_playback_test.cpp`, and `tests/bandit_pursuit_handoff_test.cpp`.
+The new work should extend that footing rather than bypassing it with “trust me, the live run looked okay.”
+
+### B. Narrow harness/helper validation
+
+For harness-side work, keep validation proportionate:
+- `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+- dry-run or narrow validation on any new scenario/handoff helper logic
+- repeatability checks where the scenario contract claims repeatable menus, captures, or post-setup state
+
+If the harness grows a new handoff/no-cleanup mode, validate that explicitly instead of assuming the current probe path “basically covers it.”
+
+### C. Live proof ladder
+
+The live proof should climb in deliberate steps:
+
+1. **owned-site setup proof**
+   - restage the nearby controlled site/group
+   - prove the owner/site id, roster, and location are what the packet claims
+2. **manual handoff proof**
+   - same setup, but the session stays alive after setup
+3. **short-horizon interaction proof**
+   - prove the nearby setup really reaches overmap/bubble interaction and visible local contact
+4. **aftermath/writeback proof**
+   - prove later world behavior changed because of what happened locally
+5. **perf proof**
+   - record the concrete nearby metrics on the same setup
+
+The exact command names can evolve, but the evidence classes should not.
+
+## Playtest ladder
+
+The live playtest sequence should stay honest and staged, not all-or-nothing.
+
+### 1. Owner-debug pass
+
+Use the strongest observability footing first.
+That may include the prepared-base / clairvoyance-backed helper footing already earned in `v1` and `v2`, because the first question is: did the right owned site and members actually get set up and handed off?
+
+This pass is allowed to be a bit debuggy.
+Its purpose is ownership truth, not cinematic drama.
+
+### 2. Real nearby-contact pass
+
+Once owner truth is stable, run the nearby restage on ordinary current-build footing and check:
+- did the camp/group appear where promised
+- did contact happen through the real path
+- did the encounter still read mostly through log spam, or is spatial staging improving
+
+This is where the earlier first-pass readability findings matter.
+Do not lose them.
+The current system already proved it can be dangerous; now the question is whether the upgraded owned restage becomes readable enough to play with.
+
+### 3. Manual human play pass
+
+Now let the human actually play the scene.
+This is the reason the handoff mode exists.
+The operator should be able to:
+- launch the nearby setup
+- be told what was forced
+- be told roughly where the bandit site/group is
+- then keep playing without the harness politely strangling the session
+
+### 4. Aftermath/revisit pass
+
+After the live play scene, revisit or reload and verify the world changed honestly.
+This is the pass that proves the product is not just spawn theater.
+
+### 5. Perf/readability judgment pass
+
+Finally, collect the metrics and the taste notes together:
+- are the concrete perf numbers acceptable
+- does the encounter feel alive on the map
+- does it read as pressure/stalking/contact rather than debug-puppet nonsense
+- is the setup fast enough that Schani and Josef would actually use it repeatedly
+
+## Anti-scope guardrails
+
+Do not let this packet quietly mutate into any of the following:
+
+- a generic hostile-human architecture rewrite
+- a broad Basecamp command-language redesign
+- a universal scenario-authoring/modding platform
+- a fake success case where only the old named-NPC spawn seam works
+- a persistence blob that stores every possible detail because nobody wanted to choose
+- an immortal pursuit/revisit machine that forgets the earlier bounded-memory and bounded-revisit rules
+
+The active lane is narrower and more useful than that:
+make the real current bandit spawns belong to one live saved system, make that system restageable nearby, make local outcomes write back honestly, and make the whole thing measurable enough to trust.
