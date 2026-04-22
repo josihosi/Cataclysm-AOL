@@ -15,13 +15,14 @@ not a diplomacy opera, just one hard pressure fork where bandits try to rob you 
 1. Land one honest bootstrap from the bandit approach/gate layer into a player-present shakedown scene.
 2. Start the encounter with a short readable bark/intent surface that makes it obvious this is a stick-up rather than a generic hostile aggro flip.
 3. Expose one deliberately blunt first fork: `pay` or `fight`.
-4. Use a trading-style surrender surface rather than pure freeform bark parsing, so the extortion scene is usable and reviewer-readable.
-5. Make the demanded toll painful by rule: a meaningful share of the honest reachable goods pool, not a token scripted fee.
-6. Keep the reachable goods pool explicit:
+4. Keep that hard fork available whenever this shakedown surface is invoked; if a later packet reopens pressure with a harsher second demand, the player should still be able to answer with `pay` or `fight` rather than losing the combat option by script fiat.
+5. Use a trading-style surrender surface rather than pure freeform bark parsing, so the extortion scene is usable and reviewer-readable.
+6. Make the demanded toll painful by rule: a meaningful share of the honest reachable goods pool, not a token scripted fee.
+7. Keep the reachable goods pool explicit:
    - Basecamp-side scenes may expose player inventory, relevant nearby NPC inventories, and reachable Basecamp inventory
    - off-base scenes may expose only what the player, companions, and current vehicle actually carry
-7. Allow surrendered goods to collapse into abstract bandit bounty/writeback instead of requiring perfect item-by-item future cargo theater.
-8. Keep convoy / fast-moving rolling-attack contexts allowed to bypass this packet when packet 1 already decided the honest posture is direct violence.
+8. Allow surrendered goods to collapse into abstract bandit bounty/writeback instead of requiring perfect item-by-item future cargo theater.
+9. Keep convoy / fast-moving rolling-attack contexts allowed to bypass this packet when packet 1 already decided the honest posture is direct violence.
 
 ## Non-goals
 
@@ -37,10 +38,11 @@ not a diplomacy opera, just one hard pressure fork where bandits try to rob you 
 This packet is good enough when:
 1. one honest player-present shakedown scene can bootstrap from the prior approach/gate packet instead of appearing as disconnected chat magic
 2. the initial interaction is clearly a robbery demand with a readable `pay` versus `fight` fork
-3. the surrender surface uses an explicit bounded goods pool that matches scene context rather than magical remote inventory reach
-4. the demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee
-5. paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly
-6. the slice stays bounded and does not widen into a giant diplomacy system, fake debt economy, or unrelated convoy-combat rewrite
+3. whenever this shakedown surface is invoked, including any later reopened demand, fighting remains an explicit option rather than disappearing into one-way surrender theater
+4. the surrender surface uses an explicit bounded goods pool that matches scene context rather than magical remote inventory reach
+5. the demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee
+6. paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly
+7. the slice stays bounded and does not widen into a giant diplomacy system, fake debt economy, or unrelated convoy-combat rewrite
 
 ## Validation expectations
 

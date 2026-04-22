@@ -186,7 +186,7 @@ Keep it hard, readable, and bounded.
 What this item should do:
 - land one honest bootstrap from the approach/gate layer into a player-present shakedown scene
 - start the encounter with a short readable stick-up bark/intent surface instead of a generic hostile aggro flip
-- expose one deliberately blunt first fork: `pay` or `fight`
+- expose one deliberately blunt first fork: `pay` or `fight`, and keep that combat option available whenever this shakedown surface is invoked
 - use a trading-style surrender surface with a painful demand drawn from the honest reachable goods pool
 - let Basecamp-side scenes expose player + relevant nearby NPC + reachable Basecamp inventory, while off-base scenes expose only currently carried / vehicle-carried goods
 - allow surrendered goods to collapse into abstract bandit bounty/writeback rather than requiring perfect long-tail cargo theater
@@ -212,6 +212,7 @@ What this item should do:
 - let partial or interrupted fights rewrite the next pressure pass instead of forcing every scene to resolve as one terminal event
 - allow one bounded renegotiation reopen when defender strength materially drops, especially if a Basecamp NPC dies and the bandits now read the scene as richer/safer prey
 - make that reopened demand explicitly harsher rather than replaying the same toll as if nothing changed
+- give the player one real reconsideration fork under the raised demand: pay the higher price or fight again; combat should remain an option both times
 - preserve both directions of truth: bandit losses or panic should also cool later pressure instead of only ratcheting cruelty upward
 
 Non-goals:

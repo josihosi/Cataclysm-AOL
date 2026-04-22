@@ -18,8 +18,9 @@ This packet exists to freeze that aftermath law, including the specific wanted b
 3. Let partial or interrupted fights rewrite the next pressure pass honestly instead of forcing every scene to resolve as one clean terminal event.
 4. Allow one bounded renegotiation reopen when the local fight materially lowers defender strength, especially if a Basecamp NPC dies and the bandits now read the scene as richer/safer prey than a minute ago.
 5. Make that reopened demand explicitly harsher rather than just replaying the same toll as if nothing changed.
-6. Keep the reopen logic bounded: one honest stronger second demand is good; an infinite haggle/loop machine is not.
-7. Preserve both sides of the writeback truth: bandit losses or panic should cool later pressure too, not only player/basecamp losses increasing future extortion.
+6. Give the player one honest chance to reconsider under that higher price: pay the raised demand or fight again. The combat option should remain real on both the first and second demand.
+7. Keep the reopen logic bounded: one honest stronger second demand is good; an infinite haggle/loop machine is not.
+8. Preserve both sides of the writeback truth: bandit losses or panic should cool later pressure too, not only player/basecamp losses increasing future extortion.
 
 ## Non-goals
 
@@ -36,21 +37,23 @@ This packet is good enough when:
 1. one honest aftermath/writeback layer exists for player-present bandit shakedown outcomes
 2. later bandit behavior can reflect scene results such as losses, wounds, loot haul, failed extraction, anger, or caution instead of resetting to folklore
 3. a materially weakened Basecamp defense, including a killed defender, can reopen the pressure once from a stronger bandit position with a higher demand when that is the honest read
-4. the harsher reopened demand is explicit and reviewer-readable rather than hidden in vague score drift
-5. bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet in one cruel direction
-6. the slice stays bounded and does not turn into infinite haggling, giant diplomacy machinery, or coalition grand strategy
+4. that harsher reopened demand still gives the player a fresh explicit `pay` versus `fight` choice instead of hard-forcing only surrender or only combat
+5. the harsher reopened demand is explicit and reviewer-readable rather than hidden in vague score drift
+6. bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet in one cruel direction
+7. the slice stays bounded and does not turn into infinite haggling, giant diplomacy machinery, or coalition grand strategy
 
 ## Validation expectations
 
 - prefer proof that a first encounter outcome actually changes a later revisit or immediate reopen, rather than stopping at one isolated scene transcript
 - include at minimum one case where bandits return stronger after defender loss and one case where bandits cool or shrink after taking meaningful losses themselves
+- when the stronger return happens, validation should prove the player still gets a fresh `pay` versus `fight` reconsideration fork under the raised demand
 - reviewer-readable output should show the scene outcome, the rewritten local threat read, and the resulting higher-or-lower later demand clearly enough that the change can be audited by reading
 - if goods are abstracted into bounty/writeback, validation should prove that later pressure changes are still grounded in the stored outcome rather than fake amnesia
 
 ## Current grounded note
 
 The broader parked bandit concept already leaned toward this exact follow-through: if a player-present fight kills defenders or materially lowers local Basecamp threat, a later pressure pass may reopen negotiations from a stronger bandit position with a higher toll instead of pretending nothing changed.
-This packet makes that rule a bounded product contract instead of leaving it as a juicy footnote.
+This packet now also freezes Josef's later correction that the reopened demand should still offer a real reconsideration fork: pay the raised price or fight again.
 
 ## Dependency note
 

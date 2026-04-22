@@ -856,6 +856,7 @@ Status: GREENLIT
 Success state:
 - [ ] One honest player-present shakedown scene can bootstrap from the prior approach/gate packet instead of appearing as disconnected chat magic.
 - [ ] The initial interaction is clearly a robbery demand with a readable `pay` versus `fight` fork.
+- [ ] Whenever this shakedown surface is invoked, including any later reopened demand, fighting remains an explicit option rather than disappearing into one-way surrender theater.
 - [ ] The surrender surface uses an explicit bounded goods pool that matches scene context rather than magical remote inventory reach.
 - [ ] The demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee.
 - [ ] Paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly.
@@ -876,6 +877,7 @@ Success state:
 - [ ] One honest aftermath/writeback layer exists for player-present bandit shakedown outcomes.
 - [ ] Later bandit behavior can reflect scene results such as losses, wounds, loot haul, failed extraction, anger, or caution instead of resetting to folklore.
 - [ ] A materially weakened Basecamp defense, including a killed defender, can reopen the pressure once from a stronger bandit position with a higher demand when that is the honest read.
+- [ ] That harsher reopened demand still gives the player a fresh explicit `pay` versus `fight` reconsideration fork instead of hard-forcing only surrender or only combat.
 - [ ] The harsher reopened demand is explicit and reviewer-readable rather than hidden in vague score drift.
 - [ ] Bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet cruelty upward.
 - [ ] The slice stays bounded: no infinite haggling loops, no giant diplomacy/reputation machinery, and no multi-camp retaliation grand strategy.
@@ -883,7 +885,7 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
 - This packet sits directly behind `Bandit shakedown pay-or-fight surface packet v0`.
-- The specific wanted beat is frozen here: if bandits kill a Basecamp defender and the local threat read drops, they may reopen once from a stronger position with a higher toll instead of pretending nothing changed.
+- The specific wanted beat is frozen here: if bandits kill a Basecamp defender and the local threat read drops, they may reopen once from a stronger position with a higher toll — and the player still gets a fresh choice to pay or fight again.
 
 ---
 
