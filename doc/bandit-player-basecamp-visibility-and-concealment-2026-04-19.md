@@ -404,6 +404,8 @@ The handoff doc explains how an abstract group enters and leaves local play once
 ## Suggested v1 structure for later implementation thinking
 
 Keep the later implementation seam small and inspectable.
+Performance is part of the product contract here, not an academic footnote.
+If smoke/light/human-route perception starts getting expensive, that is a real failure mode, not something to apologize for later in review.
 
 Possible conceptual flow:
 1. observe coarse signal source
@@ -454,6 +456,10 @@ A good v1 implementation shape would be:
 5. classify the visible pattern into ordinary light versus searchlight-like threat light when the source / motion / beam shape makes that distinction legible
 6. reduce the result by current weather / visibility penalties
 7. emit a light-family mark only if one or more buckets clears a meaningful threshold
+8. keep the emitted packet and per-candidate work small enough that reviewers can still read the cost story without spelunking through hidden fan-out
+
+If this chain starts thickening suspiciously, preserve a measurement angle with it.
+A bounded perf probe, debug counter, or reviewer-readable cost sample is part of honest validation for this seam, not optional garnish.
 
 ### Why this shape is attractive
 It preserves the useful truths we actually want:
@@ -556,6 +562,8 @@ But the point is to stop hand-waving and freeze something testable.
   - this matches current code footing surprisingly well: `Character::overmap_sight_range()` effectively lands at base `6` plus perception contribution, which is **10 OMT** for the default `PER 8` survivor
 - **confident threat visibility range:** start at **6 overmap tiles**
   - this is intentionally tighter than bounty so camps can notice "something profitable may be there" before they feel they truly understand danger there
+  - current stalking/posture lean: this same threat-visibility distance is also the rough stand-off envelope for a cautious stalk, so bandits generally should not hug the immediately adjacent overmap tile to the target just because it is mathematically closer
+  - one OMT is basically a house-scale hop, so adjacent-tile crowding should need a stronger later reason than ordinary stalking pressure
 - **searchlight / hard-danger threat extension:** allow sharper threat reads to stretch to about **8 overmap tiles** when there is corroboration such as searchlights, patrol behavior, prior losses, or other explicit danger evidence
 - **meaningful smoke-plume range:** allow sustained smoke to project out to about **15 overmap tiles** as a coarse outer cap
   - weak or brief smoke should often read at less than that
@@ -586,8 +594,10 @@ These are deliberately **later** than the first narrow signal bridges.
 But the parked canon should preserve them now so the future test packet does not forget the annoying real-world interactions.
 
 ### Directional light and long-range exposure
-- if a player camp north of a bandit camp leaks visible light only toward the east, that should **not** justify north-side staking-out from the bandit camp
-- if the same camp leaks meaningful light toward the south, it **should** become visible/actionable from the bandit side
+Preserve at least these later scenarios explicitly:
+1. a player camp north of a bandit camp has light, but that light is visible only toward the east. Expected: this should **not** justify north-side staking-out from the bandit camp.
+2. the same north-side player camp has light that is visible toward the south. Expected: it **should** become visible/actionable from the bandit side.
+3. the same as scenario 2, but with a zombie horde sitting in the corridor between the camps. Expected: the light should plausibly attract the horde too, not exist in isolated bandit-only theater.
 - these fixtures should use sensible spacing near the maximum meaningful visibility envelope implied by the current hard-coded game footing, not toy adjacent placement
 - ordinary visible light should likely track roughly the general overmap visibility envelope under the right conditions, while smoke should project farther because a high plume can stay legible beyond ordinary local-sight assumptions
 
@@ -596,10 +606,12 @@ But the parked canon should preserve them now so the future test packet does not
 - once overmap-side tests are real, later handover tests should also prove that local reality can rewrite overmap posture, for example a stalk becoming an honest retreat when the player intersects the bandits directly and the tile becomes too dangerous
 
 ### Z-level edge cases
+Preserve this as a later explicit test family too:
 - nearby floor changes should not behave like magical visibility amnesia
 - a fire on `z -1` may still be visible from `z 0` under sensible open conditions
 - light on `z +1` or `z +2` may still be visible from `z 0` when line and exposure support it
-- the current lean is that elevation may extend exposed-light usefulness and attraction under the right conditions, while smoke should not gain silly extra strategic range merely because the source changed floors
+- the current product lean is that smoke should not gain magical extra general visibility merely because the source changed floors
+- the matching lean is that elevated exposed light at `z > 0` may deserve somewhat longer effective visibility and attraction reach for both bandits and zombie hordes under the right conditions, but that belongs in later explicit validation, not early seam scope
 
 These are future validation constraints, not permission to bloat the early v1 seams right now.
 

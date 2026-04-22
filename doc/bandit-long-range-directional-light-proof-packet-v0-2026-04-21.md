@@ -2,8 +2,8 @@
 
 ## Status
 
-This is **ACTIVE / GREENLIT**.
-It is the current narrow bandit lane.
+This is **CHECKPOINTED / DONE FOR NOW**.
+It was the active narrow bandit lane and is now honestly landed on the current tree.
 
 This packet is not just another single-turn unit nibble.
 Josef explicitly wants real overmap-side multi-turn proof with benchmarks, not only one-tick correctness theater.

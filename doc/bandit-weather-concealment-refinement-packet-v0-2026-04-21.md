@@ -2,8 +2,8 @@
 
 ## Status
 
-This is **ACTIVE / GREENLIT**.
-It is now the current bounded follow-up after the overmap/local pressure rewrite packet landed.
+This is **CHECKPOINTED / DONE FOR NOW**.
+It landed as the bounded follow-up after the overmap/local pressure rewrite packet and now closes honestly on the current tree.
 
 This is a bounded refinement follow-up on the already-landed smoke, light, and concealment seams.
 It is not permission to reopen the whole visibility stack just because weather is nearby and dramatic.
@@ -43,7 +43,7 @@ This lane should **not** do any of the following:
 
 ## Success state
 
-This lane is done for now when:
+This lane is now done for now on the current tree:
 - one bounded weather-refinement packet exists on the current smoke/light mark-generation footing
 - deterministic coverage proves wind meaningfully fuzzes or de-precises smoke output instead of acting only as a token penalty
 - deterministic coverage proves portal-storm weather is handled explicitly for smoke and light instead of falling through as an unmodeled special case
@@ -58,17 +58,17 @@ This lane is done for now when:
 - code change later -> rebuild the relevant bandit targets and run the narrowest mark-generation plus playback coverage that honestly matches the change
 - prefer deterministic packet tests over live weather theater unless deterministic proof stops being enough
 
-Expected proof shape later:
+Landed proof shape on the current tree:
 - `make -j4 tests`
 - `./tests/cata_test "[bandit][marks]"`
 - `./tests/cata_test "[bandit][playback]"`
 - `./tests/cata_test "[bandit]"`
 
-Likely named proof cases:
-- weak versus strong smoke under wind, showing fuzzier or less source-precise projection instead of only a tiny range haircut
-- portal-storm smoke showing worse source certainty than ordinary night conditions
-- portal-storm exposed bright light staying legible when darkness honestly supports it, while ordinary sheltered light still stays bounded
-- rain remaining an explicit reducer for both smoke and light
+Landed proof cases on the current tree:
+- windy smoke now shows a fuzzier, drift-prone projection instead of only a tiny range haircut
+- portal-storm smoke now shows worse source certainty and a more displaced/corridor-ish read than ordinary weather
+- portal-storm exposed bright light can stay legible when darkness honestly supports it, while ordinary sheltered light still stays bounded
+- rain remains an explicit reducer for both smoke and light
 
 ---
 

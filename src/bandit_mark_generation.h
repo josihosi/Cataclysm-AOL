@@ -19,6 +19,7 @@ enum class smoke_weather_band {
     windy,
     rain,
     fog,
+    portal_storm,
 };
 
 enum class light_time_band {
@@ -31,6 +32,7 @@ enum class light_weather_band {
     clear,
     rain,
     fog,
+    portal_storm,
 };
 
 enum class light_exposure_band {
@@ -101,14 +103,30 @@ struct smoke_packet {
     int spread_bias = 0;
     smoke_weather_band weather = smoke_weather_band::clear;
     std::vector<std::string> notes;
+    int vertical_offset = 0;
+    bool vertical_sightline = false;
+};
+
+struct smoke_weather_effect {
+    int range_penalty = 0;
+    int confidence_penalty = 0;
+    int source_precision_penalty = 0;
+    int displacement_bias = 0;
+    int vertical_range_bonus = 0;
+    bool nearby_cross_z_visible = false;
+    std::string verdict;
+    std::string origin_hint;
+    std::string summary;
 };
 
 struct smoke_projection {
     smoke_packet packet;
     signal_input signal;
+    smoke_weather_effect weather_effect;
     int visibility_score = 0;
     int projected_range_omt = 0;
     bool viable = false;
+    std::string review_summary;
 };
 
 struct light_packet {
@@ -126,6 +144,9 @@ struct light_packet {
     light_source_band source = light_source_band::ordinary;
     light_terrain_band terrain = light_terrain_band::open;
     std::vector<std::string> notes;
+    int vertical_offset = 0;
+    bool vertical_sightline = false;
+    int elevation_bonus = 0;
 };
 
 struct light_concealment_packet {
@@ -134,7 +155,13 @@ struct light_concealment_packet {
     int exposure_bonus = 0;
     int side_leakage_bonus = 0;
     int terrain_penalty = 0;
+    int vertical_penalty = 0;
+    int nearby_cross_z_bonus = 0;
+    int elevated_exposure_bonus = 0;
     int visibility_modifier = 0;
+    bool storm_bright_light_preserved = false;
+    bool nearby_cross_z_visible = false;
+    bool elevated_exposure_extended = false;
     std::string verdict;
     std::string summary;
 };
@@ -183,6 +210,19 @@ struct repeated_site_reinforcement_packet {
     bool viable = false;
 };
 
+struct moving_bounty_memory {
+    bool active = false;
+    bool review_pending = false;
+    bandit_dry_run::lead_family source_family = bandit_dry_run::lead_family::none;
+    std::string last_known_region_id;
+    int confidence_band = 0;
+    int leash_turns_remaining = 0;
+    int opportunity_band = 0;
+    int threat_band = 0;
+    std::string last_transition = "none";
+    std::string drop_reason;
+};
+
 struct typed_mark {
     std::string id;
     std::string kind;
@@ -204,6 +244,7 @@ struct typed_mark {
     int age_turns = 0;
     int last_refresh_tick = 0;
     repeated_site_reinforcement_packet repeated_site_reinforcement;
+    moving_bounty_memory moving_memory;
     std::vector<std::string> notes;
 };
 

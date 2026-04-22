@@ -2,19 +2,26 @@
 
 ## Status
 
-This is **GREENLIT / QUEUED NEXT**.
-It is approved as the next bounded follow-up behind the active scoring lane.
+This is **CHECKPOINTED / DONE FOR NOW**.
+The bounded moving-memory packet now exists on the current bandit seam and is honest enough to stay closed for now.
 
-This is **not** permission to preempt the active scoring seam.
-It is the next narrow memory packet once scoring reaches its next real state.
+This is still **not** permission to widen into a broad memory architecture pass.
+It stays the narrow moving-memory packet until later canon says otherwise.
 
 ---
 
 ## Summary
 
-Land one tiny moving-bounty memory packet.
+One tiny moving-bounty memory packet is now landed.
 Structural bounty stays on site state.
 Only moving/NPC bounty gets a small source-shaped pursuit memory, just enough for bounded stalk / shadow / intercept behavior.
+
+Current honest state:
+- `src/bandit_mark_generation.{h,cpp}` now keeps a bounded `moving_bounty_memory` packet on moving-carrier and corridor marks only, with leash, opportunity/threat bands, and reviewer-readable transition state
+- structural/site marks stay on cheap site footing and do not gain chase memory
+- deterministic coverage in `tests/bandit_mark_generation_test.cpp` now proves three key bounded distinctions honestly: moving prey can be stalked briefly after the raw mark cools, structural sites do not gain chase memory, and stale moving contact drops reviewer-cleanly instead of retrying forever
+- `tests/bandit_playback_test.cpp` now keeps the corridor playback expectation aligned with the new bounded memory window instead of pretending the mark vanishes immediately
+- narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`
 
 ---
 
@@ -47,7 +54,7 @@ This lane is done for now when:
 - one bounded moving-bounty memory object exists for live `actor` or `corridor` style bounty while structural bounty stays on site state
 - structural sites keep only cheap state such as harvested / recently-checked / false-lead / sticky-threat footing and do not gain stalking logic
 - deterministic coverage proves the key bounded pursuit split honestly: live moving prey can be stalked briefly, but the memory collapses cleanly on lost contact, split, bad recheck, rising threat, or leash expiry
-- reviewer-readable output shows whether a moving lead was refreshed, narrowed, converted, or dropped
+- reviewer-readable output shows whether a moving lead was refreshed, narrowed, or dropped
 - the slice stays computationally cheap and does not smuggle in a bigger memory system
 
 ---

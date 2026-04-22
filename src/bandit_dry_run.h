@@ -48,6 +48,8 @@ struct lead_input {
     int lead_bounty_value = 0;
     int lead_confidence_bonus = 0;
     int threat_penalty = 0;
+    int monster_pressure_bonus = 0;
+    int target_coherence_bonus = 0;
     int active_pressure_penalty = 0;
     int reward_profile_match = 0;
     threat_gate threat_gate_result = threat_gate::discount_only;
@@ -58,6 +60,9 @@ struct lead_input {
 struct camp_input {
     int available_manpower = 0;
     shortage_band shortage = shortage_band::stable;
+    bool allow_bounded_explore = false;
+    int explore_pressure = 0;
+    double explore_distance_multiplier = 0.35;
     std::map<job_template, int> temperament_bias;
     std::map<job_template, int> job_type_bonus;
 };
@@ -83,7 +88,11 @@ struct score_debug {
     double distance_multiplier = 1.0;
     double travel_shaped_pull = 0.0;
     int threat_penalty = 0;
+    int monster_pressure_bonus = 0;
+    int target_coherence_bonus = 0;
+    int effective_threat_penalty = 0;
     int active_pressure_penalty = 0;
+    int opportunism_bonus = 0;
     double pre_veto_job_score = 0.0;
     int shortage_band_bonus = 0;
     int reward_profile_match = 0;

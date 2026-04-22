@@ -121,6 +121,75 @@ TEST_CASE( "bandit_mark_generation_smoke_adapter_keeps_clear_plumes_long_range_b
     CHECK( fogged_projection.projected_range_omt < clear_projection.projected_range_omt );
 }
 
+TEST_CASE( "bandit_mark_generation_smoke_weather_refinement_reports_fuzz_and_reduction",
+           "[bandit][marks]" )
+{
+    const bandit_mark_generation::smoke_packet windy_packet = {
+        "ridge_smoke_windy",
+        "ridge_smoke_windy",
+        "ridge_rim",
+        bandit_dry_run::lead_family::site,
+        7,
+        3,
+        2,
+        1,
+        1,
+        bandit_mark_generation::smoke_weather_band::windy,
+        { "Wind should keep the smoke clue readable but fuzzier." }
+    };
+    const bandit_mark_generation::smoke_packet rainy_packet = {
+        "ridge_smoke_rain",
+        "ridge_smoke_rain",
+        "ridge_rim",
+        bandit_dry_run::lead_family::site,
+        5,
+        2,
+        1,
+        1,
+        0,
+        bandit_mark_generation::smoke_weather_band::rain,
+        { "Rain should reduce smoke without turning it into portal nonsense." }
+    };
+    const bandit_mark_generation::smoke_packet portal_packet = {
+        "ridge_smoke_portal",
+        "ridge_smoke_portal",
+        "ridge_rim",
+        bandit_dry_run::lead_family::site,
+        6,
+        3,
+        1,
+        1,
+        2,
+        bandit_mark_generation::smoke_weather_band::portal_storm,
+        { "Portal-storm smoke should stay spooky and hard to localize." }
+    };
+
+    const bandit_mark_generation::smoke_projection windy_projection =
+        bandit_mark_generation::adapt_smoke_packet( windy_packet );
+    const bandit_mark_generation::smoke_projection rainy_projection =
+        bandit_mark_generation::adapt_smoke_packet( rainy_packet );
+    const bandit_mark_generation::smoke_projection portal_projection =
+        bandit_mark_generation::adapt_smoke_packet( portal_packet );
+
+    CHECK( windy_projection.viable );
+    CHECK( rainy_projection.viable );
+    CHECK( portal_projection.viable );
+    CHECK( windy_projection.projected_range_omt < 15 );
+    CHECK( rainy_projection.projected_range_omt < 15 );
+    CHECK( portal_projection.projected_range_omt < 15 );
+    CHECK( windy_projection.signal.confidence == 0 );
+    CHECK( rainy_projection.signal.confidence == 0 );
+    CHECK( portal_projection.signal.confidence == 0 );
+    CHECK( windy_projection.review_summary.find( "weather=windy" ) != std::string::npos );
+    CHECK( windy_projection.review_summary.find( "verdict=fuzzed" ) != std::string::npos );
+    CHECK( windy_projection.review_summary.find( "origin_hint=drifted" ) != std::string::npos );
+    CHECK( rainy_projection.review_summary.find( "weather=rain" ) != std::string::npos );
+    CHECK( rainy_projection.review_summary.find( "verdict=reduced" ) != std::string::npos );
+    CHECK( portal_projection.review_summary.find( "weather=portal_storm" ) != std::string::npos );
+    CHECK( portal_projection.review_summary.find( "verdict=fuzzed" ) != std::string::npos );
+    CHECK( portal_projection.review_summary.find( "origin_hint=corridorish" ) != std::string::npos );
+}
+
 TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_but_bounded",
            "[bandit][marks]" )
 {
@@ -235,6 +304,160 @@ TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_bu
     CHECK( exposed_projection.review_summary.find( "verdict=allowed" ) != std::string::npos );
     CHECK( screened_side_projection.review_summary.find( "verdict=reduced" ) != std::string::npos );
     CHECK( contained_projection.review_summary.find( "verdict=blocked" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_mark_generation_portal_storm_light_keeps_bright_exposed_leaks_legible_but_bounded",
+           "[bandit][marks]" )
+{
+    const bandit_mark_generation::light_packet exposed_portal_packet = {
+        "storm_watchfire",
+        "storm_watchfire",
+        "storm_ridge",
+        bandit_dry_run::lead_family::site,
+        6,
+        3,
+        1,
+        1,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::portal_storm,
+        bandit_mark_generation::light_exposure_band::exposed,
+        bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::open,
+        { "Dark portal-storm conditions can still leave bright exposed light legible." }
+    };
+    const bandit_mark_generation::light_packet contained_portal_packet = {
+        "storm_cabin_lantern",
+        "storm_cabin_lantern",
+        "storm_ridge",
+        bandit_dry_run::lead_family::site,
+        3,
+        2,
+        1,
+        0,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::portal_storm,
+        bandit_mark_generation::light_exposure_band::contained,
+        bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::built_cover,
+        { "A sheltered ordinary lantern should not become a magical portal-storm beacon." }
+    };
+
+    const bandit_mark_generation::light_projection exposed_projection =
+        bandit_mark_generation::adapt_light_packet( exposed_portal_packet );
+    const bandit_mark_generation::light_projection contained_projection =
+        bandit_mark_generation::adapt_light_packet( contained_portal_packet );
+
+    CHECK( exposed_projection.viable );
+    CHECK( exposed_projection.projected_range_omt == 10 );
+    CHECK( exposed_projection.review_summary.find( "weather=portal_storm" ) != std::string::npos );
+    CHECK( exposed_projection.review_summary.find( "storm_bright_light_preserved=yes" ) != std::string::npos );
+    CHECK_FALSE( contained_projection.viable );
+    CHECK( contained_projection.review_summary.find( "weather=portal_storm" ) != std::string::npos );
+    CHECK( contained_projection.review_summary.find( "verdict=blocked" ) != std::string::npos );
+    CHECK( contained_projection.review_summary.find( "storm_bright_light_preserved=no" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_mark_generation_elevated_exposed_light_outruns_hidden_ground_light_without_global_sight",
+           "[bandit][marks]" )
+{
+    const bandit_mark_generation::light_packet hidden_ground_packet = {
+        "ridge_hidden_lantern",
+        "ridge_hidden_lantern",
+        "ridge_shed",
+        bandit_dry_run::lead_family::site,
+        10,
+        2,
+        1,
+        0,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::contained,
+        bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::built_cover,
+        { "Hidden ground lantern baseline." },
+        0,
+        false,
+        0
+    };
+    const bandit_mark_generation::light_packet elevated_exposed_packet = {
+        "ridge_bonfire_elevated",
+        "ridge_bonfire_elevated",
+        "ridge_watch",
+        bandit_dry_run::lead_family::site,
+        10,
+        2,
+        1,
+        0,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::exposed,
+        bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::open,
+        { "Elevated exposed bonfire should stretch farther." },
+        2,
+        true,
+        2
+    };
+
+    const bandit_mark_generation::light_projection hidden_projection =
+        bandit_mark_generation::adapt_light_packet( hidden_ground_packet );
+    const bandit_mark_generation::light_projection elevated_projection =
+        bandit_mark_generation::adapt_light_packet( elevated_exposed_packet );
+
+    CHECK_FALSE( hidden_projection.viable );
+    CHECK( elevated_projection.viable );
+    CHECK( elevated_projection.projected_range_omt > hidden_projection.projected_range_omt );
+    CHECK( elevated_projection.review_summary.find( "nearby_cross_z_visible=yes" ) != std::string::npos );
+    CHECK( elevated_projection.review_summary.find( "elevated_exposure_extended=yes" ) != std::string::npos );
+    CHECK( elevated_projection.review_summary.find( "elevation_bonus=2" ) != std::string::npos );
+    CHECK( hidden_projection.review_summary.find( "nearby_cross_z_visible=no" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_mark_generation_vertical_smoke_stays_nearby_visible_without_gaining_extra_range",
+           "[bandit][marks]" )
+{
+    const bandit_mark_generation::smoke_packet ground_packet = {
+        "yard_smoke_ground",
+        "yard_smoke_ground",
+        "mill_yard",
+        bandit_dry_run::lead_family::site,
+        10,
+        3,
+        1,
+        1,
+        0,
+        bandit_mark_generation::smoke_weather_band::clear,
+        { "Same-floor smoke baseline." },
+        0,
+        false
+    };
+    const bandit_mark_generation::smoke_packet vertical_packet = {
+        "yard_smoke_upper",
+        "yard_smoke_upper",
+        "mill_yard_upper",
+        bandit_dry_run::lead_family::site,
+        10,
+        3,
+        1,
+        1,
+        0,
+        bandit_mark_generation::smoke_weather_band::clear,
+        { "One-floor-up smoke honesty check." },
+        1,
+        true
+    };
+
+    const bandit_mark_generation::smoke_projection ground_projection =
+        bandit_mark_generation::adapt_smoke_packet( ground_packet );
+    const bandit_mark_generation::smoke_projection vertical_projection =
+        bandit_mark_generation::adapt_smoke_packet( vertical_packet );
+
+    CHECK( ground_projection.viable );
+    CHECK( vertical_projection.viable );
+    CHECK( vertical_projection.projected_range_omt == ground_projection.projected_range_omt );
+    CHECK( vertical_projection.review_summary.find( "nearby_cross_z_visible=yes" ) != std::string::npos );
+    CHECK( vertical_projection.review_summary.find( "vertical_range_bonus=0" ) != std::string::npos );
+    CHECK( ground_projection.review_summary.find( "nearby_cross_z_visible=no" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_mark_generation_light_concealment_reports_weather_and_terrain_reduction",
@@ -510,6 +733,228 @@ TEST_CASE( "bandit_mark_generation_repeated_site_reinforcement_needs_mixed_signa
     const std::vector<bandit_dry_run::lead_input> leads = bandit_mark_generation::emit_leads( mixed_state );
     REQUIRE( leads.size() == 1 );
     CHECK( leads[0].hard_blocked_jobs == blocked_extraction_jobs );
+}
+
+TEST_CASE( "bandit_mark_generation_emits_existing_pressure_and_coherence_for_scoring", "[bandit][marks]" )
+{
+    bandit_mark_generation::ledger_state state;
+
+    const bandit_mark_generation::signal_input pressured_route = {
+        "city_edge_route",
+        "route_activity",
+        "city_edge_route",
+        "city_edge",
+        bandit_dry_run::lead_family::corridor,
+        1,
+        2,
+        3,
+        1,
+        2,
+        1,
+        0,
+        0.60,
+        bandit_dry_run::threat_gate::discount_only,
+        {},
+        false,
+        true,
+        { "Zombie churn and split defenders are already visible on this route." }
+    };
+
+    bandit_mark_generation::advance_state( state, 0,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { pressured_route } );
+    const std::vector<bandit_dry_run::lead_input> leads = bandit_mark_generation::emit_leads( state );
+
+    REQUIRE( leads.size() == 1 );
+    CHECK( leads[0].envelope_id == "city_edge_route" );
+    CHECK( leads[0].threat_penalty == 5 );
+    CHECK( leads[0].monster_pressure_bonus == 2 );
+    CHECK( leads[0].target_coherence_bonus == 1 );
+    CHECK( leads[0].lead_bounty_value == 3 );
+
+    bool found_pressure_note = false;
+    for( const std::string &note : leads[0].validity_notes ) {
+        if( note.find( "pressure/coherence packet: monster_pressure=2, target_coherence=1" ) !=
+            std::string::npos ) {
+            found_pressure_note = true;
+            break;
+        }
+    }
+    CHECK( found_pressure_note );
+}
+
+TEST_CASE( "bandit_mark_generation_moving_leads_persist_briefly_and_narrow_on_refresh", "[bandit][marks]" )
+{
+    bandit_mark_generation::ledger_state state;
+
+    const bandit_mark_generation::signal_input trader_column = {
+        "trader_column",
+        "human_sighting",
+        "trader_column",
+        "north_road",
+        bandit_dry_run::lead_family::moving_carrier,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0.20,
+        bandit_dry_run::threat_gate::discount_only,
+        {},
+        false,
+        true,
+        { "A live traveler column should stay worth stalking briefly even after the raw sighting cools." }
+    };
+
+    bandit_mark_generation::advance_state( state, 0,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { trader_column } );
+    REQUIRE( state.marks.size() == 1 );
+    CHECK( state.marks[0].moving_memory.active );
+    CHECK( state.marks[0].moving_memory.last_known_region_id == "north_road" );
+    CHECK( state.marks[0].moving_memory.last_transition == "refreshed" );
+    CHECK( state.marks[0].moving_memory.leash_turns_remaining == 100 );
+
+    const bandit_mark_generation::update_result cooled =
+        bandit_mark_generation::advance_state( state, 40,
+                bandit_mark_generation::cadence_tier::distant_inactive, {} );
+
+    REQUIRE( state.marks.size() == 1 );
+    CHECK( state.marks[0].strength == 0 );
+    CHECK( state.marks[0].confidence == 0 );
+    CHECK( state.marks[0].moving_memory.active );
+    CHECK( state.marks[0].moving_memory.leash_turns_remaining == 60 );
+    REQUIRE( cooled.leads.size() == 1 );
+    CHECK( cooled.leads[0].family == bandit_dry_run::lead_family::moving_carrier );
+    CHECK( cooled.leads[0].lead_bounty_value == 1 );
+    CHECK( cooled.leads[0].lead_confidence_bonus == 1 );
+    CHECK( cooled.leads[0].distance_multiplier == 0.35 );
+
+    bool found_memory_note = false;
+    for( const std::string &note : cooled.leads[0].validity_notes ) {
+        if( note.find( "moving memory: active=yes" ) != std::string::npos &&
+            note.find( "last_known_region=north_road" ) != std::string::npos ) {
+            found_memory_note = true;
+            break;
+        }
+    }
+    CHECK( found_memory_note );
+
+    bandit_mark_generation::signal_input narrowed_column = trader_column;
+    narrowed_column.region_id = "east_road";
+    narrowed_column.notes = { "The same prey column shifted east; the memory should narrow instead of resetting into folklore." };
+
+    bandit_mark_generation::advance_state( state, 60,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { narrowed_column } );
+    REQUIRE( state.marks.size() == 1 );
+    CHECK( state.marks[0].moving_memory.active );
+    CHECK( state.marks[0].moving_memory.last_known_region_id == "east_road" );
+    CHECK( state.marks[0].moving_memory.last_transition == "narrowed" );
+    CHECK( state.marks[0].moving_memory.leash_turns_remaining == 100 );
+
+    const std::string report = bandit_mark_generation::render_report( state );
+    CHECK( report.find( "last_known_region=east_road" ) != std::string::npos );
+    CHECK( report.find( "last_transition=narrowed" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_mark_generation_structural_sites_do_not_gain_chase_memory", "[bandit][marks]" )
+{
+    bandit_mark_generation::ledger_state state;
+
+    const bandit_mark_generation::signal_input farmhouse_smoke = {
+        "farmhouse_smoke",
+        "smoke",
+        "farmhouse_smoke",
+        "farmstead_edge",
+        bandit_dry_run::lead_family::site,
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0.60,
+        bandit_dry_run::threat_gate::discount_only,
+        { bandit_dry_run::job_template::scavenge, bandit_dry_run::job_template::steal,
+          bandit_dry_run::job_template::raid },
+        false,
+        true,
+        { "Structural smoke should stay on site state, not grow little pursuit legs." }
+    };
+
+    bandit_mark_generation::advance_state( state, 0,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { farmhouse_smoke } );
+    REQUIRE( state.marks.size() == 1 );
+    CHECK_FALSE( state.marks[0].moving_memory.active );
+    CHECK( state.marks[0].moving_memory.source_family == bandit_dry_run::lead_family::none );
+
+    const std::vector<bandit_dry_run::lead_input> leads = bandit_mark_generation::emit_leads( state );
+    REQUIRE( leads.size() == 1 );
+    for( const std::string &note : leads[0].validity_notes ) {
+        CHECK( note.find( "moving memory:" ) == std::string::npos );
+    }
+
+    const std::string report = bandit_mark_generation::render_report( state, &leads );
+    CHECK( report.find( "moving_memory=active=no" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_mark_generation_moving_memory_drops_cleanly_when_contact_goes_stale", "[bandit][marks]" )
+{
+    bandit_mark_generation::ledger_state state;
+
+    const bandit_mark_generation::signal_input caravan_route = {
+        "caravan_route",
+        "route_activity",
+        "caravan_route",
+        "south_road",
+        bandit_dry_run::lead_family::corridor,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.25,
+        bandit_dry_run::threat_gate::discount_only,
+        {},
+        false,
+        true,
+        { "A corridor lead should not be chased forever after the traffic goes cold." }
+    };
+
+    bandit_mark_generation::advance_state( state, 0,
+                                           bandit_mark_generation::cadence_tier::nearby_active,
+                                           { caravan_route } );
+    REQUIRE( state.marks.size() == 1 );
+    CHECK( state.marks[0].moving_memory.active );
+    CHECK( state.marks[0].moving_memory.leash_turns_remaining == 120 );
+
+    const bandit_mark_generation::update_result expired =
+        bandit_mark_generation::advance_state( state, 130,
+                bandit_mark_generation::cadence_tier::distant_inactive, {} );
+
+    REQUIRE( state.marks.size() == 1 );
+    CHECK_FALSE( state.marks[0].moving_memory.active );
+    CHECK( state.marks[0].moving_memory.review_pending );
+    CHECK( state.marks[0].moving_memory.last_transition == "dropped" );
+    CHECK( state.marks[0].moving_memory.drop_reason == "leash expired without fresh moving contact" );
+    CHECK( state.marks[0].family == bandit_dry_run::lead_family::none );
+    CHECK( expired.leads.empty() );
+
+    const std::string expired_report = bandit_mark_generation::render_report( state, &expired.leads );
+    CHECK( expired_report.find( "last_transition=dropped" ) != std::string::npos );
+    CHECK( expired_report.find( "drop_reason=leash expired without fresh moving contact" ) != std::string::npos );
+    CHECK( expired_report.find( "review_pending=yes" ) != std::string::npos );
+
+    bandit_mark_generation::advance_state( state, 131,
+                                           bandit_mark_generation::cadence_tier::distant_inactive, {} );
+    CHECK( state.marks.empty() );
 }
 
 TEST_CASE( "bandit_mark_generation_keeps_confirmed_threat_sticky", "[bandit][marks]" )

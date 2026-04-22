@@ -2,6 +2,7 @@
 
 #include "bandit_dry_run.h"
 #include "bandit_mark_generation.h"
+#include "bandit_pursuit_handoff.h"
 
 #include <string>
 #include <vector>
@@ -73,6 +74,49 @@ struct proof_packet_result {
     std::vector<playback_result> scenarios;
 };
 
+struct handoff_packet_scenario_result {
+    std::string scenario_id;
+    std::string title;
+    std::string playback_scenario_id;
+    std::vector<std::string> questions;
+    playback_result playback;
+    bandit_pursuit_handoff::entry_payload entry;
+    bandit_pursuit_handoff::return_packet local_return;
+    bandit_pursuit_handoff::abstract_group_state returned_group;
+};
+
+struct handoff_packet_result {
+    std::string packet_id;
+    std::vector<int> checkpoints;
+    std::vector<handoff_packet_scenario_result> scenarios;
+};
+
+struct benchmark_check_result {
+    int tick = 0;
+    std::string label;
+    bool passed = false;
+    std::string details;
+};
+
+struct benchmark_metric {
+    std::string name;
+    std::string value;
+};
+
+struct benchmark_scenario_result {
+    std::string benchmark_id;
+    std::string benchmark_title;
+    playback_result playback;
+    std::vector<benchmark_metric> metrics;
+    std::vector<benchmark_check_result> benchmark_100;
+    std::vector<benchmark_check_result> benchmark_500;
+};
+
+struct benchmark_suite_result {
+    std::string packet_id;
+    std::vector<benchmark_scenario_result> scenarios;
+};
+
 struct checkpoint_budget {
     int tick = 0;
     std::string phase;
@@ -116,7 +160,10 @@ playback_result run_scenario( const scenario_definition &scenario,
                               const std::vector<int> &checkpoints = {} );
 proof_packet_result run_first_500_turn_playback_proof();
 proof_packet_result run_long_range_directional_light_proof_packet();
+proof_packet_result run_elevated_light_z_level_visibility_packet();
 proof_packet_result run_overmap_local_pressure_rewrite_proof_packet();
+handoff_packet_result run_overmap_local_handoff_interaction_packet();
+benchmark_suite_result run_overmap_benchmark_suite_packet();
 scenario_budget measure_scenario_budget( const scenario_definition &scenario,
         size_t iterations_per_checkpoint = 1,
         const std::vector<int> &checkpoints = {} );
@@ -125,6 +172,9 @@ reference_suite_budget measure_reference_suite_budget( size_t iterations_per_che
 std::string render_report( const playback_result &result );
 std::string render_first_500_turn_playback_proof( const proof_packet_result &result );
 std::string render_long_range_directional_light_proof_packet( const proof_packet_result &result );
+std::string render_elevated_light_z_level_visibility_packet( const proof_packet_result &result );
 std::string render_overmap_local_pressure_rewrite_proof_packet( const proof_packet_result &result );
+std::string render_overmap_local_handoff_interaction_packet( const handoff_packet_result &result );
+std::string render_overmap_benchmark_suite_packet( const benchmark_suite_result &result );
 std::string render_budget_report( const reference_suite_budget &result );
 } // namespace bandit_playback

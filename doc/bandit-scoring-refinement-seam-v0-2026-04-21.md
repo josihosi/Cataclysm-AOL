@@ -2,11 +2,11 @@
 
 ## Status
 
-This is **ACTIVE / GREENLIT**.
-It is the current bounded priority lane on the bandit dry-run/evaluator seam.
+This is **CHECKPOINTED / DONE FOR NOW**.
+The bounded scoring packet now exists on the current bandit dry-run/evaluator seam.
 
-This is **not** permission to widen into broader bandit world-sim work.
-It is the active narrow scoring packet and remains first priority until later canon says otherwise.
+This is still **not** permission to widen into broader bandit world-sim work.
+Keep this lane closed unless later canon or later evidence says the current packet is dishonest, too weak, or too generous.
 
 ---
 

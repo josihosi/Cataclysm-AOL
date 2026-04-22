@@ -702,6 +702,7 @@ Use this starter decision ladder:
 Bound the switch law with these constraints:
 - **Probe** means a small same-route clarification pass on the current lead or immediate branch, not a fresh search pattern over several side sites.
 - **Shadow** is only for a supported moving carrier that stays worth following under the current outing's remaining leash. It should preserve contact or timing advantage, not secretly become free endless stalking.
+- **Shadow** should usually respect a real stand-off envelope instead of collapsing to the immediately adjacent overmap tile just because that tile is arithmetically closest. One OMT is house-scale, so ordinary stalking should prefer something like the current confident-threat-visibility distance unless a stronger later reason honestly earns tighter contact.
 - **Divert** is only legal to a **same-route or immediate-intercept** opportunity that is materially better than the original lead. If the new idea would require a meaningful detour, different staging, or a different job family, record it as a later mark and keep scoring it on the next dispatch cycle instead.
 - **Abort / reroute** should write the honest memory that caused it, such as stronger threat, route collapse, false lead, or pressure-to-return, rather than pretending the goal merely faded away.
 - **None of these switches reset the outing.** Remaining travel credit, burden tiers, and return-clock pressure continue to spend on the same mission.
@@ -1261,6 +1262,7 @@ Current answer:
 | Identity continuity stays bounded | The player should re-encounter the same group problem, but v1 must not demand full biography persistence for every grunt. Group continuity plus a small anchored slice is the ceiling. | This preserves causal continuity without turning v1 into per-bandit save sludge. |
 | `hold / chill` remains a real winner | If no outward candidate clears the bar, staying home is the correct answer. The system must not invent activity just because bandits "should be doing something." | The packet needs a real no-go baseline or every scoring layer quietly becomes pressure cosplay. |
 | Distance, burden, and return pressure are real brakes | Long travel, wounds, panic, and cargo must be able to push a group into withdrawal or plain return even when revenge or loot still look tempting. | Without this, range law, burden law, and return clocks all become decorative prose. |
+| Visibility-side compute cost stays bounded and inspectable | Smoke, light, and human-route perception must not quietly grow into opaque expensive world scans. If this chain thickens, the implementation/review packet must preserve a reviewer-readable cost story, bounded work shape, or direct measurement hook. | Performance failure here is product failure. The concept only stays honest if the seam remains computationally legible as well as behaviorally plausible. |
 
 ##### Explicit v1 non-goals
 

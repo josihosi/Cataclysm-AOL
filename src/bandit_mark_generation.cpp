@@ -1,6 +1,7 @@
 #include "bandit_mark_generation.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <map>
 #include <sstream>
@@ -30,7 +31,7 @@ std::string join_notes( const std::vector<std::string> &notes )
     return out.str();
 }
 
-int smoke_weather_penalty( smoke_weather_band weather )
+int smoke_weather_range_penalty( smoke_weather_band weather )
 {
     switch( weather ) {
         case smoke_weather_band::clear:
@@ -41,9 +42,124 @@ int smoke_weather_penalty( smoke_weather_band weather )
             return 2;
         case smoke_weather_band::fog:
             return 3;
+        case smoke_weather_band::portal_storm:
+            return 1;
     }
 
     return 0;
+}
+
+int smoke_weather_confidence_penalty( smoke_weather_band weather )
+{
+    switch( weather ) {
+        case smoke_weather_band::clear:
+            return 0;
+        case smoke_weather_band::windy:
+            return 1;
+        case smoke_weather_band::rain:
+            return 1;
+        case smoke_weather_band::fog:
+            return 2;
+        case smoke_weather_band::portal_storm:
+            return 2;
+    }
+
+    return 0;
+}
+
+int smoke_weather_source_precision_penalty( smoke_weather_band weather )
+{
+    switch( weather ) {
+        case smoke_weather_band::clear:
+            return 0;
+        case smoke_weather_band::windy:
+            return 2;
+        case smoke_weather_band::rain:
+            return 1;
+        case smoke_weather_band::fog:
+            return 1;
+        case smoke_weather_band::portal_storm:
+            return 2;
+    }
+
+    return 0;
+}
+
+int smoke_weather_displacement_bias( smoke_weather_band weather )
+{
+    switch( weather ) {
+        case smoke_weather_band::clear:
+        case smoke_weather_band::rain:
+        case smoke_weather_band::fog:
+            return 0;
+        case smoke_weather_band::windy:
+            return 1;
+        case smoke_weather_band::portal_storm:
+            return 2;
+    }
+
+    return 0;
+}
+
+std::string smoke_weather_origin_hint( const smoke_packet &packet,
+                                       const smoke_weather_effect &effect,
+                                       bool viable )
+{
+    if( !viable ) {
+        return "none";
+    }
+    if( effect.displacement_bias >= 2 || packet.spread_bias > packet.height_bias ) {
+        return "corridorish";
+    }
+    if( effect.displacement_bias > 0 || effect.source_precision_penalty > 0 ) {
+        return "drifted";
+    }
+    return "localized";
+}
+
+std::string smoke_weather_verdict( smoke_weather_band weather, bool viable )
+{
+    if( !viable ) {
+        return "blocked";
+    }
+    switch( weather ) {
+        case smoke_weather_band::clear:
+            return "allowed";
+        case smoke_weather_band::windy:
+        case smoke_weather_band::portal_storm:
+            return "fuzzed";
+        case smoke_weather_band::rain:
+        case smoke_weather_band::fog:
+            return "reduced";
+    }
+
+    return "unknown";
+}
+
+bool nearby_cross_z_visible( int vertical_offset, bool vertical_sightline )
+{
+    return vertical_sightline && vertical_offset != 0 && std::abs( vertical_offset ) <= 2;
+}
+
+std::string describe_smoke_weather( const smoke_packet &packet,
+                                    const smoke_weather_effect &effect,
+                                    int projected_range_omt,
+                                    int visibility_score,
+                                    bool viable )
+{
+    return "smoke weather: verdict=" + smoke_weather_verdict( packet.weather, viable ) +
+           ", weather=" + to_string( packet.weather ) +
+           ", range_penalty=" + std::to_string( effect.range_penalty ) +
+           ", confidence_penalty=" + std::to_string( effect.confidence_penalty ) +
+           ", source_precision_penalty=" + std::to_string( effect.source_precision_penalty ) +
+           ", displacement_bias=" + std::to_string( effect.displacement_bias ) +
+           ", vertical_offset=" + std::to_string( packet.vertical_offset ) +
+           ", vertical_sightline=" + std::string( packet.vertical_sightline ? "yes" : "no" ) +
+           ", nearby_cross_z_visible=" + std::string( effect.nearby_cross_z_visible ? "yes" : "no" ) +
+           ", vertical_range_bonus=" + std::to_string( effect.vertical_range_bonus ) +
+           ", origin_hint=" + smoke_weather_origin_hint( packet, effect, viable ) +
+           ", projected_range_omt=" + std::to_string( projected_range_omt ) +
+           ", visibility_score=" + std::to_string( visibility_score );
 }
 
 int light_time_penalty( light_time_band time )
@@ -60,18 +176,62 @@ int light_time_penalty( light_time_band time )
     return 0;
 }
 
-int light_weather_penalty( light_weather_band weather )
+bool portal_storm_bright_light_window( const light_packet &packet )
 {
-    switch( weather ) {
+    return packet.weather == light_weather_band::portal_storm &&
+           packet.time != light_time_band::daylight &&
+           packet.exposure == light_exposure_band::exposed &&
+           ( packet.source == light_source_band::searchlight || packet.source_strength >= 2 );
+}
+
+int light_weather_penalty( const light_packet &packet )
+{
+    switch( packet.weather ) {
         case light_weather_band::clear:
             return 0;
         case light_weather_band::rain:
             return 2;
         case light_weather_band::fog:
             return 3;
+        case light_weather_band::portal_storm: {
+            int penalty = 3;
+            if( packet.exposure == light_exposure_band::contained ) {
+                penalty += 1;
+            }
+            if( portal_storm_bright_light_window( packet ) ) {
+                penalty -= 2;
+            }
+            return std::max( 1, penalty );
+        }
     }
 
     return 0;
+}
+
+int light_vertical_penalty( const light_packet &packet )
+{
+    if( packet.vertical_offset == 0 || packet.vertical_sightline ) {
+        return 0;
+    }
+    return 2 + std::min( std::abs( packet.vertical_offset ), 2 );
+}
+
+int light_nearby_cross_z_bonus( const light_packet &packet )
+{
+    if( !nearby_cross_z_visible( packet.vertical_offset, packet.vertical_sightline ) ||
+        packet.exposure == light_exposure_band::contained ) {
+        return 0;
+    }
+    return std::min( std::abs( packet.vertical_offset ), 2 );
+}
+
+int light_elevated_exposure_bonus( const light_packet &packet )
+{
+    if( !packet.vertical_sightline || packet.exposure != light_exposure_band::exposed ) {
+        return 0;
+    }
+    return std::clamp( packet.elevation_bonus + std::max( 0, std::abs( packet.vertical_offset ) - 1 ),
+                       0, 10 );
 }
 
 int light_exposure_bonus( light_exposure_band exposure )
@@ -135,12 +295,23 @@ std::string describe_light_concealment( const light_packet &packet,
                                         bool viable )
 {
     return "light concealment: verdict=" + light_concealment_verdict( packet, concealment, viable ) +
+           ", weather=" + to_string( packet.weather ) +
            ", time_penalty=" + std::to_string( concealment.daylight_penalty ) +
            ", weather_penalty=" + std::to_string( concealment.weather_penalty ) +
            ", exposure=" + to_string( packet.exposure ) +
            ", side_leakage=" + std::to_string( concealment.side_leakage_bonus ) +
            ", terrain=" + to_string( packet.terrain ) +
            ", terrain_penalty=" + std::to_string( concealment.terrain_penalty ) +
+           ", vertical_offset=" + std::to_string( packet.vertical_offset ) +
+           ", vertical_sightline=" + std::string( packet.vertical_sightline ? "yes" : "no" ) +
+           ", vertical_penalty=" + std::to_string( concealment.vertical_penalty ) +
+           ", nearby_cross_z_visible=" + std::string( concealment.nearby_cross_z_visible ? "yes" : "no" ) +
+           ", nearby_cross_z_bonus=" + std::to_string( concealment.nearby_cross_z_bonus ) +
+           ", elevation_bonus=" + std::to_string( packet.elevation_bonus ) +
+           ", elevated_exposure_bonus=" + std::to_string( concealment.elevated_exposure_bonus ) +
+           ", elevated_exposure_extended=" + std::string( concealment.elevated_exposure_extended ? "yes" : "no" ) +
+           ", storm_bright_light_preserved=" +
+           std::string( concealment.storm_bright_light_preserved ? "yes" : "no" ) +
            ", projected_range_omt=" + std::to_string( projected_range_omt ) +
            ", visibility_score=" + std::to_string( visibility_score );
 }
@@ -311,9 +482,134 @@ void apply_repeated_site_reinforcement( typed_mark &mark, const signal_input &si
     }
 }
 
+bool is_moving_family( bandit_dry_run::lead_family family )
+{
+    return family == bandit_dry_run::lead_family::moving_carrier ||
+           family == bandit_dry_run::lead_family::corridor;
+}
+
 bool same_mark_key( const typed_mark &mark, const signal_input &signal )
 {
     return mark.family == signal.family && mark.envelope_id == effective_envelope_id( signal );
+}
+
+int moving_memory_leash_reset_for( bandit_dry_run::lead_family family )
+{
+    switch( family ) {
+        case bandit_dry_run::lead_family::moving_carrier:
+            return 100;
+        case bandit_dry_run::lead_family::corridor:
+            return 120;
+        case bandit_dry_run::lead_family::none:
+        case bandit_dry_run::lead_family::site:
+        case bandit_dry_run::lead_family::friendly_pressure:
+            return 0;
+    }
+
+    return 0;
+}
+
+int moving_memory_confidence_band( const signal_input &signal )
+{
+    return std::clamp( clamp_nonnegative( signal.confidence ), 1, 3 );
+}
+
+int moving_memory_opportunity_band( const signal_input &signal )
+{
+    return std::clamp( clamp_nonnegative( signal.strength ) + clamp_nonnegative( signal.bounty_add ), 0, 3 );
+}
+
+int moving_memory_threat_band( const signal_input &signal )
+{
+    return std::clamp( clamp_nonnegative( signal.threat_add ) +
+                       clamp_nonnegative( signal.monster_pressure_add ), 0, 3 );
+}
+
+std::string describe_moving_memory( const moving_bounty_memory &memory )
+{
+    std::ostringstream out;
+    out << "active=" << ( memory.active ? "yes" : "no" )
+        << ", source_family=" << bandit_dry_run::to_string( memory.source_family )
+        << ", last_known_region=" << ( memory.last_known_region_id.empty() ? "none" : memory.last_known_region_id )
+        << ", confidence_band=" << memory.confidence_band
+        << ", leash_remaining=" << memory.leash_turns_remaining
+        << ", opportunity_band=" << memory.opportunity_band
+        << ", threat_band=" << memory.threat_band
+        << ", last_transition=" << memory.last_transition;
+    if( !memory.drop_reason.empty() ) {
+        out << ", drop_reason=" << memory.drop_reason;
+    }
+    if( memory.review_pending ) {
+        out << ", review_pending=yes";
+    }
+    return out.str();
+}
+
+void seed_moving_memory( typed_mark &mark, const signal_input &signal )
+{
+    if( !is_moving_family( signal.family ) ) {
+        return;
+    }
+
+    mark.moving_memory.active = true;
+    mark.moving_memory.review_pending = false;
+    mark.moving_memory.source_family = signal.family;
+    mark.moving_memory.last_known_region_id = effective_region_id( signal );
+    mark.moving_memory.confidence_band = moving_memory_confidence_band( signal );
+    mark.moving_memory.leash_turns_remaining = moving_memory_leash_reset_for( signal.family );
+    mark.moving_memory.opportunity_band = moving_memory_opportunity_band( signal );
+    mark.moving_memory.threat_band = moving_memory_threat_band( signal );
+    mark.moving_memory.last_transition = "refreshed";
+    mark.moving_memory.drop_reason.clear();
+}
+
+void drop_moving_memory( typed_mark &mark, const std::string &reason, int tick )
+{
+    if( mark.moving_memory.source_family == bandit_dry_run::lead_family::none ) {
+        mark.moving_memory.source_family = mark.family;
+    }
+    mark.moving_memory.active = false;
+    mark.moving_memory.review_pending = true;
+    mark.moving_memory.last_transition = "dropped";
+    mark.moving_memory.drop_reason = reason;
+    mark.moving_memory.leash_turns_remaining = 0;
+    mark.moving_memory.confidence_band = 0;
+    mark.moving_memory.opportunity_band = 0;
+    mark.family = bandit_dry_run::lead_family::none;
+    mark.strength = 0;
+    mark.confidence = 0;
+    mark.bounty_add = 0;
+    mark.target_coherence_subtract = 0;
+    mark.reward_profile_match = 0;
+    mark.distance_multiplier = 0.0;
+    mark.hard_blocked_jobs.clear();
+    mark.last_refresh_tick = tick;
+}
+
+void refresh_moving_memory( typed_mark &mark, const signal_input &signal )
+{
+    if( !is_moving_family( signal.family ) ) {
+        return;
+    }
+
+    if( signal.threat_gate_result == bandit_dry_run::threat_gate::hard_veto ||
+        moving_memory_threat_band( signal ) >= 3 ) {
+        drop_moving_memory( mark, "danger spike closed the moving pursuit window", mark.last_refresh_tick );
+        return;
+    }
+
+    const std::string old_region = mark.moving_memory.last_known_region_id;
+    mark.moving_memory.active = true;
+    mark.moving_memory.review_pending = false;
+    mark.moving_memory.source_family = signal.family;
+    mark.moving_memory.last_known_region_id = effective_region_id( signal );
+    mark.moving_memory.confidence_band = moving_memory_confidence_band( signal );
+    mark.moving_memory.leash_turns_remaining = moving_memory_leash_reset_for( signal.family );
+    mark.moving_memory.opportunity_band = moving_memory_opportunity_band( signal );
+    mark.moving_memory.threat_band = moving_memory_threat_band( signal );
+    mark.moving_memory.last_transition = old_region.empty() || old_region == mark.moving_memory.last_known_region_id ?
+                                         "refreshed" : "narrowed";
+    mark.moving_memory.drop_reason.clear();
 }
 
 int strength_decay_for( cadence_tier tier )
@@ -459,6 +755,8 @@ std::string to_string( smoke_weather_band weather )
             return "rain";
         case smoke_weather_band::fog:
             return "fog";
+        case smoke_weather_band::portal_storm:
+            return "portal_storm";
     }
 
     return "unknown";
@@ -487,6 +785,8 @@ std::string to_string( light_weather_band weather )
             return "rain";
         case light_weather_band::fog:
             return "fog";
+        case light_weather_band::portal_storm:
+            return "portal_storm";
     }
 
     return "unknown";
@@ -579,13 +879,32 @@ smoke_projection adapt_smoke_packet( const smoke_packet &packet )
     smoke_projection projection;
     projection.packet = packet;
 
-    const int weather_penalty = smoke_weather_penalty( packet.weather );
+    projection.weather_effect.range_penalty = smoke_weather_range_penalty( packet.weather );
+    projection.weather_effect.confidence_penalty = smoke_weather_confidence_penalty( packet.weather );
+    projection.weather_effect.source_precision_penalty =
+        smoke_weather_source_precision_penalty( packet.weather );
+    projection.weather_effect.displacement_bias = smoke_weather_displacement_bias( packet.weather );
+    projection.weather_effect.vertical_range_bonus = 0;
+    projection.weather_effect.nearby_cross_z_visible = nearby_cross_z_visible( packet.vertical_offset,
+                                                     packet.vertical_sightline );
+
     projection.visibility_score = std::max( 0, packet.source_strength + packet.persistence +
-                                            packet.height_bias - packet.spread_bias - weather_penalty );
+                                            packet.height_bias - packet.spread_bias -
+                                            projection.weather_effect.range_penalty +
+                                            projection.weather_effect.vertical_range_bonus );
     projection.projected_range_omt = std::clamp( 4 + packet.source_strength * 2 + packet.persistence * 2 +
-                                     packet.height_bias - packet.spread_bias - weather_penalty, 1, 15 );
+                                     packet.height_bias - packet.spread_bias -
+                                     projection.weather_effect.range_penalty +
+                                     projection.weather_effect.vertical_range_bonus, 1, 15 );
     projection.viable = projection.visibility_score > 0 &&
                         packet.observed_range_omt <= projection.projected_range_omt;
+    projection.weather_effect.verdict = smoke_weather_verdict( packet.weather, projection.viable );
+    projection.weather_effect.origin_hint = smoke_weather_origin_hint( packet,
+                                          projection.weather_effect, projection.viable );
+    projection.weather_effect.summary = describe_smoke_weather( packet, projection.weather_effect,
+                                      projection.projected_range_omt, projection.visibility_score,
+                                      projection.viable );
+    projection.review_summary = projection.weather_effect.summary;
 
     if( !projection.viable ) {
         return projection;
@@ -598,13 +917,14 @@ smoke_projection adapt_smoke_packet( const smoke_packet &packet )
     signal.region_id = packet.region_id;
     signal.family = packet.family;
     signal.strength = 1;
-    signal.confidence = 1;
+    signal.confidence = std::max( 0, 1 - projection.weather_effect.confidence_penalty );
     signal.threat_add = 0;
     signal.bounty_add = 1;
     signal.reward_profile_match = 0;
     signal.distance_multiplier = std::clamp( 1.10 - static_cast<double>( packet.observed_range_omt ) /
-                                 static_cast<double>( std::max( 1, projection.projected_range_omt ) ),
-                                 0.25, 1.0 );
+                                 static_cast<double>( std::max( 1, projection.projected_range_omt ) ) -
+                                 0.05 * static_cast<double>( projection.weather_effect.source_precision_penalty ),
+                                 0.20, 1.0 );
     signal.threat_gate_result = bandit_dry_run::threat_gate::discount_only;
     signal.hard_blocked_jobs = {
         bandit_dry_run::job_template::scavenge,
@@ -618,6 +938,7 @@ smoke_projection adapt_smoke_packet( const smoke_packet &packet )
                             ", observed_range_omt=" + std::to_string( packet.observed_range_omt ) +
                             ", projected_range_omt=" + std::to_string( projection.projected_range_omt ) +
                             ", visibility_score=" + std::to_string( projection.visibility_score ) );
+    signal.notes.push_back( projection.weather_effect.summary );
     signal.notes.push_back( "smoke stays bounty-first: this is worth scoping out, not free loot or identity truth" );
 
     projection.signal = signal;
@@ -631,19 +952,30 @@ light_projection adapt_light_packet( const light_packet &packet )
 
     const int source_bonus = light_source_bonus( packet.source );
     projection.concealment.daylight_penalty = light_time_penalty( packet.time );
-    projection.concealment.weather_penalty = light_weather_penalty( packet.weather );
+    projection.concealment.weather_penalty = light_weather_penalty( packet );
     projection.concealment.exposure_bonus = light_exposure_bonus( packet.exposure );
     projection.concealment.side_leakage_bonus = std::clamp( packet.side_leakage, 0, 2 );
     projection.concealment.terrain_penalty = light_terrain_penalty( packet.terrain );
+    projection.concealment.vertical_penalty = light_vertical_penalty( packet );
+    projection.concealment.nearby_cross_z_bonus = light_nearby_cross_z_bonus( packet );
+    projection.concealment.elevated_exposure_bonus = light_elevated_exposure_bonus( packet );
+    projection.concealment.storm_bright_light_preserved = portal_storm_bright_light_window( packet );
+    projection.concealment.nearby_cross_z_visible = nearby_cross_z_visible( packet.vertical_offset,
+                                                  packet.vertical_sightline );
+    projection.concealment.elevated_exposure_extended =
+        projection.concealment.elevated_exposure_bonus > 0;
     projection.concealment.visibility_modifier = projection.concealment.exposure_bonus +
-                                                 projection.concealment.side_leakage_bonus -
+                                                 projection.concealment.side_leakage_bonus +
+                                                 projection.concealment.nearby_cross_z_bonus +
+                                                 projection.concealment.elevated_exposure_bonus -
                                                  projection.concealment.terrain_penalty -
                                                  projection.concealment.weather_penalty -
-                                                 projection.concealment.daylight_penalty;
+                                                 projection.concealment.daylight_penalty -
+                                                 projection.concealment.vertical_penalty;
     projection.visibility_score = std::max( 0, packet.source_strength + packet.persistence +
                                             source_bonus + projection.concealment.visibility_modifier );
     projection.projected_range_omt = std::clamp( 1 + packet.source_strength * 2 + packet.persistence +
-                                     source_bonus + projection.concealment.visibility_modifier, 0, 12 );
+                                     source_bonus + projection.concealment.visibility_modifier, 0, 30 );
     projection.viable = projection.visibility_score > 0 &&
                         packet.observed_range_omt <= projection.projected_range_omt;
     projection.concealment.verdict = light_concealment_verdict( packet, projection.concealment,
@@ -693,6 +1025,8 @@ light_projection adapt_light_packet( const light_packet &packet )
                             ", source=" + to_string( packet.source ) +
                             ", side_leakage=" + std::to_string( projection.concealment.side_leakage_bonus ) +
                             ", terrain=" + to_string( packet.terrain ) +
+                            ", vertical_offset=" + std::to_string( packet.vertical_offset ) +
+                            ", elevation_bonus=" + std::to_string( packet.elevation_bonus ) +
                             ", observed_range_omt=" + std::to_string( packet.observed_range_omt ) +
                             ", projected_range_omt=" + std::to_string( projection.projected_range_omt ) +
                             ", visibility_score=" + std::to_string( projection.visibility_score ) );
@@ -784,6 +1118,7 @@ update_result advance_state( ledger_state &state, int tick, cadence_tier tier,
                              const std::vector<signal_input> &signals )
 {
     update_result result;
+    const int previous_tick = state.last_tick;
     state.last_tick = tick;
 
     for( typed_mark &mark : state.marks ) {
@@ -819,6 +1154,7 @@ update_result advance_state( ledger_state &state, int tick, cadence_tier tier,
             mark.last_refresh_tick = tick;
             mark.age_turns = 0;
             seed_repeated_site_reinforcement( mark, signal );
+            seed_moving_memory( mark, signal );
             mark.notes = signal.notes;
             if( mark.notes.empty() ) {
                 mark.notes.push_back( "created from " + mark.kind + " signal" );
@@ -853,6 +1189,7 @@ update_result advance_state( ledger_state &state, int tick, cadence_tier tier,
         mark.last_refresh_tick = tick;
         mark.age_turns = 0;
         apply_repeated_site_reinforcement( mark, signal );
+        refresh_moving_memory( mark, signal );
         if( !signal.notes.empty() ) {
             mark.notes = signal.notes;
         }
@@ -865,6 +1202,7 @@ update_result advance_state( ledger_state &state, int tick, cadence_tier tier,
         }
 
         const int old_strength = mark.strength;
+        const int elapsed_turns = std::max( 0, tick - previous_tick );
         const int old_confidence = mark.confidence;
         const int old_threat = mark.threat_add;
         const int old_bounty = mark.bounty_add;
@@ -887,6 +1225,16 @@ update_result advance_state( ledger_state &state, int tick, cadence_tier tier,
             mark.monster_pressure_add = clamp_nonnegative( mark.monster_pressure_add - threat_decay_for_soft_marks( tier ) );
         }
 
+        if( mark.moving_memory.active && elapsed_turns > 0 ) {
+            mark.moving_memory.leash_turns_remaining = std::max( 0,
+                                                    mark.moving_memory.leash_turns_remaining - elapsed_turns );
+            if( mark.moving_memory.leash_turns_remaining == 0 ) {
+                drop_moving_memory( mark, "leash expired without fresh moving contact", tick );
+            }
+        } else if( !mark.moving_memory.active && mark.moving_memory.review_pending ) {
+            mark.moving_memory.review_pending = false;
+        }
+
         if( mark.strength != old_strength || mark.confidence != old_confidence ||
             mark.threat_add != old_threat || mark.bounty_add != old_bounty ||
             mark.target_coherence_subtract != old_target_coherence ) {
@@ -897,7 +1245,7 @@ update_result advance_state( ledger_state &state, int tick, cadence_tier tier,
 
     const size_t before_prune = state.marks.size();
     state.marks.erase( std::remove_if( state.marks.begin(), state.marks.end(), []( const typed_mark &mark ) {
-        if( mark.confirmed_threat ) {
+        if( mark.confirmed_threat || mark.moving_memory.active || mark.moving_memory.review_pending ) {
             return false;
         }
         return mark.strength == 0 && mark.confidence == 0 && mark.threat_add == 0 &&
@@ -919,11 +1267,13 @@ std::vector<bandit_dry_run::lead_input> emit_leads( const ledger_state &state,
     leads.reserve( state.marks.size() );
 
     for( const typed_mark &mark : state.marks ) {
+        const bool has_active_moving_memory = mark.moving_memory.active &&
+                                              is_moving_family( mark.family );
         if( mark.family == bandit_dry_run::lead_family::none ) {
             continue;
         }
         if( mark.strength == 0 && mark.confidence == 0 && mark.threat_add == 0 &&
-            mark.bounty_add == 0 && mark.target_coherence_subtract == 0 ) {
+            mark.bounty_add == 0 && mark.target_coherence_subtract == 0 && !has_active_moving_memory ) {
             continue;
         }
 
@@ -931,10 +1281,18 @@ std::vector<bandit_dry_run::lead_input> emit_leads( const ledger_state &state,
         lead.id = mark.id;
         lead.envelope_id = mark.envelope_id;
         lead.family = mark.family;
-        lead.distance_multiplier = mark.distance_multiplier;
+        lead.distance_multiplier = has_active_moving_memory ?
+                                   std::max( mark.distance_multiplier, 0.35 ) : mark.distance_multiplier;
         lead.lead_bounty_value = mark.strength + mark.bounty_add + mark.target_coherence_subtract;
         lead.lead_confidence_bonus = mark.confidence;
+        if( has_active_moving_memory ) {
+            lead.lead_bounty_value = std::max( lead.lead_bounty_value, mark.moving_memory.opportunity_band );
+            lead.lead_confidence_bonus = std::max( lead.lead_confidence_bonus,
+                                                   mark.moving_memory.confidence_band );
+        }
         lead.threat_penalty = mark.threat_add + mark.monster_pressure_add;
+        lead.monster_pressure_bonus = mark.monster_pressure_add;
+        lead.target_coherence_bonus = mark.target_coherence_subtract;
         lead.reward_profile_match = mark.reward_profile_match;
         lead.threat_gate_result = mark.threat_gate_result;
         lead.hard_blocked_jobs = mark.hard_blocked_jobs;
@@ -943,6 +1301,15 @@ std::vector<bandit_dry_run::lead_input> emit_leads( const ledger_state &state,
         if( mark.repeated_site_reinforcement.total_site_hits > 0 ) {
             lead.validity_notes.push_back( "repeated-site reinforcement packet: " +
                                            describe_repeated_site_reinforcement( mark.repeated_site_reinforcement ) );
+        }
+        if( has_active_moving_memory ) {
+            lead.validity_notes.push_back( "moving memory: " + describe_moving_memory( mark.moving_memory ) );
+        }
+        if( mark.monster_pressure_add > 0 || mark.target_coherence_subtract > 0 ) {
+            lead.validity_notes.push_back( "pressure/coherence packet: monster_pressure=" +
+                                           std::to_string( mark.monster_pressure_add ) +
+                                           ", target_coherence=" +
+                                           std::to_string( mark.target_coherence_subtract ) );
         }
         if( mark.confirmed_threat ) {
             lead.validity_notes.push_back( "confirmed threat stays sticky until a later real rewrite" );
@@ -1012,7 +1379,8 @@ std::string render_report( const ledger_state &state,
                 << ", age_turns=" << mark.age_turns
                 << ", last_refresh_tick=" << mark.last_refresh_tick
                 << ", repeated_site_reinforcement="
-                << describe_repeated_site_reinforcement( mark.repeated_site_reinforcement ) << "]\n";
+                << describe_repeated_site_reinforcement( mark.repeated_site_reinforcement )
+                << ", moving_memory=" << describe_moving_memory( mark.moving_memory ) << "]\n";
             out << "  notes=" << join_notes( mark.notes ) << "\n";
         }
     }

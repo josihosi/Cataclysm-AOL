@@ -1,11 +1,11 @@
 # Bandit elevated-light and z-level visibility packet v0 (2026-04-21)
 
-Status: queued greenlit contract.
+Status: checkpointed / done for now.
 
 ## Greenlight verdict
 
-Josef explicitly wants the broader post-benchmark playtesting-prep set greenlit, not only the minimum polite pair in chat.
-This packet is the queued visibility-side follow-through behind the active handoff interaction packet.
+Josef explicitly wanted the broader post-benchmark playtesting-prep set greenlit, not only the minimum polite pair in chat.
+This packet was the visibility-side follow-through behind the active handoff interaction packet, and it now closes honestly on the current tree.
 
 The point here is to clear the most obvious remaining world-perception weirdness before broader human playtesting starts producing bottomless debug-note soup.
 The current product lean is already known:
