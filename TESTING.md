@@ -56,6 +56,14 @@ The active missing truth is no longer whether the harness can mutate one more pr
   - fresh current-build proof that the manual handoff path leaves the session alive for playtesting instead of auto-terminating after setup
   - fresh reviewer-clean evidence that the nearby setup exercised the real overmap/bubble handoff plus local writeback path
   - a concrete perf readout on that nearby setup using baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost
+  - at least four explicit ugly-interaction/adversarial proofs, covering at minimum:
+    - claim/bootstrap drift between real spawned NPC roster and owned site ledger
+    - player disruption changing the scene before or during dispatch/contact
+    - local NPC AI diverging from OMT intent without corrupting writeback
+    - save/load or unload/reload without duplication, resurrection, or dropped ownership
+- the active lane is **not** honestly closed by one neat happy-path restage plus one calm perf number:
+  - at least one aftermath/revisit cooling proof should show the system does not hard-reset to folklore or grow immortal pressure after contact
+  - at least one messier-state perf proof should show whether the integrated scene stays acceptable once the player or local AI already disturbed it
 - the useful landed helper substrate from the old `v2` lane stays relevant here rather than wasted:
   - `tools/openclaw_harness/startup_harness.py` already resolves fixture-manifest `save_transforms`
   - the current bounded shipped transform kind is `player_mutations`

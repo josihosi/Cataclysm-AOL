@@ -389,6 +389,40 @@ The live proof should climb in deliberate steps:
 
 The exact command names can evolve, but the evidence classes should not.
 
+### D. Required ugly-interaction / adversarial proof matrix
+
+Happy-path setup proof is necessary and still not sufficient.
+This lane is exactly where weird interactions between local NPC AI, player action, overmap intent, save/load, and ownership bookkeeping are most likely to lie.
+So closeout should include **at least four explicit ugly-interaction proofs**, covering at minimum the first four families below.
+
+1. **claim/bootstrap drift proof**
+   - prove a freshly claimed site does not duplicate, lose, or misattribute members when the real static mapgen roster is converted into owned live state
+   - include at least one multi-tile site case and one smaller/singleton hostile spawn case
+   - failure shape we are trying to kill: copied JSON counts or partial claim state disagreeing with the actual NPC roster on the map
+2. **player-disruption proof**
+   - prove the owner stays honest when the player interferes before or during the outing
+   - strong first cases: kill one member early, enter the site before cadence dispatch finishes, lure zombies into the contact, or leave after a partial skirmish
+   - failure shape we are trying to kill: the owner still believing the original full-strength roster or blindly continuing a stale plan after the player already changed reality
+3. **local-AI-versus-OMT-intent proof**
+   - prove local NPC behavior can diverge from the abstract plan without corrupting writeback
+   - strong first cases: local flee, target loss, split pursuit, or opportunistic fight with unrelated pressure
+   - failure shape we are trying to kill: the overmap owner insisting the original posture succeeded even though local play rewrote it
+4. **save/load and unload/reload proof**
+   - prove ownership, headcount, outing state, and writeback survive save/load and map unload/reload without duplication or resurrection
+   - strong first cases: save mid-outing, reload after one death/missing member, and revisit after leaving the area
+   - failure shape we are trying to kill: duplicated members, revived dead members, dropped ownership, or an outing that forgets it ever happened
+5. **aftermath/revisit cooling proof**
+   - prove the same site does not become immortal pressure theater after contact
+   - strong first cases: partial wipe, wounded return, moving-target loss, and repeated-site revisit cooling after the local scene changed
+   - failure shape we are trying to kill: endless stale pursuit, endless site pressure, or instant reset back to untouched folklore
+6. **messy-case perf proof**
+   - measure not only the calm nearby setup but at least one messier interaction state where the player already disturbed the scene or local contact already happened
+   - failure shape we are trying to kill: a perf report that only looks fine in the clean idle setup while the real integrated scene spikes badly once play starts
+
+The exact scripts/runs can evolve.
+What must stay fixed is the bar: Andi does **not** get to close this lane on one neat restage, one happy-path contact, and one perf number from an undisturbed toy case.
+The feature is only real if the system stays coherent after humans and local AI do rude things to it.
+
 ## Playtest ladder
 
 The live playtest sequence should stay honest and staged, not all-or-nothing.
