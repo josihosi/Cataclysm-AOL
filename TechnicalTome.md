@@ -478,6 +478,12 @@ That topic stays design-sensitive and should not be treated as settled just beca
 - The return side preserves only the small abstract consequences this slice can honestly answer now, such as survivor count, anchored identity status, wound / morale burden, carried-vs-delivered cargo, threat/bounty writeback, learned marks, and retreat pressure.
 - `apply_return_packet()` updates abstract group continuity from that bounded packet, while `render_report()` keeps the seam reviewer-readable without pretending a full tactical AI or biography persistence stack exists.
 
+#### Bandit live-world ownership seam v0
+- The first real live-world hostile-bandit substrate now lives in `src/bandit_live_world.{h,cpp}` and persists through `overmap_global_state.bandit_live_world`.
+- This seam is intentionally just the owner ledger, not the full control brain: it claims tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns at `map::place_npc` time and stores explicit site/member/spawn-tile records for later control/writeback.
+- Site identity is source-shaped and save-stable: overmap specials anchor to their bounded footprint, while map extras stay single-OMT micro-sites instead of inventing a giant settlement taxonomy early.
+- Membership is keyed by `character_id` plus the home spawn tile/template id so later dispatch and writeback can start from real spawned NPC continuity instead of folklore reconstruction.
+
 ### Context-gated trigger model
 - Call LLM only when state delta is meaningful, e.g.:
   - threat spike, objective change, squad split, or complex player intent.

@@ -1,0 +1,111 @@
+#pragma once
+
+#include <functional>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "character_id.h"
+#include "coordinates.h"
+
+class JsonObject;
+class JsonOut;
+
+namespace bandit_live_world
+{
+enum class anchor_source_kind {
+    none,
+    overmap_special,
+    map_extra,
+};
+
+enum class owned_site_kind {
+    none,
+    bandit_camp,
+    bandit_work_camp,
+    bandit_cabin,
+    looters,
+    bandits_block,
+};
+
+enum class member_state {
+    at_home,
+    outbound,
+    local_contact,
+    dead,
+    missing,
+};
+
+struct member_record {
+    character_id npc_id;
+    std::string npc_template_id;
+    tripoint_abs_ms home_spawn_tile;
+    member_state state = member_state::at_home;
+    std::string last_writeback_summary;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct spawn_tile_record {
+    tripoint_abs_ms tile;
+    int headcount = 0;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct site_record {
+    std::string site_id;
+    anchor_source_kind source_kind = anchor_source_kind::none;
+    owned_site_kind site_kind = owned_site_kind::none;
+    std::string source_id;
+    tripoint_abs_omt anchor;
+    int headcount = 0;
+    std::vector<tripoint_abs_omt> footprint;
+    std::vector<member_record> members;
+    std::vector<spawn_tile_record> spawn_tiles;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+
+    bool has_member( character_id npc_id ) const;
+    spawn_tile_record *find_spawn_tile( const tripoint_abs_ms &tile );
+    const spawn_tile_record *find_spawn_tile( const tripoint_abs_ms &tile ) const;
+};
+
+struct world_state {
+    std::string owner_id = "hells_raiders_live_owner_v0";
+    std::vector<site_record> sites;
+
+    void clear();
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+
+    site_record *find_site( const std::string &site_id );
+    const site_record *find_site( const std::string &site_id ) const;
+};
+
+struct footprint_snapshot {
+    tripoint_abs_omt anchor;
+    std::vector<tripoint_abs_omt> footprint;
+};
+
+bool is_tracked_bandit_template( const std::string &npc_template_id );
+std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind source_kind,
+        const std::string &source_id );
+footprint_snapshot make_special_footprint( const std::string &special_id,
+        const tripoint_abs_omt &origin,
+        const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
+std::string make_site_id( anchor_source_kind source_kind, const std::string &source_id,
+                          const tripoint_abs_omt &anchor );
+bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id,
+                          character_id npc_id, const tripoint_abs_ms &spawn_tile,
+                          const std::optional<std::string> &overmap_special_id,
+                          const std::optional<std::string> &map_extra_id,
+                          const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
+
+std::string to_string( anchor_source_kind source_kind );
+std::string to_string( owned_site_kind site_kind );
+std::string to_string( member_state state );
+} // namespace bandit_live_world

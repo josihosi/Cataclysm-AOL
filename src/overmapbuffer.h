@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "bandit_live_world.h"
 #include "cata_path.h"
 #include "coordinates.h"
 #include "enums.h"
@@ -168,6 +169,8 @@ struct overmap_global_state {
     int major_river_count = 0;
     // all highway intersections
     highway_intersection_grid highway_intersections;
+    // bounded live owner ledger for claimed hostile bandit spawn families
+    bandit_live_world::world_state bandit_live_world;
 
     void clear();
     void reset();

@@ -2020,6 +2020,7 @@ void overmap_global_state::serialize( JsonOut &json ) const
     json.member( "unique_special_count", unique_special_count );
     json.member( "overmap_highway_intersection_grid", highway_intersections );
     json.member( "major_river_count", major_river_count );
+    json.member( "bandit_live_world", bandit_live_world );
 
     json.end_object();
 }
@@ -2049,6 +2050,11 @@ void overmap_global_state::deserialize( const JsonObject &json )
         json.read( "overmap_highway_intersection_grid", highway_intersections );
     }
     json.read( "major_river_count", major_river_count );
+    if( json.has_member( "bandit_live_world" ) ) {
+        json.read( "bandit_live_world", bandit_live_world );
+    } else {
+        bandit_live_world.clear();
+    }
 }
 
 void overmapbuffer::deserialize_placed_unique_specials( const JsonValue &jsin )

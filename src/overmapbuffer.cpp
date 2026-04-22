@@ -270,6 +270,7 @@ void overmap_global_state::clear()
     placed_unique_specials.clear();
     unique_special_count.clear();
     highway_intersections.clear();
+    bandit_live_world.clear();
     overmap_count = 0;
     major_river_count = 0;
 }
