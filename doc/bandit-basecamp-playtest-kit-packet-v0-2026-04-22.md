@@ -1,12 +1,12 @@
 # Bandit + Basecamp playtest kit packet v0 (2026-04-22)
 
-Status: ACTIVE / GREENLIT.
+Status: CHECKPOINTED / DONE FOR NOW.
 
 ## Greenlight verdict
 
 Josef explicitly greenlit one larger cohesive pre-playtest infrastructure packet instead of another chain of tiny helper slices.
-The first-pass encounter/readability packet is now closed with an honest verdict: real pressure exists, but the immediate read is weak enough that the missing value is clearly playtest-surface quality rather than another fresh mechanics debate.
-This packet is therefore the active follow-through.
+The first-pass encounter/readability packet closed with an honest verdict: real pressure exists, but the immediate read is weak enough that the missing value was clearly playtest-surface quality rather than another fresh mechanics debate.
+That packet is now checkpointed closed, with richer prepared fixtures intentionally handed off to `v1`.
 
 ## Why this packet exists
 
@@ -58,6 +58,38 @@ This is primarily harness/helper/fixture work, so validation should stay proport
 - Is the dedicated playtest fixture genuinely useful for debugging and scenario variation, or is it still too brittle to trust?
 - Did the packet stay a coherent pre-playtest kit, or did it start trying to become a whole harness platform?
 
+## Current landed operator surface
+
+The closed `v0` kit now has one simple real operator path:
+
+1. sanity-check repeatability with `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
+2. fast-reload the thin pack and confirm hostile restage with `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_restage_mcw`
+3. fast-reload the same pack and confirm the short-horizon encounter/readability shape with `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_readability_mcw`
+
+That operator path assumes the current captured McWilliams / `dev-harness` footing reused through the thin alias pack:
+
+- save fixture alias `bandit_basecamp_playtest_kit_v0_2026-04-22`
+- profile snapshot alias `bandit_basecamp_playtest_kit_v0_2026-04-22`
+- world `McWilliams`
+- player `Zoraida Vick`
+- hostile restage still entering through the named-NPC debug spawn path rather than a deeper authored-world hook
+
+## Honest rough edges / stop line
+
+The packet now says its rough edges plainly instead of laundering them into magic:
+
+- the footing is still a captured save/profile alias, not a declarative authored-world builder
+- the live hostile seam still depends on the named-NPC debug spawn path
+- the core proof is screen-first, so `debug.log` remaining empty/new-artifact-free on these probes is expected rather than alarming
+- the immediate anger OCR is still mixed on the repeatability pass, so the stable proof is the filtered-bandit menu plus the short-horizon readability sibling, not a claim that every immediate crop is perfect
+
+The packet also now stops where it should:
+
+- `v0` ships one thin alias pack and a tiny named scenario family only
+- richer prepared-base fixtures move to `v1`
+- broader scenario-surgery / transform work moves to `v2`
+- no extra `v0` sibling was added just to feel busy, because that would have widened the packet instead of finishing it honestly
+
 ## Skill sync requirement
 
 Any helper, fixture, artifact/report surface, or operator workflow that lands from this packet should also be folded into the C-AOL harness skill instead of living only in repo canon or chat memory.
@@ -65,5 +97,5 @@ For the broader generic skill package on this surface, Andi should draft the add
 
 ## Position in the sequence
 
-This is now the active cohesive infrastructure packet behind the closed first-pass encounter/readability lane.
-Its job is to make the near-term human playtest window smoother now that the first live readability truth is on the table.
+This is now the checkpointed cohesive infrastructure packet behind the closed first-pass encounter/readability lane.
+Its job was to make the near-term human playtest window smoother once the first live readability truth was on the table, and it now hands the next deeper fixture work to `v1`.

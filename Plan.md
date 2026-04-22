@@ -39,40 +39,28 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit repo lane is now **Bandit + Basecamp playtest kit packet v0**.
+The active greenlit repo lane is now **Bandit + Basecamp playtest kit packet v1**.
 
 Current honest state:
-- the authoritative active contract now lives at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
-- the latest closed lane is `Bandit + Basecamp first-pass encounter/readability packet v0` at `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`
-- the previous closed lane remains `Live bandit + Basecamp playtest packaging/helper packet v0` at `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
-- the landed helper is `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`, packaging the already-proved named-bandit restage seam on reused McWilliams/Basecamp footing
-- fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/` closed the setup/packaging argument, and the fresh first-pass readability proof under `.userdata/dev-harness/harness_runs/20260422_144921/` closed the next live product question honestly enough to move on
-- the first-pass packet now has a bounded reusable live probe helper too: `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`
-- the first-pass verdict is narrow and useful: the encounter is mechanically real and immediately dangerous, but the first read is weak and spatially muddy; the initial spawn mostly reads as one more purple nearby-NPC name, while the eight-turn follow-through only becomes unmistakable through the right-panel log, taunts, gunfire, safe-mode ping, and companion deaths
-- that means the missing value is now a better playtest surface — repeatability, screen-first artifact polish, cleanup, and fast-reload fixture support — rather than another setup-feasibility or first-pass readability lap
-- Josef explicitly greenlit one larger cohesive follow-through, `Bandit + Basecamp playtest kit packet v0`, to harden the playtest surface before his near-term manual playtest window without widening into a custom-map framework or fresh mechanics spree
-- Josef then widened that runway further into a deliberate playtest-kit stack: `v1` as a rich prepared-base fixture family and `v2` as a debug-power scenario-surgery layer, both ordered behind `v0` instead of left as chat vapor
+- the authoritative active contract now lives at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
+- the latest closed lane is `Bandit + Basecamp playtest kit packet v0` at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
+- the previous closed lane remains `Bandit + Basecamp first-pass encounter/readability packet v0` at `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`
+- the closed `v0` packet now honestly packages the thin fast-reload footing: repeatability/reporting/cleanup proof under `.userdata/dev-harness/harness_runs/20260422_151547/`, thin save/profile alias manifests under `tools/openclaw_harness/fixtures/{saves,profiles}/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/`, and the first small named pack-family scenarios `bandit.basecamp_playtestkit_restage_mcw` plus `bandit.basecamp_playtestkit_readability_mcw`
+- the `v0` packet now also says its ugly/manual edges plainly inside its own auxiliary doc: the footing is still a captured McWilliams save/profile alias, the hostile restage still rides the named-NPC debug spawn path, screen truth is stronger than `debug.log` for this seam, and the immediate anger OCR is still capture-sensitive rather than perfectly stable
+- the deliberate `v0` stop line is now explicit too: it stayed a thin reload/readability kit instead of bloating into a richer prepared-base family or a generic scenario-surgery framework, because those next jobs now belong to `v1` and `v2`
+- that means the missing value is no longer another `v0` polish lap; it is the richer prepared-base fixture family Josef already greenlit as `v1`
+- Josef explicitly widened the playtest-kit runway into a stack: `v1` for rich prepared-base fixtures and `v2` for broader debug-power scenario surgery
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this live packet should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, and repeated-site revisit follow-through
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is about turning the proven-but-clunky live seam into a reviewer-clean playtest kit, not about fresh mechanics or broad tuning.
+This lane is about deepening the now-honest thin playtest kit into a richer prepared-base fixture family, not about fresh mechanics or a generic world-authoring empire.
 
 ---
 
-## Active lane - Bandit + Basecamp playtest kit packet v0
+## Active lane - Bandit + Basecamp playtest kit packet v1
 
 **Status:** ACTIVE / GREENLIT
-
-Use the current helper/readability footing to build one cohesive pre-playtest kit on real McWilliams/Basecamp footing: repeatability evidence, screen-first artifact polish, probe cleanup, and one fast-reload fixture/save pack with a small named scenario family.
-
-Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`.
-
----
-
-## Greenlit next - Bandit + Basecamp playtest kit packet v1
-
-**Status:** GREENLIT / QUEUED NEXT
 
 Build a small rich prepared-base fixture family for current Basecamp-management and bandit-interplay probing: management-ready camp footing, relevant zones and supplies, armed NPCs, patrol/locker/smart-zone support, and a player fixture carrying both clairvoyance mutations for cleaner live debugging/readability.
 
@@ -80,9 +68,9 @@ Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-
 
 ---
 
-## Greenlit after v1 - Bandit + Basecamp playtest kit packet v2
+## Greenlit next - Bandit + Basecamp playtest kit packet v2
 
-**Status:** GREENLIT / QUEUED AFTER V1
+**Status:** GREENLIT / QUEUED NEXT
 
 Turn the harness into a broader scenario-surgery surface on top of prepared fixtures: use more of the practical debug power, add named mutations/transforms for common setup states, and make the operator-visible change report strong enough that Schani and Andi can probe much more of the plan without hand-rebuilding worlds.
 
@@ -96,10 +84,10 @@ Use the auxiliary docs below when a later discussion needs the canonical contrac
 
 ### Camp / Basecamp packets
 
-- `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md` (active)
-- `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md` (greenlit / queued next)
-- `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md` (greenlit / queued after v0)
-- `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md` (greenlit / queued after v1)
+- `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md` (active)
+- `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md` (greenlit / queued next)
+- `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
+- `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`
 - `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
 - `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`
 - `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`

@@ -1,6 +1,6 @@
 # Bandit + Basecamp playtest kit packet v2 (2026-04-22)
 
-Status: GREENLIT / QUEUED AFTER V1.
+Status: GREENLIT / QUEUED NEXT.
 
 ## Greenlight verdict
 

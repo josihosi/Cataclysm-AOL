@@ -44,35 +44,50 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Bandit + Basecamp playtest kit packet v0`.
-The helper-packaging question and the first-pass readability question are both now closed enough to move on. The missing truth is now repeatability, screen-first artifact clarity, cleanup, and fast-reload playtest footing on top of the proven helper paths.
+Active probe obligation: `Bandit + Basecamp playtest kit packet v1`.
+The thin `v0` pack is now closed honestly enough to build on. The missing truth is a richer prepared-base fixture family: management-ready camp footing, clearer player-side debug visibility, and honest notes about what still remains captured/manual.
 
-### Active lane - Bandit + Basecamp playtest kit packet v0
+### Active lane - Bandit + Basecamp playtest kit packet v1
+
+- canonical packet: `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
+- the closed `v0` kit is now the starting surface, not an open question:
+  - thin alias save/profile manifests under `tools/openclaw_harness/fixtures/{saves,profiles}/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/`
+  - named pack-family scenarios `tools/openclaw_harness/scenarios/bandit.basecamp_playtestkit_restage_mcw.json` and `tools/openclaw_harness/scenarios/bandit.basecamp_playtestkit_readability_mcw.json`
+  - repeatability/reporting/cleanup proof under `.userdata/dev-harness/harness_runs/20260422_151547/`
+  - pack-backed live proof under `.userdata/dev-harness/harness_runs/20260422_152650/` and `.userdata/dev-harness/harness_runs/20260422_152819/`
+- the honest `v1` job is now richer fixture authoring on top of that closed base:
+  - ship a small named family of management-ready prepared fixtures instead of one thin alias pack
+  - make the important camp footing visible and reviewer-clean: relevant zones, armed NPCs, supplies, and general management-readiness
+  - give the player-side debug/readability fixture both clairvoyance mutations and verify that footing directly
+  - keep the method honest: captured save for structure, then small live/debug restage for bounded variants
+- fresh proof for this packet should be fixture-specific current-build reinstall/load evidence, not another ceremonial rerun of the closed `v0` readability packet
+- honest missing proof now: the richer fixtures do not exist yet, and no live evidence for their management-ready footing or clairvoyance-enabled player setup exists yet
+
+### Latest closed lane - Bandit + Basecamp playtest kit packet v0
 
 - canonical packet: `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
-- starting helper/readability footing now comes from the closed helper and first-pass packets:
+- starting helper/readability footing came from the already-closed helper and first-pass packets:
   - `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`
   - `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`
   - fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/`
   - fresh current-build first-pass readability proof under `.userdata/dev-harness/harness_runs/20260422_144921/`
-- fresh harness-side repeatability/reporting/cleanup proof now lives under `.userdata/dev-harness/harness_runs/20260422_151547/`, via `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
+- fresh harness-side repeatability/reporting/cleanup proof lives under `.userdata/dev-harness/harness_runs/20260422_151547/`, via `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
   - the packaged helper reran three times on the same McWilliams footing
   - `filter_bandit_template.after` matched the expected filtered-bandit menu lines on all three runs
-  - each probe report now records a `cleanup` block, and all three repeatability runs exited with `cleanup.status = terminated`
+  - each probe report records a `cleanup` block, and all three repeatability runs exited with `cleanup.status = terminated`
   - the run stayed runtime-current (`version_matches_runtime_paths = true`) while `version_matches_repo_head = false`, which is expected here because the tree changed only in harness/scenario files and no fresh tiles rebuild was required for this slice
   - the new `repeatability.summary.txt` / `repeatability.report.json` surface is screen-first enough to show the remaining rough edge honestly: the right-panel anger line only OCR-matched on one of the three runs, so the operator can see capture sensitivity directly instead of pretending the generic `inconclusive_no_new_artifacts` verdict settled it
 - the fast-reload pack now exists as a thin alias pair on top of the captured McWilliams live-debug footing:
   - save fixture alias: `tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/manifest.json`
   - profile snapshot alias: `tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/manifest.json`
   - `startup_harness.py` now resolves manifest-only `source_fixture` and `source_snapshot` aliases so the pack can reuse the captured footing without another full copied save/profile blob
-- fresh live proof on that pack alias footing now lives under:
+- fresh live proof on that pack alias footing lives under:
   - `.userdata/dev-harness/harness_runs/20260422_152650/` via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_restage_mcw`
   - `.userdata/dev-harness/harness_runs/20260422_152819/` via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_readability_mcw`
   - both runs stayed runtime-current (`version_matches_runtime_paths = true`) and both cleanup blocks ended in `cleanup.status = terminated`
   - the pack-family restage run still shows stable filtered-bandit menu proof on the alias footing
   - the pack-family readability run still shows the same honest encounter shape on the alias footing: immediate read remains cluttered/weak, while the eight-turn right panel captures `Bandit gets angry!`, gunfire, taunts, and survivor hits cleanly enough to confirm the readability sibling still works through the fast-reload path
-- honest missing proof now: document the pack's remaining ugly/manual edges cleanly, and only add another small variant if it materially helps the near-term playtest window
-- this packet is primarily harness/helper/fixture work; live proof still matters, but another bare first-pass readability rerun is not the missing evidence class anymore
+- the packet now says its rough edges plainly and stops cleanly where it should: captured-save footing, named-NPC debug spawn dependency, screen-first/no-new-debug-log evidence, mixed immediate anger OCR, and no extra richer variants because those belong to `v1` and `v2`
 
 ### Latest closed lane - Bandit + Basecamp first-pass encounter/readability packet v0
 
@@ -141,16 +156,17 @@ Current honest summary:
 
 ## Pending probes
 
-A live probe is greenlit now.
+A live probe is still greenlit, but it should now answer `v1` fixture questions rather than re-argue closed `v0` footing.
 
 - Do **not** rerun the first-pass readability packet ceremonially now that its product question has an honest answer.
-- The current live question is pack-backed playtest-kit quality on top of the now-proved repeatability/reporting/cleanup seam.
-- Prefer the named helper/readability scenarios over retyping the debug-menu choreography from memory.
-- Use `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw` when the question is whether the packaged helper still restages cleanly across reruns before or after pack work.
-- Use the new pack-family scenarios when the question is whether the thin alias pack still reloads into the real hostile-restage/readability footing:
+- Do **not** keep rerunning the closed thin `v0` pack unless the new fixture work specifically needs a regression check against that base.
+- The current live question is richer prepared-fixture quality: can a named fixture load straight into meaningful camp-management and bandit-interplay footing, and is the player-side clairvoyance setup actually present?
+- Until new `v1` fixture probes exist, the closed `v0` commands remain the regression baseline:
+  - `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
   - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_restage_mcw`
   - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_readability_mcw`
-- If the kit work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
+- Once a richer fixture lands, add named fixture-specific load/probe paths instead of laundering them through the old thin pack names.
+- If the fixture work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
 
 ---
 
