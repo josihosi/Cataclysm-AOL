@@ -1,0 +1,6 @@
+{
+  "name": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "source_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Rich prepared-base profile snapshot alias for the active v1 lane: reuse the captured live-debug McWilliams profile state through the management-ready pack name used by the prepared-base save fixture."
+}

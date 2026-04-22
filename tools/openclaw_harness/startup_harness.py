@@ -69,6 +69,14 @@ CLEANUP_ACCEPTED_STATUSES = {
     "killed",
 }
 
+PLAYER_MUTATION_STATE_TEMPLATE: Dict[str, Any] = {
+    "corrupted": 0,
+    "key": 32,
+    "charge": 0,
+    "powered": False,
+    "show_sprite": True,
+}
+
 
 @dataclass
 class WorldInfo:
@@ -1674,6 +1682,134 @@ def load_fixture_manifest(path: Path) -> Dict[str, Any]:
     return json.loads(manifest_path.read_text(encoding="utf-8"))
 
 
+def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) -> List[Dict[str, Any]]:
+    if raw_value in (None, ""):
+        return []
+    if not isinstance(raw_value, list):
+        raise SystemExit(f"Fixture save_transforms must be a list: {manifest_path}")
+
+    transforms: List[Dict[str, Any]] = []
+    for index, raw in enumerate(raw_value, start=1):
+        if not isinstance(raw, dict):
+            raise SystemExit(f"Fixture save_transforms[{index}] must be an object: {manifest_path}")
+        kind = str(raw.get("kind", "")).strip().lower()
+        if kind != "player_mutations":
+            raise SystemExit(
+                f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
+                "supported kinds: player_mutations"
+            )
+        player_save = str(raw.get("player_save", "")).strip()
+        if not player_save:
+            raise SystemExit(f"Fixture save_transforms[{index}] needs player_save in {manifest_path}")
+        mutations = normalize_string_list(raw.get("mutations", []))
+        if not mutations:
+            raise SystemExit(f"Fixture save_transforms[{index}] needs mutations in {manifest_path}")
+        transforms.append({
+            "kind": kind,
+            "player_save": player_save,
+            "mutations": mutations,
+        })
+    return transforms
+
+
+def zzip_binary() -> Path:
+    path = repo_root() / "zzip"
+    if not path.exists():
+        raise SystemExit(f"Required repo zzip helper not found: {path}")
+    return path
+
+
+def run_zzip(path: Path) -> None:
+    proc = subprocess.run(
+        [str(zzip_binary()), str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise SystemExit(
+            f"zzip failed for {path}\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+        )
+
+
+def apply_player_mutations_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save = world_dir / str(transform.get("player_save", "")).strip()
+    if not player_save.exists():
+        raise SystemExit(f"Fixture player-mutation transform target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture player-mutation transform expects .zzip save path: {player_save}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture player-mutation transform did not extract save: {extracted_save}")
+
+    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+
+    traits_raw = player.get("traits", [])
+    if isinstance(traits_raw, list):
+        traits = [str(value) for value in traits_raw]
+    else:
+        raise SystemExit(f"Player traits is not a list in {extracted_save}")
+
+    mutations_raw = player.get("mutations", {})
+    if isinstance(mutations_raw, dict):
+        mutations = dict(mutations_raw)
+    elif isinstance(mutations_raw, list) and not mutations_raw:
+        mutations = {}
+    else:
+        raise SystemExit(f"Player mutations is not a supported container in {extracted_save}")
+
+    cached_raw = player.get("cached_mutations", {})
+    if isinstance(cached_raw, dict):
+        cached_mutations = dict(cached_raw)
+    elif isinstance(cached_raw, list) and not cached_raw:
+        cached_mutations = {}
+    else:
+        raise SystemExit(f"Player cached_mutations is not a supported container in {extracted_save}")
+
+    requested_mutations = [str(value) for value in transform.get("mutations", []) if str(value).strip()]
+    added_traits: List[str] = []
+    for mutation_id in requested_mutations:
+        if mutation_id not in traits:
+            traits.append(mutation_id)
+            added_traits.append(mutation_id)
+        mutations.setdefault(mutation_id, dict(PLAYER_MUTATION_STATE_TEMPLATE))
+        cached_mutations.setdefault(mutation_id, dict(PLAYER_MUTATION_STATE_TEMPLATE))
+
+    player["traits"] = traits
+    player["mutations"] = mutations
+    player["cached_mutations"] = cached_mutations
+    extracted_save.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    run_zzip(extracted_save)
+    if extracted_save.exists():
+        extracted_save.unlink()
+
+    return {
+        "kind": "player_mutations",
+        "world": world_dir.name,
+        "player_save": str(transform.get("player_save", "")),
+        "mutations": requested_mutations,
+        "added_traits": added_traits,
+    }
+
+
+def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    reports: List[Dict[str, Any]] = []
+    for transform in transforms:
+        kind = str(transform.get("kind", "")).strip().lower()
+        if kind == "player_mutations":
+            reports.append(apply_player_mutations_transform(world_dir, transform))
+            continue
+        raise SystemExit(f"Unsupported fixture save transform kind: {kind}")
+    return reports
+
+
 def profile_fixture_root(profile: str) -> Path:
     return fixtures_root() / profile
 
@@ -2133,6 +2269,10 @@ def resolve_fixture_payload(
     if not fixture_dir.exists():
         raise SystemExit(f"Fixture not found: {fixture_dir}")
     manifest = load_fixture_manifest(fixture_dir)
+    save_transforms = normalize_fixture_save_transforms(
+        manifest.get("save_transforms", []),
+        manifest_path=fixture_dir / "manifest.json",
+    )
     save_src = fixture_dir / "save"
     chain = list(seen or [])
     chain.append((source_profile, fixture_name))
@@ -2144,6 +2284,7 @@ def resolve_fixture_payload(
             "save_src": save_src,
             "manifest": manifest,
             "source_chain": chain,
+            "save_transforms": save_transforms,
         }
 
     source_fixture = str(manifest.get("source_fixture", "") or "").strip()
@@ -2155,16 +2296,22 @@ def resolve_fixture_payload(
             "Fixture source cycle detected: "
             + " -> ".join(f"{profile}:{name}" for profile, name in chain + [(nested_profile, source_fixture)])
         )
-    return resolve_fixture_payload(source_fixture, nested_profile, seen=chain)
+    resolved = resolve_fixture_payload(source_fixture, nested_profile, seen=chain)
+    return {
+        **resolved,
+        "save_transforms": list(resolved.get("save_transforms", [])) + save_transforms,
+    }
 
 
 def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_profile: str = "") -> Dict[str, Any]:
     source_profile = resolve_profile_name(fixture_profile or profile)
     resolved = resolve_fixture_payload(fixture_name, source_profile)
     save_src = resolved["save_src"]
+    save_transforms = list(resolved.get("save_transforms", []))
     save_dst = save_dir_for_profile(profile)
     ensure_dir(save_dst)
     installed_worlds = []
+    applied_save_transforms: List[Dict[str, Any]] = []
     for world_dir in sorted([p for p in save_src.iterdir() if p.is_dir()], key=lambda p: p.name.lower()):
         dst = save_dst / world_dir.name
         if dst.exists() and not replace:
@@ -2173,6 +2320,8 @@ def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_prof
             shutil.rmtree(dst)
         shutil.copytree(world_dir, dst)
         installed_worlds.append(world_dir.name)
+        if save_transforms:
+            applied_save_transforms.extend(apply_fixture_save_transforms(dst, save_transforms))
     return {
         "fixture": fixture_name,
         "profile": profile,
@@ -2181,6 +2330,7 @@ def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_prof
         "resolved_fixture_profile": resolved["fixture_profile"],
         "source_chain": [f"{entry_profile}:{entry_name}" for entry_profile, entry_name in resolved["source_chain"]],
         "installed_worlds": installed_worlds,
+        "applied_save_transforms": applied_save_transforms,
         "destination": str(save_dst),
         "manifest": resolved["manifest"],
     }
@@ -2279,14 +2429,16 @@ def success_from_lastworld(profile: str, baseline_mtime: float, expected_world: 
 def run_startup(args: argparse.Namespace) -> int:
     profile = resolve_profile_name(args.profile)
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
+    profile_snapshot_result: Dict[str, Any] = {}
     if profile_snapshot:
-        install_profile_snapshot(
+        profile_snapshot_result = install_profile_snapshot(
             profile,
             profile_snapshot,
             snapshot_profile=getattr(args, "profile_snapshot_profile", ""),
         )
+    fixture_install_result: Dict[str, Any] = {}
     if args.fixture:
-        install_fixture(
+        fixture_install_result = install_fixture(
             profile,
             args.fixture,
             replace=args.replace_existing_worlds,
@@ -2343,6 +2495,8 @@ def run_startup(args: argparse.Namespace) -> int:
                 "returncode": code,
                 "pid": proc.pid,
                 "profile": profile,
+                "profile_snapshot": profile_snapshot_result,
+                "fixture_install": fixture_install_result,
                 "run_dir": str(run_dir),
                 "screen": screen.get("screen_summary", {}),
             }
@@ -2370,6 +2524,8 @@ def run_startup(args: argparse.Namespace) -> int:
                 "ok_with_debug_popups": dismissals > 0,
                 "debug_popups_recorded": dismissals,
                 "strategy": plan.strategy,
+                "profile_snapshot": profile_snapshot_result,
+                "fixture_install": fixture_install_result,
                 "post_lastworld_wait_seconds": post_lastworld_wait,
                 "lastworld": data,
                 "run_dir": str(run_dir),
@@ -2397,6 +2553,8 @@ def run_startup(args: argparse.Namespace) -> int:
         "pid": proc.pid,
         "profile": profile,
         "strategy": plan.strategy,
+        "profile_snapshot": profile_snapshot_result,
+        "fixture_install": fixture_install_result,
         "run_dir": str(run_dir),
         "screen": screen.get("screen_summary", {}),
     }

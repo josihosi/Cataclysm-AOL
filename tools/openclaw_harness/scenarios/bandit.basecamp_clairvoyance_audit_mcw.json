@@ -1,0 +1,35 @@
+{
+  "name": "bandit.basecamp_clairvoyance_audit_mcw",
+  "description": "Prepared-base v1 debug/readability audit on the clairvoyance-enabled pack: reinstall the richer McWilliams camp footing, open the mutation screen, and capture direct proof that Zoraida starts with both debug clairvoyance traits.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_basecamp_clairvoyance_v1_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_clairvoyance_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "game::load: Finalizing end"
+  ],
+  "recommended_test_command": "none (clairvoyance fixture audit; the missing evidence is current-build install/load plus visible mutation footing)",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_mutation_screen",
+      "keys": [
+        "["
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 60
+    }
+  ]
+}

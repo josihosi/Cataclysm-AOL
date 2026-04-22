@@ -1,0 +1,16 @@
+{
+  "name": "bandit_basecamp_clairvoyance_v1_2026-04-22",
+  "source_fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Prepared-base debug/readability fixture for the active v1 lane: reuse the richer prepared-base camp footing, then apply a bounded harness-side player-mutation restage so Zoraida Vick starts with both debug clairvoyance mutations.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_CLAIRVOYANCE_PLUS",
+        "DEBUG_CLAIRVOYANCE"
+      ]
+    }
+  ]
+}
