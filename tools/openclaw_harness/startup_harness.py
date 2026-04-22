@@ -2123,12 +2123,45 @@ def capture_fixture(profile: str, fixture_name: str, explicit_world: str, overwr
     }
 
 
+def resolve_fixture_payload(
+    fixture_name: str,
+    fixture_profile: str,
+    seen: Optional[List[Tuple[str, str]]] = None,
+) -> Dict[str, Any]:
+    source_profile = resolve_profile_name(fixture_profile)
+    fixture_dir = profile_fixture_root(source_profile) / fixture_name
+    if not fixture_dir.exists():
+        raise SystemExit(f"Fixture not found: {fixture_dir}")
+    manifest = load_fixture_manifest(fixture_dir)
+    save_src = fixture_dir / "save"
+    chain = list(seen or [])
+    chain.append((source_profile, fixture_name))
+    if save_src.exists():
+        return {
+            "fixture": fixture_name,
+            "fixture_profile": source_profile,
+            "fixture_dir": fixture_dir,
+            "save_src": save_src,
+            "manifest": manifest,
+            "source_chain": chain,
+        }
+
+    source_fixture = str(manifest.get("source_fixture", "") or "").strip()
+    if not source_fixture:
+        raise SystemExit(f"Fixture save payload not found: {save_src}")
+    nested_profile = str(manifest.get("source_profile", "") or source_profile).strip() or source_profile
+    if (nested_profile, source_fixture) in chain:
+        raise SystemExit(
+            "Fixture source cycle detected: "
+            + " -> ".join(f"{profile}:{name}" for profile, name in chain + [(nested_profile, source_fixture)])
+        )
+    return resolve_fixture_payload(source_fixture, nested_profile, seen=chain)
+
+
 def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_profile: str = "") -> Dict[str, Any]:
     source_profile = resolve_profile_name(fixture_profile or profile)
-    fixture_dir = profile_fixture_root(source_profile) / fixture_name
-    save_src = fixture_dir / "save"
-    if not save_src.exists():
-        raise SystemExit(f"Fixture save payload not found: {save_src}")
+    resolved = resolve_fixture_payload(fixture_name, source_profile)
+    save_src = resolved["save_src"]
     save_dst = save_dir_for_profile(profile)
     ensure_dir(save_dst)
     installed_worlds = []
@@ -2144,25 +2177,63 @@ def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_prof
         "fixture": fixture_name,
         "profile": profile,
         "fixture_profile": source_profile,
+        "resolved_fixture": resolved["fixture"],
+        "resolved_fixture_profile": resolved["fixture_profile"],
+        "source_chain": [f"{entry_profile}:{entry_name}" for entry_profile, entry_name in resolved["source_chain"]],
         "installed_worlds": installed_worlds,
         "destination": str(save_dst),
+        "manifest": resolved["manifest"],
     }
+
+
+def resolve_profile_snapshot_payload(
+    snapshot_name: str,
+    snapshot_profile: str,
+    seen: Optional[List[Tuple[str, str]]] = None,
+) -> Dict[str, Any]:
+    source_profile = resolve_profile_name(snapshot_profile)
+    snapshot_dir = profile_snapshot_root(source_profile) / snapshot_name
+    if not snapshot_dir.exists():
+        raise SystemExit(f"Profile snapshot not found: {snapshot_dir}")
+    manifest = load_fixture_manifest(snapshot_dir)
+    copyable_entries = [
+        entry for entry in sorted(snapshot_dir.iterdir(), key=lambda p: p.name.lower())
+        if entry.name not in {"manifest.json", "save", "harness_runs"}
+    ]
+    chain = list(seen or [])
+    chain.append((source_profile, snapshot_name))
+    if copyable_entries:
+        return {
+            "snapshot": snapshot_name,
+            "snapshot_profile": source_profile,
+            "snapshot_dir": snapshot_dir,
+            "copyable_entries": copyable_entries,
+            "manifest": manifest,
+            "source_chain": chain,
+        }
+
+    source_snapshot = str(manifest.get("source_snapshot", "") or "").strip()
+    if not source_snapshot:
+        raise SystemExit(f"Profile snapshot has no copyable payload: {snapshot_dir}")
+    nested_profile = str(manifest.get("source_profile", "") or source_profile).strip() or source_profile
+    if (nested_profile, source_snapshot) in chain:
+        raise SystemExit(
+            "Profile snapshot source cycle detected: "
+            + " -> ".join(f"{profile}:{name}" for profile, name in chain + [(nested_profile, source_snapshot)])
+        )
+    return resolve_profile_snapshot_payload(source_snapshot, nested_profile, seen=chain)
 
 
 def install_profile_snapshot(profile: str, snapshot_name: str, snapshot_profile: str = "") -> Dict[str, Any]:
     source_profile = resolve_profile_name(snapshot_profile or profile)
-    snapshot_dir = profile_snapshot_root(source_profile) / snapshot_name
-    if not snapshot_dir.exists():
-        raise SystemExit(f"Profile snapshot not found: {snapshot_dir}")
+    resolved = resolve_profile_snapshot_payload(snapshot_name, source_profile)
+    snapshot_dir = resolved["snapshot_dir"]
 
     userdir = userdir_for_profile(profile)
     ensure_dir(userdir)
     copied_entries = []
-    skipped_entries = []
-    for entry in sorted(snapshot_dir.iterdir(), key=lambda p: p.name.lower()):
-        if entry.name in {"manifest.json", "save", "harness_runs"}:
-            skipped_entries.append(entry.name)
-            continue
+    skipped_entries = ["manifest.json", "save", "harness_runs"]
+    for entry in resolved["copyable_entries"]:
         dst = userdir / entry.name
         if dst.exists() or dst.is_symlink():
             if dst.is_dir() and not dst.is_symlink():
@@ -2175,16 +2246,18 @@ def install_profile_snapshot(profile: str, snapshot_name: str, snapshot_profile:
             shutil.copy2(entry, dst)
         copied_entries.append(entry.name)
 
-    manifest = load_fixture_manifest(snapshot_dir)
     return {
         "profile": profile,
         "snapshot": snapshot_name,
         "snapshot_profile": source_profile,
+        "resolved_snapshot": resolved["snapshot"],
+        "resolved_snapshot_profile": resolved["snapshot_profile"],
         "source_path": str(snapshot_dir),
         "destination": str(userdir),
         "copied_entries": copied_entries,
         "skipped_entries": skipped_entries,
-        "manifest": manifest,
+        "source_chain": [f"{entry_profile}:{entry_name}" for entry_profile, entry_name in resolved["source_chain"]],
+        "manifest": resolved["manifest"],
     }
 
 

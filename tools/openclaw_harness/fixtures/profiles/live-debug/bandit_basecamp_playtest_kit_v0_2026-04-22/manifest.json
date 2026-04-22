@@ -1,0 +1,6 @@
+{
+  "name": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Thin bandit/Basecamp playtest-kit profile snapshot for the active v0 lane: reuse the captured live-debug McWilliams profile state through the same stable pack name as the save fixture."
+}
