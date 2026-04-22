@@ -697,8 +697,8 @@ Success state:
 - [x] The current named-bandit helper path has honest repeatability evidence instead of one lucky run.
 - [x] The artifact/report surface for that helper path is screen-first and reviewer-readable enough that later playtest discussion does not depend on folklore.
 - [x] The helper path cleans up after itself well enough that repeated probes do not leave stale game windows or obvious session clutter behind.
-- [ ] One purpose-built playtest fixture/save pack exists with a fast reinstall/load path for current bandit + Basecamp probing.
-- [ ] That fixture/save pack exposes a small named scenario family suitable for Josef playtesting and debugging rather than one brittle operator-only restage ritual.
+- [x] One purpose-built playtest fixture/save pack exists with a fast reinstall/load path for current bandit + Basecamp probing.
+- [x] That fixture/save pack exposes a small named scenario family suitable for Josef playtesting and debugging rather than one brittle operator-only restage ritual.
 - [ ] The packet says plainly what still remains ugly or manual instead of laundering it into magic.
 - [ ] The slice stays cohesive and bounded rather than mutating into a general harness/world-authoring rewrite.
 
@@ -708,6 +708,11 @@ Notes:
 - The intended shape is one cohesive pre-playtest kit packet: repeatability soak, screen-first artifact polish, probe auto-cleanup, and one small purpose-built playtest fixture/save pack.
 - `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw` is now the bounded repeatability/reporting seam for this helper path, writing `repeatability.report.json`, `repeatability.raw_runs.json`, and `repeatability.summary.txt` under the summary run directory.
 - Fresh live evidence under `.userdata/dev-harness/harness_runs/20260422_151547/` ran the packaged helper three times on the same McWilliams footing, recorded stable filtered-bandit menu proof on all three runs, auto-terminated the launched game each time, and exposed the still-useful rough edge honestly: the right-panel anger line only OCR-matched on one run, so later discussion can talk about capture sensitivity instead of pretending the generic artifact verdict answered everything.
+- The purpose-built fast-reload pack is now the thin alias pair `tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/` plus `tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/`, both reusing the captured McWilliams live-debug footing through manifest-only `source_fixture` / `source_snapshot` indirection instead of another giant copied save blob.
+- The first named scenario family on that pack is now:
+  - `tools/openclaw_harness/scenarios/bandit.basecamp_playtestkit_restage_mcw.json`
+  - `tools/openclaw_harness/scenarios/bandit.basecamp_playtestkit_readability_mcw.json`
+- Fresh live proof on the new pack aliases lives under `.userdata/dev-harness/harness_runs/20260422_152650/` and `.userdata/dev-harness/harness_runs/20260422_152819/`, showing that the fast-reload alias footing reaches both the base hostile-restage seam and the short-horizon readability capture path while still auto-cleaning the launched game.
 - The fixture may use a clear spawn anchor such as an LMOE-or-similar shelter, but the packet must stay honest if the cleanest first version still depends on a captured save rather than a fully declarative authored-world system.
 - Non-goal reminder: no fresh bandit mechanics, no zoning reopen, no generic custom-map framework, and no infinite scenario sandbox.
 
