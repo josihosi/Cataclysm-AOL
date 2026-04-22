@@ -49,7 +49,7 @@ Current honest state:
 - `tools/openclaw_harness/startup_harness.py` now resolves fixture-manifest `save_transforms` and reports applied restage work under `startup.result.json` / `probe.report.json` as `fixture_install.applied_save_transforms`
 - fresh current-build closeout proof for that helper-backed fixture path lives under `.userdata/dev-harness/harness_runs/20260422_172658/`, and post-load save inspection still shows both debug clairvoyance mutations on the installed dev-harness world
 - the thin `v0` pack and the richer prepared-base `v1` pack are now both honestly closed, so the missing value is no longer fixture honesty; it is the broader named scenario-surgery surface Josef already greenlit as `v2`
-- `v2` does not start from nothing: one tiny reusable mutation/reporting seam now exists through manifest-level `save_transforms` with bounded `player_mutations`, but that is seed footing rather than license to claim the packet solved
+- `v2` does not start from nothing: one tiny reusable mutation/reporting seam now exists through manifest-level `save_transforms` with bounded `player_mutations`, and the first mutation-backed hostile-contact preset now exists at `tools/openclaw_harness/scenarios/bandit.basecamp_clairvoyance_contact_audit_mcw.json`; that is still seed footing rather than license to claim the packet solved
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this live packet should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, and repeated-site revisit follow-through
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
@@ -84,8 +84,8 @@ Use the auxiliary docs below when a later discussion needs the canonical contrac
 
 ### Camp / Basecamp packets
 
-- `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md` (active)
-- `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md` (greenlit / queued next)
+- `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md` (active)
 - `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
 - `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`
 - `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`

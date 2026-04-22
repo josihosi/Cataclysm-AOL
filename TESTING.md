@@ -57,11 +57,15 @@ The rich `v1` fixture family is now closed honestly enough to build on. The acti
 - do **not** pretend that one helper closes `v2`:
   - the current transform surface is still tiny
   - broader prepared-base variants still need more named mutations/presets beyond the clairvoyance closeout
-  - operator-facing expectation/reporting should keep getting stronger as more transforms land
+  - operator-facing expectation/reporting should keep getting stronger as more transforms and presets land
 - fresh current-build substrate proof for this seed helper lives under `.userdata/dev-harness/harness_runs/20260422_172658/` via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_audit_mcw`
   - `startup.fixture_install.applied_save_transforms` records the `player_mutations` restage on the named clairvoyance pack
   - the run stayed runtime-current (`version_matches_runtime_paths = true`) and cleaned up with `cleanup.status = terminated`
   - the generic artifact verdict stayed `inconclusive_no_new_artifacts`, so screen/probe metadata remain the honest evidence class here
+- the first mutation-backed hostile-contact preset now also has fresh current-build proof under `.userdata/dev-harness/harness_runs/20260422_174231/` via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_contact_audit_mcw`
+  - the same `startup.fixture_install.applied_save_transforms` report keeps the forced clairvoyance state reviewer-visible on this contact preset instead of burying it in folklore
+  - the filtered named-NPC spawn still lands the expected `3 bandit` menu entries on the prepared-base/clairvoyance pack, and the eight-turn right-panel capture records `Marshall Rucker, Bandit gets angry!`, gunfire, taunts, and survivor hits/kills on the same mutation-backed footing
+  - `version_matches_repo_head = false` is honest but non-scary here because only harness scenario/docs wiring changed; `version_matches_runtime_paths = true` stayed the meaningful runtime-current check and cleanup again ended in `cleanup.status = terminated`
 - fresh narrow code check for this helper surface: `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
 - until more `v2` helpers land, fresh proof should answer scenario-surgery questions, not reopen the already-closed fixture-family question
 
@@ -189,7 +193,7 @@ A live probe is still greenlit, but it should now answer `v2` scenario-surgery q
   - `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
   - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_restage_mcw`
   - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_readability_mcw`
-- Once the next `v2` helper lands, add a named helper-specific load/probe path instead of laundering it through the old thin-pack or `v1` closeout names.
+- Once the next `v2` helper lands, add another named helper-specific load/probe path instead of laundering it through the old thin-pack, the closed `v1` closeout names, or the first contact preset.
 - If the scenario-surgery work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
 
 ---
@@ -231,6 +235,7 @@ Use these when they are actually the missing evidence, not as ritual.
 - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_restage_mcw`
 - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_readability_mcw`
 - `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_first_pass_readability_mcw`
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_contact_audit_mcw`
 - preserve the screen/OCR artifacts that show repeatability, readability, cleanup behavior, and later pack-backed variants
 
 ## Local build caveat
