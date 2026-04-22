@@ -72,6 +72,8 @@ def classification_from_status( status: str ) -> str | None:
         return "active"
     if "GREENLIT / BACKLOG" in upper or "GREENLIT / BOTTOM-OF-STACK" in upper:
         return "greenlit"
+    if "WAITING FOR NEXT GREENLIGHT" in upper:
+        return "waiting"
     if "PARKED" in upper:
         return "parked"
     if "CHECKPOINTED" in upper:
@@ -255,7 +257,7 @@ def run_self_test() -> None:
     current_greenlit_titles = [section.title for section in parsed_current.sections if section.classification == "greenlit"]
     current_parked_titles = [section.title for section in parsed_current.sections if section.classification == "parked"]
 
-    assert current_active_titles == ["Active lane - Live bandit + Basecamp playtest packaging/helper packet v0"]
+    assert current_active_titles == []
     assert current_greenlit_titles == []
     assert any( "Bandit overmap AI" in title for title in current_parked_titles )
     assert any( "Future feature lanes" in title for title in current_parked_titles )
@@ -264,8 +266,8 @@ def run_self_test() -> None:
 
     active_render = render_view( parsed_current, "active" )
     greenlit_render = render_view( parsed_current, "greenlit" )
-    assert "Live bandit + Basecamp playtest packaging/helper packet v0" in active_render
-    assert "Live bandit + Basecamp playtest packaging/helper packet v0" in greenlit_render
+    assert active_render == "active\n(none)"
+    assert greenlit_render == "greenlit\n(none)"
 
     thin_parsed = parse_plan( SAMPLE_THIN_PLAN )
     assert [section.classification for section in thin_parsed.sections] == ["active", "parked"]

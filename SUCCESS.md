@@ -649,20 +649,22 @@ Notes:
 
 ## Live bandit + Basecamp playtest packaging/helper packet v0
 
-Status: GREENLIT / ACTIVE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded helper or first-class harness scenario exists for current-build live bandit + Basecamp restage on real existing Basecamp footing.
-- [ ] The helper packages the already-proved named-bandit restage seam instead of relying on remembered debug-menu choreography alone.
-- [ ] One fresh live run proves the helper can reach the intended setup repeatably and leaves reviewer-readable artifacts.
-- [ ] The packet says plainly what remains manual or ugly, if anything, instead of laundering it into magic.
-- [ ] The slice stays bounded and does not widen into fresh mechanics, zoning-mechanics reopen, encounter/readability judgment, or another generic feasibility lap.
+- [x] One bounded helper or first-class harness scenario exists for current-build live bandit + Basecamp restage on real existing Basecamp footing.
+- [x] The helper packages the already-proved named-bandit restage seam instead of relying on remembered debug-menu choreography alone.
+- [x] One fresh live run proves the helper can reach the intended setup repeatably and leaves reviewer-readable artifacts.
+- [x] The packet says plainly what remains manual or ugly, if anything, instead of laundering it into magic.
+- [x] The slice stays bounded and does not widen into fresh mechanics, zoning-mechanics reopen, encounter/readability judgment, or another generic feasibility lap.
 
 Notes:
 - Canonical contract lives at `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`.
-- This packet exists because the feasibility question is closed; the missing truth is repeatable packaging/ergonomics on the already-proved restage seam.
-- Reuse the current McWilliams/Basecamp footing instead of inventing a fake toy scenario family.
-- If the packet lands as harness/helper/docs work only, keep the validation burden honest and proportionate.
+- The landed first-class helper is `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`, packaging the named-NPC spawn seam on reused McWilliams/Basecamp footing instead of relying on remembered chat choreography.
+- Fresh current-build proof now lives under `.userdata/dev-harness/harness_runs/20260422_132353/`, with `window_title = Cataclysm: Dark Days Ahead - 7ab535f0c7`, `version_matches_repo_head = true`, and `version_matches_runtime_paths = true`.
+- Reviewer-readable artifacts from that run include `filter_bandit_template.after.{png,screen_text.txt}` showing the filtered `bandit` menu entries and `post_spawn_settle.after.{png,screen_text.txt}` showing `Joshua Wilkes, Bandit gets angry!`.
+- Remaining rough edges stay explicit rather than hidden: the helper still uses the debug named-NPC spawn surface, still depends on the captured McWilliams fixture, the generic artifact verdict is screen-first rather than debug-log-smart, and probe cleanup still leaves a live game window to close.
+- Validation stayed proportionate to the slice: forced fresh tiles rebuild via `make -B -j4 TILES=1 cataclysm-tiles`, then the packaged live probe via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`, with no new deterministic tests because no gameplay code changed.
 
 ---
 

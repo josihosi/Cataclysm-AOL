@@ -44,17 +44,21 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Live bandit + Basecamp playtest packaging/helper packet v0`.
-The missing truth is no longer feasibility. It is repeatable packaging/ergonomics on the already-proved bandit restage seam.
+No active probe obligation right now.
+The helper-packaging question is closed, and the next live question is not greenlit yet.
 
-### Active lane - Live bandit + Basecamp playtest packaging/helper packet v0
+### Latest closed lane - Live bandit + Basecamp playtest packaging/helper packet v0
 
 - canonical packet: `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
-- starting evidence inherited from the closed feasibility packet:
-  - fresh current-build startup proof under `.userdata/dev/harness_runs/20260422_002122/`
-  - bounded named-bandit restage proof under `.userdata/dev-harness/harness_runs/20260422_002329/`
-- honest missing proof now: one reviewer-clean helper/scenario path that can restage the current Basecamp-plus-hostile-bandit live setup repeatably without relying on remembered debug-menu choreography alone
-- if this lane lands as harness/helper/docs work only, do not pretend broad rebuilds were the missing evidence class
+- landed helper: `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`
+- fresh current-build proof lives under `.userdata/dev-harness/harness_runs/20260422_132353/`
+- current-build proof is honest: `window_title = Cataclysm: Dark Days Ahead - 7ab535f0c7`, `version_matches_repo_head = true`, and `version_matches_runtime_paths = true`
+- reviewer-readable helper artifacts now exist directly on the run path:
+  - `filter_bandit_template.after.{png,screen_text.txt}` showing the filtered `bandit` menu entries
+  - `post_spawn_settle.after.{png,screen_text.txt}` showing `Joshua Wilkes, Bandit gets angry!`
+- forced rebuild was used here not because the packet needed gameplay-code validation, but because an earlier stale tiles binary made the first helper proof carry an avoidable asterisk before handoff
+- honest remaining rough edges: the packaged path still uses the named-NPC debug spawn surface, still depends on the captured McWilliams fixture, and the generic probe artifact verdict is still less useful than the screen/OCR companions for this seam
+- no deterministic tests were added or rerun because this packet landed as harness/helper/docs work only
 
 ### Latest closed lane - Live bandit + Basecamp playtesting feasibility probe v0
 
@@ -99,12 +103,11 @@ Current honest summary:
 
 ## Pending probes
 
-Current active probe obligation is greenlit now.
+No live probe is greenlit right now.
 
-- Do **not** rerun the live-feasibility packet ceremonially.
-- The next honest live probe is the packaged helper/scenario path for the named-bandit restage seam.
-- If helper packaging lands cleanly, the later next question becomes encounter/readability, not another setup-existence argument.
-- If helper packaging cannot be made reviewer-clean without choosing between materially different operator flows or scope shapes, stop and nudge Josef with the exact choice instead of winging it.
+- Do **not** rerun the helper packet ceremonially now that the packaging question is closed.
+- The next honest live question, if Josef promotes it, is encounter/readability on top of the packaged helper path rather than another setup-existence argument.
+- If a later packet still uses this seam, prefer `bandit.basecamp_named_spawn_mcw` over retyping the debug-menu choreography from memory.
 
 ---
 
@@ -131,7 +134,8 @@ Use these when they are actually the missing evidence, not as ritual.
 - `make -j4 TILES=1 cataclysm-tiles`
 
 ### Current live playtest-packaging/helper seam
-- `python3 tools/openclaw_harness/startup_harness.py probe <new-packaged-helper-scenario> --profile dev-harness --world McWilliams --fixture mcwilliams_live_debug_2026-04-07 --replace-existing-worlds`
+- `make -B -j4 TILES=1 cataclysm-tiles`
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`
 
 ## Local build caveat
 

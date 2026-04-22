@@ -1,0 +1,89 @@
+{
+  "name": "bandit.basecamp_named_spawn_mcw",
+  "description": "Load the existing McWilliams Basecamp fixture on dev-harness footing, open the named-NPC debug spawn seam, filter it to bandit-family entries, confirm the hostile spawn, and leave reviewer-readable cropped artifacts instead of relying on remembered menu choreography.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "recommended_test_command": "none (harness/helper/docs-only packet; the live helper run is the missing evidence)",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_named_npc_spawn_path",
+      "keys": [
+        "}",
+        "s",
+        "p"
+      ],
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "capture",
+      "label": "capture_named_npc_spawn_menu",
+      "capture_crop": {
+        "x": 1080,
+        "y": 10,
+        "width": 420,
+        "height": 1080
+      },
+      "extract_text": true,
+      "extract_text_tail_lines": 10
+    },
+    {
+      "kind": "press",
+      "label": "open_menu_filter",
+      "keys": [
+        "/"
+      ],
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "filter_bandit_template",
+      "text": "bandit",
+      "submit": true,
+      "settle_seconds": 0.75,
+      "capture_after": true,
+      "capture_after_crop": {
+        "x": 1080,
+        "y": 10,
+        "width": 420,
+        "height": 1080
+      },
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 10
+    },
+    {
+      "kind": "press",
+      "label": "confirm_filtered_entry",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "wait",
+      "label": "post_spawn_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "capture_after_crop": {
+        "x": 2080,
+        "y": 140,
+        "width": 440,
+        "height": 1160
+      },
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 18
+    }
+  ]
+}
