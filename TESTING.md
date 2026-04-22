@@ -67,12 +67,16 @@ The active missing truth is no longer whether the harness can mutate one more pr
 - earlier owner-ledger-only proof also passed on the current tree via:
   - touched-object compile of `obj/{bandit_live_world,mapgen,overmapbuffer,savegame}.o`
   - standalone filtered run `./tests/cata_test_bandit_live_world "[bandit][live_world]"`
+- the harness mode split is now real too, but only as helper plumbing so far:
+  - `tools/openclaw_harness/startup_harness.py handoff <scenario>` now reuses packaged scenario setup but writes `handoff.report.json`, records `cleanup.status = deferred_handoff`, and leaves the launched game alive instead of running `cleanup_game_process(...)` on success
+  - narrow helper validation passed via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, dry-run contract resolution for `handoff bandit.basecamp_playtestkit_restage_mcw`, and one real helper validation run at `.userdata/dev-harness/harness_runs/20260422_200937/` that left `cataclysm-tiles` running until Andi manually killed the validation session afterward
+  - that real helper validation stayed `version_matches_runtime_paths = false`, so it proves the handoff/no-cleanup split only; it does **not** count as current-build proof for the active nearby live-world-control packet
 - broad `make tests` is still not the honest gate for this slice today because current tree already fails earlier in unrelated code at `src/overmap_special_mutable.cpp`
 - required evidence now mixes live-world control proof, restage proof, and perf proof:
   - fresh current-build live proof that the new dispatch seam actually drives a nearby controlled site in play instead of stopping at compile-time route plumbing
   - fresh proof that the persisted active outing summary is exercised by a **real** local-contact/aftermath hook rather than only by deterministic return-packet tests
   - fresh current-build live proof that a controlled bandit camp can be restaged about `10 OMT` away on demand
-  - fresh current-build proof that the manual handoff path leaves the session alive for playtesting instead of auto-terminating after setup
+  - fresh current-build proof that the eventual nearby controlled-restage handoff path leaves the session alive for playtesting instead of auto-terminating after setup; the generic harness helper split now exists, but the active packet still needs this on the real nearby controlled site setup
   - fresh reviewer-clean evidence that the nearby setup exercised the real overmap/bubble handoff plus local writeback path instead of stopping at persisted-but-untriggered ledger helpers
   - a concrete perf readout on that nearby setup using baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost
   - at least four explicit ugly-interaction/adversarial proofs, covering at minimum:

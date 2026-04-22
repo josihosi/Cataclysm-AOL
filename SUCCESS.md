@@ -767,6 +767,7 @@ Notes:
 - That dispatch seam now derives outgoing capacity from the live remaining roster instead of folklore counts: site-backed camps keep one member home by rule, micro-sites can still commit their full tiny roster, and `update_member_state(...)` shrinks both site headcount and per-spawn-tile headcount when deaths/missing results land.
 - The owner ledger now also persists one active outing summary (`active_group_id`, `active_target_id`, `active_member_ids`) and can apply a bounded handoff return packet back onto those exact owned members after save/load without folklore-reconstructing which bodies went.
 - Fresh narrow validation for the reserve/writeback slice passed via touched-object compile of `obj/bandit_live_world.o`, exact test-object compile of `tests/bandit_live_world_test.cpp`, and `git diff --check`; the wider tree still has an unrelated existing `make tests` failure in `src/overmap_special_mutable.cpp`.
+- `tools/openclaw_harness/startup_harness.py` now has a distinct `handoff` mode that leaves a packaged setup alive and writes `handoff.report.json` / `handoff.pid` instead of always auto-cleaning on success, but that is helper plumbing only until the nearby controlled-restage path is wired onto it on current build.
 - The restage seam is part of the product bar now: manual playtest handoff must stay alive after setup instead of rudely cleaning up as soon as things get interesting.
 
 ---
