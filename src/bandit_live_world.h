@@ -78,6 +78,8 @@ struct site_record {
     spawn_tile_record *find_spawn_tile( const tripoint_abs_ms &tile );
     const spawn_tile_record *find_spawn_tile( const tripoint_abs_ms &tile ) const;
     int count_members_in_state( member_state state ) const;
+    int count_live_members() const;
+    int dispatchable_member_capacity() const;
 };
 
 struct world_state {
@@ -125,6 +127,8 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
+bool update_member_state( site_record &site, character_id npc_id, member_state new_state,
+                          const std::string &summary );
 
 std::string to_string( anchor_source_kind source_kind );
 std::string to_string( owned_site_kind site_kind );

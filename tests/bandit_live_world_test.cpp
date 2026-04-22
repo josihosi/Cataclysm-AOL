@@ -184,3 +184,70 @@ TEST_CASE( "bandit live world applies a dispatch plan by marking the selected me
     REQUIRE_FALSE( second_plan.notes.empty() );
     CHECK( second_plan.notes.back().find( "active outbound/contact group" ) != std::string::npos );
 }
+
+TEST_CASE( "bandit live world keeps a home reserve for site-backed camps", "[bandit][live_world]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 601 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &camp = world.sites.front();
+    CHECK( camp.count_live_members() == 1 );
+    CHECK( camp.dispatchable_member_capacity() == 0 );
+
+    const bandit_live_world::dispatch_plan blocked_plan =
+        bandit_live_world::plan_site_dispatch( camp, tripoint_abs_omt( 18, 20, 0 ), "player_basecamp_nearby" );
+    CHECK_FALSE( blocked_plan.valid );
+    REQUIRE_FALSE( blocked_plan.notes.empty() );
+    CHECK( blocked_plan.notes.back().find( "home reserve" ) != std::string::npos );
+
+    bandit_live_world::world_state roadside_world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( roadside_world, "bandit", character_id( 602 ),
+             tripoint_abs_ms( 120, 96, 0 ), std::nullopt, std::string( "mx_looters" ),
+             special_lookup ) );
+    const bandit_live_world::site_record &roadside_site = roadside_world.sites.front();
+    CHECK( roadside_site.dispatchable_member_capacity() == 1 );
+}
+
+TEST_CASE( "bandit live world writeback shrinks headcount and future dispatch capacity", "[bandit][live_world]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 701 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 702 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit_trader", character_id( 703 ),
+             tripoint_abs_ms( 264, 504, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    CHECK( site.headcount == 3 );
+    CHECK( site.count_live_members() == 3 );
+    CHECK( site.dispatchable_member_capacity() == 2 );
+    REQUIRE( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) ) != nullptr );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) )->headcount == 1 );
+
+    REQUIRE( bandit_live_world::update_member_state( site, character_id( 702 ),
+             bandit_live_world::member_state::dead, "killed during local contact" ) );
+    CHECK( site.headcount == 2 );
+    CHECK( site.count_live_members() == 2 );
+    CHECK( site.dispatchable_member_capacity() == 1 );
+    CHECK( site.find_member( character_id( 702 ) )->last_writeback_summary ==
+           "killed during local contact" );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 241, 480, 0 ) )->headcount == 0 );
+
+    REQUIRE( bandit_live_world::update_member_state( site, character_id( 703 ),
+             bandit_live_world::member_state::missing, "never returned from scout" ) );
+    CHECK( site.headcount == 1 );
+    CHECK( site.count_live_members() == 1 );
+    CHECK( site.dispatchable_member_capacity() == 0 );
+
+    const bandit_live_world::dispatch_plan blocked_plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player_basecamp_nearby" );
+    CHECK_FALSE( blocked_plan.valid );
+    REQUIRE_FALSE( blocked_plan.notes.empty() );
+    CHECK( blocked_plan.notes.back().find( "home reserve" ) != std::string::npos );
+}

@@ -109,10 +109,32 @@ int required_dispatch_members( bandit_dry_run::job_template job )
     return 0;
 }
 
+bool counts_toward_live_headcount( member_state state )
+{
+    return state == member_state::at_home || state == member_state::outbound ||
+           state == member_state::local_contact;
+}
+
+int required_home_reserve( const bandit_live_world::site_record &site )
+{
+    switch( site.site_kind ) {
+        case owned_site_kind::bandit_camp:
+        case owned_site_kind::bandit_work_camp:
+        case owned_site_kind::bandit_cabin:
+            return 1;
+        case owned_site_kind::looters:
+        case owned_site_kind::bandits_block:
+        case owned_site_kind::none:
+            return 0;
+    }
+
+    return 0;
+}
+
 bandit_dry_run::camp_input make_dispatch_camp_input( const bandit_live_world::site_record &site )
 {
     bandit_dry_run::camp_input camp;
-    camp.available_manpower = site.count_members_in_state( member_state::at_home );
+    camp.available_manpower = site.dispatchable_member_capacity();
     if( camp.available_manpower >= 3 ) {
         camp.shortage = bandit_dry_run::shortage_band::stable;
     } else if( camp.available_manpower == 2 ) {
@@ -170,7 +192,7 @@ bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_l
     group.group_id = site.site_id + "#dispatch";
     group.source_camp_id = site.site_id;
     group.group_strength = member_ids.size();
-    group.confidence = std::clamp( site.count_members_in_state( member_state::at_home ), 1, 3 );
+    group.confidence = std::clamp( site.count_live_members(), 1, 3 );
     group.panic_threshold = std::max( 1, static_cast<int>( member_ids.size() ) );
     group.cargo_capacity = std::max( 1, static_cast<int>( member_ids.size() ) * 2 );
     group.current_target_or_mark = target_id;
@@ -358,6 +380,19 @@ int site_record::count_members_in_state( member_state target_state ) const
     [target_state]( const member_record & member ) {
         return member.state == target_state;
     } ) );
+}
+
+int site_record::count_live_members() const
+{
+    return static_cast<int>( std::count_if( members.begin(), members.end(), []( const member_record & member ) {
+        return counts_toward_live_headcount( member.state );
+    } ) );
+}
+
+int site_record::dispatchable_member_capacity() const
+{
+    const int at_home_members = count_members_in_state( member_state::at_home );
+    return std::max( 0, at_home_members - required_home_reserve( *this ) );
 }
 
 void world_state::clear()
@@ -588,7 +623,7 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 
     const bandit_dry_run::camp_input camp = make_dispatch_camp_input( site );
     if( camp.available_manpower <= 0 ) {
-        plan.notes.push_back( "dispatch blocked: no at-home members available" );
+        plan.notes.push_back( "dispatch blocked: no dispatchable at-home members remain after home reserve" );
         return plan;
     }
 
@@ -644,10 +679,32 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
     const std::string summary = "dispatch " + bandit_dry_run::to_string( plan.entry.job_type ) +
                                 " toward " + plan.target_id;
     for( const character_id &member_id : plan.member_ids ) {
-        member_record *member = site.find_member( member_id );
-        member->state = member_state::outbound;
-        member->last_writeback_summary = summary;
+        if( !update_member_state( site, member_id, member_state::outbound, summary ) ) {
+            return false;
+        }
     }
+    return true;
+}
+
+bool update_member_state( site_record &site, character_id npc_id, member_state new_state,
+                          const std::string &summary )
+{
+    member_record *member = site.find_member( npc_id );
+    if( member == nullptr ) {
+        return false;
+    }
+
+    const bool old_live = counts_toward_live_headcount( member->state );
+    const bool new_live = counts_toward_live_headcount( new_state );
+    if( old_live != new_live ) {
+        site.headcount = std::max( 0, site.headcount + ( new_live ? 1 : -1 ) );
+        if( spawn_tile_record *spawn_record = site.find_spawn_tile( member->home_spawn_tile ) ) {
+            spawn_record->headcount = std::max( 0, spawn_record->headcount + ( new_live ? 1 : -1 ) );
+        }
+    }
+
+    member->state = new_state;
+    member->last_writeback_summary = summary;
     return true;
 }
 } // namespace bandit_live_world
