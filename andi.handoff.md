@@ -22,7 +22,8 @@
    - keep dispatch/threat/return/writeback differences profile-driven and readable
 3. **Cannibal camp first hostile-profile adopter packet v0**
    - prove the shared hostile-site profile layer on a second camp-shaped hostile family
-   - if the current tree lacks a real cannibal-camp site family, first add one bounded honest adopter anchor
+   - if the current tree lacks a real cannibal-camp site family, first add one **rare dedicated cannibal-camp mapgen/spawn anchor**
+   - the intended first anchor may derive from current bandit-camp footing, but it should read as a bloodier cannibal variant with explicit names/loadouts/theme dressing rather than a runtime random mutation
    - do not mix this with singleton stalker work
 
 ## Non-goals
@@ -50,4 +51,5 @@
 - the active lane still has to earn nearby restage, messy local contact, writeback, and perf proof before this stack should start
 - do not silently merge packets 1-3 into one “hostile substrate mega-fix”
 - `Writhing stalker` stays parked one step longer and should be revisited later as the first singleton adopter after the profile layer exists
-- current repo reality may lack a ready-made cannibal-camp site family; if so, land one bounded honest adopter anchor instead of pretending it already exists
+- current repo reality may lack a ready-made cannibal-camp site family; if so, land one rare dedicated cannibal-camp anchor instead of pretending it already exists
+- do not default to silently converting ordinary bandit camps into cannibal camps at runtime; the first honest proof is a distinct rare cannibal variant/theme

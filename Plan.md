@@ -133,13 +133,15 @@ What this item should do:
 - land one honest cannibal-camp hostile profile on top of the shared hostile-site substrate
 - keep its cadence, roster, pressure, dispatch, and writeback rules explicit rather than smuggled through bandit names
 - coexist with bandit-owned sites without coalition nonsense or silent bandit-specific assumptions
-- if the current tree lacks a real cannibal-camp site family, first add one bounded honest adopter anchor instead of pretending the profile can attach to vapor
+- if the current tree lacks a real cannibal-camp site family, first add one **rare dedicated cannibal-camp mapgen/spawn anchor** instead of pretending the profile can attach to vapor
+- the intended first anchor may derive from current bandit-camp footing, but it should read as a bloodier cannibal variant with explicit names/loadouts/theme dressing rather than a runtime random bandit-camp mutation
 
 Non-goals:
 - writhing-stalker singleton behavior in the same packet
 - broad hidden-psychopath / social-camouflage systems
 - faction politics or giant cannibal lore expansion
 - widening the packet into every hostile-human family at once
+- silent default runtime conversion of ordinary bandit camps into cannibal camps
 
 Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`.
 
