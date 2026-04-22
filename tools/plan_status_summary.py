@@ -87,6 +87,8 @@ def classification_from_heading( title: str ) -> str | None:
         return "active"
     if "greenlit backlog" in lowered or "bottom-of-stack" in lowered:
         return "greenlit"
+    if "waiting for next greenlight" in lowered:
+        return "waiting"
     if "parked" in lowered:
         return "parked"
     if "checkpointed" in lowered:
@@ -176,12 +178,15 @@ def render_view( parse_result: ParseResult, view: str ) -> str:
         sections = order_greenlit(
             [section for section in parse_result.sections if section.classification in {"active", "greenlit"}]
         )
+    elif view == "waiting":
+        sections = [section for section in parse_result.sections if section.classification == "waiting"]
     elif view == "parked":
         sections = [section for section in parse_result.sections if section.classification == "parked"]
     else:
         blocks = [
             render_view( parse_result, "active" ),
             render_view( parse_result, "greenlit" ),
+            render_view( parse_result, "waiting" ),
             render_view( parse_result, "parked" ),
         ]
         return "\n\n".join( block for block in blocks if block ).strip()
@@ -214,8 +219,8 @@ def normalize_view_tokens( tokens: list[str] ) -> str:
     token = tokens[0].strip().lower()
     if token == "plan":
         return "all"
-    if token not in {"active", "greenlit", "parked", "all"}:
-        raise ValueError( "View must be one of: active, greenlit, parked, all." )
+    if token not in {"active", "greenlit", "parked", "waiting", "all"}:
+        raise ValueError( "View must be one of: active, greenlit, parked, waiting, all." )
     return token
 
 
@@ -255,10 +260,12 @@ def run_self_test() -> None:
     parsed_current = parse_plan( current_plan )
     current_active_titles = [section.title for section in parsed_current.sections if section.classification == "active"]
     current_greenlit_titles = [section.title for section in parsed_current.sections if section.classification == "greenlit"]
+    current_waiting_titles = [section.title for section in parsed_current.sections if section.classification == "waiting"]
     current_parked_titles = [section.title for section in parsed_current.sections if section.classification == "parked"]
 
     assert current_active_titles == []
     assert current_greenlit_titles == []
+    assert current_waiting_titles == ["Waiting for next greenlight"]
     assert any( "Bandit overmap AI" in title for title in current_parked_titles )
     assert any( "Future feature lanes" in title for title in current_parked_titles )
     assert any( "Checkpointed packet index" in warning for warning in parsed_current.warnings )
@@ -266,8 +273,10 @@ def run_self_test() -> None:
 
     active_render = render_view( parsed_current, "active" )
     greenlit_render = render_view( parsed_current, "greenlit" )
+    waiting_render = render_view( parsed_current, "waiting" )
     assert active_render == "active\n(none)"
     assert greenlit_render == "greenlit\n(none)"
+    assert "Waiting for next greenlight" in waiting_render
 
     thin_parsed = parse_plan( SAMPLE_THIN_PLAN )
     assert [section.classification for section in thin_parsed.sections] == ["active", "parked"]
@@ -282,7 +291,7 @@ def run_self_test() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser( description="Print compact Plan.md status summaries." )
-    parser.add_argument( "view", nargs="*", help="`/plan`, `/plan <view>`, or one of: active, greenlit, parked, all" )
+    parser.add_argument( "view", nargs="*", help="`/plan`, `/plan <view>`, or one of: active, greenlit, parked, waiting, all" )
     parser.add_argument( "--plan", default="Plan.md", help="Path to the Plan.md file to read." )
     parser.add_argument( "--self-test", action="store_true", help="Run built-in parser checks and exit." )
     args = parser.parse_args()
