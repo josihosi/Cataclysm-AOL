@@ -255,19 +255,17 @@ def run_self_test() -> None:
     current_greenlit_titles = [section.title for section in parsed_current.sections if section.classification == "greenlit"]
     current_parked_titles = [section.title for section in parsed_current.sections if section.classification == "parked"]
 
-    assert current_active_titles == ["Active lane — Bandit mark-generation + heatmap seam v0"]
-    assert current_greenlit_titles == [
-        "Greenlit backlog — Bandit overmap-to-bubble pursuit handoff seam v0",
-        "Greenlit backlog — Locker lag-threshold probe v0",
-    ]
+    assert current_active_titles == []
+    assert current_greenlit_titles == []
     assert any( "Bandit overmap AI" in title for title in current_parked_titles )
-    assert any( "Hackathon feature lanes" in title for title in current_parked_titles )
-    assert any( "Hackathon feature lanes" in warning for warning in parsed_current.warnings )
+    assert any( "Future feature lanes" in title for title in current_parked_titles )
+    assert any( "Checkpointed packet index" in warning for warning in parsed_current.warnings )
+    assert any( "Future feature lanes - parked far back" in warning for warning in parsed_current.warnings )
 
+    active_render = render_view( parsed_current, "active" )
     greenlit_render = render_view( parsed_current, "greenlit" )
-    assert "Bandit mark-generation + heatmap seam v0" in greenlit_render
-    assert "Bandit overmap-to-bubble pursuit handoff seam v0" in greenlit_render
-    assert "Locker lag-threshold probe v0" in greenlit_render
+    assert active_render == "active\n(none)"
+    assert greenlit_render == "greenlit\n(none)"
 
     thin_parsed = parse_plan( SAMPLE_THIN_PLAN )
     assert [section.classification for section in thin_parsed.sections] == ["active", "parked"]

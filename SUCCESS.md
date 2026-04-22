@@ -37,22 +37,23 @@ Notes:
 
 ## Bandit elevated-light and z-level visibility packet v0
 
-Status: GREENLIT / QUEUED NEXT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded elevated-light and z-level visibility packet exists on the current bandit playback / proof seam.
-- [ ] Deterministic proof shows nearby cross-z visibility behaves sensibly instead of collapsing into floor-bound amnesia.
-- [ ] Deterministic proof shows elevated exposed light can stay legible or actionable farther than ordinary hidden light under the right conditions without turning into magical global sight.
-- [ ] A flagship exposed-high-fire scenario, for example a radio-tower fire in a dead dark world, proves genuinely long-range visibility instead of timid toy-local range.
-- [ ] Matching scenarios prove the same meaningful elevated light can influence zombie-horde pressure too instead of living in private bandit-only theater.
-- [ ] Deterministic proof shows smoke does **not** gain magical extra general reach merely from floor changes.
-- [ ] Reviewer-readable output exposes the visibility read and benchmark outcomes clearly enough that later playtesting can argue about tuning instead of first principles.
-- [ ] The slice stays bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim.
+- [x] One bounded elevated-light and z-level visibility packet exists on the current bandit playback / proof seam.
+- [x] Deterministic proof shows nearby cross-z visibility behaves sensibly instead of collapsing into floor-bound amnesia.
+- [x] Deterministic proof shows elevated exposed light can stay legible or actionable farther than ordinary hidden light under the right conditions without turning into magical global sight.
+- [x] A flagship exposed-high-fire scenario, for example a radio-tower fire in a dead dark world, proves genuinely long-range visibility instead of timid toy-local range.
+- [x] Matching scenarios prove the same meaningful elevated light can influence zombie-horde pressure too instead of living in private bandit-only theater.
+- [x] Deterministic proof shows smoke does **not** gain magical extra general reach merely from floor changes.
+- [x] Reviewer-readable output exposes the visibility read and benchmark outcomes clearly enough that later playtesting can argue about tuning instead of first principles.
+- [x] The slice stays bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim.
 
 Notes:
 - Canonical contract lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`.
-- This is the queued second half of the current bandit playtesting-readiness train.
-- Keep it queued behind the active handoff packet unless Josef explicitly reorders the train.
+- The current tree now closes this packet honestly through vertical-aware smoke/light footing in `src/bandit_mark_generation.{h,cpp}` plus `run_elevated_light_z_level_visibility_packet()` and `render_elevated_light_z_level_visibility_packet( const proof_packet_result &result )` in `src/bandit_playback.{h,cpp}`.
+- Deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the bounded active contract directly: nearby cross-z light stays actionable without magical range creep, hidden ground light stays bounded while elevated exposed light can become actionable, a radio-tower fire carries shared zombie-horde pressure, and vertical smoke keeps `vertical_range_bonus=0`.
+- Narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][marks]"`, and `./tests/cata_test "[bandit][playback]"`.
 
 ---
 
@@ -92,7 +93,7 @@ Notes:
 - The current tree now closes honestly on the current playback/proof seam via `run_overmap_benchmark_suite_packet()` plus `render_overmap_benchmark_suite_packet( const benchmark_suite_result &result )` in `src/bandit_playback.{h,cpp}`.
 - Deterministic coverage in `tests/bandit_playback_test.cpp` now proves the benchmark-suite contract, metric surface, empty-frontier packet, weather edge packet, and independence packet honestly.
 - Narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`.
-- Josef explicitly kept the z-level packet ungreenlit. The benchmark suite is closed, and the next bandit lane needs a fresh explicit greenlight.
+- The benchmark suite stays closed, and the later elevated-light / z-level follow-through is now checkpointed too.
 
 ---
 
@@ -581,63 +582,68 @@ Notes:
 
 ## Locker Zone V3
 
-Status: GREENLIT / REOPENED CAMP-SIDE FOLLOW-THROUGH
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] Seasonal dressing / winter-vs-summer wardrobe logic exists.
-- [ ] Weather-sensitive wardrobe choices (coats / blankets / shorts / similar) are handled deliberately rather than by V1/V2 shortcuts.
-- [ ] Per-NPC overrides / nuance exist without undoing the simpler V1/V2 deterministic spine.
+- [x] Seasonal dressing / winter-vs-summer wardrobe logic exists.
+- [x] Weather-sensitive wardrobe choices (coats / blankets / shorts / similar) are handled deliberately rather than by V1/V2 shortcuts.
+- [x] Per-NPC overrides / nuance exist without undoing the simpler V1/V2 deterministic spine.
 - [x] Deterministic coverage exists for the V3 behavior that is actually implemented.
 - [x] Proportional runtime validation for the currently implemented V3 behavior is recorded in `TESTING.md`.
-- [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
+- [x] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
 - Canonical contract lives at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`.
-- V3 is the reopened camp-side follow-through, but it does **not** replace the repo's current single active `TODO.md` lane while the bandit visibility packet is active.
+- Locker Zone V3 now closes honestly on the current tree and hands the baton to the next camp-side packet instead of pretending one more polite missing row still exists.
 - The first landed V3 lane is intentionally narrow: local temperature nudges shirt/vest-slot torso+arm outerwear toward warmer gear in cold weather and lighter gear in hot weather.
 - The next landed V3 lane is still narrow: pants-slot legwear now distinguishes shorts-like coverage from full-length coverage so cold weather prefers full-length legwear and hot weather prefers shorts-like legwear.
-- Outerwear and the currently landed legwear lane now both have proportional runtime proof on the recorded current-binary / current-save path.
+- The newly landed seasonal slice stays bounded too: at moderate temperatures the same outerwear and legwear seams now still bias winter gear in winter and lighter gear in summer, on both the planning seam and the real locker service path.
+- The newly landed weather-sensitive slice stays bounded too: rainy moderate-weather service now deliberately prefers rainproof outerwear over generic winter outerwear on both the planning seam and the real locker service path.
+- The bounded per-NPC nuance is the worker-specific wardrobe-preservation layer already living on the same deterministic seam: the real locker service path now keeps one-piece suits, dresses, cheongsams, footed jumpsuits, waders, and similar specialized garments unless the replacement set preserves the worker's lost coverage or built-in footwear.
+- Focused deterministic validation passed on the current tree via `make -j4 tests` and `./tests/cata_test "[camp][locker]"`.
+- No Josef-specific follow-up is currently needed for this closed V3 packet; any later human-only checks should batch with a larger camp-side packet instead of becoming a tiny blocker.
 - The `antarvasa` return-to-locker outcome is currently accepted as the honest one-item-per-slot pants policy: keep the best current pants item for comparison, and return extra pants-slot duplicates to the locker when a hot/cold swap lands.
-- Resume from the remaining unchecked V3 rows instead of pretending the whole lane is already done.
-- Do not quietly let V3 nuance undo the simpler V1/V2 deterministic spine or sprawl into smart-zoning/basecamp-automation work.
+- The slice stayed bounded: no Smart Zone Manager sprawl, no basecamp-automation rewrite, and no per-NPC fashion-chaos scripting.
 
 ---
 
 ## Basecamp AI capability audit/readout packet v0
 
-Status: GREENLIT / QUEUED CAMP-SIDE AUDIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded capability audit/readout packet exists for the current Basecamp AI surface.
-- [ ] The packet distinguishes player-facing spoken behaviors from internal structured actions/tokens instead of mushing them together.
-- [ ] The packet says plainly what board/job actions are actually supported now.
-- [ ] The packet says plainly whether any prompt-shaped interpretation layer still matters, or whether the current behavior is already mostly deterministic plumbing.
-- [ ] The packet is grounded in current code/tests/evidence strongly enough that later cleanup decisions do not rely on stale folklore.
-- [ ] The slice stays bounded and does not mutate into implementation work by accident.
+- [x] One bounded capability audit/readout packet exists for the current Basecamp AI surface.
+- [x] The packet distinguishes player-facing spoken behaviors from internal structured actions/tokens instead of mushing them together.
+- [x] The packet says plainly what board/job actions are actually supported now.
+- [x] The packet says plainly whether any prompt-shaped interpretation layer still matters, or whether the current behavior is already mostly deterministic plumbing.
+- [x] The packet is grounded in current code/tests/evidence strongly enough that later cleanup decisions do not rely on stale folklore.
+- [x] The slice stays bounded and does not mutate into implementation work by accident.
 
 Notes:
-- Canonical contract lives at `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`.
-- This is a greenlit camp-side audit packet, not the repo's single active `TODO.md` lane.
-- This packet exists so later prompt-externalization or cleanup decisions can target the right layer instead of guessing.
+- Canonical packet now lives at `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`.
+- The packet now exists on the current tree and closes honestly: the current Basecamp AI surface is mostly deterministic craft-request plus board/job routing, while the still prompt-shaped layer is mainly snapshot/planner packaging rather than core spoken command interpretation.
+- The audit stayed bounded: no fresh Basecamp implementation work, no prompt externalization rewrite, no Smart Zone Manager spillover, and no Locker Zone V3 reopen.
+- This checkpoint now hands the baton to the greenlit live-probe packet instead of pretending the audit is still missing.
 
 ---
 
 ## Live bandit + Basecamp playtesting feasibility probe v0
 
-Status: GREENLIT / QUEUED LIVE PROBE
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded live playtesting feasibility packet exists for current bandits plus current Basecamp footing.
-- [ ] The packet says plainly whether live playtesting is already practical on the current tree.
-- [ ] The packet says plainly whether overmap-bandit setup/spawn control is currently available, narrowly restageable, or still missing.
-- [ ] The packet separates screen/tests/artifacts cleanly instead of flattening them into one soup verdict.
-- [ ] Any blocker is stated as a concrete missing setup/control path rather than vague playtesting hand-wringing.
-- [ ] The slice stays bounded and does not turn into open-ended live playtesting theater.
+- [x] One bounded live playtesting feasibility packet exists for current bandits plus current Basecamp footing.
+- [x] The packet says plainly whether live playtesting is already practical on the current tree.
+- [x] The packet says plainly whether overmap-bandit setup/spawn control is currently available, narrowly restageable, or still missing.
+- [x] The packet separates screen/tests/artifacts cleanly instead of flattening them into one soup verdict.
+- [x] Any blocker is stated as a concrete missing setup/control path rather than vague playtesting hand-wringing.
+- [x] The slice stays bounded and does not turn into open-ended live playtesting theater.
 
 Notes:
 - Canonical contract lives at `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`.
-- This is a greenlit live-probe packet, not the repo's single active `TODO.md` lane.
-- This packet exists to tell us whether current bandit-plus-Basecamp playtesting is already real, narrowly reachable with setup help, or still blocked by missing scenario/control footing.
+- Fresh current-build startup proof now lives under `.userdata/dev/harness_runs/20260422_002122/`, with window title/build head `5af2fb80d8-dirty`, `version_matches_repo_head = true`, and `version_matches_runtime_paths = true`.
+- The bounded live restage probe under `.userdata/dev-harness/harness_runs/20260422_002329/` now proves one real intentional bandit setup seam on the current tree: named NPC debug spawn via `}` -> `s` -> `p`, filter `bandit`, then confirm, producing hostile `Stefany Billings, Bandit` live on screen.
+- The current honest verdict is narrow rather than theatrical: bounded current-build bandit + Basecamp live playtesting is practical now, but reviewer-clean packaged overmap-bandit scenario/control footing is still absent from the harness tree.
 
 ---
 
@@ -809,6 +815,26 @@ Notes:
 - Supporting recon note for the visibility item: `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`.
 - The cleanup/follow-through packet for the remaining control-law gaps lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md` and is now checkpointed docs/spec substrate rather than an active lane.
 - The broad concept still stays parked as substrate outside the explicitly promoted v0 slices, with smoke now being the next active narrow bridge.
+
+---
+
+## Arsenic-and-Old-Lace social threat and agentic-world concept bank
+
+Status: CHECKPOINTED / FAR-BACK PARKED SUBSTRATE
+
+Success state:
+- [x] One auxiliary concept-bank doc preserves the current speculative C-AOL feature families cleanly enough that later planning no longer has to rediscover them from scattered chat.
+- [x] The preserved bank explicitly separates nearer playable threat/control seeds from broader social-horror and weird-world systemic ideas instead of flattening everything into one soup.
+- [x] The bank explicitly preserves alarm states with natural-language yelling control, radio information warfare, writhing-stalker pressure, bounded sight avoidance, feral-camp pressure, social camouflage, hidden-psychopath survivor play, faction mythmaking, living camp mood/fracture, agentic NPC goals, and interdimensional-traveler motive hooks.
+- [x] `Plan.md` points to the bank as a far-back parked concept substrate rather than as an active or greenlit implementation lane.
+- [x] The preserved bank explicitly states that current bandit and Basecamp zoning footing still needs honest playtesting before these concepts earn bounded promotion.
+- [x] The bank explicitly requires future revisit to happen one bounded promotion at a time instead of reopening fifty speculative threads at once.
+
+Notes:
+- Canonical concept-bank doc: `doc/arsenic-old-lace-social-threat-and-agentic-world-concept-bank-2026-04-22.md`.
+- This is preserved as parked substrate only, not as permission to widen the current execution stack.
+- The strongest near-promotable seeds currently look like alarm states via natural-language yelling, bandits exploiting readable routines, radio-driven information warfare, writhing-stalker pressure, and a first social-camouflage slice.
+- The broader long-range families, including agentic NPC goals and interdimensional-traveler motive play, stay buried here until Josef explicitly promotes one bounded packet.
 
 ---
 
