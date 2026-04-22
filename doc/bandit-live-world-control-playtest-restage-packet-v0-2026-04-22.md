@@ -27,13 +27,14 @@ So this packet binds the two needs together:
 1. Connect the relevant current bandit spawn families tied to this lane — including the real overmap-special and map-extra style bandit site/spawn footing — to one live saveable owner instead of leaving them as disconnected static spawns.
 2. Track explicit per-site and per-spawn-tile bandit headcount / membership strongly enough that the system can reason about who exists there and what has changed.
 3. Let the live system actually control, dispatch, reconcile, and cool those spawned bandits through the existing bandit evaluator / handoff substrate instead of only counting them after they already spawned.
-4. Add one bounded cadence/tick and persistence path so the live owner survives save/load and updates on the real world side rather than only in playback/tests.
-5. Add a bounded playtest restage helper that can intentionally seed a controlled bandit camp about `10 OMT` away from the player or current basecamp footing.
-6. Split that restage helper into two honest modes:
+4. Make dispatch size depend on the live remaining site population rather than a fixed folklore count, so site-backed camps keep a home presence and kills/losses shrink later outings.
+5. Add one bounded cadence/tick and persistence path so the live owner survives save/load and updates on the real world side rather than only in playback/tests.
+6. Add a bounded playtest restage helper that can intentionally seed a controlled bandit camp about `10 OMT` away from the player or current basecamp footing.
+7. Split that restage helper into two honest modes:
    - **probe / capture mode** may collect artifacts and clean up afterwards
    - **playtest handoff mode** must leave the game/session running after setup instead of auto-terminating it
-7. Produce a reviewer-clean performance readout on that real nearby setup, including baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost.
-8. Carry forward only the harness/helper work from `Bandit + Basecamp playtest kit packet v2` that directly serves this live-world-control packet.
+8. Produce a reviewer-clean performance readout on that real nearby setup, including baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost.
+9. Carry forward only the harness/helper work from `Bandit + Basecamp playtest kit packet v2` that directly serves this live-world-control packet.
 
 ## Non-goals
 
@@ -50,12 +51,13 @@ This packet is good enough when:
 1. one live saveable owner exists for the relevant current bandit spawn families tied to this lane
 2. the owner keeps explicit per-site / per-spawn-tile headcounts and membership rather than treating spawned bandits as anonymous folklore
 3. the system can actually control or dispatch those spawned bandits through the live world path instead of leaving them as disconnected `place_npcs` islands
-4. a controlled bandit camp can be restaged about `10 OMT` away on demand on current build
-5. that restage can be used both for reviewer capture and for manual playtesting, with the manual handoff mode **not** auto-terminating the session
-6. the setup exercises the real overmap/bubble handoff plus local writeback path rather than a fake isolated theater
-7. local outcomes change later world behavior instead of leaving the live owner stale
-8. a reviewer-clean perf report exists for that nearby live setup, with the concrete metrics above
-9. the slice stays bounded instead of widening into a generic hostile-human or debug-platform empire
+4. dispatch size comes from the live remaining site population strongly enough that site-backed camps keep a home presence and later losses shrink future outings
+5. a controlled bandit camp can be restaged about `10 OMT` away on demand on current build
+6. that restage can be used both for reviewer capture and for manual playtesting, with the manual handoff mode **not** auto-terminating the session
+7. the setup exercises the real overmap/bubble handoff plus local writeback path rather than a fake isolated theater
+8. local outcomes change later world behavior instead of leaving the live owner stale, including later site size / dispatch capacity
+9. a reviewer-clean perf report exists for that nearby live setup, with the concrete metrics above
+10. the slice stays bounded instead of widening into a generic hostile-human or debug-platform empire
 
 ## Validation expectations
 
@@ -220,7 +222,10 @@ Recommended v0 flow:
    - but every outward option must now be attributable to a real owned site/group
 2. Feed those leads into `bandit_dry_run::evaluate(...)`.
 3. Convert the winning outward intent through `bandit_pursuit_handoff` when the winner supports live local pursuit.
-4. Dispatch actual owned members on the world side.
+4. Dispatch actual owned members on the world side as a bounded party chosen from the live remaining site roster.
+   - site-backed camps should keep some members home instead of stripping the whole camp
+   - dispatch pressure should scale with the current remaining site size, so kills/losses shrink later outings
+   - tiny singleton/micro-site cases can keep their smaller bounded rules without pretending they are full camp governments
 5. When the group hits local contact, treat the local scene as able to rewrite the plan.
 6. Apply the return packet back onto the owner/site ledger so later world behavior changes honestly.
 
@@ -316,7 +321,7 @@ A real closeout needs at least one bounded aftermath loop:
 - a later revisit/reload shows that the world did not snap back to untouched folklore
 
 Good aftermath proof candidates:
-- one member dies or is missing and the site no longer reports the old full roster
+- one member dies or is missing and the site no longer reports the old full roster or old dispatch capacity
 - one outing comes back wounded/shaken and the return packet changes later posture
 - one moving target is lost and the owner drops the pursuit state instead of stalking forever
 - one repeatedly-probed site cools back out instead of hardening into immortal pressure
@@ -346,12 +351,14 @@ Add narrow deterministic coverage for the world-side truths that the older abstr
 2. **identity/headcount tests**
    - claiming a site records real member ids and per-spawn-tile counts
    - losses/returns update the ledger instead of leaving stale anonymous counts behind
+   - later dispatch size follows the live remaining site population instead of folklore-reset counts
 3. **persistence round-trip tests**
    - the owner/site roster survives save/load
    - active outing / return state survives save/load
    - bounded marks/memory/writeback state survives without ballooning into junk
 4. **dispatch/handoff tests**
    - outward winners that support pursuit produce the expected entry payload
+   - site-backed camps do not strip the whole camp for ordinary outings when enough members remain to leave a home presence
    - local return packets rewrite the owner/group state as intended
    - no-path still fails closed; explicit explore remains explicit
 5. **guardrail tests**

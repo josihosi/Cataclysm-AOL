@@ -61,6 +61,7 @@ The active missing truth is no longer whether the harness can mutate one more pr
 - broad `make tests` is still not the honest gate for this slice today because current tree already fails earlier in unrelated code at `src/overmap_special_mutable.cpp`
 - required evidence now mixes live-world control proof, restage proof, and perf proof:
   - fresh proof that the owned ledger actually drives real control/dispatch instead of stopping at spawn-time claim bookkeeping
+  - fresh proof that dispatch party size follows the live remaining site population, so site-backed camps keep a home presence and local losses actually shrink later outings
   - fresh current-build live proof that a controlled bandit camp can be restaged about `10 OMT` away on demand
   - fresh current-build proof that the manual handoff path leaves the session alive for playtesting instead of auto-terminating after setup
   - fresh reviewer-clean evidence that the nearby setup exercised the real overmap/bubble handoff plus local writeback path
@@ -71,7 +72,7 @@ The active missing truth is no longer whether the harness can mutate one more pr
     - local NPC AI diverging from OMT intent without corrupting writeback
     - save/load or unload/reload without duplication, resurrection, or dropped ownership
 - the active lane is **not** honestly closed by one neat happy-path restage plus one calm perf number:
-  - at least one aftermath/revisit cooling proof should show the system does not hard-reset to folklore or grow immortal pressure after contact
+  - at least one aftermath/revisit cooling proof should show the system does not hard-reset to folklore, regrow dead members, or grow immortal pressure after contact
   - at least one messier-state perf proof should show whether the integrated scene stays acceptable once the player or local AI already disturbed it
 - the useful landed helper substrate from the old `v2` lane stays relevant here rather than wasted:
   - `tools/openclaw_harness/startup_harness.py` already resolves fixture-manifest `save_transforms`

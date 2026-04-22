@@ -65,6 +65,8 @@ This lane is now about making the live bandit system exist in the actual game an
 
 Connect the real current bandit spawn families tied to this lane to one live saveable owner/control path, track explicit per-site and per-spawn-tile bandit headcounts, and make the resulting setup deliberately restageable near the player/basecamp so Schani and Josef can actually playtest the real system and measure performance on it.
 
+Dispatch pressure should derive from the site's live remaining population, so losses shrink later outings and site-backed camps do **not** send the whole bloody camp off on adventures at once.
+
 The restage seam is part of the product, not a side garnish: it must support reviewer capture/probe work **and** a manual playtest handoff mode that leaves the session alive after setup instead of auto-terminating it.
 Useful open helper work from `Bandit + Basecamp playtest kit packet v2` survives here as supporting tooling, but helper breadth alone no longer counts as the headline product.
 
