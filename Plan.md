@@ -39,43 +39,42 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit repo lane is now **Bandit + Basecamp playtest kit packet v2**.
+The active greenlit repo lane is now **Bandit live-world control + playtest restage packet v0**.
 
 Current honest state:
-- the authoritative active contract now lives at `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`
-- the latest closed lane is `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
-- the previous closed lane remains `Bandit + Basecamp playtest kit packet v0` at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
-- the bounded `v1` closeout is method honesty, not more fixture sprawl: `bandit_basecamp_clairvoyance_v1_2026-04-22` now reuses `bandit_basecamp_prepared_base_v1_2026-04-22` and applies a manifest-level `player_mutations` restage instead of carrying a copied save payload
-- `tools/openclaw_harness/startup_harness.py` now resolves fixture-manifest `save_transforms` and reports applied restage work under `startup.result.json` / `probe.report.json` as `fixture_install.applied_save_transforms`
-- fresh current-build closeout proof for that helper-backed fixture path lives under `.userdata/dev-harness/harness_runs/20260422_172658/`, and post-load save inspection still shows both debug clairvoyance mutations on the installed dev-harness world
-- the thin `v0` pack and the richer prepared-base `v1` pack are now both honestly closed, so the missing value is no longer fixture honesty; it is the broader named scenario-surgery surface Josef already greenlit as `v2`
-- `v2` does not start from nothing: one tiny reusable mutation/reporting seam now exists through manifest-level `save_transforms` with bounded `player_mutations`, and the first mutation-backed hostile-contact preset now exists at `tools/openclaw_harness/scenarios/bandit.basecamp_clairvoyance_contact_audit_mcw.json`; that is still seed footing rather than license to claim the packet solved
+- the authoritative active contract now lives at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`
+- the latest closed lane is still `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
+- the earlier `Bandit + Basecamp playtest kit packet v0` remains checkpointed at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
+- the open useful harness/helper work from `Bandit + Basecamp playtest kit packet v2` is **not** killed; it is folded forward into the new active lane as supporting tooling instead of pretending helper breadth alone is the product
+- the real missing value is now explicit: current live bandit content still sits mostly on static-content / mapgen footing, while the newer `src/bandit_*` stack still does not honestly own, count, and control those live spawned bandits end to end
+- this lane therefore has to land one live owner/control path, one explicit per-site / per-spawn-tile headcount footing, one real world-side cadence + persistence path, one bounded near-player restage seam, and one reviewer-clean perf readout on the same setup
+- the restage seam must support two honest modes: reviewer probe/capture may clean up afterwards, but manual playtest handoff must leave the game/session running instead of auto-terminating as soon as the setup gets interesting
+- the already-landed `save_transforms` / `player_mutations` helper surface and named hostile-contact preset from the old `v2` lane remain useful substrate here rather than wasted work
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this live packet should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, and repeated-site revisit follow-through
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is now about broadening prepared-base scenario surgery and observability without turning the harness into a generic world-authoring empire.
+This lane is now about making the live bandit system exist in the actual game and making it restageable enough to playtest nearby and measure honestly.
 
 ---
 
-## Active lane - Bandit + Basecamp playtest kit packet v2
+## Active lane - Bandit live-world control + playtest restage packet v0
 
 **Status:** ACTIVE / GREENLIT
 
-Turn the harness into a broader scenario-surgery surface on top of prepared fixtures: use more of the practical debug power, add named mutations/transforms for common setup states, and make the operator-visible change report strong enough that Schani and Andi can probe much more of the plan without hand-rebuilding worlds.
+Connect the real current bandit spawn families tied to this lane to one live saveable owner/control path, track explicit per-site and per-spawn-tile bandit headcounts, and make the resulting setup deliberately restageable near the player/basecamp so Schani and Josef can actually playtest the real system and measure performance on it.
 
-The first tiny reusable mutation/reporting seam now exists through fixture-manifest `save_transforms`, bounded `player_mutations`, and startup/probe reporting of applied transforms, but `v2` is not solved by that one helper.
-The next honest work is to widen that scenario-surgery surface deliberately without backsliding into copied-save sprawl or generic infrastructure vanity.
+The restage seam is part of the product, not a side garnish: it must support reviewer capture/probe work **and** a manual playtest handoff mode that leaves the session alive after setup instead of auto-terminating it.
+Useful open helper work from `Bandit + Basecamp playtest kit packet v2` survives here as supporting tooling, but helper breadth alone no longer counts as the headline product.
 
-Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`.
+Canonical contract lives at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`.
 
 ---
 
 ## Greenlit next
 
-No later greenlit repo lane is queued behind `Bandit + Basecamp playtest kit packet v2` right now.
-If `v2` closes before new canon lands, prepare a short parked-options packet instead of drifting into speculative scenario empire.
-
+No later greenlit repo lane is queued behind `Bandit live-world control + playtest restage packet v0` right now.
+If this packet closes before new canon lands, prepare a short parked-options packet instead of drifting into speculative hostile-human empire.
 ---
 
 ## Checkpointed packet index
@@ -84,8 +83,9 @@ Use the auxiliary docs below when a later discussion needs the canonical contrac
 
 ### Camp / Basecamp packets
 
+- `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md` (active)
 - `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md` (checkpointed / done for now)
-- `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md` (active)
+- `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md` (folded into later active lane / supporting only)
 - `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
 - `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`
 - `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`

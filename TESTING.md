@@ -44,30 +44,27 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Bandit + Basecamp playtest kit packet v2`.
-The rich `v1` fixture family is now closed honestly enough to build on. The active missing truth is broader scenario surgery and observability on top of prepared footing, not whether the prepared-base family exists.
+Active probe obligation: `Bandit live-world control + playtest restage packet v0`.
+The active missing truth is no longer whether the harness can mutate one more prepared fixture. The real missing truth is whether the live bandit system actually owns, counts, restages, and writes back real spawned bandits on current build.
 
-### Active lane - Bandit + Basecamp playtest kit packet v2
+### Active lane - Bandit live-world control + playtest restage packet v0
 
-- canonical packet: `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`
-- `v2` now starts from one tiny landed mutation/reporting seam instead of a blank page:
-  - `tools/openclaw_harness/startup_harness.py` now resolves fixture-manifest `save_transforms`
-  - the current shipped bounded transform kind is `player_mutations`
-  - install/startup/probe reports now surface `applied_save_transforms`, so the harness can say what it changed instead of silently mutating the save
-- do **not** pretend that one helper closes `v2`:
-  - the current transform surface is still tiny
-  - broader prepared-base variants still need more named mutations/presets beyond the clairvoyance closeout
-  - operator-facing expectation/reporting should keep getting stronger as more transforms and presets land
-- fresh current-build substrate proof for this seed helper lives under `.userdata/dev-harness/harness_runs/20260422_172658/` via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_audit_mcw`
-  - `startup.fixture_install.applied_save_transforms` records the `player_mutations` restage on the named clairvoyance pack
-  - the run stayed runtime-current (`version_matches_runtime_paths = true`) and cleaned up with `cleanup.status = terminated`
-  - the generic artifact verdict stayed `inconclusive_no_new_artifacts`, so screen/probe metadata remain the honest evidence class here
-- the first mutation-backed hostile-contact preset now also has fresh current-build proof under `.userdata/dev-harness/harness_runs/20260422_174231/` via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_contact_audit_mcw`
-  - the same `startup.fixture_install.applied_save_transforms` report keeps the forced clairvoyance state reviewer-visible on this contact preset instead of burying it in folklore
-  - the filtered named-NPC spawn still lands the expected `3 bandit` menu entries on the prepared-base/clairvoyance pack, and the eight-turn right-panel capture records `Marshall Rucker, Bandit gets angry!`, gunfire, taunts, and survivor hits/kills on the same mutation-backed footing
-  - `version_matches_repo_head = false` is honest but non-scary here because only harness scenario/docs wiring changed; `version_matches_runtime_paths = true` stayed the meaningful runtime-current check and cleanup again ended in `cleanup.status = terminated`
-- fresh narrow code check for this helper surface: `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-- until more `v2` helpers land, fresh proof should answer scenario-surgery questions, not reopen the already-closed fixture-family question
+- canonical packet: `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`
+- required evidence now mixes live-world control proof, restage proof, and perf proof:
+  - deterministic bridge/save-load coverage where practical for the new live owner, per-site/per-spawn-tile headcounts, and writeback path
+  - fresh current-build live proof that a controlled bandit camp can be restaged about `10 OMT` away on demand
+  - fresh current-build proof that the manual handoff path leaves the session alive for playtesting instead of auto-terminating after setup
+  - fresh reviewer-clean evidence that the nearby setup exercised the real overmap/bubble handoff plus local writeback path
+  - a concrete perf readout on that nearby setup using baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost
+- the useful landed helper substrate from the old `v2` lane stays relevant here rather than wasted:
+  - `tools/openclaw_harness/startup_harness.py` already resolves fixture-manifest `save_transforms`
+  - the current bounded shipped transform kind is `player_mutations`
+  - install/startup/probe reports already surface `applied_save_transforms`
+  - the first mutation-backed hostile-contact preset already exists at `tools/openclaw_harness/scenarios/bandit.basecamp_clairvoyance_contact_audit_mcw.json`
+- but do **not** let that helper substrate masquerade as the answer:
+  - the missing proof is live ownership/control of actual bandit spawns
+  - the missing playtest bar includes a handoff mode that stays alive after setup
+  - the missing perf bar is a real nearby live setup, not abstract helper elegance
 
 ### Latest closed lane - Bandit + Basecamp playtest kit packet v1
 

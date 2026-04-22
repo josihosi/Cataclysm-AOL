@@ -742,24 +742,36 @@ Notes:
 
 ---
 
-## Bandit + Basecamp playtest kit packet v2
+## Bandit live-world control + playtest restage packet v0
 
-Status: GREENLIT / QUEUED NEXT
+Status: ACTIVE / GREENLIT
 
 Success state:
-- [ ] The harness can apply a meaningful set of named scenario mutations beyond the tiny current helper subset.
-- [ ] Important near-term playtest variants can be produced from prepared footing without duplicating whole saves for every minor difference.
-- [ ] The operator can tell what was changed, what state was forced, and what on-screen consequences should now be expected.
-- [ ] Schani and Andi can set up a materially broader slice of the Cataclysm-AOL plan surface without rebuilding everything by hand.
-- [ ] Recurring manual debug rituals shrink because the important ones became named reusable helpers.
-- [ ] The packet stays focused on scenario surgery and observability rather than turning into abstract infrastructure vanity.
+- [ ] One live saveable owner exists for the relevant current bandit spawn families tied to this lane instead of leaving them as disconnected static-content / mapgen islands.
+- [ ] The owner keeps explicit per-site and per-spawn-tile bandit headcounts plus membership strongly enough that later control and writeback are honest rather than guessed.
+- [ ] The live system can actually control or dispatch those spawned bandits through the real world path instead of leaving them as disconnected `place_npcs` islands with post-hoc bookkeeping.
+- [ ] A bounded nearby restage path can seed a controlled bandit camp about `10 OMT` away on current build.
+- [ ] That restage path supports two honest modes: reviewer probe/capture may clean up, while manual playtest handoff leaves the game/session running instead of auto-terminating it.
+- [ ] The setup exercises the real overmap/bubble handoff plus local writeback path rather than a fake private theater.
+- [ ] Local outcomes change later world behavior instead of leaving the live owner stale.
+- [ ] A reviewer-clean perf report exists on that nearby live setup, including baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost.
+- [ ] The slice stays bounded: no giant generic map-authoring empire, no full hostile-human rewrite, no fake harness-only integration, and no faction-grand-strategy detour.
 
 Notes:
-- Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`.
-- This is the debug-power scenario-surgery follow-through behind `v1`, intended to exploit more of the existing practical debug surface before asking for deeper engine surgery.
-- The intended named mutation surface includes things like mutations/traits, NPC gear/loadouts, faction or hostility posture, wounds/status, weather/time/light, food/stockpile fill, and camp role/stationing/patrol readiness.
-- The intended shape includes reusable transforms/presets on top of prepared fixtures, not only static save duplication.
-- Non-goal reminder: no speculative mechanics work disguised as harness work, and no infinite general-purpose modding platform.
+- Canonical contract lives at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`.
+- This packet absorbs the useful remaining helper/tooling work from `Bandit + Basecamp playtest kit packet v2` instead of deleting it, but helper breadth no longer counts as the headline product by itself.
+- The restage seam is part of the product bar now: manual playtest handoff must stay alive after setup instead of rudely cleaning up as soon as things get interesting.
+
+---
+
+## Bandit + Basecamp playtest kit packet v2
+
+Status: FOLDED INTO LATER ACTIVE LANE / SUPPORTING ONLY
+
+Notes:
+- Canonical helper contract still lives at `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`.
+- The useful open scenario-surgery / observability work from `v2` was carried forward into `Bandit live-world control + playtest restage packet v0` instead of being killed.
+- `v2` is therefore no longer a standalone roadmap item; it survives only as supporting tooling in service of the newer active lane.
 
 ---
 

@@ -1,11 +1,14 @@
 # Bandit + Basecamp playtest kit packet v2 (2026-04-22)
 
-Status: GREENLIT / QUEUED NEXT.
+Status: FOLDED INTO `bandit-live-world-control-playtest-restage-packet-v0-2026-04-22` / SUPPORTING HELPER WORK ONLY.
 
 ## Greenlight verdict
 
-Josef explicitly wants the playtest harness to become broad enough that Schani and Andi can meaningfully probe every important nook and cranny of the plan, not merely reload a few static saves.
-So the next big follow-through after v1 is a debug-power scenario-surgery layer.
+Josef explicitly wanted the playtest harness to become broad enough that Schani and Andi can meaningfully probe every important nook and cranny of the plan, not merely reload a few static saves.
+That helper/tooling need still stands.
+
+But the later product correction was sharper: helper breadth alone is not the product if the live bandit system still does not honestly own and control the real spawned bandits.
+So this contract now survives only as supporting helper/tooling scope underneath `Bandit live-world control + playtest restage packet v0`, rather than as a standalone headline lane.
 
 ## Why this packet exists
 
