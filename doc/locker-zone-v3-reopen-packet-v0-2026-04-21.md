@@ -1,14 +1,14 @@
 # Locker Zone V3 reopen packet v0 (2026-04-21)
 
-Status: greenlit camp-side follow-through.
+Status: checkpointed done for now; bounded camp-side follow-through exists.
 
-## Greenlight verdict
+## Closure verdict
 
-Josef explicitly wants the camp-handling half of Cataclysm-AOL to stay alive instead of quietly collapsing into bandits-only drift.
-The honest reopen target is `Locker Zone V3`.
+Josef explicitly wanted the camp-handling half of Cataclysm-AOL to stay alive instead of quietly collapsing into bandits-only drift.
+The honest reopen target was `Locker Zone V3`, and that bounded follow-through now closes honestly on the current tree.
 
-This is not a request to restart locker architecture from scratch.
-It is a request to continue the already-partially-landed V3 wardrobe logic as a bounded camp-side follow-through while the current single active `TODO.md` queue remains on the bandit visibility packet.
+This is still not permission to restart locker architecture from scratch.
+The current packet stays the narrow V3 wardrobe follow-through until later evidence says it lied.
 
 ## Scope
 
@@ -45,8 +45,19 @@ This item is good enough when:
 - runtime proof should stay proportional to the actual newly landed V3 behavior instead of repeating old V1/V2 packets for comfort
 - if a V3 nuance conflicts with the simpler deterministic spine, cut or narrow the nuance rather than letting the packet bloat
 
+## Current honest state
+
+The landed V3 follow-through now closes these bounded rows on the real locker seam:
+- torso and arm outerwear can bias warmer in cold weather and lighter in hot weather
+- pants-slot legwear can distinguish shorts-like from full-length coverage under hot and cold pressure
+- moderate-weather seasonal dressing still prefers warmer gear in winter and lighter gear in summer instead of flattening everything to raw temperature only
+- rainy moderate weather can prefer rainproof outerwear when that is the better honest choice
+- bounded worker-specific wardrobe preservation still rides on the same deterministic locker spine instead of reopening per-NPC wardrobe chaos
+- deterministic coverage for the V3 behavior lives on the real locker service path in `tests/faction_camp_test.cpp`
+- focused validation for this packet is the current locker pass recorded in `TESTING.md`: `make -j4 tests` and `./tests/cata_test "[camp][locker]"`
+
 ## Position in canon
 
-This is the reopened camp-side follow-through.
-It does **not** replace the current single active `TODO.md` lane while `Bandit elevated-light and z-level visibility packet v0` is still active.
-It exists so the repo again has an explicit camp-handling half instead of only a bandit half.
+This packet is now checkpointed done for now.
+It does not promote a new active lane.
+The repo's canon should stay in clean waiting state until Josef explicitly greenlights the next bounded packet.

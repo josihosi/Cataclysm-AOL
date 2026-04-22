@@ -31,6 +31,7 @@
 #include "map_helpers.h"
 #include "messages.h"
 #include "npc.h"
+#include "options_helpers.h"
 #include "overmapbuffer.h"
 #include "player_helpers.h"
 #include "point.h"
@@ -50,6 +51,7 @@ static const itype_id itype_backpack("backpack");
 static const itype_id itype_bholster("bholster");
 static const itype_id itype_boots("boots");
 static const itype_id itype_briefs("briefs");
+static const itype_id itype_coat_rain("coat_rain");
 static const itype_id itype_coat_winter("coat_winter");
 static const itype_id itype_crude_plastic_vest("crude_plastic_vest");
 static const itype_id itype_daypack("daypack");
@@ -102,6 +104,8 @@ static const itype_id itype_wetsuit("wetsuit");
 
 static const vitamin_id vitamin_mutagen("mutagen");
 static const vitamin_id vitamin_mutant_toxin("mutant_toxin");
+
+static const weather_type_id weather_drizzle( "drizzle" );
 
 static const zone_type_id zone_type_CAMP_FOOD("CAMP_FOOD");
 static const zone_type_id zone_type_CAMP_STORAGE("CAMP_STORAGE");
@@ -1083,6 +1087,87 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     CHECK(vest_plan.has_changes());
   }
 
+  SECTION("winter season still prefers warmer outerwear at moderate temperatures") {
+    restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+    calendar::turn = calendar::turn_zero + 3 * calendar::season_length() + 1_days;
+
+    item jacket_light(itype_jacket_light);
+    item winter_coat(itype_coat_winter);
+
+    const std::vector<const item *> current_items = {&jacket_light};
+    const std::vector<const item *> locker_items = {&winter_coat};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(65));
+
+    REQUIRE(plan.count(camp_locker_slot::vest) == 1);
+    const camp_locker_slot_plan &vest_plan = plan.at(camp_locker_slot::vest);
+    REQUIRE(vest_plan.kept_current != nullptr);
+    CHECK(vest_plan.kept_current->typeId() == itype_jacket_light);
+    REQUIRE(vest_plan.selected_candidate != nullptr);
+    CHECK(vest_plan.selected_candidate->typeId() == itype_coat_winter);
+    CHECK(vest_plan.upgrade_selected);
+    CHECK(vest_plan.has_changes());
+  }
+
+  SECTION("summer season still prefers lighter outerwear at moderate temperatures") {
+    restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+    calendar::turn = calendar::turn_zero + calendar::season_length() + 1_days;
+
+    item jacket_light(itype_jacket_light);
+    item winter_coat(itype_coat_winter);
+
+    const std::vector<const item *> current_items = {&winter_coat};
+    const std::vector<const item *> locker_items = {&jacket_light};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(65));
+
+    REQUIRE(plan.count(camp_locker_slot::vest) == 1);
+    const camp_locker_slot_plan &vest_plan = plan.at(camp_locker_slot::vest);
+    REQUIRE(vest_plan.kept_current != nullptr);
+    CHECK(vest_plan.kept_current->typeId() == itype_coat_winter);
+    REQUIRE(vest_plan.selected_candidate != nullptr);
+    CHECK(vest_plan.selected_candidate->typeId() == itype_jacket_light);
+    CHECK(vest_plan.upgrade_selected);
+    CHECK(vest_plan.has_changes());
+  }
+
+  SECTION("rainy weather prefers rainproof outerwear at moderate temperatures") {
+    item rain_coat(itype_coat_rain);
+    item winter_coat(itype_coat_winter);
+
+    REQUIRE(classify_camp_locker_item(rain_coat) == camp_locker_slot::vest);
+    REQUIRE(classify_camp_locker_item(winter_coat) == camp_locker_slot::vest);
+
+    const std::vector<const item *> current_items = {&winter_coat};
+    const std::vector<const item *> locker_items = {&rain_coat};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(65), true);
+
+    REQUIRE(plan.count(camp_locker_slot::vest) == 1);
+    const camp_locker_slot_plan &vest_plan = plan.at(camp_locker_slot::vest);
+    REQUIRE(vest_plan.kept_current != nullptr);
+    CHECK(vest_plan.kept_current->typeId() == itype_coat_winter);
+    REQUIRE(vest_plan.selected_candidate != nullptr);
+    CHECK(vest_plan.selected_candidate->typeId() == itype_coat_rain);
+    CHECK(vest_plan.upgrade_selected);
+    CHECK(vest_plan.has_changes());
+  }
+
   SECTION("cold weather prefers full-length legwear upgrades") {
     item cargo_shorts(itype_shorts_cargo);
     item cargo_pants(itype_pants_cargo);
@@ -1125,6 +1210,60 @@ TEST_CASE("camp_locker_loadout_planning", "[camp][locker]") {
     const camp_locker_plan plan = plan_camp_locker_loadout(
         current_items, locker_candidates, test_camp.get_locker_policy(),
         units::from_fahrenheit(85));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    REQUIRE(pants_plan.kept_current != nullptr);
+    CHECK(pants_plan.kept_current->typeId() == itype_pants_cargo);
+    REQUIRE(pants_plan.selected_candidate != nullptr);
+    CHECK(pants_plan.selected_candidate->typeId() == itype_shorts_cargo);
+    CHECK(pants_plan.upgrade_selected);
+    CHECK(pants_plan.has_changes());
+  }
+
+  SECTION("winter season still prefers full-length legwear at moderate temperatures") {
+    restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+    calendar::turn = calendar::turn_zero + 3 * calendar::season_length() + 1_days;
+
+    item cargo_shorts(itype_shorts_cargo);
+    item cargo_pants(itype_pants_cargo);
+
+    const std::vector<const item *> current_items = {&cargo_shorts};
+    const std::vector<const item *> locker_items = {&cargo_pants};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(65));
+
+    REQUIRE(plan.count(camp_locker_slot::pants) == 1);
+    const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
+    REQUIRE(pants_plan.kept_current != nullptr);
+    CHECK(pants_plan.kept_current->typeId() == itype_shorts_cargo);
+    REQUIRE(pants_plan.selected_candidate != nullptr);
+    CHECK(pants_plan.selected_candidate->typeId() == itype_pants_cargo);
+    CHECK(pants_plan.upgrade_selected);
+    CHECK(pants_plan.has_changes());
+  }
+
+  SECTION("summer season still prefers short legwear at moderate temperatures") {
+    restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+    calendar::turn = calendar::turn_zero + calendar::season_length() + 1_days;
+
+    item cargo_shorts(itype_shorts_cargo);
+    item cargo_pants(itype_pants_cargo);
+
+    const std::vector<const item *> current_items = {&cargo_pants};
+    const std::vector<const item *> locker_items = {&cargo_shorts};
+    const camp_locker_candidate_map locker_candidates =
+        collect_camp_locker_candidates(locker_items,
+                                       test_camp.get_locker_policy());
+
+    const camp_locker_plan plan = plan_camp_locker_loadout(
+        current_items, locker_candidates, test_camp.get_locker_policy(),
+        units::from_fahrenheit(65));
 
     REQUIRE(plan.count(camp_locker_slot::pants) == 1);
     const camp_locker_slot_plan &pants_plan = plan.at(camp_locker_slot::pants);
@@ -2452,6 +2591,153 @@ TEST_CASE("camp_locker_service_equips_upgrades_and_returns_replaced_gear",
   }
   CHECK(locker_has_daypack);
   CHECK_FALSE(locker_has_duffelbag);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_prefers_winter_outerwear_in_moderate_winter_weather",
+          "[camp][locker]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  calendar::turn = calendar::turn_zero + 3 * calendar::season_length() + 1_days;
+
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(65));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_coat_winter));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_jacket_light), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  CHECK(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_coat_winter));
+  CHECK_FALSE(worker.is_wearing(itype_jacket_light));
+
+  bool locker_has_winter_coat = false;
+  bool locker_has_jacket_light = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_winter_coat = locker_has_winter_coat ||
+                             it.typeId() == itype_coat_winter;
+    locker_has_jacket_light = locker_has_jacket_light ||
+                              it.typeId() == itype_jacket_light;
+  }
+  CHECK_FALSE(locker_has_winter_coat);
+  CHECK(locker_has_jacket_light);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_prefers_rainproof_outerwear_in_rainy_weather",
+          "[camp][locker]") {
+  scoped_weather_override rainy_weather( weather_drizzle );
+
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(65));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_coat_rain));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_coat_winter), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  CHECK(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_coat_rain));
+  CHECK_FALSE(worker.is_wearing(itype_coat_winter));
+
+  bool locker_has_rain_coat = false;
+  bool locker_has_winter_coat = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_rain_coat = locker_has_rain_coat ||
+                           it.typeId() == itype_coat_rain;
+    locker_has_winter_coat = locker_has_winter_coat ||
+                             it.typeId() == itype_coat_winter;
+  }
+  CHECK_FALSE(locker_has_rain_coat);
+  CHECK(locker_has_winter_coat);
+
+  zone_manager::get_manager().clear();
+}
+
+TEST_CASE("camp_locker_service_prefers_summer_legwear_in_moderate_summer_weather",
+          "[camp][locker]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  calendar::turn = calendar::turn_zero + calendar::season_length() + 1_days;
+
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  set_map_temperature(units::from_fahrenheit(65));
+
+  map &here = get_map();
+  const tripoint_bub_ms npc_local{5, 5, 0};
+  const tripoint_abs_ms locker_abs = here.get_abs(tripoint_bub_ms{6, 5, 0});
+  const tripoint_bub_ms locker_local = here.get_bub(locker_abs);
+
+  create_tile_zone("Locker", zone_type_CAMP_LOCKER, locker_abs);
+  here.i_clear(locker_local);
+  here.add_item_or_charges(locker_local, item(itype_shorts_cargo));
+
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(locker_abs);
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(bcp.has_value());
+  basecamp *test_camp = *bcp;
+  REQUIRE(test_camp != nullptr);
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(npc_local.xy(), "thug");
+  clear_character(worker, true);
+  REQUIRE(worker.wear_item(item(itype_pants_cargo), false).has_value());
+  test_camp->add_assignee(worker.getID());
+
+  CHECK(test_camp->service_camp_locker(worker));
+  CHECK(worker.is_wearing(itype_shorts_cargo));
+  CHECK_FALSE(worker.is_wearing(itype_pants_cargo));
+
+  bool locker_has_shorts = false;
+  bool locker_has_pants = false;
+  for (const item &it : here.i_at(locker_local)) {
+    locker_has_shorts = locker_has_shorts || it.typeId() == itype_shorts_cargo;
+    locker_has_pants = locker_has_pants || it.typeId() == itype_pants_cargo;
+  }
+  CHECK_FALSE(locker_has_shorts);
+  CHECK(locker_has_pants);
 
   zone_manager::get_manager().clear();
 }
