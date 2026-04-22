@@ -70,7 +70,7 @@ def classification_from_status( status: str ) -> str | None:
     upper = status.upper()
     if "ACTIVE / GREENLIT" in upper:
         return "active"
-    if "GREENLIT / BACKLOG" in upper or "GREENLIT / BOTTOM-OF-STACK" in upper:
+    if upper.startswith( "GREENLIT /" ):
         return "greenlit"
     if "WAITING FOR NEXT GREENLIGHT" in upper:
         return "waiting"
@@ -85,7 +85,7 @@ def classification_from_heading( title: str ) -> str | None:
     lowered = title.lower()
     if "active" in lowered:
         return "active"
-    if "greenlit backlog" in lowered or "bottom-of-stack" in lowered:
+    if lowered.startswith( "greenlit " ) or "greenlit backlog" in lowered or "bottom-of-stack" in lowered:
         return "greenlit"
     if "waiting for next greenlight" in lowered:
         return "waiting"
@@ -264,7 +264,11 @@ def run_self_test() -> None:
     current_parked_titles = [section.title for section in parsed_current.sections if section.classification == "parked"]
 
     assert current_active_titles == ["Active lane - Bandit + Basecamp first-pass encounter/readability packet v0"]
-    assert current_greenlit_titles == []
+    assert current_greenlit_titles == [
+        "Greenlit next - Bandit + Basecamp playtest kit packet v0",
+        "Greenlit after v0 - Bandit + Basecamp playtest kit packet v1",
+        "Greenlit after v1 - Bandit + Basecamp playtest kit packet v2",
+    ]
     assert current_waiting_titles == []
     assert any( "Bandit overmap AI" in title for title in current_parked_titles )
     assert any( "Future feature lanes" in title for title in current_parked_titles )
@@ -276,6 +280,9 @@ def run_self_test() -> None:
     waiting_render = render_view( parsed_current, "waiting" )
     assert "Bandit + Basecamp first-pass encounter/readability packet v0" in active_render
     assert "Bandit + Basecamp first-pass encounter/readability packet v0" in greenlit_render
+    assert "Bandit + Basecamp playtest kit packet v0" in greenlit_render
+    assert "Bandit + Basecamp playtest kit packet v1" in greenlit_render
+    assert "Bandit + Basecamp playtest kit packet v2" in greenlit_render
     assert waiting_render == "waiting\n(none)"
 
     thin_parsed = parse_plan( SAMPLE_THIN_PLAN )
