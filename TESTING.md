@@ -44,8 +44,33 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Multi-site hostile owner scheduler packet v0`.
-The just-closed live-world lane no longer needs more decorative single-site reruns: dirty disturbance probe `.userdata/dev-harness/harness_runs/20260423_194416/` now proves loss/missing shrinkage on the honest nearby owned setup, so the missing truth has moved to small independent multi-site ownership instead of one-site happy-path continuity.
+Active probe obligation: `Cannibal camp first hostile-profile adopter packet v0`.
+The hostile-site profile layer itself no longer needs more decorative bandit-only reruns: the deterministic profile proof now shows camp-style and smaller hostile-site profiles coexisting on the shared live-world substrate, so the missing truth has moved to the first non-bandit adopter and its dedicated cannibal-camp anchor/profile.
+
+### Recently closed lane - Hostile site profile layer packet v0
+
+- canonical packet: `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`
+- implementation surface: `src/bandit_live_world.{h,cpp}` now persists explicit `hostile_site_profile` state and routes reserve/dispatch capacity, threat/posture bias, return-clock lean, and default writeback pressure through profile rules instead of raw site-kind folklore
+- deterministic side-by-side proof: `tests/bandit_live_world_test.cpp` test `bandit live world dispatch rules are driven by hostile site profile` proves a `bandit_camp` using `camp_style` and an `mx_bandits_block` using `small_hostile_site` can both dispatch from the same substrate with distinct reserve, retreat, return-clock, and pressure behavior
+- fresh narrow validation:
+  - `make -j4 tests` exited 0 and rebuilt/linked the test binary on the current dirty tree
+  - `./tests/cata_test "[bandit][live_world][profile]"` passed: 21 assertions in 1 test case
+  - `./tests/cata_test "[bandit][live_world]"` passed: 248 assertions in 11 test cases
+  - `make -j4 obj/bandit_live_world.o` reported the source object up to date after the test build
+  - `git diff --check -- src/bandit_live_world.h src/bandit_live_world.cpp tests/bandit_live_world_test.cpp` produced no whitespace/style errors
+- no heavier live probe was run for this packet because the packet validation expectation preferred deterministic substrate/profile proof and the side-by-side behavior is visible without full live encounter theatrics
+
+### Recently closed lane - Multi-site hostile owner scheduler packet v0
+
+- canonical packet: `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`
+- deterministic multi-owner save/load and writeback separation lives in `tests/bandit_live_world_test.cpp` via `bandit live world keeps several hostile sites independent across save and writeback`
+- fresh current-build live scheduler proof lives under `.userdata/dev-harness/harness_runs/20260424_003005/`:
+  - scenario `tmp.bandit_multi_site_two_site_dispatch_probe_1860` used fixture chain `tmp_bandit_live_world_multi_site_two_claimed_centered_2026-04-24` -> `tmp_bandit_live_world_multi_site_two_claimed_2026-04-24`
+  - the run disabled safe mode, advanced `1860` turns across the `30_minutes` scheduler cadence, save-quit cleanly, copied the saved world, and auto-terminated the launched game
+  - copied-save inspection shows `overmap_special:bandit_camp@140,51,0` at `headcount = 14`, member `4` as `state = outbound`, `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,43,0`, and remembered mark/pressure kept on that site
+  - the same copied save separately shows `overmap_special:bandit_camp@140,44,0` at `headcount = 7`, member `18` as `state = local_contact`, `active_group_id = overmap_special:bandit_camp@140,44,0#dispatch`, the same target, and its own remembered mark/pressure kept on that site
+  - the generic harness verdict was `inconclusive_no_new_artifacts`, but the evidence class was copied saved-world inspection, not debug-log narration
+- fresh narrow validation for this final slice passed via `make -j4 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/do_turn.o cataclysm-tiles`, `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py list-scenarios`, and `git diff --check`
 
 ### Recently closed lane - Bandit live-world control + playtest restage packet v0
 

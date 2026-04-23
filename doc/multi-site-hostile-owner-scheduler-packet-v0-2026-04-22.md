@@ -1,6 +1,6 @@
 # Multi-site hostile owner scheduler packet v0 (2026-04-22)
 
-Status: greenlit backlog contract.
+Status: checkpointed / done for now.
 
 ## Why this exists
 
@@ -54,7 +54,15 @@ This packet is good enough when:
 - if overlap pressure is demonstrated, make the output readable enough to show `independent convergence happened` rather than `the sites secretly merged`
 - broaden to live probe only when deterministic or tightly controlled proof stops being honest enough to answer the independence question
 
+## Landed evidence
+
+- Deterministic separation proof lives in `tests/bandit_live_world_test.cpp`: `bandit live world keeps several hostile sites independent across save and writeback` builds three claimed hostile sites, assigns independent active outings/marks/pressure, round-trips the state through JSON, applies one site's loss/writeback, and checks the other sites stay untouched.
+- The live scheduler seam now permits bounded overlapping player pressure instead of returning after the first valid site. `steer_live_bandit_dispatch_toward_player()` counts existing player-targeted active pressure and caps simultaneous player-pressure outings at `2`, preserving occasional overlap without inventing a coalition brain.
+- Current-build live proof lives at `.userdata/dev-harness/harness_runs/20260424_003005/`: scenario `tmp.bandit_multi_site_two_site_dispatch_probe_1860` starts from two claimed nearby hostile owners, disables safe mode, advances `1860` turns across the `30_minutes` scheduler cadence, save-quits cleanly, and copies the saved world for inspection.
+- Copied-save inspection shows two separate active records targeting `player@140,43,0`: `overmap_special:bandit_camp@140,51,0` keeps `headcount = 14`, member `4` `state = outbound`, `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, and its own remembered mark/pressure; `overmap_special:bandit_camp@140,44,0` keeps `headcount = 7`, member `18` `state = local_contact`, `active_group_id = overmap_special:bandit_camp@140,44,0#dispatch`, and its own remembered mark/pressure.
+- Final narrow validation passed via `make -j4 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/do_turn.o cataclysm-tiles`, `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py list-scenarios`, `git diff --check`, and direct inspection of `.userdata/dev-harness/harness_runs/20260424_003005/saved_world/McWilliams`.
+
 ## Dependency note
 
-This queued packet sits directly behind `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`.
-Do not pull it forward until that active lane has an honest nearby restage/writeback/perf proof, or the scheduler packet will end up grading an unproven base seam.
+This packet landed behind `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md` after that lane had honest nearby restage/writeback/perf proof.
+The next lane is `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`; do not blur that profile-layer work back into this completed bandit-only multi-site proof.

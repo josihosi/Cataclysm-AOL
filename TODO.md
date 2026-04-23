@@ -8,8 +8,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Multi-site hostile owner scheduler packet v0`.
+Active lane: `Cannibal camp first hostile-profile adopter packet v0`.
 
-- Move the new deterministic multi-site owner proof up to the live/scheduler layer: create or reuse one controlled world with `2-3` claimed hostile sites and prove simultaneous active hostile outings can coexist without merging state.
-- Make the next proof overmap-side and multi-turn where needed, not another save/load-only unit check: show each site keeps its own anchor/home site, roster/headcount, active outing/contact state, remembered pressure/marks, and writeback state after real scheduler cadence.
-- Preserve the current product rule that camps keep a home presence while losses continuously shrink later outings; no coalition brain, no dozens-of-sites explosion, and no magical shared omniscience.
+- Audit current cannibal-flavored content (`lodge_cannibal_15x15`, `cannibal_weapons`, `cannibal_food`) and the existing hostile-site claim path for the smallest honest dedicated cannibal-camp anchor.
+- Define the first cannibal-camp profile surface on the shared hostile-site substrate: cadence, roster/source claim, reserve/dispatch capacity, pressure/posture bias, return-clock lean, and writeback expectations.
+- Add deterministic proof that a cannibal-camp owned site can coexist with an existing bandit-owned site without coalition nonsense or shared-state corruption.

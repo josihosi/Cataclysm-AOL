@@ -48,6 +48,7 @@ TEST_CASE( "bandit live world claims one bounded special-backed site ledger", "[
     CHECK( site.site_id == "overmap_special:bandit_camp@10,20,0" );
     CHECK( site.source_kind == bandit_live_world::anchor_source_kind::overmap_special );
     CHECK( site.site_kind == bandit_live_world::owned_site_kind::bandit_camp );
+    CHECK( site.profile == bandit_live_world::hostile_site_profile::camp_style );
     CHECK( site.anchor == tripoint_abs_omt( 10, 20, 0 ) );
     CHECK( site.headcount == 3 );
     REQUIRE( site.footprint.size() == 4 );
@@ -76,6 +77,7 @@ TEST_CASE( "bandit live world keeps map-extra hostile spawns as micro-sites", "[
     const bandit_live_world::site_record *looters = world.find_site( "map_extra:mx_looters@5,4,0" );
     REQUIRE( looters != nullptr );
     CHECK( looters->site_kind == bandit_live_world::owned_site_kind::looters );
+    CHECK( looters->profile == bandit_live_world::hostile_site_profile::small_hostile_site );
     CHECK( looters->headcount == 1 );
     REQUIRE( looters->footprint.size() == 1 );
     CHECK( looters->footprint.front() == tripoint_abs_omt( 5, 4, 0 ) );
@@ -83,6 +85,7 @@ TEST_CASE( "bandit live world keeps map-extra hostile spawns as micro-sites", "[
     const bandit_live_world::site_record *roadblock = world.find_site( "map_extra:mx_bandits_block@7,5,0" );
     REQUIRE( roadblock != nullptr );
     CHECK( roadblock->site_kind == bandit_live_world::owned_site_kind::bandits_block );
+    CHECK( roadblock->profile == bandit_live_world::hostile_site_profile::small_hostile_site );
     CHECK( roadblock->headcount == 1 );
     REQUIRE( roadblock->footprint.size() == 1 );
     CHECK( roadblock->footprint.front() == tripoint_abs_omt( 7, 5, 0 ) );
@@ -117,6 +120,7 @@ TEST_CASE( "bandit live world survives a save-style round trip", "[bandit][live_
     const bandit_live_world::site_record &site = loaded.sites.front();
     CHECK( site.site_id == "overmap_special:bandit_work_camp@40,50,0" );
     CHECK( site.site_kind == bandit_live_world::owned_site_kind::bandit_work_camp );
+    CHECK( site.profile == bandit_live_world::hostile_site_profile::camp_style );
     CHECK( site.headcount == 2 );
     REQUIRE( site.footprint.size() == 9 );
     REQUIRE( site.members.size() == 2 );
@@ -372,6 +376,56 @@ TEST_CASE( "bandit live world keeps a home reserve for site-backed camps", "[ban
              special_lookup ) );
     const bandit_live_world::site_record &roadside_site = roadside_world.sites.front();
     CHECK( roadside_site.dispatchable_member_capacity() == 1 );
+}
+
+TEST_CASE( "bandit live world dispatch rules are driven by hostile site profile", "[bandit][live_world][profile]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 650 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 651 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 652 ),
+             tripoint_abs_ms( 168, 120, 0 ), std::nullopt, std::string( "mx_bandits_block" ),
+             special_lookup ) );
+
+    bandit_live_world::site_record &camp =
+        *world.find_site( "overmap_special:bandit_camp@10,20,0" );
+    bandit_live_world::site_record &roadblock =
+        *world.find_site( "map_extra:mx_bandits_block@7,5,0" );
+
+    CHECK( camp.profile == bandit_live_world::hostile_site_profile::camp_style );
+    CHECK( roadblock.profile == bandit_live_world::hostile_site_profile::small_hostile_site );
+    CHECK( camp.dispatchable_member_capacity() == 1 );
+    CHECK( roadblock.dispatchable_member_capacity() == 1 );
+
+    const bandit_live_world::dispatch_plan camp_plan =
+        bandit_live_world::plan_site_dispatch( camp, tripoint_abs_omt( 18, 20, 0 ),
+                                               "player@18,20,0" );
+    REQUIRE( camp_plan.valid );
+    CHECK( camp_plan.profile == bandit_live_world::hostile_site_profile::camp_style );
+    CHECK( camp_plan.group.retreat_bias == 1 );
+    CHECK( camp_plan.group.return_clock == 2 );
+    CHECK( camp_plan.group.remaining_pressure ==
+           bandit_pursuit_handoff::remaining_return_pressure_state::ample );
+    REQUIRE( camp_plan.notes.size() >= 2 );
+    CHECK( camp_plan.notes[camp_plan.notes.size() - 2].find( "persistent camp pressure" ) !=
+           std::string::npos );
+
+    const bandit_live_world::dispatch_plan roadblock_plan =
+        bandit_live_world::plan_site_dispatch( roadblock, tripoint_abs_omt( 8, 5, 0 ),
+                                               "player@8,5,0" );
+    REQUIRE( roadblock_plan.valid );
+    CHECK( roadblock_plan.profile == bandit_live_world::hostile_site_profile::small_hostile_site );
+    CHECK( roadblock_plan.group.retreat_bias == 2 );
+    CHECK( roadblock_plan.group.return_clock == 1 );
+    CHECK( roadblock_plan.group.remaining_pressure ==
+           bandit_pursuit_handoff::remaining_return_pressure_state::tight );
+    REQUIRE( roadblock_plan.notes.size() >= 2 );
+    CHECK( roadblock_plan.notes[roadblock_plan.notes.size() - 2].find( "brittle local pressure" ) !=
+           std::string::npos );
 }
 
 TEST_CASE( "bandit live world writeback shrinks headcount and future dispatch capacity", "[bandit][live_world]" )

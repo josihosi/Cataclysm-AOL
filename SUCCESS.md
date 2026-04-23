@@ -786,48 +786,52 @@ Notes:
 
 ## Multi-site hostile owner scheduler packet v0
 
-Status: GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] The live hostile-owner seam can run `2-3` simultaneous hostile sites on one world without collapsing them into one shared fake camp brain.
+- [x] The live hostile-owner seam can run `2-3` simultaneous hostile sites on one world without collapsing them into one shared fake camp brain.
 - [x] Each hostile site keeps its own anchor/home site, roster/headcount, active outing or contact state, remembered pressure/marks, and persisted writeback state.
 - [x] Site-backed camps still keep a home presence while losses continuously shrink later outings instead of snapping back to folklore counts.
 - [x] One site's losses, return state, or contact pressure do not silently rewrite another site's state.
-- [ ] Repeated same-target pressure can overlap occasionally without turning into routine multi-site dogpile coalition behavior.
+- [x] Repeated same-target pressure can overlap occasionally without turning into routine multi-site dogpile coalition behavior.
 - [x] Save/load stays honest for multiple hostile owners at once instead of only for the single easiest happy-path site.
 - [x] The slice stays bounded: no faction grand strategy, no dozens-of-families explosion, and no magical shared omniscience.
 
 Notes:
 - Canonical contract lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`.
-- First deterministic proof now lives in `tests/bandit_live_world_test.cpp`: `bandit live world keeps several hostile sites independent across save and writeback` builds three claimed hostile sites (`bandit_camp`, `bandit_work_camp`, and `mx_bandits_block`), gives all three independent active outings/marks/pressure, round-trips through JSON save/load, applies one site's loss/writeback, and asserts the other active sites stay untouched.
-- Fresh validation passed via `make -j4 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/bandit_live_world.o`, `./tests/cata_test "[bandit][live_world]"`, and `./tests/cata_test "[bandit][live_world][multi_site]"` (`65 assertions in 1 test case`).
-- Remaining open bar is live scheduler proof on a controlled world: `2-3` claimed hostile sites need to coexist through real overmap-side cadence/turn advancement without dogpile mush.
-- This is the first queued hostile-site substrate packet behind the now-checkpointed `Bandit live-world control + playtest restage packet v0` lane.
-- The point is to prove small independent hostile ownership, not to reopen the whole hostile-human architecture debate.
+- First deterministic proof lives in `tests/bandit_live_world_test.cpp`: `bandit live world keeps several hostile sites independent across save and writeback` builds three claimed hostile sites (`bandit_camp`, `bandit_work_camp`, and `mx_bandits_block`), gives all three independent active outings/marks/pressure, round-trips through JSON save/load, applies one site's loss/writeback, and asserts the other active sites stay untouched.
+- Earlier deterministic validation passed via `make -j4 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/bandit_live_world.o`, `./tests/cata_test "[bandit][live_world]"`, and `./tests/cata_test "[bandit][live_world][multi_site]"` (`65 assertions in 1 test case`).
+- Fresh current-build live scheduler proof now lives at `.userdata/dev-harness/harness_runs/20260424_003005/`: disposable scenario `tmp.bandit_multi_site_two_site_dispatch_probe_1860` starts from two claimed nearby hostile owners, disables safe mode, advances `1860` turns across the `30_minutes` scheduler cadence, and saves two independent active player-pressure records at once.
+- That saved world has `overmap_special:bandit_camp@140,51,0` at `headcount = 14` with member `4` `state = outbound`, `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,43,0`, and remembered mark `player@140,43,0`; separately, `overmap_special:bandit_camp@140,44,0` stays at `headcount = 7` with member `18` `state = local_contact`, `active_group_id = overmap_special:bandit_camp@140,44,0#dispatch`, the same player target, and its own remembered mark/pressure.
+- The scheduler-side behavior change is intentionally bounded: `steer_live_bandit_dispatch_toward_player()` now counts existing player pressure and permits at most `2` simultaneous player-pressure outings rather than returning after the first valid site; that proves overlap without teaching the sites a coalition brain.
+- Fresh narrow validation for the final live proof passed via `make -j4 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/do_turn.o cataclysm-tiles`, `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py list-scenarios`, `git diff --check`, and the copied-save inspection from `.userdata/dev-harness/harness_runs/20260424_003005/saved_world/McWilliams`.
+- This closes the packet honestly enough to move the active lane to `Hostile site profile layer packet v0`; the point was small independent hostile ownership, not reopening the whole hostile-human architecture debate.
 
 ---
 
 ## Hostile site profile layer packet v0
 
-Status: GREENLIT
+Status: CLOSED / CHECKPOINTED
 
 Success state:
-- [ ] One shared hostile owner/cadence/persistence substrate exists with explicit profile rules instead of hardcoding everything to current bandit-camp assumptions.
-- [ ] At minimum one camp-style profile and one smaller hostile-site profile can coexist on that substrate reviewer-cleanly.
-- [ ] Dispatch, threat posture, return-clock, and writeback differences are profile-driven and readable rather than site-kind spaghetti.
-- [ ] The multi-site scheduler can consume those profiles without regressing the already-honest bandit live-owner footing.
-- [ ] The packet stays bounded: no giant faction-AI framework, no singleton stalker implementation, and no broad diplomacy/social-horror widening.
+- [x] One shared hostile owner/cadence/persistence substrate exists with explicit profile rules instead of hardcoding everything to current bandit-camp assumptions.
+- [x] At minimum one camp-style profile and one smaller hostile-site profile can coexist on that substrate reviewer-cleanly.
+- [x] Dispatch, threat posture, return-clock, and writeback differences are profile-driven and readable rather than site-kind spaghetti.
+- [x] The multi-site scheduler can consume those profiles without regressing the already-honest bandit live-owner footing.
+- [x] The packet stays bounded: no giant faction-AI framework, no singleton stalker implementation, and no broad diplomacy/social-horror widening.
 
 Notes:
 - Canonical contract lives at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`.
 - This packet sits directly behind `Multi-site hostile owner scheduler packet v0` and is the bridge from one-family bandit machinery to a reusable hostile-site substrate.
+- Current implementation lives in `src/bandit_live_world.{h,cpp}` as explicit `hostile_site_profile` state/rules; the side-by-side deterministic proof lives in `tests/bandit_live_world_test.cpp` as `bandit live world dispatch rules are driven by hostile site profile`.
+- Fresh validation: `make -j4 tests`, `./tests/cata_test "[bandit][live_world][profile]"`, `./tests/cata_test "[bandit][live_world]"`, and focused `git diff --check` passed on the current dirty tree.
 - `Writhing stalker` stays out of this slice on purpose; the goal here is the profile layer itself, not the first singleton proof.
 
 ---
 
 ## Cannibal camp first hostile-profile adopter packet v0
 
-Status: GREENLIT
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] One honest cannibal-camp hostile profile runs on the shared hostile-site substrate instead of faking reuse through bandit-only assumptions.

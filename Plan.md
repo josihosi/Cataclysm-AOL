@@ -39,55 +39,32 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit repo lane is now **Multi-site hostile owner scheduler packet v0**.
+The active greenlit repo lane is now **Cannibal camp first hostile-profile adopter packet v0**.
 
 Current honest state:
-- the authoritative active contract now lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`
-- the latest closed lane is now `Bandit live-world control + playtest restage packet v0` at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`
-- that lane now closes honestly on current build: dirty disturbance probe `.userdata/dev-harness/harness_runs/20260423_194416/` resumes from raw local contact, kills the exact scout, and saves the nearby owned site with `headcount = 13`, member `4` as `state = missing`, home spawn-tile `[3371,1230,0]` at `headcount = 0`, and `active_member_ids = [5]` instead of stale-roster reset
-- the live-world packet therefore now has owned-site bootstrap, real dispatch, live contact, exact-member writeback, calm same-site re-dispatch, dirty loss/missing follow-through, manual handoff support, and the reviewer-clean perf packet on the honest nearby footing
+- the authoritative active contract now lives at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
+- the latest closed lane is now `Hostile site profile layer packet v0` at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`
+- that lane now closes honestly on current build: `src/bandit_live_world.{h,cpp}` carries explicit `hostile_site_profile` state/rules, camp-style and small-hostile-site profiles now diverge in reserve capacity, threat/posture bias, return-clock lean, and writeback pressure, and `tests/bandit_live_world_test.cpp` proves a camp and roadblock can dispatch side-by-side on the same substrate without regressing `[bandit][live_world]`
+- the earlier closed lane is `Multi-site hostile owner scheduler packet v0` at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`
+- that lane now closes honestly on current build: live probe `.userdata/dev-harness/harness_runs/20260424_003005/` starts from two claimed nearby hostile owners, advances across the `30_minutes` scheduler cadence, and saves two independent active player-pressure records at once: `overmap_special:bandit_camp@140,51,0` with member `4` outbound, and `overmap_special:bandit_camp@140,44,0` with member `18` in `local_contact`, both targeting `player@140,43,0` while keeping separate anchors, rosters, headcounts, remembered marks, and home presence
+- the earlier closed lane remains `Bandit live-world control + playtest restage packet v0` at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`
+- that lane closes honestly on current build: dirty disturbance probe `.userdata/dev-harness/harness_runs/20260423_194416/` resumes from raw local contact, kills the exact scout, and saves the nearby owned site with `headcount = 13`, member `4` as `state = missing`, home spawn-tile `[3371,1230,0]` at `headcount = 0`, and `active_member_ids = [5]` instead of stale-roster reset
+- the live-world packet therefore has owned-site bootstrap, real dispatch, live contact, exact-member writeback, calm same-site re-dispatch, dirty loss/missing follow-through, manual handoff support, and the reviewer-clean perf packet on the honest nearby footing
 - the earlier latest closed lane remains `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
 - the earlier `Bandit + Basecamp playtest kit packet v0` remains checkpointed at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
 - the useful harness/helper work from `Bandit + Basecamp playtest kit packet v2` was **not** wasted; it now sits behind the closed live-world lane as bounded support instead of masquerading as the product
-- the next honest delivery target is no longer one-site happy-path continuity, but proving `2-3` hostile owners can coexist with independent state, honest save/load, and no accidental coalition brain
+- the next honest delivery target is no longer the profile layer itself, but the first non-bandit cannibal-camp adopter on top of that shared substrate
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this hostile-site stack should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, repeated-site revisit follow-through, and the now-closed live-world control lane
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is now about proving small independent hostile ownership on top of the newly honest single-site live-world footing.
+This lane is now about proving the shared hostile-site profile substrate on the first non-bandit camp-shaped adopter without widening into stalker weirdness or a giant faction-AI sermon.
 
 ---
 
-## Active lane - Multi-site hostile owner scheduler packet v0
+## Recently closed lane - Hostile site profile layer packet v0
 
-**Status:** ACTIVE / GREENLIT
-
-Prove the live hostile-owner seam can run a **small set of independent hostile sites** at once instead of one bandit camp plus folklore. Each owner should keep its own anchor/home site, roster, active outing/contact state, remembered pressure, and cadence/writeback state without collapsing into coalition mush.
-
-What this item should do:
-- extend the current live owner seam from one-site-at-a-time proof to `2-3` simultaneous hostile sites on one world
-- keep owner state independent: anchor, headcount, active outing/contact state, remembered pressure/marks, and persisted writeback
-- preserve the current product rule that camps keep a home presence while losses continuously shrink later outings
-- damp silly dogpile convergence through existing territoriality / active-pressure footing rather than magical coalition coordination
-
-Non-goals:
-- coalition brain or faction grand strategy
-- dozens of hostile families at once
-- full social-threat/extortion implementation
-- whole-world omniscient map ownership dumps
-
-Canonical contract lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`.
-
----
-
-## Greenlit next
-
-The next greenlit hostile-site stack is now frozen behind `Multi-site hostile owner scheduler packet v0`.
-Keep the order explicit and do **not** silently merge these packets together just because they smell related.
-
-### 1. Hostile site profile layer packet v0
-
-**Status:** GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
 Once multiple hostile owners can coexist, generalize that scheduler into one bounded hostile-site substrate with explicit profiles so camp-style and non-camp hostile sites can share the machinery without becoming the same creature in a fake moustache.
 
@@ -105,9 +82,14 @@ Non-goals:
 
 Canonical contract lives at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`.
 
-### 2. Cannibal camp first hostile-profile adopter packet v0
+---
 
-**Status:** GREENLIT
+## Active lane - Cannibal camp first hostile-profile adopter packet v0
+
+**Status:** ACTIVE / GREENLIT
+
+This is the next greenlit hostile-site stack after the now-closed `Hostile site profile layer packet v0`.
+Keep the order explicit and do **not** silently merge this packet with later stalker or social-threat work just because they smell related.
 
 Use cannibal camp as the first non-bandit adopter of the shared hostile-site profile layer so the new substrate proves itself on a second hostile family **without** jumping straight into singleton stalker weirdness.
 

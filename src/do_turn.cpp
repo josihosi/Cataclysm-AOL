@@ -215,6 +215,12 @@ bool note_live_bandit_aftermath()
     return changed;
 }
 
+bool has_active_player_pressure( const bandit_live_world::site_record &site )
+{
+    return !site.active_group_id.empty() && !site.active_member_ids.empty() &&
+           string_starts_with( site.active_target_id, "player@" );
+}
+
 bool steer_live_bandit_dispatch_toward_player()
 {
     avatar &u = get_avatar();
@@ -225,8 +231,12 @@ bool steer_live_bandit_dispatch_toward_player()
 
     std::vector<std::pair<int, size_t>> candidate_sites;
     candidate_sites.reserve( state.sites.size() );
+    int active_player_pressure = 0;
     for( size_t i = 0; i < state.sites.size(); ++i ) {
         const bandit_live_world::site_record &site = state.sites[i];
+        if( has_active_player_pressure( site ) ) {
+            active_player_pressure++;
+        }
         const int distance = rl_dist( site.anchor, u.pos_abs_omt() );
         if( distance <= 10 ) {
             candidate_sites.emplace_back( distance, i );
@@ -237,9 +247,19 @@ bool steer_live_bandit_dispatch_toward_player()
         return false;
     }
 
+    static constexpr int max_simultaneous_player_pressure = 2;
+    if( active_player_pressure >= max_simultaneous_player_pressure ) {
+        return false;
+    }
+
     std::sort( candidate_sites.begin(), candidate_sites.end() );
     const std::string target_id = live_bandit_player_target_id( u.pos_abs_omt() );
+    bool dispatched_any = false;
     for( const std::pair<int, size_t> &candidate_site : candidate_sites ) {
+        if( active_player_pressure >= max_simultaneous_player_pressure ) {
+            break;
+        }
+
         bandit_live_world::site_record &site = state.sites[candidate_site.second];
         const bandit_live_world::dispatch_plan plan =
             bandit_live_world::plan_site_dispatch( site, u.pos_abs_omt(), target_id );
@@ -288,10 +308,11 @@ bool steer_live_bandit_dispatch_toward_player()
             bandit->omt_path = std::move( dispatch_paths[i] );
             bandit->set_mission( NPC_MISSION_TRAVELLING );
         }
-        return true;
+        active_player_pressure++;
+        dispatched_any = true;
     }
 
-    return false;
+    return dispatched_any;
 }
 } // namespace
 
