@@ -300,3 +300,68 @@ TEST_CASE( "bandit live world applies a return packet onto the active owned outi
     CHECK( site.active_target_id.empty() );
     CHECK( site.active_member_ids.empty() );
 }
+
+TEST_CASE( "bandit live world resolves bounded live aftermath observations", "[bandit][live_world]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 901 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 902 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player_basecamp_nearby" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+
+    const std::vector<bandit_live_world::active_member_observation> in_contact = {
+        { character_id( 901 ), bandit_live_world::active_member_observation_state::local_contact,
+          "still in local contact" }
+    };
+    CHECK_FALSE( bandit_live_world::resolve_active_group_aftermath( site, in_contact ).has_value() );
+
+    SECTION( "dead member resolves to a broken return packet" ) {
+        const std::vector<bandit_live_world::active_member_observation> wiped = {
+            { character_id( 901 ), bandit_live_world::active_member_observation_state::dead,
+              "killed near player target" }
+        };
+        const std::optional<bandit_pursuit_handoff::return_packet> wiped_packet =
+            bandit_live_world::resolve_active_group_aftermath( site, wiped );
+        REQUIRE( wiped_packet.has_value() );
+        CHECK( wiped_packet->valid );
+        CHECK( wiped_packet->group_id == site.active_group_id );
+        CHECK( wiped_packet->source_camp_id == site.site_id );
+        CHECK( wiped_packet->survivors_remaining == 0 );
+        CHECK( wiped_packet->result == bandit_pursuit_handoff::mission_result::broken );
+        REQUIRE( wiped_packet->anchored_identity_updates.size() == 1 );
+        CHECK( wiped_packet->anchored_identity_updates.front().id == "901" );
+        CHECK( wiped_packet->anchored_identity_updates.front().status == "dead" );
+        REQUIRE( bandit_live_world::apply_return_packet( site, *wiped_packet ) );
+        CHECK( site.find_member( character_id( 901 ) )->state == bandit_live_world::member_state::dead );
+        CHECK( site.headcount == 1 );
+    }
+
+    SECTION( "missing member resolves to a broken return packet" ) {
+        const std::vector<bandit_live_world::active_member_observation> lost = {
+            { character_id( 901 ), bandit_live_world::active_member_observation_state::missing,
+              "vanished during live contact" }
+        };
+        const std::optional<bandit_pursuit_handoff::return_packet> lost_packet =
+            bandit_live_world::resolve_active_group_aftermath( site, lost );
+        REQUIRE( lost_packet.has_value() );
+        CHECK( lost_packet->valid );
+        CHECK( lost_packet->group_id == site.active_group_id );
+        CHECK( lost_packet->source_camp_id == site.site_id );
+        CHECK( lost_packet->survivors_remaining == 0 );
+        CHECK( lost_packet->result == bandit_pursuit_handoff::mission_result::broken );
+        REQUIRE( lost_packet->anchored_identity_updates.size() == 1 );
+        CHECK( lost_packet->anchored_identity_updates.front().id == "901" );
+        CHECK( lost_packet->anchored_identity_updates.front().status == "missing" );
+        REQUIRE( bandit_live_world::apply_return_packet( site, *lost_packet ) );
+        CHECK( site.find_member( character_id( 901 ) )->state == bandit_live_world::member_state::missing );
+        CHECK( site.headcount == 1 );
+    }
+}

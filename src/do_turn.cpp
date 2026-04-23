@@ -21,6 +21,7 @@
 #include "action.h"
 #include "activity_type.h"
 #include "avatar.h"
+#include "bandit_live_world.h"
 #include "bionics.h"
 #include "cached_options.h"
 #include "calendar.h"
@@ -113,6 +114,105 @@ std::string live_bandit_player_target_id( const tripoint_abs_omt &player_omt )
     std::ostringstream out;
     out << "player@" << player_omt.x() << ',' << player_omt.y() << ',' << player_omt.z();
     return out.str();
+}
+
+bool site_contains_omt( const bandit_live_world::site_record &site, const tripoint_abs_omt &omt )
+{
+    return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
+}
+
+bool note_live_bandit_aftermath()
+{
+    avatar &u = get_avatar();
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    bool changed = false;
+
+    for( bandit_live_world::site_record &site : state.sites ) {
+        if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+            continue;
+        }
+
+        std::vector<bandit_live_world::active_member_observation> observations;
+        observations.reserve( site.active_member_ids.size() );
+        for( const character_id &member_id : site.active_member_ids ) {
+            bandit_live_world::active_member_observation observation;
+            observation.npc_id = member_id;
+            npc *member_npc = g->find_npc( member_id );
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            if( member == nullptr ) {
+                observation.summary = "member record missing";
+                observations.push_back( observation );
+                continue;
+            }
+            if( member_npc == nullptr ) {
+                observation.state = bandit_live_world::active_member_observation_state::missing;
+                observation.summary = "member lookup missing during active outing";
+                if( member->state != bandit_live_world::member_state::missing ) {
+                    changed |= bandit_live_world::update_member_state( site, member_id,
+                              bandit_live_world::member_state::missing,
+                              "outing member missing near " + site.active_target_id );
+                }
+                observations.push_back( observation );
+                continue;
+            }
+
+            if( member_npc->is_dead() ) {
+                observation.state = bandit_live_world::active_member_observation_state::dead;
+                observation.summary = "npc dead";
+                if( member->state != bandit_live_world::member_state::dead ) {
+                    changed |= bandit_live_world::update_member_state( site, member_id,
+                              bandit_live_world::member_state::dead,
+                              "local contact loss near " + site.active_target_id );
+                }
+            } else if( site_contains_omt( site, member_npc->pos_abs_omt() ) ) {
+                if( member->state == bandit_live_world::member_state::local_contact ) {
+                    observation.state = bandit_live_world::active_member_observation_state::home;
+                    observation.summary = "npc back on home footprint";
+                } else {
+                    observation.summary = "outbound member still on home footprint";
+                }
+            } else if( rl_dist( member_npc->pos_abs_omt(), u.pos_abs_omt() ) <= 1 &&
+                       ( member_npc->is_active() || !member_npc->is_travelling() ) ) {
+                observation.state = bandit_live_world::active_member_observation_state::local_contact;
+                observation.summary = "local contact near player target";
+                if( member->state == bandit_live_world::member_state::outbound ) {
+                    changed |= bandit_live_world::update_member_state( site, member_id,
+                              bandit_live_world::member_state::local_contact,
+                              "local contact near " + site.active_target_id );
+                }
+            } else if( member->state == bandit_live_world::member_state::local_contact ) {
+                if( !member_npc->is_active() &&
+                    ( !member_npc->is_travelling() || !member_npc->has_omt_destination() ||
+                      !site_contains_omt( site, member_npc->goal ) ) ) {
+                    std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( member_npc->pos_abs_omt(),
+                                                           site.anchor, overmap_path_params::for_npc() ).points;
+                    if( !path.empty() ) {
+                        member_npc->goal = site.anchor;
+                        member_npc->omt_path = std::move( path );
+                        member_npc->set_mission( NPC_MISSION_TRAVELLING );
+                    }
+                }
+                if( member_npc->is_travelling() && member_npc->has_omt_destination() &&
+                    site_contains_omt( site, member_npc->goal ) ) {
+                    observation.state = bandit_live_world::active_member_observation_state::returning_home;
+                    observation.summary = "travelling back toward home footprint";
+                } else {
+                    observation.summary = "local contact unresolved";
+                }
+            } else {
+                observation.summary = "still outbound";
+            }
+
+            observations.push_back( observation );
+        }
+
+        if( const std::optional<bandit_pursuit_handoff::return_packet> packet =
+                bandit_live_world::resolve_active_group_aftermath( site, observations ) ) {
+            changed |= bandit_live_world::apply_return_packet( site, *packet );
+        }
+    }
+
+    return changed;
 }
 
 bool steer_live_bandit_dispatch_toward_player()
@@ -504,6 +604,7 @@ void monmove()
 void overmap_npc_move()
 {
     avatar &u = get_avatar();
+    note_live_bandit_aftermath();
     if( calendar::once_every( 30_minutes ) ) {
         steer_live_bandit_dispatch_toward_player();
     }
