@@ -744,19 +744,20 @@ Notes:
 
 ## Bandit live-world control + playtest restage packet v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] One live saveable owner exists for the relevant current bandit spawn families tied to this lane instead of leaving them as disconnected static-content / mapgen islands.
 - [x] The owner keeps explicit per-site and per-spawn-tile bandit headcounts plus membership strongly enough that later control and writeback are honest rather than guessed.
 - [x] The live system can actually control or dispatch those spawned bandits through the real world path instead of leaving them as disconnected `place_npcs` islands with post-hoc bookkeeping or whole-camp outings.
 - [x] Dispatch size is derived from the site's live remaining population strongly enough that site-backed camps keep a home presence and later losses/shrinkage reduce future outing size instead of snapping back to folklore counts.
-- [ ] A bounded nearby restage path can seed a controlled bandit camp about `10 OMT` away on current build.
-- [ ] That restage path supports two honest modes: reviewer probe/capture may clean up, while manual playtest handoff leaves the game/session running instead of auto-terminating it.
-- [ ] The setup exercises the real overmap/bubble handoff plus local writeback path rather than a fake private theater.
-- [ ] Local outcomes change later world behavior instead of leaving the live owner stale, including later site size / dispatch capacity after kills, losses, returns, or partial contact.
-- [ ] A reviewer-clean perf report exists on that nearby live setup, including baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost.
-- [ ] The slice stays bounded: no giant generic map-authoring empire, no full hostile-human rewrite, no fake harness-only integration, and no faction-grand-strategy detour.
+- [x] A bounded nearby restage path can seed a controlled bandit camp about `10 OMT` away on current build.
+- [x] That restage path supports two honest modes: reviewer probe/capture may clean up, while manual playtest handoff leaves the game/session running instead of auto-terminating it.
+- [x] The setup exercises the real overmap/bubble handoff plus local writeback path rather than a fake private theater.
+- [x] Local outcomes change later world behavior instead of leaving the live owner stale, including later site size / dispatch capacity after kills, losses, returns, or partial contact.
+- [x] A reviewer-clean perf report exists on that nearby live setup, including baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost.
+- [x] At least one dirtier later-world disturbance proof exists on that same nearby owned setup beyond the calm return->re-dispatch path, such as loss/missing shrinkage, save/load disturbance, or player-disruption without stale-roster reset.
+- [x] The slice stays bounded: no giant generic map-authoring empire, no full hostile-human rewrite, no fake harness-only integration, and no faction-grand-strategy detour.
 
 Notes:
 - Canonical contract lives at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`.
@@ -766,9 +767,20 @@ Notes:
 - The current tree now adds the first bounded control seam on top of that ledger: `bandit_live_world::plan_site_dispatch(...)` / `apply_dispatch_plan(...)` build one real scout dispatch from owned members, and `overmap_npc_move()` can hand those selected NPCs a normal `NPC_MISSION_TRAVELLING` overmap route toward a nearby player target instead of leaving the owner as post-hoc bookkeeping only.
 - That dispatch seam now derives outgoing capacity from the live remaining roster instead of folklore counts: site-backed camps keep one member home by rule, micro-sites can still commit their full tiny roster, and `update_member_state(...)` shrinks both site headcount and per-spawn-tile headcount when deaths/missing results land.
 - The owner ledger now also persists one active outing summary (`active_group_id`, `active_target_id`, `active_member_ids`) and can apply a bounded handoff return packet back onto those exact owned members after save/load without folklore-reconstructing which bodies went.
-- Fresh narrow validation for the reserve/writeback slice passed via touched-object compile of `obj/bandit_live_world.o`, exact test-object compile of `tests/bandit_live_world_test.cpp`, and `git diff --check`; the wider tree still has an unrelated existing `make tests` failure in `src/overmap_special_mutable.cpp`.
-- `tools/openclaw_harness/startup_harness.py` now has a distinct `handoff` mode that leaves a packaged setup alive and writes `handoff.report.json` / `handoff.pid` instead of always auto-cleaning on success, but that is helper plumbing only until the nearby controlled-restage path is wired onto it on current build.
-- The restage seam is part of the product bar now: manual playtest handoff must stay alive after setup instead of rudely cleaning up as soon as things get interesting.
+- The current tree now also has a first bounded live aftermath observer: `overmap_npc_move()` watches active owned outing members for real `local_contact`, `dead`, and bounded home-return observations, and `bandit_live_world::resolve_active_group_aftermath(...)` converts fully resolved observations back into the existing exact-member return-packet seam instead of leaving the saved outing summary inert.
+- Fresh narrow validation for the reserve/writeback plus live-aftermath hook slice passed via touched-object compile of `obj/tiles/bandit_live_world.o`, touched-object compile of `obj/tiles/do_turn.o`, exact current-build compile of `tests/bandit_live_world_test.cpp`, and `git diff --check`.
+- The nearby-restage helper surface has now widened in one bounded, reviewer-visible way: `tools/openclaw_harness/startup_harness.py` supports `player_mutations`, `player_near_overmap_special`, and the new `seed_overmap_special_near_player` manifest transform, the current nearby fixture alias is `bandit_live_world_nearby_camp_v0_2026-04-22`, and the paired scenario is `tools/openclaw_harness/scenarios/bandit.live_world_nearby_camp_mcw.json`.
+- `tools/openclaw_harness/startup_harness.py` also now has a distinct `handoff` mode that leaves a packaged setup alive and writes `handoff.report.json` / `handoff.pid` instead of always auto-cleaning on success.
+- Fresh live proof now closes the calm same-site follow-through question too: fixture `tmp_bandit_live_world_post_writeback_snapshot_2026-04-23` starts with the exact scout already written back home and no active outing, while continuation probe `.userdata/dev-harness/harness_runs/20260423_082832/` advances `1860` turns on the original basecamp footing and re-arms the same owned site with `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,41,0`, `active_member_ids = [4]`, and member `4` back in `state = outbound` with `last_writeback_summary = dispatch scout toward player@140,41,0`.
+- The moved-player McWilliams variant was replaced with an honest seeded-site helper: fixture install now keeps the player/basecamp footing at `om_pos [140, 41, 0]` and copies a real `bandit_camp` footprint onto `target_abs_omt [140, 51, 0]`, about `10 OMT` away in the same overmap.
+- Fresh narrow validation for that replacement passed via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py install-fixture bandit_live_world_nearby_camp_v0_2026-04-22 --profile andi-nearby-seed-check --fixture-profile live-debug --replace`, and direct placement audit showing the added `bandit_camp` footprint at `(140..141, 51..52)` in `o.0.0.zzip`.
+- Fresh current-build nearby-restage proof now lives under `.userdata/dev-harness/harness_runs/20260422_205630/` and `.userdata/dev-harness/harness_runs/20260422_205658/`; the probe run auto-cleaned with `cleanup.status = terminated`, the handoff run stayed alive with `cleanup.status = deferred_handoff`, and grep over those run dirs no longer finds the old `game::validate_camps()` / `invalid map position` load error.
+- Fresh current-build corrected-anchor ownership proof now also lives under `.userdata/dev-harness/harness_runs/20260422_224132/`: immediate save on the corrected nearby bootstrap serialized owned site `overmap_special:bandit_camp@140,51,0` with `headcount: 14`, the full nearby footprint, and 14 explicit claimed members in `dimension_data.gsav`.
+- The restage seam is now honest enough to stop being the blocker; the open product bar has moved forward to real overmap/bubble interaction and local writeback on this nearby seeded setup.
+- Fresh reviewer-clean perf evidence now exists on the same nearby basecamp footing via `.userdata/dev-harness/harness_runs/20260423_004225/`, `.userdata/dev-harness/harness_runs/20260423_004253/`, `.userdata/dev-harness/harness_runs/20260423_004349/`, and `.userdata/dev-harness/harness_runs/20260423_012819/`: single-turn `566.692 ms`, wait-120 `233.168 ms`, cadence-1860 `234.460 ms` avg with `236.622 ms` max batch-turn cost (`1.009x` spike ratio), and stress-4200 `234.065 ms` avg with `238.327 ms` max batch-turn cost (`1.018x` spike ratio).
+- Fresh current-build end-to-end writeback proof now also exists on the real nearby setup via the copied-save continuation chain `.userdata/dev-harness/harness_runs/20260423_042618/` -> `20260423_054050/` -> `20260423_055255/`: the copied `7200`-turn save pinned the honest stuck `local_contact` seam, the first moved-away continuation with only `1860` turns still left the outing active, and the second moved-away continuation with `3600` turns resolved member `4` back to `state = at_home` with `last_writeback_summary = return withdrawn from player@140,41,0` while clearing `active_group_id`, `active_target_id`, and `active_member_ids`.
+- Fresh current-build dirty later-world disturbance proof now also exists on the same nearby owned setup via `.userdata/dev-harness/harness_runs/20260423_194416/`: raw-local-contact continuation `tmp.bandit_owned_site2_raw_local_contact_kill_probe` killed the exact scout, advanced `10` turns, and saved the owned site with `headcount = 13`, member `4` as `state = missing` with `last_writeback_summary = return broken from player@140,41,0 (missing)`, home `spawn_tile [3371,1230,0]` at `headcount = 0`, and the next active outing already rotated to `active_member_ids = [5]` instead of snapping back to the old full roster.
+- That closes the packet honestly on current build: the nearby owned-site seam now has real bootstrap, dispatch, live contact, exact-member writeback, calm same-site re-dispatch, dirty loss/missing follow-through, manual handoff support, and the reviewer-clean perf packet without widening into a bigger hostile-human empire.
 
 ---
 
@@ -778,16 +790,19 @@ Status: GREENLIT
 
 Success state:
 - [ ] The live hostile-owner seam can run `2-3` simultaneous hostile sites on one world without collapsing them into one shared fake camp brain.
-- [ ] Each hostile site keeps its own anchor/home site, roster/headcount, active outing or contact state, remembered pressure/marks, and persisted writeback state.
-- [ ] Site-backed camps still keep a home presence while losses continuously shrink later outings instead of snapping back to folklore counts.
-- [ ] One site's losses, return state, or contact pressure do not silently rewrite another site's state.
+- [x] Each hostile site keeps its own anchor/home site, roster/headcount, active outing or contact state, remembered pressure/marks, and persisted writeback state.
+- [x] Site-backed camps still keep a home presence while losses continuously shrink later outings instead of snapping back to folklore counts.
+- [x] One site's losses, return state, or contact pressure do not silently rewrite another site's state.
 - [ ] Repeated same-target pressure can overlap occasionally without turning into routine multi-site dogpile coalition behavior.
-- [ ] Save/load stays honest for multiple hostile owners at once instead of only for the single easiest happy-path site.
-- [ ] The slice stays bounded: no faction grand strategy, no dozens-of-families explosion, and no magical shared omniscience.
+- [x] Save/load stays honest for multiple hostile owners at once instead of only for the single easiest happy-path site.
+- [x] The slice stays bounded: no faction grand strategy, no dozens-of-families explosion, and no magical shared omniscience.
 
 Notes:
 - Canonical contract lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`.
-- This is the first queued hostile-site substrate packet behind the still-active `Bandit live-world control + playtest restage packet v0` lane.
+- First deterministic proof now lives in `tests/bandit_live_world_test.cpp`: `bandit live world keeps several hostile sites independent across save and writeback` builds three claimed hostile sites (`bandit_camp`, `bandit_work_camp`, and `mx_bandits_block`), gives all three independent active outings/marks/pressure, round-trips through JSON save/load, applies one site's loss/writeback, and asserts the other active sites stay untouched.
+- Fresh validation passed via `make -j4 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/bandit_live_world.o`, `./tests/cata_test "[bandit][live_world]"`, and `./tests/cata_test "[bandit][live_world][multi_site]"` (`65 assertions in 1 test case`).
+- Remaining open bar is live scheduler proof on a controlled world: `2-3` claimed hostile sites need to coexist through real overmap-side cadence/turn advancement without dogpile mush.
+- This is the first queued hostile-site substrate packet behind the now-checkpointed `Bandit live-world control + playtest restage packet v0` lane.
 - The point is to prove small independent hostile ownership, not to reopen the whole hostile-human architecture debate.
 
 ---

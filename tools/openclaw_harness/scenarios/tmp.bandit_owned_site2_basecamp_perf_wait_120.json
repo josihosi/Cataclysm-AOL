@@ -1,0 +1,41 @@
+{
+  "name": "tmp.bandit_owned_site2_basecamp_perf_wait_120",
+  "description": "Disposable perf probe: claimed nearby-owned-site save on basecamp footing, advance 120 calm wait turns before bandit cadence fires, then save-and-quit for repeated wait-turn timing.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_owned_site2_basecamp_probe_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_120_turns",
+      "count": 120,
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Bandit live-world control + playtest restage packet v0 (2026-04-22)
 
-Status: ACTIVE / GREENLIT.
+Status: CHECKPOINTED / DONE FOR NOW.
 
 ## Greenlight verdict
 
@@ -274,7 +274,15 @@ Cleanest first shape:
 
 Current grounded trap on this packet:
 - copying a `bandit_camp` footprint nearby is **not** enough by itself if the saved result still lands as `bandit_live_world.owner_id` with `sites: []`; that is only terrain placement, not owned-site truth
-- the obvious moved-player bootstrap fallback is also not automatically acceptable here, because the disposable `player_near_overmap_special` helper was caught rewriting `player.location` without moving the top-level save load anchor; until the corrected helper is re-proved live, prior nearby-site bootstrap conclusions from that path are not honest ownership proof
+- the corrected moved-player bootstrap is now honest current truth rather than folklore: after the `player_near_overmap_special` load-anchor fix, immediate save probe `.userdata/dev-harness/harness_runs/20260422_224132/` serialized owned site `overmap_special:bandit_camp@140,51,0` with `headcount: 14` and 14 explicit claimed members
+- the next fake blocker also died once the probe matched the real cadence instead of old folk math: `.` waits are one-second turns here, so the live dispatch gate in `overmap_npc_move()` does not fire until roughly `1800` turns (`30_minutes`), not after one `320`-turn shrug
+- fresh `1860`-turn proofs now show the real current split cleanly:
+  - road-footing probe `.userdata/dev-harness/harness_runs/20260422_231413/` persisted `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,42,0`, `active_member_ids = [4]`, and NPC `4` travelling on mission `10` with a non-empty `omt_path`
+  - real basecamp-footing probe `.userdata/dev-harness/harness_runs/20260422_232225/` proved the same seam on `player@140,41,0`
+- nearby owned-site bootstrap and initial live dispatch are therefore no longer the blocker
+- later writeback and calm same-site follow-through are no longer folklore either: copied-save continuation `.userdata/dev-harness/harness_runs/20260423_055255/` writes member `4` back home with cleared active outing state, and later continuation `.userdata/dev-harness/harness_runs/20260423_082832/` resumes from the post-writeback snapshot and re-arms that same owned site after `1860` turns with `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,41,0`, `active_member_ids = [4]`, and member `4` back in `state = outbound`
+- dirty later-world disturbance proof is no longer missing either: raw-local-contact continuation `.userdata/dev-harness/harness_runs/20260423_194416/` resumes from fixture `tmp_bandit_live_world_local_contact_raw_2026-04-23`, kills the exact local-contact scout, advances `10` turns, and saves the same owned site with `headcount = 13`, member `4` as `state = missing`, home spawn-tile `[3371,1230,0]` at `headcount = 0`, and `active_member_ids = [5]` instead of stale-roster reset
+- the single-site live-world control packet is therefore now honestly closed on current build; the next active work belongs to the multi-site hostile-owner scheduler follow-through, not more decorative reruns of this same nearby camp
 
 Existing helpers should be reused, not discarded:
 - prepared McWilliams/Basecamp footing

@@ -39,56 +39,28 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit repo lane is now **Bandit live-world control + playtest restage packet v0**.
+The active greenlit repo lane is now **Multi-site hostile owner scheduler packet v0**.
 
 Current honest state:
-- the authoritative active contract now lives at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`
-- the latest closed lane is still `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
+- the authoritative active contract now lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`
+- the latest closed lane is now `Bandit live-world control + playtest restage packet v0` at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`
+- that lane now closes honestly on current build: dirty disturbance probe `.userdata/dev-harness/harness_runs/20260423_194416/` resumes from raw local contact, kills the exact scout, and saves the nearby owned site with `headcount = 13`, member `4` as `state = missing`, home spawn-tile `[3371,1230,0]` at `headcount = 0`, and `active_member_ids = [5]` instead of stale-roster reset
+- the live-world packet therefore now has owned-site bootstrap, real dispatch, live contact, exact-member writeback, calm same-site re-dispatch, dirty loss/missing follow-through, manual handoff support, and the reviewer-clean perf packet on the honest nearby footing
+- the earlier latest closed lane remains `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
 - the earlier `Bandit + Basecamp playtest kit packet v0` remains checkpointed at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
-- the open useful harness/helper work from `Bandit + Basecamp playtest kit packet v2` is **not** killed; it is folded forward into the new active lane as supporting tooling instead of pretending helper breadth alone is the product
-- the first live ownership substrate is now real: `src/bandit_live_world.{h,cpp}` plus `overmap_global_state.bandit_live_world` claim tracked `bandit_camp` / `bandit_work_camp` / `bandit_cabin` / `mx_looters` / `mx_bandits_block` spawns at `map::place_npc` time and persist explicit site/member/spawn-tile state through save/load
-- the first bounded world-side control seam is now also real: `overmap_npc_move()` can ask `bandit_live_world::plan_site_dispatch(...)` / `apply_dispatch_plan(...)` for a nearby owned site, mark selected real members outbound, and hand those actual NPCs a normal overmap travel route toward the nearby player target instead of leaving them as disconnected `place_npc` islands
-- that dispatch seam now derives outgoing capacity from the live remaining roster instead of folklore counts: site-backed camps keep one member home by rule, micro-sites can still commit their full tiny roster, and member-state writeback can shrink site/spawn-tile headcount for later outings
-- the site ledger now also persists one active outing summary (`active_group_id`, `active_target_id`, `active_member_ids`) and can apply a bounded return packet back onto those exact owned members after save/load, but this is still deterministic seam coverage rather than a live local-contact hook
-- the real missing value has therefore narrowed again: current live bandit content now has one owner/headcount ledger plus one population-coupled first dispatch seam and one persisted return-writeback seam, but the system still does not yet restage, survive messy local contact on the real path, and report perf end to end
-- fresh current-build nearby-save truth shows the first `10 OMT` seed-only restage is still just an overmap footprint, not yet an owned live site: after `500` turns plus save/quit, `dimension_data.gsav` persists `bandit_live_world.owner_id = hells_raiders_live_owner_v0` with `sites: []`, so the current nearby helper still has nobody real to dispatch or write back
-- the obvious bootstrap fallback of moving the player near the seeded special was also not honest yet, but for a nastier reason than the old popup lore: the disposable `player_near_overmap_special` helper was rewriting `player.location` without updating top-level `levx/levy`, so the saved nearby-site bootstrap never actually loaded on the seeded site footing
-- narrow fixture-install proof now fixes that save-anchor mismatch in `tools/openclaw_harness/startup_harness.py` (the moved player keeps the old `[5,5,0]` bubble offset while the top-level load anchor shifts from `levx/levy = 275/77` to `276/96` for target OMT `[140,50,0]`), but fresh current-build ownership proof on the corrected nearby load is still missing
-- this lane therefore now has to solve owned-site bootstrap on the nearby setup before asking for local-contact/writeback/perf proof, then tighten population-coupled outings on that honest setup and produce one reviewer-clean perf packet on the same footing, including single-turn cost, wait/pass-time cost, and at least one harder stress case instead of one calm vanity number
-- the restage seam must support two honest modes: reviewer probe/capture may clean up afterwards, but manual playtest handoff must leave the game/session running instead of auto-terminating as soon as the setup gets interesting
-- the already-landed `save_transforms` / `player_mutations` helper surface and named hostile-contact preset from the old `v2` lane remain useful substrate here rather than wasted work
-- `tools/openclaw_harness/startup_harness.py` now also has a distinct `handoff` mode that writes `handoff.report.json` and leaves the game session alive for manual playtesting instead of routing every packaged setup through probe cleanup; this helper split is real, but the active nearby controlled-restage proof is still open
-- `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this live packet should reuse current camp footing, not reopen zoning mechanics by drift
-- the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, and repeated-site revisit follow-through
+- the useful harness/helper work from `Bandit + Basecamp playtest kit packet v2` was **not** wasted; it now sits behind the closed live-world lane as bounded support instead of masquerading as the product
+- the next honest delivery target is no longer one-site happy-path continuity, but proving `2-3` hostile owners can coexist with independent state, honest save/load, and no accidental coalition brain
+- `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this hostile-site stack should reuse current camp footing, not reopen zoning mechanics by drift
+- the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, repeated-site revisit follow-through, and the now-closed live-world control lane
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is now about making the live bandit system exist in the actual game and making it restageable enough to playtest nearby and measure honestly.
+This lane is now about proving small independent hostile ownership on top of the newly honest single-site live-world footing.
 
 ---
 
-## Active lane - Bandit live-world control + playtest restage packet v0
+## Active lane - Multi-site hostile owner scheduler packet v0
 
 **Status:** ACTIVE / GREENLIT
-
-Connect the real current bandit spawn families tied to this lane to one live saveable owner/control path, track explicit per-site and per-spawn-tile bandit headcounts, and make the resulting setup deliberately restageable near the player/basecamp so Schani and Josef can actually playtest the real system and measure performance on it, including the annoying wait/pass-time turns and one upper-pressure stress pass.
-
-Dispatch pressure should derive from the site's live remaining population, so losses shrink later outings and site-backed camps do **not** send the whole bloody camp off on adventures at once.
-
-The restage seam is part of the product, not a side garnish: it must support reviewer capture/probe work **and** a manual playtest handoff mode that leaves the session alive after setup instead of auto-terminating it.
-Useful open helper work from `Bandit + Basecamp playtest kit packet v2` survives here as supporting tooling, but helper breadth alone no longer counts as the headline product.
-
-Canonical contract lives at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`.
-
----
-
-## Greenlit next
-
-The next greenlit hostile-site stack is now frozen behind `Bandit live-world control + playtest restage packet v0`.
-Keep the order explicit and do **not** silently merge these packets together just because they smell related.
-
-### 1. Multi-site hostile owner scheduler packet v0
-
-**Status:** GREENLIT
 
 Prove the live hostile-owner seam can run a **small set of independent hostile sites** at once instead of one bandit camp plus folklore. Each owner should keep its own anchor/home site, roster, active outing/contact state, remembered pressure, and cadence/writeback state without collapsing into coalition mush.
 
@@ -106,7 +78,14 @@ Non-goals:
 
 Canonical contract lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`.
 
-### 2. Hostile site profile layer packet v0
+---
+
+## Greenlit next
+
+The next greenlit hostile-site stack is now frozen behind `Multi-site hostile owner scheduler packet v0`.
+Keep the order explicit and do **not** silently merge these packets together just because they smell related.
+
+### 1. Hostile site profile layer packet v0
 
 **Status:** GREENLIT
 
@@ -126,7 +105,7 @@ Non-goals:
 
 Canonical contract lives at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`.
 
-### 3. Cannibal camp first hostile-profile adopter packet v0
+### 2. Cannibal camp first hostile-profile adopter packet v0
 
 **Status:** GREENLIT
 
@@ -156,7 +135,7 @@ If this stack lands cleanly, the stalker should be revisited later as the **firs
 Radio warfare, `writhing stalker`, and the broader Arsenic-and-Old-Lace social-threat garnish stay parked for later.
 The next bandit-specific menu should land in this order.
 
-### 4. Bandit approach / stand-off / attack-gate packet v0
+### 3. Bandit approach / stand-off / attack-gate packet v0
 
 **Status:** GREENLIT
 
@@ -179,7 +158,7 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
 
-### 5. Bandit shakedown pay-or-fight surface packet v0
+### 4. Bandit shakedown pay-or-fight surface packet v0
 
 **Status:** GREENLIT
 
@@ -202,7 +181,7 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
 
-### 6. Bandit aftermath / renegotiation writeback packet v0
+### 5. Bandit aftermath / renegotiation writeback packet v0
 
 **Status:** GREENLIT
 
@@ -226,7 +205,7 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
 
-### 7. Bandit extortion-at-camp restage + handoff packet v0
+### 6. Bandit extortion-at-camp restage + handoff packet v0
 
 **Status:** GREENLIT
 
@@ -249,7 +228,7 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
 
-### 8. Bandit extortion playthrough audit + harness-skill packet v0
+### 7. Bandit extortion playthrough audit + harness-skill packet v0
 
 **Status:** GREENLIT
 

@@ -771,7 +771,7 @@ special_placement_result mutable_overmap_special_data::place(
     auto it = overmaps.find( root );
     if( it == overmaps.end() ) {
         debugmsg( "Invalid root %s", root );
-        return { result, {} };
+        return { tripoint_om_omt::invalid, result, {} };
     }
 
     joins_tracker unresolved;
@@ -901,7 +901,7 @@ special_placement_result mutable_overmap_special_data::place(
                              connection_dir );
     }
 
-    return { result, unresolved.all_used() };
+    return { origin, result, unresolved.all_used() };
 }
 
 void mutable_overmap_special_data::load( const JsonObject &jo, bool was_loaded )

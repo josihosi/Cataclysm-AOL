@@ -1,0 +1,19 @@
+{
+  "name": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22",
+  "source_fixture": "tmp_bandit_live_world_owned_site2_claimed_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Disposable probe footing: start from the claimed nearby-owned-site save, then move the player onto the adjacent road 9 OMT south of site2 so dispatch pathing is tested against a routable-looking player OMT instead of the faction-camp tile itself.",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [
+        0,
+        -9,
+        0
+      ]
+    }
+  ]
+}

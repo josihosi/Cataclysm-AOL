@@ -1,0 +1,15 @@
+{
+  "name": "tmp_bandit_live_world_nearby_site2_bootstrap",
+  "source_fixture": "bandit_live_world_nearby_camp_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Disposable diagnostic: start from the nearby seeded bandit-camp fixture, then move the player beside the seeded site (site_index 2) so current-build load must actually generate/spawn that camp before an immediate save-and-quit ownership inspection.",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [0, -1, 0]
+    }
+  ]
+}

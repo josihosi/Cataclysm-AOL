@@ -1,0 +1,17 @@
+{
+  "name": "tmp_bandit_live_world_local_contact_snapshot_2026-04-23",
+  "description": "Disposable aftermath probe footing copied from harness run 20260423_042618 after the scout reached local_contact and stayed stuck; used to test whether writeback closes once the player is moved well away from the contact bubble.",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [
+        0,
+        -20,
+        0
+      ]
+    }
+  ]
+}

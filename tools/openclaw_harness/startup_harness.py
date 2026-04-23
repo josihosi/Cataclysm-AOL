@@ -29,6 +29,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Pattern, Tuple
 
+from bandit_live_world_audit import load_special_placements as load_bandit_special_placements
+
 
 IGNORABLE_DEBUG_LOG_PATTERNS: List[Pattern[str]] = [
     re.compile(
@@ -76,6 +78,10 @@ PLAYER_MUTATION_STATE_TEMPLATE: Dict[str, Any] = {
     "powered": False,
     "show_sprite": True,
 }
+
+OMAPX = 180
+OMAPY = OMAPX
+OVERMAP_DEPTH = 10
 
 
 @dataclass
@@ -589,10 +595,42 @@ def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
         run_peekaboo_interaction(pid, cmd)
 
 
-def advance_turns(pid: int, count: int) -> None:
+def advance_turns(pid: int, count: int) -> Dict[str, Any]:
+    timing: Dict[str, Any] = {
+        "count": max(count, 0),
+        "batch_size": 120,
+        "batches": [],
+        "total_duration_seconds": 0.0,
+        "avg_turn_ms": 0.0,
+        "max_batch_duration_seconds": 0.0,
+        "max_batch_turn_ms": 0.0,
+    }
     if count <= 0:
-        return
-    peekaboo_press_sequence(pid, ["."] * count)
+        return timing
+
+    batch_size = timing["batch_size"]
+    for start in range(0, count, batch_size):
+        batch_count = min(batch_size, count - start)
+        started_at = time.perf_counter()
+        peekaboo_press_sequence(pid, ["."] * batch_count)
+        duration = time.perf_counter() - started_at
+        batch = {
+            "start_turn": start + 1,
+            "count": batch_count,
+            "duration_seconds": round(duration, 6),
+            "per_turn_ms": round((duration / batch_count) * 1000.0, 3),
+        }
+        timing["batches"].append(batch)
+        timing["total_duration_seconds"] += duration
+        timing["max_batch_duration_seconds"] = max(timing["max_batch_duration_seconds"], duration)
+        timing["max_batch_turn_ms"] = max(timing["max_batch_turn_ms"], batch["per_turn_ms"])
+        if start + batch_size < count:
+            time.sleep(0.05)
+
+    timing["total_duration_seconds"] = round(timing["total_duration_seconds"], 6)
+    timing["avg_turn_ms"] = round((timing["total_duration_seconds"] / count) * 1000.0, 3)
+    timing["max_batch_duration_seconds"] = round(timing["max_batch_duration_seconds"], 6)
+    return timing
 
 
 def looks_like_inventory_slot(selector: str) -> bool:
@@ -1693,22 +1731,83 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
         if not isinstance(raw, dict):
             raise SystemExit(f"Fixture save_transforms[{index}] must be an object: {manifest_path}")
         kind = str(raw.get("kind", "")).strip().lower()
-        if kind != "player_mutations":
-            raise SystemExit(
-                f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
-                "supported kinds: player_mutations"
-            )
         player_save = str(raw.get("player_save", "")).strip()
         if not player_save:
             raise SystemExit(f"Fixture save_transforms[{index}] needs player_save in {manifest_path}")
-        mutations = normalize_string_list(raw.get("mutations", []))
-        if not mutations:
-            raise SystemExit(f"Fixture save_transforms[{index}] needs mutations in {manifest_path}")
-        transforms.append({
-            "kind": kind,
-            "player_save": player_save,
-            "mutations": mutations,
-        })
+
+        if kind == "player_mutations":
+            mutations = normalize_string_list(raw.get("mutations", []))
+            if not mutations:
+                raise SystemExit(f"Fixture save_transforms[{index}] needs mutations in {manifest_path}")
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "mutations": mutations,
+            })
+            continue
+
+        if kind == "player_near_overmap_special":
+            special_id = str(raw.get("special_id", "")).strip()
+            if not special_id:
+                raise SystemExit(f"Fixture save_transforms[{index}] needs special_id in {manifest_path}")
+            try:
+                site_index = int(raw.get("site_index", 1) or 1)
+            except (TypeError, ValueError):
+                raise SystemExit(f"Fixture save_transforms[{index}] needs integer site_index in {manifest_path}")
+            offset_raw = raw.get("offset_omt", [])
+            if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs offset_omt=[x,y,z] in {manifest_path}"
+                )
+            try:
+                offset_omt = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] offset_omt values must be integers in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "special_id": special_id,
+                "site_index": site_index,
+                "offset_omt": offset_omt,
+            })
+            continue
+
+        if kind == "seed_overmap_special_near_player":
+            special_id = str(raw.get("special_id", "")).strip()
+            if not special_id:
+                raise SystemExit(f"Fixture save_transforms[{index}] needs special_id in {manifest_path}")
+            try:
+                site_index = int(raw.get("site_index", 1) or 1)
+            except (TypeError, ValueError):
+                raise SystemExit(f"Fixture save_transforms[{index}] needs integer site_index in {manifest_path}")
+            if site_index <= 0:
+                raise SystemExit(f"Fixture save_transforms[{index}] needs site_index >= 1 in {manifest_path}")
+            offset_raw = raw.get("offset_omt", [])
+            if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs offset_omt=[x,y,z] in {manifest_path}"
+                )
+            try:
+                offset_omt = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] offset_omt values must be integers in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "special_id": special_id,
+                "site_index": site_index,
+                "offset_omt": offset_omt,
+            })
+            continue
+
+        raise SystemExit(
+            f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
+            "supported kinds: player_mutations, player_near_overmap_special, seed_overmap_special_near_player"
+        )
     return transforms
 
 
@@ -1799,12 +1898,511 @@ def apply_player_mutations_transform(world_dir: Path, transform: Dict[str, Any])
     }
 
 
+def anchor_from_special_points(points: List[Tuple[int, int, int]]) -> Tuple[int, int, int]:
+    if not points:
+        raise SystemExit("Special placement has no usable points")
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    zs = [point[2] for point in points]
+    return min(xs), min(ys), min(zs)
+
+
+
+def player_location_from_omt(target_omt: Tuple[int, int, int]) -> List[int]:
+    return [target_omt[0] * 24 + 12, target_omt[1] * 24 + 12, target_omt[2]]
+
+
+
+def player_load_anchor_from_location(
+    old_player_location: List[int], target_player_location: List[int], *, old_overmap_x: int,
+    old_overmap_y: int, old_levx: int, old_levy: int, old_levz: int,
+) -> Dict[str, int]:
+    if len(old_player_location) < 3 or len(target_player_location) < 3:
+        raise SystemExit("Player load-anchor transform needs both old and target player locations")
+    old_player_abs_sm_x = old_player_location[0] // 12
+    old_player_abs_sm_y = old_player_location[1] // 12
+    old_player_abs_sm_z = int(old_player_location[2])
+    target_player_abs_sm_x = target_player_location[0] // 12
+    target_player_abs_sm_y = target_player_location[1] // 12
+    target_player_abs_sm_z = int(target_player_location[2])
+    overmap_width_sm = OMAPX * 2
+    old_abs_sm_x = old_overmap_x * overmap_width_sm + old_levx
+    old_abs_sm_y = old_overmap_y * overmap_width_sm + old_levy
+    offset_sm_x = old_player_abs_sm_x - old_abs_sm_x
+    offset_sm_y = old_player_abs_sm_y - old_abs_sm_y
+    offset_sm_z = old_player_abs_sm_z - old_levz
+
+    target_abs_sm_x = target_player_abs_sm_x - offset_sm_x
+    target_abs_sm_y = target_player_abs_sm_y - offset_sm_y
+    target_abs_sm_z = target_player_abs_sm_z - offset_sm_z
+    target_overmap_x, target_levx = divmod(target_abs_sm_x, overmap_width_sm)
+    target_overmap_y, target_levy = divmod(target_abs_sm_y, overmap_width_sm)
+    return {
+        "om_x": target_overmap_x,
+        "om_y": target_overmap_y,
+        "levx": target_levx,
+        "levy": target_levy,
+        "levz": target_abs_sm_z,
+        "offset_sm_x": offset_sm_x,
+        "offset_sm_y": offset_sm_y,
+        "offset_sm_z": offset_sm_z,
+    }
+
+
+
+def overmap_file_coords_from_abs_omt(abs_omt: Tuple[int, int, int]) -> Tuple[int, int, Tuple[int, int, int]]:
+    overmap_x, local_x = divmod(abs_omt[0], OMAPX)
+    overmap_y, local_y = divmod(abs_omt[1], OMAPY)
+    return overmap_x, overmap_y, (local_x, local_y, abs_omt[2])
+
+
+
+def overmap_plain_path(overmap_path: Path) -> Path:
+    if overmap_path.suffix == ".zzip":
+        return overmap_path.parent.parent / overmap_path.stem
+    return overmap_path
+
+
+
+def extract_overmap_payload(overmap_path: Path) -> Tuple[Path, str, Dict[str, Any]]:
+    plain_path = overmap_plain_path(overmap_path)
+    created_plain = False
+    if overmap_path.suffix == ".zzip" and not plain_path.exists():
+        run_zzip(overmap_path)
+        created_plain = True
+    if not plain_path.exists():
+        raise SystemExit(f"Overmap payload not found: {plain_path}")
+
+    text = plain_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Overmap payload missing version header newline: {plain_path}")
+    payload = json.loads(payload_text)
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Overmap payload is not a JSON object: {plain_path}")
+    payload["_created_plain"] = created_plain
+    return plain_path, version_line, payload
+
+
+
+def cleanup_extracted_overmap(plain_path: Path, *, keep: bool) -> None:
+    if not keep and plain_path.exists():
+        plain_path.unlink()
+
+
+
+def write_overmap_payload(plain_path: Path, version_line: str, payload: Dict[str, Any]) -> None:
+    payload_to_write = dict(payload)
+    payload_to_write.pop("_created_plain", None)
+    plain_path.write_text(
+        version_line + "\n" + json.dumps(payload_to_write, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    run_zzip(plain_path)
+    if plain_path.exists():
+        plain_path.unlink()
+
+
+
+def decode_overmap_layer(raw_layer: Any, *, context: str) -> List[str]:
+    if not isinstance(raw_layer, list):
+        raise SystemExit(f"Overmap layer is not a list in {context}")
+    flat: List[str] = []
+    for entry in raw_layer:
+        if not isinstance(entry, list) or len(entry) < 2:
+            raise SystemExit(f"Overmap RLE entry is invalid in {context}: {entry!r}")
+        terrain = str(entry[0])
+        try:
+            count = int(entry[1])
+        except (TypeError, ValueError):
+            raise SystemExit(f"Overmap RLE count is invalid in {context}: {entry!r}")
+        if count <= 0:
+            raise SystemExit(f"Overmap RLE count must be positive in {context}: {entry!r}")
+        flat.extend([terrain] * count)
+    expected = OMAPX * OMAPY
+    if len(flat) != expected:
+        raise SystemExit(f"Overmap layer decoded to {len(flat)} cells, expected {expected} in {context}")
+    return flat
+
+
+
+def encode_overmap_layer(flat: List[str]) -> List[List[Any]]:
+    if not flat:
+        return []
+    encoded: List[List[Any]] = []
+    current = flat[0]
+    count = 1
+    for terrain in flat[1:]:
+        if terrain == current:
+            count += 1
+            continue
+        encoded.append([current, count])
+        current = terrain
+        count = 1
+    encoded.append([current, count])
+    return encoded
+
+
+
+def overmap_layer_index(z_level: int) -> int:
+    layer_index = z_level + OVERMAP_DEPTH
+    if layer_index < 0:
+        raise SystemExit(f"Unsupported overmap z-level for transform: {z_level}")
+    return layer_index
+
+
+
+def overmap_flat_index(point: Tuple[int, int, int]) -> int:
+    x, y, _ = point
+    if x < 0 or x >= OMAPX or y < 0 or y >= OMAPY:
+        raise SystemExit(f"Overmap point out of bounds for transform: {point}")
+    return y * OMAPX + x
+
+
+
+def load_player_abs_omt(world_dir: Path, player_save_name: str) -> Tuple[Tuple[int, int, int], List[int]]:
+    player_save = world_dir / player_save_name
+    if not player_save.exists():
+        raise SystemExit(f"Fixture player target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture player target expects .zzip save path: {player_save}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture player target did not extract save: {extracted_save}")
+
+    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    if extracted_save.exists():
+        extracted_save.unlink()
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+    location = player.get("location", [])
+    if not isinstance(location, list) or len(location) < 3:
+        raise SystemExit(f"Extracted player save is missing location array: {extracted_save}")
+    try:
+        abs_omt = (int(location[0]) // 24, int(location[1]) // 24, int(location[2]))
+        location_copy = [int(location[0]), int(location[1]), int(location[2])]
+    except (TypeError, ValueError):
+        raise SystemExit(f"Extracted player save has invalid location array: {location!r}")
+    return abs_omt, location_copy
+
+
+
+def upsert_special_placement(
+    payload: Dict[str, Any], *, special_id: str,
+    placement_origin: Tuple[int, int, int],
+    placement_points: List[Tuple[int, int, int]],
+) -> None:
+    placements = payload.get("overmap_special_placements")
+    if not isinstance(placements, list):
+        raise SystemExit("Overmap payload missing overmap_special_placements array")
+
+    target_entry: Optional[Dict[str, Any]] = None
+    for entry in placements:
+        if isinstance(entry, dict) and str(entry.get("special", "")) == special_id:
+            target_entry = entry
+            break
+
+    if target_entry is None:
+        target_entry = {"special": special_id, "placements": []}
+        placements.append(target_entry)
+
+    grouped = target_entry.get("placements")
+    if not isinstance(grouped, list):
+        raise SystemExit(f"Special placement list is not valid for {special_id}")
+
+    placement_points_json = [{"p": [point[0], point[1], point[2]]} for point in placement_points]
+    grouped[:] = [
+        entry for entry in grouped
+        if not (
+            isinstance(entry, dict)
+            and tuple(entry.get("origin", [])) == placement_origin
+        )
+    ]
+    grouped.append({
+        "origin": [placement_origin[0], placement_origin[1], placement_origin[2]],
+        "points": placement_points_json,
+    })
+
+
+
+def apply_seed_overmap_special_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    special_id = str(transform.get("special_id", "")).strip()
+    try:
+        requested_site_index = int(transform.get("site_index", 1) or 1)
+    except (TypeError, ValueError):
+        raise SystemExit(f"Fixture seed-overmap-special-near-player needs integer site_index: {transform}")
+    if requested_site_index <= 0:
+        raise SystemExit(f"Fixture seed-overmap-special-near-player needs site_index >= 1: {transform}")
+    raw_offset = transform.get("offset_omt", [])
+    if not isinstance(raw_offset, list) or len(raw_offset) != 3:
+        raise SystemExit(f"Fixture seed-overmap-special-near-player needs offset_omt=[x,y,z]: {transform}")
+    try:
+        offset_omt = [int(raw_offset[0]), int(raw_offset[1]), int(raw_offset[2])]
+    except (TypeError, ValueError):
+        raise SystemExit(f"Fixture seed-overmap-special-near-player offset_omt must be integers: {transform}")
+
+    player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    target_abs_omt = (
+        player_abs_omt[0] + offset_omt[0],
+        player_abs_omt[1] + offset_omt[1],
+        player_abs_omt[2] + offset_omt[2],
+    )
+    target_overmap_x, target_overmap_y, target_anchor_local = overmap_file_coords_from_abs_omt(target_abs_omt)
+    target_overmap_path = world_dir / "overmaps" / f"o.{target_overmap_x}.{target_overmap_y}.zzip"
+    if not target_overmap_path.exists():
+        raise SystemExit(f"Target overmap file not found for nearby seeded special: {target_overmap_path}")
+
+    placements = load_bandit_special_placements(repo_root(), world_dir, {special_id})
+    matching = [placement for placement in placements if placement.special_id == special_id]
+    if requested_site_index > len(matching):
+        raise SystemExit(
+            f"Fixture seed-overmap-special-near-player requested {special_id} site_index={requested_site_index}, "
+            f"but only found {len(matching)} matching placements in {world_dir}"
+        )
+    source_placement = matching[requested_site_index - 1]
+    source_points = list(source_placement.points)
+    if not source_points:
+        raise SystemExit(f"Source placement has no points for {special_id} site_index={requested_site_index}")
+    source_ground_points = [point for point in source_points if point[2] <= 0] or source_points
+    source_anchor = anchor_from_special_points(source_ground_points)
+    translated_points = [
+        (
+            target_anchor_local[0] + point[0] - source_anchor[0],
+            target_anchor_local[1] + point[1] - source_anchor[1],
+            target_anchor_local[2] + point[2] - source_anchor[2],
+        )
+        for point in source_points
+    ]
+
+    target_local_overmaps = {
+        (translated_point[0] // OMAPX, translated_point[1] // OMAPY)
+        for translated_point in translated_points
+    }
+    if len(target_local_overmaps) != 1 or next(iter(target_local_overmaps)) != (0, 0):
+        raise SystemExit(
+            f"Fixture seed-overmap-special-near-player would cross overmap boundaries at target {target_abs_omt}; "
+            "pick a nearer offset for this bounded helper"
+        )
+
+    source_overmap_path = world_dir / "overmaps" / source_placement.overmap_file
+    if not source_overmap_path.exists():
+        raise SystemExit(f"Source overmap file not found for {special_id}: {source_overmap_path}")
+
+    source_plain_path, _, source_payload = extract_overmap_payload(source_overmap_path)
+    keep_source_plain = not bool(source_payload.get("_created_plain", False))
+    try:
+        source_layers = source_payload.get("layers")
+        if not isinstance(source_layers, list):
+            raise SystemExit(f"Source overmap payload missing layers array: {source_overmap_path}")
+        source_layer_cache: Dict[int, List[str]] = {}
+        source_terrain_by_point: Dict[Tuple[int, int, int], str] = {}
+        for point in source_points:
+            layer_index = overmap_layer_index(point[2])
+            if layer_index >= len(source_layers):
+                raise SystemExit(f"Source overmap layer index out of range for point {point} in {source_overmap_path}")
+            layer = source_layer_cache.get(layer_index)
+            if layer is None:
+                layer = decode_overmap_layer(source_layers[layer_index], context=f"{source_overmap_path} z={point[2]}")
+                source_layer_cache[layer_index] = layer
+            source_terrain_by_point[point] = layer[overmap_flat_index(point)]
+    finally:
+        cleanup_extracted_overmap(source_plain_path, keep=keep_source_plain)
+
+    target_plain_path, target_version_line, target_payload = extract_overmap_payload(target_overmap_path)
+    keep_target_plain = not bool(target_payload.get("_created_plain", False))
+    target_layers = target_payload.get("layers")
+    if not isinstance(target_layers, list):
+        cleanup_extracted_overmap(target_plain_path, keep=keep_target_plain)
+        raise SystemExit(f"Target overmap payload missing layers array: {target_overmap_path}")
+    target_layer_cache: Dict[int, List[str]] = {}
+    target_previous_terrain: Dict[Tuple[int, int, int], str] = {}
+    try:
+        for source_point, target_point in zip(source_points, translated_points):
+            layer_index = overmap_layer_index(target_point[2])
+            if layer_index >= len(target_layers):
+                raise SystemExit(f"Target overmap layer index out of range for point {target_point} in {target_overmap_path}")
+            layer = target_layer_cache.get(layer_index)
+            if layer is None:
+                layer = decode_overmap_layer(target_layers[layer_index], context=f"{target_overmap_path} z={target_point[2]}")
+                target_layer_cache[layer_index] = layer
+            flat_index = overmap_flat_index(target_point)
+            target_previous_terrain[target_point] = layer[flat_index]
+            layer[flat_index] = source_terrain_by_point[source_point]
+
+        for layer_index, layer in target_layer_cache.items():
+            target_layers[layer_index] = encode_overmap_layer(layer)
+        upsert_special_placement(
+            target_payload,
+            special_id=special_id,
+            placement_origin=target_anchor_local,
+            placement_points=translated_points,
+        )
+        write_overmap_payload(target_plain_path, target_version_line, target_payload)
+    except Exception:
+        cleanup_extracted_overmap(target_plain_path, keep=keep_target_plain)
+        raise
+
+    return {
+        "kind": "seed_overmap_special_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "special_id": special_id,
+        "site_index": requested_site_index,
+        "source_overmap_file": source_placement.overmap_file,
+        "source_anchor_omt": list(source_anchor),
+        "player_abs_omt": list(player_abs_omt),
+        "player_location": player_location,
+        "offset_omt": offset_omt,
+        "target_abs_omt": list(target_abs_omt),
+        "target_overmap_file": target_overmap_path.name,
+        "target_anchor_omt": list(target_anchor_local),
+        "copied_points": [list(point) for point in translated_points],
+        "previous_target_terrain": {
+            f"{point[0]},{point[1]},{point[2]}": terrain
+            for point, terrain in sorted(target_previous_terrain.items())
+        },
+        "approx_range_omt": max(abs(offset_omt[0]), abs(offset_omt[1]), abs(offset_omt[2])),
+    }
+
+
+
+def apply_player_near_overmap_special_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save = world_dir / str(transform.get("player_save", "")).strip()
+    if not player_save.exists():
+        raise SystemExit(f"Fixture player-near-overmap-special target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(
+            f"Fixture player-near-overmap-special expects .zzip save path: {player_save}"
+        )
+
+    special_id = str(transform.get("special_id", "")).strip()
+    try:
+        requested_site_index = int(transform.get("site_index", 1) or 1)
+    except (TypeError, ValueError):
+        raise SystemExit(f"Fixture player-near-overmap-special needs integer site_index: {transform}")
+    if requested_site_index <= 0:
+        raise SystemExit(f"Fixture player-near-overmap-special needs site_index >= 1: {transform}")
+    raw_offset = transform.get("offset_omt", [])
+    if not isinstance(raw_offset, list) or len(raw_offset) != 3:
+        raise SystemExit(f"Fixture player-near-overmap-special needs offset_omt=[x,y,z]: {transform}")
+    try:
+        offset_omt = [int(raw_offset[0]), int(raw_offset[1]), int(raw_offset[2])]
+    except (TypeError, ValueError):
+        raise SystemExit(f"Fixture player-near-overmap-special offset_omt must be integers: {transform}")
+
+    placements = load_bandit_special_placements(repo_root(), world_dir, {special_id})
+    matching = [placement for placement in placements if placement.special_id == special_id]
+    if requested_site_index > len(matching):
+        raise SystemExit(
+            f"Fixture player-near-overmap-special requested {special_id} site_index={requested_site_index}, "
+            f"but only found {len(matching)} matching placements in {world_dir}"
+        )
+    placement = matching[requested_site_index - 1]
+    candidate_points = [point for point in placement.points if point[2] <= 0] or list(placement.points)
+    anchor_omt = anchor_from_special_points(candidate_points)
+    target_omt = (
+        anchor_omt[0] + offset_omt[0],
+        anchor_omt[1] + offset_omt[1],
+        anchor_omt[2] + offset_omt[2],
+    )
+    player_location = player_location_from_omt(target_omt)
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(
+            f"Fixture player-near-overmap-special did not extract save: {extracted_save}"
+        )
+
+    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+
+    old_location_raw = player.get("location", [])
+    old_location = list(old_location_raw) if isinstance(old_location_raw, list) else []
+    old_overmap_x = int(payload.get("om_x", 0))
+    old_overmap_y = int(payload.get("om_y", 0))
+    old_levx = int(payload.get("levx", 0))
+    old_levy = int(payload.get("levy", 0))
+    old_levz = int(payload.get("levz", 0))
+    updated_load_anchor = player_load_anchor_from_location(
+        old_location,
+        player_location,
+        old_overmap_x=old_overmap_x,
+        old_overmap_y=old_overmap_y,
+        old_levx=old_levx,
+        old_levy=old_levy,
+        old_levz=old_levz,
+    )
+    player["location"] = player_location
+    payload["om_x"] = updated_load_anchor["om_x"]
+    payload["om_y"] = updated_load_anchor["om_y"]
+    payload["levx"] = updated_load_anchor["levx"]
+    payload["levy"] = updated_load_anchor["levy"]
+    payload["levz"] = updated_load_anchor["levz"]
+    extracted_save.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    run_zzip(extracted_save)
+    if extracted_save.exists():
+        extracted_save.unlink()
+
+    return {
+        "kind": "player_near_overmap_special",
+        "world": world_dir.name,
+        "player_save": str(transform.get("player_save", "")),
+        "special_id": special_id,
+        "site_index": requested_site_index,
+        "overmap_file": placement.overmap_file,
+        "special_ground_points_omt": [list(point) for point in candidate_points],
+        "special_anchor_omt": list(anchor_omt),
+        "offset_omt": offset_omt,
+        "target_omt": list(target_omt),
+        "target_location": player_location,
+        "previous_location": old_location,
+        "previous_load_anchor": {
+            "om_x": old_overmap_x,
+            "om_y": old_overmap_y,
+            "levx": old_levx,
+            "levy": old_levy,
+            "levz": old_levz,
+        },
+        "target_load_anchor": {
+            "om_x": updated_load_anchor["om_x"],
+            "om_y": updated_load_anchor["om_y"],
+            "levx": updated_load_anchor["levx"],
+            "levy": updated_load_anchor["levy"],
+            "levz": updated_load_anchor["levz"],
+        },
+        "preserved_player_offset_sm": [
+            updated_load_anchor["offset_sm_x"],
+            updated_load_anchor["offset_sm_y"],
+            updated_load_anchor["offset_sm_z"],
+        ],
+        "approx_range_omt": max(abs(offset_omt[0]), abs(offset_omt[1]), abs(offset_omt[2])),
+    }
+
+
+
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for transform in transforms:
         kind = str(transform.get("kind", "")).strip().lower()
         if kind == "player_mutations":
             reports.append(apply_player_mutations_transform(world_dir, transform))
+            continue
+        if kind == "player_near_overmap_special":
+            reports.append(apply_player_near_overmap_special_transform(world_dir, transform))
+            continue
+        if kind == "seed_overmap_special_near_player":
+            reports.append(apply_seed_overmap_special_near_player_transform(world_dir, transform))
             continue
         raise SystemExit(f"Unsupported fixture save transform kind: {kind}")
     return reports
@@ -1961,8 +2559,8 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             count = int(step.get("count", 0) or 0)
             if count <= 0:
                 raise SystemExit(f"Scenario step '{label}' needs count > 0")
-            advance_turns(pid, count)
             report["count"] = count
+            report["timing"] = advance_turns(pid, count)
         elif kind == "wait":
             seconds = float(step.get("seconds", 0.0) or 0.0)
             if seconds <= 0:
@@ -2581,6 +3179,30 @@ def run_json_command(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
     return proc.returncode, payload, proc.stdout, proc.stderr
 
 
+def snapshot_world_state(profile: str, world_name: str, run_dir: Path, label: str = "saved_world") -> Dict[str, Any]:
+    world_name = str(world_name or "").strip()
+    if not world_name:
+        raise SystemExit("World snapshot requested without a world name")
+    source_world = save_dir_for_profile(profile) / world_name
+    if not source_world.exists():
+        raise SystemExit(f"World snapshot source not found: {source_world}")
+    snapshot_root = run_dir / label
+    if snapshot_root.exists():
+        shutil.rmtree(snapshot_root)
+    ensure_dir(snapshot_root.parent)
+    destination = snapshot_root / world_name
+    shutil.copytree(source_world, destination)
+    snapshot = {
+        "label": label,
+        "profile": profile,
+        "world": world_name,
+        "source": str(source_world),
+        "destination": str(destination),
+    }
+    write_json(run_dir / f"{label}.json", snapshot)
+    return snapshot
+
+
 def finalize_probe_report(
     run_dir: Optional[Path],
     report: Dict[str, Any],
@@ -2845,6 +3467,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
     raw_derived_screens = scenario.get("derived_screens", [])
     derived_screens = [entry for entry in raw_derived_screens if isinstance(entry, dict)] if isinstance(raw_derived_screens, list) else []
+    capture_world_after = bool(scenario.get("capture_world_after", False))
     mode = "handoff" if handoff else "probe"
     report_filename = "handoff.report.json" if handoff else "probe.report.json"
 
@@ -2867,6 +3490,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "artifact_source": artifact_source,
                 "artifact_patterns": artifact_patterns,
                 "steps": steps,
+                "capture_world_after": capture_world_after,
             },
             "startup": {
                 "status": "not_run_blocked_scenario",
@@ -2940,6 +3564,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "artifact_patterns": artifact_patterns,
                 "recommended_test_command": recommended_test_command,
                 "steps": steps,
+                "capture_world_after": capture_world_after,
             },
             "startup_plan": start_result,
             "start_command": start_cmd,
@@ -3001,6 +3626,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "artifact_source": resolved_artifact_source,
                 "artifact_patterns": artifact_patterns,
                 "steps": steps,
+                "capture_world_after": capture_world_after,
             },
             "startup": start_result,
             "steps": [
@@ -3092,6 +3718,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "artifact_patterns": artifact_patterns,
             "steps": steps,
             "derived_screens": derived_screens,
+            "capture_world_after": capture_world_after,
         },
         "startup": start_result,
         "steps": step_reports,
@@ -3118,6 +3745,14 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         "runtime_warnings": runtime_warnings,
         "verdict": verdict,
     }
+    if capture_world_after:
+        try:
+            report["world_snapshot"] = snapshot_world_state(profile, world, run_dir)
+        except Exception as exc:
+            report["world_snapshot"] = {
+                "status": "failed",
+                "error": str(exc),
+            }
     if handoff:
         report["cleanup"] = {
             "status": "deferred_handoff",
