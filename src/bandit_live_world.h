@@ -31,6 +31,12 @@ enum class owned_site_kind {
     bandits_block,
 };
 
+enum class hostile_site_profile {
+    none,
+    camp_style,
+    small_hostile_site,
+};
+
 enum class member_state {
     at_home,
     outbound,
@@ -77,6 +83,7 @@ struct site_record {
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
     owned_site_kind site_kind = owned_site_kind::none;
+    hostile_site_profile profile = hostile_site_profile::none;
     std::string source_id;
     tripoint_abs_omt anchor;
     int headcount = 0;
@@ -128,6 +135,7 @@ struct footprint_snapshot {
 struct dispatch_plan {
     bool valid = false;
     std::string site_id;
+    hostile_site_profile profile = hostile_site_profile::none;
     std::string target_id;
     tripoint_abs_omt target_omt;
     std::vector<character_id> member_ids;
@@ -140,6 +148,7 @@ struct dispatch_plan {
 bool is_tracked_bandit_template( const std::string &npc_template_id );
 std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind source_kind,
         const std::string &source_id );
+hostile_site_profile profile_for_site_kind( owned_site_kind site_kind );
 footprint_snapshot make_special_footprint( const std::string &special_id,
         const tripoint_abs_omt &origin,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
@@ -161,6 +170,7 @@ bool update_member_state( site_record &site, character_id npc_id, member_state n
 
 std::string to_string( anchor_source_kind source_kind );
 std::string to_string( owned_site_kind site_kind );
+std::string to_string( hostile_site_profile profile );
 std::string to_string( member_state state );
 std::string to_string( active_member_observation_state state );
 } // namespace bandit_live_world

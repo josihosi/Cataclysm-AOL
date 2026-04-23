@@ -12,6 +12,7 @@
 namespace
 {
 using bandit_live_world::anchor_source_kind;
+using bandit_live_world::hostile_site_profile;
 using bandit_live_world::member_state;
 using bandit_live_world::owned_site_kind;
 
@@ -48,6 +49,20 @@ std::optional<owned_site_kind> owned_site_kind_from_string( const std::string &v
     }
     if( value == "none" ) {
         return owned_site_kind::none;
+    }
+    return std::nullopt;
+}
+
+std::optional<hostile_site_profile> hostile_site_profile_from_string( const std::string &value )
+{
+    if( value == "camp_style" ) {
+        return hostile_site_profile::camp_style;
+    }
+    if( value == "small_hostile_site" ) {
+        return hostile_site_profile::small_hostile_site;
+    }
+    if( value == "none" ) {
+        return hostile_site_profile::none;
     }
     return std::nullopt;
 }
@@ -178,24 +193,55 @@ bool counts_toward_live_headcount( member_state state )
            state == member_state::local_contact;
 }
 
-int required_home_reserve( const bandit_live_world::site_record &site )
+struct hostile_site_profile_rules {
+    hostile_site_profile profile = hostile_site_profile::none;
+    std::string id;
+    int home_reserve = 0;
+    int scout_job_bonus = 0;
+    int threat_penalty = 1;
+    int retreat_bias_floor = 1;
+    int return_clock_floor = 1;
+    bandit_pursuit_handoff::remaining_return_pressure_state default_remaining_pressure =
+        bandit_pursuit_handoff::remaining_return_pressure_state::ample;
+    std::string writeback_expectation;
+};
+
+hostile_site_profile effective_profile( const bandit_live_world::site_record &site )
 {
-    switch( site.site_kind ) {
-        case owned_site_kind::bandit_camp:
-        case owned_site_kind::bandit_work_camp:
-        case owned_site_kind::bandit_cabin:
-            return 1;
-        case owned_site_kind::looters:
-        case owned_site_kind::bandits_block:
-        case owned_site_kind::none:
-            return 0;
+    return site.profile == hostile_site_profile::none ?
+           bandit_live_world::profile_for_site_kind( site.site_kind ) : site.profile;
+}
+
+hostile_site_profile_rules rules_for_profile( hostile_site_profile profile )
+{
+    switch( profile ) {
+        case hostile_site_profile::camp_style:
+            return { profile, "camp_style", 1, 1, 1, 1, 2,
+                bandit_pursuit_handoff::remaining_return_pressure_state::ample,
+                "keeps a home reserve and writes back as persistent camp pressure" };
+        case hostile_site_profile::small_hostile_site:
+            return { profile, "small_hostile_site", 0, 1, 0, 2, 1,
+                bandit_pursuit_handoff::remaining_return_pressure_state::tight,
+                "can commit its whole small roster and writes back as brittle local pressure" };
+        case hostile_site_profile::none:
+            return { profile, "none", 0, 0, 1, 1, 1,
+                bandit_pursuit_handoff::remaining_return_pressure_state::ample,
+                "falls back to minimal hostile-site defaults" };
     }
 
-    return 0;
+    return { hostile_site_profile::none, "none", 0, 0, 1, 1, 1,
+        bandit_pursuit_handoff::remaining_return_pressure_state::ample,
+        "falls back to minimal hostile-site defaults" };
+}
+
+int required_home_reserve( const bandit_live_world::site_record &site )
+{
+    return rules_for_profile( effective_profile( site ) ).home_reserve;
 }
 
 bandit_dry_run::camp_input make_dispatch_camp_input( const bandit_live_world::site_record &site )
 {
+    const hostile_site_profile_rules rules = rules_for_profile( effective_profile( site ) );
     bandit_dry_run::camp_input camp;
     camp.available_manpower = site.dispatchable_member_capacity();
     if( camp.available_manpower >= 3 ) {
@@ -205,13 +251,14 @@ bandit_dry_run::camp_input make_dispatch_camp_input( const bandit_live_world::si
     } else {
         camp.shortage = bandit_dry_run::shortage_band::critical;
     }
-    camp.job_type_bonus[bandit_dry_run::job_template::scout] = 1;
+    camp.job_type_bonus[bandit_dry_run::job_template::scout] = rules.scout_job_bonus;
     return camp;
 }
 
 bandit_dry_run::lead_input make_nearby_target_lead( const bandit_live_world::site_record &site,
         const tripoint_abs_omt &target_omt, const std::string &target_id )
 {
+    const hostile_site_profile_rules rules = rules_for_profile( effective_profile( site ) );
     bandit_dry_run::lead_input lead;
     lead.id = target_id;
     lead.envelope_id = target_id;
@@ -220,7 +267,7 @@ bandit_dry_run::lead_input make_nearby_target_lead( const bandit_live_world::sit
     lead.distance_multiplier = std::clamp( 1.0 - static_cast<double>( distance ) / 20.0, 0.35, 1.0 );
     lead.lead_bounty_value = distance <= 10 ? 2 : 1;
     lead.lead_confidence_bonus = 1;
-    lead.threat_penalty = 1;
+    lead.threat_penalty = rules.threat_penalty;
     lead.threat_gate_result = bandit_dry_run::threat_gate::soft_veto;
     lead.hard_blocked_jobs = {
         bandit_dry_run::job_template::scavenge,
@@ -228,6 +275,7 @@ bandit_dry_run::lead_input make_nearby_target_lead( const bandit_live_world::sit
         bandit_dry_run::job_template::raid,
     };
     lead.validity_notes.push_back( "live-world nearby target envelope from owned site " + site.site_id );
+    lead.validity_notes.push_back( "hostile profile " + rules.id + ": " + rules.writeback_expectation );
     lead.validity_notes.push_back( "bounded v0 dispatch only promotes scout pursuit from real owned members" );
     return lead;
 }
@@ -251,6 +299,7 @@ std::vector<character_id> select_dispatch_members( const bandit_live_world::site
 bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_live_world::site_record &site,
         const std::vector<character_id> &member_ids, const std::string &target_id )
 {
+    const hostile_site_profile_rules rules = rules_for_profile( effective_profile( site ) );
     bandit_pursuit_handoff::abstract_group_state group = make_site_memory_group( site );
     group.group_id = site.site_id + "#dispatch";
     group.source_camp_id = site.site_id;
@@ -262,10 +311,11 @@ bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_l
     group.current_threat_estimate = std::max( 1, group.current_threat_estimate );
     group.current_bounty_estimate = std::max( 2, group.current_bounty_estimate );
     group.mission_urgency = 1;
-    group.retreat_bias = std::max( group.retreat_bias, site.site_kind == owned_site_kind::bandit_cabin ? 2 : 1 );
+    group.retreat_bias = std::max( group.retreat_bias, rules.retreat_bias_floor );
     group.goal_stickiness = 1;
     group.goal_preemption_posture = 1;
-    group.return_clock = std::max( group.return_clock, 2 );
+    group.return_clock = std::max( group.return_clock, rules.return_clock_floor );
+    group.remaining_pressure = rules.default_remaining_pressure;
     group.anchored_identities.clear();
     for( const character_id &member_id : member_ids ) {
         group.anchored_identities.push_back( { std::to_string( member_id.get_value() ), "alive" } );
@@ -306,6 +356,20 @@ std::string to_string( owned_site_kind site_kind )
             return "looters";
         case owned_site_kind::bandits_block:
             return "bandits_block";
+    }
+
+    return "none";
+}
+
+std::string to_string( hostile_site_profile profile )
+{
+    switch( profile ) {
+        case hostile_site_profile::none:
+            return "none";
+        case hostile_site_profile::camp_style:
+            return "camp_style";
+        case hostile_site_profile::small_hostile_site:
+            return "small_hostile_site";
     }
 
     return "none";
@@ -393,6 +457,7 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "site_id", site_id );
     json.member( "source_kind", to_string( source_kind ) );
     json.member( "site_kind", to_string( site_kind ) );
+    json.member( "hostile_profile", to_string( effective_profile( *this ) ) );
     json.member( "source_id", source_id );
     json.member( "anchor", anchor );
     json.member( "headcount", headcount );
@@ -426,6 +491,12 @@ void site_record::deserialize( const JsonObject &jo )
     std::string site_kind_string = "none";
     jo.read( "site_kind", site_kind_string );
     site_kind = owned_site_kind_from_string( site_kind_string ).value_or( owned_site_kind::none );
+    std::string profile_string = "none";
+    jo.read( "hostile_profile", profile_string );
+    profile = hostile_site_profile_from_string( profile_string ).value_or( profile_for_site_kind( site_kind ) );
+    if( profile == hostile_site_profile::none ) {
+        profile = profile_for_site_kind( site_kind );
+    }
     jo.read( "source_id", source_id );
     jo.read( "anchor", anchor );
     jo.read( "headcount", headcount );
@@ -597,6 +668,23 @@ std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind sourc
     return std::nullopt;
 }
 
+hostile_site_profile profile_for_site_kind( owned_site_kind site_kind )
+{
+    switch( site_kind ) {
+        case owned_site_kind::bandit_camp:
+        case owned_site_kind::bandit_work_camp:
+        case owned_site_kind::bandit_cabin:
+            return hostile_site_profile::camp_style;
+        case owned_site_kind::looters:
+        case owned_site_kind::bandits_block:
+            return hostile_site_profile::small_hostile_site;
+        case owned_site_kind::none:
+            return hostile_site_profile::none;
+    }
+
+    return hostile_site_profile::none;
+}
+
 footprint_snapshot make_special_footprint( const std::string &special_id,
         const tripoint_abs_omt &origin,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup )
@@ -690,6 +778,7 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
         new_site.site_id = site_id;
         new_site.source_kind = source_kind;
         new_site.site_kind = *site_kind;
+        new_site.profile = profile_for_site_kind( *site_kind );
         new_site.source_id = source_id;
         new_site.anchor = footprint.anchor;
         new_site.footprint = footprint.footprint;
@@ -698,6 +787,9 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
     } else if( site->footprint.size() < footprint.footprint.size() ) {
         site->footprint = footprint.footprint;
         site->anchor = footprint.anchor;
+    }
+    if( site->profile == hostile_site_profile::none ) {
+        site->profile = profile_for_site_kind( site->site_kind );
     }
 
     if( site->has_member( npc_id ) ) {
@@ -725,8 +817,10 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id )
 {
+    const hostile_site_profile_rules rules = rules_for_profile( effective_profile( site ) );
     dispatch_plan plan;
     plan.site_id = site.site_id;
+    plan.profile = rules.profile;
     plan.target_id = target_id;
     plan.target_omt = target_omt;
 
@@ -780,6 +874,10 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
     }
 
     plan.valid = true;
+    plan.notes.push_back( "profile " + rules.id + ": reserve " + std::to_string( rules.home_reserve ) +
+                          ", retreat_floor " + std::to_string( rules.retreat_bias_floor ) +
+                          ", return_clock_floor " + std::to_string( rules.return_clock_floor ) );
+    plan.notes.push_back( "profile writeback: " + rules.writeback_expectation );
     plan.notes.push_back( "dispatch ready: " + bandit_dry_run::to_string( winner.job ) + " toward " + target_id );
     return plan;
 }
@@ -889,7 +987,7 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
     packet.result = bandit_pursuit_handoff::mission_result::withdrawn;
     packet.resolution = bandit_pursuit_handoff::lead_resolution::target_lost;
     packet.posture = bandit_pursuit_handoff::return_posture::escape_home;
-    packet.remaining_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+    packet.remaining_pressure = rules_for_profile( effective_profile( site ) ).default_remaining_pressure;
 
     bool saw_loss = false;
     for( const character_id &member_id : site.active_member_ids ) {
@@ -927,6 +1025,7 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
         packet.posture = packet.survivors_remaining > 0 ?
                          bandit_pursuit_handoff::return_posture::broken_flee :
                          bandit_pursuit_handoff::return_posture::escape_safe;
+        packet.remaining_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
     }
 
     packet.notes.push_back( "resolved live aftermath observations for active owned outing" );

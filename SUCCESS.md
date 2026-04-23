@@ -15,6 +15,164 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Bandit overmap/local handoff interaction packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded overmap/local handoff interaction packet exists on the current bandit playback / proof seam.
+- [x] Deterministic proof shows overmap intent entering local play as posture rather than exact-square puppetry or stale route puppetry.
+- [x] Deterministic proof shows local engagement, obvious danger, or contact loss can honestly rewrite, cool, or drop the prior posture instead of preserving immortal certainty.
+- [x] At least one player-present context beyond a static toy camp is covered, for example basecamp pressure, follower travel, or vehicle / convoy interception.
+- [x] Reviewer-readable output exposes the entry posture, any local rewrite, and the returned abstract-state change clearly enough to debug the seam without guessing from side effects.
+- [x] The slice stays bounded: no full local combat AI rewrite, no coalition strategy layer, no broad visibility rewrite, and no magical omniscience by the back door.
+
+Notes:
+- Canonical contract lives at `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`.
+- The current tree now closes this packet honestly on the playback/proof seam through `run_overmap_local_handoff_interaction_packet()` plus `render_overmap_local_handoff_interaction_packet( const handoff_packet_result &result )` in `src/bandit_playback.{h,cpp}`.
+- Deterministic coverage in `tests/bandit_playback_test.cpp` now proves three bounded interaction slices directly: smoke posture narrows to a sharper mark, local danger can break a corridor probe hard enough to come home wounded, and a player-present follower-travel sighting degrades to rough search after contact loss instead of preserving exact-carrier certainty.
+- Narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][handoff]"`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`.
+
+---
+
+## Bandit elevated-light and z-level visibility packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded elevated-light and z-level visibility packet exists on the current bandit playback / proof seam.
+- [x] Deterministic proof shows nearby cross-z visibility behaves sensibly instead of collapsing into floor-bound amnesia.
+- [x] Deterministic proof shows elevated exposed light can stay legible or actionable farther than ordinary hidden light under the right conditions without turning into magical global sight.
+- [x] A flagship exposed-high-fire scenario, for example a radio-tower fire in a dead dark world, proves genuinely long-range visibility instead of timid toy-local range.
+- [x] Matching scenarios prove the same meaningful elevated light can influence zombie-horde pressure too instead of living in private bandit-only theater.
+- [x] Deterministic proof shows smoke does **not** gain magical extra general reach merely from floor changes.
+- [x] Reviewer-readable output exposes the visibility read and benchmark outcomes clearly enough that later playtesting can argue about tuning instead of first principles.
+- [x] The slice stays bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim.
+
+Notes:
+- Canonical contract lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`.
+- The current tree now closes this packet honestly through vertical-aware smoke/light footing in `src/bandit_mark_generation.{h,cpp}` plus `run_elevated_light_z_level_visibility_packet()` and `render_elevated_light_z_level_visibility_packet( const proof_packet_result &result )` in `src/bandit_playback.{h,cpp}`.
+- Deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the bounded active contract directly: nearby cross-z light stays actionable without magical range creep, hidden ground light stays bounded while elevated exposed light can become actionable, a radio-tower fire carries shared zombie-horde pressure, and vertical smoke keeps `vertical_range_bonus=0`.
+- Narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][marks]"`, and `./tests/cata_test "[bandit][playback]"`.
+
+---
+
+## Bandit repeated-site revisit behavior packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded repeated-site follow-through exists on the current playback / evaluator footing, producing one more deliberate revisit / cautious-watch posture than plain early scout bookkeeping.
+- [x] Deterministic coverage proves repeated same-site corroboration still does **not** unlock free `scavenge`, `steal`, or `raid` truth, and does not become immortal pressure.
+- [x] Scenario `repeated_site_interest_stays_bounded` exposes the benchmark-facing long-horizon metrics reviewer-cleanly: `site_visit_count_500`, `site_revisit_count_500`, `cooldown_turn`, and `endless_pressure_flag`.
+- [x] The honest `500`-turn proof shows the strengthened site cooling back out instead of regrowing forever.
+- [x] The slice stays narrow: no site-type-sensitive branching, no settlement taxonomy pass, no broad visibility rewrite, and no z-level smuggling.
+
+Notes:
+- Canonical contract lives at `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`.
+- This is the active follow-through on top of the already checkpointed repeated-site reinforcement seam and the already checkpointed benchmark suite.
+- Josef explicitly liked the bounded revisit behavior plus metric-alignment follow-through, and explicitly rejected widening this packet into the broader site-type-sensitive branch.
+
+---
+
+## Bandit overmap benchmark suite packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One complete named overmap benchmark-suite packet exists on the current bandit playback / proof seam.
+- [x] Every required scenario carries a clear `100`-turn benchmark packet that is easy to read and easy to fail.
+- [x] The scenarios that honestly need the longer horizon also carry `500`-turn carry-through checks instead of pretending `100` turns proves everything.
+- [x] Reviewer-readable output explains why each scenario passed or failed, including timing / cadence / revisit counters where they matter, such as first non-idle turn, first actionable turn, first scout departure, first arrival, revisit count, and route-flip / back-and-forth count by turn `500`.
+- [x] The explicit empty-frontier scenario proves that a camp with nothing useful nearby ventures out and increases frontier visibility through bounded scout/explore behavior instead of sitting forever, with the packet plainly reporting first scout, first arrival, visit/revisit totals, and obvious reversals.
+- [x] The packet is reviewer-readable enough that Schani or Josef can answer plainly whether it is leiwand, actually fun, alive on the map, and showing real emergent activity rather than inert legal-but-boring behavior.
+- [x] The slice stays bounded: no z-level implementation, no broad architecture rewrite, no vague benchmark theater, and no hand-waved passes when routing logic is still wrong.
+
+Notes:
+- Canonical contract lives at `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`.
+- The current tree now closes honestly on the current playback/proof seam via `run_overmap_benchmark_suite_packet()` plus `render_overmap_benchmark_suite_packet( const benchmark_suite_result &result )` in `src/bandit_playback.{h,cpp}`.
+- Deterministic coverage in `tests/bandit_playback_test.cpp` now proves the benchmark-suite contract, metric surface, empty-frontier packet, weather edge packet, and independence packet honestly.
+- Narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`.
+- The benchmark suite stays closed, and the later elevated-light / z-level follow-through is now checkpointed too.
+
+---
+
+## Bandit long-range directional light proof packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded long-range directional-light proof packet exists on the current bandit scenario / playback seam.
+- [x] Deterministic multi-turn proof up to `500` turns shows the hidden-side leakage case stays non-actionable while the visible-side leakage case becomes actionable under the same broader footing.
+- [x] The matching zombie-horde corridor variant proves the same light can influence horde pressure too instead of existing in isolated bandit-only theater.
+- [x] Each scenario carries explicit goals and tuning metrics, and reviewer-readable output shows whether those benchmarks were met.
+- [x] The slice stays bounded: no z-level expansion, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump.
+
+Notes:
+- Canonical contract lives at `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`.
+- The landed packet now closes honestly on the current tree, and the current active lane moved on to the pressure-rewrite follow-up.
+
+---
+
+## Bandit overmap/local pressure rewrite packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded overmap/local pressure-rewrite proof packet exists on the current bandit scenario / playback footing.
+- [x] Deterministic multi-turn proof shows a stalking or intercept posture can honestly cool, retreat, or reroute after local reality makes the original posture too dangerous.
+- [x] Reviewer-readable output shows the pressure rewrite clearly enough to explain why the stale pursuit no longer holds.
+- [x] Each scenario carries explicit goals plus scenario-specific benchmark hooks, and the later locked benchmark outcomes stay visible on the same report path.
+- [x] The slice stays bounded: no broad handoff redesign, no tactical local combat AI expansion, and no fresh world-sim jump.
+
+Notes:
+- Canonical contract lives at `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`.
+- The current tree now carries the bounded pressure-rewrite packet in `src/bandit_playback.{h,cpp}` through the named `generated_local_loss_rewrites_corridor_to_withdrawal` and `generated_local_loss_reroutes_to_safer_detour` scenarios plus the first-class `run_overmap_local_pressure_rewrite_proof_packet()` / `render_overmap_local_pressure_rewrite_proof_packet( const proof_packet_result &result )` path.
+- Deterministic coverage in `tests/bandit_playback_test.cpp` now proves the key bounded distinctions honestly: one stale corridor posture collapses to `hold / chill`, one parallel intercept case reroutes onto a safer detour, and the long horizon stays off the burned route instead of regrowing it by habit.
+- Narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`.
+
+---
+
+## Bandit weather concealment refinement packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded weather-refinement packet exists on the current smoke/light mark-generation footing.
+- [x] Deterministic coverage proves wind meaningfully fuzzes or de-precises smoke output instead of acting only as a token penalty.
+- [x] Deterministic coverage proves portal-storm weather is handled explicitly for smoke and light instead of falling through as an unmodeled special case.
+- [x] Reviewer-readable output explains how weather changed clue quality, for example reduced range, fuzzier origin, displaced/corridor-ish smoke read, or preserved bright-light legibility under dark storm conditions.
+- [x] The slice stays bounded: no full plume physics, no global smoke sim, no sound-law rewrite, no z-level packet, and no broad visibility architecture rework.
+
+Notes:
+- Canonical contract lives at `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`.
+- The current tree now carries the bounded weather packet in `src/bandit_mark_generation.{h,cpp}` plus reviewer-readable smoke/light weather summaries, with matching scenario coverage in `src/bandit_playback.cpp`.
+- Deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the bounded weather distinctions honestly: windy smoke stays actionable but fuzzier, portal-storm smoke is harder to localize, exposed bright portal-storm light can stay legible while sheltered ordinary light stays bounded, and rain remains an explicit reducer.
+- Narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][marks]"`, `./tests/cata_test "[bandit][playback]"`, and `./tests/cata_test "[bandit]"`.
+
+---
+
+## Bandit bounded scout/explore seam v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One explicit bounded scout/explore option exists on the current dry-run evaluator seam, for map uncovering only.
+- [x] Unreachable jobs still fail closed and do not auto-mint explore as a consolation prize.
+- [x] Deterministic coverage proves the key bounded distinctions honestly: explicit explore can beat `hold / chill`, blocked routes do not create explore without explicit greenlight, and strong real reachable leads still outrank exploratory wandering.
+- [x] Reviewer-readable dry-run output says plainly that the outing is explicit map uncovering and not accidental random wandering.
+- [x] One small playback/reference scenario packet proves the same rule on the current scenario seam, with explicit goals and tuning metrics.
+- [x] The slice stays bounded: no coalition logic, no fresh visibility family, no broad pathfinding rewrite, and no handoff expansion.
+
+Notes:
+- Canonical contract lives at `doc/bandit-bounded-scout-explore-seam-v0-2026-04-21.md`.
+- The current tree now carries the bounded evaluator packet in `src/bandit_dry_run.{h,cpp}`, using explicit `camp_input` footing for bounded explore instead of smuggling wandering out of failed routes.
+- Deterministic coverage in `tests/bandit_dry_run_test.cpp` now proves the explicit-greenlight, blocked-route, and strong-real-lead splits reviewer-cleanly.
+- `src/bandit_playback.cpp` now carries the named `bounded_explore_frontier_tripwire` scenario packet with explicit goals and tuning metrics, and `tests/bandit_playback_test.cpp` proves the same rule on the scenario seam.
+- Narrow deterministic validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][dry_run]"`, and `./tests/cata_test "[bandit][playback]"`.
+
+---
+
 ## Bandit concealment seam v0
 
 Status: CHECKPOINTED / DONE FOR NOW
@@ -35,18 +193,40 @@ Notes:
 
 ## Bandit scoring refinement seam v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One bounded scoring-refinement adapter exists on the current bandit dry-run/evaluator seam, refining how existing camp ledger state plus existing marks become job choice.
-- [ ] The threat side first inspects and collapses usable existing threat/danger footing instead of inventing a fresh bespoke threat ontology.
-- [ ] Deterministic coverage proves the key opportunism split honestly: bandits avoid strong opponents, but pounce when zombie pressure or other distraction lowers effective target coherence.
-- [ ] Reviewer-readable output shows the refined choice breakdown clearly enough to explain why a target was avoided, deferred, or exploited.
-- [ ] The slice stays bounded: no new visibility signal family, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion.
+- [x] One bounded scoring-refinement adapter exists on the current bandit dry-run/evaluator seam, refining how existing camp ledger state plus existing marks become job choice.
+- [x] The threat side first inspects and collapses usable existing threat/danger footing instead of inventing a fresh bespoke threat ontology.
+- [x] Deterministic coverage proves the key opportunism split honestly: bandits avoid strong opponents, but pounce when zombie pressure or other distraction lowers effective target coherence.
+- [x] Reviewer-readable output shows the refined choice breakdown clearly enough to explain why a target was avoided, deferred, or exploited.
+- [x] The slice stays bounded: no new visibility signal family, no broad heatmap/memory rewrite, no tactical zombie simulation, no coalition strategy layer, and no fresh world-sim expansion.
 
 Notes:
 - Canonical contract lives at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`.
-- This is now the active greenlit follow-up after the concealment checkpoint closed, not permission to widen into broader world-sim work.
+- The current tree now carries the bounded scoring packet in `src/bandit_dry_run.{h,cpp}` plus the mark-to-evaluator bridge update in `src/bandit_mark_generation.cpp`, with deterministic proof in `tests/bandit_dry_run_test.cpp` and `tests/bandit_mark_generation_test.cpp`.
+- The landed packet keeps the danger collapse small and inspectable: existing monster pressure plus target-coherence loss now reduce effective threat and add a bounded opportunism push on aggressive jobs instead of inventing a fresh threat cosmology.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
+
+---
+
+## Bandit moving-bounty memory seam v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded moving-bounty memory object exists for live `actor` or `corridor` style bounty, while structural bounty stays on site state instead of gaining chase memory.
+- [x] Structural sites keep only cheap state such as harvested / recently-checked / false-lead / sticky-threat footing, with no stalking logic glued onto them.
+- [x] Deterministic coverage proves the key bounded pursuit split honestly: live moving prey can be stalked briefly, but the memory collapses cleanly on lost contact, split, bad recheck, rising threat, or leash expiry instead of retrying forever.
+- [x] Reviewer-readable output shows whether a moving lead was refreshed, narrowed, or dropped instead of hiding the memory state in debugger soup.
+- [x] The slice stays computationally cheap: no per-turn tracking, no path-history scrapbook, no per-NPC biography graph, no endless retry loop, and no broad memory-palace world model.
+
+Notes:
+- Canonical contract lives at `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`.
+- The current tree now carries the bounded moving-memory packet in `src/bandit_mark_generation.{h,cpp}`, keeping moving-carrier and corridor leads briefly stalkable while structural/site state stays cheap and non-chasing.
+- Deterministic coverage in `tests/bandit_mark_generation_test.cpp` proves the bounded split honestly: moving prey persists briefly after raw signal cooling, structural sites do not gain chase memory, and stale moving contact drops reviewer-cleanly on leash expiry.
+- `tests/bandit_playback_test.cpp` now keeps the corridor playback packet aligned with the bounded pursuit window instead of pretending the corridor mark evaporates immediately.
+- Narrow deterministic validation passed via `make -j4 tests` and `./tests/cata_test "[bandit]"`.
 
 ---
 
@@ -324,18 +504,18 @@ Success state:
 - [x] A fixture or restaging path exists that contains a real `CAMP_LOCKER` zone and suitable locker-state/NPC-state for `locker.weather_wait`.
 - [x] `locker.weather_wait` is no longer blocked on missing fixture shape.
 - [x] A fresh packaged `locker.weather_wait` run reports **screen** / **tests** / **artifacts** separately on the repaired fixture path.
-- [x] The result is described reviewer-cleanly as harness/fixture work on existing locker behavior, not as early hackathon feature work.
+- [x] The result is described reviewer-cleanly as harness/fixture work on existing locker behavior, not as premature delivery of the later chat/ambient feature lanes.
 
 Notes:
 - This lane existed because the shipped `basecamp_dev_manual_2026-04-02` save fixture did not contain a `CAMP_LOCKER` zone even though the live dev save did.
 - The repair is the captured harness-owned save fixture `tools/openclaw_harness/fixtures/saves/dev/locker_ready_dev_2026-04-06/`, plus the scenario update that restores the usual `basecamp_dev_manual_2026-04-02` profile snapshot while installing that locker-ready save.
 - Latest packaged proof: `python3 tools/openclaw_harness/startup_harness.py probe locker.weather_wait` -> `.userdata/dev-harness/harness_runs/20260406_125056/probe.report.json` with `verdict: artifacts_matched` and separate screen/tests/artifacts reporting.
 - The goal was not new locker gameplay; it was to make existing locker behavior probeable and regressible.
-- Keep the hackathon-reserved chat/ambient feature lanes clearly separate.
+- Keep the later chat/ambient feature lanes clearly separate.
 
 ---
 
-## Hackathon runway — stabilization + harness
+## Stabilization + harness runway
 
 Status: CHECKPOINTED / DONE FOR NOW
 
@@ -357,7 +537,7 @@ Notes:
 - Harness screen audits now distinguish raw repo-HEAD drift from runtime-relevant drift, so docs/harness-only commits no longer falsely demote a runtime-compatible captured game window to `inconclusive_version_mismatch`.
 - `ambient.weird_item_reaction` now tails the correct repo-level `config/llm_intent.log`; its latest packaged run at `.userdata/dev-harness/harness_runs/20260406_092532/probe.report.json` is honest about the remaining gap: `inconclusive_no_new_artifacts` on a runtime-compatible build, not a fake no-artifact result from watching `debug.log`.
 - `locker.weather_wait` is now explicitly demoted back to blocked status until a locker-capable fixture/restaging path exists.
-- Important reviewer-facing distinction: the packaged `chat.nearby_npc_basic` and `ambient.weird_item_reaction` scenarios are harness scaffolding only. They are **not** the hackathon feature work for "chat interface over dialogue branches" or the "tiny ambient-trigger NPC model," and must not be described as partial completion of those feature lanes.
+- Important reviewer-facing distinction: the packaged `chat.nearby_npc_basic` and `ambient.weird_item_reaction` scenarios are harness scaffolding only. They are **not** the real feature work for "chat interface over dialogue branches" or the "tiny ambient-trigger NPC model," and must not be described as partial completion of those feature lanes.
 
 ---
 
@@ -402,24 +582,377 @@ Notes:
 
 ## Locker Zone V3
 
-Status: PARKED / PARTIALLY LANDED
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] Seasonal dressing / winter-vs-summer wardrobe logic exists.
-- [ ] Weather-sensitive wardrobe choices (coats / blankets / shorts / similar) are handled deliberately rather than by V1/V2 shortcuts.
-- [ ] Per-NPC overrides / nuance exist without undoing the simpler V1/V2 deterministic spine.
+- [x] Seasonal dressing / winter-vs-summer wardrobe logic exists.
+- [x] Weather-sensitive wardrobe choices (coats / blankets / shorts / similar) are handled deliberately rather than by V1/V2 shortcuts.
+- [x] Per-NPC overrides / nuance exist without undoing the simpler V1/V2 deterministic spine.
 - [x] Deterministic coverage exists for the V3 behavior that is actually implemented.
 - [x] Proportional runtime validation for the currently implemented V3 behavior is recorded in `TESTING.md`.
-- [ ] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
+- [x] Any Josef-specific follow-up checks are written down as non-blocking notes rather than treated as plan blockers.
 
 Notes:
-- V3 is not the current delivery target. The active controlled follow-through packet is now moving through Package 5, so keep V3 parked unless Josef explicitly reopens locker nuance.
+- Canonical contract lives at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`.
+- Locker Zone V3 now closes honestly on the current tree and hands the baton to the next camp-side packet instead of pretending one more polite missing row still exists.
 - The first landed V3 lane is intentionally narrow: local temperature nudges shirt/vest-slot torso+arm outerwear toward warmer gear in cold weather and lighter gear in hot weather.
 - The next landed V3 lane is still narrow: pants-slot legwear now distinguishes shorts-like coverage from full-length coverage so cold weather prefers full-length legwear and hot weather prefers shorts-like legwear.
-- Outerwear and the currently landed legwear lane now both have proportional runtime proof on the recorded current-binary / current-save path.
+- The newly landed seasonal slice stays bounded too: at moderate temperatures the same outerwear and legwear seams now still bias winter gear in winter and lighter gear in summer, on both the planning seam and the real locker service path.
+- The newly landed weather-sensitive slice stays bounded too: rainy moderate-weather service now deliberately prefers rainproof outerwear over generic winter outerwear on both the planning seam and the real locker service path.
+- The bounded per-NPC nuance is the worker-specific wardrobe-preservation layer already living on the same deterministic seam: the real locker service path now keeps one-piece suits, dresses, cheongsams, footed jumpsuits, waders, and similar specialized garments unless the replacement set preserves the worker's lost coverage or built-in footwear.
+- Focused deterministic validation passed on the current tree via `make -j4 tests` and `./tests/cata_test "[camp][locker]"`.
+- No Josef-specific follow-up is currently needed for this closed V3 packet; any later human-only checks should batch with a larger camp-side packet instead of becoming a tiny blocker.
 - The `antarvasa` return-to-locker outcome is currently accepted as the honest one-item-per-slot pants policy: keep the best current pants item for comparison, and return extra pants-slot duplicates to the locker when a hot/cold swap lands.
-- If Josef explicitly reopens locker work, resume from the remaining unchecked V3 rows instead of pretending the whole lane is already done.
-- Do not quietly let V3 nuance undo the simpler V1/V2 deterministic spine.
+- The slice stayed bounded: no Smart Zone Manager sprawl, no basecamp-automation rewrite, and no per-NPC fashion-chaos scripting.
+
+---
+
+## Basecamp AI capability audit/readout packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded capability audit/readout packet exists for the current Basecamp AI surface.
+- [x] The packet distinguishes player-facing spoken behaviors from internal structured actions/tokens instead of mushing them together.
+- [x] The packet says plainly what board/job actions are actually supported now.
+- [x] The packet says plainly whether any prompt-shaped interpretation layer still matters, or whether the current behavior is already mostly deterministic plumbing.
+- [x] The packet is grounded in current code/tests/evidence strongly enough that later cleanup decisions do not rely on stale folklore.
+- [x] The slice stays bounded and does not mutate into implementation work by accident.
+
+Notes:
+- Canonical packet now lives at `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`.
+- The packet now exists on the current tree and closes honestly: the current Basecamp AI surface is mostly deterministic craft-request plus board/job routing, while the still prompt-shaped layer is mainly snapshot/planner packaging rather than core spoken command interpretation.
+- The audit stayed bounded: no fresh Basecamp implementation work, no prompt externalization rewrite, no Smart Zone Manager spillover, and no Locker Zone V3 reopen.
+- This checkpoint now hands the baton to the greenlit live-probe packet instead of pretending the audit is still missing.
+
+---
+
+## Live bandit + Basecamp playtesting feasibility probe v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded live playtesting feasibility packet exists for current bandits plus current Basecamp footing.
+- [x] The packet says plainly whether live playtesting is already practical on the current tree.
+- [x] The packet says plainly whether overmap-bandit setup/spawn control is currently available, narrowly restageable, or still missing.
+- [x] The packet separates screen/tests/artifacts cleanly instead of flattening them into one soup verdict.
+- [x] Any blocker is stated as a concrete missing setup/control path rather than vague playtesting hand-wringing.
+- [x] The slice stays bounded and does not turn into open-ended live playtesting theater.
+
+Notes:
+- Canonical contract lives at `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`.
+- Fresh current-build startup proof now lives under `.userdata/dev/harness_runs/20260422_002122/`, with window title/build head `5af2fb80d8-dirty`, `version_matches_repo_head = true`, and `version_matches_runtime_paths = true`.
+- The bounded live restage probe under `.userdata/dev-harness/harness_runs/20260422_002329/` now proves one real intentional bandit setup seam on the current tree: named NPC debug spawn via `}` -> `s` -> `p`, filter `bandit`, then confirm, producing hostile `Stefany Billings, Bandit` live on screen.
+- The current honest verdict is narrow rather than theatrical: bounded current-build bandit + Basecamp live playtesting is practical now, but reviewer-clean packaged overmap-bandit scenario/control footing is still absent from the harness tree.
+
+---
+
+## Live bandit + Basecamp playtest packaging/helper packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded helper or first-class harness scenario exists for current-build live bandit + Basecamp restage on real existing Basecamp footing.
+- [x] The helper packages the already-proved named-bandit restage seam instead of relying on remembered debug-menu choreography alone.
+- [x] One fresh live run proves the helper can reach the intended setup repeatably and leaves reviewer-readable artifacts.
+- [x] The packet says plainly what remains manual or ugly, if anything, instead of laundering it into magic.
+- [x] The slice stays bounded and does not widen into fresh mechanics, zoning-mechanics reopen, encounter/readability judgment, or another generic feasibility lap.
+
+Notes:
+- Canonical contract lives at `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`.
+- The landed first-class helper is `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`, packaging the named-NPC spawn seam on reused McWilliams/Basecamp footing instead of relying on remembered chat choreography.
+- Fresh current-build proof now lives under `.userdata/dev-harness/harness_runs/20260422_132353/`, with `window_title = Cataclysm: Dark Days Ahead - 7ab535f0c7`, `version_matches_repo_head = true`, and `version_matches_runtime_paths = true`.
+- Reviewer-readable artifacts from that run include `filter_bandit_template.after.{png,screen_text.txt}` showing the filtered `bandit` menu entries and `post_spawn_settle.after.{png,screen_text.txt}` showing `Joshua Wilkes, Bandit gets angry!`.
+- Remaining rough edges stay explicit rather than hidden: the helper still uses the debug named-NPC spawn surface, still depends on the captured McWilliams fixture, the generic artifact verdict is screen-first rather than debug-log-smart, and probe cleanup still leaves a live game window to close.
+- Validation stayed proportionate to the slice: forced fresh tiles rebuild via `make -B -j4 TILES=1 cataclysm-tiles`, then the packaged live probe via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`, with no new deterministic tests because no gameplay code changed.
+
+---
+
+## Bandit + Basecamp first-pass encounter/readability packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One bounded first-pass live encounter/readability packet exists for current bandit + Basecamp footing on top of the packaged helper path.
+- [x] The packet says plainly what the first hostile encounter actually looks and feels like on screen, including whether the player can read what is happening without debug folklore.
+- [x] The packet distinguishes readable gameplay pressure from leftover helper/debug awkwardness instead of mushing them together.
+- [x] Any blocker is stated concretely, for example spawn weirdness, posture confusion, unreadable hostility, dead pacing, or Basecamp-context ambiguity.
+- [x] The packet leaves reviewer-readable artifacts strong enough that Schani can make the next higher-level product read without reinventing the probe from memory.
+- [x] The slice stays bounded and does not widen into fresh mechanics, broad tuning, or speculative feature expansion.
+
+Notes:
+- Canonical contract lives at `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`.
+- Fresh current-build proof lives under `.userdata/dev-harness/harness_runs/20260422_144921/` and uses the bounded live readability helper `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`.
+- The immediate read is weak and slightly puppet-show-ish: the spawn mostly lands as one more purple nearby-NPC name plus old right-panel clutter, so the player does not get a strong first-pass spatial read on why this person is the threat.
+- The encounter is still mechanically real and dangerous, not fake theater: within eight turns the same run records `Heath Griffith, Bandit gets angry!`, taunts, safe-mode survivor ping, gunfire, and the deaths of Katharina Leach and Robbie Knox.
+- The honest close-out verdict is therefore narrow and useful: real pressure exists, but first-pass readability is weak/confusing enough that the right next step is the playtest-kit surface-cleanup packet rather than another setup/readability feasibility loop.
+
+---
+
+## Bandit + Basecamp playtest kit packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] The current named-bandit helper path has honest repeatability evidence instead of one lucky run.
+- [x] The artifact/report surface for that helper path is screen-first and reviewer-readable enough that later playtest discussion does not depend on folklore.
+- [x] The helper path cleans up after itself well enough that repeated probes do not leave stale game windows or obvious session clutter behind.
+- [x] One purpose-built playtest fixture/save pack exists with a fast reinstall/load path for current bandit + Basecamp probing.
+- [x] That fixture/save pack exposes a small named scenario family suitable for Josef playtesting and debugging rather than one brittle operator-only restage ritual.
+- [x] The packet says plainly what still remains ugly or manual instead of laundering it into magic.
+- [x] The slice stays cohesive and bounded rather than mutating into a general harness/world-authoring rewrite.
+
+Notes:
+- Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`.
+- The closed `v0` packet now packages the thin repeatable fast-reload footing honestly instead of pretending it should keep growing.
+- `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw` is now the bounded repeatability/reporting seam for this helper path, writing `repeatability.report.json`, `repeatability.raw_runs.json`, and `repeatability.summary.txt` under the summary run directory.
+- Fresh live evidence under `.userdata/dev-harness/harness_runs/20260422_151547/` ran the packaged helper three times on the same McWilliams footing, recorded stable filtered-bandit menu proof on all three runs, auto-terminated the launched game each time, and exposed the still-useful rough edge honestly: the right-panel anger line only OCR-matched on one run, so later discussion can talk about capture sensitivity instead of pretending the generic artifact verdict answered everything.
+- The purpose-built fast-reload pack is now the thin alias pair `tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/` plus `tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/`, both reusing the captured McWilliams live-debug footing through manifest-only `source_fixture` / `source_snapshot` indirection instead of another giant copied save blob.
+- The first named scenario family on that pack is now:
+  - `tools/openclaw_harness/scenarios/bandit.basecamp_playtestkit_restage_mcw.json`
+  - `tools/openclaw_harness/scenarios/bandit.basecamp_playtestkit_readability_mcw.json`
+- Fresh live proof on the new pack aliases lives under `.userdata/dev-harness/harness_runs/20260422_152650/` and `.userdata/dev-harness/harness_runs/20260422_152819/`, showing that the fast-reload alias footing reaches both the base hostile-restage seam and the short-horizon readability capture path while still auto-cleaning the launched game.
+- The packet now says the rough edges plainly inside the aux doc: captured-save footing, named-NPC debug spawn dependency, screen-first evidence instead of `debug.log` mythology, and mixed immediate anger OCR.
+- The packet also stops where it should: one thin alias pack plus two named scenarios, with richer prepared fixtures handed to `v1` and broader scenario surgery handed to `v2`.
+- Non-goal reminder: no fresh bandit mechanics, no zoning reopen, no generic custom-map framework, and no infinite scenario sandbox.
+
+---
+
+## Bandit + Basecamp playtest kit packet v1
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] A small named family of rich prepared-base fixtures exists for current Basecamp-management and bandit-interplay probing.
+- [x] The fixtures are meaningfully management-ready rather than empty camp shells.
+- [x] The player-side debugging/readability footing includes both clairvoyance mutations.
+- [x] The fixture method is honest and reusable: captured save for structure, live restage for variants.
+- [x] The scenario family is reviewer-readable enough that Schani, Andi, and Josef can tell which fixture is for which kind of playtest without folklore.
+- [x] The packet says plainly what still remains manual, brittle, or not yet fixture-backed.
+- [x] The slice stays about rich prepared fixtures rather than sprawling into a generic world-authoring platform.
+
+Notes:
+- Canonical contract lives at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`.
+- The current tree now closes this packet honestly on top of the closed thin `v0` footing instead of leaving the method row half-open.
+- The landed fixture pair stays `bandit_basecamp_prepared_base_v1_2026-04-22` and `bandit_basecamp_clairvoyance_v1_2026-04-22`, with the clairvoyance pack now reusing the prepared-base alias instead of carrying its own copied save payload.
+- `tools/openclaw_harness/startup_harness.py` now resolves fixture-manifest `save_transforms` and applies the bounded `player_mutations` restage helper during fixture install; `startup.result.json` / `probe.report.json` surface the applied transform under `fixture_install.applied_save_transforms`.
+- Fresh current-build closeout proof lives under `.userdata/dev-harness/harness_runs/20260422_172658/`, and the installed/post-load save still serializes both debug clairvoyance mutations in `traits`, `mutations`, and `cached_mutations`.
+- Narrow validation for the closeout slice passed via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py install-fixture bandit_basecamp_clairvoyance_v1_2026-04-22 --profile andi-v1-check --fixture-profile live-debug --replace`, and `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_audit_mcw`.
+- Audit honesty note still stands: the run folders contain screenshots and load-state metadata, but the generic harness artifact verdict for these screen-first audits still comes back `inconclusive_no_new_artifacts`.
+
+---
+
+## Bandit live-world control + playtest restage packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] One live saveable owner exists for the relevant current bandit spawn families tied to this lane instead of leaving them as disconnected static-content / mapgen islands.
+- [x] The owner keeps explicit per-site and per-spawn-tile bandit headcounts plus membership strongly enough that later control and writeback are honest rather than guessed.
+- [x] The live system can actually control or dispatch those spawned bandits through the real world path instead of leaving them as disconnected `place_npcs` islands with post-hoc bookkeeping or whole-camp outings.
+- [x] Dispatch size is derived from the site's live remaining population strongly enough that site-backed camps keep a home presence and later losses/shrinkage reduce future outing size instead of snapping back to folklore counts.
+- [x] A bounded nearby restage path can seed a controlled bandit camp about `10 OMT` away on current build.
+- [x] That restage path supports two honest modes: reviewer probe/capture may clean up, while manual playtest handoff leaves the game/session running instead of auto-terminating it.
+- [x] The setup exercises the real overmap/bubble handoff plus local writeback path rather than a fake private theater.
+- [x] Local outcomes change later world behavior instead of leaving the live owner stale, including later site size / dispatch capacity after kills, losses, returns, or partial contact.
+- [x] A reviewer-clean perf report exists on that nearby live setup, including baseline turn time, bandit-cadence turn time, spike ratio, and max turn cost.
+- [x] At least one dirtier later-world disturbance proof exists on that same nearby owned setup beyond the calm return->re-dispatch path, such as loss/missing shrinkage, save/load disturbance, or player-disruption without stale-roster reset.
+- [x] The slice stays bounded: no giant generic map-authoring empire, no full hostile-human rewrite, no fake harness-only integration, and no faction-grand-strategy detour.
+
+Notes:
+- Canonical contract lives at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`.
+- This packet absorbs the useful remaining helper/tooling work from `Bandit + Basecamp playtest kit packet v2` instead of deleting it, but helper breadth no longer counts as the headline product by itself.
+- The first bounded live owner seam now exists in `src/bandit_live_world.{h,cpp}` plus `overmap_global_state.bandit_live_world`: tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns claim into one saveable owner ledger at `map::place_npc` time with explicit site/member/spawn-tile records.
+- Narrow validation for the owner-ledger slice passed earlier via touched-object compile of `obj/{bandit_live_world,mapgen,overmapbuffer,savegame}.o` plus a standalone filtered Catch binary for `tests/bandit_live_world_test.cpp`.
+- The current tree now adds the first bounded control seam on top of that ledger: `bandit_live_world::plan_site_dispatch(...)` / `apply_dispatch_plan(...)` build one real scout dispatch from owned members, and `overmap_npc_move()` can hand those selected NPCs a normal `NPC_MISSION_TRAVELLING` overmap route toward a nearby player target instead of leaving the owner as post-hoc bookkeeping only.
+- That dispatch seam now derives outgoing capacity from the live remaining roster instead of folklore counts: site-backed camps keep one member home by rule, micro-sites can still commit their full tiny roster, and `update_member_state(...)` shrinks both site headcount and per-spawn-tile headcount when deaths/missing results land.
+- The owner ledger now also persists one active outing summary (`active_group_id`, `active_target_id`, `active_member_ids`) and can apply a bounded handoff return packet back onto those exact owned members after save/load without folklore-reconstructing which bodies went.
+- The current tree now also has a first bounded live aftermath observer: `overmap_npc_move()` watches active owned outing members for real `local_contact`, `dead`, and bounded home-return observations, and `bandit_live_world::resolve_active_group_aftermath(...)` converts fully resolved observations back into the existing exact-member return-packet seam instead of leaving the saved outing summary inert.
+- Fresh narrow validation for the reserve/writeback plus live-aftermath hook slice passed via touched-object compile of `obj/tiles/bandit_live_world.o`, touched-object compile of `obj/tiles/do_turn.o`, exact current-build compile of `tests/bandit_live_world_test.cpp`, and `git diff --check`.
+- The nearby-restage helper surface has now widened in one bounded, reviewer-visible way: `tools/openclaw_harness/startup_harness.py` supports `player_mutations`, `player_near_overmap_special`, and the new `seed_overmap_special_near_player` manifest transform, the current nearby fixture alias is `bandit_live_world_nearby_camp_v0_2026-04-22`, and the paired scenario is `tools/openclaw_harness/scenarios/bandit.live_world_nearby_camp_mcw.json`.
+- `tools/openclaw_harness/startup_harness.py` also now has a distinct `handoff` mode that leaves a packaged setup alive and writes `handoff.report.json` / `handoff.pid` instead of always auto-cleaning on success.
+- Fresh live proof now closes the calm same-site follow-through question too: fixture `tmp_bandit_live_world_post_writeback_snapshot_2026-04-23` starts with the exact scout already written back home and no active outing, while continuation probe `.userdata/dev-harness/harness_runs/20260423_082832/` advances `1860` turns on the original basecamp footing and re-arms the same owned site with `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,41,0`, `active_member_ids = [4]`, and member `4` back in `state = outbound` with `last_writeback_summary = dispatch scout toward player@140,41,0`.
+- The moved-player McWilliams variant was replaced with an honest seeded-site helper: fixture install now keeps the player/basecamp footing at `om_pos [140, 41, 0]` and copies a real `bandit_camp` footprint onto `target_abs_omt [140, 51, 0]`, about `10 OMT` away in the same overmap.
+- Fresh narrow validation for that replacement passed via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py install-fixture bandit_live_world_nearby_camp_v0_2026-04-22 --profile andi-nearby-seed-check --fixture-profile live-debug --replace`, and direct placement audit showing the added `bandit_camp` footprint at `(140..141, 51..52)` in `o.0.0.zzip`.
+- Fresh current-build nearby-restage proof now lives under `.userdata/dev-harness/harness_runs/20260422_205630/` and `.userdata/dev-harness/harness_runs/20260422_205658/`; the probe run auto-cleaned with `cleanup.status = terminated`, the handoff run stayed alive with `cleanup.status = deferred_handoff`, and grep over those run dirs no longer finds the old `game::validate_camps()` / `invalid map position` load error.
+- Fresh current-build corrected-anchor ownership proof now also lives under `.userdata/dev-harness/harness_runs/20260422_224132/`: immediate save on the corrected nearby bootstrap serialized owned site `overmap_special:bandit_camp@140,51,0` with `headcount: 14`, the full nearby footprint, and 14 explicit claimed members in `dimension_data.gsav`.
+- The restage seam is now honest enough to stop being the blocker; the open product bar has moved forward to real overmap/bubble interaction and local writeback on this nearby seeded setup.
+- Fresh reviewer-clean perf evidence now exists on the same nearby basecamp footing via `.userdata/dev-harness/harness_runs/20260423_004225/`, `.userdata/dev-harness/harness_runs/20260423_004253/`, `.userdata/dev-harness/harness_runs/20260423_004349/`, and `.userdata/dev-harness/harness_runs/20260423_012819/`: single-turn `566.692 ms`, wait-120 `233.168 ms`, cadence-1860 `234.460 ms` avg with `236.622 ms` max batch-turn cost (`1.009x` spike ratio), and stress-4200 `234.065 ms` avg with `238.327 ms` max batch-turn cost (`1.018x` spike ratio).
+- Fresh current-build end-to-end writeback proof now also exists on the real nearby setup via the copied-save continuation chain `.userdata/dev-harness/harness_runs/20260423_042618/` -> `20260423_054050/` -> `20260423_055255/`: the copied `7200`-turn save pinned the honest stuck `local_contact` seam, the first moved-away continuation with only `1860` turns still left the outing active, and the second moved-away continuation with `3600` turns resolved member `4` back to `state = at_home` with `last_writeback_summary = return withdrawn from player@140,41,0` while clearing `active_group_id`, `active_target_id`, and `active_member_ids`.
+- Fresh current-build dirty later-world disturbance proof now also exists on the same nearby owned setup via `.userdata/dev-harness/harness_runs/20260423_194416/`: raw-local-contact continuation `tmp.bandit_owned_site2_raw_local_contact_kill_probe` killed the exact scout, advanced `10` turns, and saved the owned site with `headcount = 13`, member `4` as `state = missing` with `last_writeback_summary = return broken from player@140,41,0 (missing)`, home `spawn_tile [3371,1230,0]` at `headcount = 0`, and the next active outing already rotated to `active_member_ids = [5]` instead of snapping back to the old full roster.
+- That closes the packet honestly on current build: the nearby owned-site seam now has real bootstrap, dispatch, live contact, exact-member writeback, calm same-site re-dispatch, dirty loss/missing follow-through, manual handoff support, and the reviewer-clean perf packet without widening into a bigger hostile-human empire.
+
+---
+
+## Multi-site hostile owner scheduler packet v0
+
+Status: CHECKPOINTED / DONE FOR NOW
+
+Success state:
+- [x] The live hostile-owner seam can run `2-3` simultaneous hostile sites on one world without collapsing them into one shared fake camp brain.
+- [x] Each hostile site keeps its own anchor/home site, roster/headcount, active outing or contact state, remembered pressure/marks, and persisted writeback state.
+- [x] Site-backed camps still keep a home presence while losses continuously shrink later outings instead of snapping back to folklore counts.
+- [x] One site's losses, return state, or contact pressure do not silently rewrite another site's state.
+- [x] Repeated same-target pressure can overlap occasionally without turning into routine multi-site dogpile coalition behavior.
+- [x] Save/load stays honest for multiple hostile owners at once instead of only for the single easiest happy-path site.
+- [x] The slice stays bounded: no faction grand strategy, no dozens-of-families explosion, and no magical shared omniscience.
+
+Notes:
+- Canonical contract lives at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`.
+- First deterministic proof lives in `tests/bandit_live_world_test.cpp`: `bandit live world keeps several hostile sites independent across save and writeback` builds three claimed hostile sites (`bandit_camp`, `bandit_work_camp`, and `mx_bandits_block`), gives all three independent active outings/marks/pressure, round-trips through JSON save/load, applies one site's loss/writeback, and asserts the other active sites stay untouched.
+- Earlier deterministic validation passed via `make -j4 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/bandit_live_world.o`, `./tests/cata_test "[bandit][live_world]"`, and `./tests/cata_test "[bandit][live_world][multi_site]"` (`65 assertions in 1 test case`).
+- Fresh current-build live scheduler proof now lives at `.userdata/dev-harness/harness_runs/20260424_003005/`: disposable scenario `tmp.bandit_multi_site_two_site_dispatch_probe_1860` starts from two claimed nearby hostile owners, disables safe mode, advances `1860` turns across the `30_minutes` scheduler cadence, and saves two independent active player-pressure records at once.
+- That saved world has `overmap_special:bandit_camp@140,51,0` at `headcount = 14` with member `4` `state = outbound`, `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,43,0`, and remembered mark `player@140,43,0`; separately, `overmap_special:bandit_camp@140,44,0` stays at `headcount = 7` with member `18` `state = local_contact`, `active_group_id = overmap_special:bandit_camp@140,44,0#dispatch`, the same player target, and its own remembered mark/pressure.
+- The scheduler-side behavior change is intentionally bounded: `steer_live_bandit_dispatch_toward_player()` now counts existing player pressure and permits at most `2` simultaneous player-pressure outings rather than returning after the first valid site; that proves overlap without teaching the sites a coalition brain.
+- Fresh narrow validation for the final live proof passed via `make -j4 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/do_turn.o cataclysm-tiles`, `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py list-scenarios`, `git diff --check`, and the copied-save inspection from `.userdata/dev-harness/harness_runs/20260424_003005/saved_world/McWilliams`.
+- This closes the packet honestly enough to move the active lane to `Hostile site profile layer packet v0`; the point was small independent hostile ownership, not reopening the whole hostile-human architecture debate.
+
+---
+
+## Hostile site profile layer packet v0
+
+Status: CLOSED / CHECKPOINTED
+
+Success state:
+- [x] One shared hostile owner/cadence/persistence substrate exists with explicit profile rules instead of hardcoding everything to current bandit-camp assumptions.
+- [x] At minimum one camp-style profile and one smaller hostile-site profile can coexist on that substrate reviewer-cleanly.
+- [x] Dispatch, threat posture, return-clock, and writeback differences are profile-driven and readable rather than site-kind spaghetti.
+- [x] The multi-site scheduler can consume those profiles without regressing the already-honest bandit live-owner footing.
+- [x] The packet stays bounded: no giant faction-AI framework, no singleton stalker implementation, and no broad diplomacy/social-horror widening.
+
+Notes:
+- Canonical contract lives at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`.
+- This packet sits directly behind `Multi-site hostile owner scheduler packet v0` and is the bridge from one-family bandit machinery to a reusable hostile-site substrate.
+- Current implementation lives in `src/bandit_live_world.{h,cpp}` as explicit `hostile_site_profile` state/rules; the side-by-side deterministic proof lives in `tests/bandit_live_world_test.cpp` as `bandit live world dispatch rules are driven by hostile site profile`.
+- Fresh validation: `make -j4 tests`, `./tests/cata_test "[bandit][live_world][profile]"`, `./tests/cata_test "[bandit][live_world]"`, and focused `git diff --check` passed on the current dirty tree.
+- `Writhing stalker` stays out of this slice on purpose; the goal here is the profile layer itself, not the first singleton proof.
+
+---
+
+## Cannibal camp first hostile-profile adopter packet v0
+
+Status: ACTIVE / GREENLIT
+
+Success state:
+- [ ] One honest cannibal-camp hostile profile runs on the shared hostile-site substrate instead of faking reuse through bandit-only assumptions.
+- [ ] Cannibal-camp cadence, roster, pressure, dispatch, and writeback rules are explicit enough that later behavior can be reasoned about without folklore.
+- [ ] Cannibal-camp owned sites can coexist with bandit-owned sites without coalition nonsense or accidental shared-state corruption.
+- [ ] If the current tree lacks a real cannibal-camp site family, the packet first lands one **rare dedicated cannibal-camp mapgen/spawn anchor** instead of attaching the new profile to vapor.
+- [ ] That first anchor is allowed to derive from current bandit-camp structure, but its names, loadouts, and environmental dressing are explicit enough that review can tell it is the cannibal variant rather than a random runtime mutation.
+- [ ] The slice stays bounded: no writhing-stalker singleton behavior, no giant lore/diplomacy expansion, no every-hostile-family-at-once detour, and no silent default bandit-camp -> cannibal-camp conversion rule.
+
+Notes:
+- Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`.
+- This is intentionally the first non-bandit adopter because it proves the hostile-site profile layer on a second camp-shaped family before the weirder singleton/stalker case.
+- Current repo footing already has a little cannibal-flavored content (`lodge_cannibal_15x15`, `cannibal_weapons`, `cannibal_food`), but not a real hostile cannibal-camp site family yet.
+- `Writhing stalker` remains parked one step longer and should be revisited later as the first singleton adopter after the profile layer exists.
+
+---
+
+## Bandit approach / stand-off / attack-gate packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One honest local approach / stand-off / attack-gate layer exists on top of the live bandit control seam.
+- [ ] Dispatched bandit groups can reviewer-readably choose among stalking, holding off, probing, opening a shakedown, attacking directly, or aborting.
+- [ ] The gate law is explicit enough that later packet work can answer `why did this become a shakedown instead of a fight` without folklore reconstruction.
+- [ ] Ordinary Basecamp/player pressure does not feel like instant psychic tile collapse because bandits can keep bounded stand-off behavior.
+- [ ] Convoy / vehicle / rolling-travel contexts are allowed to skip the polite shakedown posture when they honestly read as moving ambush opportunities.
+- [ ] The slice stays bounded: no pay-or-fight UI yet, no giant stealth doctrine, no radio/stalker widening, and no broad combat-AI rewrite.
+
+Notes:
+- Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
+- This is the first bandit-robbery packet behind the already-frozen hostile-site stack, not a reason to leapfrog the earlier greenlit order.
+- Radio warfare and `Writhing stalker` stay parked for later.
+
+---
+
+## Bandit shakedown pay-or-fight surface packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One honest player-present shakedown scene can bootstrap from the prior approach/gate packet instead of appearing as disconnected chat magic.
+- [ ] The initial interaction is clearly a robbery demand with a readable `pay` versus `fight` fork.
+- [ ] Whenever this shakedown surface is invoked, including any later reopened demand, fighting remains an explicit option rather than disappearing into one-way surrender theater.
+- [ ] The surrender surface uses an explicit bounded goods pool that matches scene context rather than magical remote inventory reach.
+- [ ] The demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee.
+- [ ] Paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly.
+- [ ] The slice stays bounded: no branching diplomacy opera, no fake debt economy, no magical remote inventory, and no unrelated convoy-combat rewrite.
+
+Notes:
+- Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
+- This packet sits directly behind `Bandit approach / stand-off / attack-gate packet v0`.
+- The broad concept lean for explicit `pay` versus `fight` plus trading-style toll handling now has a bounded future packet instead of living only as attractive background muttering.
+
+---
+
+## Bandit aftermath / renegotiation writeback packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One honest aftermath/writeback layer exists for player-present bandit shakedown outcomes.
+- [ ] Later bandit behavior can reflect scene results such as losses, wounds, loot haul, failed extraction, anger, or caution instead of resetting to folklore.
+- [ ] A materially weakened Basecamp defense, including a killed defender, can reopen the pressure once from a stronger bandit position with a higher demand when that is the honest read.
+- [ ] That harsher reopened demand still gives the player a fresh explicit `pay` versus `fight` reconsideration fork instead of hard-forcing only surrender or only combat.
+- [ ] The harsher reopened demand is explicit and reviewer-readable rather than hidden in vague score drift.
+- [ ] Bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet cruelty upward.
+- [ ] The slice stays bounded: no infinite haggling loops, no giant diplomacy/reputation machinery, and no multi-camp retaliation grand strategy.
+
+Notes:
+- Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
+- This packet sits directly behind `Bandit shakedown pay-or-fight surface packet v0`.
+- The specific wanted beat is frozen here: if bandits kill a Basecamp defender and the local threat read drops, they may reopen once from a stronger position with a higher toll — and the player still gets a fresh choice to pay or fight again.
+
+---
+
+## Bandit extortion-at-camp restage + handoff packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One named restage path can attract a real controlled bandit group toward Basecamp through the actual live owner/dispatch seam.
+- [ ] One reviewer probe/capture command and one manual handoff command exist for that same path.
+- [ ] The handoff path leaves the session alive at a genuinely useful extortion-at-camp moment instead of cleaning up before play starts.
+- [ ] The setup does not rely on fake debug-spawn theater or on moved-player/basecamp hacks that break current camp validity.
+- [ ] Reviewer-readable reports make it obvious which setup mode ran, which real controlled group was used, and whether the scene reached approach, stand-off, or shakedown state.
+- [ ] The slice stays bounded: no generic harness empire and no helper polish masquerading as the robbery chain itself.
+
+Notes:
+- Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
+- This packet sits directly behind the robbery-chain packets and also depends on the active nearby-controlled-camp lane becoming honest first.
+- The current helper surface (`bandit_live_world_nearby_camp_v0_2026-04-22` / `bandit.live_world_nearby_camp_mcw`) is useful footing, but its moved-player McWilliams attempt still breaks `game::validate_camps()` and therefore does not yet count as this packet being done.
+
+---
+
+## Bandit extortion playthrough audit + harness-skill packet v0
+
+Status: GREENLIT
+
+Success state:
+- [ ] One named audit/playthrough surface exists for the full Basecamp extortion chain rather than only for the first setup moment.
+- [ ] The packaged flow can cover first demand, fight branch, defender-loss reopen, raised-price second demand, and second `pay` versus `fight` reconsideration clearly enough for review.
+- [ ] Reports separate screen, tests, and artifacts/logs cleanly enough that later debugging does not devolve into folklore.
+- [ ] The relevant harness skill/docs are updated so another agent can discover the named paths and run them without archaeological guessing.
+- [ ] The slice stays bounded: no fake total-automation empire and no feature-redesign side quest hiding inside audit packaging.
+
+Notes:
+- Canonical contract lives at `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md`.
+- This packet sits directly behind `Bandit extortion-at-camp restage + handoff packet v0`.
+- The point here is teachable reproducibility for the whole extortion chain, not another pile of operator-only secret moves.
+
+---
+
+## Bandit + Basecamp playtest kit packet v2
+
+Status: FOLDED INTO LATER ACTIVE LANE / SUPPORTING ONLY
+
+Notes:
+- Canonical helper contract still lives at `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md`.
+- The useful open scenario-surgery / observability work from `v2` was carried forward into `Bandit live-world control + playtest restage packet v0` instead of being killed.
+- `v2` is therefore no longer a standalone roadmap item; it survives only as supporting tooling in service of the newer active lane.
 
 ---
 
@@ -534,7 +1067,7 @@ Notes:
 - The intended readout surface is `/plan active`, `/plan greenlit`, `/plan parked`, with optional compact combined `/plan`; the current script accepts those slash-style tokens directly.
 - Source of truth stays `Plan.md`; the command does not invent state from chat memory or agent narration.
 - Greenlit ordering stays active first, then any queued greenlit items, with bottom-of-stack entries appearing last instead of as a separate printed class.
-- Thin or contradictory canon now warns instead of pretending certainty, with the current Hackathon parked heading already exercising the thin-canon fallback path.
+- Thin or contradictory canon now warns instead of pretending certainty, and the command still keeps explicit fallback behavior when canon is too thin to classify cleanly.
 
 ---
 
@@ -591,6 +1124,26 @@ Notes:
 - Supporting recon note for the visibility item: `doc/bandit-visibility-physical-systems-recon-2026-04-19.md`.
 - The cleanup/follow-through packet for the remaining control-law gaps lives at `doc/bandit-concept-formalization-followthrough-2026-04-19.md` and is now checkpointed docs/spec substrate rather than an active lane.
 - The broad concept still stays parked as substrate outside the explicitly promoted v0 slices, with smoke now being the next active narrow bridge.
+
+---
+
+## Arsenic-and-Old-Lace social threat and agentic-world concept bank
+
+Status: CHECKPOINTED / FAR-BACK PARKED SUBSTRATE
+
+Success state:
+- [x] One auxiliary concept-bank doc preserves the current speculative C-AOL feature families cleanly enough that later planning no longer has to rediscover them from scattered chat.
+- [x] The preserved bank explicitly separates nearer playable threat/control seeds from broader social-horror and weird-world systemic ideas instead of flattening everything into one soup.
+- [x] The bank explicitly preserves alarm states with natural-language yelling control, radio information warfare, writhing-stalker pressure, bounded sight avoidance, feral-camp pressure, social camouflage, hidden-psychopath survivor play, faction mythmaking, living camp mood/fracture, agentic NPC goals, and interdimensional-traveler motive hooks.
+- [x] `Plan.md` points to the bank as a far-back parked concept substrate rather than as an active or greenlit implementation lane.
+- [x] The preserved bank explicitly states that current bandit and Basecamp zoning footing still needs honest playtesting before these concepts earn bounded promotion.
+- [x] The bank explicitly requires future revisit to happen one bounded promotion at a time instead of reopening fifty speculative threads at once.
+
+Notes:
+- Canonical concept-bank doc: `doc/arsenic-old-lace-social-threat-and-agentic-world-concept-bank-2026-04-22.md`.
+- This is preserved as parked substrate only, not as permission to widen the current execution stack.
+- The strongest near-promotable seeds currently look like alarm states via natural-language yelling, bandits exploiting readable routines, radio-driven information warfare, writhing-stalker pressure, and a first social-camouflage slice.
+- The broader long-range families, including agentic NPC goals and interdimensional-traveler motive play, stay buried here until Josef explicitly promotes one bounded packet.
 
 ---
 

@@ -8,9 +8,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Bandit scoring refinement seam v0`
+Active lane: `Cannibal camp first hostile-profile adopter packet v0`.
 
-- Freeze the active contract at `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md` and keep the lane framed as scoring refinement on the current evaluator seam, not a fresh threat/world architecture pass.
-- Inspect the current dry-run threat/danger footing first and identify the smallest bounded collapse that can sharpen job choice without inventing new signal machinery.
-- Land one bounded scoring-refinement adapter that preserves the product split: avoid clearly strong targets, but pounce when zombie pressure or other distraction lowers effective target coherence.
-- Prove the key bounded distinctions honestly: one clearly too-strong target gets rejected or deferred, one distracted target becomes materially more attractive, and reviewer-readable output explains why.
+- Audit current cannibal-flavored content (`lodge_cannibal_15x15`, `cannibal_weapons`, `cannibal_food`) and the existing hostile-site claim path for the smallest honest dedicated cannibal-camp anchor.
+- Define the first cannibal-camp profile surface on the shared hostile-site substrate: cadence, roster/source claim, reserve/dispatch capacity, pressure/posture bias, return-clock lean, and writeback expectations.
+- Add deterministic proof that a cannibal-camp owned site can coexist with an existing bandit-owned site without coalition nonsense or shared-state corruption.
