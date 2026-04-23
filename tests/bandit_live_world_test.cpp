@@ -132,6 +132,160 @@ TEST_CASE( "bandit live world survives a save-style round trip", "[bandit][live_
     CHECK( site.active_member_ids.front() == character_id( 301 ) );
 }
 
+TEST_CASE( "bandit live world keeps several hostile sites independent across save and writeback",
+           "[bandit][live_world][multi_site]" )
+{
+    bandit_live_world::world_state original;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit", character_id( 1001 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( original, "thug", character_id( 1002 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit_quartermaster", character_id( 2001 ),
+             tripoint_abs_ms( 960, 1200, 0 ), std::string( "bandit_work_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit", character_id( 2002 ),
+             tripoint_abs_ms( 984, 1224, 0 ), std::string( "bandit_work_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit", character_id( 3001 ),
+             tripoint_abs_ms( 168, 120, 0 ), std::nullopt, std::string( "mx_bandits_block" ),
+             special_lookup ) );
+
+    REQUIRE( original.sites.size() == 3 );
+    bandit_live_world::site_record &camp =
+        *original.find_site( "overmap_special:bandit_camp@10,20,0" );
+    bandit_live_world::site_record &work_camp =
+        *original.find_site( "overmap_special:bandit_work_camp@40,50,0" );
+    bandit_live_world::site_record &roadblock =
+        *original.find_site( "map_extra:mx_bandits_block@7,5,0" );
+
+    const bandit_live_world::dispatch_plan camp_plan =
+        bandit_live_world::plan_site_dispatch( camp, tripoint_abs_omt( 18, 20, 0 ),
+                                               "player@18,20,0" );
+    REQUIRE( camp_plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( camp, camp_plan ) );
+    camp.remembered_threat_estimate = 7;
+    camp.remembered_bounty_estimate = 11;
+    camp.remembered_retreat_bias = 2;
+    camp.remembered_return_clock = 30;
+    camp.remembered_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::ample;
+    camp.known_recent_marks = { "west-basecamp-pressure" };
+
+    const bandit_live_world::dispatch_plan work_camp_plan =
+        bandit_live_world::plan_site_dispatch( work_camp, tripoint_abs_omt( 48, 50, 0 ),
+                                               "player@48,50,0" );
+    REQUIRE( work_camp_plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( work_camp, work_camp_plan ) );
+    work_camp.remembered_threat_estimate = 3;
+    work_camp.remembered_bounty_estimate = 5;
+    work_camp.remembered_retreat_bias = 1;
+    work_camp.remembered_return_clock = 90;
+    work_camp.remembered_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::tight;
+    work_camp.known_recent_marks = { "east-workcamp-pressure" };
+
+    const bandit_live_world::dispatch_plan roadblock_plan =
+        bandit_live_world::plan_site_dispatch( roadblock, tripoint_abs_omt( 8, 5, 0 ),
+                                               "player@8,5,0" );
+    REQUIRE( roadblock_plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( roadblock, roadblock_plan ) );
+    roadblock.remembered_threat_estimate = 1;
+    roadblock.known_recent_marks = { "roadblock-probe" };
+
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    original.serialize( jsout );
+
+    JsonValue jsin = json_loader::from_string( out.str() );
+    bandit_live_world::world_state loaded;
+    loaded.deserialize( jsin.get_object() );
+
+    REQUIRE( loaded.sites.size() == 3 );
+    bandit_live_world::site_record &loaded_camp =
+        *loaded.find_site( "overmap_special:bandit_camp@10,20,0" );
+    bandit_live_world::site_record &loaded_work_camp =
+        *loaded.find_site( "overmap_special:bandit_work_camp@40,50,0" );
+    bandit_live_world::site_record &loaded_roadblock =
+        *loaded.find_site( "map_extra:mx_bandits_block@7,5,0" );
+
+    CHECK( loaded_camp.anchor == tripoint_abs_omt( 10, 20, 0 ) );
+    CHECK( loaded_camp.headcount == 2 );
+    CHECK( loaded_camp.active_group_id == "overmap_special:bandit_camp@10,20,0#dispatch" );
+    CHECK( loaded_camp.active_target_id == "player@18,20,0" );
+    REQUIRE( loaded_camp.active_member_ids == std::vector<character_id>( { character_id( 1001 ) } ) );
+    CHECK( loaded_camp.find_member( character_id( 1001 ) )->state ==
+           bandit_live_world::member_state::outbound );
+    CHECK( loaded_camp.find_member( character_id( 1002 ) )->state ==
+           bandit_live_world::member_state::at_home );
+    CHECK( loaded_camp.dispatchable_member_capacity() == 0 );
+    CHECK( loaded_camp.remembered_threat_estimate == 7 );
+    CHECK( loaded_camp.remembered_bounty_estimate == 11 );
+    REQUIRE( loaded_camp.known_recent_marks.size() == 1 );
+    CHECK( loaded_camp.known_recent_marks.front() == "west-basecamp-pressure" );
+
+    CHECK( loaded_work_camp.anchor == tripoint_abs_omt( 40, 50, 0 ) );
+    CHECK( loaded_work_camp.headcount == 2 );
+    CHECK( loaded_work_camp.active_group_id == "overmap_special:bandit_work_camp@40,50,0#dispatch" );
+    CHECK( loaded_work_camp.active_target_id == "player@48,50,0" );
+    REQUIRE( loaded_work_camp.active_member_ids == std::vector<character_id>( { character_id( 2001 ) } ) );
+    CHECK( loaded_work_camp.find_member( character_id( 2001 ) )->state ==
+           bandit_live_world::member_state::outbound );
+    CHECK( loaded_work_camp.find_member( character_id( 2002 ) )->state ==
+           bandit_live_world::member_state::at_home );
+    CHECK( loaded_work_camp.dispatchable_member_capacity() == 0 );
+    CHECK( loaded_work_camp.remembered_threat_estimate == 3 );
+    CHECK( loaded_work_camp.remembered_bounty_estimate == 5 );
+    CHECK( loaded_work_camp.remembered_pressure ==
+           bandit_pursuit_handoff::remaining_return_pressure_state::tight );
+    REQUIRE( loaded_work_camp.known_recent_marks.size() == 1 );
+    CHECK( loaded_work_camp.known_recent_marks.front() == "east-workcamp-pressure" );
+
+    CHECK( loaded_roadblock.anchor == tripoint_abs_omt( 7, 5, 0 ) );
+    CHECK( loaded_roadblock.headcount == 1 );
+    CHECK( loaded_roadblock.active_group_id == "map_extra:mx_bandits_block@7,5,0#dispatch" );
+    CHECK( loaded_roadblock.active_target_id == "player@8,5,0" );
+    REQUIRE( loaded_roadblock.active_member_ids == std::vector<character_id>( { character_id( 3001 ) } ) );
+    CHECK( loaded_roadblock.remembered_threat_estimate == 1 );
+    REQUIRE( loaded_roadblock.known_recent_marks.size() == 1 );
+    CHECK( loaded_roadblock.known_recent_marks.front() == "roadblock-probe" );
+
+    bandit_pursuit_handoff::local_outcome camp_loss;
+    camp_loss.survivors_remaining = 0;
+    camp_loss.anchored_identity_updates = { { "1001", "missing" } };
+    camp_loss.result = bandit_pursuit_handoff::mission_result::broken;
+    camp_loss.resolution = bandit_pursuit_handoff::lead_resolution::target_lost;
+    camp_loss.posture = bandit_pursuit_handoff::return_posture::broken_flee;
+    camp_loss.remaining_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+    const bandit_pursuit_handoff::return_packet camp_packet =
+        bandit_pursuit_handoff::build_return_packet( camp_plan.entry, camp_loss );
+
+    REQUIRE( bandit_live_world::apply_return_packet( loaded_camp, camp_packet ) );
+    CHECK( loaded_camp.headcount == 1 );
+    CHECK( loaded_camp.active_group_id.empty() );
+    CHECK( loaded_camp.active_target_id.empty() );
+    CHECK( loaded_camp.active_member_ids.empty() );
+    CHECK( loaded_camp.find_member( character_id( 1001 ) )->state ==
+           bandit_live_world::member_state::missing );
+    CHECK( loaded_camp.find_spawn_tile( tripoint_abs_ms( 240, 480, 0 ) )->headcount == 0 );
+    CHECK( loaded_camp.dispatchable_member_capacity() == 0 );
+    CHECK_FALSE( bandit_live_world::plan_site_dispatch( loaded_camp, tripoint_abs_omt( 18, 20, 0 ),
+                 "player@18,20,0" ).valid );
+
+    CHECK( loaded_work_camp.headcount == 2 );
+    CHECK( loaded_work_camp.active_group_id == "overmap_special:bandit_work_camp@40,50,0#dispatch" );
+    REQUIRE( loaded_work_camp.active_member_ids == std::vector<character_id>( { character_id( 2001 ) } ) );
+    CHECK( loaded_work_camp.find_member( character_id( 2001 ) )->state ==
+           bandit_live_world::member_state::outbound );
+    CHECK( loaded_work_camp.find_member( character_id( 2002 ) )->state ==
+           bandit_live_world::member_state::at_home );
+    REQUIRE( loaded_work_camp.known_recent_marks.size() == 1 );
+    CHECK( loaded_work_camp.known_recent_marks.front() == "east-workcamp-pressure" );
+
+    CHECK( loaded_roadblock.headcount == 1 );
+    CHECK( loaded_roadblock.active_group_id == "map_extra:mx_bandits_block@7,5,0#dispatch" );
+    REQUIRE( loaded_roadblock.active_member_ids == std::vector<character_id>( { character_id( 3001 ) } ) );
+}
+
 TEST_CASE( "bandit live world builds a bounded scout dispatch plan from owned members", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;

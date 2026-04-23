@@ -72,6 +72,68 @@ std::optional<member_state> member_state_from_string( const std::string &value )
     return std::nullopt;
 }
 
+std::optional<bandit_pursuit_handoff::remaining_return_pressure_state>
+remaining_return_pressure_state_from_string( const std::string &value )
+{
+    using bandit_pursuit_handoff::remaining_return_pressure_state;
+    if( value == "ample" ) {
+        return remaining_return_pressure_state::ample;
+    }
+    if( value == "tight" ) {
+        return remaining_return_pressure_state::tight;
+    }
+    if( value == "plain_return_only" ) {
+        return remaining_return_pressure_state::plain_return_only;
+    }
+    if( value == "collapsed" ) {
+        return remaining_return_pressure_state::collapsed;
+    }
+    return std::nullopt;
+}
+
+void push_unique_mark( std::vector<std::string> &marks, const std::string &mark )
+{
+    if( mark.empty() ) {
+        return;
+    }
+    if( std::find( marks.begin(), marks.end(), mark ) == marks.end() ) {
+        marks.push_back( mark );
+    }
+}
+
+bandit_pursuit_handoff::abstract_group_state make_site_memory_group(
+    const bandit_live_world::site_record &site )
+{
+    bandit_pursuit_handoff::abstract_group_state group;
+    group.group_id = site.active_group_id.empty() ? site.site_id + "#dispatch" : site.active_group_id;
+    group.source_camp_id = site.site_id;
+    group.group_strength = site.count_live_members();
+    group.current_target_or_mark = site.remembered_target_or_mark.empty() ? site.active_target_id :
+                                   site.remembered_target_or_mark;
+    group.current_threat_estimate = site.remembered_threat_estimate;
+    group.current_bounty_estimate = site.remembered_bounty_estimate;
+    group.retreat_bias = site.remembered_retreat_bias;
+    group.return_clock = site.remembered_return_clock;
+    group.remaining_pressure = site.remembered_pressure;
+    group.known_recent_marks = site.known_recent_marks;
+    for( const character_id &member_id : site.active_member_ids ) {
+        group.anchored_identities.push_back( { std::to_string( member_id.get_value() ), "alive" } );
+    }
+    return group;
+}
+
+void apply_group_memory( bandit_live_world::site_record &site,
+                         const bandit_pursuit_handoff::abstract_group_state &group )
+{
+    site.remembered_target_or_mark = group.current_target_or_mark;
+    site.remembered_threat_estimate = group.current_threat_estimate;
+    site.remembered_bounty_estimate = group.current_bounty_estimate;
+    site.remembered_retreat_bias = group.retreat_bias;
+    site.remembered_return_clock = group.return_clock;
+    site.remembered_pressure = group.remaining_pressure;
+    site.known_recent_marks = group.known_recent_marks;
+}
+
 int special_footprint_radius( const std::string &special_id )
 {
     if( special_id == "bandit_camp" || special_id == "bandit_work_camp" ) {
@@ -189,7 +251,7 @@ std::vector<character_id> select_dispatch_members( const bandit_live_world::site
 bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_live_world::site_record &site,
         const std::vector<character_id> &member_ids, const std::string &target_id )
 {
-    bandit_pursuit_handoff::abstract_group_state group;
+    bandit_pursuit_handoff::abstract_group_state group = make_site_memory_group( site );
     group.group_id = site.site_id + "#dispatch";
     group.source_camp_id = site.site_id;
     group.group_strength = member_ids.size();
@@ -197,17 +259,18 @@ bandit_pursuit_handoff::abstract_group_state make_dispatch_group( const bandit_l
     group.panic_threshold = std::max( 1, static_cast<int>( member_ids.size() ) );
     group.cargo_capacity = std::max( 1, static_cast<int>( member_ids.size() ) * 2 );
     group.current_target_or_mark = target_id;
-    group.current_threat_estimate = 1;
-    group.current_bounty_estimate = 2;
+    group.current_threat_estimate = std::max( 1, group.current_threat_estimate );
+    group.current_bounty_estimate = std::max( 2, group.current_bounty_estimate );
     group.mission_urgency = 1;
-    group.retreat_bias = site.site_kind == owned_site_kind::bandit_cabin ? 2 : 1;
+    group.retreat_bias = std::max( group.retreat_bias, site.site_kind == owned_site_kind::bandit_cabin ? 2 : 1 );
     group.goal_stickiness = 1;
     group.goal_preemption_posture = 1;
-    group.return_clock = 2;
+    group.return_clock = std::max( group.return_clock, 2 );
+    group.anchored_identities.clear();
     for( const character_id &member_id : member_ids ) {
         group.anchored_identities.push_back( { std::to_string( member_id.get_value() ), "alive" } );
     }
-    group.known_recent_marks.push_back( target_id );
+    push_unique_mark( group.known_recent_marks, target_id );
     return group;
 }
 } // namespace
@@ -344,6 +407,13 @@ void site_record::serialize( JsonOut &json ) const
         raw_active_member_ids.push_back( member_id.get_value() );
     }
     json.member( "active_member_ids", raw_active_member_ids );
+    json.member( "remembered_target_or_mark", remembered_target_or_mark );
+    json.member( "remembered_threat_estimate", remembered_threat_estimate );
+    json.member( "remembered_bounty_estimate", remembered_bounty_estimate );
+    json.member( "remembered_retreat_bias", remembered_retreat_bias );
+    json.member( "remembered_return_clock", remembered_return_clock );
+    json.member( "remembered_pressure", bandit_pursuit_handoff::to_string( remembered_pressure ) );
+    json.member( "known_recent_marks", known_recent_marks );
     json.end_object();
 }
 
@@ -373,6 +443,16 @@ void site_record::deserialize( const JsonObject &jo )
         member_id.deserialize( raw_member_id );
         active_member_ids.push_back( member_id );
     }
+    jo.read( "remembered_target_or_mark", remembered_target_or_mark );
+    jo.read( "remembered_threat_estimate", remembered_threat_estimate );
+    jo.read( "remembered_bounty_estimate", remembered_bounty_estimate );
+    jo.read( "remembered_retreat_bias", remembered_retreat_bias );
+    jo.read( "remembered_return_clock", remembered_return_clock );
+    std::string remembered_pressure_string = "ample";
+    jo.read( "remembered_pressure", remembered_pressure_string );
+    remembered_pressure = remaining_return_pressure_state_from_string( remembered_pressure_string ).value_or(
+                              bandit_pursuit_handoff::remaining_return_pressure_state::ample );
+    jo.read( "known_recent_marks", known_recent_marks );
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -726,6 +806,13 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
     site.active_group_id = plan.entry.group_id;
     site.active_target_id = plan.target_id;
     site.active_member_ids = plan.member_ids;
+    site.remembered_target_or_mark = plan.entry.current_target_or_mark;
+    site.remembered_threat_estimate = plan.group.current_threat_estimate;
+    site.remembered_bounty_estimate = plan.group.current_bounty_estimate;
+    site.remembered_retreat_bias = plan.group.retreat_bias;
+    site.remembered_return_clock = plan.group.return_clock;
+    site.remembered_pressure = plan.group.remaining_pressure;
+    site.known_recent_marks = plan.group.known_recent_marks;
     return true;
 }
 
@@ -775,6 +862,10 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
     if( survivors_accounted != packet.survivors_remaining ) {
         return false;
     }
+
+    bandit_pursuit_handoff::abstract_group_state remembered_group = make_site_memory_group( site );
+    bandit_pursuit_handoff::apply_return_packet( remembered_group, packet );
+    apply_group_memory( site, remembered_group );
 
     site.active_group_id.clear();
     site.active_target_id.clear();
