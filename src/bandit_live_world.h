@@ -86,6 +86,14 @@ struct site_record {
     std::string active_group_id;
     std::string active_target_id;
     std::vector<character_id> active_member_ids;
+    std::string remembered_target_or_mark;
+    int remembered_threat_estimate = 0;
+    int remembered_bounty_estimate = 0;
+    int remembered_retreat_bias = 0;
+    int remembered_return_clock = 0;
+    bandit_pursuit_handoff::remaining_return_pressure_state remembered_pressure =
+        bandit_pursuit_handoff::remaining_return_pressure_state::ample;
+    std::vector<std::string> known_recent_marks;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
