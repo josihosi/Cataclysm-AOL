@@ -266,6 +266,26 @@ std::string to_string( member_state state )
     return "at_home";
 }
 
+std::string to_string( active_member_observation_state state )
+{
+    switch( state ) {
+        case active_member_observation_state::unresolved:
+            return "unresolved";
+        case active_member_observation_state::local_contact:
+            return "local_contact";
+        case active_member_observation_state::returning_home:
+            return "returning_home";
+        case active_member_observation_state::home:
+            return "home";
+        case active_member_observation_state::dead:
+            return "dead";
+        case active_member_observation_state::missing:
+            return "missing";
+    }
+
+    return "unresolved";
+}
+
 void member_record::serialize( JsonOut &json ) const
 {
     json.start_object();
@@ -760,6 +780,66 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
     site.active_target_id.clear();
     site.active_member_ids.clear();
     return true;
+}
+
+std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
+    const site_record &site, const std::vector<active_member_observation> &observations )
+{
+    if( site.active_group_id.empty() || site.active_member_ids.empty() ||
+        observations.size() != site.active_member_ids.size() ) {
+        return std::nullopt;
+    }
+
+    bandit_pursuit_handoff::return_packet packet;
+    packet.valid = true;
+    packet.group_id = site.active_group_id;
+    packet.source_camp_id = site.site_id;
+    packet.current_target_or_mark = site.active_target_id;
+    packet.result = bandit_pursuit_handoff::mission_result::withdrawn;
+    packet.resolution = bandit_pursuit_handoff::lead_resolution::target_lost;
+    packet.posture = bandit_pursuit_handoff::return_posture::escape_home;
+    packet.remaining_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+
+    bool saw_loss = false;
+    for( const character_id &member_id : site.active_member_ids ) {
+        const auto iter = std::find_if( observations.begin(), observations.end(),
+        [&member_id]( const active_member_observation &observation ) {
+            return observation.npc_id == member_id;
+        } );
+        if( iter == observations.end() ) {
+            return std::nullopt;
+        }
+
+        switch( iter->state ) {
+            case active_member_observation_state::unresolved:
+            case active_member_observation_state::local_contact:
+            case active_member_observation_state::returning_home:
+                return std::nullopt;
+            case active_member_observation_state::home:
+                packet.survivors_remaining++;
+                break;
+            case active_member_observation_state::dead:
+                saw_loss = true;
+                packet.anchored_identity_updates.push_back( { std::to_string( member_id.get_value() ), "dead" } );
+                break;
+            case active_member_observation_state::missing:
+                saw_loss = true;
+                packet.anchored_identity_updates.push_back( { std::to_string( member_id.get_value() ), "missing" } );
+                break;
+        }
+    }
+
+    if( saw_loss ) {
+        packet.result = packet.survivors_remaining > 0 ?
+                        bandit_pursuit_handoff::mission_result::repelled :
+                        bandit_pursuit_handoff::mission_result::broken;
+        packet.posture = packet.survivors_remaining > 0 ?
+                         bandit_pursuit_handoff::return_posture::broken_flee :
+                         bandit_pursuit_handoff::return_posture::escape_safe;
+    }
+
+    packet.notes.push_back( "resolved live aftermath observations for active owned outing" );
+    return packet;
 }
 
 bool update_member_state( site_record &site, character_id npc_id, member_state new_state,

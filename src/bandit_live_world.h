@@ -39,6 +39,21 @@ enum class member_state {
     missing,
 };
 
+enum class active_member_observation_state {
+    unresolved,
+    local_contact,
+    returning_home,
+    home,
+    dead,
+    missing,
+};
+
+struct active_member_observation {
+    character_id npc_id;
+    active_member_observation_state state = active_member_observation_state::unresolved;
+    std::string summary;
+};
+
 struct member_record {
     character_id npc_id;
     std::string npc_template_id;
@@ -131,10 +146,13 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
                                   const std::string &target_id );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
+std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
+    const site_record &site, const std::vector<active_member_observation> &observations );
 bool update_member_state( site_record &site, character_id npc_id, member_state new_state,
                           const std::string &summary );
 
 std::string to_string( anchor_source_kind source_kind );
 std::string to_string( owned_site_kind site_kind );
 std::string to_string( member_state state );
+std::string to_string( active_member_observation_state state );
 } // namespace bandit_live_world
