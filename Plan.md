@@ -39,12 +39,13 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit repo lane is now **Bandit extortion-at-camp restage + handoff packet v0**.
+There is currently no active greenlit game-feature lane after the **Cannibal camp attack-not-extort correction v0** checkpoint.  Do not execute the standalone GitHub migration from this game-feature lane; it remains queued repo-ops work that needs explicit clearance and a reviewably clean tree.
 
 Current honest state:
 - an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
 - the earlier closed lane is now `Cannibal camp first hostile-profile adopter packet v0` at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
-- that lane now closes honestly on current build: `src/bandit_live_world.{h,cpp}` carries explicit `cannibal_camp` site/profile ownership, cannibal NPC templates can claim the live-world substrate, dedicated cannibal-camp overmap/mapgen/faction/NPC data gives the profile a real rare anchor, and `tests/bandit_live_world_test.cpp` proves a cannibal camp and bandit camp coexist through dispatch/writeback serialization without shared-state mush
+- that lane now closes honestly as substrate/content proof: `src/bandit_live_world.{h,cpp}` carries explicit `cannibal_camp` site/profile ownership, cannibal NPC templates can claim the live-world substrate, dedicated cannibal-camp overmap/mapgen/faction/NPC data gives the profile a real rare anchor, and `tests/bandit_live_world_test.cpp` proves a cannibal camp and bandit camp coexist through dispatch/writeback serialization without shared-state mush
+- latest closed correction is `Cannibal camp attack-not-extort correction v0` at `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`; cannibal camps now bypass the bandit `open_shakedown` / pay-demand surface and favorable cannibal contact becomes attack-to-kill pressure while bad conditions can still hold off, stalk, probe, or abort
 - the earlier closed lane is now `Hostile site profile layer packet v0` at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`
 - that lane closes honestly on current build: `src/bandit_live_world.{h,cpp}` carries explicit `hostile_site_profile` state/rules, camp-style and small-hostile-site profiles now diverge in reserve capacity, threat/posture bias, return-clock lean, and writeback pressure, and `tests/bandit_live_world_test.cpp` proves a camp and roadblock can dispatch side-by-side on the same substrate without regressing `[bandit][live_world]`
 - the earlier closed lane is `Multi-site hostile owner scheduler packet v0` at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`
@@ -63,7 +64,9 @@ Current honest state:
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, repeated-site revisit follow-through, and the now-closed live-world control lane
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is now about making the Basecamp extortion setup reusable: one named restage/handoff path that attracts a real controlled bandit group through the live owner/dispatch seam and leaves review at a useful approach, stand-off, or shakedown moment.
+The extortion-at-camp restage/handoff packet is done-for-now: `bandit.extortion_at_camp_standoff_mcw` provides the named probe/handoff path, attracts the real controlled site `overmap_special:bandit_camp@140,51,0` through live dispatch/local-gate, and handoff run `.userdata/dev-harness/harness_runs/20260424_153309/` leaves the game alive with `cleanup.status = deferred_handoff` at camp-adjacent `hold_off` pressure.
+
+The latest closed lane is now `Bandit extortion playthrough audit + harness-skill packet v0` at `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md`: named scenario surfaces cover the stand-off setup, first Basecamp demand pay/fight fork, fight-forward message, pay/writeback path, and a controlled defender-loss reopen tier with raised second demand (`22116`) plus `pay` / `fight` still available.  The natural redispatch-from-no-active-group probe stayed artifact-silent after 6000 turns on current runtime, so that natural trigger is not claimed closed; the audit packet closes as a tiered teachable harness path rather than a fake one-button combat opera.
 
 ---
 
@@ -116,6 +119,29 @@ Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-pac
 
 `Writhing stalker` stays parked one step longer.
 If this stack needs future work, keep it as a new explicit packet instead of silently reopening v0.
+
+---
+
+## Latest closed correction - Cannibal camp attack-not-extort correction v0
+
+**Status:** CLOSED / CHECKPOINTED
+
+Josef clarified the intended cannibal behavior: cannibals do **not** extort; they attack to kill.  The closed cannibal adopter packet proves the profile/content substrate, but the local encounter surface must now diverge from bandit robbery instead of allowing cannibal outings to reuse the `open_shakedown` / pay-demand surface.
+
+What this item should do:
+- make `cannibal_camp` local pressure bypass the bandit shakedown/extortion surface
+- bias favorable cannibal local contact toward attack-to-kill / lethal ambush behavior rather than pay-or-fight robbery
+- still allow hold-off, stalk, probe, or abort when the local gate says conditions are bad
+- prove bandit camps can still extort while cannibal camps do not
+
+Non-goals:
+- broad cannibal lore, diplomacy, capture, or cooking-the-player systems
+- rewriting bandit shakedown behavior
+- reopening the already-closed cannibal-camp anchor/profile proof
+
+Canonical contract lives at `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`.
+
+Current tree closes this correction honestly: `choose_local_gate_posture(...)` now routes `cannibal_camp` favorable contact to `attack_now` / `combat_forward` instead of `open_shakedown`, the local-gate report names `profile=cannibal_camp`, and `build_shakedown_surface(...)` has a cannibal-profile guard against accidental robbery-surface reuse.  Deterministic proof in `tests/bandit_live_world_test.cpp` covers cannibal no-extort / attack, cautious probe, exposed hold-off, overwhelming abort, and unchanged bandit shakedown/pay/fight behavior.
 
 ---
 
@@ -189,9 +215,9 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
 
-## Active lane - Bandit extortion-at-camp restage + handoff packet v0
+## Recently closed lane - Bandit extortion-at-camp restage + handoff packet v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
 Once the robbery chain is real, the harness should be able to attract a real controlled bandit group toward Basecamp and leave the scene alive at the interesting point instead of making Andi rediscover a one-off ritual every time.
 This packet is the bounded setup seam for that.
@@ -212,9 +238,9 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
 
-## Bandit extortion playthrough audit + harness-skill packet v0
+## Recently closed lane - Bandit extortion playthrough audit + harness-skill packet v0
 
-**Status:** GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
 Even with a real extortion scene and a real restage point, the job stays half-baked if only one operator remembers the magic sequence.
 This packet packages the full playthrough surface and teaches the harness/skill about it so Andi can deliberately run the whole chain.
@@ -241,7 +267,12 @@ Use the auxiliary docs below when a later discussion needs the canonical contrac
 
 ### Camp / Basecamp packets
 
-- `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md` (active)
+- `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md` (checkpointed / done for now)
 - `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md` (checkpointed / done for now)
 - `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md` (folded into later active lane / supporting only)
 - `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`

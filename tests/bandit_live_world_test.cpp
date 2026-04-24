@@ -656,6 +656,89 @@ TEST_CASE( "bandit live world chooses reviewer-readable local approach gate post
     CHECK_FALSE( decision.combat_forward );
 }
 
+TEST_CASE( "bandit live world makes cannibal camp attack instead of extort", "[bandit][live_world][cannibal][shakedown]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter", character_id( 911 ),
+             tripoint_abs_ms( 1680, 1920, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_butcher", character_id( 912 ),
+             tripoint_abs_ms( 1681, 1920, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_camp_leader", character_id( 913 ),
+             tripoint_abs_ms( 1704, 1944, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( site.profile == bandit_live_world::hostile_site_profile::cannibal_camp );
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 72, 80, 0 ),
+                "player@72,80,0" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+
+    bandit_live_world::local_gate_input favorable_input;
+    favorable_input.local_threat = 1;
+    favorable_input.local_opportunity = 3;
+    favorable_input.local_contact_established = true;
+    favorable_input.basecamp_or_camp_scene = true;
+    const bandit_live_world::local_gate_decision favorable_decision =
+        bandit_live_world::choose_local_gate_posture( site, favorable_input );
+    CHECK( favorable_decision.valid );
+    CHECK( favorable_decision.posture == bandit_live_world::local_gate_posture::attack_now );
+    CHECK_FALSE( favorable_decision.opens_shakedown_surface );
+    CHECK( favorable_decision.combat_forward );
+    const std::string favorable_report =
+        bandit_live_world::render_local_gate_report( site, favorable_input, favorable_decision );
+    CHECK( favorable_report.find( "profile=cannibal_camp" ) != std::string::npos );
+    CHECK( favorable_report.find( "posture=attack_now" ) != std::string::npos );
+    CHECK( favorable_report.find( "shakedown=no" ) != std::string::npos );
+    CHECK( favorable_report.find( "attack-to-kill" ) != std::string::npos );
+
+    bandit_live_world::shakedown_goods_pool pool;
+    pool.player_carried_value = 100;
+    pool.companion_carried_value = 50;
+    pool.reachable_basecamp_value = 850;
+    pool.basecamp_or_camp_scene = true;
+    const bandit_live_world::shakedown_surface blocked_surface =
+        bandit_live_world::build_shakedown_surface( site, favorable_input, favorable_decision, pool );
+    CHECK_FALSE( blocked_surface.valid );
+    REQUIRE_FALSE( blocked_surface.notes.empty() );
+    CHECK( blocked_surface.notes.front().find( "local gate did not open" ) != std::string::npos );
+
+    bandit_live_world::local_gate_input cautious_input = favorable_input;
+    cautious_input.local_contact_established = false;
+    cautious_input.local_threat = 2;
+    cautious_input.local_opportunity = 1;
+    cautious_input.basecamp_or_camp_scene = false;
+    const bandit_live_world::local_gate_decision cautious_decision =
+        bandit_live_world::choose_local_gate_posture( site, cautious_input );
+    CHECK( cautious_decision.valid );
+    CHECK( cautious_decision.posture == bandit_live_world::local_gate_posture::probe );
+    CHECK_FALSE( cautious_decision.opens_shakedown_surface );
+    CHECK_FALSE( cautious_decision.combat_forward );
+
+    bandit_live_world::local_gate_input exposed_input = favorable_input;
+    exposed_input.local_threat = 3;
+    exposed_input.local_opportunity = 2;
+    exposed_input.recent_exposure = true;
+    const bandit_live_world::local_gate_decision exposed_decision =
+        bandit_live_world::choose_local_gate_posture( site, exposed_input );
+    CHECK( exposed_decision.valid );
+    CHECK( exposed_decision.posture == bandit_live_world::local_gate_posture::hold_off );
+    CHECK_FALSE( exposed_decision.opens_shakedown_surface );
+    CHECK_FALSE( exposed_decision.combat_forward );
+
+    bandit_live_world::local_gate_input hopeless_input;
+    hopeless_input.local_threat = 8;
+    hopeless_input.local_opportunity = 0;
+    const bandit_live_world::local_gate_decision hopeless_decision =
+        bandit_live_world::choose_local_gate_posture( site, hopeless_input );
+    CHECK_FALSE( hopeless_decision.valid );
+    CHECK( hopeless_decision.posture == bandit_live_world::local_gate_posture::abort );
+    CHECK_FALSE( hopeless_decision.opens_shakedown_surface );
+}
+
 TEST_CASE( "bandit live world builds a bounded pay-or-fight shakedown surface", "[bandit][live_world][shakedown]" )
 {
     bandit_live_world::world_state world;

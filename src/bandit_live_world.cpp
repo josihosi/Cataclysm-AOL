@@ -1017,6 +1017,7 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input )
 {
     local_gate_decision decision;
+    const hostile_site_profile profile = effective_profile( site );
     decision.dispatch_strength = static_cast<int>( site.active_member_ids.size() );
     decision.pressure_margin = decision.dispatch_strength + input.local_opportunity - input.local_threat;
 
@@ -1058,6 +1059,23 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         return decision;
     }
 
+    if( profile == hostile_site_profile::cannibal_camp ) {
+        if( input.local_contact_established && decision.pressure_margin >= 2 ) {
+            decision.posture = local_gate_posture::attack_now;
+            decision.combat_forward = true;
+            decision.notes.push_back( "cannibal camp pressure does not negotiate; favorable contact becomes attack-to-kill pressure" );
+            return decision;
+        }
+        if( input.local_opportunity > 0 && decision.pressure_margin >= 0 ) {
+            decision.posture = local_gate_posture::probe;
+            decision.notes.push_back( "cannibal camp probes for a killing window instead of opening a shakedown" );
+            return decision;
+        }
+        decision.posture = local_gate_posture::stalk;
+        decision.notes.push_back( "cannibal camp pressure stalks until the kill window improves" );
+        return decision;
+    }
+
     if( input.local_contact_established && decision.dispatch_strength >= 1 &&
         decision.pressure_margin >= 2 ) {
         decision.posture = local_gate_posture::open_shakedown;
@@ -1084,6 +1102,7 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
     out << "local_gate site=" << site.site_id
         << " active_group=" << site.active_group_id
         << " target=" << site.active_target_id
+        << " profile=" << to_string( effective_profile( site ) )
         << " posture=" << to_string( decision.posture )
         << " strength=" << decision.dispatch_strength
         << " threat=" << input.local_threat
@@ -1110,6 +1129,11 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
     if( !decision.valid || !decision.opens_shakedown_surface ||
         decision.posture != local_gate_posture::open_shakedown ) {
         surface.notes.push_back( "shakedown blocked: local gate did not open the robbery surface" );
+        return surface;
+    }
+
+    if( effective_profile( site ) == hostile_site_profile::cannibal_camp ) {
+        surface.notes.push_back( "shakedown blocked: cannibal camp profile attacks to kill instead of extorting" );
         return surface;
     }
 
