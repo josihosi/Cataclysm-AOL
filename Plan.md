@@ -39,7 +39,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently no active greenlit game-feature lane after the **Cannibal camp attack-not-extort correction v0** checkpoint.  Do not execute the standalone GitHub migration from this game-feature lane; it remains queued repo-ops work that needs explicit clearance and a reviewably clean tree.
+There is currently no active greenlit game-feature lane after the **Cannibal camp attack-not-extort correction v0** checkpoint.  The standalone GitHub migration is no longer merely queued: repo note `repo-notes/Cataclysm-AOL-standalone-github-migration.md` records that Josef cleared a pragmatic snapshot cutover on 2026-04-24 after full-history pushes failed with GitHub HTTP 500.  The new `josihosi/Cataclysm-AOL` repo is standalone (`isFork=false`) with snapshot `dev` / `master`; the full-history tree remains wired to the landfill/archive remote.  Do not attempt further destructive GitHub migration or release/tag repair from this game-feature lane without fresh explicit clearance.
 
 Current honest state:
 - an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
