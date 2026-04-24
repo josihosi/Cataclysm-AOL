@@ -1,6 +1,6 @@
 # Bandit aftermath / renegotiation writeback packet v0 (2026-04-22)
 
-Status: greenlit backlog contract.
+Status: active / greenlit contract.
 
 ## Why this exists
 

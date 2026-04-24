@@ -8,8 +8,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Bandit shakedown pay-or-fight surface packet v0`.
+Active lane: `Bandit aftermath / renegotiation writeback packet v0`.
 
-- Prove the remaining off-base live goods-pool reach honestly: outside Basecamp/camp footing, the shakedown surface must exclude reachable Basecamp goods and expose only carried / current-vehicle goods.
-- Keep the already-wired live surface deliberately blunt while probing: readable robbery demand plus explicit `pay` and `fight` only.
-- Do not widen into aftermath, renegotiation, convoy combat, or broad diplomacy; those already have later packets.
+- Inspect the current shakedown pay/fight resolution seam and define the smallest aftermath/writeback state that can remember scene outcome without item-perfect cargo theater.
+- Prove one later pressure effect from stored outcome state: stronger/harsher reopen after materially weakened Basecamp defense, or cooler/shrunk pressure after meaningful bandit losses.
+- Keep the packet bounded to aftermath/renegotiation truth: no infinite haggling, broad diplomacy, coalition logic, radio warfare, or unrelated combat rewrite.

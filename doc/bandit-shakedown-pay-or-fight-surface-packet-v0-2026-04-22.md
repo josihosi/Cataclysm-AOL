@@ -1,6 +1,6 @@
 # Bandit shakedown pay-or-fight surface packet v0 (2026-04-22)
 
-Status: greenlit backlog contract.
+Status: closed / checkpointed contract.
 
 ## Why this exists
 

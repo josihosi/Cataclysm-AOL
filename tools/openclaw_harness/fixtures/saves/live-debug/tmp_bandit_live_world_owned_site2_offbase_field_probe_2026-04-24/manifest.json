@@ -1,0 +1,19 @@
+{
+  "name": "tmp_bandit_live_world_owned_site2_offbase_field_probe_2026-04-24",
+  "source_fixture": "tmp_bandit_live_world_owned_site2_claimed_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Disposable proof footing: start from the claimed nearby-owned-site save, then move the player just south of the bandit camp on non-road/non-Basecamp field footing so the shakedown surface must use off-base carried/current-vehicle reach instead of Basecamp inventory reach.",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [
+        0,
+        3,
+        0
+      ]
+    }
+  ]
+}

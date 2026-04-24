@@ -44,20 +44,21 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Bandit shakedown pay-or-fight surface packet v0`.
-The approach / stand-off / attack-gate packet closes honestly on current build.  The shakedown packet now has a first real Basecamp-side player-present surface wired from `open_shakedown`; the remaining proof before closure is one off-base live reach check showing Basecamp goods are not exposed outside Basecamp/camp footing.
+Active probe obligation: `Bandit aftermath / renegotiation writeback packet v0`.
+The approach / stand-off / attack-gate packet and the first shakedown pay-or-fight surface both close honestly on current build.  The next proof must show that shakedown outcomes write back into later pressure instead of evaporating after the first menu.
 
-Fresh evidence for the active shakedown packet:
+Latest closed shakedown packet evidence:
 - deterministic surface: `src/bandit_live_world.{h,cpp}` exposes `shakedown_goods_pool`, `shakedown_surface`, `build_shakedown_surface(...)`, and `render_shakedown_surface_report(...)` behind an `open_shakedown` local-gate decision
-- deterministic proof: `tests/bandit_live_world_test.cpp` proves the first blunt shakedown surface reports a readable bark, explicit `pay` and `fight` options, a 35%-style painful demanded toll, Basecamp/camp inventory reach for camp scenes, current vehicle reach for off-base scenes, direct-ambush bypass for rolling-travel contexts, and the single-bandit local-contact open-shakedown case used by the current nearby live fixture
+- deterministic proof: `tests/bandit_live_world_test.cpp` proves the first blunt shakedown surface reports a readable bark, explicit `pay` and `fight` options, a 35%-style painful demanded toll, Basecamp/camp inventory reach for camp scenes, current vehicle reach for off-base scenes, direct-ambush bypass for rolling-travel contexts, and the single-bandit local-contact open-shakedown case used by the nearby live fixture
 - live Basecamp fight proof: `.userdata/dev-harness/harness_runs/20260424_053502/` uses `tmp.bandit_basecamp_shakedown_fight_probe`; the current-build menu opens from the raw local-contact owned-site fixture with `Bandit shakedown`, `Reachable goods: 45134`, `Demanded toll: 15797`, `p Pay the demanded goods`, and `f Fight`; pressing `f` reports `You refuse the shakedown.  The bandits come at you.`
 - live Basecamp pay proof: `.userdata/dev-harness/harness_runs/20260424_054046/` uses `tmp.bandit_basecamp_shakedown_pay_probe`; pressing `p` reports `You surrender goods worth about 18390 to the bandits.`, and copied saved-world inspection records no active group plus member `4` as `at_home` with `last_writeback_summary = "shakedown_surface paid toll=18390 demanded=15797 reachable=45134"`
-- live artifact report: both shakedown probes log `shakedown_surface ... valid=yes pay_option=yes fight_option=yes reachable_goods=45134 demanded_toll=15797 basecamp_inventory=yes vehicle_inventory=no` with `pool includes player, nearby companion, and reachable Basecamp goods`
-- validation: `make -j4 tests && ./tests/cata_test "[bandit][live_world][shakedown]"` passed earlier in this run (31 assertions), `make -j4 TILES=1 SOUND=0 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 cataclysm-tiles` passed, `make -j4 obj/do_turn.o`, `./tests/cata_test "[bandit][live_world][shakedown]"` (31 assertions), and `git diff --check -- src/do_turn.cpp src/bandit_live_world.cpp tests/bandit_live_world_test.cpp tools/openclaw_harness/scenarios/tmp.bandit_basecamp_shakedown_fight_probe.json tools/openclaw_harness/scenarios/tmp.bandit_basecamp_shakedown_pay_probe.json` passed
+- live off-base reach proof: `.userdata/dev-harness/harness_runs/20260424_070845/` uses `tmp.bandit_offbase_shakedown_fight_probe` on non-road/non-Basecamp footing at `player@140,54,0`; after a forced relink, the current-build window title is `021190ee64`, `version_matches_repo_head=true`, and the artifact reports `basecamp_inventory=no`, `vehicle_inventory=yes`, `reachable_goods=3211`, `demanded_toll=1124`, explicit `pay` / `fight`, and `pool includes player, companion, and current vehicle goods only`
+- validation: `make -j4 tests && ./tests/cata_test "[bandit][live_world][shakedown]"` passed earlier for this packet (31 assertions), `make -j4 obj/do_turn.o`, `./tests/cata_test "[bandit][live_world][shakedown]"` (31 assertions), focused `git diff --check`, and the forced current-build relink command `make -j4 TILES=1 SOUND=0 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 cataclysm-tiles` passed before the off-base live proof
 
-Pending proof shape for the active packet:
-- run one off-base live shakedown reach probe on current build, or add the smallest honest restage to get there, proving `basecamp_inventory=no` and no remote Basecamp goods in the live surface
-- keep the active proof bounded to the first surface; do not claim aftermath/writeback, higher demand renegotiation, or convoy combat behavior in this packet
+Pending proof shape for the active aftermath packet:
+- identify the smallest state/writeback seam that records first shakedown outcome, local threat change, and later demand pressure without item-perfect cargo persistence
+- prove at least one stronger/harsher reopen after material Basecamp defender loss and one cooling/shrinking pressure case after meaningful bandit losses before closing the packet
+- keep screen proof, deterministic proof, and artifact/report proof separated; do not claim broad diplomacy, infinite renegotiation, convoy combat, or radio/social-horror behavior in this packet
 
 ### Recently closed lane - Cannibal camp first hostile-profile adopter packet v0
 

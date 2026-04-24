@@ -39,7 +39,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit repo lane is now **Bandit shakedown pay-or-fight surface packet v0**.
+The active greenlit repo lane is now **Bandit aftermath / renegotiation writeback packet v0**.
 
 Current honest state:
 - the latest closed lane is now `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
@@ -55,13 +55,13 @@ Current honest state:
 - the earlier latest closed lane remains `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
 - the earlier `Bandit + Basecamp playtest kit packet v0` remains checkpointed at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
 - the useful harness/helper work from `Bandit + Basecamp playtest kit packet v2` was **not** wasted; it now sits behind the closed live-world lane as bounded support instead of masquerading as the product
-- the active shakedown lane now has a first Basecamp-side player-present surface wired from the `open_shakedown` approach/gate branch, including blunt robbery demand, explicit `pay` / `fight`, current-build live fight proof, and current-build live pay/writeback proof
-- the next honest delivery target is the remaining off-base live reach proof: outside Basecamp/camp footing, the shakedown surface must exclude reachable Basecamp goods and expose only carried / current-vehicle goods
+- the latest closed lane is now `Bandit shakedown pay-or-fight surface packet v0` at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`
+- that lane closes honestly on current build: the `open_shakedown` branch now opens a blunt player-present robbery demand with explicit `pay` / `fight`, Basecamp-side live fight and pay/writeback proof, and off-base live reach proof `.userdata/dev-harness/harness_runs/20260424_070845/` showing `basecamp_inventory=no`, `vehicle_inventory=yes`, and only carried/current-vehicle goods outside Basecamp/camp footing
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this hostile-site stack should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, repeated-site revisit follow-through, and the now-closed live-world control lane
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is now about closing the remaining off-base reach proof for the already-wired `open_shakedown` robbery surface, without widening into aftermath or renegotiation.
+This lane is now about making first shakedown outcomes stick in later bandit pressure: losses, wounds, taken goods, anger, caution, and one bounded stronger reopen when Basecamp defense materially drops.
 
 ---
 
@@ -140,9 +140,9 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
 
-## Active lane - Bandit shakedown pay-or-fight surface packet v0
+## Recently closed lane - Bandit shakedown pay-or-fight surface packet v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
 Once the approach law can honestly decide that a scene is a shakedown instead of a hot ambush, make the actual player-present robbery surface real: bandits try to rob you, you can pay, or you can fight.
 Keep it hard, readable, and bounded.
@@ -163,9 +163,9 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
 
-### 5. Bandit aftermath / renegotiation writeback packet v0
+## Active lane - Bandit aftermath / renegotiation writeback packet v0
 
-**Status:** GREENLIT
+**Status:** ACTIVE / GREENLIT
 
 A robbery scene is fake if the world forgets it immediately.
 This packet makes the outcome stick: losses, wounds, taken goods, anger, caution, and the specific wanted beat where a killed Basecamp defender can let bandits reopen from a stronger position with a higher demand.
