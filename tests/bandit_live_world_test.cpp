@@ -751,6 +751,123 @@ TEST_CASE( "bandit live world builds a bounded pay-or-fight shakedown surface", 
     CHECK( rolling_surface.notes.front().find( "direct-ambush" ) != std::string::npos );
 }
 
+
+TEST_CASE( "bandit live world records shakedown aftermath for renegotiation pressure", "[bandit][live_world][shakedown]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 971 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 972 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit_trader", character_id( 973 ),
+             tripoint_abs_ms( 264, 504, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player@18,20,0" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    site.remembered_threat_estimate = 4;
+
+    bandit_live_world::local_gate_input gate_input;
+    gate_input.local_threat = 1;
+    gate_input.local_opportunity = 3;
+    gate_input.local_contact_established = true;
+    gate_input.basecamp_or_camp_scene = true;
+    const bandit_live_world::local_gate_decision gate_decision =
+        bandit_live_world::choose_local_gate_posture( site, gate_input );
+    REQUIRE( gate_decision.opens_shakedown_surface );
+
+    bandit_live_world::shakedown_goods_pool pool;
+    pool.player_carried_value = 100;
+    pool.companion_carried_value = 50;
+    pool.reachable_basecamp_value = 850;
+    pool.basecamp_or_camp_scene = true;
+
+    const bandit_live_world::shakedown_surface first_surface =
+        bandit_live_world::build_shakedown_surface( site, gate_input, gate_decision, pool );
+    REQUIRE( first_surface.valid );
+    REQUIRE( first_surface.demanded_value == 350 );
+
+    bandit_live_world::shakedown_outcome fight_opened;
+    fight_opened.fought = true;
+    fight_opened.basecamp_or_camp_scene = true;
+    fight_opened.demanded_value = first_surface.demanded_value;
+    fight_opened.reachable_goods_value = first_surface.reachable_goods_value;
+    REQUIRE( bandit_live_world::apply_shakedown_outcome( site, fight_opened ).valid );
+    bandit_live_world::begin_shakedown_basecamp_defender_observation( site, 2 );
+    CHECK( site.shakedown_basecamp_defender_observation_pending );
+    CHECK_FALSE( bandit_live_world::apply_shakedown_basecamp_defender_observation( site, 2 ).valid );
+    CHECK( site.shakedown_basecamp_defender_observation_pending );
+    const bandit_live_world::shakedown_aftermath_effect harsh_effect =
+        bandit_live_world::apply_shakedown_basecamp_defender_observation( site, 1 );
+    CHECK( harsh_effect.valid );
+    CHECK( harsh_effect.stronger_reopen );
+    CHECK_FALSE( harsh_effect.cools_later_pressure );
+    CHECK( harsh_effect.demand_modifier_percent == 140 );
+    CHECK( site.last_shakedown_outcome == "fight_defender_loss" );
+    CHECK( site.shakedown_defender_losses == 1 );
+    CHECK_FALSE( site.shakedown_basecamp_defender_observation_pending );
+    CHECK( site.shakedown_reopen_available );
+    CHECK_FALSE( site.shakedown_reopen_used );
+    CHECK( site.remembered_threat_estimate == 3 );
+
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    world.serialize( jsout );
+    JsonValue jsin = json_loader::from_string( out.str() );
+    bandit_live_world::world_state loaded;
+    loaded.deserialize( jsin.get_object() );
+    REQUIRE( loaded.sites.size() == 1 );
+    CHECK( loaded.sites.front().shakedown_reopen_available );
+    CHECK( loaded.sites.front().shakedown_defender_losses == 1 );
+    CHECK_FALSE( loaded.sites.front().shakedown_basecamp_defender_observation_pending );
+    CHECK( loaded.sites.front().last_shakedown_outcome == "fight_defender_loss" );
+
+    const bandit_live_world::shakedown_surface reopened_surface =
+        bandit_live_world::build_shakedown_surface( site, gate_input, gate_decision, pool );
+    CHECK( reopened_surface.valid );
+    CHECK( reopened_surface.pay_available );
+    CHECK( reopened_surface.fight_available );
+    CHECK( reopened_surface.demanded_value == 490 );
+    const std::string reopened_report =
+        bandit_live_world::render_shakedown_surface_report( site, reopened_surface );
+    CHECK( reopened_report.find( "renegotiation reopen" ) != std::string::npos );
+    CHECK( reopened_report.find( "demanded_toll=490" ) != std::string::npos );
+
+    REQUIRE( bandit_live_world::mark_shakedown_reopen_used( site ) );
+    const bandit_live_world::shakedown_surface spent_reopen_surface =
+        bandit_live_world::build_shakedown_surface( site, gate_input, gate_decision, pool );
+    CHECK( spent_reopen_surface.demanded_value == 350 );
+
+    bandit_live_world::shakedown_outcome bandit_loss;
+    bandit_loss.fought = true;
+    bandit_loss.demanded_value = first_surface.demanded_value;
+    bandit_loss.reachable_goods_value = first_surface.reachable_goods_value;
+    bandit_loss.bandit_losses = 1;
+    bandit_loss.extraction_failed = true;
+    const bandit_live_world::shakedown_aftermath_effect cool_effect =
+        bandit_live_world::apply_shakedown_outcome( site, bandit_loss );
+    CHECK( cool_effect.valid );
+    CHECK_FALSE( cool_effect.stronger_reopen );
+    CHECK( cool_effect.cools_later_pressure );
+    CHECK( cool_effect.demand_modifier_percent == 75 );
+    CHECK( site.shakedown_bandit_losses == 1 );
+    CHECK( site.shakedown_caution == 1 );
+    CHECK( site.remembered_pressure ==
+           bandit_pursuit_handoff::remaining_return_pressure_state::collapsed );
+
+    const bandit_live_world::shakedown_surface cooled_surface =
+        bandit_live_world::build_shakedown_surface( site, gate_input, gate_decision, pool );
+    CHECK( cooled_surface.demanded_value == 263 );
+    const std::string cooled_report =
+        bandit_live_world::render_shakedown_surface_report( site, cooled_surface );
+    CHECK( cooled_report.find( "aftermath caution" ) != std::string::npos );
+}
+
 TEST_CASE( "bandit live world applies a return packet onto the active owned outing", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;

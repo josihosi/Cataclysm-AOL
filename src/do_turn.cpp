@@ -275,6 +275,20 @@ int live_bandit_current_vehicle_goods_value( const avatar &u )
     return value;
 }
 
+int live_bandit_nearby_basecamp_defender_count( const avatar &u )
+{
+    static constexpr int nearby_defender_radius = 30;
+    int defenders = 0;
+    for( const npc &guy : g->all_npcs() ) {
+        if( !guy.is_player_ally() || guy.is_dead() ||
+            rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_defender_radius ) {
+            continue;
+        }
+        defenders++;
+    }
+    return defenders;
+}
+
 bandit_live_world::shakedown_goods_pool live_bandit_make_shakedown_goods_pool(
     const bandit_live_world::local_gate_input &input, const avatar &u )
 {
@@ -408,6 +422,9 @@ int live_bandit_surrender_goods( const bandit_live_world::local_gate_input &inpu
 
 bool live_bandit_shakedown_already_opened( const bandit_live_world::site_record &site )
 {
+    if( site.shakedown_reopen_available && !site.shakedown_reopen_used ) {
+        return false;
+    }
     for( const character_id &member_id : site.active_member_ids ) {
         const bandit_live_world::member_record *member = site.find_member( member_id );
         if( member != nullptr && member->last_writeback_summary.find( "shakedown_surface" ) !=
@@ -431,6 +448,14 @@ bool live_bandit_shakedown_was_paid( const bandit_live_world::site_record &site 
 void live_bandit_send_group_home_after_payment( bandit_live_world::site_record &site,
         const bandit_live_world::shakedown_surface &surface, const int surrendered_value )
 {
+    bandit_live_world::shakedown_outcome outcome;
+    outcome.paid = true;
+    outcome.basecamp_or_camp_scene = surface.includes_basecamp_inventory;
+    outcome.demanded_value = surface.demanded_value;
+    outcome.surrendered_value = surrendered_value;
+    outcome.reachable_goods_value = surface.reachable_goods_value;
+    bandit_live_world::apply_shakedown_outcome( site, outcome );
+
     const std::vector<character_id> member_ids = site.active_member_ids;
     const std::string summary = string_format( "shakedown_surface paid toll=%d demanded=%d reachable=%d",
                                 surrendered_value, surface.demanded_value,
@@ -455,8 +480,19 @@ void live_bandit_send_group_home_after_payment( bandit_live_world::site_record &
 }
 
 void live_bandit_choose_fight( bandit_live_world::site_record &site,
-                               const bandit_live_world::shakedown_surface &surface )
+                               const bandit_live_world::shakedown_surface &surface, const avatar &u )
 {
+    bandit_live_world::shakedown_outcome outcome;
+    outcome.fought = true;
+    outcome.basecamp_or_camp_scene = surface.includes_basecamp_inventory;
+    outcome.demanded_value = surface.demanded_value;
+    outcome.reachable_goods_value = surface.reachable_goods_value;
+    bandit_live_world::apply_shakedown_outcome( site, outcome );
+    if( surface.includes_basecamp_inventory ) {
+        bandit_live_world::begin_shakedown_basecamp_defender_observation( site,
+                live_bandit_nearby_basecamp_defender_count( u ) );
+    }
+
     const std::string summary = string_format( "shakedown_surface fight demanded=%d reachable=%d",
                                 surface.demanded_value, surface.reachable_goods_value );
     for( const character_id &member_id : site.active_member_ids ) {
@@ -486,6 +522,7 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
     if( !surface.valid ) {
         return false;
     }
+    bandit_live_world::mark_shakedown_reopen_used( site );
 
     uilist shakedown_menu;
     shakedown_menu.title = _( "Bandit shakedown" );
@@ -509,7 +546,7 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
     }
 
     add_msg( m_bad, _( "You refuse the shakedown.  The bandits come at you." ) );
-    live_bandit_choose_fight( site, surface );
+    live_bandit_choose_fight( site, surface, u );
     return true;
 }
 
@@ -596,6 +633,21 @@ bool note_live_bandit_aftermath()
             }
 
             observations.push_back( observation );
+        }
+
+        if( site.shakedown_basecamp_defender_observation_pending ) {
+            const bandit_live_world::shakedown_aftermath_effect defender_effect =
+                bandit_live_world::apply_shakedown_basecamp_defender_observation( site,
+                        live_bandit_nearby_basecamp_defender_count( u ) );
+            if( defender_effect.valid ) {
+                changed = true;
+                DebugLog( D_INFO, DC_ALL )
+                        << "bandit shakedown aftermath: basecamp defender strength dropped from "
+                        << site.shakedown_basecamp_defenders_at_fight << " to "
+                        << live_bandit_nearby_basecamp_defender_count( u )
+                        << "; stronger reopen available="
+                        << ( site.shakedown_reopen_available ? "yes" : "no" );
+            }
         }
 
         bandit_live_world::local_gate_input gate_input = live_bandit_make_gate_input( site, u );
