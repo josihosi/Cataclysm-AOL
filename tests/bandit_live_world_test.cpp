@@ -640,6 +640,11 @@ TEST_CASE( "bandit live world chooses reviewer-readable local approach gate post
     CHECK( decision.posture == bandit_live_world::local_gate_posture::attack_now );
     CHECK_FALSE( decision.opens_shakedown_surface );
     CHECK( decision.combat_forward );
+    const std::string rolling_report = bandit_live_world::render_local_gate_report( site, rolling_input,
+                                       decision );
+    CHECK( rolling_report.find( "posture=attack_now" ) != std::string::npos );
+    CHECK( rolling_report.find( "rolling_travel=yes" ) != std::string::npos );
+    CHECK( rolling_report.find( "combat_forward=yes" ) != std::string::npos );
 
     bandit_live_world::local_gate_input hopeless_input;
     hopeless_input.local_threat = 8;

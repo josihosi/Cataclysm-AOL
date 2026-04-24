@@ -126,9 +126,14 @@ int signum( const int value )
     return ( value > 0 ) - ( value < 0 );
 }
 
+bool live_bandit_player_at_basecamp( const avatar &u )
+{
+    return overmap_buffer.find_camp( u.pos_abs_omt().xy() ).has_value();
+}
+
 bool live_bandit_player_near_basecamp( const avatar &u )
 {
-    if( overmap_buffer.find_camp( u.pos_abs_omt().xy() ) ) {
+    if( live_bandit_player_at_basecamp( u ) ) {
         return true;
     }
 
@@ -148,12 +153,26 @@ tripoint_abs_omt live_bandit_standoff_goal( const bandit_live_world::site_record
                              player_omt.y() + dy * desired_distance, player_omt.z() );
 }
 
+bool live_bandit_player_in_rolling_travel_scene( const avatar &u )
+{
+    if( u.in_vehicle && u.controlling_vehicle ) {
+        return true;
+    }
+
+    return overmap_buffer.ter( u.pos_abs_omt() )->is_road();
+}
+
 bandit_live_world::local_gate_input live_bandit_make_gate_input(
     const bandit_live_world::site_record &site, const avatar &u )
 {
     bandit_live_world::local_gate_input input;
-    input.basecamp_or_camp_scene = live_bandit_player_near_basecamp( u );
-    if( input.basecamp_or_camp_scene ) {
+    input.rolling_travel_scene = live_bandit_player_in_rolling_travel_scene( u );
+    input.basecamp_or_camp_scene = !input.rolling_travel_scene &&
+                                      live_bandit_player_near_basecamp( u );
+    if( input.rolling_travel_scene ) {
+        input.local_threat = 1;
+        input.local_opportunity = 2;
+    } else if( input.basecamp_or_camp_scene ) {
         input.local_threat = 3;
         input.local_opportunity = 2;
         input.recent_exposure = true;
