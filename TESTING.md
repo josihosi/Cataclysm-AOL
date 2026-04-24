@@ -45,7 +45,12 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 ## Current relevant evidence
 
 Active probe obligation: `Bandit aftermath / renegotiation writeback packet v0`.
-The approach / stand-off / attack-gate packet and the first shakedown pay-or-fight surface both close honestly on current build.  The next proof must show that shakedown outcomes write back into later pressure instead of evaporating after the first menu.
+The approach / stand-off / attack-gate packet and the first shakedown pay-or-fight surface both close honestly on current build.  Shakedown outcomes now have a deterministic persisted aftermath layer, but the packet is not closed until a real scene path proves stored outcomes feed later pressure instead of evaporating after the first menu.
+
+Fresh active aftermath evidence:
+- deterministic implementation: `site_record` now persists shakedown aftermath fields for last outcome, demanded/surrendered/reachable value, abstract loot, defender losses, bandit losses, anger, caution, nearby Basecamp defender snapshot/pending-observation state, and the one-use stronger-reopen latch; live pay/fight branches call `apply_shakedown_outcome(...)`, Basecamp fight snapshots nearby allied defenders, the per-turn observer can convert a defender-strength drop into stronger reopen state, and return-packet writeback records bandit-loss/failure cooling for shakedown fights.
+- deterministic proof: `tests/bandit_live_world_test.cpp` covers the stored aftermath seam, save/load persistence of the reopen state, the Basecamp defender-observation path (`2 -> 1` live defenders) producing one harsher reopened demand (`350 -> 490`) with `pay` and `fight` still available, one-use reopen consumption, and a cooled later demand after bandit loss (`350 -> 263`) with reviewer-readable report notes.
+- validation: `make -j4 tests`, `./tests/cata_test "[bandit][live_world][shakedown]"` (75 assertions in 2 test cases), `./tests/cata_test "[bandit][live_world]"` (398 assertions in 15 test cases), and focused `git diff --check` passed on this dirty tree.
 
 Latest closed shakedown packet evidence:
 - deterministic surface: `src/bandit_live_world.{h,cpp}` exposes `shakedown_goods_pool`, `shakedown_surface`, `build_shakedown_surface(...)`, and `render_shakedown_surface_report(...)` behind an `open_shakedown` local-gate decision
@@ -56,8 +61,8 @@ Latest closed shakedown packet evidence:
 - validation: `make -j4 tests && ./tests/cata_test "[bandit][live_world][shakedown]"` passed earlier for this packet (31 assertions), `make -j4 obj/do_turn.o`, `./tests/cata_test "[bandit][live_world][shakedown]"` (31 assertions), focused `git diff --check`, and the forced current-build relink command `make -j4 TILES=1 SOUND=0 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 cataclysm-tiles` passed before the off-base live proof
 
 Pending proof shape for the active aftermath packet:
-- identify the smallest state/writeback seam that records first shakedown outcome, local threat change, and later demand pressure without item-perfect cargo persistence
-- prove at least one stronger/harsher reopen after material Basecamp defender loss and one cooling/shrinking pressure case after meaningful bandit losses before closing the packet
+- prove the already-wired stronger-reopen path on a real current-build Basecamp scene where a defender-strength drop is observed after a shakedown fight
+- prove at least one live cooling/shrinking pressure case after meaningful bandit losses before closing the packet
 - keep screen proof, deterministic proof, and artifact/report proof separated; do not claim broad diplomacy, infinite renegotiation, convoy combat, or radio/social-horror behavior in this packet
 
 ### Recently closed lane - Cannibal camp first hostile-profile adopter packet v0
