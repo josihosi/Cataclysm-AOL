@@ -852,43 +852,47 @@ Notes:
 
 ## Bandit approach / stand-off / attack-gate packet v0
 
-Status: GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] One honest local approach / stand-off / attack-gate layer exists on top of the live bandit control seam.
 - [x] Dispatched bandit groups can reviewer-readably choose among stalking, holding off, probing, opening a shakedown, attacking directly, or aborting.
 - [x] The gate law is explicit enough that later packet work can answer `why did this become a shakedown instead of a fight` without folklore reconstruction.
-- [ ] Ordinary Basecamp/player pressure does not feel like instant psychic tile collapse because bandits can keep bounded stand-off behavior.
-- [x] Convoy / vehicle / rolling-travel contexts are allowed to skip the polite shakedown posture when they honestly read as moving ambush opportunities.
+- [x] Ordinary Basecamp/player pressure does not feel like instant psychic tile collapse because bandits can keep bounded stand-off behavior.
+- [x] Convoy / vehicle / rolling-travel contexts are allowed to skip the polite shakedown posture when they honestly read as moving ambush opportunities on a real or harnessed travel seam.
 - [x] The slice stays bounded: no pay-or-fight UI yet, no giant stealth doctrine, no radio/stalker widening, and no broad combat-AI rewrite.
 
 Notes:
 - Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
-- This is the first bandit-robbery packet behind the already-frozen hostile-site stack, not a reason to leapfrog the earlier greenlit order.
-- `src/bandit_live_world.{h,cpp}` now carries the first deterministic local gate surface: `local_gate_input`, `local_gate_decision`, `local_gate_posture`, `choose_local_gate_posture(...)`, and `render_local_gate_report(...)`.
-- Fresh deterministic proof in `tests/bandit_live_world_test.cpp` covers all six v0 postures from an active owned outing: `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`. The camp-adjacent `hold_off` proof is still deterministic only; the remaining open bar is live/player-present stand-off proof on real Basecamp footing.
-- Fresh validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][live_world][approach_gate]"`, `./tests/cata_test "[bandit][live_world]"`, and `git diff --check`.
+- This first bandit-robbery packet now closes behind the already-frozen hostile-site stack; the next active packet is the player-present shakedown pay-or-fight surface.
+- `src/bandit_live_world.{h,cpp}` carries the deterministic local gate surface: `local_gate_input`, `local_gate_decision`, `local_gate_posture`, `choose_local_gate_posture(...)`, and `render_local_gate_report(...)`.
+- Fresh deterministic proof in `tests/bandit_live_world_test.cpp` covers all six v0 postures from an active owned outing: `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`, with reviewer-readable report coverage for the rolling-travel `attack_now` / `combat_forward` branch.
+- Fresh live Basecamp stand-off proof lives under `.userdata/dev-harness/harness_runs/20260424_035742/`: the current-build probe advances the claimed nearby-owned-site/Basecamp save across dispatch, and saved-world inspection shows member `4` outbound with `last_writeback_summary = "dispatch hold_off toward player@140,41,0 via goal@140,43,0"`, so the group holds readable stand-off instead of collapsing onto the player/Basecamp tile.
+- Fresh live rolling-travel proof lives under `.userdata/dev-harness/harness_runs/20260424_034924/`: the current-build probe advances the claimed nearby-owned-site road-travel save across dispatch, and saved-world inspection shows member `4` outbound with `last_writeback_summary = "dispatch attack_now toward player@140,42,0 via goal@140,42,0"`; the matching NPC save has `goalx/goaly/goalz = 140/42/0` and an overmap path beginning at `[140,42,0]`, so the same local gate chooses attack-forward pressure on the harnessed travel seam without opening the pay-or-fight UI.
+- Fresh validation passed via `make -j4 TILES=1 SOUND=0 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/do_turn.o obj/tiles/version.o cataclysm-tiles`, `./tests/cata_test "[bandit][live_world][approach_gate]"`, `python3 tools/openclaw_harness/startup_harness.py probe tmp.bandit_rolling_travel_attack_gate_probe_1860`, `python3 tools/openclaw_harness/startup_harness.py probe tmp.bandit_basecamp_standoff_gate_probe_1860`, and `git diff --check -- src/do_turn.cpp src/bandit_live_world.cpp tests/bandit_live_world_test.cpp tools/openclaw_harness/scenarios/tmp.bandit_rolling_travel_attack_gate_probe_1860.json`.
 - Radio warfare and `Writhing stalker` stay parked for later.
 
 ---
 
 ## Bandit shakedown pay-or-fight surface packet v0
 
-Status: GREENLIT
+Status: GREENLIT / PARTIAL LIVE PROOF
 
 Success state:
-- [ ] One honest player-present shakedown scene can bootstrap from the prior approach/gate packet instead of appearing as disconnected chat magic.
-- [ ] The initial interaction is clearly a robbery demand with a readable `pay` versus `fight` fork.
-- [ ] Whenever this shakedown surface is invoked, including any later reopened demand, fighting remains an explicit option rather than disappearing into one-way surrender theater.
+- [x] One honest player-present shakedown scene can bootstrap from the prior approach/gate packet instead of appearing as disconnected chat magic.
+- [x] The initial interaction is clearly a robbery demand with a readable `pay` versus `fight` fork.
+- [x] Whenever this shakedown surface is invoked, including any later reopened demand, fighting remains an explicit option rather than disappearing into one-way surrender theater.
 - [ ] The surrender surface uses an explicit bounded goods pool that matches scene context rather than magical remote inventory reach.
-- [ ] The demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee.
-- [ ] Paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly.
-- [ ] The slice stays bounded: no branching diplomacy opera, no fake debt economy, no magical remote inventory, and no unrelated convoy-combat rewrite.
+- [x] The demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee.
+- [x] Paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly.
+- [x] The slice stays bounded: no branching diplomacy opera, no fake debt economy, no magical remote inventory, and no unrelated convoy-combat rewrite.
 
 Notes:
 - Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
 - This packet sits directly behind `Bandit approach / stand-off / attack-gate packet v0`.
-- The broad concept lean for explicit `pay` versus `fight` plus trading-style toll handling now has a bounded future packet instead of living only as attractive background muttering.
+- The deterministic surface helper exists on the owned-outing seam: `build_shakedown_surface(...)` consumes an `open_shakedown` gate decision and explicit reachable-goods pool, then reports a robbery bark, painful demanded toll, `pay` and `fight` availability, Basecamp/off-base pool reach, and rolling-travel bypass.
+- Current live Basecamp-side proof exists under `.userdata/dev-harness/harness_runs/20260424_053502/` for the `fight` branch and `.userdata/dev-harness/harness_runs/20260424_054046/` for the `pay` branch.  The menu opens from real local contact with `Bandit shakedown`, `Reachable goods: 45134`, `Demanded toll: 15797`, `p Pay the demanded goods`, and `f Fight`; fighting reports `You refuse the shakedown.  The bandits come at you.`, while paying reports `You surrender goods worth about 18390 to the bandits.` and saves member `4` back `at_home` with `last_writeback_summary = "shakedown_surface paid toll=18390 demanded=15797 reachable=45134"`.
+- The remaining unchecked proof is not the menu/fork anymore; it is one honest off-base live reach check showing the same surface excludes Basecamp inventory outside Basecamp/camp footing.
 
 ---
 

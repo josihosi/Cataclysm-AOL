@@ -8,8 +8,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Bandit approach / stand-off / attack-gate packet v0`.
+Active lane: `Bandit shakedown pay-or-fight surface packet v0`.
 
-- Attach or sample the new local gate surface from the real player-present live seam without widening into the pay-or-fight UI.
-- Add one honest Basecamp/camp-adjacent proof that a dispatched group can hold off / stalk at readable stand-off instead of collapsing onto the player immediately.
-- Add one honest travel / convoy-style proof that the same gate can choose attack-forward pressure when the scene reads as a moving ambush opportunity.
+- Prove the remaining off-base live goods-pool reach honestly: outside Basecamp/camp footing, the shakedown surface must exclude reachable Basecamp goods and expose only carried / current-vehicle goods.
+- Keep the already-wired live surface deliberately blunt while probing: readable robbery demand plus explicit `pay` and `fight` only.
+- Do not widen into aftermath, renegotiation, convoy combat, or broad diplomacy; those already have later packets.

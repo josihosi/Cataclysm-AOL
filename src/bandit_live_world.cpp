@@ -1002,7 +1002,7 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         return decision;
     }
 
-    if( input.local_contact_established && decision.dispatch_strength >= 2 &&
+    if( input.local_contact_established && decision.dispatch_strength >= 1 &&
         decision.pressure_margin >= 2 ) {
         decision.posture = local_gate_posture::open_shakedown;
         decision.opens_shakedown_surface = true;
