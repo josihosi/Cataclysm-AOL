@@ -10,6 +10,6 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active lane: `Bandit approach / stand-off / attack-gate packet v0`.
 
-- Audit the current live dispatch/local-contact seam for the smallest honest place to attach one player-present approach/posture decision.
-- Define the first bounded posture surface (`stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, or `abort`) with explicit inputs from dispatch strength and local threat/opportunity.
-- Add deterministic proof that a dispatched bandit group can choose a reviewer-readable posture without collapsing into instant psychic attack or shakedown UI work.
+- Attach or sample the new local gate surface from the real player-present live seam without widening into the pay-or-fight UI.
+- Add one honest Basecamp/camp-adjacent proof that a dispatched group can hold off / stalk at readable stand-off instead of collapsing onto the player immediately.
+- Add one honest travel / convoy-style proof that the same gate can choose attack-forward pressure when the scene reads as a moving ambush opportunity.

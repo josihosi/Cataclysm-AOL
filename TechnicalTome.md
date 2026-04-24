@@ -1,5 +1,11 @@
 # Technical Tome
 
+## Bandit local approach gate v0 spine
+- The first approach/stand-off gate lives on the active owned-outing record, not as free-floating robbery UI: `choose_local_gate_posture(...)` reads dispatch strength plus local threat/opportunity/context and emits a reviewer-readable `local_gate_decision`.
+- The bounded v0 posture set is `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`. `open_shakedown` only marks that the later pay-or-fight surface may open; it does not implement the payment UI.
+- Camp/Basecamp pressure is allowed to hold off when the scene is exposed or evenly matched, while rolling travel/convoy contexts can skip the polite shakedown posture and go combat-forward when the pressure margin supports an ambush.
+- The report path is deliberately plain-text and tuning-facing: active group, target, strength, threat, opportunity, pressure margin, stand-off distance, shakedown flag, combat-forward flag, and notes should be enough to explain why the gate chose posture before later packets add dialogue or aftermath.
+
 ## Bandit mark-generation v0 spine
 - The bounded writer-side bandit seam is source-shaped, not world-sim theater: deterministic `signal_input` packets write or refresh typed marks, rebuild broad regional heat, and emit evaluator-ready leads without pretending a full hostile overmap ecosystem already exists.
 - Soft marks cool selectively by cadence tier, while confirmed threat stays sticky on the ledger until later real evidence rewrites it. That means weak smoke/searchlight pressure can fade back out, but recent ugly loss / hard-threat memory does not get passively wished away.

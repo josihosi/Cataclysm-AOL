@@ -562,6 +562,95 @@ TEST_CASE( "bandit live world writeback shrinks headcount and future dispatch ca
     CHECK( blocked_plan.notes.back().find( "home reserve" ) != std::string::npos );
 }
 
+TEST_CASE( "bandit live world chooses reviewer-readable local approach gate posture", "[bandit][live_world][approach_gate]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 901 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 902 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit_trader", character_id( 903 ),
+             tripoint_abs_ms( 264, 504, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player_basecamp_nearby" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+
+    bandit_live_world::local_gate_input stalk_input;
+    stalk_input.local_threat = 2;
+    stalk_input.local_opportunity = 0;
+    bandit_live_world::local_gate_decision decision =
+        bandit_live_world::choose_local_gate_posture( site, stalk_input );
+    CHECK( decision.valid );
+    CHECK( decision.posture == bandit_live_world::local_gate_posture::stalk );
+    CHECK_FALSE( decision.opens_shakedown_surface );
+    CHECK_FALSE( decision.combat_forward );
+
+    bandit_live_world::local_gate_input camp_input;
+    camp_input.local_threat = 3;
+    camp_input.local_opportunity = 2;
+    camp_input.standoff_distance = 10;
+    camp_input.basecamp_or_camp_scene = true;
+    camp_input.recent_exposure = true;
+    decision = bandit_live_world::choose_local_gate_posture( site, camp_input );
+    CHECK( decision.valid );
+    CHECK( decision.posture == bandit_live_world::local_gate_posture::hold_off );
+    CHECK_FALSE( decision.opens_shakedown_surface );
+    CHECK_FALSE( decision.combat_forward );
+    const std::string camp_report = bandit_live_world::render_local_gate_report( site, camp_input,
+                                    decision );
+    CHECK( camp_report.find( "posture=hold_off" ) != std::string::npos );
+    CHECK( camp_report.find( "strength=1" ) != std::string::npos );
+    CHECK( camp_report.find( "threat=3" ) != std::string::npos );
+
+    bandit_live_world::local_gate_input probe_input;
+    probe_input.local_threat = 1;
+    probe_input.local_opportunity = 1;
+    decision = bandit_live_world::choose_local_gate_posture( site, probe_input );
+    CHECK( decision.valid );
+    CHECK( decision.posture == bandit_live_world::local_gate_posture::probe );
+    CHECK_FALSE( decision.opens_shakedown_surface );
+    CHECK_FALSE( decision.combat_forward );
+
+    REQUIRE( bandit_live_world::update_member_state( site, character_id( 902 ),
+             bandit_live_world::member_state::outbound, "joins local gate proof group" ) );
+    site.active_member_ids.push_back( character_id( 902 ) );
+
+    bandit_live_world::local_gate_input shakedown_input;
+    shakedown_input.local_threat = 1;
+    shakedown_input.local_opportunity = 3;
+    shakedown_input.local_contact_established = true;
+    decision = bandit_live_world::choose_local_gate_posture( site, shakedown_input );
+    CHECK( decision.valid );
+    CHECK( decision.posture == bandit_live_world::local_gate_posture::open_shakedown );
+    CHECK( decision.opens_shakedown_surface );
+    CHECK_FALSE( decision.combat_forward );
+
+    bandit_live_world::local_gate_input rolling_input;
+    rolling_input.local_threat = 2;
+    rolling_input.local_opportunity = 1;
+    rolling_input.rolling_travel_scene = true;
+    decision = bandit_live_world::choose_local_gate_posture( site, rolling_input );
+    CHECK( decision.valid );
+    CHECK( decision.posture == bandit_live_world::local_gate_posture::attack_now );
+    CHECK_FALSE( decision.opens_shakedown_surface );
+    CHECK( decision.combat_forward );
+
+    bandit_live_world::local_gate_input hopeless_input;
+    hopeless_input.local_threat = 8;
+    hopeless_input.local_opportunity = 0;
+    decision = bandit_live_world::choose_local_gate_posture( site, hopeless_input );
+    CHECK_FALSE( decision.valid );
+    CHECK( decision.posture == bandit_live_world::local_gate_posture::abort );
+    CHECK_FALSE( decision.opens_shakedown_surface );
+    CHECK_FALSE( decision.combat_forward );
+}
+
 TEST_CASE( "bandit live world applies a return packet onto the active owned outing", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;

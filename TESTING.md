@@ -45,7 +45,13 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 ## Current relevant evidence
 
 Active probe obligation: `Bandit approach / stand-off / attack-gate packet v0`.
-The missing proof has moved from hostile-site adoption to the first player-present local posture law on top of the live dispatch seam. The next honest evidence should show a dispatched bandit group choosing a readable approach/stand-off/attack-gate posture without jumping straight to shakedown UI or broad combat AI.
+The first deterministic posture law now exists on top of the active owned-outing record. The next honest evidence should move from deterministic gate selection into real player-present proof: one Basecamp/camp-adjacent stand-off/stalk/hold-off scene and one travel/convoy-style attack-forward scene, without jumping into the pay-or-fight UI.
+
+Fresh deterministic evidence for this packet:
+- implementation surface: `src/bandit_live_world.{h,cpp}` exposes `local_gate_input`, `local_gate_decision`, `local_gate_posture`, `choose_local_gate_posture(...)`, and `render_local_gate_report(...)` on an active owned outing
+- posture coverage: `tests/bandit_live_world_test.cpp` proves the gate can choose `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort` from dispatch strength versus local threat/opportunity inputs
+- reviewer-readable output: the report includes active group/target, posture, dispatch strength, threat, opportunity, margin, stand-off distance, shakedown flag, combat-forward flag, and notes
+- validation: `git diff --check -- src/bandit_live_world.h src/bandit_live_world.cpp tests/bandit_live_world_test.cpp`, `make -j4 tests`, `./tests/cata_test "[bandit][live_world][approach_gate]"` (33 assertions), and `./tests/cata_test "[bandit][live_world]"` (320 assertions) all passed
 
 ### Recently closed lane - Cannibal camp first hostile-profile adopter packet v0
 
