@@ -656,6 +656,89 @@ TEST_CASE( "bandit live world chooses reviewer-readable local approach gate post
     CHECK_FALSE( decision.combat_forward );
 }
 
+TEST_CASE( "bandit live world builds a bounded pay-or-fight shakedown surface", "[bandit][live_world][shakedown]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 951 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 952 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit_trader", character_id( 953 ),
+             tripoint_abs_ms( 264, 504, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player@18,20,0" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    REQUIRE( bandit_live_world::update_member_state( site, character_id( 952 ),
+             bandit_live_world::member_state::outbound, "joins shakedown proof group" ) );
+    site.active_member_ids.push_back( character_id( 952 ) );
+
+    bandit_live_world::local_gate_input gate_input;
+    gate_input.local_threat = 1;
+    gate_input.local_opportunity = 3;
+    gate_input.local_contact_established = true;
+    gate_input.basecamp_or_camp_scene = true;
+    const bandit_live_world::local_gate_decision gate_decision =
+        bandit_live_world::choose_local_gate_posture( site, gate_input );
+    REQUIRE( gate_decision.valid );
+    REQUIRE( gate_decision.posture == bandit_live_world::local_gate_posture::open_shakedown );
+    REQUIRE( gate_decision.opens_shakedown_surface );
+
+    bandit_live_world::shakedown_goods_pool basecamp_pool;
+    basecamp_pool.player_carried_value = 100;
+    basecamp_pool.companion_carried_value = 50;
+    basecamp_pool.vehicle_carried_value = 10000;
+    basecamp_pool.reachable_basecamp_value = 850;
+    basecamp_pool.basecamp_or_camp_scene = true;
+    const bandit_live_world::shakedown_surface basecamp_surface =
+        bandit_live_world::build_shakedown_surface( site, gate_input, gate_decision,
+                basecamp_pool );
+    CHECK( basecamp_surface.valid );
+    CHECK( basecamp_surface.pay_available );
+    CHECK( basecamp_surface.fight_available );
+    CHECK( basecamp_surface.includes_basecamp_inventory );
+    CHECK_FALSE( basecamp_surface.includes_vehicle_inventory );
+    CHECK( basecamp_surface.reachable_goods_value == 1000 );
+    CHECK( basecamp_surface.demanded_value == 350 );
+    const std::string basecamp_report =
+        bandit_live_world::render_shakedown_surface_report( site, basecamp_surface );
+    CHECK( basecamp_report.find( "pay_option=yes" ) != std::string::npos );
+    CHECK( basecamp_report.find( "fight_option=yes" ) != std::string::npos );
+    CHECK( basecamp_report.find( "basecamp_inventory=yes" ) != std::string::npos );
+    CHECK( basecamp_report.find( "vehicle_inventory=no" ) != std::string::npos );
+    CHECK( basecamp_report.find( "demanded_toll=350" ) != std::string::npos );
+
+    bandit_live_world::local_gate_input offbase_gate_input = gate_input;
+    offbase_gate_input.basecamp_or_camp_scene = false;
+    bandit_live_world::shakedown_goods_pool offbase_pool;
+    offbase_pool.player_carried_value = 200;
+    offbase_pool.companion_carried_value = 100;
+    offbase_pool.vehicle_carried_value = 600;
+    offbase_pool.reachable_basecamp_value = 5000;
+    const bandit_live_world::shakedown_surface offbase_surface =
+        bandit_live_world::build_shakedown_surface( site, offbase_gate_input, gate_decision,
+                offbase_pool );
+    CHECK( offbase_surface.valid );
+    CHECK_FALSE( offbase_surface.includes_basecamp_inventory );
+    CHECK( offbase_surface.includes_vehicle_inventory );
+    CHECK( offbase_surface.reachable_goods_value == 900 );
+    CHECK( offbase_surface.demanded_value == 315 );
+
+    bandit_live_world::local_gate_input rolling_gate_input = gate_input;
+    rolling_gate_input.rolling_travel_scene = true;
+    const bandit_live_world::shakedown_surface rolling_surface =
+        bandit_live_world::build_shakedown_surface( site, rolling_gate_input, gate_decision,
+                offbase_pool );
+    CHECK_FALSE( rolling_surface.valid );
+    REQUIRE_FALSE( rolling_surface.notes.empty() );
+    CHECK( rolling_surface.notes.front().find( "direct-ambush" ) != std::string::npos );
+}
+
 TEST_CASE( "bandit live world applies a return packet onto the active owned outing", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;

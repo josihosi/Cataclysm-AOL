@@ -2,9 +2,15 @@
 
 ## Bandit local approach gate v0 spine
 - The first approach/stand-off gate lives on the active owned-outing record, not as free-floating robbery UI: `choose_local_gate_posture(...)` reads dispatch strength plus local threat/opportunity/context and emits a reviewer-readable `local_gate_decision`.
-- The bounded v0 posture set is `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`. `open_shakedown` only marks that the later pay-or-fight surface may open; it does not implement the payment UI.
+- The bounded v0 posture set is `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`. `open_shakedown` marks that the pay-or-fight surface may open, but it still does not by itself run dialogue, trade UI, or aftermath writeback.
 - Camp/Basecamp pressure is allowed to hold off when the scene is exposed or evenly matched, while rolling travel/convoy contexts can skip the polite shakedown posture and go combat-forward when the pressure margin supports an ambush.
 - The report path is deliberately plain-text and tuning-facing: active group, target, strength, threat, opportunity, pressure margin, stand-off distance, shakedown flag, combat-forward flag, and notes should be enough to explain why the gate chose posture before later packets add dialogue or aftermath.
+
+## Bandit shakedown surface v0 spine
+- The first shakedown seam is deliberately a small surface object, not a diplomacy graph: `build_shakedown_surface(...)` consumes an `open_shakedown` gate decision plus an explicit reachable-goods pool and emits a bark, demanded value, and boolean `pay` / `fight` availability.
+- Basecamp/camp scenes may include player-carried, companion-carried, and reachable Basecamp goods. Off-base scenes may include player-carried, companion-carried, and current-vehicle goods only. The seam intentionally refuses magical remote Basecamp reach in off-base scenes.
+- The first toll rule is blunt and painful by construction: demand roughly 35% of the honest reachable pool, clamped to the available value. Paying may collapse into abstract bandit bounty/writeback later; item-by-item cargo theater is not required in this packet.
+- Rolling-travel / convoy contexts remain allowed to bypass the shakedown surface and stay direct-ambush paths when the prior gate chose that read.
 
 ## Bandit mark-generation v0 spine
 - The bounded writer-side bandit seam is source-shaped, not world-sim theater: deterministic `signal_input` packets write or refresh typed marks, rebuild broad regional heat, and emit evaluator-ready leads without pretending a full hostile overmap ecosystem already exists.

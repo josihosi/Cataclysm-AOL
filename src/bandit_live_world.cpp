@@ -1045,6 +1045,73 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
     return out.str();
 }
 
+shakedown_surface build_shakedown_surface( const site_record &site, const local_gate_input &input,
+        const local_gate_decision &decision, const shakedown_goods_pool &goods_pool )
+{
+    shakedown_surface surface;
+    surface.bark = "Drop the goods.  Pay the toll or fight.";
+
+    if( !decision.valid || !decision.opens_shakedown_surface ||
+        decision.posture != local_gate_posture::open_shakedown ) {
+        surface.notes.push_back( "shakedown blocked: local gate did not open the robbery surface" );
+        return surface;
+    }
+
+    if( input.rolling_travel_scene ) {
+        surface.notes.push_back( "shakedown blocked: rolling travel scene remains a direct-ambush context" );
+        return surface;
+    }
+
+    surface.includes_basecamp_inventory = input.basecamp_or_camp_scene ||
+                                          goods_pool.basecamp_or_camp_scene;
+    surface.includes_vehicle_inventory = !surface.includes_basecamp_inventory;
+    surface.reachable_goods_value = goods_pool.player_carried_value +
+                                    goods_pool.companion_carried_value;
+    if( surface.includes_basecamp_inventory ) {
+        surface.reachable_goods_value += goods_pool.reachable_basecamp_value;
+        surface.notes.push_back( "pool includes player, nearby companion, and reachable Basecamp goods" );
+    } else {
+        surface.reachable_goods_value += goods_pool.vehicle_carried_value;
+        surface.notes.push_back( "pool includes player, companion, and current vehicle goods only" );
+    }
+
+    if( surface.reachable_goods_value <= 0 ) {
+        surface.notes.push_back( "shakedown blocked: no honest reachable goods are present" );
+        return surface;
+    }
+
+    surface.valid = true;
+    surface.pay_available = true;
+    surface.fight_available = true;
+    surface.demanded_value = std::max( 1, ( surface.reachable_goods_value * 35 + 99 ) / 100 );
+    surface.demanded_value = std::min( surface.demanded_value, surface.reachable_goods_value );
+    surface.notes.push_back( "pay branch surrenders the demanded share into abstract bandit bounty/writeback" );
+    surface.notes.push_back( "fight branch stays explicit whenever this surface is invoked" );
+    surface.notes.push_back( "source site " + site.site_id + " opened the surface from " +
+                             site.active_group_id );
+    return surface;
+}
+
+std::string render_shakedown_surface_report( const site_record &site,
+        const shakedown_surface &surface )
+{
+    std::ostringstream out;
+    out << "shakedown_surface site=" << site.site_id
+        << " active_group=" << site.active_group_id
+        << " valid=" << ( surface.valid ? "yes" : "no" )
+        << " pay_option=" << ( surface.pay_available ? "yes" : "no" )
+        << " fight_option=" << ( surface.fight_available ? "yes" : "no" )
+        << " reachable_goods=" << surface.reachable_goods_value
+        << " demanded_toll=" << surface.demanded_value
+        << " basecamp_inventory=" << ( surface.includes_basecamp_inventory ? "yes" : "no" )
+        << " vehicle_inventory=" << ( surface.includes_vehicle_inventory ? "yes" : "no" )
+        << " bark=\"" << surface.bark << "\"\n";
+    for( const std::string &note : surface.notes ) {
+        out << "- " << note << '\n';
+    }
+    return out.str();
+}
+
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet )
 {
     if( !packet.valid || packet.source_camp_id != site.site_id ||
