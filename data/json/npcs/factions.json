@@ -1301,6 +1301,35 @@
   },
   {
     "type": "faction",
+    "id": "cannibal_camp",
+    "name": "Cannibal Camp",
+    "likes_u": -50,
+    "respects_u": -30,
+    "known_by_u": false,
+    "size": 20,
+    "power": 40,
+    "fac_food_supply": [ [ 0, { "calories": 270000000, "vitamins": { "iron": 8640, "calcium": 8640, "vitC": 8640 } } ] ],
+    "wealth": 1000000,
+    "relations": {
+      "cannibal_camp": {
+        "kill on sight": false,
+        "watch your back": true,
+        "share my stuff": true,
+        "guard your stuff": true,
+        "lets you in": true,
+        "defends your space": true,
+        "knows your voice": true
+      },
+      "your_followers": { "kill on sight": true },
+      "free_merchants": { "kill on sight": true },
+      "old_guard": { "kill on sight": true },
+      "hells_raiders": { "watch your back": true },
+      "no_faction": { "kill on sight": true }
+    },
+    "description": "Rare isolated cannibal camp groups that defend their larder and hunt outsiders rather than joining Hell's Raiders."
+  },
+  {
+    "type": "faction",
     "id": "GM_militia_faction",
     "name": "Grey Moose Militia Community",
     "likes_u": 0,

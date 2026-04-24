@@ -831,20 +831,21 @@ Notes:
 
 ## Cannibal camp first hostile-profile adopter packet v0
 
-Status: ACTIVE / GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One honest cannibal-camp hostile profile runs on the shared hostile-site substrate instead of faking reuse through bandit-only assumptions.
-- [ ] Cannibal-camp cadence, roster, pressure, dispatch, and writeback rules are explicit enough that later behavior can be reasoned about without folklore.
-- [ ] Cannibal-camp owned sites can coexist with bandit-owned sites without coalition nonsense or accidental shared-state corruption.
-- [ ] If the current tree lacks a real cannibal-camp site family, the packet first lands one **rare dedicated cannibal-camp mapgen/spawn anchor** instead of attaching the new profile to vapor.
-- [ ] That first anchor is allowed to derive from current bandit-camp structure, but its names, loadouts, and environmental dressing are explicit enough that review can tell it is the cannibal variant rather than a random runtime mutation.
-- [ ] The slice stays bounded: no writhing-stalker singleton behavior, no giant lore/diplomacy expansion, no every-hostile-family-at-once detour, and no silent default bandit-camp -> cannibal-camp conversion rule.
+- [x] One honest cannibal-camp hostile profile runs on the shared hostile-site substrate instead of faking reuse through bandit-only assumptions.
+- [x] Cannibal-camp cadence, roster, pressure, dispatch, and writeback rules are explicit enough that later behavior can be reasoned about without folklore.
+- [x] Cannibal-camp owned sites can coexist with bandit-owned sites without coalition nonsense or accidental shared-state corruption.
+- [x] If the current tree lacks a real cannibal-camp site family, the packet first lands one **rare dedicated cannibal-camp mapgen/spawn anchor** instead of attaching the new profile to vapor.
+- [x] That first anchor is allowed to derive from current bandit-camp structure, but its names, loadouts, and environmental dressing are explicit enough that review can tell it is the cannibal variant rather than a random runtime mutation.
+- [x] The slice stays bounded: no writhing-stalker singleton behavior, no giant lore/diplomacy expansion, no every-hostile-family-at-once detour, and no silent default bandit-camp -> cannibal-camp conversion rule.
 
 Notes:
 - Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`.
-- This is intentionally the first non-bandit adopter because it proves the hostile-site profile layer on a second camp-shaped family before the weirder singleton/stalker case.
-- Current repo footing already has a little cannibal-flavored content (`lodge_cannibal_15x15`, `cannibal_weapons`, `cannibal_food`), but not a real hostile cannibal-camp site family yet.
+- The current tree now closes this packet honestly: `src/bandit_live_world.{h,cpp}` carries explicit `cannibal_camp` site/profile ownership, cannibal NPC templates can claim the live-world substrate, and `tests/bandit_live_world_test.cpp` proves a cannibal camp and bandit camp coexist across dispatch/writeback serialization without shared-state mush.
+- The dedicated rare anchor now exists through `cannibal_camp` overmap terrain/special/mapgen/palette data, `cannibal_camp` faction ownership, cannibal NPC templates/classes, and bounded cannibal-camp item groups using existing cannibal food/weapons/remains footing.
+- Fresh validation passed via JSON parsing for the new data files, `make -j4 tests`, `./tests/cata_test "[bandit][live_world][cannibal]"`, `./tests/cata_test "[bandit][live_world]"`, and `git diff --check`.
 - `Writhing stalker` remains parked one step longer and should be revisited later as the first singleton adopter after the profile layer exists.
 
 ---

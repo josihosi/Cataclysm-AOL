@@ -44,8 +44,23 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Cannibal camp first hostile-profile adopter packet v0`.
-The hostile-site profile layer itself no longer needs more decorative bandit-only reruns: the deterministic profile proof now shows camp-style and smaller hostile-site profiles coexisting on the shared live-world substrate, so the missing truth has moved to the first non-bandit adopter and its dedicated cannibal-camp anchor/profile.
+Active probe obligation: `Bandit approach / stand-off / attack-gate packet v0`.
+The missing proof has moved from hostile-site adoption to the first player-present local posture law on top of the live dispatch seam. The next honest evidence should show a dispatched bandit group choosing a readable approach/stand-off/attack-gate posture without jumping straight to shakedown UI or broad combat AI.
+
+### Recently closed lane - Cannibal camp first hostile-profile adopter packet v0
+
+- canonical packet: `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
+- implementation surface: `src/bandit_live_world.{h,cpp}` now has explicit `owned_site_kind::cannibal_camp` and `hostile_site_profile::cannibal_camp`, routes `cannibal_camp` overmap-special anchors to that profile, and tracks `cannibal_hunter`, `cannibal_butcher`, and `cannibal_camp_leader` templates on the shared live-world substrate.
+- profile behavior: cannibal camp keeps a larger home reserve than bandit camp, uses the shared `30_minutes` cadence, applies tighter pressure/return-clock behavior, and writes back as hungry camp pressure instead of pretending to be ordinary bandit camp pressure.
+- dedicated rare anchor/theme: `data/json/overmap/overmap_terrain/overmap_terrain.json`, `data/json/overmap/overmap_special/specials.json`, `data/json/mapgen/hells_raiders/cannibal_camp.json`, `data/json/mapgen_palettes/cannibal_camp.json`, `data/json/npcs/factions.json`, `data/json/npcs/cannibals/{npc,classes}.json`, and `data/json/itemgroups/cannibal_camp.json` now define a real cannibal-camp site family instead of attaching the profile to vapor.
+- deterministic side-by-side proof: `tests/bandit_live_world_test.cpp` test `bandit live world keeps cannibal camp separate from bandit camp ownership` proves a bandit camp and cannibal camp claim separate site IDs/profiles/footprints, dispatch independently, serialize active outing state separately, and preserve cannibal profile writeback fields across load.
+- fresh validation:
+  - `python3 -m json.tool` passed for the new cannibal-camp mapgen, palette, NPC, class, and item-group JSON files
+  - `./tests/cata_test "[bandit][live_world][cannibal]"` passed: 39 assertions in 1 test case, after the first JSON consistency issue was fixed
+  - `./tests/cata_test "[bandit][live_world]"` passed: 287 assertions in 12 test cases
+  - `make -j4 tests && ./tests/cata_test "[bandit][live_world]"` exited 0 on the current dirty tree
+  - `git diff --check` produced no whitespace/style errors
+- no heavier live probe was run for this packet because the packet validation expectation preferred deterministic second-family substrate proof plus data-load consistency; richer live-play belongs after the local approach/gate layer starts using the dispatched groups.
 
 ### Recently closed lane - Hostile site profile layer packet v0
 

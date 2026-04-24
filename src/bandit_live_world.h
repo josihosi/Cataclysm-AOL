@@ -27,6 +27,7 @@ enum class owned_site_kind {
     bandit_camp,
     bandit_work_camp,
     bandit_cabin,
+    cannibal_camp,
     looters,
     bandits_block,
 };
@@ -34,6 +35,7 @@ enum class owned_site_kind {
 enum class hostile_site_profile {
     none,
     camp_style,
+    cannibal_camp,
     small_hostile_site,
 };
 
@@ -145,7 +147,7 @@ struct dispatch_plan {
     std::vector<std::string> notes;
 };
 
-bool is_tracked_bandit_template( const std::string &npc_template_id );
+bool is_tracked_hostile_template( const std::string &npc_template_id );
 std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind source_kind,
         const std::string &source_id );
 hostile_site_profile profile_for_site_kind( owned_site_kind site_kind );
