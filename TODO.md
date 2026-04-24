@@ -8,8 +8,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Cannibal camp first hostile-profile adopter packet v0`.
+Active lane: `Bandit approach / stand-off / attack-gate packet v0`.
 
-- Audit current cannibal-flavored content (`lodge_cannibal_15x15`, `cannibal_weapons`, `cannibal_food`) and the existing hostile-site claim path for the smallest honest dedicated cannibal-camp anchor.
-- Define the first cannibal-camp profile surface on the shared hostile-site substrate: cadence, roster/source claim, reserve/dispatch capacity, pressure/posture bias, return-clock lean, and writeback expectations.
-- Add deterministic proof that a cannibal-camp owned site can coexist with an existing bandit-owned site without coalition nonsense or shared-state corruption.
+- Audit the current live dispatch/local-contact seam for the smallest honest place to attach one player-present approach/posture decision.
+- Define the first bounded posture surface (`stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, or `abort`) with explicit inputs from dispatch strength and local threat/opportunity.
+- Add deterministic proof that a dispatched bandit group can choose a reviewer-readable posture without collapsing into instant psychic attack or shakedown UI work.

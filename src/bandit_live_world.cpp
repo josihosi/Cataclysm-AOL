@@ -41,6 +41,9 @@ std::optional<owned_site_kind> owned_site_kind_from_string( const std::string &v
     if( value == "bandit_cabin" ) {
         return owned_site_kind::bandit_cabin;
     }
+    if( value == "cannibal_camp" ) {
+        return owned_site_kind::cannibal_camp;
+    }
     if( value == "looters" ) {
         return owned_site_kind::looters;
     }
@@ -57,6 +60,9 @@ std::optional<hostile_site_profile> hostile_site_profile_from_string( const std:
 {
     if( value == "camp_style" ) {
         return hostile_site_profile::camp_style;
+    }
+    if( value == "cannibal_camp" ) {
+        return hostile_site_profile::cannibal_camp;
     }
     if( value == "small_hostile_site" ) {
         return hostile_site_profile::small_hostile_site;
@@ -151,7 +157,8 @@ void apply_group_memory( bandit_live_world::site_record &site,
 
 int special_footprint_radius( const std::string &special_id )
 {
-    if( special_id == "bandit_camp" || special_id == "bandit_work_camp" ) {
+    if( special_id == "bandit_camp" || special_id == "bandit_work_camp" ||
+        special_id == "cannibal_camp" ) {
         return 1;
     }
     return 0;
@@ -218,7 +225,11 @@ hostile_site_profile_rules rules_for_profile( hostile_site_profile profile )
         case hostile_site_profile::camp_style:
             return { profile, "camp_style", 1, 1, 1, 1, 2,
                 bandit_pursuit_handoff::remaining_return_pressure_state::ample,
-                "keeps a home reserve and writes back as persistent camp pressure" };
+                "checks the shared 30-minute cadence, keeps a home reserve, and writes back as persistent camp pressure" };
+        case hostile_site_profile::cannibal_camp:
+            return { profile, "cannibal_camp", 2, 2, 0, 3, 3,
+                bandit_pursuit_handoff::remaining_return_pressure_state::tight,
+                "checks the shared 30-minute cadence, keeps a larger home larder guard, and writes back as hungry camp pressure" };
         case hostile_site_profile::small_hostile_site:
             return { profile, "small_hostile_site", 0, 1, 0, 2, 1,
                 bandit_pursuit_handoff::remaining_return_pressure_state::tight,
@@ -352,6 +363,8 @@ std::string to_string( owned_site_kind site_kind )
             return "bandit_work_camp";
         case owned_site_kind::bandit_cabin:
             return "bandit_cabin";
+        case owned_site_kind::cannibal_camp:
+            return "cannibal_camp";
         case owned_site_kind::looters:
             return "looters";
         case owned_site_kind::bandits_block:
@@ -368,6 +381,8 @@ std::string to_string( hostile_site_profile profile )
             return "none";
         case hostile_site_profile::camp_style:
             return "camp_style";
+        case hostile_site_profile::cannibal_camp:
+            return "cannibal_camp";
         case hostile_site_profile::small_hostile_site:
             return "small_hostile_site";
     }
@@ -623,15 +638,18 @@ const site_record *world_state::find_site( const std::string &site_id ) const
     return iter != sites.end() ? &*iter : nullptr;
 }
 
-bool is_tracked_bandit_template( const std::string &npc_template_id )
+bool is_tracked_hostile_template( const std::string &npc_template_id )
 {
-    static const std::array<std::string, 6> tracked_templates = {
+    static const std::array<std::string, 9> tracked_templates = {
         "bandit",
         "thug",
         "bandit_trader",
         "bandit_quartermaster",
         "bandit_mechanic",
         "hells_raiders_boss",
+        "cannibal_hunter",
+        "cannibal_butcher",
+        "cannibal_camp_leader",
     };
 
     return std::find( tracked_templates.begin(), tracked_templates.end(),
@@ -651,6 +669,9 @@ std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind sourc
             }
             if( source_id == "bandit_cabin" ) {
                 return owned_site_kind::bandit_cabin;
+            }
+            if( source_id == "cannibal_camp" ) {
+                return owned_site_kind::cannibal_camp;
             }
             break;
         case anchor_source_kind::map_extra:
@@ -675,6 +696,8 @@ hostile_site_profile profile_for_site_kind( owned_site_kind site_kind )
         case owned_site_kind::bandit_work_camp:
         case owned_site_kind::bandit_cabin:
             return hostile_site_profile::camp_style;
+        case owned_site_kind::cannibal_camp:
+            return hostile_site_profile::cannibal_camp;
         case owned_site_kind::looters:
         case owned_site_kind::bandits_block:
             return hostile_site_profile::small_hostile_site;
@@ -734,7 +757,7 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
                           const std::optional<std::string> &map_extra_id,
                           const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup )
 {
-    if( !is_tracked_bandit_template( npc_template_id ) ) {
+    if( !is_tracked_hostile_template( npc_template_id ) ) {
         return false;
     }
 

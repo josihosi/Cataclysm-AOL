@@ -1,0 +1,35 @@
+[
+  {
+    "type": "npc",
+    "id": "cannibal_hunter",
+    "//": "Generic armed hunter for the rare cannibal camp hostile-site family.",
+    "name_suffix": "Cannibal Hunter",
+    "class": "NC_CANNIBAL_HUNTER",
+    "attitude": 0,
+    "mission": 8,
+    "chat": "TALK_DONE",
+    "faction": "cannibal_camp"
+  },
+  {
+    "type": "npc",
+    "id": "cannibal_butcher",
+    "//": "Knife-heavy camp guard and butcher for the rare cannibal camp hostile-site family.",
+    "name_suffix": "Cannibal Butcher",
+    "class": "NC_CANNIBAL_BUTCHER",
+    "attitude": 0,
+    "mission": 8,
+    "chat": "TALK_DONE",
+    "faction": "cannibal_camp"
+  },
+  {
+    "type": "npc",
+    "id": "cannibal_camp_leader",
+    "//": "Local leader for the rare cannibal camp hostile-site family.",
+    "name_suffix": "Cannibal Leader",
+    "class": "NC_CANNIBAL_LEADER",
+    "attitude": 0,
+    "mission": 8,
+    "chat": "TALK_DONE",
+    "faction": "cannibal_camp"
+  }
+]

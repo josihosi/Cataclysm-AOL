@@ -24,6 +24,10 @@ std::optional<std::string> special_lookup( const tripoint_abs_omt &omt )
         return std::string( "bandit_work_camp" );
     }
 
+    if( omt.x() >= 70 && omt.x() <= 71 && omt.y() >= 80 && omt.y() <= 81 ) {
+        return std::string( "cannibal_camp" );
+    }
+
     return std::nullopt;
 }
 } // namespace
@@ -426,6 +430,94 @@ TEST_CASE( "bandit live world dispatch rules are driven by hostile site profile"
     REQUIRE( roadblock_plan.notes.size() >= 2 );
     CHECK( roadblock_plan.notes[roadblock_plan.notes.size() - 2].find( "brittle local pressure" ) !=
            std::string::npos );
+}
+
+TEST_CASE( "bandit live world keeps cannibal camp separate from bandit camp ownership", "[bandit][live_world][profile][cannibal]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 660 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 661 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter", character_id( 760 ),
+             tripoint_abs_ms( 1680, 1920, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_butcher", character_id( 761 ),
+             tripoint_abs_ms( 1681, 1920, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_camp_leader", character_id( 762 ),
+             tripoint_abs_ms( 1704, 1944, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+
+    REQUIRE( world.sites.size() == 2 );
+    bandit_live_world::site_record &bandit_camp =
+        *world.find_site( "overmap_special:bandit_camp@10,20,0" );
+    bandit_live_world::site_record &cannibal_camp =
+        *world.find_site( "overmap_special:cannibal_camp@70,80,0" );
+
+    CHECK( bandit_camp.site_kind == bandit_live_world::owned_site_kind::bandit_camp );
+    CHECK( bandit_camp.profile == bandit_live_world::hostile_site_profile::camp_style );
+    CHECK( cannibal_camp.site_kind == bandit_live_world::owned_site_kind::cannibal_camp );
+    CHECK( cannibal_camp.profile == bandit_live_world::hostile_site_profile::cannibal_camp );
+    CHECK( bandit_camp.dispatchable_member_capacity() == 1 );
+    CHECK( cannibal_camp.dispatchable_member_capacity() == 1 );
+    REQUIRE( cannibal_camp.footprint.size() == 4 );
+    CHECK( cannibal_camp.footprint.front() == tripoint_abs_omt( 70, 80, 0 ) );
+    CHECK( cannibal_camp.footprint.back() == tripoint_abs_omt( 71, 81, 0 ) );
+
+    const bandit_live_world::dispatch_plan bandit_plan =
+        bandit_live_world::plan_site_dispatch( bandit_camp, tripoint_abs_omt( 18, 20, 0 ),
+                                               "player@18,20,0" );
+    REQUIRE( bandit_plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( bandit_camp, bandit_plan ) );
+
+    const bandit_live_world::dispatch_plan cannibal_plan =
+        bandit_live_world::plan_site_dispatch( cannibal_camp, tripoint_abs_omt( 72, 80, 0 ),
+                                               "player@72,80,0" );
+    REQUIRE( cannibal_plan.valid );
+    CHECK( cannibal_plan.profile == bandit_live_world::hostile_site_profile::cannibal_camp );
+    CHECK( cannibal_plan.group.retreat_bias == 3 );
+    CHECK( cannibal_plan.group.return_clock == 3 );
+    CHECK( cannibal_plan.group.remaining_pressure ==
+           bandit_pursuit_handoff::remaining_return_pressure_state::tight );
+    REQUIRE( cannibal_plan.notes.size() >= 2 );
+    CHECK( cannibal_plan.notes[cannibal_plan.notes.size() - 2].find( "hungry camp pressure" ) !=
+           std::string::npos );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( cannibal_camp, cannibal_plan ) );
+
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    world.serialize( jsout );
+
+    JsonValue jsin = json_loader::from_string( out.str() );
+    bandit_live_world::world_state loaded;
+    loaded.deserialize( jsin.get_object() );
+
+    REQUIRE( loaded.sites.size() == 2 );
+    const bandit_live_world::site_record *loaded_bandit =
+        loaded.find_site( "overmap_special:bandit_camp@10,20,0" );
+    const bandit_live_world::site_record *loaded_cannibal =
+        loaded.find_site( "overmap_special:cannibal_camp@70,80,0" );
+    REQUIRE( loaded_bandit != nullptr );
+    REQUIRE( loaded_cannibal != nullptr );
+
+    CHECK( loaded_bandit->profile == bandit_live_world::hostile_site_profile::camp_style );
+    CHECK( loaded_bandit->active_group_id == "overmap_special:bandit_camp@10,20,0#dispatch" );
+    CHECK( loaded_bandit->active_target_id == "player@18,20,0" );
+    REQUIRE( loaded_bandit->active_member_ids == std::vector<character_id>( { character_id( 660 ) } ) );
+    CHECK( loaded_bandit->find_member( character_id( 661 ) )->state ==
+           bandit_live_world::member_state::at_home );
+
+    CHECK( loaded_cannibal->profile == bandit_live_world::hostile_site_profile::cannibal_camp );
+    CHECK( loaded_cannibal->active_group_id == "overmap_special:cannibal_camp@70,80,0#dispatch" );
+    CHECK( loaded_cannibal->active_target_id == "player@72,80,0" );
+    REQUIRE( loaded_cannibal->active_member_ids == std::vector<character_id>( { character_id( 760 ) } ) );
+    CHECK( loaded_cannibal->find_member( character_id( 761 ) )->state ==
+           bandit_live_world::member_state::at_home );
+    CHECK( loaded_cannibal->find_member( character_id( 762 ) )->state ==
+           bandit_live_world::member_state::at_home );
 }
 
 TEST_CASE( "bandit live world writeback shrinks headcount and future dispatch capacity", "[bandit][live_world]" )
