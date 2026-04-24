@@ -1,0 +1,49 @@
+{
+  "name": "tmp.bandit_rolling_travel_attack_gate_probe_1860",
+  "description": "Disposable proof probe: claimed nearby-owned-site save with player on road travel footing, advance across the 30-minute dispatch cadence, capture the post-save world, and verify the local approach gate chooses attack_now / combat-forward pressure instead of a polite shakedown or Basecamp stand-off.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode",
+      "keys": ["!"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_1860_turns",
+      "count": 1860,
+      "settle_seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true
+    }
+  ]
+}

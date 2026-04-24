@@ -1034,6 +1034,8 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
         << " opportunity=" << input.local_opportunity
         << " margin=" << decision.pressure_margin
         << " standoff_distance=" << input.standoff_distance
+        << " basecamp_or_camp=" << ( input.basecamp_or_camp_scene ? "yes" : "no" )
+        << " rolling_travel=" << ( input.rolling_travel_scene ? "yes" : "no" )
         << " shakedown=" << ( decision.opens_shakedown_surface ? "yes" : "no" )
         << " combat_forward=" << ( decision.combat_forward ? "yes" : "no" )
         << '\n';

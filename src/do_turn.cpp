@@ -123,6 +123,95 @@ bool site_contains_omt( const bandit_live_world::site_record &site, const tripoi
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
 }
 
+int signum( const int value )
+{
+    return ( value > 0 ) - ( value < 0 );
+}
+
+bool live_bandit_player_at_basecamp( const avatar &u )
+{
+    return overmap_buffer.find_camp( u.pos_abs_omt().xy() ).has_value();
+}
+
+bool live_bandit_player_near_basecamp( const avatar &u )
+{
+    if( live_bandit_player_at_basecamp( u ) ) {
+        return true;
+    }
+
+    static constexpr int camp_adjacent_radius_submaps = 24;
+    return !overmap_buffer.get_camps_near( u.pos_abs_sm(), camp_adjacent_radius_submaps ).empty();
+}
+
+tripoint_abs_omt live_bandit_standoff_goal( const bandit_live_world::site_record &site,
+        const tripoint_abs_omt &player_omt, const int desired_distance )
+{
+    const int dx = signum( site.anchor.x() - player_omt.x() );
+    const int dy = signum( site.anchor.y() - player_omt.y() );
+    if( dx == 0 && dy == 0 ) {
+        return player_omt;
+    }
+    return tripoint_abs_omt( player_omt.x() + dx * desired_distance,
+                             player_omt.y() + dy * desired_distance, player_omt.z() );
+}
+
+bool live_bandit_player_in_rolling_travel_scene( const avatar &u )
+{
+    if( u.in_vehicle && u.controlling_vehicle ) {
+        return true;
+    }
+
+    return overmap_buffer.ter( u.pos_abs_omt() )->is_road();
+}
+
+bandit_live_world::local_gate_input live_bandit_make_gate_input(
+    const bandit_live_world::site_record &site, const avatar &u )
+{
+    bandit_live_world::local_gate_input input;
+    input.rolling_travel_scene = live_bandit_player_in_rolling_travel_scene( u );
+    input.basecamp_or_camp_scene = !input.rolling_travel_scene &&
+                                      live_bandit_player_near_basecamp( u );
+    if( input.rolling_travel_scene ) {
+        input.local_threat = 1;
+        input.local_opportunity = 2;
+    } else if( input.basecamp_or_camp_scene ) {
+        input.local_threat = 3;
+        input.local_opportunity = 2;
+        input.recent_exposure = true;
+    }
+
+    int closest_member_distance = rl_dist( site.anchor, u.pos_abs_omt() );
+    for( const character_id &member_id : site.active_member_ids ) {
+        const npc *member_npc = g->find_npc( member_id );
+        if( member_npc == nullptr ) {
+            continue;
+        }
+        const int distance = rl_dist( member_npc->pos_abs_omt(), u.pos_abs_omt() );
+        closest_member_distance = std::min( closest_member_distance, distance );
+        input.local_contact_established |= distance <= 1;
+    }
+    input.standoff_distance = closest_member_distance;
+    return input;
+}
+
+std::string live_bandit_omt_token( const tripoint_abs_omt &omt )
+{
+    std::ostringstream out;
+    out << omt.x() << ',' << omt.y() << ',' << omt.z();
+    return out.str();
+}
+
+std::string live_bandit_gate_summary( const bandit_live_world::dispatch_plan &plan,
+                                      const bandit_live_world::local_gate_decision &decision,
+                                      const tripoint_abs_omt &dispatch_goal )
+{
+    std::ostringstream out;
+    out << "dispatch " << bandit_live_world::to_string( decision.posture )
+        << " toward " << plan.target_id
+        << " via goal@" << live_bandit_omt_token( dispatch_goal );
+    return out.str();
+}
+
 bool note_live_bandit_aftermath()
 {
     avatar &u = get_avatar();
