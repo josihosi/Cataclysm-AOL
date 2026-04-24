@@ -829,6 +829,17 @@ Notes:
 
 ---
 
+## Cannibal camp attack-not-extort correction v0
+
+Status: GREENLIT / pending.
+
+- [ ] Cannibal-camp local pressure never opens the bandit shakedown/pay-demand surface.
+- [ ] Favorable cannibal local contact becomes attack-to-kill / lethal ambush pressure.
+- [ ] Bad cannibal local conditions can still hold off, stalk, probe, or abort instead of becoming magically suicidal.
+- [ ] Bandit shakedown/pay/fight behavior still passes unchanged.
+
+Canonical contract lives at `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`.
+
 ## Cannibal camp first hostile-profile adopter packet v0
 
 Status: CHECKPOINTED / DONE FOR NOW

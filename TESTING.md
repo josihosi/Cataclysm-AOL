@@ -44,7 +44,13 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-No active probe obligation remains after `Bandit extortion playthrough audit + harness-skill packet v0` checkpointed done-for-now.
+Active probe obligation: `Cannibal camp attack-not-extort correction v0`.
+
+Minimum evidence:
+- deterministic proof that a `cannibal_camp` active outing does not produce the bandit `open_shakedown` / pay-demand surface under the same broad favorable-contact conditions where a bandit camp can extort
+- deterministic proof that favorable cannibal local contact becomes attack-to-kill / lethal pressure, while unfavorable conditions can still hold off, stalk, probe, or abort
+- existing bandit shakedown/pay/fight coverage still passes so the correction does not break bandit extortion
+- `git diff --check` passes
 The extortion-at-camp restage / handoff packet and the tiered extortion audit packet now provide named scenario surfaces for setup, first demand, pay/fight, fight-forward message, pay/writeback, and controlled reopened second demand.  The natural redispatch-from-no-active-group gap is not claimed closed and should stay dormant unless Josef explicitly promotes it.
 
 Latest closed aftermath evidence:

@@ -8,7 +8,9 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No active greenlit target remains after `Bandit extortion playthrough audit + harness-skill packet v0` checkpointed done-for-now.
+Active target: `Cannibal camp attack-not-extort correction v0`.
 
-- Wait for Josef/Schani to greenlight the next bounded lane before starting another feature packet.
-- Do not reopen the natural redispatch-from-no-active-group gap unless Josef explicitly promotes it; the closed audit packet deliberately uses a tiered controlled reopen-local-contact proof instead of fake total automation.
+- Implement the narrow cannibal local-gate correction from `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`.
+- Cannibal camps should not open the bandit `open_shakedown` / pay-demand surface; favorable local contact should attack-to-kill / lethal-ambush instead.
+- Still allow hold-off, stalk, probe, or abort when conditions are bad; do not make cannibals magically suicidal.
+- Prove bandit camps can still extort while cannibal camps do not.

@@ -39,12 +39,13 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently **no active greenlit repo lane** after the Bandit extortion playthrough audit checkpoint.  Josef should greenlight the next bounded lane before Andi starts another feature packet.
+There is currently one newly greenlit narrow correction after the Bandit extortion playthrough audit checkpoint: **Cannibal camp attack-not-extort correction v0**.  It should be handled before calling the hostile-site / cannibal-camp stack playtest-clean, because Josef clarified that cannibals should attack to kill rather than open the bandit extortion surface.
 
 Current honest state:
 - an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
 - the earlier closed lane is now `Cannibal camp first hostile-profile adopter packet v0` at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
-- that lane now closes honestly on current build: `src/bandit_live_world.{h,cpp}` carries explicit `cannibal_camp` site/profile ownership, cannibal NPC templates can claim the live-world substrate, dedicated cannibal-camp overmap/mapgen/faction/NPC data gives the profile a real rare anchor, and `tests/bandit_live_world_test.cpp` proves a cannibal camp and bandit camp coexist through dispatch/writeback serialization without shared-state mush
+- that lane now closes honestly as substrate/content proof: `src/bandit_live_world.{h,cpp}` carries explicit `cannibal_camp` site/profile ownership, cannibal NPC templates can claim the live-world substrate, dedicated cannibal-camp overmap/mapgen/faction/NPC data gives the profile a real rare anchor, and `tests/bandit_live_world_test.cpp` proves a cannibal camp and bandit camp coexist through dispatch/writeback serialization without shared-state mush
+- new correction now greenlit: `Cannibal camp attack-not-extort correction v0` at `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`; cannibal camps should not use the bandit `open_shakedown` / pay-demand surface, and instead should hunt/attack-to-kill or hold off/stalk/probe/abort when conditions are wrong
 - the earlier closed lane is now `Hostile site profile layer packet v0` at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`
 - that lane closes honestly on current build: `src/bandit_live_world.{h,cpp}` carries explicit `hostile_site_profile` state/rules, camp-style and small-hostile-site profiles now diverge in reserve capacity, threat/posture bias, return-clock lean, and writeback pressure, and `tests/bandit_live_world_test.cpp` proves a camp and roadblock can dispatch side-by-side on the same substrate without regressing `[bandit][live_world]`
 - the earlier closed lane is `Multi-site hostile owner scheduler packet v0` at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`
@@ -118,6 +119,27 @@ Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-pac
 
 `Writhing stalker` stays parked one step longer.
 If this stack needs future work, keep it as a new explicit packet instead of silently reopening v0.
+
+---
+
+## Greenlit correction - Cannibal camp attack-not-extort correction v0
+
+**Status:** GREENLIT / NEXT NARROW CORRECTION
+
+Josef clarified the intended cannibal behavior: cannibals do **not** extort; they attack to kill.  The closed cannibal adopter packet proves the profile/content substrate, but the local encounter surface must now diverge from bandit robbery instead of allowing cannibal outings to reuse the `open_shakedown` / pay-demand surface.
+
+What this item should do:
+- make `cannibal_camp` local pressure bypass the bandit shakedown/extortion surface
+- bias favorable cannibal local contact toward attack-to-kill / lethal ambush behavior rather than pay-or-fight robbery
+- still allow hold-off, stalk, probe, or abort when the local gate says conditions are bad
+- prove bandit camps can still extort while cannibal camps do not
+
+Non-goals:
+- broad cannibal lore, diplomacy, capture, or cooking-the-player systems
+- rewriting bandit shakedown behavior
+- reopening the already-closed cannibal-camp anchor/profile proof
+
+Canonical contract lives at `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`.
 
 ---
 
