@@ -1,6 +1,6 @@
 # Bandit approach / stand-off / attack-gate packet v0 (2026-04-22)
 
-Status: greenlit backlog contract.
+Status: checkpointed / done for now.
 
 ## Why this exists
 

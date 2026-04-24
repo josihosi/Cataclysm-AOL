@@ -39,11 +39,11 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit repo lane is now **Bandit approach / stand-off / attack-gate packet v0**.
+The active greenlit repo lane is now **Bandit shakedown pay-or-fight surface packet v0**.
 
 Current honest state:
-- the authoritative active contract now lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
-- the latest closed lane is now `Cannibal camp first hostile-profile adopter packet v0` at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
+- the latest closed lane is now `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
+- the earlier closed lane is now `Cannibal camp first hostile-profile adopter packet v0` at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
 - that lane now closes honestly on current build: `src/bandit_live_world.{h,cpp}` carries explicit `cannibal_camp` site/profile ownership, cannibal NPC templates can claim the live-world substrate, dedicated cannibal-camp overmap/mapgen/faction/NPC data gives the profile a real rare anchor, and `tests/bandit_live_world_test.cpp` proves a cannibal camp and bandit camp coexist through dispatch/writeback serialization without shared-state mush
 - the earlier closed lane is now `Hostile site profile layer packet v0` at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`
 - that lane closes honestly on current build: `src/bandit_live_world.{h,cpp}` carries explicit `hostile_site_profile` state/rules, camp-style and small-hostile-site profiles now diverge in reserve capacity, threat/posture bias, return-clock lean, and writeback pressure, and `tests/bandit_live_world_test.cpp` proves a camp and roadblock can dispatch side-by-side on the same substrate without regressing `[bandit][live_world]`
@@ -55,12 +55,12 @@ Current honest state:
 - the earlier latest closed lane remains `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
 - the earlier `Bandit + Basecamp playtest kit packet v0` remains checkpointed at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
 - the useful harness/helper work from `Bandit + Basecamp playtest kit packet v2` was **not** wasted; it now sits behind the closed live-world lane as bounded support instead of masquerading as the product
-- the next honest delivery target is no longer hostile-site substrate adoption, but the first local approach / stand-off / attack-gate layer that makes dispatched bandits choose a readable player-present posture before the pay-or-fight surface exists
+- the next honest delivery target is now the first player-present shakedown surface: bandits should bootstrap from the approach/gate layer into a blunt robbery demand with an explicit pay-or-fight fork
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this hostile-site stack should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, repeated-site revisit follow-through, and the now-closed live-world control lane
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is now about giving the live dispatch seam one bounded local posture law so bandit pressure stops feeling like instant psychic tile collapse before the robbery UI exists.
+This lane is now about turning the completed approach gate's `open_shakedown` branch into one bounded player-present robbery surface with an explicit pay-or-fight fork.
 
 ---
 
@@ -116,9 +116,9 @@ If this stack needs future work, keep it as a new explicit packet instead of sil
 
 ---
 
-## Active lane - Bandit approach / stand-off / attack-gate packet v0
+## Recently closed lane - Bandit approach / stand-off / attack-gate packet v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
 Before bandits can rob the player or Basecamp honestly, they need one explicit local pressure law that decides whether a real dispatched group stalks, holds off, probes, opens a shakedown, attacks directly, or aborts.
 The point is to stop the robbery chain from feeling psychic, abrupt, or decorative.
@@ -139,9 +139,9 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
 
-### 4. Bandit shakedown pay-or-fight surface packet v0
+## Active lane - Bandit shakedown pay-or-fight surface packet v0
 
-**Status:** GREENLIT
+**Status:** ACTIVE / GREENLIT
 
 Once the approach law can honestly decide that a scene is a shakedown instead of a hot ambush, make the actual player-present robbery surface real: bandits try to rob you, you can pay, or you can fight.
 Keep it hard, readable, and bounded.

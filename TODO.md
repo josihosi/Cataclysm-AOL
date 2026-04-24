@@ -8,7 +8,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active lane: `Bandit approach / stand-off / attack-gate packet v0`.
+Active lane: `Bandit shakedown pay-or-fight surface packet v0`.
 
-- Add one honest travel / convoy-style proof that the same gate can choose attack-forward pressure when the scene reads as a moving ambush opportunity.
-- If that travel proof needs new setup, keep it to the local gate seam only; do not widen into the pay-or-fight UI.
+- Bootstrap one player-present shakedown scene from the completed approach/gate packet, starting with the `open_shakedown` posture rather than disconnected chat magic.
+- Keep the first surface deliberately blunt: a readable robbery demand plus explicit `pay` and `fight` branches only.
+- Do not widen into aftermath, renegotiation, convoy combat, or broad diplomacy; those already have later packets.
