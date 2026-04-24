@@ -876,22 +876,23 @@ Notes:
 
 ## Bandit shakedown pay-or-fight surface packet v0
 
-Status: GREENLIT
+Status: GREENLIT / PARTIAL LIVE PROOF
 
 Success state:
-- [ ] One honest player-present shakedown scene can bootstrap from the prior approach/gate packet instead of appearing as disconnected chat magic.
-- [ ] The initial interaction is clearly a robbery demand with a readable `pay` versus `fight` fork.
-- [ ] Whenever this shakedown surface is invoked, including any later reopened demand, fighting remains an explicit option rather than disappearing into one-way surrender theater.
+- [x] One honest player-present shakedown scene can bootstrap from the prior approach/gate packet instead of appearing as disconnected chat magic.
+- [x] The initial interaction is clearly a robbery demand with a readable `pay` versus `fight` fork.
+- [x] Whenever this shakedown surface is invoked, including any later reopened demand, fighting remains an explicit option rather than disappearing into one-way surrender theater.
 - [ ] The surrender surface uses an explicit bounded goods pool that matches scene context rather than magical remote inventory reach.
-- [ ] The demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee.
-- [ ] Paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly.
-- [ ] The slice stays bounded: no branching diplomacy opera, no fake debt economy, no magical remote inventory, and no unrelated convoy-combat rewrite.
+- [x] The demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee.
+- [x] Paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly.
+- [x] The slice stays bounded: no branching diplomacy opera, no fake debt economy, no magical remote inventory, and no unrelated convoy-combat rewrite.
 
 Notes:
 - Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
 - This packet sits directly behind `Bandit approach / stand-off / attack-gate packet v0`.
-- The first deterministic surface helper now exists on the owned-outing seam: `build_shakedown_surface(...)` consumes an `open_shakedown` gate decision and explicit reachable-goods pool, then reports a robbery bark, painful demanded toll, `pay` and `fight` availability, Basecamp/off-base pool reach, and rolling-travel bypass.
-- The success state remains unchecked because the helper is not yet wired into a real player-present dialogue/trade scene; the next proof needs the live `open_shakedown` branch to invoke that surface honestly.
+- The deterministic surface helper exists on the owned-outing seam: `build_shakedown_surface(...)` consumes an `open_shakedown` gate decision and explicit reachable-goods pool, then reports a robbery bark, painful demanded toll, `pay` and `fight` availability, Basecamp/off-base pool reach, and rolling-travel bypass.
+- Current live Basecamp-side proof exists under `.userdata/dev-harness/harness_runs/20260424_053502/` for the `fight` branch and `.userdata/dev-harness/harness_runs/20260424_054046/` for the `pay` branch.  The menu opens from real local contact with `Bandit shakedown`, `Reachable goods: 45134`, `Demanded toll: 15797`, `p Pay the demanded goods`, and `f Fight`; fighting reports `You refuse the shakedown.  The bandits come at you.`, while paying reports `You surrender goods worth about 18390 to the bandits.` and saves member `4` back `at_home` with `last_writeback_summary = "shakedown_surface paid toll=18390 demanded=15797 reachable=45134"`.
+- The remaining unchecked proof is not the menu/fork anymore; it is one honest off-base live reach check showing the same surface excludes Basecamp inventory outside Basecamp/camp footing.
 
 ---
 

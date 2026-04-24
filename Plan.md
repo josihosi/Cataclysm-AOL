@@ -55,12 +55,13 @@ Current honest state:
 - the earlier latest closed lane remains `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
 - the earlier `Bandit + Basecamp playtest kit packet v0` remains checkpointed at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
 - the useful harness/helper work from `Bandit + Basecamp playtest kit packet v2` was **not** wasted; it now sits behind the closed live-world lane as bounded support instead of masquerading as the product
-- the next honest delivery target is now the first player-present shakedown surface: bandits should bootstrap from the approach/gate layer into a blunt robbery demand with an explicit pay-or-fight fork
+- the active shakedown lane now has a first Basecamp-side player-present surface wired from the `open_shakedown` approach/gate branch, including blunt robbery demand, explicit `pay` / `fight`, current-build live fight proof, and current-build live pay/writeback proof
+- the next honest delivery target is the remaining off-base live reach proof: outside Basecamp/camp footing, the shakedown surface must exclude reachable Basecamp goods and expose only carried / current-vehicle goods
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this hostile-site stack should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, repeated-site revisit follow-through, and the now-closed live-world control lane
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is now about turning the completed approach gate's `open_shakedown` branch into one bounded player-present robbery surface with an explicit pay-or-fight fork.
+This lane is now about closing the remaining off-base reach proof for the already-wired `open_shakedown` robbery surface, without widening into aftermath or renegotiation.
 
 ---
 

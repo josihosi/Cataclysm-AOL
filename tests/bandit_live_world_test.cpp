@@ -674,6 +674,18 @@ TEST_CASE( "bandit live world builds a bounded pay-or-fight shakedown surface", 
         bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player@18,20,0" );
     REQUIRE( plan.valid );
     REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+
+    bandit_live_world::local_gate_input single_bandit_gate_input;
+    single_bandit_gate_input.local_threat = 1;
+    single_bandit_gate_input.local_opportunity = 3;
+    single_bandit_gate_input.local_contact_established = true;
+    single_bandit_gate_input.basecamp_or_camp_scene = true;
+    const bandit_live_world::local_gate_decision single_bandit_gate_decision =
+        bandit_live_world::choose_local_gate_posture( site, single_bandit_gate_input );
+    CHECK( single_bandit_gate_decision.posture ==
+           bandit_live_world::local_gate_posture::open_shakedown );
+    CHECK( single_bandit_gate_decision.opens_shakedown_surface );
+
     REQUIRE( bandit_live_world::update_member_state( site, character_id( 952 ),
              bandit_live_world::member_state::outbound, "joins shakedown proof group" ) );
     site.active_member_ids.push_back( character_id( 952 ) );

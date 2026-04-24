@@ -34,12 +34,14 @@
 #include "event_bus.h"
 #include "explosion.h"
 #include "field.h"
+#include "flag.h"
 #include "game.h"
 #include "game_constants.h"
 #include "gamemode.h"
 #include "help.h"
 #include "input.h"
 #include "input_context.h"
+#include "item.h"
 #include "magic_enchantment.h"
 #include "map.h"
 #include "map_iterator.h"
@@ -189,6 +191,11 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
         input.local_contact_established |= distance <= 1;
     }
     input.standoff_distance = closest_member_distance;
+    if( input.local_contact_established && !input.rolling_travel_scene ) {
+        input.local_threat = std::min( input.local_threat, 1 );
+        input.local_opportunity = std::max( input.local_opportunity, 3 );
+        input.recent_exposure = false;
+    }
     return input;
 }
 
@@ -208,6 +215,302 @@ std::string live_bandit_gate_summary( const bandit_live_world::dispatch_plan &pl
         << " toward " << plan.target_id
         << " via goal@" << live_bandit_omt_token( dispatch_goal );
     return out.str();
+}
+
+int live_bandit_item_value( const item &it )
+{
+    if( it.has_flag( flag_INTEGRATED ) || it.has_flag( flag_NO_TAKEOFF ) ) {
+        return 0;
+    }
+    return std::max( 0, it.price( true ) );
+}
+
+int live_bandit_character_goods_value( const Character &who )
+{
+    int value = 0;
+    for( const item *it : who.inv_dump() ) {
+        if( it == nullptr ) {
+            continue;
+        }
+        value += live_bandit_item_value( *it );
+    }
+    return value;
+}
+
+int live_bandit_nearby_ground_goods_value( const avatar &u )
+{
+    map &here = get_map();
+    int value = 0;
+    static constexpr int basecamp_reach_radius = 30;
+    for( const tripoint_bub_ms &pt : here.points_in_radius( u.pos_bub(), basecamp_reach_radius ) ) {
+        if( !here.accessible_items( pt ) ) {
+            continue;
+        }
+        for( const item &it : here.i_at( pt ) ) {
+            value += live_bandit_item_value( it );
+        }
+    }
+    return value;
+}
+
+int live_bandit_current_vehicle_goods_value( const avatar &u )
+{
+    if( !u.in_vehicle ) {
+        return 0;
+    }
+
+    map &here = get_map();
+    const optional_vpart_position player_vehicle = here.veh_at( u.pos_bub() );
+    if( !player_vehicle ) {
+        return 0;
+    }
+
+    int value = 0;
+    vehicle &veh = player_vehicle->vehicle();
+    for( const vpart_reference &part_ref : veh.get_all_parts() ) {
+        for( const item &it : veh.get_items( part_ref.part() ) ) {
+            value += live_bandit_item_value( it );
+        }
+    }
+    return value;
+}
+
+bandit_live_world::shakedown_goods_pool live_bandit_make_shakedown_goods_pool(
+    const bandit_live_world::local_gate_input &input, const avatar &u )
+{
+    bandit_live_world::shakedown_goods_pool pool;
+    pool.basecamp_or_camp_scene = input.basecamp_or_camp_scene;
+    pool.player_carried_value = live_bandit_character_goods_value( u );
+
+    static constexpr int nearby_companion_radius = 12;
+    for( const npc &guy : g->all_npcs() ) {
+        if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
+            continue;
+        }
+        pool.companion_carried_value += live_bandit_character_goods_value( guy );
+    }
+
+    if( input.basecamp_or_camp_scene ) {
+        pool.reachable_basecamp_value = live_bandit_nearby_ground_goods_value( u );
+    } else {
+        pool.vehicle_carried_value = live_bandit_current_vehicle_goods_value( u );
+    }
+
+    return pool;
+}
+
+int live_bandit_surrender_from_character( Character &who, int &remaining_value )
+{
+    int surrendered_value = 0;
+    who.remove_items_with( [&remaining_value, &surrendered_value]( const item & it ) {
+        if( remaining_value <= 0 ) {
+            return false;
+        }
+        const int value = live_bandit_item_value( it );
+        if( value <= 0 ) {
+            return false;
+        }
+        remaining_value -= value;
+        surrendered_value += value;
+        return true;
+    } );
+    return surrendered_value;
+}
+
+int live_bandit_surrender_from_nearby_ground( const avatar &u, int &remaining_value )
+{
+    map &here = get_map();
+    int surrendered_value = 0;
+    static constexpr int basecamp_reach_radius = 30;
+    for( const tripoint_bub_ms &pt : here.points_in_radius( u.pos_bub(), basecamp_reach_radius ) ) {
+        if( remaining_value <= 0 ) {
+            break;
+        }
+        if( !here.accessible_items( pt ) ) {
+            continue;
+        }
+        map_stack stack = here.i_at( pt );
+        for( map_stack::iterator it = stack.begin(); it != stack.end() && remaining_value > 0; ) {
+            const int value = live_bandit_item_value( *it );
+            if( value <= 0 ) {
+                ++it;
+                continue;
+            }
+            remaining_value -= value;
+            surrendered_value += value;
+            it = stack.erase( it );
+        }
+    }
+    return surrendered_value;
+}
+
+int live_bandit_surrender_from_current_vehicle( const avatar &u, int &remaining_value )
+{
+    if( !u.in_vehicle ) {
+        return 0;
+    }
+
+    map &here = get_map();
+    const optional_vpart_position player_vehicle = here.veh_at( u.pos_bub() );
+    if( !player_vehicle ) {
+        return 0;
+    }
+
+    int surrendered_value = 0;
+    vehicle &veh = player_vehicle->vehicle();
+    for( const vpart_reference &part_ref : veh.get_all_parts() ) {
+        if( remaining_value <= 0 ) {
+            break;
+        }
+        vehicle_stack stack = veh.get_items( part_ref.part() );
+        for( vehicle_stack::iterator it = stack.begin(); it != stack.end() && remaining_value > 0; ) {
+            const int value = live_bandit_item_value( *it );
+            if( value <= 0 ) {
+                ++it;
+                continue;
+            }
+            remaining_value -= value;
+            surrendered_value += value;
+            it = stack.erase( it );
+        }
+    }
+    return surrendered_value;
+}
+
+int live_bandit_surrender_goods( const bandit_live_world::local_gate_input &input,
+                                 const bandit_live_world::shakedown_surface &surface,
+                                 avatar &u )
+{
+    int remaining_value = surface.demanded_value;
+    int surrendered_value = live_bandit_surrender_from_character( u, remaining_value );
+
+    static constexpr int nearby_companion_radius = 12;
+    for( npc &guy : g->all_npcs() ) {
+        if( remaining_value <= 0 ) {
+            break;
+        }
+        if( !guy.is_player_ally() || rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_companion_radius ) {
+            continue;
+        }
+        surrendered_value += live_bandit_surrender_from_character( guy, remaining_value );
+    }
+
+    if( remaining_value > 0 ) {
+        if( input.basecamp_or_camp_scene ) {
+            surrendered_value += live_bandit_surrender_from_nearby_ground( u, remaining_value );
+        } else {
+            surrendered_value += live_bandit_surrender_from_current_vehicle( u, remaining_value );
+        }
+    }
+
+    return surrendered_value;
+}
+
+bool live_bandit_shakedown_already_opened( const bandit_live_world::site_record &site )
+{
+    for( const character_id &member_id : site.active_member_ids ) {
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        if( member != nullptr && member->last_writeback_summary.find( "shakedown_surface" ) !=
+            std::string::npos ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool live_bandit_shakedown_was_paid( const bandit_live_world::site_record &site )
+{
+    for( const bandit_live_world::member_record &member : site.members ) {
+        if( member.last_writeback_summary.find( "shakedown_surface paid" ) != std::string::npos ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void live_bandit_send_group_home_after_payment( bandit_live_world::site_record &site,
+        const bandit_live_world::shakedown_surface &surface, const int surrendered_value )
+{
+    const std::vector<character_id> member_ids = site.active_member_ids;
+    const std::string summary = string_format( "shakedown_surface paid toll=%d demanded=%d reachable=%d",
+                                surrendered_value, surface.demanded_value,
+                                surface.reachable_goods_value );
+    for( const character_id &member_id : member_ids ) {
+        bandit_live_world::update_member_state( site, member_id,
+                                                bandit_live_world::member_state::at_home, summary );
+        if( npc *member_npc = g->find_npc( member_id ) ) {
+            member_npc->set_attitude( NPCATT_NULL );
+            std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( member_npc->pos_abs_omt(),
+                                                   site.anchor, overmap_path_params::for_npc() ).points;
+            if( !path.empty() ) {
+                member_npc->goal = site.anchor;
+                member_npc->omt_path = std::move( path );
+                member_npc->set_mission( NPC_MISSION_TRAVELLING );
+            }
+        }
+    }
+    site.active_group_id.clear();
+    site.active_target_id.clear();
+    site.active_member_ids.clear();
+}
+
+void live_bandit_choose_fight( bandit_live_world::site_record &site,
+                               const bandit_live_world::shakedown_surface &surface )
+{
+    const std::string summary = string_format( "shakedown_surface fight demanded=%d reachable=%d",
+                                surface.demanded_value, surface.reachable_goods_value );
+    for( const character_id &member_id : site.active_member_ids ) {
+        bandit_live_world::update_member_state( site, member_id,
+                                                bandit_live_world::member_state::local_contact, summary );
+        if( npc *member_npc = g->find_npc( member_id ) ) {
+            member_npc->set_attitude( NPCATT_MUG );
+        }
+    }
+}
+
+bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
+        const bandit_live_world::local_gate_input &input,
+        const bandit_live_world::local_gate_decision &decision )
+{
+    if( live_bandit_shakedown_already_opened( site ) ) {
+        return false;
+    }
+
+    avatar &u = get_avatar();
+    const bandit_live_world::shakedown_goods_pool pool =
+        live_bandit_make_shakedown_goods_pool( input, u );
+    const bandit_live_world::shakedown_surface surface =
+        bandit_live_world::build_shakedown_surface( site, input, decision, pool );
+    DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_shakedown_surface_report( site,
+                               surface );
+    if( !surface.valid ) {
+        return false;
+    }
+
+    uilist shakedown_menu;
+    shakedown_menu.title = _( "Bandit shakedown" );
+    shakedown_menu.text = string_format( _( "\"%1$s\"\n\nReachable goods: %2$d\nDemanded toll: %3$d\n\nChoose now: pay or fight." ),
+                                         surface.bark, surface.reachable_goods_value,
+                                         surface.demanded_value );
+    shakedown_menu.addentry( 0, surface.pay_available, 'p', _( "Pay the demanded goods" ) );
+    shakedown_menu.addentry( 1, surface.fight_available, 'f', _( "Fight" ) );
+    shakedown_menu.allow_cancel = false;
+    shakedown_menu.query();
+
+    if( shakedown_menu.ret == 0 ) {
+        const int surrendered_value = live_bandit_surrender_goods( input, surface, u );
+        if( surrendered_value >= surface.demanded_value ) {
+            add_msg( m_bad, _( "You surrender goods worth about %1$d to the bandits." ),
+                     surrendered_value );
+            live_bandit_send_group_home_after_payment( site, surface, surrendered_value );
+            return true;
+        }
+        add_msg( m_warning, _( "You cannot gather enough reachable goods quickly enough.  The shakedown turns ugly." ) );
+    }
+
+    add_msg( m_bad, _( "You refuse the shakedown.  The bandits come at you." ) );
+    live_bandit_choose_fight( site, surface );
+    return true;
 }
 
 bool note_live_bandit_aftermath()
@@ -295,6 +598,21 @@ bool note_live_bandit_aftermath()
             observations.push_back( observation );
         }
 
+        bandit_live_world::local_gate_input gate_input = live_bandit_make_gate_input( site, u );
+        gate_input.local_contact_established |= std::any_of( observations.begin(), observations.end(),
+        []( const bandit_live_world::active_member_observation & observation ) {
+            return observation.state ==
+                   bandit_live_world::active_member_observation_state::local_contact;
+        } );
+        const bandit_live_world::local_gate_decision gate_decision =
+            bandit_live_world::choose_local_gate_posture( site, gate_input );
+        if( gate_decision.opens_shakedown_surface ) {
+            changed |= open_live_bandit_shakedown_surface( site, gate_input, gate_decision );
+            if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+                continue;
+            }
+        }
+
         if( const std::optional<bandit_pursuit_handoff::return_packet> packet =
                 bandit_live_world::resolve_active_group_aftermath( site, observations ) ) {
             changed |= bandit_live_world::apply_return_packet( site, *packet );
@@ -350,6 +668,9 @@ bool steer_live_bandit_dispatch_toward_player()
         }
 
         bandit_live_world::site_record &site = state.sites[candidate_site.second];
+        if( live_bandit_shakedown_was_paid( site ) ) {
+            continue;
+        }
         const bandit_live_world::dispatch_plan plan =
             bandit_live_world::plan_site_dispatch( site, u.pos_abs_omt(), target_id );
         if( !plan.valid ) {
