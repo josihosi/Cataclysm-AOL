@@ -176,6 +176,26 @@ struct local_gate_decision {
     std::vector<std::string> notes;
 };
 
+struct shakedown_goods_pool {
+    int player_carried_value = 0;
+    int companion_carried_value = 0;
+    int vehicle_carried_value = 0;
+    int reachable_basecamp_value = 0;
+    bool basecamp_or_camp_scene = false;
+};
+
+struct shakedown_surface {
+    bool valid = false;
+    std::string bark;
+    int reachable_goods_value = 0;
+    int demanded_value = 0;
+    bool pay_available = false;
+    bool fight_available = false;
+    bool includes_basecamp_inventory = false;
+    bool includes_vehicle_inventory = false;
+    std::vector<std::string> notes;
+};
+
 bool is_tracked_hostile_template( const std::string &npc_template_id );
 std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind source_kind,
         const std::string &source_id );
@@ -195,6 +215,8 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );
+shakedown_surface build_shakedown_surface( const site_record &site, const local_gate_input &input,
+        const local_gate_decision &decision, const shakedown_goods_pool &goods_pool );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
 std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
     const site_record &site, const std::vector<active_member_observation> &observations );
@@ -209,4 +231,6 @@ std::string to_string( active_member_observation_state state );
 std::string to_string( local_gate_posture posture );
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
                                       const local_gate_decision &decision );
+std::string render_shakedown_surface_report( const site_record &site,
+        const shakedown_surface &surface );
 } // namespace bandit_live_world
