@@ -876,13 +876,13 @@ Notes:
 
 ## Bandit shakedown pay-or-fight surface packet v0
 
-Status: GREENLIT / PARTIAL LIVE PROOF
+Status: CLOSED / CHECKPOINTED
 
 Success state:
 - [x] One honest player-present shakedown scene can bootstrap from the prior approach/gate packet instead of appearing as disconnected chat magic.
 - [x] The initial interaction is clearly a robbery demand with a readable `pay` versus `fight` fork.
 - [x] Whenever this shakedown surface is invoked, including any later reopened demand, fighting remains an explicit option rather than disappearing into one-way surrender theater.
-- [ ] The surrender surface uses an explicit bounded goods pool that matches scene context rather than magical remote inventory reach.
+- [x] The surrender surface uses an explicit bounded goods pool that matches scene context rather than magical remote inventory reach.
 - [x] The demanded toll is painful enough to read like a real bandit shakedown instead of a decorative nuisance fee.
 - [x] Paying can resolve the immediate scene without requiring perfect long-tail cargo simulation, because surrendered goods can collapse into bandit bounty/writeback honestly.
 - [x] The slice stays bounded: no branching diplomacy opera, no fake debt economy, no magical remote inventory, and no unrelated convoy-combat rewrite.
@@ -892,27 +892,30 @@ Notes:
 - This packet sits directly behind `Bandit approach / stand-off / attack-gate packet v0`.
 - The deterministic surface helper exists on the owned-outing seam: `build_shakedown_surface(...)` consumes an `open_shakedown` gate decision and explicit reachable-goods pool, then reports a robbery bark, painful demanded toll, `pay` and `fight` availability, Basecamp/off-base pool reach, and rolling-travel bypass.
 - Current live Basecamp-side proof exists under `.userdata/dev-harness/harness_runs/20260424_053502/` for the `fight` branch and `.userdata/dev-harness/harness_runs/20260424_054046/` for the `pay` branch.  The menu opens from real local contact with `Bandit shakedown`, `Reachable goods: 45134`, `Demanded toll: 15797`, `p Pay the demanded goods`, and `f Fight`; fighting reports `You refuse the shakedown.  The bandits come at you.`, while paying reports `You surrender goods worth about 18390 to the bandits.` and saves member `4` back `at_home` with `last_writeback_summary = "shakedown_surface paid toll=18390 demanded=15797 reachable=45134"`.
-- The remaining unchecked proof is not the menu/fork anymore; it is one honest off-base live reach check showing the same surface excludes Basecamp inventory outside Basecamp/camp footing.
+- Current live off-base reach proof exists under `.userdata/dev-harness/harness_runs/20260424_070845/` using `tmp.bandit_offbase_shakedown_fight_probe` on non-road/non-Basecamp footing at `player@140,54,0`.  The current-build artifact reports `basecamp_inventory=no`, `vehicle_inventory=yes`, `reachable_goods=3211`, `demanded_toll=1124`, explicit `pay` / `fight`, and `pool includes player, companion, and current vehicle goods only`, so the surface excludes remote Basecamp goods outside Basecamp/camp footing.
 
 ---
 
 ## Bandit aftermath / renegotiation writeback packet v0
 
-Status: GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One honest aftermath/writeback layer exists for player-present bandit shakedown outcomes.
-- [ ] Later bandit behavior can reflect scene results such as losses, wounds, loot haul, failed extraction, anger, or caution instead of resetting to folklore.
-- [ ] A materially weakened Basecamp defense, including a killed defender, can reopen the pressure once from a stronger bandit position with a higher demand when that is the honest read.
-- [ ] That harsher reopened demand still gives the player a fresh explicit `pay` versus `fight` reconsideration fork instead of hard-forcing only surrender or only combat.
-- [ ] The harsher reopened demand is explicit and reviewer-readable rather than hidden in vague score drift.
-- [ ] Bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet cruelty upward.
-- [ ] The slice stays bounded: no infinite haggling loops, no giant diplomacy/reputation machinery, and no multi-camp retaliation grand strategy.
+- [x] One honest aftermath/writeback layer exists for player-present bandit shakedown outcomes.
+- [x] Later bandit behavior can reflect scene results such as losses, wounds, loot haul, failed extraction, anger, or caution instead of resetting to folklore.
+- [x] A materially weakened Basecamp defense, including a killed defender, can reopen the pressure once from a stronger bandit position with a higher demand when that is the honest read.
+- [x] That harsher reopened demand still gives the player a fresh explicit `pay` versus `fight` reconsideration fork instead of hard-forcing only surrender or only combat.
+- [x] The harsher reopened demand is explicit and reviewer-readable rather than hidden in vague score drift.
+- [x] Bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet cruelty upward.
+- [x] The slice stays bounded: no infinite haggling loops, no giant diplomacy/reputation machinery, and no multi-camp retaliation grand strategy.
 
 Notes:
 - Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
 - This packet sits directly behind `Bandit shakedown pay-or-fight surface packet v0`.
 - The specific wanted beat is frozen here: if bandits kill a Basecamp defender and the local threat read drops, they may reopen once from a stronger position with a higher toll — and the player still gets a fresh choice to pay or fight again.
+- Current deterministic layer now persists shakedown aftermath on `site_record`, records paid/fought outcomes, abstract loot, defender/bandit losses, anger/caution, and a one-use reopen latch; `[bandit][live_world][shakedown]` proves the raised-demand surface, direct cooled-demand report surface, and active-return-packet bandit-loss cooling seam.
+- Live proof is deliberately split by evidence class: current-build shakedown runs reach the first fight; artificial continuation `.userdata/dev-harness/harness_runs/20260424_142054/` proves the defender observer can persist `fight_defender_loss`, `shakedown_defender_losses=2`, `shakedown_reopen_available=true`, and a missing active member without claiming a natural defender-kill trigger; isolated copied-save proof `.userdata/dev-harness/harness_runs/20260424_143107/` proves exact active member `4` loss writes back as `fight_bandit_loss`, clears the active outing, increments `shakedown_bandit_losses=1` / `shakedown_caution=1`, and collapses remembered pressure.
+- The natural live defender-kill trigger remains a known harness/playthrough gap for the later extortion audit packet, not a reason to keep this aftermath packet open or to build a broad harness empire here.
 
 ---
 
