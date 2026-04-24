@@ -858,16 +858,17 @@ Success state:
 - [x] One honest local approach / stand-off / attack-gate layer exists on top of the live bandit control seam.
 - [x] Dispatched bandit groups can reviewer-readably choose among stalking, holding off, probing, opening a shakedown, attacking directly, or aborting.
 - [x] The gate law is explicit enough that later packet work can answer `why did this become a shakedown instead of a fight` without folklore reconstruction.
-- [ ] Ordinary Basecamp/player pressure does not feel like instant psychic tile collapse because bandits can keep bounded stand-off behavior.
-- [x] Convoy / vehicle / rolling-travel contexts are allowed to skip the polite shakedown posture when they honestly read as moving ambush opportunities.
+- [x] Ordinary Basecamp/player pressure does not feel like instant psychic tile collapse because bandits can keep bounded stand-off behavior.
+- [ ] Convoy / vehicle / rolling-travel contexts are allowed to skip the polite shakedown posture when they honestly read as moving ambush opportunities on a real or harnessed travel seam.
 - [x] The slice stays bounded: no pay-or-fight UI yet, no giant stealth doctrine, no radio/stalker widening, and no broad combat-AI rewrite.
 
 Notes:
 - Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
 - This is the first bandit-robbery packet behind the already-frozen hostile-site stack, not a reason to leapfrog the earlier greenlit order.
 - `src/bandit_live_world.{h,cpp}` now carries the first deterministic local gate surface: `local_gate_input`, `local_gate_decision`, `local_gate_posture`, `choose_local_gate_posture(...)`, and `render_local_gate_report(...)`.
-- Fresh deterministic proof in `tests/bandit_live_world_test.cpp` covers all six v0 postures from an active owned outing: `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`. The camp-adjacent `hold_off` proof is still deterministic only; the remaining open bar is live/player-present stand-off proof on real Basecamp footing.
-- Fresh validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][live_world][approach_gate]"`, `./tests/cata_test "[bandit][live_world]"`, and `git diff --check`.
+- Fresh deterministic proof in `tests/bandit_live_world_test.cpp` covers all six v0 postures from an active owned outing: `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`; the remaining open bar is live/harnessed travel-side attack-forward proof.
+- Fresh live Basecamp stand-off proof lives under `.userdata/dev-harness/harness_runs/20260424_030342/`: the current-build probe advances the claimed nearby-owned-site/Basecamp save across dispatch, and saved-world inspection shows member `4` outbound with `last_writeback_summary = "dispatch hold_off toward player@140,41,0 via goal@140,43,0"`; the matching NPC save has `goalx/goaly/goalz = 140/43/0` and an overmap path starting at `[140,43,0]`, not the player/Basecamp tile `[140,41,0]`.
+- Fresh validation passed via `make -j4 TILES=1 SOUND=0 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/do_turn.o cataclysm-tiles`, `./tests/cata_test "[bandit][live_world][approach_gate]"`, and `git diff --check -- src/do_turn.cpp tools/openclaw_harness/scenarios/tmp.bandit_basecamp_standoff_gate_probe_1860.json`.
 - Radio warfare and `Writhing stalker` stay parked for later.
 
 ---

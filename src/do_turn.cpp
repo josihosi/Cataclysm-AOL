@@ -121,6 +121,76 @@ bool site_contains_omt( const bandit_live_world::site_record &site, const tripoi
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
 }
 
+int signum( const int value )
+{
+    return ( value > 0 ) - ( value < 0 );
+}
+
+bool live_bandit_player_near_basecamp( const avatar &u )
+{
+    if( overmap_buffer.find_camp( u.pos_abs_omt().xy() ) ) {
+        return true;
+    }
+
+    static constexpr int camp_adjacent_radius_submaps = 24;
+    return !overmap_buffer.get_camps_near( u.pos_abs_sm(), camp_adjacent_radius_submaps ).empty();
+}
+
+tripoint_abs_omt live_bandit_standoff_goal( const bandit_live_world::site_record &site,
+        const tripoint_abs_omt &player_omt, const int desired_distance )
+{
+    const int dx = signum( site.anchor.x() - player_omt.x() );
+    const int dy = signum( site.anchor.y() - player_omt.y() );
+    if( dx == 0 && dy == 0 ) {
+        return player_omt;
+    }
+    return tripoint_abs_omt( player_omt.x() + dx * desired_distance,
+                             player_omt.y() + dy * desired_distance, player_omt.z() );
+}
+
+bandit_live_world::local_gate_input live_bandit_make_gate_input(
+    const bandit_live_world::site_record &site, const avatar &u )
+{
+    bandit_live_world::local_gate_input input;
+    input.basecamp_or_camp_scene = live_bandit_player_near_basecamp( u );
+    if( input.basecamp_or_camp_scene ) {
+        input.local_threat = 3;
+        input.local_opportunity = 2;
+        input.recent_exposure = true;
+    }
+
+    int closest_member_distance = rl_dist( site.anchor, u.pos_abs_omt() );
+    for( const character_id &member_id : site.active_member_ids ) {
+        const npc *member_npc = g->find_npc( member_id );
+        if( member_npc == nullptr ) {
+            continue;
+        }
+        const int distance = rl_dist( member_npc->pos_abs_omt(), u.pos_abs_omt() );
+        closest_member_distance = std::min( closest_member_distance, distance );
+        input.local_contact_established |= distance <= 1;
+    }
+    input.standoff_distance = closest_member_distance;
+    return input;
+}
+
+std::string live_bandit_omt_token( const tripoint_abs_omt &omt )
+{
+    std::ostringstream out;
+    out << omt.x() << ',' << omt.y() << ',' << omt.z();
+    return out.str();
+}
+
+std::string live_bandit_gate_summary( const bandit_live_world::dispatch_plan &plan,
+                                      const bandit_live_world::local_gate_decision &decision,
+                                      const tripoint_abs_omt &dispatch_goal )
+{
+    std::ostringstream out;
+    out << "dispatch " << bandit_live_world::to_string( decision.posture )
+        << " toward " << plan.target_id
+        << " via goal@" << live_bandit_omt_token( dispatch_goal );
+    return out.str();
+}
+
 bool note_live_bandit_aftermath()
 {
     avatar &u = get_avatar();
@@ -282,12 +352,27 @@ bool steer_live_bandit_dispatch_toward_player()
             continue;
         }
 
+        bandit_live_world::site_record gate_site = site;
+        if( !bandit_live_world::apply_dispatch_plan( gate_site, plan ) ) {
+            continue;
+        }
+        bandit_live_world::local_gate_input gate_input = live_bandit_make_gate_input( gate_site, u );
+        bandit_live_world::local_gate_decision gate_decision =
+            bandit_live_world::choose_local_gate_posture( gate_site, gate_input );
+
+        tripoint_abs_omt dispatch_goal = u.pos_abs_omt();
+        if( gate_decision.posture == bandit_live_world::local_gate_posture::hold_off ) {
+            static constexpr int desired_standoff_omt = 2;
+            dispatch_goal = live_bandit_standoff_goal( gate_site, u.pos_abs_omt(), desired_standoff_omt );
+            gate_input.standoff_distance = rl_dist( dispatch_goal, u.pos_abs_omt() );
+        }
+
         std::vector<std::vector<tripoint_abs_omt>> dispatch_paths;
         dispatch_paths.reserve( dispatched_npcs.size() );
         bool route_missing = false;
         for( const shared_ptr_fast<npc> &bandit : dispatched_npcs ) {
             std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( bandit->pos_abs_omt(),
-                                               u.pos_abs_omt(), overmap_path_params::for_npc() ).points;
+                                               dispatch_goal, overmap_path_params::for_npc() ).points;
             if( path.empty() ) {
                 route_missing = true;
                 break;
@@ -302,9 +387,18 @@ bool steer_live_bandit_dispatch_toward_player()
             continue;
         }
 
+        const std::string gate_summary = live_bandit_gate_summary( plan, gate_decision, dispatch_goal );
+        for( const character_id &member_id : plan.member_ids ) {
+            bandit_live_world::update_member_state( site, member_id,
+                                                    bandit_live_world::member_state::outbound, gate_summary );
+        }
+        DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_local_gate_report( site, gate_input,
+                                   gate_decision ) << "- live_dispatch_goal=" << live_bandit_omt_token( dispatch_goal )
+                                   << '\n';
+
         for( size_t i = 0; i < dispatched_npcs.size(); ++i ) {
             const shared_ptr_fast<npc> &bandit = dispatched_npcs[i];
-            bandit->goal = u.pos_abs_omt();
+            bandit->goal = dispatch_goal;
             bandit->omt_path = std::move( dispatch_paths[i] );
             bandit->set_mission( NPC_MISSION_TRAVELLING );
         }

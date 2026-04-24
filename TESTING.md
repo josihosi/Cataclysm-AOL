@@ -45,13 +45,16 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 ## Current relevant evidence
 
 Active probe obligation: `Bandit approach / stand-off / attack-gate packet v0`.
-The first deterministic posture law now exists on top of the active owned-outing record. The next honest evidence should move from deterministic gate selection into real player-present proof: one Basecamp/camp-adjacent stand-off/stalk/hold-off scene and one travel/convoy-style attack-forward scene, without jumping into the pay-or-fight UI.
+The deterministic posture law now reaches the real player-present dispatch seam for Basecamp/camp-adjacent pressure. The remaining honest evidence should prove the travel/convoy-style attack-forward side without jumping into the pay-or-fight UI.
 
-Fresh deterministic evidence for this packet:
-- implementation surface: `src/bandit_live_world.{h,cpp}` exposes `local_gate_input`, `local_gate_decision`, `local_gate_posture`, `choose_local_gate_posture(...)`, and `render_local_gate_report(...)` on an active owned outing
+Fresh evidence for this packet:
+- deterministic surface: `src/bandit_live_world.{h,cpp}` exposes `local_gate_input`, `local_gate_decision`, `local_gate_posture`, `choose_local_gate_posture(...)`, and `render_local_gate_report(...)` on an active owned outing
 - posture coverage: `tests/bandit_live_world_test.cpp` proves the gate can choose `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort` from dispatch strength versus local threat/opportunity inputs
-- reviewer-readable output: the report includes active group/target, posture, dispatch strength, threat, opportunity, margin, stand-off distance, shakedown flag, combat-forward flag, and notes
-- validation: `git diff --check -- src/bandit_live_world.h src/bandit_live_world.cpp tests/bandit_live_world_test.cpp`, `make -j4 tests`, `./tests/cata_test "[bandit][live_world][approach_gate]"` (33 assertions), and `./tests/cata_test "[bandit][live_world]"` (320 assertions) all passed
+- live seam attachment: `src/do_turn.cpp` now samples Basecamp/camp-adjacent local gate input from the real player-present dispatch path before assigning overmap NPC goals
+- live Basecamp proof: `.userdata/dev-harness/harness_runs/20260424_030342/` uses `tmp.bandit_basecamp_standoff_gate_probe_1860` on the claimed nearby-owned-site/Basecamp save, advances across the `30_minutes` dispatch cadence, then saves the world
+- saved-world verdict: `dimension_data.gsav` records member `4` as `outbound` with `last_writeback_summary = "dispatch hold_off toward player@140,41,0 via goal@140,43,0"`; decompressed `overmaps/o.0.0` records the same hells-raider NPC with `goalx/goaly/goalz = 140/43/0` and an `omt_path` beginning at `[140,43,0]`, so the dispatched bandit holds at readable stand-off rather than collapsing onto the player/Basecamp tile `[140,41,0]`
+- harness note: the generic verdict is `inconclusive_no_artifact_match`, but the evidence class is copied saved-world inspection; cleanup terminated the launched current-build game
+- validation: `make -j4 TILES=1 SOUND=0 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/do_turn.o cataclysm-tiles`, `./tests/cata_test "[bandit][live_world][approach_gate]"` (33 assertions), and `git diff --check -- src/do_turn.cpp tools/openclaw_harness/scenarios/tmp.bandit_basecamp_standoff_gate_probe_1860.json` all passed
 
 ### Recently closed lane - Cannibal camp first hostile-profile adopter packet v0
 
