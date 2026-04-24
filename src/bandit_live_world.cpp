@@ -428,6 +428,26 @@ std::string to_string( active_member_observation_state state )
     return "unresolved";
 }
 
+std::string to_string( local_gate_posture posture )
+{
+    switch( posture ) {
+        case local_gate_posture::stalk:
+            return "stalk";
+        case local_gate_posture::hold_off:
+            return "hold_off";
+        case local_gate_posture::probe:
+            return "probe";
+        case local_gate_posture::open_shakedown:
+            return "open_shakedown";
+        case local_gate_posture::attack_now:
+            return "attack_now";
+        case local_gate_posture::abort:
+            return "abort";
+    }
+
+    return "abort";
+}
+
 void member_record::serialize( JsonOut &json ) const
 {
     json.start_object();
@@ -935,6 +955,92 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
     site.remembered_pressure = plan.group.remaining_pressure;
     site.known_recent_marks = plan.group.known_recent_marks;
     return true;
+}
+
+local_gate_decision choose_local_gate_posture( const site_record &site,
+        const local_gate_input &input )
+{
+    local_gate_decision decision;
+    decision.dispatch_strength = static_cast<int>( site.active_member_ids.size() );
+    decision.pressure_margin = decision.dispatch_strength + input.local_opportunity - input.local_threat;
+
+    if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+        decision.notes.push_back( "local gate blocked: no active owned outing is present" );
+        return decision;
+    }
+
+    decision.valid = true;
+    decision.notes.push_back( "active owned outing " + site.active_group_id + " toward " +
+                              site.active_target_id );
+    decision.notes.push_back( "inputs: strength " + std::to_string( decision.dispatch_strength ) +
+                              ", threat " + std::to_string( input.local_threat ) +
+                              ", opportunity " + std::to_string( input.local_opportunity ) +
+                              ", margin " + std::to_string( decision.pressure_margin ) );
+
+    if( input.rolling_travel_scene ) {
+        if( decision.pressure_margin >= 0 ) {
+            decision.posture = local_gate_posture::attack_now;
+            decision.combat_forward = true;
+            decision.notes.push_back( "rolling travel scene skips polite shakedown and reads as an ambush window" );
+            return decision;
+        }
+        decision.posture = local_gate_posture::probe;
+        decision.notes.push_back( "rolling travel scene is tempting but still too protected for an immediate attack" );
+        return decision;
+    }
+
+    if( decision.pressure_margin <= -3 ) {
+        decision.posture = local_gate_posture::abort;
+        decision.valid = false;
+        decision.notes.push_back( "local gate aborts because local threat overwhelms dispatched pressure" );
+        return decision;
+    }
+
+    if( input.basecamp_or_camp_scene && ( input.recent_exposure || decision.pressure_margin <= 0 ) ) {
+        decision.posture = local_gate_posture::hold_off;
+        decision.notes.push_back( "camp-adjacent pressure holds off instead of collapsing onto the player tile" );
+        return decision;
+    }
+
+    if( input.local_contact_established && decision.dispatch_strength >= 2 &&
+        decision.pressure_margin >= 2 ) {
+        decision.posture = local_gate_posture::open_shakedown;
+        decision.opens_shakedown_surface = true;
+        decision.notes.push_back( "contact is established and pressure is strong enough to open the later shakedown surface" );
+        return decision;
+    }
+
+    if( input.local_opportunity > 0 && decision.pressure_margin >= 0 ) {
+        decision.posture = local_gate_posture::probe;
+        decision.notes.push_back( "opportunity is real but not yet strong enough for the robbery surface" );
+        return decision;
+    }
+
+    decision.posture = local_gate_posture::stalk;
+    decision.notes.push_back( "pressure stays readable as stalking until the scene changes" );
+    return decision;
+}
+
+std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
+                                      const local_gate_decision &decision )
+{
+    std::ostringstream out;
+    out << "local_gate site=" << site.site_id
+        << " active_group=" << site.active_group_id
+        << " target=" << site.active_target_id
+        << " posture=" << to_string( decision.posture )
+        << " strength=" << decision.dispatch_strength
+        << " threat=" << input.local_threat
+        << " opportunity=" << input.local_opportunity
+        << " margin=" << decision.pressure_margin
+        << " standoff_distance=" << input.standoff_distance
+        << " shakedown=" << ( decision.opens_shakedown_surface ? "yes" : "no" )
+        << " combat_forward=" << ( decision.combat_forward ? "yes" : "no" )
+        << '\n';
+    for( const std::string &note : decision.notes ) {
+        out << "- " << note << '\n';
+    }
+    return out.str();
 }
 
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet )

@@ -56,6 +56,15 @@ enum class active_member_observation_state {
     missing,
 };
 
+enum class local_gate_posture {
+    stalk,
+    hold_off,
+    probe,
+    open_shakedown,
+    attack_now,
+    abort,
+};
+
 struct active_member_observation {
     character_id npc_id;
     active_member_observation_state state = active_member_observation_state::unresolved;
@@ -147,6 +156,26 @@ struct dispatch_plan {
     std::vector<std::string> notes;
 };
 
+struct local_gate_input {
+    int local_threat = 0;
+    int local_opportunity = 0;
+    int standoff_distance = 0;
+    bool basecamp_or_camp_scene = false;
+    bool rolling_travel_scene = false;
+    bool recent_exposure = false;
+    bool local_contact_established = false;
+};
+
+struct local_gate_decision {
+    bool valid = false;
+    local_gate_posture posture = local_gate_posture::abort;
+    int dispatch_strength = 0;
+    int pressure_margin = 0;
+    bool opens_shakedown_surface = false;
+    bool combat_forward = false;
+    std::vector<std::string> notes;
+};
+
 bool is_tracked_hostile_template( const std::string &npc_template_id );
 std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind source_kind,
         const std::string &source_id );
@@ -164,6 +193,8 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
+local_gate_decision choose_local_gate_posture( const site_record &site,
+        const local_gate_input &input );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
 std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
     const site_record &site, const std::vector<active_member_observation> &observations );
@@ -175,4 +206,7 @@ std::string to_string( owned_site_kind site_kind );
 std::string to_string( hostile_site_profile profile );
 std::string to_string( member_state state );
 std::string to_string( active_member_observation_state state );
+std::string to_string( local_gate_posture posture );
+std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
+                                      const local_gate_decision &decision );
 } // namespace bandit_live_world

@@ -855,16 +855,19 @@ Notes:
 Status: GREENLIT
 
 Success state:
-- [ ] One honest local approach / stand-off / attack-gate layer exists on top of the live bandit control seam.
-- [ ] Dispatched bandit groups can reviewer-readably choose among stalking, holding off, probing, opening a shakedown, attacking directly, or aborting.
-- [ ] The gate law is explicit enough that later packet work can answer `why did this become a shakedown instead of a fight` without folklore reconstruction.
+- [x] One honest local approach / stand-off / attack-gate layer exists on top of the live bandit control seam.
+- [x] Dispatched bandit groups can reviewer-readably choose among stalking, holding off, probing, opening a shakedown, attacking directly, or aborting.
+- [x] The gate law is explicit enough that later packet work can answer `why did this become a shakedown instead of a fight` without folklore reconstruction.
 - [ ] Ordinary Basecamp/player pressure does not feel like instant psychic tile collapse because bandits can keep bounded stand-off behavior.
-- [ ] Convoy / vehicle / rolling-travel contexts are allowed to skip the polite shakedown posture when they honestly read as moving ambush opportunities.
-- [ ] The slice stays bounded: no pay-or-fight UI yet, no giant stealth doctrine, no radio/stalker widening, and no broad combat-AI rewrite.
+- [x] Convoy / vehicle / rolling-travel contexts are allowed to skip the polite shakedown posture when they honestly read as moving ambush opportunities.
+- [x] The slice stays bounded: no pay-or-fight UI yet, no giant stealth doctrine, no radio/stalker widening, and no broad combat-AI rewrite.
 
 Notes:
 - Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
 - This is the first bandit-robbery packet behind the already-frozen hostile-site stack, not a reason to leapfrog the earlier greenlit order.
+- `src/bandit_live_world.{h,cpp}` now carries the first deterministic local gate surface: `local_gate_input`, `local_gate_decision`, `local_gate_posture`, `choose_local_gate_posture(...)`, and `render_local_gate_report(...)`.
+- Fresh deterministic proof in `tests/bandit_live_world_test.cpp` covers all six v0 postures from an active owned outing: `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`. The camp-adjacent `hold_off` proof is still deterministic only; the remaining open bar is live/player-present stand-off proof on real Basecamp footing.
+- Fresh validation passed via `make -j4 tests`, `./tests/cata_test "[bandit][live_world][approach_gate]"`, `./tests/cata_test "[bandit][live_world]"`, and `git diff --check`.
 - Radio warfare and `Writhing stalker` stay parked for later.
 
 ---
