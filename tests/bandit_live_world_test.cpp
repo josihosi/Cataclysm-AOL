@@ -868,6 +868,50 @@ TEST_CASE( "bandit live world records shakedown aftermath for renegotiation pres
     CHECK( cooled_report.find( "aftermath caution" ) != std::string::npos );
 }
 
+TEST_CASE( "bandit live world cools shakedown pressure when the active bandit is lost", "[bandit][live_world][shakedown]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 981 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 982 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player_basecamp_nearby" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+
+    bandit_live_world::shakedown_outcome fight_opened;
+    fight_opened.fought = true;
+    fight_opened.basecamp_or_camp_scene = true;
+    fight_opened.demanded_value = 350;
+    fight_opened.reachable_goods_value = 1000;
+    REQUIRE( bandit_live_world::apply_shakedown_outcome( site, fight_opened ).valid );
+    CHECK( site.last_shakedown_outcome == "fight_unresolved" );
+
+    bandit_pursuit_handoff::local_outcome outcome;
+    outcome.survivors_remaining = 0;
+    outcome.anchored_identity_updates = { { "981", "missing" } };
+    outcome.result = bandit_pursuit_handoff::mission_result::broken;
+    outcome.resolution = bandit_pursuit_handoff::lead_resolution::target_lost;
+    outcome.posture = bandit_pursuit_handoff::return_posture::escape_safe;
+    outcome.remaining_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+    const bandit_pursuit_handoff::return_packet packet =
+        bandit_pursuit_handoff::build_return_packet( plan.entry, outcome );
+
+    REQUIRE( bandit_live_world::apply_return_packet( site, packet ) );
+    CHECK( site.find_member( character_id( 981 ) )->state == bandit_live_world::member_state::missing );
+    CHECK( site.active_group_id.empty() );
+    CHECK( site.last_shakedown_outcome == "fight_bandit_loss" );
+    CHECK( site.shakedown_bandit_losses == 1 );
+    CHECK( site.shakedown_caution == 1 );
+    CHECK( site.remembered_pressure ==
+           bandit_pursuit_handoff::remaining_return_pressure_state::collapsed );
+}
+
 TEST_CASE( "bandit live world applies a return packet onto the active owned outing", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;

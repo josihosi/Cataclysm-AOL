@@ -39,10 +39,10 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit repo lane is now **Bandit aftermath / renegotiation writeback packet v0**.
+The active greenlit repo lane is now **Bandit extortion-at-camp restage + handoff packet v0**.
 
 Current honest state:
-- the latest closed lane is now `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
+- an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
 - the earlier closed lane is now `Cannibal camp first hostile-profile adopter packet v0` at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
 - that lane now closes honestly on current build: `src/bandit_live_world.{h,cpp}` carries explicit `cannibal_camp` site/profile ownership, cannibal NPC templates can claim the live-world substrate, dedicated cannibal-camp overmap/mapgen/faction/NPC data gives the profile a real rare anchor, and `tests/bandit_live_world_test.cpp` proves a cannibal camp and bandit camp coexist through dispatch/writeback serialization without shared-state mush
 - the earlier closed lane is now `Hostile site profile layer packet v0` at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`
@@ -55,13 +55,15 @@ Current honest state:
 - the earlier latest closed lane remains `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
 - the earlier `Bandit + Basecamp playtest kit packet v0` remains checkpointed at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
 - the useful harness/helper work from `Bandit + Basecamp playtest kit packet v2` was **not** wasted; it now sits behind the closed live-world lane as bounded support instead of masquerading as the product
-- the latest closed lane is now `Bandit shakedown pay-or-fight surface packet v0` at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`
+- the latest closed lane is now `Bandit aftermath / renegotiation writeback packet v0` at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`
+- that lane closes honestly on current build: shakedown aftermath state now persists paid/fought outcomes, loot, anger, caution, defender-loss reopen, and bandit-loss cooling; deterministic proof covers the raised one-use reopen and `pay`/`fight` reconsideration surface, artificial live continuation `.userdata/dev-harness/harness_runs/20260424_142054/` proves the defender-observer/reopen state can persist, and isolated exact-member copied-save proof `.userdata/dev-harness/harness_runs/20260424_143107/` saves member `4` missing with `last_shakedown_outcome=fight_bandit_loss`, `shakedown_bandit_losses=1`, `shakedown_caution=1`, and collapsed pressure
+- the earlier closed lane is now `Bandit shakedown pay-or-fight surface packet v0` at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`
 - that lane closes honestly on current build: the `open_shakedown` branch now opens a blunt player-present robbery demand with explicit `pay` / `fight`, Basecamp-side live fight and pay/writeback proof, and off-base live reach proof `.userdata/dev-harness/harness_runs/20260424_070845/` showing `basecamp_inventory=no`, `vehicle_inventory=yes`, and only carried/current-vehicle goods outside Basecamp/camp footing
 - `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this hostile-site stack should reuse current camp footing, not reopen zoning mechanics by drift
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, repeated-site revisit follow-through, and the now-closed live-world control lane
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is now about making first shakedown outcomes stick in later bandit pressure: losses, wounds, taken goods, anger, caution, and one bounded stronger reopen when Basecamp defense materially drops.
+This lane is now about making the Basecamp extortion setup reusable: one named restage/handoff path that attracts a real controlled bandit group through the live owner/dispatch seam and leaves review at a useful approach, stand-off, or shakedown moment.
 
 ---
 
@@ -163,9 +165,9 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
 
-## Active lane - Bandit aftermath / renegotiation writeback packet v0
+## Recently closed lane - Bandit aftermath / renegotiation writeback packet v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
 A robbery scene is fake if the world forgets it immediately.
 This packet makes the outcome stick: losses, wounds, taken goods, anger, caution, and the specific wanted beat where a killed Basecamp defender can let bandits reopen from a stronger position with a higher demand.
@@ -187,9 +189,9 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
 
-### 6. Bandit extortion-at-camp restage + handoff packet v0
+## Active lane - Bandit extortion-at-camp restage + handoff packet v0
 
-**Status:** GREENLIT
+**Status:** ACTIVE / GREENLIT
 
 Once the robbery chain is real, the harness should be able to attract a real controlled bandit group toward Basecamp and leave the scene alive at the interesting point instead of making Andi rediscover a one-off ritual every time.
 This packet is the bounded setup seam for that.
@@ -210,7 +212,7 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
 
-### 7. Bandit extortion playthrough audit + harness-skill packet v0
+## Bandit extortion playthrough audit + harness-skill packet v0
 
 **Status:** GREENLIT
 

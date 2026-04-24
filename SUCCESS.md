@@ -898,23 +898,24 @@ Notes:
 
 ## Bandit aftermath / renegotiation writeback packet v0
 
-Status: GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
 - [x] One honest aftermath/writeback layer exists for player-present bandit shakedown outcomes.
 - [x] Later bandit behavior can reflect scene results such as losses, wounds, loot haul, failed extraction, anger, or caution instead of resetting to folklore.
-- [ ] A materially weakened Basecamp defense, including a killed defender, can reopen the pressure once from a stronger bandit position with a higher demand when that is the honest read.
-- [ ] That harsher reopened demand still gives the player a fresh explicit `pay` versus `fight` reconsideration fork instead of hard-forcing only surrender or only combat.
-- [ ] The harsher reopened demand is explicit and reviewer-readable rather than hidden in vague score drift.
-- [ ] Bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet cruelty upward.
-- [ ] The slice stays bounded: no infinite haggling loops, no giant diplomacy/reputation machinery, and no multi-camp retaliation grand strategy.
+- [x] A materially weakened Basecamp defense, including a killed defender, can reopen the pressure once from a stronger bandit position with a higher demand when that is the honest read.
+- [x] That harsher reopened demand still gives the player a fresh explicit `pay` versus `fight` reconsideration fork instead of hard-forcing only surrender or only combat.
+- [x] The harsher reopened demand is explicit and reviewer-readable rather than hidden in vague score drift.
+- [x] Bandit losses or panic can also cool or shrink later pressure, so the packet does not only ratchet cruelty upward.
+- [x] The slice stays bounded: no infinite haggling loops, no giant diplomacy/reputation machinery, and no multi-camp retaliation grand strategy.
 
 Notes:
 - Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
 - This packet sits directly behind `Bandit shakedown pay-or-fight surface packet v0`.
 - The specific wanted beat is frozen here: if bandits kill a Basecamp defender and the local threat read drops, they may reopen once from a stronger position with a higher toll — and the player still gets a fresh choice to pay or fight again.
-- Current deterministic layer now persists shakedown aftermath on `site_record`, records paid/fought outcomes, abstract loot, defender/bandit losses, anger/caution, and a one-use reopen latch; `[bandit][live_world][shakedown]` proves the raised-demand and cooled-demand report surfaces.
-- The live shakedown fight branch now snapshots nearby Basecamp defenders and the per-turn aftermath observer can translate an observed defender-strength drop into the same one-use stronger reopen state; current remaining bar is live current-build scene proof, not the basic writeback seam.
+- Current deterministic layer now persists shakedown aftermath on `site_record`, records paid/fought outcomes, abstract loot, defender/bandit losses, anger/caution, and a one-use reopen latch; `[bandit][live_world][shakedown]` proves the raised-demand surface, direct cooled-demand report surface, and active-return-packet bandit-loss cooling seam.
+- Live proof is deliberately split by evidence class: current-build shakedown runs reach the first fight; artificial continuation `.userdata/dev-harness/harness_runs/20260424_142054/` proves the defender observer can persist `fight_defender_loss`, `shakedown_defender_losses=2`, `shakedown_reopen_available=true`, and a missing active member without claiming a natural defender-kill trigger; isolated copied-save proof `.userdata/dev-harness/harness_runs/20260424_143107/` proves exact active member `4` loss writes back as `fight_bandit_loss`, clears the active outing, increments `shakedown_bandit_losses=1` / `shakedown_caution=1`, and collapses remembered pressure.
+- The natural live defender-kill trigger remains a known harness/playthrough gap for the later extortion audit packet, not a reason to keep this aftermath packet open or to build a broad harness empire here.
 
 ---
 

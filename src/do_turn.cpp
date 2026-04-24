@@ -576,6 +576,12 @@ bool note_live_bandit_aftermath()
             if( member_npc == nullptr ) {
                 observation.state = bandit_live_world::active_member_observation_state::missing;
                 observation.summary = "member lookup missing during active outing";
+                if( site.last_shakedown_outcome == "fight_unresolved" ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "bandit shakedown aftermath: active member "
+                            << member_id.get_value() << " missing from npc lookup for "
+                            << site.active_target_id;
+                }
                 if( member->state != bandit_live_world::member_state::missing ) {
                     changed |= bandit_live_world::update_member_state( site, member_id,
                               bandit_live_world::member_state::missing,
@@ -588,6 +594,12 @@ bool note_live_bandit_aftermath()
             if( member_npc->is_dead() ) {
                 observation.state = bandit_live_world::active_member_observation_state::dead;
                 observation.summary = "npc dead";
+                if( site.last_shakedown_outcome == "fight_unresolved" ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "bandit shakedown aftermath: active member "
+                            << member_id.get_value() << " dead during active outing near "
+                            << site.active_target_id;
+                }
                 if( member->state != bandit_live_world::member_state::dead ) {
                     changed |= bandit_live_world::update_member_state( site, member_id,
                               bandit_live_world::member_state::dead,
@@ -604,6 +616,13 @@ bool note_live_bandit_aftermath()
                        ( member_npc->is_active() || !member_npc->is_travelling() ) ) {
                 observation.state = bandit_live_world::active_member_observation_state::local_contact;
                 observation.summary = "local contact near player target";
+                if( site.last_shakedown_outcome == "fight_unresolved" ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "bandit shakedown aftermath: active member "
+                            << member_id.get_value() << " in local contact at "
+                            << member_npc->pos_abs_omt().to_string() << " player="
+                            << u.pos_abs_omt().to_string();
+                }
                 if( member->state == bandit_live_world::member_state::outbound ) {
                     changed |= bandit_live_world::update_member_state( site, member_id,
                               bandit_live_world::member_state::local_contact,
@@ -627,6 +646,13 @@ bool note_live_bandit_aftermath()
                     observation.summary = "travelling back toward home footprint";
                 } else {
                     observation.summary = "local contact unresolved";
+                    if( site.last_shakedown_outcome == "fight_unresolved" ) {
+                        DebugLog( D_INFO, DC_ALL )
+                                << "bandit shakedown aftermath: active member "
+                                << member_id.get_value() << " unresolved at "
+                                << member_npc->pos_abs_omt().to_string() << " player="
+                                << u.pos_abs_omt().to_string();
+                    }
                 }
             } else {
                 observation.summary = "still outbound";

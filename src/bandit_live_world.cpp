@@ -1293,7 +1293,7 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
                                      packet.current_target_or_mark;
     const std::string base_summary = "return " + bandit_pursuit_handoff::to_string( packet.result ) +
                                      " from " + target_label;
-    bool shakedown_fight_outing = false;
+    bool shakedown_fight_outing = site.last_shakedown_outcome == "fight_unresolved";
     for( const character_id &member_id : site.active_member_ids ) {
         const member_record *member = site.find_member( member_id );
         shakedown_fight_outing |= member != nullptr &&
