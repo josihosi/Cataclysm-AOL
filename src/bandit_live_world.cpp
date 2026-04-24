@@ -155,6 +155,34 @@ void apply_group_memory( bandit_live_world::site_record &site,
     site.known_recent_marks = group.known_recent_marks;
 }
 
+int shakedown_demand_modifier_percent( const bandit_live_world::site_record &site )
+{
+    if( site.shakedown_reopen_available && !site.shakedown_reopen_used ) {
+        return 140;
+    }
+    if( site.shakedown_caution > 0 || site.shakedown_bandit_losses > 0 ) {
+        return std::max( 50, 100 - 25 * std::max( site.shakedown_caution, site.shakedown_bandit_losses ) );
+    }
+    return 100;
+}
+
+std::string shakedown_outcome_label( const bandit_live_world::shakedown_outcome &outcome )
+{
+    if( outcome.paid ) {
+        return "paid";
+    }
+    if( outcome.fought && outcome.bandit_losses > 0 ) {
+        return "fight_bandit_loss";
+    }
+    if( outcome.fought && outcome.defender_losses > 0 ) {
+        return "fight_defender_loss";
+    }
+    if( outcome.fought ) {
+        return "fight_unresolved";
+    }
+    return "unknown";
+}
+
 int special_footprint_radius( const std::string &special_id )
 {
     if( special_id == "bandit_camp" || special_id == "bandit_work_camp" ||
@@ -514,6 +542,20 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "remembered_return_clock", remembered_return_clock );
     json.member( "remembered_pressure", bandit_pursuit_handoff::to_string( remembered_pressure ) );
     json.member( "known_recent_marks", known_recent_marks );
+    json.member( "last_shakedown_outcome", last_shakedown_outcome );
+    json.member( "shakedown_last_demanded_value", shakedown_last_demanded_value );
+    json.member( "shakedown_last_surrendered_value", shakedown_last_surrendered_value );
+    json.member( "shakedown_last_reachable_value", shakedown_last_reachable_value );
+    json.member( "shakedown_loot_value", shakedown_loot_value );
+    json.member( "shakedown_defender_losses", shakedown_defender_losses );
+    json.member( "shakedown_bandit_losses", shakedown_bandit_losses );
+    json.member( "shakedown_anger", shakedown_anger );
+    json.member( "shakedown_caution", shakedown_caution );
+    json.member( "shakedown_basecamp_defenders_at_fight", shakedown_basecamp_defenders_at_fight );
+    json.member( "shakedown_basecamp_defender_observation_pending",
+                 shakedown_basecamp_defender_observation_pending );
+    json.member( "shakedown_reopen_available", shakedown_reopen_available );
+    json.member( "shakedown_reopen_used", shakedown_reopen_used );
     json.end_object();
 }
 
@@ -559,6 +601,20 @@ void site_record::deserialize( const JsonObject &jo )
     remembered_pressure = remaining_return_pressure_state_from_string( remembered_pressure_string ).value_or(
                               bandit_pursuit_handoff::remaining_return_pressure_state::ample );
     jo.read( "known_recent_marks", known_recent_marks );
+    jo.read( "last_shakedown_outcome", last_shakedown_outcome );
+    jo.read( "shakedown_last_demanded_value", shakedown_last_demanded_value );
+    jo.read( "shakedown_last_surrendered_value", shakedown_last_surrendered_value );
+    jo.read( "shakedown_last_reachable_value", shakedown_last_reachable_value );
+    jo.read( "shakedown_loot_value", shakedown_loot_value );
+    jo.read( "shakedown_defender_losses", shakedown_defender_losses );
+    jo.read( "shakedown_bandit_losses", shakedown_bandit_losses );
+    jo.read( "shakedown_anger", shakedown_anger );
+    jo.read( "shakedown_caution", shakedown_caution );
+    jo.read( "shakedown_basecamp_defenders_at_fight", shakedown_basecamp_defenders_at_fight );
+    jo.read( "shakedown_basecamp_defender_observation_pending",
+             shakedown_basecamp_defender_observation_pending );
+    jo.read( "shakedown_reopen_available", shakedown_reopen_available );
+    jo.read( "shakedown_reopen_used", shakedown_reopen_used );
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -1083,8 +1139,15 @@ shakedown_surface build_shakedown_surface( const site_record &site, const local_
     surface.valid = true;
     surface.pay_available = true;
     surface.fight_available = true;
-    surface.demanded_value = std::max( 1, ( surface.reachable_goods_value * 35 + 99 ) / 100 );
-    surface.demanded_value = std::min( surface.demanded_value, surface.reachable_goods_value );
+    const int base_demanded_value = std::max( 1, ( surface.reachable_goods_value * 35 + 99 ) / 100 );
+    const int demand_modifier_percent = shakedown_demand_modifier_percent( site );
+    surface.demanded_value = ( base_demanded_value * demand_modifier_percent + 99 ) / 100;
+    surface.demanded_value = std::clamp( surface.demanded_value, 1, surface.reachable_goods_value );
+    if( site.shakedown_reopen_available && !site.shakedown_reopen_used ) {
+        surface.notes.push_back( "renegotiation reopen: previous defender loss raises this one bounded demand" );
+    } else if( demand_modifier_percent < 100 ) {
+        surface.notes.push_back( "aftermath caution: previous bandit loss cools or shrinks this demand" );
+    }
     surface.notes.push_back( "pay branch surrenders the demanded share into abstract bandit bounty/writeback" );
     surface.notes.push_back( "fight branch stays explicit whenever this surface is invoked" );
     surface.notes.push_back( "source site " + site.site_id + " opened the surface from " +
@@ -1112,6 +1175,102 @@ std::string render_shakedown_surface_report( const site_record &site,
     return out.str();
 }
 
+
+shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
+        const shakedown_outcome &outcome )
+{
+    shakedown_aftermath_effect effect;
+    if( ( !outcome.paid && !outcome.fought ) || outcome.demanded_value <= 0 ) {
+        effect.notes.push_back( "shakedown aftermath ignored: no concrete paid/fought outcome" );
+        return effect;
+    }
+
+    effect.valid = true;
+    site.last_shakedown_outcome = shakedown_outcome_label( outcome );
+    site.shakedown_last_demanded_value = outcome.demanded_value;
+    site.shakedown_last_surrendered_value = outcome.surrendered_value;
+    site.shakedown_last_reachable_value = outcome.reachable_goods_value;
+
+    if( outcome.paid ) {
+        site.shakedown_loot_value += std::max( 0, outcome.surrendered_value );
+        site.remembered_bounty_estimate += std::max( 1, outcome.surrendered_value / 1000 );
+        effect.notes.push_back( "paid shakedown writes surrendered value into abstract bounty" );
+    }
+
+    if( outcome.fought ) {
+        site.shakedown_anger += 1 + outcome.defender_losses;
+        site.remembered_threat_estimate = std::max( 0,
+                                          site.remembered_threat_estimate - outcome.defender_losses );
+        effect.notes.push_back( "fight outcome writes anger and changed local threat into site memory" );
+    }
+
+    if( outcome.basecamp_or_camp_scene && outcome.defender_losses > 0 ) {
+        site.shakedown_defender_losses += outcome.defender_losses;
+        if( !site.shakedown_reopen_used ) {
+            site.shakedown_reopen_available = true;
+            effect.stronger_reopen = true;
+            effect.notes.push_back( "defender loss opens exactly one stronger renegotiation demand" );
+        }
+    }
+
+    if( outcome.bandit_losses > 0 || outcome.extraction_failed ) {
+        site.shakedown_bandit_losses += outcome.bandit_losses;
+        site.shakedown_caution += std::max( 1, outcome.bandit_losses );
+        site.remembered_retreat_bias += std::max( 1, outcome.bandit_losses );
+        site.remembered_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::collapsed;
+        effect.cools_later_pressure = true;
+        effect.notes.push_back( "bandit loss or failed extraction cools later pressure instead of only escalating" );
+    }
+
+    effect.demand_modifier_percent = shakedown_demand_modifier_percent( site );
+    return effect;
+}
+
+
+void begin_shakedown_basecamp_defender_observation( site_record &site, const int live_defenders )
+{
+    site.shakedown_basecamp_defenders_at_fight = std::max( 0, live_defenders );
+    site.shakedown_basecamp_defender_observation_pending =
+        site.shakedown_basecamp_defenders_at_fight > 0;
+}
+
+shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_record &site,
+        const int live_defenders )
+{
+    if( !site.shakedown_basecamp_defender_observation_pending ) {
+        shakedown_aftermath_effect effect;
+        effect.notes.push_back( "basecamp defender observation ignored: no pending shakedown fight" );
+        return effect;
+    }
+
+    const int current_live_defenders = std::max( 0, live_defenders );
+    const int defender_losses = site.shakedown_basecamp_defenders_at_fight - current_live_defenders;
+    if( defender_losses <= 0 ) {
+        shakedown_aftermath_effect effect;
+        effect.notes.push_back( "basecamp defender observation unchanged: no defender strength drop" );
+        return effect;
+    }
+
+    shakedown_outcome outcome;
+    outcome.fought = true;
+    outcome.basecamp_or_camp_scene = true;
+    outcome.demanded_value = std::max( 1, site.shakedown_last_demanded_value );
+    outcome.reachable_goods_value = site.shakedown_last_reachable_value;
+    outcome.defender_losses = defender_losses;
+    site.shakedown_basecamp_defender_observation_pending = false;
+    return apply_shakedown_outcome( site, outcome );
+}
+
+bool mark_shakedown_reopen_used( site_record &site )
+{
+    if( !site.shakedown_reopen_available || site.shakedown_reopen_used ) {
+        return false;
+    }
+    site.shakedown_reopen_used = true;
+    site.shakedown_reopen_available = false;
+    return true;
+}
+
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet )
 {
     if( !packet.valid || packet.source_camp_id != site.site_id ||
@@ -1134,6 +1293,12 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
                                      packet.current_target_or_mark;
     const std::string base_summary = "return " + bandit_pursuit_handoff::to_string( packet.result ) +
                                      " from " + target_label;
+    bool shakedown_fight_outing = false;
+    for( const character_id &member_id : site.active_member_ids ) {
+        const member_record *member = site.find_member( member_id );
+        shakedown_fight_outing |= member != nullptr &&
+                                  member->last_writeback_summary.find( "shakedown_surface fight" ) != std::string::npos;
+    }
     for( const character_id &member_id : site.active_member_ids ) {
         const std::string status = status_for_member( member_id );
         member_state new_state = member_state::at_home;
@@ -1157,6 +1322,25 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
 
     if( survivors_accounted != packet.survivors_remaining ) {
         return false;
+    }
+
+    if( shakedown_fight_outing && !packet.anchored_identity_updates.empty() ) {
+        int bandit_losses = 0;
+        for( const bandit_pursuit_handoff::anchored_identity_state &update :
+             packet.anchored_identity_updates ) {
+            if( update.status == "dead" || update.status == "missing" ) {
+                bandit_losses++;
+            }
+        }
+        if( bandit_losses > 0 ) {
+            shakedown_outcome outcome;
+            outcome.fought = true;
+            outcome.extraction_failed = true;
+            outcome.demanded_value = std::max( 1, site.shakedown_last_demanded_value );
+            outcome.reachable_goods_value = site.shakedown_last_reachable_value;
+            outcome.bandit_losses = bandit_losses;
+            apply_shakedown_outcome( site, outcome );
+        }
     }
 
     bandit_pursuit_handoff::abstract_group_state remembered_group = make_site_memory_group( site );

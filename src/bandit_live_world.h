@@ -112,6 +112,19 @@ struct site_record {
     bandit_pursuit_handoff::remaining_return_pressure_state remembered_pressure =
         bandit_pursuit_handoff::remaining_return_pressure_state::ample;
     std::vector<std::string> known_recent_marks;
+    std::string last_shakedown_outcome;
+    int shakedown_last_demanded_value = 0;
+    int shakedown_last_surrendered_value = 0;
+    int shakedown_last_reachable_value = 0;
+    int shakedown_loot_value = 0;
+    int shakedown_defender_losses = 0;
+    int shakedown_bandit_losses = 0;
+    int shakedown_anger = 0;
+    int shakedown_caution = 0;
+    int shakedown_basecamp_defenders_at_fight = 0;
+    bool shakedown_basecamp_defender_observation_pending = false;
+    bool shakedown_reopen_available = false;
+    bool shakedown_reopen_used = false;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
@@ -196,6 +209,26 @@ struct shakedown_surface {
     std::vector<std::string> notes;
 };
 
+struct shakedown_outcome {
+    bool paid = false;
+    bool fought = false;
+    bool basecamp_or_camp_scene = false;
+    bool extraction_failed = false;
+    int demanded_value = 0;
+    int surrendered_value = 0;
+    int reachable_goods_value = 0;
+    int defender_losses = 0;
+    int bandit_losses = 0;
+};
+
+struct shakedown_aftermath_effect {
+    bool valid = false;
+    bool stronger_reopen = false;
+    bool cools_later_pressure = false;
+    int demand_modifier_percent = 100;
+    std::vector<std::string> notes;
+};
+
 bool is_tracked_hostile_template( const std::string &npc_template_id );
 std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind source_kind,
         const std::string &source_id );
@@ -217,6 +250,12 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );
 shakedown_surface build_shakedown_surface( const site_record &site, const local_gate_input &input,
         const local_gate_decision &decision, const shakedown_goods_pool &goods_pool );
+shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,
+        const shakedown_outcome &outcome );
+void begin_shakedown_basecamp_defender_observation( site_record &site, int live_defenders );
+shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_record &site,
+        int live_defenders );
+bool mark_shakedown_reopen_used( site_record &site );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
 std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
     const site_record &site, const std::vector<active_member_observation> &observations );
