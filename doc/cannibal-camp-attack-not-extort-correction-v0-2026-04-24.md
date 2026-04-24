@@ -1,6 +1,6 @@
 # Cannibal camp attack-not-extort correction v0 (2026-04-24)
 
-Status: GREENLIT / next narrow correction candidate, not yet implemented.
+Status: CHECKPOINTED / DONE FOR NOW.
 
 ## Why this exists
 
@@ -43,14 +43,13 @@ This correction is done when:
 - existing bandit shakedown/pay/fight tests still pass unchanged
 - the cannibal-camp adopter packet stays closed as content/substrate proof; this correction only fixes the encounter-behavior semantic gap
 
-## Testing expectations
+## Testing evidence
 
-Minimum validation:
+Fresh validation passed on the checkpointed correction:
 
-- focused deterministic test for cannibal local-gate behavior
-- existing focused bandit shakedown tests to prove bandit extortion was not broken
+- `make -j4 tests`
+- `./tests/cata_test "[bandit][live_world][cannibal]"` — 67 assertions in 2 test cases
+- `./tests/cata_test "[bandit][live_world][shakedown]"` — 116 assertions in 4 test cases
 - `git diff --check`
 
-Optional if cheap:
-
-- one harness/report proof showing cannibal local contact does not surface a pay-demand menu
+No live harness proof was run for this packet because the correction is a narrow deterministic local-gate/profile split and the existing live extortion surface remains bandit-owned.

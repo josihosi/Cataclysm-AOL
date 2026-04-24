@@ -8,9 +8,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Cannibal camp attack-not-extort correction v0`.
+No active greenlit game-feature target remains after `Cannibal camp attack-not-extort correction v0` checkpointed.
 
-- Implement the narrow cannibal local-gate correction from `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`.
-- Cannibal camps should not open the bandit `open_shakedown` / pay-demand surface; favorable local contact should attack-to-kill / lethal-ambush instead.
-- Still allow hold-off, stalk, probe, or abort when conditions are bad; do not make cannibals magically suicidal.
-- Prove bandit camps can still extort while cannibal camps do not.
+- Wait for Josef/Schani to greenlight the next bounded game-feature lane before starting another packet.
+- Do not execute the standalone GitHub migration from this lane; that repo-ops item remains queued and needs explicit clearance plus a reviewably clean tree.

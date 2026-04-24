@@ -44,13 +44,13 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Cannibal camp attack-not-extort correction v0`.
+No active probe obligation remains after `Cannibal camp attack-not-extort correction v0` checkpointed.
 
-Minimum evidence:
-- deterministic proof that a `cannibal_camp` active outing does not produce the bandit `open_shakedown` / pay-demand surface under the same broad favorable-contact conditions where a bandit camp can extort
-- deterministic proof that favorable cannibal local contact becomes attack-to-kill / lethal pressure, while unfavorable conditions can still hold off, stalk, probe, or abort
-- existing bandit shakedown/pay/fight coverage still passes so the correction does not break bandit extortion
-- `git diff --check` passes
+Latest closed cannibal attack-not-extort evidence:
+- implementation: `src/bandit_live_world.cpp` routes `hostile_site_profile::cannibal_camp` favorable local contact to `attack_now` with `combat_forward=true` and never to `open_shakedown`; weaker cannibal footing can still `probe`, exposed camp-adjacent footing can `hold_off`, overwhelming threat can `abort`, and the local-gate report now exposes the active `profile` for review.
+- guardrail: `build_shakedown_surface(...)` blocks cannibal-profile sites even if a future caller accidentally hands it a robbery-surface decision.
+- deterministic proof: `tests/bandit_live_world_test.cpp` covers cannibal no-extort / attack-to-kill, cautious probe, exposed hold-off, overwhelming abort, and the existing bandit pay/fight shakedown path unchanged under the same broad favorable-contact footing.
+- validation: `make -j4 tests`, `./tests/cata_test "[bandit][live_world][cannibal]"` (67 assertions in 2 test cases), `./tests/cata_test "[bandit][live_world][shakedown]"` (116 assertions in 4 test cases), and `git diff --check` passed on the current dirty tree.
 The extortion-at-camp restage / handoff packet and the tiered extortion audit packet now provide named scenario surfaces for setup, first demand, pay/fight, fight-forward message, pay/writeback, and controlled reopened second demand.  The natural redispatch-from-no-active-group gap is not claimed closed and should stay dormant unless Josef explicitly promotes it.
 
 Latest closed aftermath evidence:
