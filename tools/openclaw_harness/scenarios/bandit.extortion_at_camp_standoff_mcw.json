@@ -1,0 +1,49 @@
+{
+  "name": "bandit.extortion_at_camp_standoff_mcw",
+  "description": "Named Basecamp extortion restage: start from the honest claimed nearby-owned-site McWilliams/Basecamp footing, disable safe mode, advance through the real live owner/dispatch/local-contact path until the local gate reaches camp-adjacent stand-off pressure, and stop there for probe capture or manual handoff.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_owned_site2_basecamp_probe_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "local_gate site=overmap_special:bandit_camp@140,51,0",
+    "active_group=overmap_special:bandit_camp@140,51,0#dispatch",
+    "posture=hold_off",
+    "basecamp_or_camp=yes",
+    "live_dispatch_goal=140,43,0"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 12
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode",
+      "keys": ["!"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 16
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_4500_turns_to_basecamp_standoff",
+      "count": 4500,
+      "settle_seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 32
+    }
+  ],
+  "recommended_probe_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_at_camp_standoff_mcw",
+  "recommended_handoff_command": "python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw"
+}

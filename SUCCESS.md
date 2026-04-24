@@ -921,38 +921,43 @@ Notes:
 
 ## Bandit extortion-at-camp restage + handoff packet v0
 
-Status: GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One named restage path can attract a real controlled bandit group toward Basecamp through the actual live owner/dispatch seam.
-- [ ] One reviewer probe/capture command and one manual handoff command exist for that same path.
-- [ ] The handoff path leaves the session alive at a genuinely useful extortion-at-camp moment instead of cleaning up before play starts.
-- [ ] The setup does not rely on fake debug-spawn theater or on moved-player/basecamp hacks that break current camp validity.
-- [ ] Reviewer-readable reports make it obvious which setup mode ran, which real controlled group was used, and whether the scene reached approach, stand-off, or shakedown state.
-- [ ] The slice stays bounded: no generic harness empire and no helper polish masquerading as the robbery chain itself.
+- [x] One named restage path can attract a real controlled bandit group toward Basecamp through the actual live owner/dispatch seam.
+- [x] One reviewer probe/capture command and one manual handoff command exist for that same path.
+- [x] The handoff path leaves the session alive at a genuinely useful extortion-at-camp moment instead of cleaning up before play starts.
+- [x] The setup does not rely on fake debug-spawn theater or on moved-player/basecamp hacks that break current camp validity.
+- [x] Reviewer-readable reports make it obvious which setup mode ran, which real controlled group was used, and whether the scene reached approach, stand-off, or shakedown state.
+- [x] The slice stays bounded: no generic harness empire and no helper polish masquerading as the robbery chain itself.
 
 Notes:
 - Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
-- This packet sits directly behind the robbery-chain packets and also depends on the active nearby-controlled-camp lane becoming honest first.
-- The current helper surface (`bandit_live_world_nearby_camp_v0_2026-04-22` / `bandit.live_world_nearby_camp_mcw`) is useful footing, but its moved-player McWilliams attempt still breaks `game::validate_camps()` and therefore does not yet count as this packet being done.
+- Named scenario: `tools/openclaw_harness/scenarios/bandit.extortion_at_camp_standoff_mcw.json`.
+- Reviewer probe command: `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_at_camp_standoff_mcw`.
+- Manual handoff command: `python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw`.
+- Probe evidence: `.userdata/dev-harness/harness_runs/20260424_145617/` (run before the scenario was renamed from `bandit.extortion_at_camp_shakedown_mcw`) advanced from the honest claimed nearby-owned-site Basecamp fixture and logged `local_gate site=overmap_special:bandit_camp@140,51,0 active_group=overmap_special:bandit_camp@140,51,0#dispatch target=player@140,41,0 posture=hold_off ... basecamp_or_camp=yes`, with `live_dispatch_goal=140,43,0`.
+- Handoff evidence: `.userdata/dev-harness/harness_runs/20260424_153309/` ran the renamed scenario in `mode = handoff`, wrote `handoff.report.json`, left `cleanup.status = deferred_handoff` with live pid `79412`, and captured the same controlled-site stand-off log line plus `live_dispatch_goal=140,43,0`.  The OCR screen is messy save/temperature text, so the decisive evidence class is the handoff report plus artifact log, not spatial readability.
+- Caveat: both probe and handoff reports carry `inconclusive_version_mismatch` because the visible runtime binary did not match the later repo-head/runtime-path diff.  This packet is closed for setup/handoff repeatability; a future Josef-facing playthrough packet should rebuild/rerun if strict current-source runtime freshness matters.
 
 ---
 
 ## Bandit extortion playthrough audit + harness-skill packet v0
 
-Status: GREENLIT
+Status: CHECKPOINTED / DONE FOR NOW
 
 Success state:
-- [ ] One named audit/playthrough surface exists for the full Basecamp extortion chain rather than only for the first setup moment.
-- [ ] The packaged flow can cover first demand, fight branch, defender-loss reopen, raised-price second demand, and second `pay` versus `fight` reconsideration clearly enough for review.
-- [ ] Reports separate screen, tests, and artifacts/logs cleanly enough that later debugging does not devolve into folklore.
-- [ ] The relevant harness skill/docs are updated so another agent can discover the named paths and run them without archaeological guessing.
-- [ ] The slice stays bounded: no fake total-automation empire and no feature-redesign side quest hiding inside audit packaging.
+- [x] One named audit/playthrough surface exists for the full Basecamp extortion chain rather than only for the first setup moment.
+- [x] The packaged flow can cover first demand, fight branch, defender-loss reopen, raised-price second demand, and second `pay` versus `fight` reconsideration clearly enough for review.
+- [x] Reports separate screen, tests, and artifacts/logs cleanly enough that later debugging does not devolve into folklore.
+- [x] The relevant harness skill/docs are updated so another agent can discover the named paths and run them without archaeological guessing.
+- [x] The slice stays bounded: no fake total-automation empire and no feature-redesign side quest hiding inside audit packaging.
 
 Notes:
 - Canonical contract lives at `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md`.
-- This packet sits directly behind `Bandit extortion-at-camp restage + handoff packet v0`.
-- The point here is teachable reproducibility for the whole extortion chain, not another pile of operator-only secret moves.
+- Named scenario surface now consists of `bandit.extortion_at_camp_standoff_mcw`, `bandit.extortion_first_demand_fight_mcw`, `bandit.extortion_first_demand_pay_mcw`, and `bandit.extortion_reopened_demand_mcw`.
+- Current-runtime reopened-demand proof is stable scenario run `.userdata/dev-harness/harness_runs/20260424_174913/`: rebuilt runtime `9e3c14260b-dirty`, `version_matches_repo_head=true`, `version_matches_runtime_paths=true`, screen-visible raised `Demanded toll: 22116`, and artifact `shakedown_surface ... pay_option=yes fight_option=yes ... demanded_toll=22116`.
+- The natural redispatch-from-no-active-group probe `.userdata/dev-harness/harness_runs/20260424_170908/` stayed artifact-silent after 6000 turns, so the closed audit path is explicitly tiered: setup stand-off, first-demand pay/fight, deterministic/captured defender-loss state, and controlled reopen-local-contact second demand.  That keeps the packet teachable without pretending the whole combat chain is one fully automated macro.
 
 ---
 

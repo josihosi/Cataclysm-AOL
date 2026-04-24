@@ -1,0 +1,23 @@
+{
+  "name": "bandit.extortion_first_demand_fight_mcw",
+  "description": "Bandit extortion audit v0: resume the McWilliams/Basecamp local-contact fixture, capture the first pay/fight demand, choose fight, and capture the immediate hostile-forward result.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "shakedown_surface",
+    "demanded_toll=15797",
+    "pay_option=yes fight_option=yes"
+  ],
+  "steps": [
+    {"kind": "wait", "label": "post_load_settle", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true},
+    {"kind": "advance_turns", "label": "advance_299_turns_to_gate_edge", "count": 299, "settle_seconds": 0.5, "capture_after": false},
+    {"kind": "advance_turns", "label": "advance_final_turn_to_first_shakedown", "count": 1, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24},
+    {"kind": "press", "label": "choose_fight", "keys": ["f"], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24}
+  ]
+}

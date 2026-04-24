@@ -57,6 +57,17 @@ Instead assume:
 - screenshots where UI state matters more than logs
 - for live in-game probes, `peekaboo see` is currently more useful than plain `peekaboo image`; the raw `see` command may time out on element detection, but it still leaves behind a readable screenshot path in its debug logs
 
+## Bandit extortion audit probes
+
+Current named tiered probes for `Bandit extortion playthrough audit + harness-skill packet v0`:
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_at_camp_standoff_mcw` — controlled-site stand-off setup / local-gate proof, not the shakedown menu.
+- `python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw` — leaves the live stand-off session running for manual review.
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_fight_mcw` — first Basecamp demand, `pay` / `fight`, then fight-forward message.
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_pay_mcw` — first Basecamp demand, pay branch, saved-world writeback inspection.
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_reopened_demand_mcw` — controlled defender-loss reopen tier; proves the raised second demand still has `pay` / `fight`.
+
+Keep the evidence classes split: screen/OCR for the visible menu, `probe.artifacts.log` for `shakedown_surface` fields, saved-world inspection for branch writeback, and deterministic `./tests/cata_test "[bandit][live_world][shakedown]"` for contract law.
+
 ## Practical live-probe recipe (current best cheap method)
 1. focus the game window
 2. send the command / utterance

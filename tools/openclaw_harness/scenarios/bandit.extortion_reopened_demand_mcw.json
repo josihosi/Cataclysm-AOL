@@ -1,0 +1,22 @@
+{
+  "name": "bandit.extortion_reopened_demand_mcw",
+  "description": "Bandit extortion audit v0: resume the McWilliams/Basecamp local-contact fixture with defender-loss reopen fields set, then capture the higher second demand with pay/fight still available.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "shakedown_surface",
+    "demanded_toll=22116",
+    "pay_option=yes fight_option=yes"
+  ],
+  "steps": [
+    {"kind": "wait", "label": "post_load_settle", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24},
+    {"kind": "advance_turns", "label": "advance_299_turns_to_gate_edge", "count": 299, "settle_seconds": 0.5, "capture_after": false},
+    {"kind": "advance_turns", "label": "advance_final_turn_to_reopened_shakedown", "count": 1, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 28}
+  ]
+}

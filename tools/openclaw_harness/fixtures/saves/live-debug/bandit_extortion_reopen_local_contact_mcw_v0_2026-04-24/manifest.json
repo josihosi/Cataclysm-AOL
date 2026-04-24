@@ -1,0 +1,5 @@
+{
+  "name": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "description": "Current-build audit fixture for Bandit extortion playthrough v0: McWilliams/Basecamp local-contact shakedown state with defender-loss reopen fields set, so the higher second demand and pay/fight reconsideration surface can be captured without waiting for natural redispatch.",
+  "save_transforms": []
+}

@@ -39,7 +39,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active greenlit repo lane is now **Bandit extortion-at-camp restage + handoff packet v0**.
+There is currently **no active greenlit repo lane** after the Bandit extortion playthrough audit checkpoint.  Josef should greenlight the next bounded lane before Andi starts another feature packet.
 
 Current honest state:
 - an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
@@ -63,7 +63,9 @@ Current honest state:
 - the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, repeated-site revisit follow-through, and the now-closed live-world control lane
 - `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
 
-This lane is now about making the Basecamp extortion setup reusable: one named restage/handoff path that attracts a real controlled bandit group through the live owner/dispatch seam and leaves review at a useful approach, stand-off, or shakedown moment.
+The extortion-at-camp restage/handoff packet is done-for-now: `bandit.extortion_at_camp_standoff_mcw` provides the named probe/handoff path, attracts the real controlled site `overmap_special:bandit_camp@140,51,0` through live dispatch/local-gate, and handoff run `.userdata/dev-harness/harness_runs/20260424_153309/` leaves the game alive with `cleanup.status = deferred_handoff` at camp-adjacent `hold_off` pressure.
+
+The latest closed lane is now `Bandit extortion playthrough audit + harness-skill packet v0` at `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md`: named scenario surfaces cover the stand-off setup, first Basecamp demand pay/fight fork, fight-forward message, pay/writeback path, and a controlled defender-loss reopen tier with raised second demand (`22116`) plus `pay` / `fight` still available.  The natural redispatch-from-no-active-group probe stayed artifact-silent after 6000 turns on current runtime, so that natural trigger is not claimed closed; the audit packet closes as a tiered teachable harness path rather than a fake one-button combat opera.
 
 ---
 
@@ -189,9 +191,9 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
 
-## Active lane - Bandit extortion-at-camp restage + handoff packet v0
+## Recently closed lane - Bandit extortion-at-camp restage + handoff packet v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
 Once the robbery chain is real, the harness should be able to attract a real controlled bandit group toward Basecamp and leave the scene alive at the interesting point instead of making Andi rediscover a one-off ritual every time.
 This packet is the bounded setup seam for that.
@@ -212,9 +214,9 @@ Non-goals:
 
 Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
 
-## Bandit extortion playthrough audit + harness-skill packet v0
+## Recently closed lane - Bandit extortion playthrough audit + harness-skill packet v0
 
-**Status:** GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
 Even with a real extortion scene and a real restage point, the job stays half-baked if only one operator remembers the magic sequence.
 This packet packages the full playthrough surface and teaches the harness/skill about it so Andi can deliberately run the whole chain.
@@ -241,7 +243,12 @@ Use the auxiliary docs below when a later discussion needs the canonical contrac
 
 ### Camp / Basecamp packets
 
-- `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md` (active)
+- `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md` (checkpointed / done for now)
+- `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md` (checkpointed / done for now)
 - `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md` (checkpointed / done for now)
 - `doc/bandit-basecamp-playtest-kit-packet-v2-2026-04-22.md` (folded into later active lane / supporting only)
 - `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`

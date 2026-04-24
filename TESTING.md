@@ -44,8 +44,8 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active probe obligation: `Bandit extortion-at-camp restage + handoff packet v0`.
-The aftermath / renegotiation packet is now checkpointed done-for-now on current build: deterministic proof covers the persisted aftermath/reopen/cooling contract, and live copied-save proof now shows exact active-member loss writing back into later pressure.  The natural live defender-kill trigger remains a deferred playthrough/harness gap for the later extortion audit, not a reason to keep this packet open.
+No active probe obligation remains after `Bandit extortion playthrough audit + harness-skill packet v0` checkpointed done-for-now.
+The extortion-at-camp restage / handoff packet and the tiered extortion audit packet now provide named scenario surfaces for setup, first demand, pay/fight, fight-forward message, pay/writeback, and controlled reopened second demand.  The natural redispatch-from-no-active-group gap is not claimed closed and should stay dormant unless Josef explicitly promotes it.
 
 Latest closed aftermath evidence:
 - deterministic implementation: `site_record` now persists shakedown aftermath fields for last outcome, demanded/surrendered/reachable value, abstract loot, defender losses, bandit losses, anger, caution, nearby Basecamp defender snapshot/pending-observation state, and the one-use stronger-reopen latch; live pay/fight branches call `apply_shakedown_outcome(...)`, Basecamp fight snapshots nearby allied defenders, the per-turn observer can convert a defender-strength drop into stronger reopen state, and return-packet writeback records bandit-loss/failure cooling for unresolved shakedown fights instead of only generic retreat memory.
@@ -62,11 +62,21 @@ Latest closed shakedown packet evidence:
 - live off-base reach proof: `.userdata/dev-harness/harness_runs/20260424_070845/` uses `tmp.bandit_offbase_shakedown_fight_probe` on non-road/non-Basecamp footing at `player@140,54,0`; after a forced relink, the current-build window title is `021190ee64`, `version_matches_repo_head=true`, and the artifact reports `basecamp_inventory=no`, `vehicle_inventory=yes`, `reachable_goods=3211`, `demanded_toll=1124`, explicit `pay` / `fight`, and `pool includes player, companion, and current vehicle goods only`
 - validation: `make -j4 tests && ./tests/cata_test "[bandit][live_world][shakedown]"` passed earlier for this packet (31 assertions), `make -j4 obj/do_turn.o`, `./tests/cata_test "[bandit][live_world][shakedown]"` (31 assertions), focused `git diff --check`, and the forced current-build relink command `make -j4 TILES=1 SOUND=0 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 cataclysm-tiles` passed before the off-base live proof
 
-Pending proof shape for the active extortion-at-camp restage packet:
-- create or repair one named restage path that attracts a real controlled bandit group toward honest current Basecamp/McWilliams footing through the live owner/dispatch seam
-- pair it with one reviewer probe/capture command and one manual handoff command; the handoff must leave the game alive at a useful approach, stand-off, or opening-shakedown moment rather than cleaning up before review
-- keep evidence classes separate: screen state for the playable moment, copied-save/report fields for which controlled site/group was used, and harness artifacts/logs for setup visibility
-- do not use fake debug-spawn shortcuts, moved-player/basecamp hacks that break `game::validate_camps()`, or broad harness-authoring work that is not needed for this restage
+Closed proof shape for the extortion-at-camp restage packet:
+- named restage path exists at `tools/openclaw_harness/scenarios/bandit.extortion_at_camp_standoff_mcw.json`
+- reviewer probe command: `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_at_camp_standoff_mcw`
+- manual handoff command: `python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw`
+- probe evidence: `.userdata/dev-harness/harness_runs/20260424_145617/` advanced from the honest claimed nearby-owned-site Basecamp fixture and `probe.artifacts.log` records `local_gate site=overmap_special:bandit_camp@140,51,0 active_group=overmap_special:bandit_camp@140,51,0#dispatch target=player@140,41,0 posture=hold_off ... basecamp_or_camp=yes`, with `live_dispatch_goal=140,43,0`; this proves the real controlled group and camp-adjacent stand-off state, not a shakedown menu
+- handoff evidence: `.userdata/dev-harness/harness_runs/20260424_153309/` records `mode = handoff`, `cleanup.status = deferred_handoff`, live pid `79412`, the same controlled-site `hold_off` local gate, and the `live_dispatch_goal=140,43,0` line; this proves the handoff mode leaves the scene alive instead of auto-cleaning like probe mode
+- caveat: both runs report `inconclusive_version_mismatch` because the runtime binary does not match later repo-head/runtime-path diff; for a Josef-facing playthrough packet, rebuild/rerun if strict current-source freshness matters
+
+Closed proof shape for the extortion playthrough audit packet:
+- named scenarios: `bandit.extortion_at_camp_standoff_mcw`, `bandit.extortion_first_demand_fight_mcw`, `bandit.extortion_first_demand_pay_mcw`, and `bandit.extortion_reopened_demand_mcw`
+- first-demand/fight evidence: `.userdata/dev-harness/harness_runs/20260424_162002/` uses the local-contact raw fixture; screen proof shows `Bandit shakedown`, `Reachable goods: 45134`, `Demanded toll: 15797`, and explicit `Pay the demanded goods` / `Fight`; pressing `f` shows `You refuse the shakedown. The bandits come at you.`; `probe.artifacts.log` records the matching `shakedown_surface ... pay_option=yes fight_option=yes ... basecamp_inventory=yes`
+- current-runtime reopened-demand evidence: stable scenario run `.userdata/dev-harness/harness_runs/20260424_174913/` uses rebuilt runtime `9e3c14260b-dirty` with `version_matches_repo_head=true` and `version_matches_runtime_paths=true`; screen proof shows reopened `Bandit shakedown`, `Reachable goods: 45134`, `Demanded toll: 22116`, and explicit `Pay the demanded goods` / `Fight`; `probe.artifacts.log` records `shakedown_surface ... pay_option=yes fight_option=yes ... demanded_toll=22116 ... basecamp_inventory=yes`
+- deterministic proof: `./tests/cata_test "[bandit][live_world][shakedown]"` passed with 88 assertions in 3 test cases, covering first pay/fight, aftermath/reopen contracts, one-use raised reopen, and cooled bandit-loss pressure
+- natural redispatch caveat: `.userdata/dev-harness/harness_runs/20260424_170908/` started from persisted defender-loss/no-active-group state on current runtime and stayed artifact-silent after 6000 turns; this is recorded as a separate live-path gap, not a blocker for the tiered audit packet
+- evidence classes stay separate: screen state for visible menus/messages, deterministic tests for branch/writeback contract, copied-save/report fields for exact controlled site/group state, and harness artifacts/logs for setup visibility
 
 ### Recently closed lane - Cannibal camp first hostile-profile adopter packet v0
 
