@@ -45,7 +45,13 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 ## Current relevant evidence
 
 Active probe obligation: `Bandit shakedown pay-or-fight surface packet v0`.
-The approach / stand-off / attack-gate packet now closes honestly on current build. The next missing evidence is a player-present shakedown surface that starts from the completed `open_shakedown` gate branch instead of appearing as disconnected chat magic.
+The approach / stand-off / attack-gate packet now closes honestly on current build. The shakedown packet now has a first deterministic surface helper on the owned-outing seam, but the next missing evidence is still a player-present shakedown scene wired from the completed `open_shakedown` gate branch instead of disconnected chat magic.
+
+Fresh evidence for the active shakedown packet:
+- deterministic surface: `src/bandit_live_world.{h,cpp}` now exposes `shakedown_goods_pool`, `shakedown_surface`, `build_shakedown_surface(...)`, and `render_shakedown_surface_report(...)` behind an `open_shakedown` local-gate decision
+- deterministic proof: `tests/bandit_live_world_test.cpp` proves the first blunt shakedown surface reports a readable bark, explicit `pay` and `fight` options, a 35%-style painful demanded toll, Basecamp/camp inventory reach for camp scenes, current vehicle reach for off-base scenes, and direct-ambush bypass for rolling-travel contexts
+- validation: `make -j4 tests`, `./tests/cata_test "[bandit][live_world][shakedown]"` (29 assertions), `./tests/cata_test "[bandit][live_world]"` (352 assertions / 14 test cases), and `git diff --check -- src/bandit_live_world.h src/bandit_live_world.cpp tests/bandit_live_world_test.cpp` passed
+- honest gap: this is not yet a live player-present UI/trade invocation; the surface still needs to be connected to the real local/player-present seam before this packet can be called closed
 
 Fresh evidence for the now-closed approach/gate packet:
 - deterministic surface: `src/bandit_live_world.{h,cpp}` exposes `local_gate_input`, `local_gate_decision`, `local_gate_posture`, `choose_local_gate_posture(...)`, and `render_local_gate_report(...)` on an active owned outing
@@ -56,9 +62,10 @@ Fresh evidence for the now-closed approach/gate packet:
 - harness note: both generic verdicts are `inconclusive_no_artifact_match`, but the evidence class is copied saved-world inspection; cleanup terminated the launched current-build game in both runs
 - validation: `make -j4 TILES=1 SOUND=0 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/do_turn.o obj/tiles/version.o cataclysm-tiles`, `./tests/cata_test "[bandit][live_world][approach_gate]"` (36 assertions), both live probes above, and `git diff --check -- src/do_turn.cpp src/bandit_live_world.cpp tests/bandit_live_world_test.cpp tools/openclaw_harness/scenarios/tmp.bandit_rolling_travel_attack_gate_probe_1860.json` all passed
 
-Pending proof shape for the new active packet:
-- first prove the `open_shakedown` branch can bootstrap one player-present robbery demand from the real local gate seam
-- keep the initial surface to a readable demand plus explicit `pay` / `fight` options
+Pending proof shape for the active packet:
+- wire the deterministic shakedown surface into one player-present scene from the real local gate seam
+- prove the live/readable surface starts from `open_shakedown` and exposes the blunt robbery demand plus explicit `pay` / `fight` options
+- keep the active proof honest about goods-pool reach: Basecamp-side scenes may include reachable Basecamp goods, off-base scenes must not
 - do not claim aftermath/writeback, higher demand renegotiation, or convoy combat behavior in this packet
 
 ### Recently closed lane - Cannibal camp first hostile-profile adopter packet v0

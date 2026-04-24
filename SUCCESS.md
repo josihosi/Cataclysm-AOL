@@ -890,7 +890,8 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
 - This packet sits directly behind `Bandit approach / stand-off / attack-gate packet v0`.
-- The broad concept lean for explicit `pay` versus `fight` plus trading-style toll handling now has a bounded future packet instead of living only as attractive background muttering.
+- The first deterministic surface helper now exists on the owned-outing seam: `build_shakedown_surface(...)` consumes an `open_shakedown` gate decision and explicit reachable-goods pool, then reports a robbery bark, painful demanded toll, `pay` and `fight` availability, Basecamp/off-base pool reach, and rolling-travel bypass.
+- The success state remains unchecked because the helper is not yet wired into a real player-present dialogue/trade scene; the next proof needs the live `open_shakedown` branch to invoke that surface honestly.
 
 ---
 
