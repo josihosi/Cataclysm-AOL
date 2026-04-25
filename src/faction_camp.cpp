@@ -3711,7 +3711,7 @@ basecamp_ai::camp_craft_resolution basecamp_ai::resolve_camp_craft_query(
                             ( has_worker == ( result.choice->candidate.worker != nullptr ) &&
                               candidate.duration == result.choice->candidate.duration &&
                               making.result_name() == result.choice->subject &&
-                              matched_recipe.str() < result.choice->recipe_id.str() );
+                              matched_recipe.str() < result.choice->recipe.str() );
         if( better ) {
             result.choice = resolved_camp_craft_recipe{ matched_recipe, making.result_name(), candidate };
         }
@@ -3897,7 +3897,7 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             return true;
         }
 
-        const recipe *best_recipe = &*craft_resolution.choice->recipe_id;
+        const recipe *best_recipe = &*craft_resolution.choice->recipe;
         const npc_ptr &best_worker = craft_resolution.choice->candidate.worker;
         const std::string &best_resolution_note = craft_resolution.choice->candidate.resolution_note;
         const std::vector<std::string> &best_blockers = craft_resolution.choice->candidate.blockers;
