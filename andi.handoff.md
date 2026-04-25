@@ -1,55 +1,54 @@
-# Andi handoff: hostile-site greenlit stack (2026-04-22)
+# Andi handoff: GitHub Actions CI recovery + checkpoint packet v0
 
 ## Classification and position
 
-- classification: greenlit backlog stack
-- position: behind the still-active `Bandit live-world control + playtest restage packet v0` lane
+- classification: ACTIVE / GREENLIT NOW
 - authoritative canon: `Plan.md`
-- packet docs:
-  - `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`
-  - `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`
-  - `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
+- packet doc: `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`
 
-## Ordered packets
+## Item title
 
-1. **Multi-site hostile owner scheduler packet v0**
-   - prove the live hostile-owner seam can run `2-3` simultaneous hostile sites with separate anchor, roster, outing/contact state, remembered pressure, and writeback
-   - preserve home presence + loss-driven shrinkage
-   - no coalition brain or whole-world omniscience
-2. **Hostile site profile layer packet v0**
-   - put one explicit hostile-site profile layer on top of the scheduler
-   - support at minimum one camp-style profile and one smaller hostile-site profile
-   - keep dispatch/threat/return/writeback differences profile-driven and readable
-3. **Cannibal camp first hostile-profile adopter packet v0**
-   - prove the shared hostile-site profile layer on a second camp-shaped hostile family
-   - if the current tree lacks a real cannibal-camp site family, first add one **rare dedicated cannibal-camp mapgen/spawn anchor**
-   - the intended first anchor may derive from current bandit-camp footing, but it should read as a bloodier cannibal variant with explicit names/loadouts/theme dressing rather than a runtime random mutation
-   - do not mix this with singleton stalker work
+GitHub Actions CI recovery + checkpoint packet v0
+
+## Implementation scope
+
+1. Re-inspect the latest failing `josihosi/Cataclysm-AOL` Actions directly with `gh run list` and `gh run view --log-failed` before editing.
+2. Fix observed code-caused failures first:
+   - C++17/warnings-as-errors failures in `tests/faction_camp_test.cpp` from designated initializers and missing `source_utterance`
+   - missing-declaration/internal-linkage failures in `src/basecamp.cpp`
+   - missing-declaration/linkage shape for `bandit_playback::visibility_reads(...)`
+3. Classify the Windows build failure from run `24931574609` as source, workflow/package, timeout/resource, or external runner noise before widening the fix.
+4. Keep the macOS dylib portability guard honest: intentional guard failure is not accidental CI breakage, but accidental red workflows still need repair.
+5. Add one lightweight CI checkpoint/linking safeguard so future Andi checkpoints name changed file class, local gate, Actions link, and remaining red-check classification.
 
 ## Non-goals
 
-- do not interrupt the current active live-bandit restage/perf lane just because this backlog is now defined
-- no faction grand strategy
-- no broad diplomacy, extortion, or social-horror systems in this stack
-- no writhing-stalker singleton behavior in packets 2 or 3
-- no every-hostile-family-at-once framework binge
+- no new game-feature behavior
+- no broad CI rewrite unless a log proves it is the smallest honest fix
+- no disabling tests/warnings/Actions to fake green
+- no GitHub release/tag/signing/upstream contact
+- no Lacapult work in this packet
 
 ## Success bar
 
-- scheduler packet: multiple hostile owners stay independent and survive save/load honestly
-- profile-layer packet: explicit shared substrate exists and profile differences are readable instead of bandit-only spaghetti
-- cannibal-adopter packet: second hostile camp family runs on that substrate honestly without fake bandit reuse
+- Current `dev` Actions are green for code-caused failures, or remaining red checks are explicitly classified with bounded non-code cause and next owner.
+- C++17/missing-declaration failures are fixed.
+- Windows failure is green or evidence-classified.
+- CodeQL is green or evidence-classified as upload/config/external rather than sharing source failure.
+- The CI checkpoint/linking rule exists in repo process docs/tooling.
+- Plan/TODO/SUCCESS/TESTING match the final state.
 
-## Testing and evidence
+## Testing / evidence expectations
 
-- scheduler: narrow deterministic proof for multi-owner separation/save-load first, then controlled coexistence proof
-- profile layer: side-by-side readable proof that profile differences are real in state/behavior
-- cannibal adopter: explicit proof that the second hostile family is honest and not just renamed bandits
+Minimum before claiming closure:
 
-## Cautions and known traps
+- `git diff --check`
+- narrow local build/test that covers the C++17 and missing-declaration fixes
+- relevant filtered tests for touched areas
+- post-push `gh run list` / `gh run view` evidence for Actions state
 
-- the active lane still has to earn nearby restage, messy local contact, writeback, and perf proof before this stack should start
-- do not silently merge packets 1-3 into one “hostile substrate mega-fix”
-- `Writhing stalker` stays parked one step longer and should be revisited later as the first singleton adopter after the profile layer exists
-- current repo reality may lack a ready-made cannibal-camp site family; if so, land one rare dedicated cannibal-camp anchor instead of pretending it already exists
-- do not default to silently converting ordinary bandit camps into cannibal camps at runtime; the first honest proof is a distinct rare cannibal variant/theme
+If a CI gate cannot be reproduced locally on Josef's Mac, cite the exact workflow/job/run URL and decisive failing lines.
+
+## Cautions
+
+Do not treat this as “fix all tests, somehow.”  The first job is to collapse the current red wall into named causes and remove the obvious code-caused ones.  A smaller honest green path beats another grand heroic fog machine.

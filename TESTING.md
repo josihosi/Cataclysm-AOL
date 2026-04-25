@@ -44,7 +44,32 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-No active game-feature probe obligation remains after `Cannibal camp attack-not-extort correction v0` checkpointed.
+Active target: `GitHub Actions CI recovery + checkpoint packet v0`.
+
+### GitHub Actions red-state footing - 2026-04-25
+
+Schani inspected the current failing Actions before packaging the lane:
+
+- `General build matrix` run `24931588361` failed on `dev` at `4432bb9a8c Document macOS dylib portability gate`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24931588361>
+- Earlier same-family `General build matrix` run `24931574601` failed on `dev` at `2ff3b32b0a Fail macOS releases with unbundled local dylibs`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24931574601>
+- `Cataclysm Windows build` run `24931574609` failed on `dev` at `2ff3b32b0a`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24931574609>
+- `CodeQL` run `24932236370` failed on `master` at `86f786bee5`; C++ extraction shows the same missing-declaration family in `src/basecamp.cpp`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24932236370>
+- `Clang-tidy 18` and `IWYU` were green around the same commits, so the failure picture is build/CodeQL/Windows/package-flow shaped, not a blanket “all checks are nonsense” situation.
+
+Observed decisive failure lines/classes:
+
+- `tests/faction_camp_test.cpp:6118` and neighbors use C++20 designated initializers and omit `source_utterance`; CI builds as C++17 with warnings as errors.
+- `src/basecamp.cpp` triggers many `-Werror=missing-declarations` failures for camp-locker helpers.
+- `src/bandit_playback.cpp` reports missing declaration for `bandit_playback::visibility_reads( const checkpoint_result & )`.
+- Windows build compiled deep into MSVC/test build and then exited `1`; classify this with a tighter log read before treating it as source or runner failure.
+- macOS release packaging has an intentional dylib portability guardrail; distinguish an expected guard failure on broken `/opt/local/...` app links from accidental red CI.
+
+Minimum evidence for closing this active packet:
+
+- `git diff --check`
+- narrow local build/test reproducing or preventing the C++17 and missing-declaration failures
+- relevant filtered tests for edited source/test areas
+- post-push `gh run list` / `gh run view` evidence showing current Actions green or remaining red checks honestly classified
 
 ### macOS release portability guardrail - 2026-04-25
 

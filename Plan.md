@@ -39,7 +39,21 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently no active greenlit game-feature lane after the **Cannibal camp attack-not-extort correction v0** checkpoint.  Repo policy has been reversed back to the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is again the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority.  The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this game-feature lane without fresh explicit clearance.
+The active lane is now **GitHub Actions CI recovery + checkpoint packet v0**.  Josef explicitly moved the work back to C-AOL and asked for Andi to get the currently failing GitHub Actions under control, with a small checkpoint/linking safeguard so future work does not drift past red CI as if nothing happened.  Canonical contract: `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`.
+
+Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority.  The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this CI recovery lane without fresh explicit clearance.
+
+Active scope:
+- inspect the latest failing GitHub Actions directly before editing
+- fix current code-caused CI failures instead of vaguely “fixing all tests”
+- prioritize the observed C++17 / warnings-as-errors failures, missing-declaration failures, Windows build failure classification, and CodeQL extraction/shared-source failure shape
+- add one lightweight CI checkpoint/linking safeguard so Andi handoffs name changed file class, local gate, relevant Actions link, and any remaining red check classification
+
+Non-goals:
+- no new game-feature work in this packet
+- no broad CI redesign or disabled-test theater
+- no public release/tag/signing/upstream contact work
+- no Lacapult continuation inside this packet
 
 Current honest state:
 - an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`

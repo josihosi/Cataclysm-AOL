@@ -15,6 +15,24 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## GitHub Actions CI recovery + checkpoint packet v0
+
+Status: ACTIVE / GREENLIT NOW
+
+Success state:
+- [ ] Current `dev` GitHub Actions are no longer red for code-caused C-AOL failures, or every remaining red check is explicitly classified with a bounded non-code cause and next owner.
+- [ ] The C++17/warnings-as-errors failures are fixed: no designated-initializer/missing-field failures in `tests/faction_camp_test.cpp`, no missing-declaration family in `src/basecamp.cpp` / `src/bandit_playback.cpp`.
+- [ ] Windows build failure is either green or reduced to a named, evidence-backed workflow/runner/package blocker.
+- [ ] CodeQL is green or its remaining failure is classified as upload/config/external rather than silently sharing the same source compile failure.
+- [ ] A lightweight CI checkpoint/linking rule exists so future reviewable Andi commits name changed file class, relevant local gate, Actions link when available, and remaining red-check classification.
+- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final state.
+
+Notes:
+- Canonical contract lives at `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`.
+- Observed failing run footing before packaging: `General build matrix` runs `24931588361` / `24931574601`, `Cataclysm Windows build` run `24931574609`, and `CodeQL` run `24932236370`.
+
+---
+
 ## Bandit overmap/local handoff interaction packet v0
 
 Status: CHECKPOINTED / DONE FOR NOW

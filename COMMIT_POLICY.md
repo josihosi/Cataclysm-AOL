@@ -82,6 +82,16 @@ Before committing a behavior/probe checkpoint:
 - run the narrowest honest validation for the slice
 - make sure `Plan.md`, `TODO.md`, and `TESTING.md` reflect the new truth if the active state actually changed
 
+## CI checkpoint / linking rule
+
+For any reviewable code checkpoint that could affect GitHub Actions, the handoff or commit notes must name:
+- the changed file class, for example source, tests, workflow, package script, harness, or docs-only
+- the narrow local gate actually run
+- the broader GitHub Actions workflow/run link when available
+- any remaining red check and whether it is classified as source, workflow/package, timeout/resource, external runner, or intentionally failing guardrail
+
+Do not write “tested” when the relevant CI-shaped gate is merely hoped for.  Link the gate.  Name the red thing.  This is bureaucracy only in the sense that a kitchen has labels so nobody serves floor cleaner as soup.
+
 ## Interaction with Plan / SUCCESS / TODO / TESTING
 
 - `Plan.md` tells you what the active target is.
