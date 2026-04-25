@@ -32,7 +32,7 @@ std::optional<std::string> special_lookup( const tripoint_abs_omt &omt )
 }
 } // namespace
 
-TEST_CASE( "bandit live world claims one bounded special-backed site ledger", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_claims_one_bounded_special_backed_site_ledger", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
 
@@ -66,7 +66,7 @@ TEST_CASE( "bandit live world claims one bounded special-backed site ledger", "[
     CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->headcount == 1 );
 }
 
-TEST_CASE( "bandit live world keeps map-extra hostile spawns as micro-sites", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_keeps_map_extra_hostile_spawns_as_micro_sites", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
 
@@ -95,7 +95,7 @@ TEST_CASE( "bandit live world keeps map-extra hostile spawns as micro-sites", "[
     CHECK( roadblock->footprint.front() == tripoint_abs_omt( 7, 5, 0 ) );
 }
 
-TEST_CASE( "bandit live world survives a save-style round trip", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_world]" )
 {
     bandit_live_world::world_state original;
     REQUIRE( bandit_live_world::claim_tracked_spawn( original, "bandit_quartermaster", character_id( 301 ),
@@ -140,7 +140,7 @@ TEST_CASE( "bandit live world survives a save-style round trip", "[bandit][live_
     CHECK( site.active_member_ids.front() == character_id( 301 ) );
 }
 
-TEST_CASE( "bandit live world keeps several hostile sites independent across save and writeback",
+TEST_CASE( "bandit_live_world_keeps_several_hostile_sites_independent_across_save_and_writeback",
            "[bandit][live_world][multi_site]" )
 {
     bandit_live_world::world_state original;
@@ -294,7 +294,7 @@ TEST_CASE( "bandit live world keeps several hostile sites independent across sav
     REQUIRE( loaded_roadblock.active_member_ids == std::vector<character_id>( { character_id( 3001 ) } ) );
 }
 
-TEST_CASE( "bandit live world builds a bounded scout dispatch plan from owned members", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_builds_a_bounded_scout_dispatch_plan_from_owned_members", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 401 ),
@@ -327,7 +327,7 @@ TEST_CASE( "bandit live world builds a bounded scout dispatch plan from owned me
     CHECK( plan.group.anchored_identities.front().id == "401" );
 }
 
-TEST_CASE( "bandit live world applies a dispatch plan by marking the selected member outbound", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_applies_a_dispatch_plan_by_marking_the_selected_member_outbound", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 501 ),
@@ -357,7 +357,7 @@ TEST_CASE( "bandit live world applies a dispatch plan by marking the selected me
     CHECK( second_plan.notes.back().find( "active outbound/contact group" ) != std::string::npos );
 }
 
-TEST_CASE( "bandit live world keeps a home reserve for site-backed camps", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_keeps_a_home_reserve_for_site_backed_camps", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 601 ),
@@ -382,7 +382,7 @@ TEST_CASE( "bandit live world keeps a home reserve for site-backed camps", "[ban
     CHECK( roadside_site.dispatchable_member_capacity() == 1 );
 }
 
-TEST_CASE( "bandit live world dispatch rules are driven by hostile site profile", "[bandit][live_world][profile]" )
+TEST_CASE( "bandit_live_world_dispatch_rules_are_driven_by_hostile_site_profile", "[bandit][live_world][profile]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 650 ),
@@ -432,7 +432,7 @@ TEST_CASE( "bandit live world dispatch rules are driven by hostile site profile"
            std::string::npos );
 }
 
-TEST_CASE( "bandit live world keeps cannibal camp separate from bandit camp ownership", "[bandit][live_world][profile][cannibal]" )
+TEST_CASE( "bandit_live_world_keeps_cannibal_camp_separate_from_bandit_camp_ownership", "[bandit][live_world][profile][cannibal]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 660 ),
@@ -520,7 +520,7 @@ TEST_CASE( "bandit live world keeps cannibal camp separate from bandit camp owne
            bandit_live_world::member_state::at_home );
 }
 
-TEST_CASE( "bandit live world writeback shrinks headcount and future dispatch capacity", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_writeback_shrinks_headcount_and_future_dispatch_capacity", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 701 ),
@@ -562,7 +562,7 @@ TEST_CASE( "bandit live world writeback shrinks headcount and future dispatch ca
     CHECK( blocked_plan.notes.back().find( "home reserve" ) != std::string::npos );
 }
 
-TEST_CASE( "bandit live world chooses reviewer-readable local approach gate posture", "[bandit][live_world][approach_gate]" )
+TEST_CASE( "bandit_live_world_chooses_reviewer_readable_local_approach_gate_posture", "[bandit][live_world][approach_gate]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 901 ),
@@ -656,7 +656,7 @@ TEST_CASE( "bandit live world chooses reviewer-readable local approach gate post
     CHECK_FALSE( decision.combat_forward );
 }
 
-TEST_CASE( "bandit live world makes cannibal camp attack instead of extort", "[bandit][live_world][cannibal][shakedown]" )
+TEST_CASE( "bandit_live_world_makes_cannibal_camp_attack_instead_of_extort", "[bandit][live_world][cannibal][shakedown]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter", character_id( 911 ),
@@ -739,7 +739,7 @@ TEST_CASE( "bandit live world makes cannibal camp attack instead of extort", "[b
     CHECK_FALSE( hopeless_decision.opens_shakedown_surface );
 }
 
-TEST_CASE( "bandit live world builds a bounded pay-or-fight shakedown surface", "[bandit][live_world][shakedown]" )
+TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", "[bandit][live_world][shakedown]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 951 ),
@@ -835,7 +835,7 @@ TEST_CASE( "bandit live world builds a bounded pay-or-fight shakedown surface", 
 }
 
 
-TEST_CASE( "bandit live world records shakedown aftermath for renegotiation pressure", "[bandit][live_world][shakedown]" )
+TEST_CASE( "bandit_live_world_records_shakedown_aftermath_for_renegotiation_pressure", "[bandit][live_world][shakedown]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 971 ),
@@ -951,7 +951,7 @@ TEST_CASE( "bandit live world records shakedown aftermath for renegotiation pres
     CHECK( cooled_report.find( "aftermath caution" ) != std::string::npos );
 }
 
-TEST_CASE( "bandit live world cools shakedown pressure when the active bandit is lost", "[bandit][live_world][shakedown]" )
+TEST_CASE( "bandit_live_world_cools_shakedown_pressure_when_the_active_bandit_is_lost", "[bandit][live_world][shakedown]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 981 ),
@@ -995,7 +995,7 @@ TEST_CASE( "bandit live world cools shakedown pressure when the active bandit is
            bandit_pursuit_handoff::remaining_return_pressure_state::collapsed );
 }
 
-TEST_CASE( "bandit live world applies a return packet onto the active owned outing", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_applies_a_return_packet_onto_the_active_owned_outing", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 801 ),
@@ -1034,7 +1034,7 @@ TEST_CASE( "bandit live world applies a return packet onto the active owned outi
     CHECK( site.active_member_ids.empty() );
 }
 
-TEST_CASE( "bandit live world resolves bounded live aftermath observations", "[bandit][live_world]" )
+TEST_CASE( "bandit_live_world_resolves_bounded_live_aftermath_observations", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 901 ),

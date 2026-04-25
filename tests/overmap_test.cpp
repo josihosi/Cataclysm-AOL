@@ -251,6 +251,59 @@ TEST_CASE( "default_overmap_generation_has_non_mandatory_specials_at_origin", "[
     CHECK( found_optional == true );
 }
 
+TEST_CASE( "overmap_special_instance_origins_roundtrip", "[overmap][save]" )
+{
+    const point_abs_om origin{};
+
+    overmap_buffer.clear();
+    overmap_special single_cabin = overmap_special_Cabin.obj();
+    single_cabin.force_one_occurrence();
+    std::vector<const overmap_special *> specials;
+    specials.push_back( &single_cabin );
+    specials.push_back( &single_cabin );
+    overmap_special_batch test_specials = overmap_special_batch( origin, specials );
+    overmap_buffer.create_custom_overmap( origin, test_specials );
+
+    overmap *test_overmap = overmap_buffer.get_existing( origin );
+    REQUIRE( test_overmap != nullptr );
+
+    const auto collect_origin_counts = []( const overmap &om ) {
+        std::map<tripoint_om_omt, int> counts;
+        for( int x = 0; x < OMAPX; ++x ) {
+            for( int y = 0; y < OMAPY; ++y ) {
+                for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+                    const tripoint_om_omt p{ x, y, z };
+                    const std::optional<overmap_special_id> special = om.overmap_special_at( p );
+                    if( special != overmap_special_Cabin ) {
+                        continue;
+                    }
+                    const std::optional<tripoint_om_omt> placement_origin = om.overmap_special_origin_at( p );
+                    REQUIRE( placement_origin.has_value() );
+                    counts[*placement_origin]++;
+                }
+            }
+        }
+        return counts;
+    };
+
+    const std::map<tripoint_om_omt, int> live_origin_counts = collect_origin_counts( *test_overmap );
+    REQUIRE( live_origin_counts.size() == 2 );
+    for( const auto &[placement_origin, count] : live_origin_counts ) {
+        CAPTURE( placement_origin );
+        CHECK( count == 2 );
+    }
+
+    std::ostringstream serialized;
+    test_overmap->serialize( serialized );
+    CHECK( serialized.str().find( "\"origin\"" ) != std::string::npos );
+
+    std::unique_ptr<overmap> reloaded = std::make_unique<overmap>( origin );
+    std::istringstream serialized_input( serialized.str() );
+    reloaded->unserialize( serialized_input );
+
+    CHECK( collect_origin_counts( *reloaded ) == live_origin_counts );
+}
+
 TEST_CASE( "is_ot_match", "[overmap][terrain]" )
 {
     SECTION( "exact match" ) {
