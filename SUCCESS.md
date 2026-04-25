@@ -21,7 +21,7 @@ Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [ ] Current `dev` GitHub Actions are no longer red for code-caused C-AOL failures, or every remaining red check is explicitly classified with a bounded non-code cause and next owner.
-- [ ] The C++17/warnings-as-errors failures are fixed: no designated-initializer/missing-field failures in `tests/faction_camp_test.cpp`, no missing-declaration family in `src/basecamp.cpp` / `src/bandit_playback.cpp`.
+- [x] The C++17/warnings-as-errors failures are fixed: no designated-initializer/missing-field failures in `tests/faction_camp_test.cpp`, no missing-declaration family in `src/basecamp.cpp` / `src/bandit_playback.cpp`.
 - [ ] Windows build failure is either green or reduced to a named, evidence-backed workflow/runner/package blocker.
 - [ ] CodeQL is green or its remaining failure is classified as upload/config/external rather than silently sharing the same source compile failure.
 - [x] A lightweight CI checkpoint/linking rule exists so future reviewable Andi commits name changed file class, relevant local gate, Actions link when available, and remaining red-check classification.
@@ -31,6 +31,7 @@ Notes:
 - Canonical contract lives at `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`.
 - Observed failing run footing before packaging: `General build matrix` runs `24931588361` / `24931574601`, `Cataclysm Windows build` run `24931574609`, and `CodeQL` run `24932236370`.
 - CI checkpoint/linking rule was added to `COMMIT_POLICY.md` in `6c0e75b8ec`; current recovery checkpoints now name file class, local gate, Actions link, and remaining red-check classification in handoffs/docs.
+- Current recovery checkpoints now show the source/warnings-as-errors family cleared locally and past CodeQL compile extraction: `make -j4 tests LINTJSON=0 ASTYLE=0`, focused camp/bandit/overmap tests, and CodeQL run `24938191289` all reached JSON style instead of the previous C++17/missing-declaration failures.  Remaining CodeQL red is style-classified to `data/json/mapgen_palettes/cannibal_camp.json` and has a bounded formatter fix pending fresh CI.
 
 ---
 
