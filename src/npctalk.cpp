@@ -277,8 +277,11 @@ static bool llm_direct_address_matches( std::string_view utterance, std::string_
 static std::vector<npc *> filter_llm_hearers_by_direct_address( const std::vector<npc *> &hearers,
         const std::string &utterance )
 {
-    if( hearers.size() < 2 ) {
-        return hearers;
+    if( hearers.empty() ) {
+        return {};
+    }
+    if( hearers.size() == 1 ) {
+        return { hearers.front() };
     }
 
     std::vector<npc *> full_name_matches;
