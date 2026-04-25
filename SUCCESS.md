@@ -33,6 +33,24 @@ Notes:
 
 ---
 
+## GitHub normal-download release packet v0
+
+Status: GREENLIT / QUEUED AFTER CI RECOVERY
+
+Success state:
+- [ ] A new public GitHub release exists on `josihosi/Cataclysm-AOL` with a deliberate tag/version and clear release notes.
+- [ ] The release assets match the stated platform support instead of implying broken platforms work.
+- [ ] The release source commit and relevant Actions state are linked from canon/testing notes.
+- [ ] Josef has a normal GitHub Releases URL he can download from.
+- [ ] Any withheld/broken platform is plainly marked with the evidence-backed blocker.
+
+Notes:
+- Canonical contract lives at `doc/github-normal-download-release-packet-v0-2026-04-25.md`.
+- Current latest stable release observed before packaging: `v0.2.0` / `Cataclysm - Arsenic and Old Lace v0.2.0`.
+- This is queued behind CI recovery; do not publish while code-caused `dev` Actions remain red.
+
+---
+
 ## Bandit overmap/local handoff interaction packet v0
 
 Status: CHECKPOINTED / DONE FOR NOW

@@ -71,6 +71,16 @@ Minimum evidence for closing this active packet:
 - relevant filtered tests for edited source/test areas
 - post-push `gh run list` / `gh run view` evidence showing current Actions green or remaining red checks honestly classified
 
+### Queued GitHub release evidence obligations - 2026-04-25
+
+Josef has greenlit a normal-download GitHub release after CI recovery.  Before publishing that queued release packet:
+
+- `gh release list` / tag inspection must prove the next release identifier will not collide with existing releases; latest stable observed before packaging was `v0.2.0`.
+- CI recovery must be closed, or every remaining red check must be explicitly non-code / non-release-blocking.
+- Release asset inspection must prove the downloadable files exist and match the release notes.
+- A shipped macOS app must pass the dylib portability guard; otherwise macOS is withheld or plainly marked blocked instead of silently shipping another `/opt/local/...` dud.
+- After publish, `gh release view <tag>` or equivalent must prove the final release URL/assets.
+
 ### macOS release portability guardrail - 2026-04-25
 
 - Lacapult installer path evidence remains separate: `python3 tools/prove_caol_game_launch_smoke.py --observe-seconds 8` in `/Users/josefhorvath/Schanigarten/Lacapult-Doobdab` still installs the selected C-AOL `v0.2.0` macOS DMG into an isolated Lacapult-style tree with `Cataclysm.app` plus `catapult_install_info.json` and `looks_launchable_after_move=true`.

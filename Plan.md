@@ -52,8 +52,11 @@ Active scope:
 Non-goals:
 - no new game-feature work in this packet
 - no broad CI redesign or disabled-test theater
-- no public release/tag/signing/upstream contact work
+- no public release/tag/signing/upstream contact work inside the CI recovery packet
 - no Lacapult continuation inside this packet
+
+Greenlit next after CI recovery:
+- **GitHub normal-download release packet v0** at `doc/github-normal-download-release-packet-v0-2026-04-25.md`: once CI is green or remaining red checks are honestly classified as non-code/non-release-blocking, prepare and publish the next real `josihosi/Cataclysm-AOL` GitHub release so Josef can download it through the normal Releases page.  Do not ship broken-platform claims; macOS must pass the dylib portability guard or be explicitly withheld/blocked.
 
 Current honest state:
 - an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
