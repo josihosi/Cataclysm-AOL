@@ -31,7 +31,7 @@ Notes:
 - Canonical contract lives at `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`.
 - Observed failing run footing before packaging: `General build matrix` runs `24931588361` / `24931574601`, `Cataclysm Windows build` run `24931574609`, and `CodeQL` run `24932236370`.
 - CI checkpoint/linking rule was added to `COMMIT_POLICY.md` in `6c0e75b8ec`; current recovery checkpoints now name file class, local gate, Actions link, and remaining red-check classification in handoffs/docs.
-- Current recovery checkpoints now show the source/warnings-as-errors family cleared locally and past CodeQL compile extraction: `make -j4 tests LINTJSON=0 ASTYLE=0`, focused camp/bandit/overmap tests, and CodeQL run `24938191289` all reached JSON style instead of the previous C++17/missing-declaration failures.  Remaining CodeQL red is style-classified to `data/json/mapgen_palettes/cannibal_camp.json` and has a bounded formatter fix pending fresh CI.
+- Current recovery checkpoints now show the source/warnings-as-errors family cleared locally and past CodeQL compile extraction: `make -j4 tests LINTJSON=0 ASTYLE=0`, focused camp/bandit/overmap tests, and CodeQL run `24938191289` all reached JSON style instead of the previous C++17/missing-declaration failures.  Remaining fresh red checks are JSON/style shaped: CodeQL hit `data/json/mapgen_palettes/cannibal_camp.json`, then General Basic Build job `73029102977` hit `data/json/npcs/cannibals/classes.json`; both have bounded formatter fixes pending fresh CI.
 
 ---
 

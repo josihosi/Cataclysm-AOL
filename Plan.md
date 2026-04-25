@@ -44,7 +44,7 @@ The active lane is now **GitHub Actions CI recovery + checkpoint packet v0**.  J
 Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority.  The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this CI recovery lane without fresh explicit clearance.
 
 
-Current recovery checkpoint update: local source/test gates now cover the earlier C++17 and missing-declaration failure family, `IWYU` and `Clang-tidy 18` are green on `ca8eb0e3be`, and latest CodeQL red is classified as JSON/style (`data/json/mapgen_palettes/cannibal_camp.json`) rather than source compile/extraction.  Windows and General matrix still require fresh run evidence before the lane can close.
+Current recovery checkpoint update: local source/test gates now cover the earlier C++17 and missing-declaration failure family, `IWYU` and `Clang-tidy 18` are green on `ca8eb0e3be`, and latest red checks are JSON/style shaped rather than source compile/extraction: CodeQL hit `data/json/mapgen_palettes/cannibal_camp.json`, then fresh General Basic Build on `4733c7a3e1` hit `data/json/npcs/cannibals/classes.json`.  Windows and the rest of General matrix still require fresh run evidence before the lane can close.
 
 Active scope:
 - inspect the latest failing GitHub Actions directly before editing
