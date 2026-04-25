@@ -33,7 +33,7 @@ bandit_pursuit_handoff::abstract_group_state make_group()
 }
 } // namespace
 
-TEST_CASE( "bandit pursuit handoff builds a bounded scout entry packet", "[bandit][handoff]" )
+TEST_CASE( "bandit_pursuit_handoff_builds_a_bounded_scout_entry_packet", "[bandit][handoff]" )
 {
     bandit_dry_run::camp_input camp;
     camp.available_manpower = 2;
@@ -73,7 +73,7 @@ TEST_CASE( "bandit pursuit handoff builds a bounded scout entry packet", "[bandi
     CHECK( entry.current_bounty_estimate == 3 );
 }
 
-TEST_CASE( "bandit pursuit handoff keeps return consequences explicit and applied", "[bandit][handoff]" )
+TEST_CASE( "bandit_pursuit_handoff_keeps_return_consequences_explicit_and_applied", "[bandit][handoff]" )
 {
     bandit_dry_run::camp_input camp;
     camp.available_manpower = 2;
@@ -146,7 +146,7 @@ TEST_CASE( "bandit pursuit handoff keeps return consequences explicit and applie
     CHECK( report.find( "ridge_smoke_cabin_edge" ) != std::string::npos );
 }
 
-TEST_CASE( "bandit pursuit handoff uses shadow for moving carriers unless return pressure collapses", "[bandit][handoff]" )
+TEST_CASE( "bandit_pursuit_handoff_uses_shadow_for_moving_carriers_unless_return_pressure_collapses", "[bandit][handoff]" )
 {
     bandit_dry_run::camp_input camp;
     camp.available_manpower = 2;

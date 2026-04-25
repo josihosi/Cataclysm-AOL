@@ -2584,6 +2584,12 @@ static std::string camp_request_details_token( const camp_llm_request &request )
     return request.request_id > 0 ? string_format( "show_job=%d", request.request_id ) : "none";
 }
 
+static std::string normalize_camp_handoff_line_endings( std::string text )
+{
+    text.erase( std::remove( text.begin(), text.end(), '\r' ), text.end() );
+    return text;
+}
+
 static std::string default_basecamp_craft_handoff_snapshot_template()
 {
     return R"(board=show_board
@@ -2668,7 +2674,7 @@ std::string camp_request_handoff_snapshot( const camp_llm_request &request )
     { basecamp_craft_handoff_snapshot_filename, basecamp_board_handoff_snapshot_filename,
       basecamp_board_handoff_job_line_filename, llm_prompt_readme_filename } );
 
-    return llm_prompt_templates::render( templ,
+    return normalize_camp_handoff_line_endings( llm_prompt_templates::render( templ,
     {
         { "{{request_id}}", std::to_string( request.request_id ) },
         { "{{details_token}}", details_token },
@@ -2682,7 +2688,7 @@ std::string camp_request_handoff_snapshot( const camp_llm_request &request )
         { "{{worker}}", worker },
         { "{{blockers}}", blockers },
         { "{{next_token}}", next_token }
-    } );
+    } ) );
 }
 
 std::string camp_request_spoken_status_bark( const camp_llm_request &request )
@@ -2793,13 +2799,13 @@ static std::string camp_board_handoff_snapshot_body( const std::vector<camp_llm_
         } );
     }
 
-    return llm_prompt_templates::render( board_templ,
+    return normalize_camp_handoff_line_endings( llm_prompt_templates::render( board_templ,
     {
         { "{{planning_snapshot}}", std::string() },
         { "{{active_count}}", std::to_string( active_requests ) },
         { "{{archived_count}}", std::to_string( archived_requests ) },
         { "{{jobs}}", jobs.empty() ? "jobs=none\n" : jobs }
-    } );
+    } ) );
 }
 
 std::string camp_board_handoff_snapshot( const std::vector<camp_llm_request> &requests )
