@@ -11,8 +11,8 @@ If the queue below stops matching `Plan.md`, fix this file.
 Active target: `GitHub Actions CI recovery + checkpoint packet v0`.
 
 - Re-inspect the latest failing `josihosi/Cataclysm-AOL` Actions directly with `gh run list` / `gh run view --log-failed`; do not work from vague red-badge memory.
-- Fix the observed code-caused CI failures first: C++17 test construction in `tests/faction_camp_test.cpp`, missing-declaration/internal-linkage failures in `src/basecamp.cpp`, and `bandit_playback::visibility_reads(...)` declaration/linkage shape.
-- Classify and fix the Windows build failure only after isolating whether it is source, workflow/package, timeout/resource, or external runner noise.
-- Distinguish intentional macOS dylib portability-guard failure from accidental CI breakage.
-- Add one small CI checkpoint/linking safeguard so future Andi handoffs name changed file class, local gate, relevant Actions run link, and any remaining red-check classification.
+- Monitor the current `5aec51cc6c` Actions runs: `Cataclysm Windows build` run `24936570455` and queued `General build matrix` run `24936570456`.
+- If the current Windows run stays red, classify it from fresh logs before widening beyond the already-fixed C++17 test-construction source failure.
+- If the current General matrix stays red, separate remaining source/JSON/style failures from the intentional macOS dylib portability guardrail.
+- If the current source-shaped runs turn green, update `Plan.md` / `SUCCESS.md` / `TESTING.md` and move toward the queued normal-download release packet only after remaining red checks are honestly classified.
 - Use the full-history `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` worktree and `josihosi/Cataclysm-AOL` as project truth; `josihosi/C-AOL-mirror` is green-dot-only and must not become planning/release truth.

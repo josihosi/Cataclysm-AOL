@@ -71,6 +71,14 @@ Minimum evidence for closing this active packet:
 - relevant filtered tests for edited source/test areas
 - post-push `gh run list` / `gh run view` evidence showing current Actions green or remaining red checks honestly classified
 
+Latest recovery checkpoint evidence - 2026-04-25:
+
+- Changed file class: source/tests plus JSON/style and docs/process.
+- Local gates on `5aec51cc6c`: `make -j4 tests LINTJSON=0 ASTYLE=0`, `./tests/cata_test "[camp][basecamp_ai]"` (345 assertions in 1 test case), forced `make RELEASE=1 TESTS=0 obj/data/json/mapgen/hells_raiders/cannibal_camp.jstyle-check-stamp obj/data/json/itemgroups/cannibal_camp.jstyle-check-stamp`, and `git diff --check` all exited `0`.
+- Current Actions links: Windows run `24936570455` is still in progress at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24936570455>; General matrix run `24936570456` is queued at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24936570456>.
+- Previous Windows failure `24931574609` is source-classified from MSVC errors in `tests/faction_camp_test.cpp` (`C7555` designated initializers / C++20 construction); current source fix is waiting on the fresh Windows run rather than widening workflow/package changes.
+- Previous CodeQL failure `24936474575` after source fixes was JSON/style-classified: all Analyze jobs failed while building `tools/format/json_formatter.cgi` because `data/json/mapgen/hells_raiders/cannibal_camp.json` was linted; `5aec51cc6c` is the style-only formatter checkpoint now waiting on fresh CI.
+
 ### Queued GitHub release evidence obligations - 2026-04-25
 
 Josef has greenlit a normal-download GitHub release after CI recovery.  Before publishing that queued release packet:
