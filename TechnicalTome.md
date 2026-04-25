@@ -1,5 +1,10 @@
 # Technical Tome
 
+## macOS release app-bundle portability guardrail
+- `Cataclysm.app/Contents/MacOS/Cataclysm.sh` changes into `Contents/Resources` and launches `./cataclysm` / `./cataclysm-tiles`; for the app bundle, `@executable_path` therefore resolves to the Resources directory, not to the shell script in `Contents/MacOS`.
+- The `app` make target now routes dependency bundling through `build-data/osx/bundle_portable_dependencies.sh`, which runs `dylibbundler` and then verifies the launcher-visible Mach-O surface with `otool -L`.
+- Release packaging must fail if any checked binary still links against local package-manager prefixes such as `/opt/local`, `/opt/homebrew`, or `/usr/local`; the v0.2.0 failure shape was exactly an otherwise installable app whose `cataclysm-tiles` still pointed at unbundled MacPorts `libfreetype.6.dylib` and `libz.1.dylib`.
+
 ## Bandit local approach gate v0 spine
 - The first approach/stand-off gate lives on the active owned-outing record, not as free-floating robbery UI: `choose_local_gate_posture(...)` reads dispatch strength plus local threat/opportunity/context and emits a reviewer-readable `local_gate_decision`.
 - The bounded v0 posture set is `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, and `abort`. `open_shakedown` marks that the pay-or-fight surface may open, but it still does not by itself run dialogue, trade UI, or aftermath writeback.
@@ -343,12 +348,6 @@ Run a single topic with retries and verbose IO (use the OpenVINO venv Python):
 C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\background_summarizer.py --only-topic BGSS_CODGER_STORY1 --force --retry-invalid 2 --debug-io --include-responses
 ```
 
-
-### macOS app bundle portability gate
-- C-AOL macOS release DMGs must not rely on build-host package-manager paths such as `/opt/local`, `/opt/homebrew`, or `/usr/local` for runtime dylibs.
-- `make dmgdist` now runs `build-data/osx/bundle_portable_dependencies.sh` after app assembly. The helper invokes `dylibbundler` for `Cataclysm.app/Contents/Resources/<target>` and then scans launcher binaries, top-level bundled dylibs, and framework binaries with `otool -L`.
-- The release packaging step fails if any Mach-O binary still links an absolute local package-manager dylib path, which prevents broken DMGs like the current `v0.2.0` macOS asset from being silently shipped again.
-- This is a package-portability guard, not notarization/signing and not a Lacapult installer change. Lacapult can detect/report launch failure, but C-AOL release packaging owns bundling and install-name rewrites for the game app.
 
 ## Dialogue Options Architecture (Current)
 - Dialogue data is loaded at startup from `type: "talk_topic"` JSON across `data/json/npcs/**` (including `data/json/npcs/Backgrounds/*.json`) into the `json_talk_topics` map in `src/npctalk.cpp` via `load_talk_topic()`.

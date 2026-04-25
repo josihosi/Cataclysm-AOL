@@ -44,7 +44,15 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-No active probe obligation remains after `Cannibal camp attack-not-extort correction v0` checkpointed.
+No active game-feature probe obligation remains after `Cannibal camp attack-not-extort correction v0` checkpointed.
+
+### macOS release portability guardrail - 2026-04-25
+
+- Lacapult installer path evidence remains separate: `python3 tools/prove_caol_game_launch_smoke.py --observe-seconds 8` in `/Users/josefhorvath/Schanigarten/Lacapult-Doobdab` still installs the selected C-AOL `v0.2.0` macOS DMG into an isolated Lacapult-style tree with `Cataclysm.app` plus `catapult_install_info.json` and `looks_launchable_after_move=true`.
+- Actual game-launch evidence remains separate: the same isolated launch smoke exits before a running game process with return code `134`; dyld reports `Library not loaded: /opt/local/lib/libfreetype.6.dylib`, referenced from `Cataclysm.app/Contents/Resources/cataclysm-tiles`.
+- C-AOL packaging guardrail: `build-data/osx/bundle_portable_dependencies.sh` now runs during the macOS `app` make target instead of the old ignored `dylibbundler ... || true` line.  It bundles dependencies into `Contents/Resources` with `@executable_path/` install names and then fails if `otool -L` still sees local package-manager prefixes.
+- Preflight proof on the current broken `v0.2.0` installed app: `bash build-data/osx/bundle_portable_dependencies.sh --verify-only "$APP/Cataclysm.app" "$APP/Cataclysm.app/Contents/Resources/cataclysm-tiles"` exits `1` and reports both `/opt/local/lib/libfreetype.6.dylib` and `/opt/local/lib/libz.1.dylib`, proving the guard catches the exact bad artifact shape before a future DMG is shipped.
+- Local full rebuild/rebundle was not attempted because the required MacPorts dylibs are not present under `/opt/local/lib` on this Mac and installing MacPorts packages was out of scope; the landed fix is the deterministic release-packaging failure/bundling guard, not a newly published replacement DMG.
 
 Latest closed cannibal attack-not-extort evidence:
 - implementation: `src/bandit_live_world.cpp` routes `hostile_site_profile::cannibal_camp` favorable local contact to `attack_now` with `combat_forward=true` and never to `open_shakedown`; weaker cannibal footing can still `probe`, exposed camp-adjacent footing can `hold_off`, overwhelming threat can `abort`, and the local-gate report now exposes the active `profile` for review.
@@ -381,10 +389,3 @@ Use these when they are actually the missing evidence, not as ritual.
 On this Mac, treat top-level `make -j4 tests` as the reliable path for a fresh `cata_test`.
 Avoid treating `make -C tests cata_test` as authoritative here; it has been a repeated source of toolchain/stale-build nonsense.
 Also: if you actually need a fresh tiles binary, use `make -j4 TILES=1 cataclysm-tiles`; plain `make cataclysm-tiles` is not an honest rebuild path here.
-
-### macOS release package portability guard - 2026-04-25
-- Added `build-data/osx/bundle_portable_dependencies.sh` and wired `make dmgdist` to run it instead of ignoring `dylibbundler` failure.
-- Validation run: `bash -n build-data/osx/bundle_portable_dependencies.sh` exited 0.
-- Validation run: `git diff --check` exited 0.
-- Validation run against the already-published broken `v0.2.0` macOS DMG: mounted `caol_cdda-0-h_2026-03-29-1556_macos.dmg` read-only, then ran `bash build-data/osx/bundle_portable_dependencies.sh --verify-only <mount>/Cataclysm.app <mount>/Cataclysm.app/Contents/Resources/cataclysm-tiles`; it correctly failed and reported absolute `/opt/local/lib/libfreetype.6.dylib` and `/opt/local/lib/libz.1.dylib` dependencies.
-- This proves the guard catches the known bad package shape. It does not claim a rebuilt fixed DMG, a Lacapult app export, signing/notarization, publication, or a successful game launch.
