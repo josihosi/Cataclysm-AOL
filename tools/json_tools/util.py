@@ -16,6 +16,16 @@ JSON_DIR = os.path.normpath(
 JSON_FNMATCH = "*.json"
 
 
+def is_nonruntime_json_file(json_file):
+    """Return true for repository JSON support files that the game loader skips."""
+    normalized = os.path.normpath(json_file)
+    if os.path.basename(normalized) == "summary_registry.json":
+        return True
+    path = "/".join(normalized.split(os.sep))
+    return ("npcs/Backgrounds/Summaries_short/" in path or
+            "npcs/Backgrounds/Summaries_extra/" in path)
+
+
 def import_data(json_dir=JSON_DIR, json_fmatch=JSON_FNMATCH):
     """Use a UNIX like file match expression to weed out the JSON files.
 
@@ -31,6 +41,8 @@ def import_data(json_dir=JSON_DIR, json_fmatch=JSON_FNMATCH):
         for f in d_descriptor[2]:
             if fnmatch(f, json_fmatch):
                 json_file = os.path.join(d, f)
+                if is_nonruntime_json_file(json_file):
+                    continue
                 with open(json_file, "r", encoding="utf-8") as file:
                     try:
                         candidates = json.load(
