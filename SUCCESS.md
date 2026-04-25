@@ -22,7 +22,7 @@ Status: ACTIVE / GREENLIT NOW
 Success state:
 - [ ] Current `dev` GitHub Actions are no longer red for code-caused C-AOL failures, or every remaining red check is explicitly classified with a bounded non-code cause and next owner.
 - [x] The C++17/warnings-as-errors failures are fixed: no designated-initializer/missing-field failures in `tests/faction_camp_test.cpp`, no missing-declaration family in `src/basecamp.cpp` / `src/bandit_playback.cpp`.
-- [ ] Windows build failure is either green or reduced to a named, evidence-backed workflow/runner/package blocker.
+- [x] Windows build failure is either green or reduced to a named, evidence-backed workflow/runner/package blocker.
 - [ ] CodeQL is green or its remaining failure is classified as upload/config/external rather than silently sharing the same source compile failure.
 - [x] A lightweight CI checkpoint/linking rule exists so future reviewable Andi commits name changed file class, relevant local gate, Actions link when available, and remaining red-check classification.
 - [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final state.
@@ -31,7 +31,7 @@ Notes:
 - Canonical contract lives at `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`.
 - Observed failing run footing before packaging: `General build matrix` runs `24931588361` / `24931574601`, `Cataclysm Windows build` run `24931574609`, and `CodeQL` run `24932236370`.
 - CI checkpoint/linking rule was added to `COMMIT_POLICY.md` in `6c0e75b8ec`; current recovery checkpoints now name file class, local gate, Actions link, and remaining red-check classification in handoffs/docs.
-- Current recovery checkpoints now show the source/warnings-as-errors family cleared locally and past CodeQL compile extraction: `make -j4 tests LINTJSON=0 ASTYLE=0`, focused camp/bandit/overmap tests, and CodeQL run `24938191289` all reached JSON style instead of the previous C++17/missing-declaration failures.  Remaining fresh red checks are JSON/style shaped: CodeQL hit `data/json/mapgen_palettes/cannibal_camp.json`, then General Basic Build job `73029102977` hit `data/json/npcs/cannibals/classes.json`; both have bounded formatter fixes pending fresh CI.
+- Current recovery checkpoints now show the source/warnings-as-errors family cleared locally and past CodeQL compile extraction: `make -j4 tests LINTJSON=0 ASTYLE=0`, focused camp/bandit/overmap tests, and CodeQL run `24938191289` all reached JSON style instead of the previous C++17/missing-declaration failures.  Windows run `24939016251` on `471d4ef8e6` is green, so the earlier Windows source failure is closed by evidence.  Remaining fresh General evidence is still pending: superseded General run `24939870697` was cancelled by docs checkpoint `7ff8dc3d0f`, and current General run `24939903159` is in progress after the bounded nonruntime JSON validator fix.
 
 ---
 
