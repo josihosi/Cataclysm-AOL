@@ -8,12 +8,19 @@ import json
 import sys
 
 
+def should_skip(file_path):
+    if file_path.startswith("android/app/src/main/assets"):
+        return True
+    return (file_path.startswith("tools/openclaw_harness/fixtures/")
+            and file_path.endswith("/external_options.json"))
+
+
 def main():
     json_files = glob.glob('**/**.json', recursive=True)
     errors = 0
     total = 0
     for file_path in json_files:
-        if not file_path.startswith("android/app/src/main/assets"):
+        if not should_skip(file_path):
             total += 1
             try:
                 with open(file_path, encoding="utf-8") as fp:

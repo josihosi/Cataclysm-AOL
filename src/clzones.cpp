@@ -2067,7 +2067,7 @@ bool smart_zone_id_has_any( const std::string &id,
 bool smart_zone_has_non_storage_zone_at( zone_manager &mgr, const faction_id &fac,
         const tripoint_abs_ms &p )
 {
-    for( const zone_manager::ref_const_zone_data zone_ref : mgr.get_zones( fac ) ) {
+    for( const zone_manager::ref_zone_data zone_ref : mgr.get_zones( fac ) ) {
         const zone_data &zone = zone_ref.get();
         if( zone.get_type() != zone_type_CAMP_STORAGE && zone.has_inside( p ) ) {
             return true;
