@@ -4099,7 +4099,7 @@ std::string render_long_range_directional_light_proof_packet( const proof_packet
     return out.str();
 }
 
-std::vector<std::string> visibility_reads( const checkpoint_result &checkpoint )
+static std::vector<std::string> visibility_reads( const checkpoint_result &checkpoint )
 {
     std::vector<std::string> reads;
     for( const bandit_mark_generation::typed_mark &mark : checkpoint.generated_marks.marks ) {

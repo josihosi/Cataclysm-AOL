@@ -6103,24 +6103,24 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
     SECTION( "ready-request collector excludes blocked and archived entries" ) {
         const std::vector<camp_llm_request> requests = {
-            camp_llm_request{ .request_id = 2, .status = "awaiting_approval" },
-            camp_llm_request{ .request_id = 4, .status = "blocked" },
-        camp_llm_request{.request_id = 5, .status = "in_progress"},
-        camp_llm_request{.request_id = 7, .status = "awaiting_approval"},
-        camp_llm_request{.request_id = 9, .status = "completed"},
-        camp_llm_request{.request_id = 11, .status = "cancelled"}};
+            ([]() { camp_llm_request request; request.request_id = 2; request.status = "awaiting_approval"; return request; }()),
+            ([]() { camp_llm_request request; request.request_id = 4; request.status = "blocked"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 5; request.status = "in_progress"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 7; request.status = "awaiting_approval"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 9; request.status = "completed"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 11; request.status = "cancelled"; return request; }())};
 
     CHECK(collect_ready_camp_request_ids(requests) == std::vector<int>{2, 7});
   }
 
     SECTION( "blocked-request collector excludes ready live work and archives" ) {
         const std::vector<camp_llm_request> requests = {
-            camp_llm_request{ .request_id = 2, .status = "awaiting_approval" },
-            camp_llm_request{ .request_id = 4, .status = "blocked" },
-        camp_llm_request{.request_id = 5, .status = "in_progress"},
-        camp_llm_request{.request_id = 7, .status = "blocked"},
-        camp_llm_request{.request_id = 9, .status = "completed"},
-        camp_llm_request{.request_id = 11, .status = "cancelled"}};
+            ([]() { camp_llm_request request; request.request_id = 2; request.status = "awaiting_approval"; return request; }()),
+            ([]() { camp_llm_request request; request.request_id = 4; request.status = "blocked"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 5; request.status = "in_progress"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 7; request.status = "blocked"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 9; request.status = "completed"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 11; request.status = "cancelled"; return request; }())};
 
     CHECK(collect_blocked_camp_request_ids(requests) == std::vector<int>{4, 7});
   }
@@ -6128,11 +6128,11 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
   SECTION(
       "archived-request collector keeps completed and cancelled work only") {
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 2, .status = "awaiting_approval"},
-        camp_llm_request{.request_id = 4, .status = "blocked"},
-        camp_llm_request{.request_id = 5, .status = "in_progress"},
-        camp_llm_request{.request_id = 9, .status = "completed"},
-        camp_llm_request{.request_id = 11, .status = "cancelled"}};
+        ([]() { camp_llm_request request; request.request_id = 2; request.status = "awaiting_approval"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 4; request.status = "blocked"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 5; request.status = "in_progress"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 9; request.status = "completed"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 11; request.status = "cancelled"; return request; }())};
 
     CHECK(collect_archived_camp_request_ids(requests) ==
           std::vector<int>{9, 11});
@@ -6223,14 +6223,8 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
   SECTION("request matcher prefers explicit ids and respects the active "
           "predicate") {
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 7,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "awaiting_approval"},
-        camp_llm_request{.request_id = 12,
-                         .requested_item_query = "knife",
-                         .chosen_recipe_name = "knife",
-                         .status = "cancelled"}};
+        ([]() { camp_llm_request request; request.request_id = 7; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "awaiting_approval"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 12; request.requested_item_query = "knife"; request.chosen_recipe_name = "knife"; request.status = "cancelled"; return request; }())};
     basecamp_ai::parsed_camp_request_reference reference;
     reference.request_id = 12;
     reference.has_request_id = true;
@@ -6259,21 +6253,9 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
   SECTION("request matcher reports ambiguous live board matches instead of "
           "guessing") {
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 3,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "awaiting_approval",
-                         .assigned_worker_name = "Alice"},
-        camp_llm_request{.request_id = 4,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "blocked",
-                         .assigned_worker_name = "Bob"},
-        camp_llm_request{.request_id = 5,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "cancelled",
-                         .assigned_worker_name = "Cara"}};
+        ([]() { camp_llm_request request; request.request_id = 3; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "awaiting_approval"; request.assigned_worker_name = "Alice"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 4; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "blocked"; request.assigned_worker_name = "Bob"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 5; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "cancelled"; request.assigned_worker_name = "Cara"; return request; }())};
     basecamp_ai::parsed_camp_request_reference reference;
     reference.query = "bandages";
 
@@ -6301,21 +6283,9 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
   SECTION(
       "request matcher can target archived work orders for clear commands") {
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 3,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "awaiting_approval",
-                         .assigned_worker_name = "Alice"},
-        camp_llm_request{.request_id = 4,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "cancelled",
-                         .assigned_worker_name = "Bob"},
-        camp_llm_request{.request_id = 5,
-                         .requested_item_query = "knife",
-                         .chosen_recipe_name = "knife",
-                         .status = "completed",
-                         .assigned_worker_name = "Cara"}};
+        ([]() { camp_llm_request request; request.request_id = 3; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "awaiting_approval"; request.assigned_worker_name = "Alice"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 4; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "cancelled"; request.assigned_worker_name = "Bob"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 5; request.requested_item_query = "knife"; request.chosen_recipe_name = "knife"; request.status = "completed"; request.assigned_worker_name = "Cara"; return request; }())};
     basecamp_ai::parsed_camp_request_reference reference;
     reference.query = "bob bandages";
 
@@ -6334,16 +6304,8 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
   SECTION(
       "request matcher can disambiguate duplicate work orders by worker name") {
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 3,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "awaiting_approval",
-                         .assigned_worker_name = "Alice"},
-        camp_llm_request{.request_id = 4,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "awaiting_approval",
-                         .assigned_worker_name = "Bob"}};
+        ([]() { camp_llm_request request; request.request_id = 3; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "awaiting_approval"; request.assigned_worker_name = "Alice"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 4; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "awaiting_approval"; request.assigned_worker_name = "Bob"; return request; }())};
     basecamp_ai::parsed_camp_request_reference reference;
     reference.query = "bob bandages";
 
@@ -6362,17 +6324,8 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
   SECTION("request matcher can disambiguate duplicate work orders by status "
           "words") {
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 3,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "awaiting_approval",
-                         .approval_state = "waiting_player",
-                         .assigned_worker_name = "Alice"},
-        camp_llm_request{.request_id = 4,
-                         .requested_item_query = "bandages",
-                         .chosen_recipe_name = "bandages",
-                         .status = "blocked",
-                         .assigned_worker_name = "Bob"}};
+        ([]() { camp_llm_request request; request.request_id = 3; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "awaiting_approval"; request.approval_state = "waiting_player"; request.assigned_worker_name = "Alice"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 4; request.requested_item_query = "bandages"; request.chosen_recipe_name = "bandages"; request.status = "blocked"; request.assigned_worker_name = "Bob"; return request; }())};
     basecamp_ai::parsed_camp_request_reference reference;
     reference.query = "blocked bandages";
 
@@ -6391,11 +6344,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
   SECTION("request matcher can resolve spoken subject text through the source "
           "utterance") {
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 8,
-                         .requested_item_query = "heavy cable",
-                         .chosen_recipe_name = "heavy cable",
-                         .source_utterance = "please craft me a long string",
-                         .status = "awaiting_approval"}};
+        ([]() { camp_llm_request request; request.request_id = 8; request.requested_item_query = "heavy cable"; request.chosen_recipe_name = "heavy cable"; request.source_utterance = "please craft me a long string"; request.status = "awaiting_approval"; return request; }())};
     basecamp_ai::parsed_camp_request_reference reference;
     reference.query = "long string";
 
@@ -6410,17 +6359,14 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
   SECTION("request display subject prefers the heard query over the resolved "
           "recipe") {
-    const camp_llm_request request{.requested_item_query = "bandages",
-                                   .requested_count = 5,
-                                   .chosen_recipe_name = "sterile bandage"};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.requested_item_query = "bandages"; request.requested_count = 5; request.chosen_recipe_name = "sterile bandage"; return request; }());
 
     CHECK(camp_request_subject_for_display(request) == "5 × bandages");
   }
 
   SECTION(
       "request display subject falls back to the resolved recipe when needed") {
-    const camp_llm_request request{
-        .requested_count = 2, .chosen_recipe_name = "boiled makeshift bandage"};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.requested_count = 2; request.chosen_recipe_name = "boiled makeshift bandage"; return request; }());
 
     CHECK(camp_request_subject_for_display(request) ==
           "2 × boiled makeshift bandage");
@@ -6428,9 +6374,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
   SECTION("request summary subject can append the resolved recipe when it "
           "differs") {
-    const camp_llm_request request{.requested_item_query = "bandages",
-                                   .requested_count = 5,
-                                   .chosen_recipe_name = "sterile bandage"};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.requested_item_query = "bandages"; request.requested_count = 5; request.chosen_recipe_name = "sterile bandage"; return request; }());
 
     CHECK(camp_request_subject_for_display(request, true) ==
           "5 × bandages (matched sterile bandage)");
@@ -6438,9 +6382,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
   SECTION("request summary subject does not duplicate the resolved recipe when "
           "it matches") {
-    const camp_llm_request request{.requested_item_query = "bandages",
-                                   .requested_count = 5,
-                                   .chosen_recipe_name = "bandages"};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.requested_item_query = "bandages"; request.requested_count = 5; request.chosen_recipe_name = "bandages"; return request; }());
 
     CHECK(camp_request_subject_for_display(request, true) == "5 × bandages");
   }
@@ -6453,10 +6395,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
   SECTION("request display subject can keep the request number as trailing "
           "detail") {
-    const camp_llm_request request{.request_id = 7,
-                                   .requested_item_query = "bandages",
-                                   .requested_count = 5,
-                                   .chosen_recipe_name = "sterile bandage"};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.request_id = 7; request.requested_item_query = "bandages"; request.requested_count = 5; request.chosen_recipe_name = "sterile bandage"; return request; }());
 
     CHECK(camp_request_subject_for_display(request, false, true) ==
           "5 × bandages (#7)");
@@ -6466,18 +6405,14 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
   SECTION("request display subject falls back to a generic numbered label when "
           "empty") {
-    const camp_llm_request request{.request_id = 9};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.request_id = 9; return request; }());
 
     CHECK(camp_request_subject_for_display(request, false, true) ==
           "crafting request (#9)");
   }
 
   SECTION("spoken status bark keeps ordinary speech free of request ids") {
-    const camp_llm_request request{.request_id = 7,
-                                   .requested_item_query = "bandages",
-                                   .requested_count = 5,
-                                   .status = "awaiting_approval",
-                                   .approval_state = "waiting_player"};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.request_id = 7; request.requested_item_query = "bandages"; request.requested_count = 5; request.status = "awaiting_approval"; request.approval_state = "waiting_player"; return request; }());
 
     CHECK(camp_request_spoken_status_bark(request) ==
           "5 × bandages is pinned, waiting on your go-ahead.");
@@ -6485,14 +6420,8 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
   SECTION(
       "spoken status bark keeps matched recipe detail on blocked requests") {
-    const camp_llm_request request{
-        .request_id = 7,
-        .requested_item_query = "bandages",
-        .requested_count = 5,
-        .chosen_recipe_name = "sterile bandage",
-        .status = "blocked",
-        .blockers = {
-            "Camp storage could not supply the needed ingredients or tools."}};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.request_id = 7; request.requested_item_query = "bandages"; request.requested_count = 5; request.chosen_recipe_name = "sterile bandage"; request.status = "blocked"; request.blockers = {
+            "Camp storage could not supply the needed ingredients or tools."}; return request; }());
 
     CHECK(camp_request_spoken_status_bark(request) ==
           "5 × bandages (matched sterile bandage) is blocked — Camp "
@@ -6501,18 +6430,9 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
   SECTION("board status bark stays concise and human-facing") {
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 7,
-                         .requested_item_query = "bandages",
-                         .requested_count = 5,
-                         .status = "blocked"},
-        camp_llm_request{.request_id = 8,
-                         .requested_item_query = "knife",
-                         .status = "in_progress",
-                         .assigned_worker_name = "Bruna"},
-        camp_llm_request{.request_id = 9,
-                         .requested_item_query = "bandages",
-                         .requested_count = 2,
-                         .status = "completed"}};
+        ([]() { camp_llm_request request; request.request_id = 7; request.requested_item_query = "bandages"; request.requested_count = 5; request.status = "blocked"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 8; request.requested_item_query = "knife"; request.status = "in_progress"; request.assigned_worker_name = "Bruna"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 9; request.requested_item_query = "bandages"; request.requested_count = 2; request.status = "completed"; return request; }())};
 
     CHECK(camp_board_status_bark(requests) ==
           "Board's got 2 live and 1 old — 5 × bandages, knife.");
@@ -6520,15 +6440,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
   SECTION("craft request handoff snapshot keeps stable request facts plus "
           "board/detail/next tokens") {
-    const camp_llm_request request{
-        .request_id = 7,
-        .source_utterance = "craft 5 bandages",
-            .requested_item_query = "bandages",
-            .requested_count = 5,
-        .chosen_recipe_name = "sterile bandage",
-        .status = "blocked",
-        .approval_state = "not_needed",
-        .blockers = {"No stationed worker can take this recipe right now."}};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.request_id = 7; request.source_utterance = "craft 5 bandages"; request.requested_item_query = "bandages"; request.requested_count = 5; request.chosen_recipe_name = "sterile bandage"; request.status = "blocked"; request.approval_state = "not_needed"; request.blockers = {"No stationed worker can take this recipe right now."}; return request; }());
 
     CHECK(camp_request_handoff_snapshot(request) ==
           "board=show_board\n"
@@ -6548,13 +6460,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
   SECTION(
       "craft request handoff snapshot flips archived jobs to delete tokens") {
-    const camp_llm_request request{.request_id = 9,
-                                   .requested_item_query = "bandages",
-                                   .requested_count = 2,
-                                   .chosen_recipe_name = "bandages",
-                                   .status = "completed",
-                                   .approval_state = "approved",
-                                   .assigned_worker_name = "Bruna"};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.request_id = 9; request.requested_item_query = "bandages"; request.requested_count = 2; request.chosen_recipe_name = "bandages"; request.status = "completed"; request.approval_state = "approved"; request.assigned_worker_name = "Bruna"; return request; }());
 
     CHECK(camp_request_handoff_snapshot(request) == "board=show_board\n"
                                                     "details=show_job=9\n"
@@ -6574,25 +6480,9 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
   SECTION("board handoff snapshot summarizes active and archived jobs with "
           "detail tokens") {
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 7,
-                         .requested_item_query = "bandages",
-                         .requested_count = 5,
-                         .chosen_recipe_name = "sterile bandage",
-                         .status = "blocked",
-                         .approval_state = "not_needed"},
-        camp_llm_request{.request_id = 8,
-                         .requested_item_query = "knife",
-                         .chosen_recipe_name = "knife",
-                         .status = "in_progress",
-                         .approval_state = "approved",
-                         .assigned_worker_name = "Bruna"},
-        camp_llm_request{.request_id = 9,
-                         .requested_item_query = "bandages",
-                         .requested_count = 2,
-                         .chosen_recipe_name = "bandages",
-                         .status = "completed",
-                         .approval_state = "approved",
-                         .assigned_worker_name = "Cara"}};
+        ([]() { camp_llm_request request; request.request_id = 7; request.requested_item_query = "bandages"; request.requested_count = 5; request.chosen_recipe_name = "sterile bandage"; request.status = "blocked"; request.approval_state = "not_needed"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 8; request.requested_item_query = "knife"; request.chosen_recipe_name = "knife"; request.status = "in_progress"; request.approval_state = "approved"; request.assigned_worker_name = "Bruna"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 9; request.requested_item_query = "bandages"; request.requested_count = 2; request.chosen_recipe_name = "bandages"; request.status = "completed"; request.approval_state = "approved"; request.assigned_worker_name = "Cara"; return request; }())};
 
     CHECK(camp_board_handoff_snapshot(requests) ==
           "board=show_board\n"
@@ -6629,19 +6519,8 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
         GROUP_ZOMBIE_HORDE, 3);
 
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 7,
-                         .requested_item_query = "bandages",
-                         .requested_count = 5,
-                         .chosen_recipe_name = "sterile bandage",
-                         .status = "blocked",
-                         .approval_state = "not_needed"},
-        camp_llm_request{.request_id = 9,
-                         .requested_item_query = "bandages",
-                         .requested_count = 2,
-                         .chosen_recipe_name = "bandages",
-                         .status = "completed",
-                         .approval_state = "approved",
-                         .assigned_worker_name = "Cara"}};
+        ([]() { camp_llm_request request; request.request_id = 7; request.requested_item_query = "bandages"; request.requested_count = 5; request.chosen_recipe_name = "sterile bandage"; request.status = "blocked"; request.approval_state = "not_needed"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 9; request.requested_item_query = "bandages"; request.requested_count = 2; request.chosen_recipe_name = "bandages"; request.status = "completed"; request.approval_state = "approved"; request.assigned_worker_name = "Cara"; return request; }())};
 
     const std::string snapshot = camp_board_handoff_snapshot(origin, requests);
     CAPTURE(snapshot);
@@ -6685,19 +6564,8 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     get_map().add_camp(origin, "faction_camp", false);
 
     const std::vector<camp_llm_request> requests = {
-        camp_llm_request{.request_id = 7,
-                         .requested_item_query = "bandages",
-                         .requested_count = 5,
-                         .chosen_recipe_name = "sterile bandage",
-                         .status = "blocked",
-                         .approval_state = "not_needed"},
-        camp_llm_request{.request_id = 9,
-                         .requested_item_query = "bandages",
-                         .requested_count = 2,
-                         .chosen_recipe_name = "bandages",
-                         .status = "completed",
-                         .approval_state = "approved",
-                         .assigned_worker_name = "Cara"}};
+        ([]() { camp_llm_request request; request.request_id = 7; request.requested_item_query = "bandages"; request.requested_count = 5; request.chosen_recipe_name = "sterile bandage"; request.status = "blocked"; request.approval_state = "not_needed"; return request; }()),
+        ([]() { camp_llm_request request; request.request_id = 9; request.requested_item_query = "bandages"; request.requested_count = 2; request.chosen_recipe_name = "bandages"; request.status = "completed"; request.approval_state = "approved"; request.assigned_worker_name = "Cara"; return request; }())};
 
     const std::string board_snapshot = camp_board_handoff_snapshot(requests);
     const std::string board_prefix = "board=show_board\n";
@@ -6955,9 +6823,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
   }
 
   SECTION("non craft requests do not emit craft handoff snapshots") {
-    const camp_llm_request request{.request_kind = "camp_upgrade",
-                                   .request_id = 3,
-                                   .status = "awaiting_approval"};
+    const camp_llm_request request = ([]() { camp_llm_request request; request.request_kind = "camp_upgrade"; request.request_id = 3; request.status = "awaiting_approval"; return request; }());
 
     CHECK(camp_request_handoff_snapshot(request).empty());
   }
@@ -7286,7 +7152,7 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
         CHECK( resolution.match.score >= 650 );
         REQUIRE( resolution.choice.has_value() );
-        CHECK( resolution.choice->recipe_id == recipe_id( "bandages" ) );
+        CHECK( resolution.choice->recipe == recipe_id( "bandages" ) );
     CHECK(resolution.choice->candidate.worker == nullptr);
     CHECK(resolution.outcome == camp_craft_resolution_outcome::MATCH_BLOCKED);
     CHECK(resolution.choice->candidate.blockers ==

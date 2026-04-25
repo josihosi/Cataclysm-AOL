@@ -428,7 +428,7 @@ struct camp_craft_recipe_candidate {
 };
 
 struct resolved_camp_craft_recipe {
-    recipe_id recipe_id;
+    recipe_id recipe;
     std::string subject;
     camp_craft_recipe_candidate candidate;
 };
