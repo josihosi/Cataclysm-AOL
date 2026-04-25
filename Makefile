@@ -1367,7 +1367,7 @@ ifeq ($(SOUND), 1)
 	cp -R $(FRAMEWORKSDIR)/SDL2_mixer.framework $(APPRESOURCESDIR)/
 endif  # ifeq ($(SOUND), 1)
 endif  # ifdef FRAMEWORK
-	dylibbundler -of -b -x $(APPRESOURCESDIR)/$(APPTARGET) -d $(APPRESOURCESDIR)/ -p @executable_path/ || true
+	bash build-data/osx/bundle_portable_dependencies.sh $(APPTARGETDIR) $(APPRESOURCESDIR)/$(APPTARGET)
 
 dmgdistclean:
 	rm -rf Cataclysm

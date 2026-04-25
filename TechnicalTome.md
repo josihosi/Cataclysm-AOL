@@ -343,6 +343,13 @@ Run a single topic with retries and verbose IO (use the OpenVINO venv Python):
 C:\Users\josef\openvino_models\openvino_env\Scripts\python.exe tools\llm_runner\background_summarizer.py --only-topic BGSS_CODGER_STORY1 --force --retry-invalid 2 --debug-io --include-responses
 ```
 
+
+### macOS app bundle portability gate
+- C-AOL macOS release DMGs must not rely on build-host package-manager paths such as `/opt/local`, `/opt/homebrew`, or `/usr/local` for runtime dylibs.
+- `make dmgdist` now runs `build-data/osx/bundle_portable_dependencies.sh` after app assembly. The helper invokes `dylibbundler` for `Cataclysm.app/Contents/Resources/<target>` and then scans launcher binaries, top-level bundled dylibs, and framework binaries with `otool -L`.
+- The release packaging step fails if any Mach-O binary still links an absolute local package-manager dylib path, which prevents broken DMGs like the current `v0.2.0` macOS asset from being silently shipped again.
+- This is a package-portability guard, not notarization/signing and not a Lacapult installer change. Lacapult can detect/report launch failure, but C-AOL release packaging owns bundling and install-name rewrites for the game app.
+
 ## Dialogue Options Architecture (Current)
 - Dialogue data is loaded at startup from `type: "talk_topic"` JSON across `data/json/npcs/**` (including `data/json/npcs/Backgrounds/*.json`) into the `json_talk_topics` map in `src/npctalk.cpp` via `load_talk_topic()`.
 - A conversation starts in `avatar::talk_to()` (`src/npctalk.cpp`), which creates a `dialogue` with two `talker`s and pulls an initial topic stack from `talker_npc::get_topics()` (`src/talker_npc.cpp`).

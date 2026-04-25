@@ -381,3 +381,10 @@ Use these when they are actually the missing evidence, not as ritual.
 On this Mac, treat top-level `make -j4 tests` as the reliable path for a fresh `cata_test`.
 Avoid treating `make -C tests cata_test` as authoritative here; it has been a repeated source of toolchain/stale-build nonsense.
 Also: if you actually need a fresh tiles binary, use `make -j4 TILES=1 cataclysm-tiles`; plain `make cataclysm-tiles` is not an honest rebuild path here.
+
+### macOS release package portability guard - 2026-04-25
+- Added `build-data/osx/bundle_portable_dependencies.sh` and wired `make dmgdist` to run it instead of ignoring `dylibbundler` failure.
+- Validation run: `bash -n build-data/osx/bundle_portable_dependencies.sh` exited 0.
+- Validation run: `git diff --check` exited 0.
+- Validation run against the already-published broken `v0.2.0` macOS DMG: mounted `caol_cdda-0-h_2026-03-29-1556_macos.dmg` read-only, then ran `bash build-data/osx/bundle_portable_dependencies.sh --verify-only <mount>/Cataclysm.app <mount>/Cataclysm.app/Contents/Resources/cataclysm-tiles`; it correctly failed and reported absolute `/opt/local/lib/libfreetype.6.dylib` and `/opt/local/lib/libz.1.dylib` dependencies.
+- This proves the guard catches the known bad package shape. It does not claim a rebuilt fixed DMG, a Lacapult app export, signing/notarization, publication, or a successful game launch.
