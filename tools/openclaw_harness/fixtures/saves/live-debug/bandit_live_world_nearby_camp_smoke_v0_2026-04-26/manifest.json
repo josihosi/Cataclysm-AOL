@@ -1,9 +1,20 @@
 {
   "name": "bandit_live_world_nearby_camp_smoke_v0_2026-04-26",
-  "source_fixture": "bandit_live_world_nearby_camp_v0_2026-04-22",
+  "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "source_profile": "live-debug",
-  "description": "Nearby live-world camp smoke/fire proof footing: reuse the bounded nearby bandit_camp fixture and inject real saved fd_fire/fd_smoke fields near the McWilliams player so current-build overmap_npc_move can observe a live map-field source instead of an authored playback packet.",
+  "description": "Live smoke/fire signal proof footing: reuse the McWilliams/Basecamp playtest-kit save, seed a real bandit_camp just beyond direct-player range, and inject visible/safe same-OMT fd_fire/fd_smoke near but not on the player so current-build overmap_npc_move can prove a matched live signal rather than an authored playback packet or direct-range dispatch.",
   "save_transforms": [
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [
+        0,
+        11,
+        0
+      ]
+    },
     {
       "kind": "map_fields_near_player",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
@@ -11,22 +22,22 @@
         {
           "field_id": "fd_fire",
           "offset_ms": [
-            36,
+            10,
             0,
             0
           ],
-          "intensity": 2,
-          "age_turns": 600
+          "intensity": 3,
+          "age_turns": 0
         },
         {
           "field_id": "fd_smoke",
           "offset_ms": [
-            37,
+            11,
             0,
             0
           ],
-          "intensity": 2,
-          "age_turns": 3004
+          "intensity": 3,
+          "age_turns": 0
         }
       ]
     }

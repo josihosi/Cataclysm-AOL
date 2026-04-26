@@ -1,6 +1,6 @@
 {
   "name": "bandit.live_world_nearby_camp_smoke_mcw",
-  "description": "Live smoke/fire source proof on the nearby bandit camp footing: install the bounded nearby camp, inject real fd_fire/fd_smoke map fields near but safely away from the player, open the in-game wait command (`|`), choose `w`ait a while from the alarm prompt, wait three in-game hours with `7`, and capture live bandit signal/maintenance/dispatch logs.",
+  "description": "Live smoke/fire source proof on a camp seeded just beyond direct-player range: inject visible/safe same-OMT fd_fire/fd_smoke near but not on the player, require a matched owned-site refresh before waiting, then open the in-game wait command (`|`), choose `w`ait a while from the alarm prompt, wait three in-game hours with `7`, and capture whether the live signal persists, decays, refreshes, or stops.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_live_world_nearby_camp_smoke_v0_2026-04-26",
@@ -50,10 +50,11 @@
   "artifact_patterns": [
     "bandit_live_world signal scan: signal_packet=yes",
     "bandit_live_world signal maintenance: signal_packet=yes",
+    "rejected_by_signal_range=0",
+    "matched_sites=1 refreshed_sites=1",
     "bandit_live_world dispatch cadence_skip: reason=30_minute_throttle signal_packet=yes",
     "bandit_live_world signal scan: signal_packet=no",
-    "bandit_live_world dispatch cadence_skip: reason=30_minute_throttle signal_packet=no",
-    "bandit_live_world dispatch rejected:"
+    "bandit_live_world dispatch cadence_skip: reason=30_minute_throttle signal_packet=no"
   ],
   "artifact_source": "debug.log"
 }
