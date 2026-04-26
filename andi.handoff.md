@@ -74,10 +74,10 @@ The closed audit packet was the precondition, not another item to redo.
 
 - Abstract hostile-site records can exist and persist before local NPC materialization.
 - Live dispatch now separates the `40 OMT` system envelope from the ordinary `10 OMT` direct-player cap.
-- Real `fd_fire` / `fd_smoke` near-player fields can create weather-aware smoke packets and refresh live signal marks for owned sites inside the smoke cap.
+- Real `fd_fire` / `fd_smoke` near-player fields can create weather-aware smoke packets and refresh live signal marks for owned sites inside the smoke cap; live fire also feeds the ordinary-light adapter with current time/weather/exposure/source detail, though that branch still needs a clean threshold-surviving live proof.
 - Selected abstract overmap-special candidates now lazily materialize only the minimum profile-specific scout roster (`2` camp-style, `3` cannibal, `1` small hostile), reconcile those NPCs through the owned-site ledger before dispatch planning, and skip/log failed claims before overmap insertion.
 - New harness footing: `map_fields_near_player` save transforms can inject real serialized map fields into copied harness saves, which gives this packet a positive `fd_fire` / `fd_smoke` source proof and a paired no-signal control without touching Josef's real saves.
-- Latest local gates: `git diff --check`; `make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` after clearing stale tiles PCH; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed; smoke/fire source harness `.userdata/dev-harness/harness_runs/20260427_000610/` (safe in-bubble/off-player offsets, source-object field entries, `|` -> `w` -> `7` three-hour wait, initial signal yes then decay/no-signal later, no load/player-fire/process residue); no-signal control `.userdata/dev-harness/harness_runs/20260427_001649/` (same wait path, no injected fields, signal stays no).
+- Latest local gates: `git diff --check`; `rm -f obj/do_turn.o && make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed; `./tests/cata_test "*bandit_mark_generation*"` -> all 207 assertions in 15 test cases passed; smoke/fire source harness `.userdata/dev-harness/harness_runs/20260427_000610/` (safe in-bubble/off-player offsets, source-object field entries, `|` -> `w` -> `7` three-hour wait, initial signal yes then decay/no-signal later, no load/player-fire/process residue); no-signal control `.userdata/dev-harness/harness_runs/20260427_001649/` (same wait path, no injected fields, signal stays no). Post-rebuild smoke reruns reached loaded-game screenshots but did not finish the wait/signaling phase; treat them as inconclusive UI/harness attempts, not gameplay proof.
 
 ## Success bar
 
@@ -87,7 +87,7 @@ The closed audit packet was the precondition, not another item to redo.
 - Range/cadence decisions are visible in logs or artifacts.
 - Deterministic tests protect the corrected range matrix and bootstrap/signal logic.
 - Harness/live proof reaches the real game path, with one positive signal case and one no-signal control.
-- Canon files (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and this handoff) match the final state before any commit that claims the packet is closed. Current state is not closed yet: light/detail intake, signal decay, and full hold/chill reasons remain to settle or narrow.
+- Canon files (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and this handoff) match the final state before any commit that claims the packet is closed. Current state is not closed yet: clean live light proof, signal decay, and full hold/chill reasons remain to settle or narrow.
 
 ## Testing / evidence expectations
 
