@@ -29,7 +29,19 @@ Status: parked / packaged correction.
 
 ## First sweep: deterministic-only surfaces that need honest labels
 
-This sweep is not a full static proof of the whole codebase. It is the first targeted bandit-family audit prompted by the light/horde gap.
+This sweep began with the bandit-family tests prompted by the light/horde gap, then expanded to the C-AOL-changed test files visible against the CDDA port branch. It is still a semantic audit, not a formal proof that every assertion in 216 upstream test files has a live claim attached.
+
+Expanded changed-test set inspected:
+- `tests/bandit_dry_run_test.cpp`
+- `tests/bandit_live_world_test.cpp`
+- `tests/bandit_mark_generation_test.cpp`
+- `tests/bandit_playback_test.cpp`
+- `tests/bandit_pursuit_handoff_test.cpp`
+- `tests/clzones_test.cpp`
+- `tests/faction_camp_test.cpp`
+- `tests/llm_intent_test.cpp`
+- `tests/monster_test.cpp`
+- `tests/overmap_test.cpp`
 
 ### `tests/bandit_mark_generation_test.cpp`
 
@@ -75,6 +87,36 @@ Status: handoff packet unit tests with partial live consumers.
 Status: closest to live wiring, because `bandit_live_world` is used by `src/do_turn.cpp`, `src/mapgen.cpp`, `src/savegame.cpp`, and `src/overmapbuffer.cpp`.
 
 Many closed packets already have matching harness/live evidence for dispatch, contact, shakedown, pay/fight, and writeback. Some profile/adopter tests, such as cannibal profile separation, are intentionally deterministic substrate proof unless later paired with live encounter proof. That is acceptable only if docs say so plainly.
+
+### `tests/clzones_test.cpp`
+
+Status: real zone/sorting unit coverage, but Smart Zone Manager playtest claims still need live or harness evidence.
+
+The tests cover zone placement, sorting behavior, vehicle/source/destination routing, and Smart Zone Manager layout contracts. They are not empty. The risk is narrower: labels/options can look right in tests while Josef's live Basecamp flow still exposes wrong zone IDs, wrong `ignore_contents`, fire-source/kindling behavior, or readability/layout issues. Current Smart Zone Manager parked follow-up correctly requires option-level and real-zone-ID proof.
+
+### `tests/faction_camp_test.cpp`
+
+Status: broad deterministic camp/locker/patrol/speech-contract coverage with several proven live/harness packets elsewhere.
+
+The tests are not empty, but speech parsing and board/service contracts must not be treated as proof of every live spoken/UI route. For spoken commands, the live `say`/`yell` path can differ from structured/internal command paths; future claims must name which path was tested.
+
+### `tests/llm_intent_test.cpp`
+
+Status: prompt/parser/snapshot/pathing unit coverage, not live model or full interactive proof.
+
+These tests prove local prompt/parse/resolve contracts. They do not prove a real model call, a live model response, or a full in-game player-facing loop unless paired with the relevant harness/live evidence.
+
+### `tests/monster_test.cpp`
+
+Status: real monster/horde mechanics tests, including sound-following horde entry into the reality bubble.
+
+These tests are useful evidence that the existing horde machinery can follow real overmap/sound paths. They do not provide the missing visible-light horde bridge; no inspected monster/horde test proves roof/basecamp light attracts a horde by visibility.
+
+### `tests/overmap_test.cpp`
+
+Status: infrastructure/coverage/determinism tests.
+
+No obvious empty C-AOL gameplay claim surfaced here from this sweep. These tests should not be cited for bandit/horde light behavior.
 
 ## Known live bridge absence
 
