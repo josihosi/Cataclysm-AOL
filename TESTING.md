@@ -98,6 +98,20 @@ Josef has greenlit a normal-download GitHub release, and CI recovery is now clos
 - A shipped macOS app must pass the dylib portability guard; otherwise macOS is withheld or plainly marked blocked instead of silently shipping another `/opt/local/...` dud.
 - After publish, `gh release view <tag>` or equivalent must prove the final release URL/assets.
 
+### Release preflight / asset inspection - 2026-04-26
+
+Fresh preflight for the active normal-download release packet found a decision point rather than a publish-ready state:
+
+- Current stable releases are `v0.1.0` and latest `v0.2.0`; existing prerelease/assets also include port-family tags such as `caol-cdda-0-h-2026-03-29-1556`, `caol-cdda-0-i-2026-03-29-1423`, `caol-ctlg-master-2026-03-29-1447`, and `caol-cdda-master-2026-03-27-0836`.
+- Latest `dev` source is `95fae29717` (`docs: promote normal release lane`), with fresh green General run `24948351614`; the CI-green code checkpoint remains `c5ff712e01` with General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` green.
+- Current stable `v0.2.0` is a bundle of port-branch assets, not a single current-`dev` build: 4 branch families (`cdda-master`, `cdda-0.H`, `cdda-0.I`, `ctlg-master`) × Windows/Linux/macOS assets.
+- Current `README.md` still presents release artifacts as built for `port/*` branches, while the active packet asks for the now-green `dev` release-source checkpoint.  That makes the intended artifact family ambiguous: current `dev` only, refreshed port branches, or some staged combination.
+- `.github/workflows/release.yml` is the established automated asset path, but it creates public `cdda-experimental-<timestamp>` prereleases and asset names, not a stable `v0.3.0` C-AOL release; latest successful run was `24591151413` on `master` at `86f786bee5`.
+- Latest `dev` Actions artifacts are not downloadable game packages (`basic-build` / `pull_request_id` only), so there are no current Windows/Linux/macOS release assets ready to attach.
+- macOS support must not be claimed from old assets: current `dmgdist` now invokes `build-data/osx/bundle_portable_dependencies.sh`, but no current DMG has passed that guard; the local Mac lacks `/opt/local/lib/libfreetype.6.dylib` and `/opt/local/lib/libz.1.dylib`, so this host cannot locally prove a fresh portable tiles DMG by rerunning the old broken MacPorts-shaped path.
+
+Decision needed before publishing: choose whether the next public stable tag should be `v0.3.0` and whether its assets should be (A) current `dev` only with macOS withheld until a guarded DMG passes, (B) refreshed `port/*` branch assets like `v0.2.0`, or (C) an experimental/prerelease workflow run first whose assets are later promoted/renamed into a stable release.
+
 ### macOS release portability guardrail - 2026-04-25
 
 - Lacapult installer path evidence remains separate: `python3 tools/prove_caol_game_launch_smoke.py --observe-seconds 8` in `/Users/josefhorvath/Schanigarten/Lacapult-Doobdab` still installs the selected C-AOL `v0.2.0` macOS DMG into an isolated Lacapult-style tree with `Cataclysm.app` plus `catapult_install_info.json` and `looks_launchable_after_move=true`.
