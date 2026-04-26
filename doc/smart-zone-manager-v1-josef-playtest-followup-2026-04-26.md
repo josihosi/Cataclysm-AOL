@@ -21,7 +21,9 @@ Josef's 2026-04-26 Smart Zone Manager playtest audio said the feature is already
   - tools should have its own square/zone
   - spare parts should have its own square/zone
   - containers should have its own square/zone
-  - books and magazines may share if needed
+  - books and readable magazines may share if needed
+  - add one additional generated zone for `LOOT_MANUALS` on the same tile/cluster as basecamp books, because real skill/manual books route through `LOOT_MANUALS` rather than `LOOT_BOOKS`
+  - keep the existing gun-magazine `LOOT_MAGAZINES` coverage; do not remove the weapon-magazine zone near ammo
   - chemicals and drugs sharing is acceptable
 - Make the unsorted drop zone larger than the current 2x2 result; target a simple rectangular footprint such as 2x4 unless local constraints require another shape.
 - Verify generated zones use the correct C:DDA zone types, not only convincing labels. Example: the basecamp gun/ammo zone must actually be the appropriate gun/ammo sorting zone.
