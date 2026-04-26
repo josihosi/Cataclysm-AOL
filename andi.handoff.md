@@ -1,73 +1,101 @@
-# Andi handoff: Test-vs-game implementation audit report packet v0
+# Andi handoff: Bandit live signal + site bootstrap correction v0
 
 ## Classification and position
 
 - classification: ACTIVE / GREENLIT NOW
 - authoritative canon: `Plan.md`
-- packet doc: `doc/test-vs-game-implementation-audit-report-packet-v0-2026-04-26.md`
+- active queue: `TODO.md`
+- success ledger: `SUCCESS.md`
+- validation policy: `TESTING.md`
+- packet doc: `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`
+- audit footing: `doc/test-vs-game-implementation-audit-report-2026-04-26.md`
 - repo: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`
 
 ## Item title
 
-Test-vs-game implementation audit report packet v0
+Bandit live signal + site bootstrap correction v0
 
 ## Why this is first
 
-Josef greenlit the C-AOL debug-note correction stack and explicitly asked us to remove hollow code. The first job is to check which tests actually reach game implementation and which tests only prove a deterministic seam, authored playback packet, or harness shape. Do this before implementing more bandit/basecamp corrections, or we risk building a nicer-painted cardboard door.
+Josef greenlit the full C-AOL debug-correction stack and explicitly told Schani to point Andi at C-AOL on a 30-minute cadence. The audit packet is now closed. Its main finding is that the bandit smoke/light/weather/scout playback layer is useful deterministic rehearsal, but it is not live gameplay until real producers and live dispatch consumers are wired.
+
+This packet is therefore first: make hostile-site ownership and live signal observation real enough that later bandit tests stop proving cardboard.
 
 ## Implementation scope
 
-1. Read `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and the packet doc before editing.
-2. Produce `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or an explicitly equivalent report.
-3. Prioritize current high-risk test lanes:
-   - `tests/bandit_mark_generation_test.cpp`
-   - `tests/bandit_playback_test.cpp`
-   - `tests/bandit_live_world_test.cpp`
-   - relevant `tests/faction_camp_test.cpp`
-   - relevant `tests/clzones_test.cpp`
-4. For each audited pass condition, record:
-   - test file / scenario
-   - pass condition
-   - source seam under test
-   - live producer, if any
-   - live consumer, if any
-   - evidence class
-   - verdict: live-wired, deterministic-only, playback-only, harness-only, stale/ambiguous, or hollow/misleading
-5. Explicitly trace smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior through live producers/consumers.
-6. Assign each hollow/missing bridge to one of the greenlit stack items or name a new follow-up if it does not fit.
-7. Update `TESTING.md` compactly with the audit result and the next implementation target.
+1. Read `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `COMMIT_POLICY.md`, this handoff, and the active packet doc before editing.
+2. Preserve the audit rule: deterministic/playback tests remain adapter regressions until a live source hook and live consumer path exist.
+3. Register bounded hostile-site ownership without requiring the player to walk into spawn/load range first.
+4. Carry enough cheap abstract roster/profile/headcount state for dispatch and later lazy materialization without global spawn/perf blow-up.
+5. Reconcile materialized NPCs back to the same owned-site ledger so exact-member writeback still works when concrete members exist.
+6. Wire at least one real fire/smoke/light observation path into live bandit signal candidates under named weather/time/light conditions.
+7. Replace or demote the hard `distance <= 10` live-dispatch gate so ordinary visibility does not impersonate the whole system envelope.
+8. Split signal observation/decay cadence from dispatch decision cadence.
+9. Add reviewer-readable instrumentation for: empty ownership, no signal packet, below-threshold signal, rejected-by-range, cadence skip, accepted candidate, and hold/chill decision.
+10. Add deterministic tests for the range matrix, site bootstrap serialization, signal caps, candidate filtering/scoring, and dispatch accept/reject behavior.
+11. Add at least one harness/live proof where a real current fire/light/smoke source creates a live bandit candidate or mark on a real owned-site path, plus one no-signal control.
 
-## Greenlit stack after the audit
+## Corrected range / cadence shape
 
-1. `Bandit live signal + site bootstrap correction v0`
-2. `Bandit live-wiring audit + visible-light horde bridge correction v0`
-3. `Bandit local sight-avoid + scout return cadence packet v0`
-4. `Smart Zone Manager v1 Josef playtest corrections`
-5. `Basecamp medical consumable readiness v0`
-6. `Basecamp locker armor ranking + blocker removal packet v0`
-7. `Basecamp job spam debounce + locker/patrol exceptions packet v0`
+- overall overmap AI/system envelope: `40 OMT`
+- sustained smoke cap: about `15 OMT`
+- ordinary bounty visibility: about `10 OMT`
+- confident threat: about `6 OMT`
+- hard/searchlight threat: about `8 OMT`
+- exceptional elevated light: adapter-bounded inside the `40 OMT` envelope
+- movement remains elapsed-time-earned travel credit, roughly `1-6 OMT/day`
+
+Do not revive the older `48/60 OMT` starter lean. The `40 OMT` envelope is the current product law.
+
+## Greenlit stack after this packet
+
+All of these are greenlit in this order. When the active packet is genuinely closed, update canon and continue to the next bounded item unless a real ambiguity, product-risk call, save/perf risk, or evidence-class problem requires Schani/Josef discussion.
+
+1. `Bandit live-wiring audit + visible-light horde bridge correction v0`
+2. `Bandit local sight-avoid + scout return cadence packet v0`
+3. `Smart Zone Manager v1 Josef playtest corrections`
+4. `Basecamp medical consumable readiness v0`
+5. `Basecamp locker armor ranking + blocker removal packet v0`
+6. `Basecamp job spam debounce + locker/patrol exceptions packet v0`
+
+The closed audit packet was the precondition, not another item to redo.
 
 ## Non-goals
 
-- no release publishing
 - no Lacapult work
-- no signing/notarization/repo-role surgery
+- no release publishing, signing, notarization, or repo-role surgery
 - no mutation of Josef's real saves/userdata
-- no implementation of every queued package inside this audit packet
-- no deleting deterministic tests just because they are deterministic; relabel them honestly
+- no implementation of every queued package inside this first packet
+- no deletion of useful deterministic tests merely because they are deterministic
+- no claiming gameplay behavior until the live producer/consumer path and evidence class are named
+- no broad rewrite unless the active lane truly requires it
 
 ## Success bar
 
-- A concrete report exists and maps high-risk tests to live implementation paths or missing bridges.
-- Bandit AI / camp tests are covered first and reviewer-cleanly.
-- Smoke/light/weather/horde/site-bootstrap/dispatch/local-handoff/scout paths are classified by evidence class.
-- Hollow or missing bridges are assigned to the correct greenlit package.
-- `TESTING.md` names the audit outcome and next implementation target.
+- Abstract hostile-site records can exist and persist before local NPC materialization.
+- Live dispatch can reason about bounded signal candidates instead of only the nearby-player envelope.
+- At least one real fire/smoke/light observation path produces or refreshes a live bandit mark/candidate under named conditions.
+- Range/cadence decisions are visible in logs or artifacts.
+- Deterministic tests protect the corrected range matrix and bootstrap/signal logic.
+- Harness/live proof reaches the real game path, with one positive signal case and one no-signal control.
+- Canon files (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and this handoff) match the final state before any commit that claims the packet is closed.
 
 ## Testing / evidence expectations
 
-Docs/audit lane, so no compile is required unless you change code. Use code search/call-path inspection as evidence. If you do run proof commands, record them in the report, but do not turn the audit into an accidental implementation branch.
+Minimum useful gate for a partial implementation state:
+
+- touched-object compile for changed C++ files where practical
+- focused `[bandit][live_world]` / mark-generation filters relevant to the slice
+- `git diff --check`
+- reviewer-readable source-path note if the slice is only deterministic groundwork
+
+Minimum closure gate:
+
+- deterministic tests for bootstrap/range/signal filtering
+- one live/harness positive fire/light/smoke signal proof
+- one live/harness no-signal control
+- artifact/log excerpts naming site count, signal packet, weather/light modifiers, candidate distance, cap used, and accepted/rejected/hold-chill reason
 
 ## Cautions
 
-A passing test is not product truth unless the live game consumes the tested seam. Name the bridge. If the bridge is missing, say missing. No theater, bitte.
+A passing playback packet is not product truth. A source helper is not product truth. The game proves itself only when the live producer feeds the live consumer and the evidence says which path carried it. Ja, annoying. Also correct.
