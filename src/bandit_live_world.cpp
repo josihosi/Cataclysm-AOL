@@ -827,6 +827,80 @@ std::string make_site_id( anchor_source_kind source_kind, const std::string &sou
     return out.str();
 }
 
+int abstract_roster_seed_for_site_kind( owned_site_kind site_kind )
+{
+    switch( site_kind ) {
+        case owned_site_kind::bandit_camp:
+        case owned_site_kind::bandit_work_camp:
+            return 6;
+        case owned_site_kind::cannibal_camp:
+            return 5;
+        case owned_site_kind::bandit_cabin:
+            return 3;
+        case owned_site_kind::looters:
+        case owned_site_kind::bandits_block:
+            return 2;
+        case owned_site_kind::none:
+            return 0;
+    }
+
+    return 0;
+}
+
+bool register_abstract_site( world_state &state, anchor_source_kind source_kind,
+                             const std::string &source_id, const tripoint_abs_omt &origin,
+                             const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup,
+                             int abstract_headcount )
+{
+    const std::optional<owned_site_kind> site_kind = classify_tracked_source( source_kind, source_id );
+    if( !site_kind ) {
+        return false;
+    }
+
+    footprint_snapshot footprint;
+    if( source_kind == anchor_source_kind::overmap_special ) {
+        footprint = make_special_footprint( source_id, origin, special_lookup );
+    } else {
+        footprint.anchor = origin;
+        footprint.footprint = { origin };
+    }
+
+    const std::string site_id = make_site_id( source_kind, source_id, footprint.anchor );
+    site_record *site = state.find_site( site_id );
+    if( site == nullptr ) {
+        site_record new_site;
+        new_site.site_id = site_id;
+        new_site.source_kind = source_kind;
+        new_site.site_kind = *site_kind;
+        new_site.profile = profile_for_site_kind( *site_kind );
+        new_site.source_id = source_id;
+        new_site.anchor = footprint.anchor;
+        new_site.footprint = footprint.footprint;
+        new_site.headcount = std::max( 0, abstract_headcount );
+        state.sites.push_back( new_site );
+        return true;
+    }
+
+    if( site->footprint.size() < footprint.footprint.size() ) {
+        site->footprint = footprint.footprint;
+        site->anchor = footprint.anchor;
+    }
+    if( site->source_kind == anchor_source_kind::none ) {
+        site->source_kind = source_kind;
+    }
+    if( site->site_kind == owned_site_kind::none ) {
+        site->site_kind = *site_kind;
+    }
+    if( site->profile == hostile_site_profile::none ) {
+        site->profile = profile_for_site_kind( site->site_kind );
+    }
+    if( site->source_id.empty() ) {
+        site->source_id = source_id;
+    }
+    site->headcount = std::max( site->headcount, std::max( 0, abstract_headcount ) );
+    return true;
+}
+
 bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id,
                           character_id npc_id, const tripoint_abs_ms &spawn_tile,
                           const std::optional<std::string> &overmap_special_id,
@@ -900,7 +974,7 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
     member.npc_template_id = npc_template_id;
     member.home_spawn_tile = spawn_tile;
     site->members.push_back( member );
-    site->headcount++;
+    site->headcount = std::max( site->headcount, site->count_live_members() );
 
     spawn_tile_record *spawn_tile_record_ptr = site->find_spawn_tile( spawn_tile );
     if( spawn_tile_record_ptr == nullptr ) {

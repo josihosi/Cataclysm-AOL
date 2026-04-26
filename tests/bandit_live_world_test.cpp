@@ -95,6 +95,75 @@ TEST_CASE( "bandit_live_world_keeps_map_extra_hostile_spawns_as_micro_sites", "[
     CHECK( roadblock->footprint.front() == tripoint_abs_omt( 7, 5, 0 ) );
 }
 
+TEST_CASE( "bandit_live_world_registers_abstract_special_before_npc_materialization",
+           "[bandit][live_world][abstract_bootstrap]" )
+{
+    bandit_live_world::world_state world;
+
+    REQUIRE( bandit_live_world::register_abstract_site( world,
+             bandit_live_world::anchor_source_kind::overmap_special, "bandit_work_camp",
+             tripoint_abs_omt( 41, 51, 0 ), special_lookup,
+             bandit_live_world::abstract_roster_seed_for_site_kind(
+                 bandit_live_world::owned_site_kind::bandit_work_camp ) ) );
+
+    REQUIRE( world.sites.size() == 1 );
+    const bandit_live_world::site_record &site = world.sites.front();
+    CHECK( site.site_id == "overmap_special:bandit_work_camp@40,50,0" );
+    CHECK( site.source_kind == bandit_live_world::anchor_source_kind::overmap_special );
+    CHECK( site.site_kind == bandit_live_world::owned_site_kind::bandit_work_camp );
+    CHECK( site.profile == bandit_live_world::hostile_site_profile::camp_style );
+    CHECK( site.anchor == tripoint_abs_omt( 40, 50, 0 ) );
+    CHECK( site.headcount == 6 );
+    CHECK( site.members.empty() );
+    REQUIRE( site.footprint.size() == 9 );
+    CHECK( site.footprint.front() == tripoint_abs_omt( 40, 50, 0 ) );
+    CHECK( site.footprint.back() == tripoint_abs_omt( 42, 52, 0 ) );
+
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    world.serialize( jsout );
+
+    JsonValue jsin = json_loader::from_string( out.str() );
+    bandit_live_world::world_state loaded;
+    loaded.deserialize( jsin.get_object() );
+
+    REQUIRE( loaded.sites.size() == 1 );
+    const bandit_live_world::site_record &loaded_site = loaded.sites.front();
+    CHECK( loaded_site.site_id == site.site_id );
+    CHECK( loaded_site.headcount == 6 );
+    CHECK( loaded_site.members.empty() );
+    REQUIRE( loaded_site.footprint.size() == 9 );
+}
+
+TEST_CASE( "bandit_live_world_reconciles_materialized_spawns_with_abstract_specials",
+           "[bandit][live_world][abstract_bootstrap]" )
+{
+    bandit_live_world::world_state world;
+
+    REQUIRE( bandit_live_world::register_abstract_site( world,
+             bandit_live_world::anchor_source_kind::overmap_special, "bandit_camp",
+             tripoint_abs_omt( 11, 21, 0 ), special_lookup,
+             bandit_live_world::abstract_roster_seed_for_site_kind(
+                 bandit_live_world::owned_site_kind::bandit_camp ) ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 203 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 204 ),
+             tripoint_abs_ms( 264, 504, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    REQUIRE( world.sites.size() == 1 );
+    const bandit_live_world::site_record &site = world.sites.front();
+    CHECK( site.site_id == "overmap_special:bandit_camp@10,20,0" );
+    CHECK( site.headcount == 6 );
+    REQUIRE( site.members.size() == 2 );
+    CHECK( site.members.front().npc_id == character_id( 203 ) );
+    CHECK( site.members.back().npc_id == character_id( 204 ) );
+    REQUIRE( site.spawn_tiles.size() == 2 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 240, 480, 0 ) )->headcount == 1 );
+    CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->headcount == 1 );
+}
+
 TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_world]" )
 {
     bandit_live_world::world_state original;

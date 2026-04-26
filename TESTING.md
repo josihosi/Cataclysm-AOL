@@ -35,16 +35,161 @@ Do not keep rerunning the same startup or test packet when it is no longer the m
 If startup/load is already green, and the missing proof is live behavior, then the next probe must target live behavior.
 If a target is merely waiting on Josef, do not keep revalidating it unless the code changed.
 
+### Test-to-game wiring rule
+
+A test is not allowed to impersonate implementation. Before claiming gameplay behavior, identify the live code path that consumes the tested seam and name the evidence class that proves it: unit/evaluator, playback/proof packet, live source hook, harness/startup, screen, save inspection, or artifact/log. Deterministic-only packets may close only as deterministic-only packets; if the contract says the game does something, the proof must reach the game path or the claim stays open.
+
 ### Bandit overmap-proof rule
 
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
 The honest bar now includes real overmap-side multi-turn scenario proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics.
 
+### Completed validation checkpoint - test-vs-game implementation audit report
+
+`doc/test-vs-game-implementation-audit-report-2026-04-26.md` closes the audit checkpoint by tracing high-risk pass conditions to live producers and consumers instead of rereading old success prose.
+
+Compact result:
+- live-wired substrate: hostile-site ownership after NPC materialization, save/load, nearby-player dispatch from owned sites, local gate/shakedown/writeback, camp locker service, and Smart Zone Manager entry points
+- deterministic/playback-only layer: smoke/light/weather mark adapters, generated mark ledgers, authored playback frames, long-horizon benchmark reports, repeated-site reinforcement, human-route sightings, and most scout tuning packets
+- horde attraction is live-wired through sound; visible fire/light-to-horde attraction is not present in the audited source and must not be claimed without a bridge
+- next implementation target: `Bandit live signal + site bootstrap correction v0`
+
+### Active validation target - bandit live signal + site bootstrap correction
+
+For `Bandit live signal + site bootstrap correction v0`, the evidence must reach the live chain rather than stopping at deterministic playback:
+
+- deterministic: site bootstrap/save-load, lazy materialization/reconciliation if concrete bodies are created, and corrected range matrix (`40` system envelope with separate `10/6/8/15/30` signal-family values)
+- source gates: touched-object compile for `src/bandit_live_world.cpp`, `src/do_turn.cpp`, `src/overmapbuffer.cpp`, and any live signal hook, plus focused `[bandit][live_world]` / mark-generation filters
+- live/harness: one owned hostile site not made live solely by walking the player onto the camp, one real fire/light/smoke source producing a live mark/candidate under named weather/light conditions, one no-signal control, and logs/artifacts naming site count, signal packet, weather/light modifiers, candidate distance, cap used, rejected-by-range/cadence/hold-chill decision
+
+Current first-slice evidence - 2026-04-26:
+- Source hook: `overmap_npc_move()` now bootstraps abstract hostile overmap-special sites from existing loaded overmaps every `30_minutes` before dispatch, using `overmap_special_at_existing()` so the scan does not create fresh overmaps by accident.
+- Deterministic proof: `[bandit][live_world]` now covers abstract special registration before NPC materialization, save/load of abstract footprint/headcount/profile, and later concrete spawn reconciliation into the same owned-site ledger.
+- Dispatch footing: the live dispatcher candidate scan now uses the `40 OMT` system envelope instead of the old hard `distance <= 10`; signal-specific fire/smoke/light caps remain open until live signal packets exist.
+- Instrumentation footing: debug logs now distinguish empty ownership, zero candidates inside the scan radius, active-pressure cap, paid-shakedown cooldown, invalid dispatch plan notes, missing concrete member, and missing route. Signal-packet/below-threshold/cadence-specific logging remains open with the live signal hook.
+- Validation run: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o obj/overmapbuffer.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 468 assertions in 19 test cases passed.
+
+### Greenlit validation target - Smart Zone Manager v1 Josef playtest corrections
+
+When `Smart Zone Manager v1 Josef playtest corrections` is implemented, the first bar is deterministic zone-id and option proof:
+
+- `LOOT_MANUALS` exists on/near the books cluster while `LOOT_BOOKS` remains present
+- gun magazines remain `LOOT_MAGAZINES`, with unambiguous label text if labels are changed
+- `AUTO_EAT` and `AUTO_DRINK` span the full Basecamp storage footprint
+- both auto-consume zones have `ignore_contents == false`
+- one harness/save inspection confirms the generated zones persist/reopen without corrupting the camp layout
+
+### Greenlit validation target - Basecamp medical consumable readiness
+
+When `Basecamp medical consumable readiness v0` is implemented, the first bar is deterministic camp/locker proof for `bandages` and `adhesive_bandages`: fresh pickup, carried preservation, anti-hoarding cap, negative unrelated-item case, and no regression to ammo/mag/clothing readiness. Add a live/harness Basecamp probe only if implementation risk or reviewer clarity needs it.
+
+### Greenlit validation target - Basecamp locker armor ranking + blocker removal
+
+When `Basecamp locker armor ranking + blocker removal packet v0` is implemented, the proof must be generic, not RM13-specific:
+
+- deterministic locker/combat-policy tests for superior full-body/protective gear displacing worse blockers
+- negative cases where worse or too-damaged/too-encumbering candidates do not displace better current armor
+- explicit preservation of stronger current ballistic armor against worse candidates
+- regression for the original repeated failed-swap/wear-spam shape without using one item id as the whole proof
+- focused camp/locker test filter plus touched-object compile
+
+### Greenlit validation target - Basecamp job spam debounce + locker/patrol exceptions
+
+When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implemented, tests must prove repeated noise compresses while real state changes survive:
+
+- repeated completion/no-progress/missing-tool cause -> debounced
+- changed job/NPC/cause -> visible again
+- locker-zone exception -> one typed visible gear/readiness reason, repeats compressed
+- patrol-zone exception -> assignment/interruption/reserve/backfill state changes visible, routine repeats compressed
+- unrelated important messages are not swallowed
+
 ---
 
 ## Current relevant evidence
 
-No active probe obligation remains after `Cannibal camp attack-not-extort correction v0` checkpointed.
+Active target: `Bandit live signal + site bootstrap correction v0`.
+
+### Test-vs-game implementation audit closeout - 2026-04-26
+
+Report: `doc/test-vs-game-implementation-audit-report-2026-04-26.md`.
+
+Result: the biggest false-confidence risk is the bandit signal/playback layer. Smoke, light, weather, generated marks, human-route sightings, horde-pressure evaluator inputs, and long-horizon scout benchmarks are useful deterministic/playback proof, but they are not currently produced from live map/fire/light/weather/sight data and are not consumed by live dispatch. Live dispatch is real for owned sites near the player, and local gate/shakedown/writeback paths are real for active owned outings. Camp locker and Smart Zone Manager tests have real live consumers, though their greenlit corrections still need targeted proof.
+
+Next validation target: `Bandit live signal + site bootstrap correction v0`; proof must reach one abstract/lazy hostile-site bootstrap path, one real fire/smoke/light live signal path under named weather/time conditions, one live dispatch accept/reject decision with logs, and one no-signal control.
+
+### GitHub Actions red-state footing - 2026-04-25
+
+Schani inspected the current failing Actions before packaging the lane:
+
+- `General build matrix` run `24931588361` failed on `dev` at `4432bb9a8c Document macOS dylib portability gate`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24931588361>
+- Earlier same-family `General build matrix` run `24931574601` failed on `dev` at `2ff3b32b0a Fail macOS releases with unbundled local dylibs`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24931574601>
+- `Cataclysm Windows build` run `24931574609` failed on `dev` at `2ff3b32b0a`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24931574609>
+- `CodeQL` run `24932236370` failed on `master` at `86f786bee5`; C++ extraction shows the same missing-declaration family in `src/basecamp.cpp`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24932236370>
+- `Clang-tidy 18` and `IWYU` were green around the same commits, so the failure picture is build/CodeQL/Windows/package-flow shaped, not a blanket “all checks are nonsense” situation.
+
+Observed decisive failure lines/classes:
+
+- `tests/faction_camp_test.cpp:6118` and neighbors use C++20 designated initializers and omit `source_utterance`; CI builds as C++17 with warnings as errors.
+- `src/basecamp.cpp` triggers many `-Werror=missing-declarations` failures for camp-locker helpers.
+- `src/bandit_playback.cpp` reports missing declaration for `bandit_playback::visibility_reads( const checkpoint_result & )`.
+- Windows build compiled deep into MSVC/test build and then exited `1`; classify this with a tighter log read before treating it as source or runner failure.
+- macOS release packaging has an intentional dylib portability guardrail; distinguish an expected guard failure on broken `/opt/local/...` app links from accidental red CI.
+
+CI recovery closure evidence:
+
+- `git diff --check`
+- narrow local build/test reproducing or preventing the C++17 and missing-declaration failures
+- relevant filtered tests for edited source/test areas
+- post-push `gh run list` / `gh run view` evidence showing current Actions green or remaining red checks honestly classified
+- final `c5ff712e01` Actions are green: General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865`
+
+Latest recovery checkpoint evidence - 2026-04-25:
+
+- Changed file class: source/tests plus JSON/style and docs/process.
+- Local gates on `5aec51cc6c`: `make -j4 tests LINTJSON=0 ASTYLE=0`, `./tests/cata_test "[camp][basecamp_ai]"` (345 assertions in 1 test case), forced `make RELEASE=1 TESTS=0 obj/data/json/mapgen/hells_raiders/cannibal_camp.jstyle-check-stamp obj/data/json/itemgroups/cannibal_camp.jstyle-check-stamp`, and `git diff --check` all exited `0`.
+- Current Actions links: Windows run `24936570455` is still in progress at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24936570455>; General matrix run `24936570456` for `5aec51cc6c` was cancelled by a newer docs checkpoint, and the current General matrix should be read from fresh `gh run list` because each docs-only checkpoint supersedes the previous queued General run.
+- Previous Windows failure `24931574609` is source-classified from MSVC errors in `tests/faction_camp_test.cpp` (`C7555` designated initializers / C++20 construction); current source fix is waiting on the fresh Windows run rather than widening workflow/package changes.
+- Previous CodeQL failure `24936474575` after source fixes was JSON/style-classified: all Analyze jobs failed while building `tools/format/json_formatter.cgi` because `data/json/mapgen/hells_raiders/cannibal_camp.json` was linted; `5aec51cc6c` was the style-only formatter checkpoint.
+- Post-source checkpoint `ca8eb0e3be` (`test: stabilize Windows CI portability checks`) was inspected with fresh `gh run list`: `IWYU` `24938191284` green, `Clang-tidy 18` `24938191292` green, `CodeQL` `24938191289` red, `Cataclysm Windows build` `24938191281` still running, and `General build matrix` `24938191279` still pending/in progress at the time of that checkpoint.
+- `CodeQL` run `24938191289` is classified as JSON/style, not source compile/extraction: all Analyze jobs failed during `Run make RELEASE=1 TESTS=0` because `tools/format/json_formatter.cgi data/json/mapgen_palettes/cannibal_camp.json` reported `Has been linted`; decisive fresh log stored at `.userdata/andi-ci/codeql-24938191289-fresh.log` and linked at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24938191289>.
+- Bounded palette JSON/style fix on `4733c7a3e1` triggered fresh Actions: `Cataclysm Windows build` `24938305397` was later superseded/cancelled by a newer same-workflow request, and `General build matrix` `24938305401` had `Basic Build and Test` job `73029102977` red during `Build CDDA` because `make style-all-json-parallel RELEASE=1` reported `Has been linted : data/json/npcs/cannibals/classes.json`; decisive log stored at `.userdata/andi-ci/job-73029102977.log` and linked at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24938305401/job/73029102977>.
+- Bounded JSON/style fix evidence on `471d4ef8e6`: `tools/format/json_formatter.cgi data/json/npcs/cannibals/classes.json`, forced `make RELEASE=1 TESTS=0 obj/data/json/npcs/cannibals/classes.jstyle-check-stamp`, full `make style-all-json-parallel RELEASE=1`, `python3 -m json.tool data/json/npcs/cannibals/classes.json`, and `git diff --check` all exited `0`.
+- Fresh General Basic Build run `24939016247` on `471d4ef8e6` then failed during `Build CDDA` after JSON style/dialogue validation, when `tools/json_tools/generic_guns_validator.py` imported all `data/json` entries and rejected the nonruntime support file `data/json/npcs/Backgrounds/summary_registry.json` for having no runtime `type`; decisive log stored at `.userdata/andi-ci/job-73031289895.log` and linked at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24939016247/job/73031289895>.
+- Windows evidence: `Cataclysm Windows build` run `24939016251` on `471d4ef8e6` completed green in job `73029471626`, closing the earlier C++17/test-construction Windows failure family; run `24938305397` on `4733c7a3e1` was cancelled only because a higher-priority `msvc-build-dev` request superseded it.
+- Bounded tool-validator fix on `6d7eef08bf`: `tools/json_tools/util.py` now skips the same nonruntime JSON support files that `src/init.cpp` skips (`summary_registry.json`, `Summaries_short`, and `Summaries_extra`) before importing data for JSON tools. Local gates `python3 -m py_compile tools/json_tools/util.py`, `tools/json_tools/generic_guns_validator.py`, and `git diff --check` exited `0`; General run `24939870697` was cancelled by a newer docs checkpoint, and later docs-only pushes can supersede the active General run before it reaches conclusion, so the next closure read must use fresh `gh run list` output.
+- Fresh General run `24942284589` after `a79632a108` is not source-compile red: macOS job `73037891250` and GCC 9 LTO job `73037891248` both reached `run tests` and failed `overmap_terrain_coverage` at `tests/overmap_test.cpp:700`. Decisive failures were rare TEST_DATA coverage misses for `urban_dd_[1-6]` (`6 == 0`) and `riverside_dwelling1(_roof)?` (`2 == 0`), with logs stored at `.userdata/andi-ci/job-73037891250-macos.log` and `.userdata/andi-ci/job-73037891248-gcc9-lto.log`; run link: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24942284589>. Current bounded fix changes only `data/mods/TEST_DATA/overmap_terrain_coverage_test/overmap_terrain_coverage_whitelist.json`; local gates `git diff --check`, `python3 -m json.tool data/mods/TEST_DATA/overmap_terrain_coverage_test/overmap_terrain_coverage_whitelist.json`, and `./tests/cata_test "overmap_terrain_coverage" --rng-seed 1777158941` passed locally.
+
+### Active GitHub release evidence obligations - 2026-04-26
+
+Josef has greenlit a normal-download GitHub release, and CI recovery is now closed on `c5ff712e01`.  Before publishing this active release packet:
+
+- `gh release list` / tag inspection must prove the next release identifier will not collide with existing releases; latest stable observed before packaging was `v0.2.0`.
+- CI recovery is closed on `c5ff712e01`: General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` are green.
+- Release asset inspection must prove the downloadable files exist and match the release notes.
+- A shipped macOS app must pass the dylib portability guard; otherwise macOS is withheld or plainly marked blocked instead of silently shipping another `/opt/local/...` dud.
+- After publish, `gh release view <tag>` or equivalent must prove the final release URL/assets.
+
+### Release preflight / asset inspection - 2026-04-26
+
+Fresh preflight for the active normal-download release packet found a decision point rather than a publish-ready state:
+
+- Current stable releases are `v0.1.0` and latest `v0.2.0`; existing prerelease/assets also include port-family tags such as `caol-cdda-0-h-2026-03-29-1556`, `caol-cdda-0-i-2026-03-29-1423`, `caol-ctlg-master-2026-03-29-1447`, and `caol-cdda-master-2026-03-27-0836`.
+- Latest `dev` source is `95fae29717` (`docs: promote normal release lane`), with fresh green General run `24948351614`; the CI-green code checkpoint remains `c5ff712e01` with General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` green.
+- Current stable `v0.2.0` is a bundle of port-branch assets, not a single current-`dev` build: 4 branch families (`cdda-master`, `cdda-0.H`, `cdda-0.I`, `ctlg-master`) × Windows/Linux/macOS assets.
+- Current `README.md` still presents release artifacts as built for `port/*` branches, while the active packet asks for the now-green `dev` release-source checkpoint.  That makes the intended artifact family ambiguous: current `dev` only, refreshed port branches, or some staged combination.
+- `.github/workflows/release.yml` is the established automated asset path, but it creates public `cdda-experimental-<timestamp>` prereleases and asset names, not a stable `v0.3.0` C-AOL release; latest successful run was `24591151413` on `master` at `86f786bee5`.
+- Latest `dev` Actions artifacts are not downloadable game packages (`basic-build` / `pull_request_id` only), so there are no current Windows/Linux/macOS release assets ready to attach.
+- macOS support must not be claimed from old assets: current `dmgdist` now invokes `build-data/osx/bundle_portable_dependencies.sh`, but no current DMG has passed that guard; the local Mac lacks `/opt/local/lib/libfreetype.6.dylib` and `/opt/local/lib/libz.1.dylib`, so this host cannot locally prove a fresh portable tiles DMG by rerunning the old broken MacPorts-shaped path.
+
+Decision needed before publishing: choose whether the next public stable tag should be `v0.3.0` and whether its assets should be (A) current `dev` only with macOS withheld until a guarded DMG passes, (B) refreshed `port/*` branch assets like `v0.2.0`, or (C) an experimental/prerelease workflow run first whose assets are later promoted/renamed into a stable release.
+
+### macOS release portability guardrail - 2026-04-25
+
+- Lacapult installer path evidence remains separate: `python3 tools/prove_caol_game_launch_smoke.py --observe-seconds 8` in `/Users/josefhorvath/Schanigarten/Lacapult-Doobdab` still installs the selected C-AOL `v0.2.0` macOS DMG into an isolated Lacapult-style tree with `Cataclysm.app` plus `catapult_install_info.json` and `looks_launchable_after_move=true`.
+- Actual game-launch evidence remains separate: the same isolated launch smoke exits before a running game process with return code `134`; dyld reports `Library not loaded: /opt/local/lib/libfreetype.6.dylib`, referenced from `Cataclysm.app/Contents/Resources/cataclysm-tiles`.
+- C-AOL packaging guardrail: `build-data/osx/bundle_portable_dependencies.sh` now runs during the macOS `app` make target instead of the old ignored `dylibbundler ... || true` line.  It bundles dependencies into `Contents/Resources` with `@executable_path/` install names and then fails if `otool -L` still sees local package-manager prefixes.
+- Preflight proof on the current broken `v0.2.0` installed app: `bash build-data/osx/bundle_portable_dependencies.sh --verify-only "$APP/Cataclysm.app" "$APP/Cataclysm.app/Contents/Resources/cataclysm-tiles"` exits `1` and reports both `/opt/local/lib/libfreetype.6.dylib` and `/opt/local/lib/libz.1.dylib`, proving the guard catches the exact bad artifact shape before a future DMG is shipped.
+- Local full rebuild/rebundle was not attempted because the required MacPorts dylibs are not present under `/opt/local/lib` on this Mac and installing MacPorts packages was out of scope; the landed fix is the deterministic release-packaging failure/bundling guard, not a newly published replacement DMG.
 
 Latest closed cannibal attack-not-extort evidence:
 - implementation: `src/bandit_live_world.cpp` routes `hostile_site_profile::cannibal_camp` favorable local contact to `attack_now` with `combat_forward=true` and never to `open_shakedown`; weaker cannibal footing can still `probe`, exposed camp-adjacent footing can `hold_off`, overwhelming threat can `abort`, and the local-gate report now exposes the active `profile` for review.
