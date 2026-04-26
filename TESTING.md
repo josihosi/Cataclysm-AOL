@@ -78,8 +78,14 @@ Current second-slice evidence - 2026-04-26:
 
 Current third-slice evidence - 2026-04-26:
 - Lazy materialization footing: when a selected abstract overmap-special candidate has abstract headcount but not enough at-home concrete members for scout dispatch, `overmap_npc_move()` now creates only the minimum concrete roster needed for that candidate profile (`2` camp-style, `3` cannibal, `1` small hostile) and reconciles those NPCs through `claim_tracked_spawn()` into the same owned-site ledger before dispatch planning.
-- Boundaries: this is candidate-local and headcount-capped, not a global/eager camp spawn. Failed member claims are logged and skipped before insertion so the lazy path does not leave intentionally untracked NPCs behind. It still needs live/harness proof before the packet can close.
+- Boundaries: this is candidate-local and headcount-capped, not a global/eager camp spawn. Failed member claims are logged and skipped before insertion so the lazy path does not leave intentionally untracked NPCs behind. The later harness proof now exercises this footing without making it a global/eager camp spawn.
 - Validation run: `git diff --check`; `make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` after clearing stale tiles PCH; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
+
+Current fourth-slice evidence - 2026-04-26:
+- Harness source proof: `tools/openclaw_harness/fixtures/saves/live-debug/bandit_live_world_nearby_camp_smoke_v0_2026-04-26/manifest.json` uses the new `map_fields_near_player` save transform to inject real serialized `fd_fire` / `fd_smoke` fields near the McWilliams player in a copied harness save, then recompresses the touched map pack with `./zzip`.
+- Positive live run: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_smoke_mcw` -> `.userdata/dev-harness/harness_runs/20260426_233513/`; artifact log records `signal scan: signal_packet=yes kind=smoke/fire packets=1`, `signal maintenance: signal_packet=yes packets=1 matched_sites=1 refreshed_sites=1`, and `dispatch cadence_skip ... signal_packet=yes sites=1 dispatch_interval=30_minutes signal_interval=5_minutes`.
+- No-signal control: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_no_signal_control_mcw` -> `.userdata/dev-harness/harness_runs/20260426_231814/`; same nearby-owned-site footing without injected fields records `dispatch cadence_skip ... signal_packet=no sites=1`.
+- Evidence caveat: both packaged harness runs still report `inconclusive_version_mismatch` even though `ok=true` and artifact patterns matched; the decisive evidence class for this slice is the current run's debug artifact lines plus the fixture transform report, not screen/OCR.
 
 ### Greenlit validation target - Smart Zone Manager v1 Josef playtest corrections
 

@@ -76,7 +76,8 @@ The closed audit packet was the precondition, not another item to redo.
 - Live dispatch now separates the `40 OMT` system envelope from the ordinary `10 OMT` direct-player cap.
 - Real `fd_fire` / `fd_smoke` near-player fields can create weather-aware smoke packets and refresh live signal marks for owned sites inside the smoke cap.
 - Selected abstract overmap-special candidates now lazily materialize only the minimum profile-specific scout roster (`2` camp-style, `3` cannibal, `1` small hostile), reconcile those NPCs through the owned-site ledger before dispatch planning, and skip/log failed claims before overmap insertion.
-- Latest local gates: `git diff --check`; `make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` after clearing stale tiles PCH; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
+- New harness footing: `map_fields_near_player` save transforms can inject real serialized map fields into copied harness saves, which gives this packet a positive `fd_fire` / `fd_smoke` source proof and a paired no-signal control without touching Josef's real saves.
+- Latest local gates: `git diff --check`; `make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` after clearing stale tiles PCH; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed; smoke/fire source harness `.userdata/dev-harness/harness_runs/20260426_233513/`; no-signal control `.userdata/dev-harness/harness_runs/20260426_231814/`.
 
 ## Success bar
 
@@ -86,7 +87,7 @@ The closed audit packet was the precondition, not another item to redo.
 - Range/cadence decisions are visible in logs or artifacts.
 - Deterministic tests protect the corrected range matrix and bootstrap/signal logic.
 - Harness/live proof reaches the real game path, with one positive signal case and one no-signal control.
-- Canon files (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and this handoff) match the final state before any commit that claims the packet is closed.
+- Canon files (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and this handoff) match the final state before any commit that claims the packet is closed. Current state is not closed yet: light/detail intake, signal decay, and full hold/chill reasons remain to settle or narrow.
 
 ## Testing / evidence expectations
 

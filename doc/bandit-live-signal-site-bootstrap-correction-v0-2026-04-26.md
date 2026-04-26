@@ -91,7 +91,7 @@ Core correction: `10 OMT` is a useful ordinary visibility number, but it is not 
 - [ ] Signal observation/decay cadence is separate from dispatch decision cadence, with event-driven creation and reviewer-readable maintenance.
 - [ ] Instrumentation distinguishes empty ownership, no signal packet, below-threshold signal, rejected-by-range, cadence skip, and hold/chill decisions.
 - [ ] Deterministic tests cover the range matrix, site bootstrap serialization, signal-specific caps, and candidate filtering/scoring split.
-- [ ] At least one harness/live proof shows a real current fire/light/smoke source producing a live bandit candidate or mark on a real owned-site path, plus one no-signal control for the same setup.
+- [x] At least one harness/live proof shows a real current fire/light/smoke source producing a live bandit candidate or mark on a real owned-site path, plus one no-signal control for the same setup.
 
 ## Current implementation notes
 
@@ -102,13 +102,14 @@ Source checkpoint in progress:
 - Minimal signal slice: loaded-map `fd_fire` / `fd_smoke` fields near the player now build live smoke packets with current weather, pass through `adapt_smoke_packet()`, and can make owned sites inside the smoke projection cap into `live_signal` dispatch candidates.
 - Signal memory slice: accepted live signal candidates refresh the owned site's remembered mark / `known_recent_marks` via a bounded ledger helper instead of staying as throwaway local variables.
 - Lazy materialization slice: selected abstract overmap-special candidates can create only the minimum profile-specific concrete roster needed to attempt scout dispatch, then reconcile those NPCs through `claim_tracked_spawn()` into the same owned-site ledger before planning; failed claims are logged and skipped before overmap insertion.
-- Observability slice: logs now identify no signal packet, below-threshold smoke projection, signal packet id, weather band, candidate distance, cap used, rejected-by-range count, missing concrete member, route failure, lazy materialization counts, and failed lazy materialization claims. Cadence/decay and full hold/chill signal explanations remain open.
+- Observability slice: logs now identify no signal packet, below-threshold smoke projection, signal packet id, weather band, candidate distance, cap used, rejected-by-range count, cadence skip, missing concrete member, route failure, lazy materialization counts, and failed lazy materialization claims. Decay and full hold/chill signal explanations remain open.
+- Harness proof slice: `bandit.live_world_nearby_camp_smoke_mcw` injects real saved `fd_fire` / `fd_smoke` fields into a copied McWilliams harness save and records `signal_packet=yes`, matched/refreshed signal maintenance, and 5-minute signal / 30-minute dispatch cadence-skip evidence; `bandit.live_world_nearby_camp_no_signal_control_mcw` uses the same nearby camp footing without injected fields and records `signal_packet=no`.
 
 Still not closed:
 
-- live light intake, shelter/exposure/detail beyond the smoke adapter's current packet fields, and separated signal decay cadence;
-- live/harness proof with one real smoke/fire source and one no-signal control;
-- reviewer-readable hold/chill/cadence evidence.
+- live light intake and shelter/exposure/detail beyond the smoke adapter's current packet fields, unless this packet is narrowed to smoke/fire and leaves live light to the next greenlit bridge;
+- separated signal decay cadence;
+- reviewer-readable hold/chill evidence.
 
 ## Suggested validation packet
 
