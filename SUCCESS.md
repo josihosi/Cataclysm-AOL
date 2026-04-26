@@ -54,6 +54,29 @@ Notes:
 
 ---
 
+## Bandit live signal + site bootstrap correction v0
+
+Status: PARKED / PACKAGED CORRECTION
+
+Success state:
+- [ ] Existing hostile overmap special families that should participate in live hostile-site logic can register abstract `bandit_live_world` site records without requiring the player to enter spawn/load range first.
+- [ ] Abstract site records carry enough cheap roster/profile/headcount state to dispatch and later materialize concrete NPCs without save/perf blow-up.
+- [ ] Materialized NPCs reconcile back to the same owned-site ledger, preserving exact-member writeback behavior when concrete members exist.
+- [ ] Real fire/smoke/light observations can create or refresh bounded live bandit marks/leads through the running game path, not only authored playback packets.
+- [ ] The corrected range matrix is implemented or explicitly centralized: `40 OMT` overmap AI/system envelope; about `15 OMT` sustained smoke cap; ordinary bounty around `10 OMT`; confident threat around `6 OMT`; hard/searchlight threat around `8 OMT`; exceptional elevated light adapter-bounded inside the `40 OMT` envelope; movement remains `1-6 OMT/day` elapsed-time-earned travel credit.
+- [ ] The hard `distance <= 10` live-dispatch gate is removed or demoted so `10 OMT` ordinary visibility no longer impersonates the whole system range.
+- [ ] Signal observation/decay cadence is separate from dispatch decision cadence, with event-driven creation and reviewer-readable maintenance.
+- [ ] Instrumentation distinguishes empty ownership, no signal packet, below-threshold signal, rejected-by-range, cadence skip, and hold/chill decisions.
+- [ ] Deterministic tests cover the range matrix, site bootstrap serialization, signal-specific caps, and candidate filtering/scoring split.
+- [ ] At least one harness/live proof shows a real current fire/light/smoke source producing a live bandit candidate or mark on a real owned-site path, plus one no-signal control for the same setup.
+
+Notes:
+- Canonical contract lives at `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
+- This package supersedes the older 48/60 OMT starter lean with Josef's corrected `40 OMT` overmap AI/system envelope while preserving the anti-tripwire product law.
+- Keep `Basecamp medical consumable readiness v0` separate unless Josef explicitly bundles it.
+
+---
+
 ## Bandit live-wiring audit + visible-light horde bridge correction v0
 
 Status: PARKED / PACKAGED CORRECTION
@@ -89,6 +112,24 @@ Notes:
 - Canonical contract lives at `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
 - Current code read: `return_clock` is carried through handoff/writeback memory, but it is not a live timeout that forces a scout to stop watching after N hours/days; `resolve_active_group_aftermath()` resolves only after home/dead/missing observations, while local contact and unresolved outbound states stay open.
 - Josef's smoke-attraction observation still wants a no-smoke control before we claim smoke itself is the live cause.
+
+---
+
+## Basecamp medical consumable readiness v0
+
+Status: PARKED / PACKAGED FOLLOW-UP
+
+Success state:
+- [ ] Camp locker/service logic recognizes at least `bandages` and `adhesive_bandages` as bounded medical readiness supplies when stocking NPCs.
+- [ ] NPCs can pick up a small reserve from the relevant Basecamp/locker storage path without hoarding all medical items.
+- [ ] Existing carried bandages and adhesive bandages are preserved through locker refresh instead of being discarded as clutter.
+- [ ] Non-medical loadout behavior, ammo/magazine readiness, and clothing/armor selection remain unchanged.
+- [ ] Deterministic tests cover fresh pickup, carried-item preservation, cap/anti-hoarding behavior, and a negative case for unrelated drugs/items.
+- [ ] If a live/harness proof is practical, one Basecamp/locker probe shows an NPC can acquire the intended medical consumable from camp storage; otherwise the packet states plainly why deterministic proof is sufficient for the first slice.
+
+Notes:
+- Canonical contract lives at `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`.
+- This is parked separately from the bandit live-signal correction.
 
 ---
 

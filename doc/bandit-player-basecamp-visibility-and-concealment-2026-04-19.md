@@ -553,9 +553,9 @@ But the point is to stop hand-waving and freeze something testable.
 - current reality-bubble view radius is about **60 map tiles**, which is about **2.5 overmap tiles**
 - for coarse overmap reasoning, the clean round number is therefore a **3 overmap tile radius** around the player for **bubble-local / high-relevance** logic
 - but that local bubble-fed zone should **not** be mistaken for the whole abstract bandit overmap play-space
-- the **strategic bandit theater** needs to be much larger, or bandits collapse into a dumb tripwire near the player
-- current preferred starter lean: **about 60 overmap tiles radius** for the main abstract theater when computationally affordable
-- if that turns out too expensive in real profiling, something around **48 OMT** is the fallback, not a return to tiny tripwire scale
+- the **strategic bandit theater / overmap AI system envelope** needs to be much larger, or bandits collapse into a dumb tripwire near the player
+- current corrected product target after Josef's 2026-04-26 range-matrix correction: **40 overmap tiles radius** for the main abstract theater/system envelope
+- the older **48/60 OMT** starter lean is superseded history, not the current matrix value; the important preserved law is still “not a tiny tripwire scale”
 
 ### Starter sight/read ranges
 - **ordinary bounty visibility range:** start at **10 overmap tiles** in clear conditions

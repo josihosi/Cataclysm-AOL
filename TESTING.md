@@ -44,6 +44,18 @@ A test is not allowed to impersonate implementation. Before claiming gameplay be
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
 The honest bar now includes real overmap-side multi-turn scenario proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics.
 
+### Parked validation target - bandit live signal + site bootstrap correction
+
+When `Bandit live signal + site bootstrap correction v0` is greenlit, the evidence must reach the live chain rather than stopping at deterministic playback:
+
+- deterministic: site bootstrap/save-load, lazy materialization/reconciliation if concrete bodies are created, and corrected range matrix (`40` system envelope with separate `10/6/8/15/30` signal-family values)
+- source gates: touched-object compile for `src/bandit_live_world.cpp`, `src/do_turn.cpp`, and any live signal hook, plus focused `[bandit][live_world]` / mark-generation filters
+- live/harness: one owned hostile site not made live solely by walking the player onto the camp, one real fire/light/smoke source producing a live mark/candidate, one no-signal control, and logs/artifacts naming site count, signal packet, candidate distance, cap used, rejected-by-range/cadence/hold-chill decision
+
+### Parked validation target - Basecamp medical consumable readiness
+
+When `Basecamp medical consumable readiness v0` is greenlit, the first bar is deterministic camp/locker proof for `bandages` and `adhesive_bandages`: fresh pickup, carried preservation, anti-hoarding cap, negative unrelated-item case, and no regression to ammo/mag/clothing readiness. Add a live/harness Basecamp probe only if implementation risk or reviewer clarity needs it.
+
 ---
 
 ## Current relevant evidence

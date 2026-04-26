@@ -97,6 +97,14 @@ Canonical contract: `doc/smart-zone-manager-v1-josef-playtest-followup-2026-04-2
 
 Josef's 2026-04-26 playtest found Smart Zone Manager promising but not finished: fire-source/splintered/kindling behavior needs checking, bulky categories should spread across separate tiles when space exists, unsorted should be larger, generated labels must be proven to map to real C:DDA zone types, and the full Basecamp storage zone should also carry auto-eat/auto-drink coverage with the "Ignore items in this area when sorting?" / `ignore_contents` option set to **NO / false** so the Basecamp storage footprint still sorts normally. This is parked while Andi stays focused on Lacapult; do not switch active C-AOL work to this packet unless Josef/Schani explicitly greenlights it.
 
+## Parked correction - Bandit live signal + site bootstrap correction v0
+
+**Status:** PARKED / PACKAGED CORRECTION
+
+Canonical contract: `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
+
+Josef's 2026-04-26 fire-at-camp test exposed a live-chain break: a remote bandit camp and a real visible fire do not matter if the running save has `bandit_live_world.sites = []`, the dispatcher only sees registered sites, and the live candidate gate hard-stops at `distance <= 10`. This packet freezes the corrected range matrix and packages the fix: the overall overmap AI/system envelope is **40 OMT**, smoke remains about **15 OMT**, ordinary bounty visibility remains around **10 OMT**, confident threat around **6 OMT**, hard/searchlight threat around **8 OMT**, and exceptional elevated light stays adapter-bounded inside the 40 OMT envelope. The implementation should register abstract hostile sites/rosters without player proximity, materialize concrete bandits lazily, wire real fire/smoke/light observations into live marks/leads, split signal observation/decay cadence from dispatch cadence, and add reviewer-readable instrumentation. Do not eagerly spawn every bandit globally, and do not claim deterministic adapter/playback proof is live gameplay until the live source hook exists.
+
 ## Parked correction - Bandit live-wiring audit + visible-light horde bridge
 
 **Status:** PARKED / PACKAGED CORRECTION
@@ -112,6 +120,14 @@ Josef caught a real evidence gap: the bandit proof packets implemented light and
 Canonical contract: `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
 
 Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a dispatched scout can stand around in the reality bubble for too long, and the previously discussed creepy behavior where a seen bandit slips back out of player/Basecamp sight is not implemented yet. Park this as one bounded local-stalking correction: stalking/hold-off bandits should use non-magical current/recent exposure heuristics to move toward cover or broken line of sight, scouts should eventually return home and write back what they learned, and any later larger dispatch must come from explicit camp re-evaluation rather than automatic spawn cheating. Do not interrupt the active lane for this until it is explicitly greenlit.
+
+## Parked follow-up - Basecamp medical consumable readiness v0
+
+**Status:** PARKED / PACKAGED FOLLOW-UP
+
+Canonical contract: `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`.
+
+Josef's locker/bandage report is a separate Basecamp readiness node, not part of the bandit signal chain. Current locker service keeps or equips loadout-style items and preserves some already-carried bandages, but it does not fetch fresh `bandages` / `adhesive_bandages` from `CAMP_LOCKER` as medical readiness stock. Park this as one bounded medical-consumable slice: recognize obvious first-aid consumables, let NPCs take a small sensible reserve, preserve existing carried medical supplies, and prove the behavior without turning the camp locker into a full pharmacy/autodoc system.
 
 ## Recently closed lane - Hostile site profile layer packet v0
 

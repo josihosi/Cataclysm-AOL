@@ -735,8 +735,8 @@ Cadence and movement budget should also interact with practical distance-to-play
 
 Important scale split:
 - the **loaded / bubble-local high-relevance zone** near the player is still only a few OMT wide, roughly **3 OMT** from current map-scale constants
-- the **abstract strategic bandit theater** should be far larger, with **about 60 OMT radius** as the preferred target when computationally affordable
-- if later profiling says 60 is too fat, something around **48 OMT** remains the fallback rather than collapsing the whole system back toward tripwire scale
+- the **abstract strategic bandit theater / overmap AI system envelope** should be far larger, with **40 OMT radius** as the current product target after Josef's 2026-04-26 correction
+- the older 48/60 OMT starter lean should now be read as superseded anti-tripwire pressure: useful history, but not the current matrix value
 - if the whole overmap actor space is only bubble-sized, bandits become a glorified tripwire instead of a regional force that can stalk, migrate, remember, and create pressure over time
 
 A good v1 lean is:
