@@ -2,25 +2,25 @@
 
 ## Classification
 
-GREENLIT / QUEUED AFTER `GitHub Actions CI recovery + checkpoint packet v0`.
+ACTIVE / GREENLIT NOW.
 
-Josef explicitly asked for an actual GitHub release so he can download C-AOL from GitHub the normal way at the first chance he gets.
+Josef explicitly asked for an actual GitHub release so he can download C-AOL from GitHub the normal way at the first chance he gets.  The prerequisite CI recovery packet is now closed on `c5ff712e01` with green General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` Actions.
 
 ## Summary
 
-Prepare and publish the next real C-AOL GitHub release only after the current CI recovery lane has made the release footing honest.  The release should be downloadable from `josihosi/Cataclysm-AOL` in the ordinary GitHub Releases flow, with assets and release notes clear enough that Josef can grab it like a normal user instead of spelunking through local builds and archaeology.  Revolutionary concept, apparently.
+Prepare and publish the next real C-AOL GitHub release from the now-green release footing.  The release should be downloadable from `josihosi/Cataclysm-AOL` in the ordinary GitHub Releases flow, with assets and release notes clear enough that Josef can grab it like a normal user instead of spelunking through local builds and archaeology.  Revolutionary concept, apparently.
 
 ## Current release footing
 
-Schani checked the current public release list before packaging this queued item:
+Schani checked the public release list before packaging this item:
 
-- latest stable release is `v0.2.0` / `Cataclysm - Arsenic and Old Lace v0.2.0`
+- latest stable release observed before packaging is `v0.2.0` / `Cataclysm - Arsenic and Old Lace v0.2.0`
 - current release list also contains older/pre-release port and experimental builds
-- the new release should not be cut while current `dev` Actions remain red for code-caused failures
+- current `dev` Actions are green on `c5ff712e01`; re-check releases/tags/Actions directly before publishing in case reality moved, because apparently clocks exist
 
 ## Scope
 
-When promoted after CI recovery, Andi should:
+Andi should:
 
 1. Inspect current GitHub Releases, tags, and workflow state directly.
 2. Decide the next release identifier from repo state and existing tags; if no obvious version/tag follows from canon, stop and ask Schani/Josef before publishing.
@@ -35,7 +35,7 @@ When promoted after CI recovery, Andi should:
 
 ## Non-goals
 
-- Do not cut the release before the active CI recovery lane has either gone green or honestly classified remaining red checks.
+- Do not cut the release if a newer code-caused red CI state appears.
 - Do not hide red CI by disabling workflows or deleting evidence.
 - Do not claim macOS portability until the dylib guard passes or the macOS asset is explicitly withheld/blocked.
 - Do not sign, notarize, contact upstream, or perform broader distribution/promotion unless Josef separately asks.
@@ -43,7 +43,7 @@ When promoted after CI recovery, Andi should:
 
 ## Success state
 
-This queued packet is done only when:
+This packet is done only when:
 
 - A new public GitHub release exists on `josihosi/Cataclysm-AOL` with a deliberate tag/version and clear release notes.
 - The release assets match the stated platform support instead of implying broken platforms work.
@@ -56,7 +56,7 @@ This queued packet is done only when:
 Minimum evidence before publish:
 
 - `gh release list` / tag inspection proves the next release identifier will not collide with existing releases.
-- CI recovery packet is closed or remaining red checks are explicitly non-code / non-release-blocking.
+- CI recovery packet is closed on `c5ff712e01`; if a newer checkpoint appears, its Actions are green or remaining red checks are explicitly non-code / non-release-blocking.
 - Release asset inspection proves the downloadable files exist and match the notes.
 - For macOS, the dylib portability guard must pass for a shipped macOS app, or macOS must be withheld/blocked in notes.
 - After publish, `gh release view <tag>` or equivalent proves the final release URL/assets.

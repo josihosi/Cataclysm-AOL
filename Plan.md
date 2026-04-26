@@ -39,27 +39,25 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active lane is now **GitHub Actions CI recovery + checkpoint packet v0**.  Josef explicitly moved the work back to C-AOL and asked for Andi to get the currently failing GitHub Actions under control, with a small checkpoint/linking safeguard so future work does not drift past red CI as if nothing happened.  Canonical contract: `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`.
+The active lane is now **GitHub normal-download release packet v0**.  The CI recovery packet has closed on current `dev`: the `c5ff712e01` checkpoint has green `General build matrix` (`24944793868`), `Cataclysm Windows build` (`24944793884`), `CodeQL` (`24944793877`), `IWYU` (`24944793878`), and `Clang-tidy 18` (`24944793865`) Actions.  Canonical contract: `doc/github-normal-download-release-packet-v0-2026-04-25.md`.
 
-Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority.  The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this CI recovery lane without fresh explicit clearance.
+Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority.  The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this release lane without fresh explicit clearance.
 
-
-Current recovery checkpoint update: local source/test gates now cover the earlier C++17 and missing-declaration failure family, `IWYU` and `Clang-tidy 18` are green on `ca8eb0e3be`, and Windows is now green on `471d4ef8e6` via run `24939016251`.  Latest General red checks are data/tool-validation shaped rather than source compile/extraction: CodeQL hit `data/json/mapgen_palettes/cannibal_camp.json`, General Basic Build hit `data/json/npcs/cannibals/classes.json`, `tools/json_tools/generic_guns_validator.py` rejected nonruntime NPC summary registry/support JSON, and fresh General run `24942284589` then exposed rare overmap terrain coverage misses for `urban_dd_[1-6]` and `riverside_dwelling1(_roof)?`.  The current bounded fix is TEST_DATA whitelist-only; after it is pushed, the lane still needs a fresh `gh run list` read of the latest General/Windows/CodeQL runs before it can close.
+The just-closed CI recovery lane remains checkpointed at `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`: source/warnings-as-errors failures, Windows, General, CodeQL, IWYU, and Clang-tidy are green on the release-source checkpoint, and `COMMIT_POLICY.md` carries the CI checkpoint/linking safeguard.
 
 Active scope:
-- inspect the latest failing GitHub Actions directly before editing
-- fix current code-caused CI failures instead of vaguely “fixing all tests”
-- prioritize the observed C++17 / warnings-as-errors failures, missing-declaration failures, Windows build failure classification, and CodeQL extraction/shared-source failure shape
-- add one lightweight CI checkpoint/linking safeguard so Andi handoffs name changed file class, local gate, relevant Actions link, and any remaining red check classification
+- inspect current GitHub Releases, tags, and workflow state directly before publishing
+- choose the next release identifier from existing repo/tag state, and stop for Schani/Josef if the version choice is not obvious
+- build or collect the intended downloadable assets through the repo's established release path
+- verify assets match the release notes, especially Windows downloadability and macOS dylib portability/withholding
+- publish the GitHub release only when the release URL, assets, notes, and caveats match reality
+- record the release URL, tag, source commit, relevant Actions, assets/checksums if available, and known caveats in canon/testing notes
 
 Non-goals:
-- no new game-feature work in this packet
-- no broad CI redesign or disabled-test theater
-- no public release/tag/signing/upstream contact work inside the CI recovery packet
-- no Lacapult continuation inside this packet
-
-Greenlit next after CI recovery:
-- **GitHub normal-download release packet v0** at `doc/github-normal-download-release-packet-v0-2026-04-25.md`: once CI is green or remaining red checks are honestly classified as non-code/non-release-blocking, prepare and publish the next real `josihosi/Cataclysm-AOL` GitHub release so Josef can download it through the normal Releases page.  Do not ship broken-platform claims; macOS must pass the dylib portability guard or be explicitly withheld/blocked.
+- no release while CI is red for code-caused failures
+- no hiding red CI by disabling workflows or deleting evidence
+- no shipping a macOS app that silently depends on `/opt/local/...`; pass the guard or explicitly withhold/block macOS
+- no signing, notarization, upstream contact, broader distribution/promotion, or Lacapult work unless Josef separately asks
 
 Current honest state:
 - an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`

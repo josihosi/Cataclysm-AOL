@@ -44,7 +44,7 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current relevant evidence
 
-Active target: `GitHub Actions CI recovery + checkpoint packet v0`.
+Active target: `GitHub normal-download release packet v0`.
 
 ### GitHub Actions red-state footing - 2026-04-25
 
@@ -64,12 +64,13 @@ Observed decisive failure lines/classes:
 - Windows build compiled deep into MSVC/test build and then exited `1`; classify this with a tighter log read before treating it as source or runner failure.
 - macOS release packaging has an intentional dylib portability guardrail; distinguish an expected guard failure on broken `/opt/local/...` app links from accidental red CI.
 
-Minimum evidence for closing this active packet:
+CI recovery closure evidence:
 
 - `git diff --check`
 - narrow local build/test reproducing or preventing the C++17 and missing-declaration failures
 - relevant filtered tests for edited source/test areas
 - post-push `gh run list` / `gh run view` evidence showing current Actions green or remaining red checks honestly classified
+- final `c5ff712e01` Actions are green: General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865`
 
 Latest recovery checkpoint evidence - 2026-04-25:
 
@@ -87,12 +88,12 @@ Latest recovery checkpoint evidence - 2026-04-25:
 - Bounded tool-validator fix on `6d7eef08bf`: `tools/json_tools/util.py` now skips the same nonruntime JSON support files that `src/init.cpp` skips (`summary_registry.json`, `Summaries_short`, and `Summaries_extra`) before importing data for JSON tools. Local gates `python3 -m py_compile tools/json_tools/util.py`, `tools/json_tools/generic_guns_validator.py`, and `git diff --check` exited `0`; General run `24939870697` was cancelled by a newer docs checkpoint, and later docs-only pushes can supersede the active General run before it reaches conclusion, so the next closure read must use fresh `gh run list` output.
 - Fresh General run `24942284589` after `a79632a108` is not source-compile red: macOS job `73037891250` and GCC 9 LTO job `73037891248` both reached `run tests` and failed `overmap_terrain_coverage` at `tests/overmap_test.cpp:700`. Decisive failures were rare TEST_DATA coverage misses for `urban_dd_[1-6]` (`6 == 0`) and `riverside_dwelling1(_roof)?` (`2 == 0`), with logs stored at `.userdata/andi-ci/job-73037891250-macos.log` and `.userdata/andi-ci/job-73037891248-gcc9-lto.log`; run link: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24942284589>. Current bounded fix changes only `data/mods/TEST_DATA/overmap_terrain_coverage_test/overmap_terrain_coverage_whitelist.json`; local gates `git diff --check`, `python3 -m json.tool data/mods/TEST_DATA/overmap_terrain_coverage_test/overmap_terrain_coverage_whitelist.json`, and `./tests/cata_test "overmap_terrain_coverage" --rng-seed 1777158941` passed locally.
 
-### Queued GitHub release evidence obligations - 2026-04-25
+### Active GitHub release evidence obligations - 2026-04-26
 
-Josef has greenlit a normal-download GitHub release after CI recovery.  Before publishing that queued release packet:
+Josef has greenlit a normal-download GitHub release, and CI recovery is now closed on `c5ff712e01`.  Before publishing this active release packet:
 
 - `gh release list` / tag inspection must prove the next release identifier will not collide with existing releases; latest stable observed before packaging was `v0.2.0`.
-- CI recovery must be closed, or every remaining red check must be explicitly non-code / non-release-blocking.
+- CI recovery is closed on `c5ff712e01`: General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` are green.
 - Release asset inspection must prove the downloadable files exist and match the release notes.
 - A shipped macOS app must pass the dylib portability guard; otherwise macOS is withheld or plainly marked blocked instead of silently shipping another `/opt/local/...` dud.
 - After publish, `gh release view <tag>` or equivalent must prove the final release URL/assets.

@@ -2,9 +2,9 @@
 
 ## Classification
 
-ACTIVE / GREENLIT NOW.
+CLOSED / CHECKPOINTED.
 
-This packet is the current C-AOL execution target after Josef asked to move back from Lacapult/Doobdab rhythm and get the failing GitHub Actions under control.
+This packet was the C-AOL execution target after Josef asked to move back from Lacapult/Doobdab rhythm and get the failing GitHub Actions under control.  It closed on `c5ff712e01` with green General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` Actions.
 
 ## Summary
 
@@ -56,14 +56,14 @@ Andi should:
 
 ## Success state
 
-This packet is done only when:
+This packet is done:
 
-- Current `dev` Actions are no longer red for code-caused C-AOL failures, or every remaining red check is explicitly classified with a bounded non-code cause and next owner.
-- The C++17/warnings-as-errors failures are fixed: no designated-initializer/missing-field failures in `tests/faction_camp_test.cpp`, no missing-declaration family in `src/basecamp.cpp` / `src/bandit_playback.cpp`.
-- Windows build failure is either green or reduced to a named, evidence-backed workflow/runner/package blocker.
-- CodeQL is green or its remaining failure is classified as upload/config/external rather than silently sharing the same source compile failure.
-- The repo contains a lightweight CI checkpoint/linking rule so future reviewable Andi commits do not say “tested” without naming the relevant gate.
-- `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final state.
+- [x] Current `dev` Actions are no longer red for code-caused C-AOL failures, or every remaining red check is explicitly classified with a bounded non-code cause and next owner.
+- [x] The C++17/warnings-as-errors failures are fixed: no designated-initializer/missing-field failures in `tests/faction_camp_test.cpp`, no missing-declaration family in `src/basecamp.cpp` / `src/bandit_playback.cpp`.
+- [x] Windows build failure is either green or reduced to a named, evidence-backed workflow/runner/package blocker.
+- [x] CodeQL is green or its remaining failure is classified as upload/config/external rather than silently sharing the same source compile failure.
+- [x] The repo contains a lightweight CI checkpoint/linking rule so future reviewable Andi commits do not say “tested” without naming the relevant gate.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final state.
 
 ## Testing and evidence expectations
 

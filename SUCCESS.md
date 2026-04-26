@@ -17,27 +17,28 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## GitHub Actions CI recovery + checkpoint packet v0
 
-Status: ACTIVE / GREENLIT NOW
+Status: CLOSED / CHECKPOINTED
 
 Success state:
-- [ ] Current `dev` GitHub Actions are no longer red for code-caused C-AOL failures, or every remaining red check is explicitly classified with a bounded non-code cause and next owner.
+- [x] Current `dev` GitHub Actions are no longer red for code-caused C-AOL failures, or every remaining red check is explicitly classified with a bounded non-code cause and next owner.
 - [x] The C++17/warnings-as-errors failures are fixed: no designated-initializer/missing-field failures in `tests/faction_camp_test.cpp`, no missing-declaration family in `src/basecamp.cpp` / `src/bandit_playback.cpp`.
 - [x] Windows build failure is either green or reduced to a named, evidence-backed workflow/runner/package blocker.
-- [ ] CodeQL is green or its remaining failure is classified as upload/config/external rather than silently sharing the same source compile failure.
+- [x] CodeQL is green or its remaining failure is classified as upload/config/external rather than silently sharing the same source compile failure.
 - [x] A lightweight CI checkpoint/linking rule exists so future reviewable Andi commits name changed file class, relevant local gate, Actions link when available, and remaining red-check classification.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final state.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final state.
 
 Notes:
 - Canonical contract lives at `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`.
 - Observed failing run footing before packaging: `General build matrix` runs `24931588361` / `24931574601`, `Cataclysm Windows build` run `24931574609`, and `CodeQL` run `24932236370`.
 - CI checkpoint/linking rule was added to `COMMIT_POLICY.md` in `6c0e75b8ec`; current recovery checkpoints now name file class, local gate, Actions link, and remaining red-check classification in handoffs/docs.
-- Current recovery checkpoints now show the source/warnings-as-errors family cleared locally and past CodeQL compile extraction: `make -j4 tests LINTJSON=0 ASTYLE=0`, focused camp/bandit/overmap tests, and CodeQL run `24938191289` all reached JSON style instead of the previous C++17/missing-declaration failures.  Windows run `24939016251` on `471d4ef8e6` is green, so the earlier Windows source failure is closed by evidence.  Remaining fresh General evidence is still pending after the bounded nonruntime JSON validator fix; docs-only checkpoints may supersede the prior General run, so closure needs a fresh `gh run list` read of the latest General matrix.
+- Current recovery checkpoints show the source/warnings-as-errors family cleared locally and past CodeQL compile extraction: `make -j4 tests LINTJSON=0 ASTYLE=0`, focused camp/bandit/overmap tests, and CodeQL run `24938191289` all reached JSON style instead of the previous C++17/missing-declaration failures.  Windows run `24939016251` on `471d4ef8e6` first closed the earlier Windows source failure by evidence.
+- Final CI closure on `c5ff712e01`: `General build matrix` `24944793868`, `Cataclysm Windows build` `24944793884`, `CodeQL` `24944793877`, `IWYU` `24944793878`, and `Clang-tidy 18` `24944793865` all completed green, so the release packet may become active.
 
 ---
 
 ## GitHub normal-download release packet v0
 
-Status: GREENLIT / QUEUED AFTER CI RECOVERY
+Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [ ] A new public GitHub release exists on `josihosi/Cataclysm-AOL` with a deliberate tag/version and clear release notes.
@@ -49,7 +50,7 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/github-normal-download-release-packet-v0-2026-04-25.md`.
 - Current latest stable release observed before packaging: `v0.2.0` / `Cataclysm - Arsenic and Old Lace v0.2.0`.
-- This is queued behind CI recovery; do not publish while code-caused `dev` Actions remain red.
+- This was queued behind CI recovery and is now active after `c5ff712e01` went green across General, Windows, CodeQL, IWYU, and Clang-tidy.
 
 ---
 

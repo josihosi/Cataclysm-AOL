@@ -1,54 +1,52 @@
-# Andi handoff: GitHub Actions CI recovery + checkpoint packet v0
+# Andi handoff: GitHub normal-download release packet v0
 
 ## Classification and position
 
 - classification: ACTIVE / GREENLIT NOW
 - authoritative canon: `Plan.md`
-- packet doc: `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`
+- packet doc: `doc/github-normal-download-release-packet-v0-2026-04-25.md`
 
 ## Item title
 
-GitHub Actions CI recovery + checkpoint packet v0
+GitHub normal-download release packet v0
 
 ## Implementation scope
 
-1. Re-inspect the latest failing `josihosi/Cataclysm-AOL` Actions directly with `gh run list` and `gh run view --log-failed` before editing.
-2. Fix observed code-caused failures first:
-   - C++17/warnings-as-errors failures in `tests/faction_camp_test.cpp` from designated initializers and missing `source_utterance`
-   - missing-declaration/internal-linkage failures in `src/basecamp.cpp`
-   - missing-declaration/linkage shape for `bandit_playback::visibility_reads(...)`
-3. Classify the Windows build failure from run `24931574609` as source, workflow/package, timeout/resource, or external runner noise before widening the fix.
-4. Keep the macOS dylib portability guard honest: intentional guard failure is not accidental CI breakage, but accidental red workflows still need repair.
-5. Add one lightweight CI checkpoint/linking safeguard so future Andi checkpoints name changed file class, local gate, Actions link, and remaining red-check classification.
+1. Inspect current `josihosi/Cataclysm-AOL` releases, tags, and latest `dev` Actions directly before publishing.
+2. Use the current CI-green source checkpoint unless a newer committed checkpoint appears: `c5ff712e01` has green General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865`.
+3. Decide the next release identifier from existing tags/releases; if the version choice is not obvious from repo state, stop and ask Schani/Josef before publishing.
+4. Build or collect the intended downloadable assets through the repo's established release path.
+5. Verify asset shape before publishing:
+   - Windows asset exists and is downloadable
+   - Linux asset status is known and recorded
+   - macOS is either portable under the dylib guard or explicitly withheld/marked blocked
+6. Publish the GitHub release only when release notes and asset table match reality.
+7. Record the release URL, tag, source commit, relevant Actions links, assets/checksums if available, and any known caveats in `TESTING.md` / release notes.
 
 ## Non-goals
 
-- no new game-feature behavior
-- no broad CI rewrite unless a log proves it is the smallest honest fix
-- no disabling tests/warnings/Actions to fake green
-- no GitHub release/tag/signing/upstream contact
-- no Lacapult work in this packet
+- no hiding red CI by disabling workflows or deleting evidence
+- no shipping macOS if the dylib portability guard fails
+- no signing, notarization, upstream contact, broader distribution/promotion, or Lacapult work unless Josef separately asks
+- no repo-role surgery; `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` and `josihosi/Cataclysm-AOL` are project truth
 
 ## Success bar
 
-- Current `dev` Actions are green for code-caused failures, or remaining red checks are explicitly classified with bounded non-code cause and next owner.
-- C++17/missing-declaration failures are fixed.
-- Windows failure is green or evidence-classified.
-- CodeQL is green or evidence-classified as upload/config/external rather than sharing source failure.
-- The CI checkpoint/linking rule exists in repo process docs/tooling.
-- Plan/TODO/SUCCESS/TESTING match the final state.
+- A new public GitHub release exists on `josihosi/Cataclysm-AOL` with a deliberate tag/version and clear release notes.
+- The release assets match the stated platform support instead of implying broken platforms work.
+- The release source commit and relevant Actions state are linked from canon/testing notes.
+- Josef has a normal GitHub Releases URL he can download from.
+- Any withheld/broken platform is plainly marked with the evidence-backed blocker.
 
 ## Testing / evidence expectations
 
-Minimum before claiming closure:
+Minimum before/after publish:
 
-- `git diff --check`
-- narrow local build/test that covers the C++17 and missing-declaration fixes
-- relevant filtered tests for touched areas
-- post-push `gh run list` / `gh run view` evidence for Actions state
-
-If a CI gate cannot be reproduced locally on Josef's Mac, cite the exact workflow/job/run URL and decisive failing lines.
+- `gh release list` / tag inspection proves the next release identifier will not collide with existing releases.
+- Release asset inspection proves the downloadable files exist and match the notes.
+- For macOS, the dylib portability guard must pass for a shipped macOS app, or macOS must be withheld/blocked in notes.
+- After publish, `gh release view <tag>` or equivalent proves the final release URL/assets.
 
 ## Cautions
 
-Do not treat this as “fix all tests, somehow.”  The first job is to collapse the current red wall into named causes and remove the obvious code-caused ones.  A smaller honest green path beats another grand heroic fog machine.
+This is a real public GitHub release lane, so do not treat version choice, asset claims, or macOS support as vibes.  If the tag/version or platform asset story is ambiguous, stop and ask instead of publishing a haunted souvenir.
