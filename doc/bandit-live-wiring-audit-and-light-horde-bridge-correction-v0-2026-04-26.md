@@ -1,6 +1,6 @@
 # Bandit live-wiring audit + light/horde bridge correction v0 (2026-04-26)
 
-Status: parked / packaged correction.
+Status: greenlit / queued correction.
 
 ## Normalized contract
 

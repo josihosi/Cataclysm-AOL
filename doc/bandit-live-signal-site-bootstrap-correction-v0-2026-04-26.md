@@ -1,6 +1,6 @@
 # Bandit live signal + site bootstrap correction v0 (2026-04-26)
 
-Status: parked / packaged correction.
+Status: greenlit / queued correction.
 
 ## Normalized contract
 
@@ -47,6 +47,7 @@ Core correction: `10 OMT` is a useful ordinary visibility number, but it is not 
 
 2. **Wire real live signal intake into the existing mark/lead footing.**
    - Convert bounded live fire/smoke/light observations into the existing smoke/light mark-generation packets or equivalent source packets.
+   - Respect current weather and light conditions when generating the live signal: daylight, darkness, fog/mist, rain, wind, shelter/containment, source strength, persistence, and exposure should affect confidence/range instead of being decorative test variables.
    - Reuse local reality-bubble truth; do not invent a full global smoke or light simulator.
    - Let bubble-local activity refresh abstract overmap marks that can persist beyond the loaded field itself.
 
@@ -84,7 +85,7 @@ Core correction: `10 OMT` is a useful ordinary visibility number, but it is not 
 - [ ] Existing hostile overmap special families that should participate in live hostile-site logic can register abstract `bandit_live_world` site records without requiring the player to enter spawn/load range first.
 - [ ] Abstract site records carry enough cheap roster/profile/headcount state to dispatch and later materialize concrete NPCs without save/perf blow-up.
 - [ ] Materialized NPCs reconcile back to the same owned-site ledger, preserving existing exact-member writeback behavior when concrete members exist.
-- [ ] Real fire/smoke/light observations can create or refresh bounded live bandit marks/leads through the running game path, not only authored playback packets.
+- [ ] Real fire/smoke/light observations can create or refresh bounded live bandit marks/leads through the running game path, not only authored playback packets, and the live generation respects weather/light conditions such as daylight, darkness, fog/mist, rain, wind, shelter/containment, source strength, persistence, and exposure.
 - [ ] The overall overmap AI/system envelope is `40 OMT`, while smoke, ordinary light, threat, and exceptional elevated light keep their signal-specific caps inside that envelope.
 - [ ] The hard `distance <= 10` live-dispatch gate is removed or demoted so `10 OMT` ordinary visibility no longer impersonates the whole system range.
 - [ ] Signal observation/decay cadence is separate from dispatch decision cadence, with event-driven creation and reviewer-readable maintenance.

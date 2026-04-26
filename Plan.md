@@ -39,25 +39,35 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active lane is now **GitHub normal-download release packet v0**.  The CI recovery packet has closed on current `dev`: the `c5ff712e01` checkpoint has green `General build matrix` (`24944793868`), `Cataclysm Windows build` (`24944793884`), `CodeQL` (`24944793877`), `IWYU` (`24944793878`), and `Clang-tidy 18` (`24944793865`) Actions.  Canonical contract: `doc/github-normal-download-release-packet-v0-2026-04-25.md`.
+The active lane is now **Test-vs-game implementation audit report packet v0**. Josef greenlit the C-AOL debug-note correction stack on 2026-04-26 and explicitly told Schani to point Andi back at C-AOL, reason deeply, remove hollow code, and produce a report mapping tests to real game implementation. Canonical contract: `doc/test-vs-game-implementation-audit-report-packet-v0-2026-04-26.md`.
 
-Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority.  The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this release lane without fresh explicit clearance.
-
-The just-closed CI recovery lane remains checkpointed at `doc/github-actions-ci-recovery-checkpoint-packet-v0-2026-04-25.md`: source/warnings-as-errors failures, Windows, General, CodeQL, IWYU, and Clang-tidy are green on the release-source checkpoint, and `COMMIT_POLICY.md` carries the CI checkpoint/linking safeguard.
+Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority. The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this debug-correction stack without fresh explicit clearance.
 
 Active scope:
-- inspect current GitHub Releases, tags, and workflow state directly before publishing
-- choose the next release identifier from existing repo/tag state, and stop for Schani/Josef if the version choice is not obvious
-- build or collect the intended downloadable assets through the repo's established release path
-- verify assets match the release notes, especially Windows downloadability and macOS dylib portability/withholding
-- publish the GitHub release only when the release URL, assets, notes, and caveats match reality
-- record the release URL, tag, source commit, relevant Actions, assets/checksums if available, and known caveats in canon/testing notes
+- audit current C-AOL tests, especially bandit AI / camp tests, against the real game implementation path they claim to prove
+- classify each tested pass condition as live-wired, deterministic-only, playback-only, harness-only, stale/ambiguous, or hollow/misleading
+- trace smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior from tests to live producers/consumers
+- write `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or an explicitly equivalent report path
+- update `TESTING.md` only with compact audit results and the next implementation target
+- after the report, move to the first implementation package named by the report instead of inventing a fresh lane
 
 Non-goals:
-- no release while CI is red for code-caused failures
-- no hiding red CI by disabling workflows or deleting evidence
-- no shipping a macOS app that silently depends on `/opt/local/...`; pass the guard or explicitly withhold/block macOS
-- no signing, notarization, upstream contact, broader distribution/promotion, or Lacapult work unless Josef separately asks
+- no implementation of every greenlit package inside the audit packet
+- no deletion of useful deterministic tests merely because they are deterministic; relabel them honestly instead
+- no claiming gameplay behavior until the live producer/consumer path and evidence class are named
+- no release publishing, signing, repo-role surgery, Lacapult work, or user-data mutation in this audit lane
+
+Greenlit implementation stack after the audit, in current order:
+1. **Bandit live signal + site bootstrap correction v0** — 40 OMT system envelope; real fire/smoke/light/weather source hooks; abstract site bootstrap; lazy materialization; live dispatch/mark consumption.
+2. **Bandit live-wiring audit + visible-light horde bridge correction v0** — visible fire/light to real horde signal path, or honest deferral if not implemented.
+3. **Bandit local sight-avoid + scout return cadence packet v0** — exposed scouts seek cover/break sight, finite sortie window, return-home/writeback cadence.
+4. **Smart Zone Manager v1 Josef playtest corrections** — add `LOOT_MANUALS`, keep book/gun-magazine zone distinction clear, add full-storage `AUTO_EAT` / `AUTO_DRINK` with `ignore_contents=false`.
+5. **Basecamp medical consumable readiness v0** — bounded `bandages` / `adhesive_bandages` pickup/preservation from camp storage.
+6. **Basecamp locker armor ranking + blocker removal packet v0** — generic full-body/protective armor comparison and blocker clearing, not RM13-specific.
+7. **Basecamp job spam debounce + locker/patrol exceptions packet v0** — compress repeated camp-job chatter while preserving typed locker/patrol state changes.
+
+Held but still valid:
+- **GitHub normal-download release packet v0** is paused behind Josef's newly greenlit debug-correction stack. Its CI-green footing remains useful, but Andi should not publish a release while the active order is to remove hollow code and test-vs-game gaps first. Canonical release contract remains `doc/github-normal-download-release-packet-v0-2026-04-25.md`.
 
 Current honest state:
 - an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
@@ -89,45 +99,61 @@ The latest closed lane is now `Bandit extortion playthrough audit + harness-skil
 
 ---
 
-## Parked follow-up - Smart Zone Manager v1 Josef playtest corrections
+## Greenlit follow-up - Smart Zone Manager v1 Josef playtest corrections
 
-**Status:** PARKED / COLLECTED DEBUG FOLLOW-UP
+**Status:** GREENLIT / QUEUED DEBUG FOLLOW-UP
 
 Canonical contract: `doc/smart-zone-manager-v1-josef-playtest-followup-2026-04-26.md`.
 
-Josef's 2026-04-26 playtest found Smart Zone Manager promising but not finished: fire-source/splintered/kindling behavior needs checking, bulky categories should spread across separate tiles when space exists, unsorted should be larger, generated labels must be proven to map to real C:DDA zone types, and the full Basecamp storage zone should also carry auto-eat/auto-drink coverage with the "Ignore items in this area when sorting?" / `ignore_contents` option set to **NO / false** so the Basecamp storage footprint still sorts normally. This is parked while Andi stays focused on Lacapult; do not switch active C-AOL work to this packet unless Josef/Schani explicitly greenlights it.
+Josef later checked the generated zones in Zone Manager and found the existing zone layout broadly OK. The greenlit correction is now narrow: add `LOOT_MANUALS` on/near the books cluster, keep `LOOT_BOOKS` versus gun `LOOT_MAGAZINES` clear, and add `AUTO_EAT` / `AUTO_DRINK` across the full Basecamp storage zone with the "Ignore items in this area when sorting?" / `ignore_contents` option set to **NO / false** so the Basecamp storage footprint still sorts normally.
 
-## Parked correction - Bandit live signal + site bootstrap correction v0
+## Greenlit correction - Bandit live signal + site bootstrap correction v0
 
-**Status:** PARKED / PACKAGED CORRECTION
+**Status:** GREENLIT / QUEUED CORRECTION
 
 Canonical contract: `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
 
 Josef's 2026-04-26 fire-at-camp test exposed a live-chain break: a remote bandit camp and a real visible fire do not matter if the running save has `bandit_live_world.sites = []`, the dispatcher only sees registered sites, and the live candidate gate hard-stops at `distance <= 10`. This packet freezes the corrected range matrix and packages the fix: the overall overmap AI/system envelope is **40 OMT**, smoke remains about **15 OMT**, ordinary bounty visibility remains around **10 OMT**, confident threat around **6 OMT**, hard/searchlight threat around **8 OMT**, and exceptional elevated light stays adapter-bounded inside the 40 OMT envelope. The implementation should register abstract hostile sites/rosters without player proximity, materialize concrete bandits lazily, wire real fire/smoke/light observations into live marks/leads, split signal observation/decay cadence from dispatch cadence, and add reviewer-readable instrumentation. Do not eagerly spawn every bandit globally, and do not claim deterministic adapter/playback proof is live gameplay until the live source hook exists.
 
-## Parked correction - Bandit live-wiring audit + visible-light horde bridge
+## Greenlit correction - Bandit live-wiring audit + visible-light horde bridge
 
-**Status:** PARKED / PACKAGED CORRECTION
+**Status:** GREENLIT / QUEUED CORRECTION
 
 Canonical contract: `doc/bandit-live-wiring-audit-and-light-horde-bridge-correction-v0-2026-04-26.md`.
 
 Josef caught a real evidence gap: the bandit proof packets implemented light and shared horde-pressure behavior on deterministic mark-generation/playback seams, but the live game does not currently wire visible fire/light into `overmap_buffer.signal_hordes(...)` / `horde_map`. Current live horde attraction remains sound/JSON-effect driven unless a real bridge is added. Do not claim roof/basecamp light attracts overmap hordes in live gameplay until this bridge exists and has live/harness proof.
 
-## Parked follow-up - Bandit local sight-avoid + scout return cadence packet v0
+## Greenlit follow-up - Bandit local sight-avoid + scout return cadence packet v0
 
-**Status:** PARKED / PACKAGED FOLLOW-UP
+**Status:** GREENLIT / QUEUED FOLLOW-UP
 
 Canonical contract: `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
 
-Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a dispatched scout can stand around in the reality bubble for too long, and the previously discussed creepy behavior where a seen bandit slips back out of player/Basecamp sight is not implemented yet. Park this as one bounded local-stalking correction: stalking/hold-off bandits should use non-magical current/recent exposure heuristics to move toward cover or broken line of sight, scouts should eventually return home and write back what they learned, and any later larger dispatch must come from explicit camp re-evaluation rather than automatic spawn cheating. Do not interrupt the active lane for this until it is explicitly greenlit.
+Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a dispatched scout can stand around in the reality bubble for too long, and the previously discussed creepy behavior where a seen bandit slips back out of player/Basecamp sight is not implemented yet. Queue this as one bounded local-stalking correction: stalking/hold-off bandits should use non-magical current/recent exposure heuristics to move toward cover or broken line of sight, scouts should eventually return home and write back what they learned, and any later larger dispatch must come from explicit camp re-evaluation rather than automatic spawn cheating. Keep it queued behind the active audit and higher-priority bandit live-wiring packages unless Schani/Josef explicitly reorders the stack.
 
-## Parked follow-up - Basecamp medical consumable readiness v0
+## Greenlit follow-up - Basecamp medical consumable readiness v0
 
-**Status:** PARKED / PACKAGED FOLLOW-UP
+**Status:** GREENLIT / QUEUED FOLLOW-UP
 
 Canonical contract: `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`.
 
-Josef's locker/bandage report is a separate Basecamp readiness node, not part of the bandit signal chain. Current locker service keeps or equips loadout-style items and preserves some already-carried bandages, but it does not fetch fresh `bandages` / `adhesive_bandages` from `CAMP_LOCKER` as medical readiness stock. Park this as one bounded medical-consumable slice: recognize obvious first-aid consumables, let NPCs take a small sensible reserve, preserve existing carried medical supplies, and prove the behavior without turning the camp locker into a full pharmacy/autodoc system.
+Josef's locker/bandage report is a separate Basecamp readiness node, not part of the bandit signal chain. Current locker service keeps or equips loadout-style items and preserves some already-carried bandages, but it does not fetch fresh `bandages` / `adhesive_bandages` from `CAMP_LOCKER` as medical readiness stock. Queue this as one bounded medical-consumable slice: recognize obvious first-aid consumables, let NPCs take a small sensible reserve, preserve existing carried medical supplies, and prove the behavior without turning the camp locker into a full pharmacy/autodoc system.
+
+## Greenlit follow-up - Basecamp locker armor ranking + blocker removal packet v0
+
+**Status:** GREENLIT / QUEUED FOLLOW-UP
+
+Canonical contract: `doc/basecamp-locker-armor-ranking-blocker-removal-packet-v0-2026-04-26.md`.
+
+Josef confirmed the RM13/jeans spam is only one symptom of a generic locker policy gap: the camp locker must evaluate whether a candidate full-body or high-coverage protective item is better than currently worn blockers using an explainable metric, then remove/drop the blocking items when the candidate clearly wins. This must not be RM13-specific. The comparison should consider body-part priority, protection/coverage, encumbrance, condition, and active locker policy, preserving stronger current armor against worse candidates while stopping repeated failed equip/wear-message spam.
+
+## Greenlit follow-up - Basecamp job spam debounce + locker/patrol exceptions packet v0
+
+**Status:** GREENLIT / QUEUED FOLLOW-UP
+
+Canonical contract: `doc/basecamp-job-spam-debounce-exceptions-packet-v0-2026-04-26.md`.
+
+Josef greenlit a bounded spam fix for repeated Basecamp job chatter: repeated completion, missing-tool, or no-progress messages should debounce by stable cause so the message log stays readable. Locker-zone and patrol-zone work need typed exceptions: real gear/readiness failures, guard assignment changes, interruptions, or reserve/backfill changes should still surface once with reason, while routine repeats are compressed.
 
 ## Recently closed lane - Hostile site profile layer packet v0
 

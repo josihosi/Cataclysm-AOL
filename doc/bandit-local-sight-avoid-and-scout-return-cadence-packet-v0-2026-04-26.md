@@ -1,6 +1,6 @@
 # Bandit local sight-avoid + scout return cadence packet v0 (2026-04-26)
 
-Status: parked / packaged follow-up.
+Status: greenlit / queued follow-up.
 
 ## Premise
 
@@ -10,7 +10,7 @@ First, the previously discussed creepy local sight-avoid behavior is not impleme
 
 Second, the current scout outing can linger too long.  The current live path can dispatch a single scout from a nearby owned bandit camp, but there is no honest finite sortie law that says `watch for a while, return home, report, then maybe come back with stronger pressure if the camp still cares`.
 
-This packet promotes those two observations into one parked local-stalking credibility slice.  It should stay parked while other active work remains ahead of it, but it is concrete enough that later work should not have to rediscover the problem from chat audio.
+This packet promotes those two observations into one greenlit queued local-stalking credibility slice. It should wait behind the active audit and higher-priority live-wiring packages unless Schani/Josef explicitly reorders the stack, but it is concrete enough that later work should not have to rediscover the problem from chat audio.
 
 ## Current code read
 

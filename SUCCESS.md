@@ -38,7 +38,7 @@ Notes:
 
 ## GitHub normal-download release packet v0
 
-Status: ACTIVE / GREENLIT NOW
+Status: GREENLIT / HELD BEHIND DEBUG-CORRECTION STACK
 
 Success state:
 - [ ] A new public GitHub release exists on `josihosi/Cataclysm-AOL` with a deliberate tag/version and clear release notes.
@@ -50,19 +50,38 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/github-normal-download-release-packet-v0-2026-04-25.md`.
 - Current latest stable release observed before packaging: `v0.2.0` / `Cataclysm - Arsenic and Old Lace v0.2.0`.
-- This was queued behind CI recovery and is now active after `c5ff712e01` went green across General, Windows, CodeQL, IWYU, and Clang-tidy.
+- This was queued behind CI recovery and became active after `c5ff712e01` went green across General, Windows, CodeQL, IWYU, and Clang-tidy. It is now held behind Josef's 2026-04-26 debug-correction stack so Andi can remove hollow code/test-to-game gaps before release publishing.
+
+---
+
+## Test-vs-game implementation audit report packet v0
+
+Status: ACTIVE / GREENLIT NOW
+
+Success state:
+- [ ] A concrete report exists at `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or an explicitly equivalent path.
+- [ ] The report covers the highest-risk bandit AI / camp lanes, including `tests/bandit_mark_generation_test.cpp`, `tests/bandit_playback_test.cpp`, `tests/bandit_live_world_test.cpp`, and the live dispatch path through `src/do_turn.cpp` / `src/bandit_live_world.cpp`.
+- [ ] The report separately classifies smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior by evidence class.
+- [ ] Each audited pass condition says whether the tested logic is produced/consumed by live gameplay, deterministic playback only, harness setup only, or currently hollow/missing.
+- [ ] Every hollow/missing bridge is assigned to one of the greenlit packages or marked as a new follow-up if it does not fit.
+- [ ] `TESTING.md` gets a compact update summarizing the audit result and preserving the rule that tests cannot impersonate live implementation.
+- [ ] The report names the first implementation package Andi should execute next after the audit.
+
+Notes:
+- Canonical contract lives at `doc/test-vs-game-implementation-audit-report-packet-v0-2026-04-26.md`.
+- This packet is active first because it maps test pass conditions to live producers/consumers before more implementation lands.
 
 ---
 
 ## Bandit live signal + site bootstrap correction v0
 
-Status: PARKED / PACKAGED CORRECTION
+Status: GREENLIT / QUEUED CORRECTION
 
 Success state:
 - [ ] Existing hostile overmap special families that should participate in live hostile-site logic can register abstract `bandit_live_world` site records without requiring the player to enter spawn/load range first.
 - [ ] Abstract site records carry enough cheap roster/profile/headcount state to dispatch and later materialize concrete NPCs without save/perf blow-up.
 - [ ] Materialized NPCs reconcile back to the same owned-site ledger, preserving exact-member writeback behavior when concrete members exist.
-- [ ] Real fire/smoke/light observations can create or refresh bounded live bandit marks/leads through the running game path, not only authored playback packets.
+- [ ] Real fire/smoke/light observations can create or refresh bounded live bandit marks/leads through the running game path, not only authored playback packets, and live signal generation respects weather/light conditions such as daylight, darkness, fog/mist, rain, wind, shelter/containment, source strength, persistence, and exposure.
 - [ ] The corrected range matrix is implemented or explicitly centralized: `40 OMT` overmap AI/system envelope; about `15 OMT` sustained smoke cap; ordinary bounty around `10 OMT`; confident threat around `6 OMT`; hard/searchlight threat around `8 OMT`; exceptional elevated light adapter-bounded inside the `40 OMT` envelope; movement remains `1-6 OMT/day` elapsed-time-earned travel credit.
 - [ ] The hard `distance <= 10` live-dispatch gate is removed or demoted so `10 OMT` ordinary visibility no longer impersonates the whole system range.
 - [ ] Signal observation/decay cadence is separate from dispatch decision cadence, with event-driven creation and reviewer-readable maintenance.
@@ -79,7 +98,7 @@ Notes:
 
 ## Bandit live-wiring audit + visible-light horde bridge correction v0
 
-Status: PARKED / PACKAGED CORRECTION
+Status: GREENLIT / QUEUED CORRECTION
 
 Success state:
 - [ ] Docs/canon clearly distinguish deterministic proof/playback behavior from live game behavior for bandit light, smoke, horde-pressure, and handoff claims.
@@ -97,7 +116,7 @@ Notes:
 
 ## Bandit local sight-avoid + scout return cadence packet v0
 
-Status: PARKED / PACKAGED FOLLOW-UP
+Status: GREENLIT / QUEUED FOLLOW-UP
 
 Success state:
 - [ ] Stalking / hold-off bandits in the reality bubble can detect current or recent exposure to the player or nearby camp NPCs and attempt a bounded reposition toward cover or broken line of sight.
@@ -115,9 +134,26 @@ Notes:
 
 ---
 
+## Smart Zone Manager v1 Josef playtest corrections
+
+Status: GREENLIT / QUEUED FOLLOW-UP
+
+Success state:
+- [ ] Smart Zone Manager adds `LOOT_MANUALS` coverage on/near the Basecamp books cluster without removing ordinary `LOOT_BOOKS` coverage.
+- [ ] Gun-magazine coverage remains `LOOT_MAGAZINES`, preferably with an unambiguous user-facing label such as "Basecamp weapon magazines" if label text is touched.
+- [ ] Auto-eat and auto-drink coverage spans the full Basecamp storage zone, with `ignore_contents` explicitly false so Basecamp sorting still sees the covered items.
+- [ ] Deterministic tests assert the actual zone ids/types and the `ignore_contents == false` option, not just label text.
+- [ ] Harness or save inspection confirms generated zones remain saved/reopenable and do not crash or corrupt the camp layout.
+
+Notes:
+- Canonical contract lives at `doc/smart-zone-manager-v1-josef-playtest-followup-2026-04-26.md`.
+- Josef checked the existing generated zones manually and narrowed this follow-up to `LOOT_MANUALS`, book/manual/gun-magazine clarity, and full-storage auto-consume zones.
+
+---
+
 ## Basecamp medical consumable readiness v0
 
-Status: PARKED / PACKAGED FOLLOW-UP
+Status: GREENLIT / QUEUED FOLLOW-UP
 
 Success state:
 - [ ] Camp locker/service logic recognizes at least `bandages` and `adhesive_bandages` as bounded medical readiness supplies when stocking NPCs.
@@ -130,6 +166,43 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`.
 - This is parked separately from the bandit live-signal correction.
+
+---
+
+## Basecamp locker armor ranking + blocker removal packet v0
+
+Status: GREENLIT / QUEUED FOLLOW-UP
+
+Success state:
+- [ ] A generic helper scores candidate protective/full-body gear against currently worn blockers using body-part priority, protection/coverage, encumbrance, condition, and active locker policy.
+- [ ] The helper is not item-id-specific and does not special-case `RM13 combat armor`.
+- [ ] When a candidate is clearly superior, the locker path removes/drops the blocking worn items needed to equip it.
+- [ ] When a candidate is not clearly superior or cannot be equipped, the locker path stops retrying the same failed swap and does not produce visible repeated wear spam.
+- [ ] Existing superior-full-body and ballistic-maintenance tests are reused/extended, including positive and negative cases.
+- [ ] Tests prove a clearly superior full-body/protective suit can displace worse blockers, while stronger current ballistic armor is preserved against worse candidates.
+- [ ] At least one targeted regression covers the original symptom shape without depending on the exact RM13 item ID as the only proof.
+
+Notes:
+- Canonical contract lives at `doc/basecamp-locker-armor-ranking-blocker-removal-packet-v0-2026-04-26.md`.
+- Josef explicitly said this must not be RM13-specific. Use a metric, not a charm against one cursed item.
+
+---
+
+## Basecamp job spam debounce + locker/patrol exceptions packet v0
+
+Status: GREENLIT / QUEUED FOLLOW-UP
+
+Success state:
+- [ ] Repeated Basecamp completion/missing-tool/no-progress messages are debounced by stable cause so they do not flood the visible log.
+- [ ] First occurrence and changed state still produce a visible/reportable message.
+- [ ] Locker-zone work has a typed exception path: real locker gear/readiness failures remain visible once with reason, while repeats are compressed.
+- [ ] Patrol-zone work has a typed exception path: real assignment/interruption/reserve/backfill changes remain visible once with reason, while repeats are compressed.
+- [ ] The debounce state does not survive in a way that hides messages forever after save/load or unrelated job changes.
+- [ ] Deterministic tests cover ordinary repeated spam, changed-state reset, locker exception, patrol exception, and a negative case showing unrelated important messages are not swallowed.
+- [ ] If practical, a harness/log proof shows the old spam shape is reduced without losing one meaningful locker/patrol message.
+
+Notes:
+- Canonical contract lives at `doc/basecamp-job-spam-debounce-exceptions-packet-v0-2026-04-26.md`.
 
 ---
 

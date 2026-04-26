@@ -2,9 +2,9 @@
 
 ## Classification
 
-ACTIVE / GREENLIT NOW.
+GREENLIT / HELD BEHIND DEBUG-CORRECTION STACK.
 
-Josef explicitly asked for an actual GitHub release so he can download C-AOL from GitHub the normal way at the first chance he gets.  The prerequisite CI recovery packet is now closed on `c5ff712e01` with green General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` Actions.
+Josef explicitly asked for an actual GitHub release so he can download C-AOL from GitHub the normal way at the first chance he gets. The prerequisite CI recovery packet is now closed on `c5ff712e01` with green General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` Actions. On 2026-04-26 Josef reprioritized C-AOL hollow-code/debug-correction work first, so this release packet remains valid but is no longer the active lane.
 
 ## Summary
 
@@ -20,7 +20,7 @@ Schani checked the public release list before packaging this item:
 
 ## Scope
 
-Andi should:
+When this packet returns to active status, Andi should:
 
 1. Inspect current GitHub Releases, tags, and workflow state directly.
 2. Decide the next release identifier from repo state and existing tags; if no obvious version/tag follows from canon, stop and ask Schani/Josef before publishing.

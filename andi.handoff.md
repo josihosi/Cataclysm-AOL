@@ -1,52 +1,73 @@
-# Andi handoff: GitHub normal-download release packet v0
+# Andi handoff: Test-vs-game implementation audit report packet v0
 
 ## Classification and position
 
 - classification: ACTIVE / GREENLIT NOW
 - authoritative canon: `Plan.md`
-- packet doc: `doc/github-normal-download-release-packet-v0-2026-04-25.md`
+- packet doc: `doc/test-vs-game-implementation-audit-report-packet-v0-2026-04-26.md`
+- repo: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`
 
 ## Item title
 
-GitHub normal-download release packet v0
+Test-vs-game implementation audit report packet v0
+
+## Why this is first
+
+Josef greenlit the C-AOL debug-note correction stack and explicitly asked us to remove hollow code. The first job is to check which tests actually reach game implementation and which tests only prove a deterministic seam, authored playback packet, or harness shape. Do this before implementing more bandit/basecamp corrections, or we risk building a nicer-painted cardboard door.
 
 ## Implementation scope
 
-1. Inspect current `josihosi/Cataclysm-AOL` releases, tags, and latest `dev` Actions directly before publishing.
-2. Use the current CI-green source checkpoint unless a newer committed checkpoint appears: `c5ff712e01` has green General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865`.
-3. Decide the next release identifier from existing tags/releases; if the version choice is not obvious from repo state, stop and ask Schani/Josef before publishing.
-4. Build or collect the intended downloadable assets through the repo's established release path.
-5. Verify asset shape before publishing:
-   - Windows asset exists and is downloadable
-   - Linux asset status is known and recorded
-   - macOS is either portable under the dylib guard or explicitly withheld/marked blocked
-6. Publish the GitHub release only when release notes and asset table match reality.
-7. Record the release URL, tag, source commit, relevant Actions links, assets/checksums if available, and any known caveats in `TESTING.md` / release notes.
+1. Read `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and the packet doc before editing.
+2. Produce `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or an explicitly equivalent report.
+3. Prioritize current high-risk test lanes:
+   - `tests/bandit_mark_generation_test.cpp`
+   - `tests/bandit_playback_test.cpp`
+   - `tests/bandit_live_world_test.cpp`
+   - relevant `tests/faction_camp_test.cpp`
+   - relevant `tests/clzones_test.cpp`
+4. For each audited pass condition, record:
+   - test file / scenario
+   - pass condition
+   - source seam under test
+   - live producer, if any
+   - live consumer, if any
+   - evidence class
+   - verdict: live-wired, deterministic-only, playback-only, harness-only, stale/ambiguous, or hollow/misleading
+5. Explicitly trace smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior through live producers/consumers.
+6. Assign each hollow/missing bridge to one of the greenlit stack items or name a new follow-up if it does not fit.
+7. Update `TESTING.md` compactly with the audit result and the next implementation target.
+
+## Greenlit stack after the audit
+
+1. `Bandit live signal + site bootstrap correction v0`
+2. `Bandit live-wiring audit + visible-light horde bridge correction v0`
+3. `Bandit local sight-avoid + scout return cadence packet v0`
+4. `Smart Zone Manager v1 Josef playtest corrections`
+5. `Basecamp medical consumable readiness v0`
+6. `Basecamp locker armor ranking + blocker removal packet v0`
+7. `Basecamp job spam debounce + locker/patrol exceptions packet v0`
 
 ## Non-goals
 
-- no hiding red CI by disabling workflows or deleting evidence
-- no shipping macOS if the dylib portability guard fails
-- no signing, notarization, upstream contact, broader distribution/promotion, or Lacapult work unless Josef separately asks
-- no repo-role surgery; `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` and `josihosi/Cataclysm-AOL` are project truth
+- no release publishing
+- no Lacapult work
+- no signing/notarization/repo-role surgery
+- no mutation of Josef's real saves/userdata
+- no implementation of every queued package inside this audit packet
+- no deleting deterministic tests just because they are deterministic; relabel them honestly
 
 ## Success bar
 
-- A new public GitHub release exists on `josihosi/Cataclysm-AOL` with a deliberate tag/version and clear release notes.
-- The release assets match the stated platform support instead of implying broken platforms work.
-- The release source commit and relevant Actions state are linked from canon/testing notes.
-- Josef has a normal GitHub Releases URL he can download from.
-- Any withheld/broken platform is plainly marked with the evidence-backed blocker.
+- A concrete report exists and maps high-risk tests to live implementation paths or missing bridges.
+- Bandit AI / camp tests are covered first and reviewer-cleanly.
+- Smoke/light/weather/horde/site-bootstrap/dispatch/local-handoff/scout paths are classified by evidence class.
+- Hollow or missing bridges are assigned to the correct greenlit package.
+- `TESTING.md` names the audit outcome and next implementation target.
 
 ## Testing / evidence expectations
 
-Minimum before/after publish:
-
-- `gh release list` / tag inspection proves the next release identifier will not collide with existing releases.
-- Release asset inspection proves the downloadable files exist and match the notes.
-- For macOS, the dylib portability guard must pass for a shipped macOS app, or macOS must be withheld/blocked in notes.
-- After publish, `gh release view <tag>` or equivalent proves the final release URL/assets.
+Docs/audit lane, so no compile is required unless you change code. Use code search/call-path inspection as evidence. If you do run proof commands, record them in the report, but do not turn the audit into an accidental implementation branch.
 
 ## Cautions
 
-This is a real public GitHub release lane, so do not treat version choice, asset claims, or macOS support as vibes.  If the tag/version or platform asset story is ambiguous, stop and ask instead of publishing a haunted souvenir.
+A passing test is not product truth unless the live game consumes the tested seam. Name the bridge. If the bridge is missing, say missing. No theater, bitte.

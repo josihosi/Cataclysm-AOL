@@ -44,23 +44,63 @@ A test is not allowed to impersonate implementation. Before claiming gameplay be
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
 The honest bar now includes real overmap-side multi-turn scenario proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics.
 
-### Parked validation target - bandit live signal + site bootstrap correction
+### Active validation target - test-vs-game implementation audit report
+
+The active audit packet must prove its claims by tracing code paths, not by rereading old success prose. The report should use this evidence shape:
+
+- for each high-risk pass condition: test file/scenario, pass condition, source seam, live producer, live consumer, evidence class, and verdict
+- required verdict vocabulary: live-wired, deterministic-only, playback-only, harness-only, stale/ambiguous, hollow/misleading
+- required focus: bandit AI / camp tests, smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior
+- output report: `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or explicitly equivalent
+- compact closeout: update this file with the audit result and the next implementation target after the report
+
+### Greenlit validation target - bandit live signal + site bootstrap correction
 
 When `Bandit live signal + site bootstrap correction v0` is greenlit, the evidence must reach the live chain rather than stopping at deterministic playback:
 
 - deterministic: site bootstrap/save-load, lazy materialization/reconciliation if concrete bodies are created, and corrected range matrix (`40` system envelope with separate `10/6/8/15/30` signal-family values)
 - source gates: touched-object compile for `src/bandit_live_world.cpp`, `src/do_turn.cpp`, and any live signal hook, plus focused `[bandit][live_world]` / mark-generation filters
-- live/harness: one owned hostile site not made live solely by walking the player onto the camp, one real fire/light/smoke source producing a live mark/candidate, one no-signal control, and logs/artifacts naming site count, signal packet, candidate distance, cap used, rejected-by-range/cadence/hold-chill decision
+- live/harness: one owned hostile site not made live solely by walking the player onto the camp, one real fire/light/smoke source producing a live mark/candidate under named weather/light conditions, one no-signal control, and logs/artifacts naming site count, signal packet, weather/light modifiers, candidate distance, cap used, rejected-by-range/cadence/hold-chill decision
 
-### Parked validation target - Basecamp medical consumable readiness
+### Greenlit validation target - Smart Zone Manager v1 Josef playtest corrections
 
-When `Basecamp medical consumable readiness v0` is greenlit, the first bar is deterministic camp/locker proof for `bandages` and `adhesive_bandages`: fresh pickup, carried preservation, anti-hoarding cap, negative unrelated-item case, and no regression to ammo/mag/clothing readiness. Add a live/harness Basecamp probe only if implementation risk or reviewer clarity needs it.
+When `Smart Zone Manager v1 Josef playtest corrections` is implemented, the first bar is deterministic zone-id and option proof:
+
+- `LOOT_MANUALS` exists on/near the books cluster while `LOOT_BOOKS` remains present
+- gun magazines remain `LOOT_MAGAZINES`, with unambiguous label text if labels are changed
+- `AUTO_EAT` and `AUTO_DRINK` span the full Basecamp storage footprint
+- both auto-consume zones have `ignore_contents == false`
+- one harness/save inspection confirms the generated zones persist/reopen without corrupting the camp layout
+
+### Greenlit validation target - Basecamp medical consumable readiness
+
+When `Basecamp medical consumable readiness v0` is implemented, the first bar is deterministic camp/locker proof for `bandages` and `adhesive_bandages`: fresh pickup, carried preservation, anti-hoarding cap, negative unrelated-item case, and no regression to ammo/mag/clothing readiness. Add a live/harness Basecamp probe only if implementation risk or reviewer clarity needs it.
+
+### Greenlit validation target - Basecamp locker armor ranking + blocker removal
+
+When `Basecamp locker armor ranking + blocker removal packet v0` is implemented, the proof must be generic, not RM13-specific:
+
+- deterministic locker/combat-policy tests for superior full-body/protective gear displacing worse blockers
+- negative cases where worse or too-damaged/too-encumbering candidates do not displace better current armor
+- explicit preservation of stronger current ballistic armor against worse candidates
+- regression for the original repeated failed-swap/wear-spam shape without using one item id as the whole proof
+- focused camp/locker test filter plus touched-object compile
+
+### Greenlit validation target - Basecamp job spam debounce + locker/patrol exceptions
+
+When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implemented, tests must prove repeated noise compresses while real state changes survive:
+
+- repeated completion/no-progress/missing-tool cause -> debounced
+- changed job/NPC/cause -> visible again
+- locker-zone exception -> one typed visible gear/readiness reason, repeats compressed
+- patrol-zone exception -> assignment/interruption/reserve/backfill state changes visible, routine repeats compressed
+- unrelated important messages are not swallowed
 
 ---
 
 ## Current relevant evidence
 
-Active target: `GitHub normal-download release packet v0`.
+Active target: `Test-vs-game implementation audit report packet v0`.
 
 ### GitHub Actions red-state footing - 2026-04-25
 

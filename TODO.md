@@ -8,12 +8,16 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `GitHub normal-download release packet v0`.
+Active target: `Test-vs-game implementation audit report packet v0`.
 
-- Inspect current `josihosi/Cataclysm-AOL` releases, tags, and latest `dev` Actions directly before publishing; do not infer release state from memory.
-- Use `c5ff712e01` as the current CI-green source checkpoint unless a newer committed checkpoint appears: General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` are green.
-- Decide the next release identifier from existing tags/releases; if the version choice is not obvious, stop and ask Schani/Josef before publishing.
-- Build or collect intended downloadable assets through the repo's established release path, then verify the asset table matches the release notes.
-- Ship macOS only if the dylib portability guard passes; otherwise withhold or mark macOS blocked instead of publishing another `/opt/local/...` dud.
-- After publish, record the final release URL, tag, source commit, relevant Actions links, assets/checksums if available, and any caveats in `TESTING.md` / release notes.
-- Use the full-history `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` worktree and `josihosi/Cataclysm-AOL` as project truth; `josihosi/C-AOL-mirror` is green-dot-only and must not become planning/release truth.
+- Work from `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`; `josihosi/Cataclysm-AOL` is project/release truth and `josihosi/C-AOL-mirror` is green-dot-only.
+- Read the canonical contract: `doc/test-vs-game-implementation-audit-report-packet-v0-2026-04-26.md`.
+- Audit current C-AOL tests, especially bandit AI / camp lanes, against the real game paths they claim to prove.
+- Produce `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or an explicitly equivalent report.
+- For each high-risk pass condition, name the test file/scenario, pass condition, source seam, live producer, live consumer, evidence class, and verdict: live-wired / deterministic-only / playback-only / harness-only / stale-ambiguous / hollow-misleading.
+- Explicitly trace smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior through live producers/consumers.
+- Assign each hollow/missing bridge to the greenlit stack item that owns it.
+- Update `TESTING.md` with a compact result and the next implementation target after the audit.
+- Do not publish releases, touch Lacapult, mutate Josef's real saves/userdata, or implement every queued package inside this audit packet.
+
+After this active packet closes, take the next item from `Plan.md`'s greenlit implementation stack. Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.
