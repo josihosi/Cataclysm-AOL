@@ -76,6 +76,11 @@ Current second-slice evidence - 2026-04-26:
 - Deterministic proof added: `[bandit][live_world][live_signal]` covers bounded live-signal mark recording, duplicate suppression, remembered target refresh, bounty/threat estimate refresh, and the eight-mark recent-ledger cap.
 - Validation run: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
 
+Current third-slice evidence - 2026-04-26:
+- Lazy materialization footing: when a selected abstract overmap-special candidate has abstract headcount but not enough at-home concrete members for scout dispatch, `overmap_npc_move()` now creates only the minimum concrete roster needed for that candidate profile (`2` camp-style, `3` cannibal, `1` small hostile) and reconciles those NPCs through `claim_tracked_spawn()` into the same owned-site ledger before dispatch planning.
+- Boundaries: this is candidate-local and headcount-capped, not a global/eager camp spawn. Failed member claims are logged and skipped before insertion so the lazy path does not leave intentionally untracked NPCs behind. It still needs live/harness proof before the packet can close.
+- Validation run: `git diff --check`; `make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` after clearing stale tiles PCH; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
+
 ### Greenlit validation target - Smart Zone Manager v1 Josef playtest corrections
 
 When `Smart Zone Manager v1 Josef playtest corrections` is implemented, the first bar is deterministic zone-id and option proof:

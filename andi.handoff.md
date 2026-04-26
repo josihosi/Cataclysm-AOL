@@ -70,6 +70,14 @@ The closed audit packet was the precondition, not another item to redo.
 - no claiming gameplay behavior until the live producer/consumer path and evidence class are named
 - no broad rewrite unless the active lane truly requires it
 
+## Current checkpoint
+
+- Abstract hostile-site records can exist and persist before local NPC materialization.
+- Live dispatch now separates the `40 OMT` system envelope from the ordinary `10 OMT` direct-player cap.
+- Real `fd_fire` / `fd_smoke` near-player fields can create weather-aware smoke packets and refresh live signal marks for owned sites inside the smoke cap.
+- Selected abstract overmap-special candidates now lazily materialize only the minimum profile-specific scout roster (`2` camp-style, `3` cannibal, `1` small hostile), reconcile those NPCs through the owned-site ledger before dispatch planning, and skip/log failed claims before overmap insertion.
+- Latest local gates: `git diff --check`; `make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` after clearing stale tiles PCH; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
+
 ## Success bar
 
 - Abstract hostile-site records can exist and persist before local NPC materialization.

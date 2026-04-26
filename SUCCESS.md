@@ -80,7 +80,7 @@ Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [x] Existing hostile overmap special families that should participate in live hostile-site logic can register abstract `bandit_live_world` site records without requiring the player to enter spawn/load range first.
-- [ ] Abstract site records carry enough cheap roster/profile/headcount state to dispatch and later materialize concrete NPCs without save/perf blow-up.
+- [ ] Abstract site records carry enough cheap roster/profile/headcount state to dispatch and later materialize concrete NPCs without save/perf blow-up. _(Partial: selected abstract overmap-special candidates now lazily create only the minimum profile-specific concrete scout roster, reconcile it through the owned-site ledger, and skip failed claims before overmap insertion; live/harness proof remains open.)_
 - [x] Materialized NPCs reconcile back to the same owned-site ledger, preserving exact-member writeback behavior when concrete members exist.
 - [ ] Real fire/smoke/light observations can create or refresh bounded live bandit marks/leads through the running game path, not only authored playback packets, and live signal generation respects weather/light conditions such as daylight, darkness, fog/mist, rain, wind, shelter/containment, source strength, persistence, and exposure. _(Partial: real `fd_fire` / `fd_smoke` near-player fields now build live smoke packets using current weather and can refresh owned-site marks; light, shelter/exposure detail, decay, and harness proof remain open.)_
 - [ ] The corrected range matrix is implemented or explicitly centralized: `40 OMT` overmap AI/system envelope; about `15 OMT` sustained smoke cap; ordinary bounty around `10 OMT`; confident threat around `6 OMT`; hard/searchlight threat around `8 OMT`; exceptional elevated light adapter-bounded inside the `40 OMT` envelope; movement remains `1-6 OMT/day` elapsed-time-earned travel credit. _(Partial: live dispatch now separates the `40 OMT` system envelope, `10 OMT` direct-player cap, and adapter-derived smoke cap.)_
@@ -94,7 +94,7 @@ Notes:
 - Canonical contract lives at `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
 - This package supersedes the older 48/60 OMT starter lean with Josef's corrected `40 OMT` overmap AI/system envelope while preserving the anti-tripwire product law.
 - First implementation slice registers abstract overmap-special hostile sites from existing loaded overmaps during the 30-minute overmap NPC cadence, serializes the abstract site footprint/headcount/profile, reconciles later concrete spawn claims into the same ledger, expands live dispatch candidate eligibility to the `40 OMT` system envelope, and adds reviewer-readable dispatch/bootstrap skip/reject logging.
-- Abstract records currently make ownership and candidate/rejection truth visible before player-proximity NPC spawn; real fire/smoke/light live signal creation and abstract-to-concrete dispatch/materialization remain open.
+- Current implementation also has a minimal real `fd_fire` / `fd_smoke` near-player source hook, accepted live-signal mark memory refresh, and candidate-local lazy materialization for abstract overmap-special sites. Real live/harness proof, light/detail intake, signal decay cadence, and remaining hold/chill/cadence evidence remain open.
 - Keep `Basecamp medical consumable readiness v0` separate unless Josef explicitly bundles it.
 
 ---

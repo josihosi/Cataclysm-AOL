@@ -101,13 +101,14 @@ Source checkpoint in progress:
 - Range slice: live dispatch now scans the `40 OMT` system envelope and treats `10 OMT` as only the direct-player cap, not the master candidate gate.
 - Minimal signal slice: loaded-map `fd_fire` / `fd_smoke` fields near the player now build live smoke packets with current weather, pass through `adapt_smoke_packet()`, and can make owned sites inside the smoke projection cap into `live_signal` dispatch candidates.
 - Signal memory slice: accepted live signal candidates refresh the owned site's remembered mark / `known_recent_marks` via a bounded ledger helper instead of staying as throwaway local variables.
-- Observability slice: logs now identify no signal packet, below-threshold smoke projection, signal packet id, weather band, candidate distance, cap used, rejected-by-range count, missing concrete member, and route failure. Cadence/decay and full hold/chill signal explanations remain open.
+- Lazy materialization slice: selected abstract overmap-special candidates can create only the minimum profile-specific concrete roster needed to attempt scout dispatch, then reconcile those NPCs through `claim_tracked_spawn()` into the same owned-site ledger before planning; failed claims are logged and skipped before overmap insertion.
+- Observability slice: logs now identify no signal packet, below-threshold smoke projection, signal packet id, weather band, candidate distance, cap used, rejected-by-range count, missing concrete member, route failure, lazy materialization counts, and failed lazy materialization claims. Cadence/decay and full hold/chill signal explanations remain open.
 
 Still not closed:
 
 - live light intake, shelter/exposure/detail beyond the smoke adapter's current packet fields, and separated signal decay cadence;
-- lazy abstract-to-concrete materialization for dispatch from abstract rosters;
-- harness/live proof with one real smoke/fire source and one no-signal control.
+- live/harness proof with one real smoke/fire source and one no-signal control;
+- reviewer-readable hold/chill/cadence evidence.
 
 ## Suggested validation packet
 

@@ -103,6 +103,7 @@ static const event_statistic_id event_statistic_last_words( "last_words" );
 static const json_character_flag json_flag_NO_SCENT( "NO_SCENT" );
 
 static const trait_id trait_HAS_NEMESIS( "HAS_NEMESIS" );
+static const trait_id trait_NPC_STATIC_NPC( "NPC_STATIC_NPC" );
 
 #if defined(__ANDROID__)
 extern std::map<std::string, std::list<input_event>> quick_shortcuts_map;
@@ -742,6 +743,109 @@ static constexpr int live_bandit_system_envelope_omt = 40;
 static constexpr int live_bandit_direct_player_range_omt = 10;
 static constexpr int live_bandit_local_source_scan_radius_ms = 60;
 
+npc_template_id live_bandit_template_for_site( bandit_live_world::owned_site_kind site_kind )
+{
+    switch( site_kind ) {
+        case bandit_live_world::owned_site_kind::cannibal_camp:
+            return npc_template_id( "cannibal_hunter" );
+        case bandit_live_world::owned_site_kind::bandit_camp:
+        case bandit_live_world::owned_site_kind::bandit_work_camp:
+        case bandit_live_world::owned_site_kind::bandit_cabin:
+        case bandit_live_world::owned_site_kind::looters:
+        case bandit_live_world::owned_site_kind::bandits_block:
+            return npc_template_id( "bandit" );
+        case bandit_live_world::owned_site_kind::none:
+            break;
+    }
+    return npc_template_id::NULL_ID();
+}
+
+int live_bandit_minimum_concrete_roster_for_scout_dispatch(
+    const bandit_live_world::site_record &site )
+{
+    const bandit_live_world::hostile_site_profile profile = site.profile ==
+            bandit_live_world::hostile_site_profile::none ?
+            bandit_live_world::profile_for_site_kind( site.site_kind ) : site.profile;
+    switch( profile ) {
+        case bandit_live_world::hostile_site_profile::camp_style:
+            return 2;
+        case bandit_live_world::hostile_site_profile::cannibal_camp:
+            return 3;
+        case bandit_live_world::hostile_site_profile::small_hostile_site:
+            return 1;
+        case bandit_live_world::hostile_site_profile::none:
+            break;
+    }
+    return 1;
+}
+
+int live_bandit_materialize_abstract_members_for_dispatch(
+    bandit_live_world::world_state &state, bandit_live_world::site_record &site )
+{
+    if( site.source_kind != bandit_live_world::anchor_source_kind::overmap_special ||
+        site.source_id.empty() || site.headcount <= 0 ) {
+        return 0;
+    }
+
+    const int materialized_live_members = site.count_live_members();
+    const int abstract_members_remaining = site.headcount - materialized_live_members;
+    const int at_home_goal = live_bandit_minimum_concrete_roster_for_scout_dispatch( site );
+    const int missing_at_home_members = at_home_goal - site.count_members_in_state(
+                                            bandit_live_world::member_state::at_home );
+    const int members_to_create = std::min( abstract_members_remaining,
+                                            std::max( 0, missing_at_home_members ) );
+    if( members_to_create <= 0 ) {
+        return 0;
+    }
+
+    const npc_template_id template_id = live_bandit_template_for_site( site.site_kind );
+    if( template_id.is_null() || !template_id.is_valid() ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world lazy materialization skipped: site="
+                                   << site.site_id << " reason=invalid_template template="
+                                   << template_id.str() << '\n';
+        return 0;
+    }
+
+    const auto special_lookup = [&site]( const tripoint_abs_omt & candidate ) -> std::optional<std::string> {
+        if( candidate.z() != site.anchor.z() ) {
+            return std::nullopt;
+        }
+        if( std::find( site.footprint.begin(), site.footprint.end(), candidate ) != site.footprint.end() ) {
+            return site.source_id;
+        }
+        return std::nullopt;
+    };
+
+    int created_members = 0;
+    for( int i = 0; i < members_to_create; ++i ) {
+        shared_ptr_fast<npc> bandit = make_shared_fast<npc>();
+        bandit->normalize();
+        bandit->load_npc_template( template_id );
+        const tripoint_abs_omt spawn_omt = site.footprint.empty() ? site.anchor :
+                                           site.footprint[i % site.footprint.size()];
+        bandit->spawn_at_omt( spawn_omt );
+        bandit->toggle_trait( trait_NPC_STATIC_NPC );
+        if( bandit_live_world::claim_tracked_spawn( state, template_id.str(), bandit->getID(),
+                bandit->pos_abs(), site.source_id, std::nullopt, special_lookup ) ) {
+            overmap_buffer.insert_npc( bandit );
+            created_members++;
+        } else {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world lazy materialization skipped member: site="
+                                       << site.site_id << " reason=claim_failed template="
+                                       << template_id.str() << '\n';
+        }
+    }
+
+    if( created_members > 0 ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world lazy materialized abstract roster: site="
+                                   << site.site_id << " created_members=" << created_members
+                                   << " concrete_live_members=" << site.count_live_members()
+                                   << " abstract_headcount=" << site.headcount
+                                   << " template=" << template_id.str() << '\n';
+    }
+    return created_members;
+}
+
 bandit_mark_generation::smoke_weather_band live_bandit_smoke_weather_band()
 {
     const weather_manager &weather = get_weather_const();
@@ -1011,6 +1115,7 @@ bool steer_live_bandit_dispatch_toward_player(
                                        << " reason=paid_shakedown_cooldown\n";
             continue;
         }
+        live_bandit_materialize_abstract_members_for_dispatch( state, site );
         const bandit_live_world::dispatch_plan plan =
             bandit_live_world::plan_site_dispatch( site, u.pos_abs_omt(), target_id );
         if( !plan.valid ) {
