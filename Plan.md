@@ -95,7 +95,7 @@ The latest closed lane is now `Bandit extortion playthrough audit + harness-skil
 
 Canonical contract: `doc/smart-zone-manager-v1-josef-playtest-followup-2026-04-26.md`.
 
-Josef's 2026-04-26 playtest found Smart Zone Manager promising but not finished: fire-source/splintered/kindling behavior needs checking, bulky categories should spread across separate tiles when space exists, unsorted should be larger, generated labels must be proven to map to real C:DDA zone types, and the full Basecamp storage zone should also carry auto-eat/auto-drink coverage. This is parked while Andi stays focused on Lacapult; do not switch active C-AOL work to this packet unless Josef/Schani explicitly greenlights it.
+Josef's 2026-04-26 playtest found Smart Zone Manager promising but not finished: fire-source/splintered/kindling behavior needs checking, bulky categories should spread across separate tiles when space exists, unsorted should be larger, generated labels must be proven to map to real C:DDA zone types, and the full Basecamp storage zone should also carry auto-eat/auto-drink coverage with the "Ignore items in this area when sorting?" / `ignore_contents` option set to **NO / false** so the Basecamp storage footprint still sorts normally. This is parked while Andi stays focused on Lacapult; do not switch active C-AOL work to this packet unless Josef/Schani explicitly greenlights it.
 
 ## Recently closed lane - Hostile site profile layer packet v0
 

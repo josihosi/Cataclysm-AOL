@@ -28,6 +28,7 @@ Josef's 2026-04-26 Smart Zone Manager playtest audio said the feature is already
 - Make the unsorted drop zone larger than the current 2x2 result; target a simple rectangular footprint such as 2x4 unless local constraints require another shape.
 - Verify generated zones use the correct C:DDA zone types, not only convincing labels. Example: the basecamp gun/ammo zone must actually be the appropriate gun/ammo sorting zone.
 - Add `AUTO_DRINK` and auto-eat coverage over the full Basecamp storage zone, because that zone covers the whole basecamp and contains the smart zones.
+  - For both auto-consume zones, the zone option "Ignore items in this area when sorting?" / `ignore_contents` must be **NO / false**. If it is set to yes, the auto-eat/drink zone would make the whole Basecamp storage footprint ignored by loot sorting, defeating the Smart Zone Manager layout.
 
 ## Non-goals
 
@@ -42,9 +43,9 @@ Josef's 2026-04-26 Smart Zone Manager playtest audio said the feature is already
 - [ ] Deterministic or harness proof shows bulky categories spread across separate tiles when sufficient Basecamp storage space exists.
 - [ ] Unsorted zone footprint is larger and still fits inside Basecamp storage.
 - [ ] Zone-id/type proof confirms the generated gun/ammo/clothing/food/drink/etc. zones are actually the intended C:DDA sorting zones.
-- [ ] Auto-eat and auto-drink coverage spans the full Basecamp storage zone.
+- [ ] Auto-eat and auto-drink coverage spans the full Basecamp storage zone, with `ignore_contents` explicitly false so Basecamp sorting still sees the covered items.
 - [ ] Live or harness smoke confirms generated zones remain saved/reopenable and do not crash or corrupt the camp layout.
 
 ## Testing notes
 
-Start with narrow deterministic zone-layout tests where possible. Follow with one focused live/harness save proof only after the static/fixture shape is honest. Josef playtest is product confidence, not a substitute for proving the zone ids.
+Start with narrow deterministic zone-layout tests where possible. Include an option-level assertion that generated auto-eat/auto-drink zones have `ignore_contents == false`, matching the manual UI answer **No** to "Ignore items in this area when sorting?" Follow with one focused live/harness save proof only after the static/fixture shape is honest. Josef playtest is product confidence, not a substitute for proving the zone ids.
