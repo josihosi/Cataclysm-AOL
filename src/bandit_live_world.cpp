@@ -1369,6 +1369,34 @@ bool mark_shakedown_reopen_used( site_record &site )
     return true;
 }
 
+bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
+{
+    if( mark.mark_id.empty() || mark.range_cap_omt <= 0 ) {
+        return false;
+    }
+
+    bool changed = site.remembered_target_or_mark != mark.mark_id;
+    site.remembered_target_or_mark = mark.mark_id;
+    const int old_bounty = site.remembered_bounty_estimate;
+    const int old_threat = site.remembered_threat_estimate;
+    site.remembered_bounty_estimate = std::max( site.remembered_bounty_estimate, mark.bounty_add );
+    site.remembered_threat_estimate = std::max( site.remembered_threat_estimate, mark.threat_add );
+    changed |= site.remembered_bounty_estimate != old_bounty;
+    changed |= site.remembered_threat_estimate != old_threat;
+
+    if( std::find( site.known_recent_marks.begin(), site.known_recent_marks.end(), mark.mark_id ) ==
+        site.known_recent_marks.end() ) {
+        static constexpr size_t max_live_signal_marks = 8;
+        if( site.known_recent_marks.size() >= max_live_signal_marks ) {
+            site.known_recent_marks.erase( site.known_recent_marks.begin() );
+        }
+        site.known_recent_marks.push_back( mark.mark_id );
+        changed = true;
+    }
+
+    return changed;
+}
+
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet )
 {
     if( !packet.valid || packet.source_camp_id != site.site_id ||
