@@ -105,6 +105,14 @@ Canonical contract: `doc/bandit-live-wiring-audit-and-light-horde-bridge-correct
 
 Josef caught a real evidence gap: the bandit proof packets implemented light and shared horde-pressure behavior on deterministic mark-generation/playback seams, but the live game does not currently wire visible fire/light into `overmap_buffer.signal_hordes(...)` / `horde_map`. Current live horde attraction remains sound/JSON-effect driven unless a real bridge is added. Do not claim roof/basecamp light attracts overmap hordes in live gameplay until this bridge exists and has live/harness proof.
 
+## Parked follow-up - Bandit local sight-avoid + scout return cadence packet v0
+
+**Status:** PARKED / PACKAGED FOLLOW-UP
+
+Canonical contract: `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
+
+Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a dispatched scout can stand around in the reality bubble for too long, and the previously discussed creepy behavior where a seen bandit slips back out of player/Basecamp sight is not implemented yet. Park this as one bounded local-stalking correction: stalking/hold-off bandits should use non-magical current/recent exposure heuristics to move toward cover or broken line of sight, scouts should eventually return home and write back what they learned, and any later larger dispatch must come from explicit camp re-evaluation rather than automatic spawn cheating. Do not interrupt the active lane for this until it is explicitly greenlit.
+
 ## Recently closed lane - Hostile site profile layer packet v0
 
 **Status:** CLOSED / CHECKPOINTED

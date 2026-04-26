@@ -72,6 +72,26 @@ Notes:
 
 ---
 
+## Bandit local sight-avoid + scout return cadence packet v0
+
+Status: PARKED / PACKAGED FOLLOW-UP
+
+Success state:
+- [ ] Stalking / hold-off bandits in the reality bubble can detect current or recent exposure to the player or nearby camp NPCs and attempt a bounded reposition toward cover or broken line of sight.
+- [ ] The sight-avoid behavior is local and heuristic: deterministic tests prove it does not use magical future-cone omniscience and does not teleport.
+- [ ] A scout outing has a finite live sortie window and can return home after watching long enough, instead of lingering indefinitely in local contact.
+- [ ] Returned scout state writes back through the owned-site memory path and can drive later re-evaluation without automatically conjuring a larger group.
+- [ ] The single-scout current behavior remains explainable: `scout` is still one member unless a later job or escalated decision explicitly requires more.
+- [ ] Reviewer-readable output distinguishes `still stalking`, `repositioning because exposed`, `returning home`, and `re-dispatch/escalation decision`.
+- [ ] At least one live/harness proof uses `bandit.live_world_nearby_camp_mcw` or an equivalent real owned-site scenario and confirms the same code path would apply to a normal discovered bandit camp, while separately naming the harness bias that places the camp nearby on purpose.
+
+Notes:
+- Canonical contract lives at `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
+- Current code read: `return_clock` is carried through handoff/writeback memory, but it is not a live timeout that forces a scout to stop watching after N hours/days; `resolve_active_group_aftermath()` resolves only after home/dead/missing observations, while local contact and unresolved outbound states stay open.
+- Josef's smoke-attraction observation still wants a no-smoke control before we claim smoke itself is the live cause.
+
+---
+
 ## Bandit overmap/local handoff interaction packet v0
 
 Status: CHECKPOINTED / DONE FOR NOW
