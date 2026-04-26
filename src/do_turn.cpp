@@ -864,6 +864,32 @@ bandit_mark_generation::smoke_weather_band live_bandit_smoke_weather_band()
     return bandit_mark_generation::smoke_weather_band::clear;
 }
 
+bandit_mark_generation::light_time_band live_bandit_light_time_band()
+{
+    if( is_night( calendar::turn ) ) {
+        return bandit_mark_generation::light_time_band::night;
+    }
+    if( is_dawn( calendar::turn ) || is_dusk( calendar::turn ) ) {
+        return bandit_mark_generation::light_time_band::twilight;
+    }
+    return bandit_mark_generation::light_time_band::daylight;
+}
+
+bandit_mark_generation::light_weather_band live_bandit_light_weather_band()
+{
+    const weather_manager &weather = get_weather_const();
+    if( weather.weather_id.str() == "portal_storm" ) {
+        return bandit_mark_generation::light_weather_band::portal_storm;
+    }
+    if( weather.weather_id->rains || weather.weather_id->precip >= precip_class::light ) {
+        return bandit_mark_generation::light_weather_band::rain;
+    }
+    if( weather.weather_id->sight_penalty >= 2.0f ) {
+        return bandit_mark_generation::light_weather_band::fog;
+    }
+    return bandit_mark_generation::light_weather_band::clear;
+}
+
 std::string live_bandit_source_mark_id( const std::string &kind, const tripoint_abs_omt &omt )
 {
     std::ostringstream out;
@@ -871,13 +897,14 @@ std::string live_bandit_source_mark_id( const std::string &kind, const tripoint_
     return out.str();
 }
 
-std::vector<live_bandit_signal_observation> observe_live_bandit_smoke_signals_near_player()
+std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_near_player()
 {
     avatar &u = get_avatar();
     map &here = get_map();
     struct source_reading {
         int fire_intensity = 0;
         int smoke_intensity = 0;
+        bool outside = false;
     };
     std::map<tripoint_abs_omt, source_reading> readings;
 
@@ -892,11 +919,14 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_smoke_signals_ne
         source_reading &reading = readings[source_omt];
         reading.fire_intensity = std::max( reading.fire_intensity, fire_intensity );
         reading.smoke_intensity = std::max( reading.smoke_intensity, smoke_intensity );
+        reading.outside |= here.is_outside( p );
     }
 
     std::vector<live_bandit_signal_observation> observations;
-    observations.reserve( readings.size() );
+    observations.reserve( readings.size() * 2 );
     const bandit_mark_generation::smoke_weather_band weather_band = live_bandit_smoke_weather_band();
+    const bandit_mark_generation::light_time_band light_time = live_bandit_light_time_band();
+    const bandit_mark_generation::light_weather_band light_weather = live_bandit_light_weather_band();
     const tripoint_abs_omt player_omt = u.pos_abs_omt();
     for( const std::pair<const tripoint_abs_omt, source_reading> &entry : readings ) {
         const tripoint_abs_omt &source_omt = entry.first;
@@ -925,36 +955,114 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_smoke_signals_ne
                                        << " observed_range_omt=" << packet.observed_range_omt
                                        << " projected_range_omt=" << projection.projected_range_omt
                                        << " visibility_score=" << projection.visibility_score << '\n';
+        } else {
+            live_bandit_signal_observation observation;
+            observation.signal = projection.signal;
+            observation.source_omt = source_omt;
+            observation.range_cap_omt = projection.projected_range_omt;
+            observation.weather_summary = projection.weather_effect.summary;
+            observation.mark.mark_id = packet.id;
+            observation.mark.kind = "smoke";
+            observation.mark.source_omt = source_omt;
+            observation.mark.observed_range_omt = packet.observed_range_omt;
+            observation.mark.range_cap_omt = projection.projected_range_omt;
+            observation.mark.strength = projection.signal.strength;
+            observation.mark.confidence = projection.signal.confidence;
+            observation.mark.bounty_add = projection.signal.bounty_add;
+            observation.mark.threat_add = projection.signal.threat_add;
+            observation.mark.notes = projection.signal.notes;
+            observations.push_back( observation );
+        }
+
+        if( reading.fire_intensity <= 0 ) {
             continue;
         }
 
-        live_bandit_signal_observation observation;
-        observation.signal = projection.signal;
-        observation.source_omt = source_omt;
-        observation.range_cap_omt = projection.projected_range_omt;
-        observation.weather_summary = projection.weather_effect.summary;
-        observation.mark.mark_id = packet.id;
-        observation.mark.kind = "smoke";
-        observation.mark.source_omt = source_omt;
-        observation.mark.observed_range_omt = packet.observed_range_omt;
-        observation.mark.range_cap_omt = projection.projected_range_omt;
-        observation.mark.strength = projection.signal.strength;
-        observation.mark.confidence = projection.signal.confidence;
-        observation.mark.bounty_add = projection.signal.bounty_add;
-        observation.mark.threat_add = projection.signal.threat_add;
-        observation.mark.notes = projection.signal.notes;
-        observations.push_back( observation );
+        bandit_mark_generation::light_packet light_packet;
+        light_packet.id = live_bandit_source_mark_id( "light", source_omt );
+        light_packet.envelope_id = live_bandit_player_target_id( player_omt );
+        light_packet.region_id = live_bandit_omt_token( source_omt );
+        light_packet.observed_range_omt = rl_dist( player_omt, source_omt );
+        light_packet.source_strength = std::clamp( reading.fire_intensity, 1, 3 );
+        light_packet.persistence = reading.fire_intensity >= 2 ? 1 : 0;
+        light_packet.side_leakage = reading.outside ? 1 : 0;
+        light_packet.time = light_time;
+        light_packet.weather = light_weather;
+        light_packet.exposure = reading.outside ?
+                                bandit_mark_generation::light_exposure_band::exposed :
+                                bandit_mark_generation::light_exposure_band::contained;
+        light_packet.source = bandit_mark_generation::light_source_band::ordinary;
+        light_packet.terrain = reading.outside ? bandit_mark_generation::light_terrain_band::open :
+                               bandit_mark_generation::light_terrain_band::built_cover;
+        light_packet.notes.push_back( "live source hook: fd_fire=" +
+                                      std::to_string( reading.fire_intensity ) +
+                                      ", exposure=" +
+                                      bandit_mark_generation::to_string( light_packet.exposure ) );
+        light_packet.notes.push_back( "live source hook: time=" +
+                                      bandit_mark_generation::to_string( light_time ) +
+                                      ", weather=" +
+                                      bandit_mark_generation::to_string( light_weather ) );
+
+        const bandit_mark_generation::light_projection light_projection =
+            bandit_mark_generation::adapt_light_packet( light_packet );
+        if( !light_projection.viable ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal rejected: packet=" << light_packet.id
+                                       << " kind=light reason=below_threshold time="
+                                       << bandit_mark_generation::to_string( light_time )
+                                       << " weather=" << bandit_mark_generation::to_string( light_weather )
+                                       << " exposure="
+                                       << bandit_mark_generation::to_string( light_packet.exposure )
+                                       << " observed_range_omt=" << light_packet.observed_range_omt
+                                       << " projected_range_omt=" << light_projection.projected_range_omt
+                                       << " visibility_score=" << light_projection.visibility_score << '\n';
+            continue;
+        }
+
+        live_bandit_signal_observation light_observation;
+        light_observation.signal = light_projection.signal;
+        light_observation.source_omt = source_omt;
+        light_observation.range_cap_omt = light_projection.projected_range_omt;
+        light_observation.weather_summary = light_projection.concealment.summary;
+        light_observation.mark.mark_id = light_packet.id;
+        light_observation.mark.kind = light_projection.signal.kind;
+        light_observation.mark.source_omt = source_omt;
+        light_observation.mark.observed_range_omt = light_packet.observed_range_omt;
+        light_observation.mark.range_cap_omt = light_projection.projected_range_omt;
+        light_observation.mark.strength = light_projection.signal.strength;
+        light_observation.mark.confidence = light_projection.signal.confidence;
+        light_observation.mark.bounty_add = light_projection.signal.bounty_add;
+        light_observation.mark.threat_add = light_projection.signal.threat_add;
+        light_observation.mark.notes = light_projection.signal.notes;
+        observations.push_back( light_observation );
+    }
+
+    int smoke_packets = 0;
+    int light_packets = 0;
+    for( const live_bandit_signal_observation &observation : observations ) {
+        if( observation.mark.kind == "light" || observation.mark.kind == "searchlight" ) {
+            light_packets++;
+        } else if( observation.mark.kind == "smoke" ) {
+            smoke_packets++;
+        }
     }
 
     if( observations.empty() ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal scan: signal_packet=no kind=smoke/fire"
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light"
                                    << " scan_radius_ms=" << live_bandit_local_source_scan_radius_ms
-                                   << " weather=" << bandit_mark_generation::to_string( weather_band ) << '\n';
+                                   << " weather=" << bandit_mark_generation::to_string( weather_band )
+                                   << " light_time=" << bandit_mark_generation::to_string( light_time )
+                                   << " light_weather=" << bandit_mark_generation::to_string( light_weather )
+                                   << '\n';
     } else {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal scan: signal_packet=yes kind=smoke/fire"
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal scan: signal_packet=yes kind=smoke/fire/light"
                                    << " packets=" << observations.size()
+                                   << " smoke_packets=" << smoke_packets
+                                   << " light_packets=" << light_packets
                                    << " scan_radius_ms=" << live_bandit_local_source_scan_radius_ms
-                                   << " weather=" << bandit_mark_generation::to_string( weather_band ) << '\n';
+                                   << " weather=" << bandit_mark_generation::to_string( weather_band )
+                                   << " light_time=" << bandit_mark_generation::to_string( light_time )
+                                   << " light_weather=" << bandit_mark_generation::to_string( light_weather )
+                                   << '\n';
     }
     return observations;
 }
@@ -1029,6 +1137,8 @@ int refresh_live_bandit_signal_marks(
 
     int matched_sites = 0;
     int refreshed_sites = 0;
+    int matched_smoke_sites = 0;
+    int matched_light_sites = 0;
     int rejected_by_system_range = 0;
     int rejected_by_signal_range = 0;
     for( bandit_live_world::site_record &site : state.sites ) {
@@ -1056,6 +1166,11 @@ int refresh_live_bandit_signal_marks(
         }
 
         matched_sites++;
+        if( best_signal->mark.kind == "light" || best_signal->mark.kind == "searchlight" ) {
+            matched_light_sites++;
+        } else if( best_signal->mark.kind == "smoke" ) {
+            matched_smoke_sites++;
+        }
         if( bandit_live_world::record_live_signal_mark( site, best_signal->mark ) ) {
             refreshed_sites++;
         }
@@ -1064,6 +1179,8 @@ int refresh_live_bandit_signal_marks(
     DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal maintenance: signal_packet=yes packets="
                                << signals.size() << " matched_sites=" << matched_sites
                                << " refreshed_sites=" << refreshed_sites
+                               << " matched_smoke_sites=" << matched_smoke_sites
+                               << " matched_light_sites=" << matched_light_sites
                                << " rejected_by_system_range=" << rejected_by_system_range
                                << " rejected_by_signal_range=" << rejected_by_signal_range
                                << " scan_radius_omt=" << live_bandit_system_envelope_omt << '\n';
@@ -1594,7 +1711,7 @@ void overmap_npc_move()
     std::vector<live_bandit_signal_observation> live_signals;
     if( signal_cadence_due ) {
         bootstrap_live_bandit_abstract_sites_near_player();
-        live_signals = observe_live_bandit_smoke_signals_near_player();
+        live_signals = observe_live_bandit_field_signals_near_player();
         refresh_live_bandit_signal_marks( live_signals );
     }
     if( dispatch_cadence_due ) {
