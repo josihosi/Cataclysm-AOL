@@ -118,6 +118,18 @@ std::string live_bandit_player_target_id( const tripoint_abs_omt &player_omt )
     return out.str();
 }
 
+std::string join_live_bandit_notes( const std::vector<std::string> &notes )
+{
+    std::ostringstream out;
+    for( size_t i = 0; i < notes.size(); ++i ) {
+        if( i > 0 ) {
+            out << " | ";
+        }
+        out << notes[i];
+    }
+    return out.str();
+}
+
 bool site_contains_omt( const bandit_live_world::site_record &site, const tripoint_abs_omt &omt )
 {
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
@@ -706,11 +718,66 @@ bool has_active_player_pressure( const bandit_live_world::site_record &site )
            string_starts_with( site.active_target_id, "player@" );
 }
 
+static constexpr int live_bandit_system_envelope_omt = 40;
+
+int bootstrap_live_bandit_abstract_sites_near_player()
+{
+    avatar &u = get_avatar();
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const tripoint_abs_omt center = u.pos_abs_omt();
+    int created_sites = 0;
+    int recognized_tiles = 0;
+
+    const auto special_lookup = []( const tripoint_abs_omt &candidate ) -> std::optional<std::string> {
+        if( const std::optional<overmap_special_id> special =
+                overmap_buffer.overmap_special_at_existing( candidate ) ) {
+            return special->str();
+        }
+        return std::nullopt;
+    };
+
+    for( int dx = -live_bandit_system_envelope_omt; dx <= live_bandit_system_envelope_omt; ++dx ) {
+        for( int dy = -live_bandit_system_envelope_omt; dy <= live_bandit_system_envelope_omt; ++dy ) {
+            const tripoint_abs_omt candidate( center.x() + dx, center.y() + dy, center.z() );
+            if( rl_dist( center, candidate ) > live_bandit_system_envelope_omt ) {
+                continue;
+            }
+            const std::optional<std::string> source_id = special_lookup( candidate );
+            if( !source_id ) {
+                continue;
+            }
+            const std::optional<bandit_live_world::owned_site_kind> site_kind =
+                bandit_live_world::classify_tracked_source(
+                    bandit_live_world::anchor_source_kind::overmap_special, *source_id );
+            if( !site_kind ) {
+                continue;
+            }
+            recognized_tiles++;
+            const size_t old_site_count = state.sites.size();
+            bandit_live_world::register_abstract_site( state,
+                    bandit_live_world::anchor_source_kind::overmap_special, *source_id, candidate,
+                    special_lookup, bandit_live_world::abstract_roster_seed_for_site_kind( *site_kind ) );
+            if( state.sites.size() > old_site_count ) {
+                created_sites++;
+            }
+        }
+    }
+
+    if( created_sites > 0 ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world abstract_bootstrap created_sites="
+                                   << created_sites << " recognized_tiles=" << recognized_tiles
+                                   << " scan_radius_omt=" << live_bandit_system_envelope_omt
+                                   << " total_sites=" << state.sites.size() << '\n';
+    }
+    return created_sites;
+}
+
 bool steer_live_bandit_dispatch_toward_player()
 {
     avatar &u = get_avatar();
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     if( state.sites.empty() ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch skipped: empty ownership state\n";
         return false;
     }
 
@@ -723,17 +790,23 @@ bool steer_live_bandit_dispatch_toward_player()
             active_player_pressure++;
         }
         const int distance = rl_dist( site.anchor, u.pos_abs_omt() );
-        if( distance <= 10 ) {
+        if( distance <= live_bandit_system_envelope_omt ) {
             candidate_sites.emplace_back( distance, i );
         }
     }
 
     if( candidate_sites.empty() ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch skipped: sites=" << state.sites.size()
+                                   << " candidates=0 scan_radius_omt=" << live_bandit_system_envelope_omt
+                                   << " player=" << u.pos_abs_omt().to_string() << '\n';
         return false;
     }
 
     static constexpr int max_simultaneous_player_pressure = 2;
     if( active_player_pressure >= max_simultaneous_player_pressure ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch skipped: active_player_pressure="
+                                   << active_player_pressure << " cap=" << max_simultaneous_player_pressure
+                                   << " candidates=" << candidate_sites.size() << '\n';
         return false;
     }
 
@@ -747,11 +820,18 @@ bool steer_live_bandit_dispatch_toward_player()
 
         bandit_live_world::site_record &site = state.sites[candidate_site.second];
         if( live_bandit_shakedown_was_paid( site ) ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
+                                       << " distance=" << candidate_site.first
+                                       << " reason=paid_shakedown_cooldown\n";
             continue;
         }
         const bandit_live_world::dispatch_plan plan =
             bandit_live_world::plan_site_dispatch( site, u.pos_abs_omt(), target_id );
         if( !plan.valid ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
+                                       << " distance=" << candidate_site.first
+                                       << " cap=" << live_bandit_system_envelope_omt
+                                       << " notes=" << join_live_bandit_notes( plan.notes ) << '\n';
             continue;
         }
 
@@ -767,6 +847,9 @@ bool steer_live_bandit_dispatch_toward_player()
             dispatched_npcs.push_back( bandit );
         }
         if( missing_member || dispatched_npcs.empty() ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
+                                       << " distance=" << candidate_site.first
+                                       << " reason=missing_concrete_member\n";
             continue;
         }
 
@@ -798,6 +881,9 @@ bool steer_live_bandit_dispatch_toward_player()
             dispatch_paths.push_back( std::move( path ) );
         }
         if( route_missing ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
+                                       << " distance=" << candidate_site.first
+                                       << " reason=route_missing\n";
             continue;
         }
 
@@ -1139,6 +1225,7 @@ void overmap_npc_move()
     avatar &u = get_avatar();
     note_live_bandit_aftermath();
     if( calendar::once_every( 30_minutes ) ) {
+        bootstrap_live_bandit_abstract_sites_near_player();
         steer_live_bandit_dispatch_toward_player();
     }
     std::vector<npc *> travelling_npcs;

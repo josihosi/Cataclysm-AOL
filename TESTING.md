@@ -59,8 +59,15 @@ Compact result:
 For `Bandit live signal + site bootstrap correction v0`, the evidence must reach the live chain rather than stopping at deterministic playback:
 
 - deterministic: site bootstrap/save-load, lazy materialization/reconciliation if concrete bodies are created, and corrected range matrix (`40` system envelope with separate `10/6/8/15/30` signal-family values)
-- source gates: touched-object compile for `src/bandit_live_world.cpp`, `src/do_turn.cpp`, and any live signal hook, plus focused `[bandit][live_world]` / mark-generation filters
+- source gates: touched-object compile for `src/bandit_live_world.cpp`, `src/do_turn.cpp`, `src/overmapbuffer.cpp`, and any live signal hook, plus focused `[bandit][live_world]` / mark-generation filters
 - live/harness: one owned hostile site not made live solely by walking the player onto the camp, one real fire/light/smoke source producing a live mark/candidate under named weather/light conditions, one no-signal control, and logs/artifacts naming site count, signal packet, weather/light modifiers, candidate distance, cap used, rejected-by-range/cadence/hold-chill decision
+
+Current first-slice evidence - 2026-04-26:
+- Source hook: `overmap_npc_move()` now bootstraps abstract hostile overmap-special sites from existing loaded overmaps every `30_minutes` before dispatch, using `overmap_special_at_existing()` so the scan does not create fresh overmaps by accident.
+- Deterministic proof: `[bandit][live_world]` now covers abstract special registration before NPC materialization, save/load of abstract footprint/headcount/profile, and later concrete spawn reconciliation into the same owned-site ledger.
+- Dispatch footing: the live dispatcher candidate scan now uses the `40 OMT` system envelope instead of the old hard `distance <= 10`; signal-specific fire/smoke/light caps remain open until live signal packets exist.
+- Instrumentation footing: debug logs now distinguish empty ownership, zero candidates inside the scan radius, active-pressure cap, paid-shakedown cooldown, invalid dispatch plan notes, missing concrete member, and missing route. Signal-packet/below-threshold/cadence-specific logging remains open with the live signal hook.
+- Validation run: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o obj/overmapbuffer.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 468 assertions in 19 test cases passed.
 
 ### Greenlit validation target - Smart Zone Manager v1 Josef playtest corrections
 

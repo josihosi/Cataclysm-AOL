@@ -1175,6 +1175,16 @@ std::optional<overmap_special_id> overmapbuffer::overmap_special_at(
     return om_loc.om->overmap_special_at( om_loc.local );
 }
 
+std::optional<overmap_special_id> overmapbuffer::overmap_special_at_existing(
+    const tripoint_abs_omt &loc )
+{
+    const overmap_with_local_coords om_loc = get_existing_om_global( loc );
+    if( !om_loc ) {
+        return std::nullopt;
+    }
+    return om_loc.om->overmap_special_at( om_loc.local );
+}
+
 std::optional<mapgen_arguments> overmapbuffer::get_existing_omt_stack_arguments(
     const point_abs_omt &p )
 {

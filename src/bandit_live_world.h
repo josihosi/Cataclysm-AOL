@@ -238,6 +238,11 @@ footprint_snapshot make_special_footprint( const std::string &special_id,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
 std::string make_site_id( anchor_source_kind source_kind, const std::string &source_id,
                           const tripoint_abs_omt &anchor );
+int abstract_roster_seed_for_site_kind( owned_site_kind site_kind );
+bool register_abstract_site( world_state &state, anchor_source_kind source_kind,
+                             const std::string &source_id, const tripoint_abs_omt &origin,
+                             const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup,
+                             int abstract_headcount = 0 );
 bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id,
                           character_id npc_id, const tripoint_abs_ms &spawn_tile,
                           const std::optional<std::string> &overmap_special_id,
