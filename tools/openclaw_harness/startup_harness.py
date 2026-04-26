@@ -1804,9 +1804,53 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "map_fields_near_player":
+            fields_raw = raw.get("fields", [])
+            if not isinstance(fields_raw, list) or not fields_raw:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs non-empty fields list in {manifest_path}"
+                )
+            fields: List[Dict[str, Any]] = []
+            for field_index, field_raw in enumerate(fields_raw, start=1):
+                if not isinstance(field_raw, dict):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].fields[{field_index}] must be an object in {manifest_path}"
+                    )
+                field_id = str(field_raw.get("field_id", "")).strip()
+                if not field_id:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].fields[{field_index}] needs field_id in {manifest_path}"
+                    )
+                offset_raw = field_raw.get("offset_ms", [0, 0, 0])
+                if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].fields[{field_index}] needs offset_ms=[x,y,z] in {manifest_path}"
+                    )
+                try:
+                    offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+                    intensity = int(field_raw.get("intensity", 1))
+                    age_turns = int(field_raw.get("age_turns", 0))
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].fields[{field_index}] has non-integer offset/intensity/age in {manifest_path}"
+                    )
+                fields.append({
+                    "field_id": field_id,
+                    "offset_ms": offset_ms,
+                    "intensity": intensity,
+                    "age_turns": age_turns,
+                })
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "fields": fields,
+            })
+            continue
+
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
-            "supported kinds: player_mutations, player_near_overmap_special, seed_overmap_special_near_player"
+            "supported kinds: player_mutations, player_near_overmap_special, "
+            "seed_overmap_special_near_player, map_fields_near_player"
         )
     return transforms
 
@@ -2391,6 +2435,116 @@ def apply_player_near_overmap_special_transform(world_dir: Path, transform: Dict
 
 
 
+def apply_map_fields_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    maps_dir = world_dir / "maps"
+    if not maps_dir.exists():
+        raise SystemExit(f"Fixture map-field transform maps dir not found: {maps_dir}")
+
+    placed_fields: List[Dict[str, Any]] = []
+    extracted_packs: List[str] = []
+    modified_map_paths: Dict[str, Path] = {}
+    for field in transform.get("fields", []):
+        field_id = str(field.get("field_id", "")).strip()
+        offset_ms_raw = field.get("offset_ms", [0, 0, 0])
+        offset_ms = [int(offset_ms_raw[0]), int(offset_ms_raw[1]), int(offset_ms_raw[2])]
+        intensity = int(field.get("intensity", 1))
+        age_turns = int(field.get("age_turns", 0))
+        if intensity <= 0:
+            raise SystemExit(f"Fixture map-field transform intensity must be positive: {field}")
+
+        target_location = [
+            int(player_location[0]) + offset_ms[0],
+            int(player_location[1]) + offset_ms[1],
+            int(player_location[2]) + offset_ms[2],
+        ]
+        target_abs_sm = (target_location[0] // 12, target_location[1] // 12, target_location[2])
+        target_abs_omt = (target_location[0] // 24, target_location[1] // 24, target_location[2])
+        local_ms = (
+            target_location[0] - target_abs_sm[0] * 12,
+            target_location[1] - target_abs_sm[1] * 12,
+            target_location[2],
+        )
+        pack_stem = f"{target_abs_omt[0] // 32}.{target_abs_omt[1] // 32}.{target_abs_omt[2]}"
+        pack_dir = maps_dir / pack_stem
+        pack_zzip = maps_dir / f"{pack_stem}.zzip"
+        if not pack_dir.exists():
+            if not pack_zzip.exists():
+                raise SystemExit(f"Fixture map-field transform target map pack not found: {pack_zzip}")
+            run_zzip(pack_zzip)
+            extracted_packs.append(pack_stem)
+        if not pack_dir.exists() or not pack_dir.is_dir():
+            raise SystemExit(f"Fixture map-field transform did not extract map pack: {pack_dir}")
+
+        map_path = pack_dir / f"{target_abs_omt[0]}.{target_abs_omt[1]}.{target_abs_omt[2]}.map"
+        if not map_path.exists():
+            raise SystemExit(f"Fixture map-field transform target map file not found: {map_path}")
+        map_payload = json.loads(map_path.read_text(encoding="utf-8"))
+        if not isinstance(map_payload, list):
+            raise SystemExit(f"Fixture map-field transform map payload is not a list: {map_path}")
+        target_submap: Optional[Dict[str, Any]] = None
+        target_coords = [target_abs_sm[0], target_abs_sm[1], target_abs_sm[2]]
+        for submap in map_payload:
+            if isinstance(submap, dict) and submap.get("coordinates") == target_coords:
+                target_submap = submap
+                break
+        if target_submap is None:
+            raise SystemExit(
+                f"Fixture map-field transform submap {target_coords} not found in {map_path}"
+            )
+        fields = target_submap.setdefault("fields", [])
+        if not isinstance(fields, list):
+            raise SystemExit(f"Fixture map-field transform fields is not a list in {map_path}")
+        field_payload = [
+            field_id,
+            intensity,
+            age_turns,
+            {"character_id": None, "faction_id": None},
+        ]
+        fields.extend([local_ms[0], local_ms[1], field_payload])
+        map_path.write_text(json.dumps(map_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        modified_map_paths[str(map_path)] = map_path
+
+        placed_fields.append({
+            "field_id": field_id,
+            "intensity": intensity,
+            "age_turns": age_turns,
+            "offset_ms": offset_ms,
+            "target_location_ms": target_location,
+            "target_abs_omt": list(target_abs_omt),
+            "target_abs_sm": list(target_abs_sm),
+            "local_ms": [local_ms[0], local_ms[1], local_ms[2]],
+            "map_pack": pack_stem,
+            "map_file": map_path.name,
+        })
+
+    recompressed_maps: List[str] = []
+    for map_path in sorted(modified_map_paths.values(), key=lambda path: str(path)):
+        run_zzip(map_path)
+        recompressed_maps.append(str(map_path.relative_to(world_dir)))
+
+    removed_extracted_dirs: List[str] = []
+    for pack_stem in sorted(set(extracted_packs)):
+        pack_dir = maps_dir / pack_stem
+        if pack_dir.exists():
+            shutil.rmtree(pack_dir)
+            removed_extracted_dirs.append(str(pack_dir.relative_to(world_dir)))
+
+    return {
+        "kind": "map_fields_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_abs_omt": list(player_abs_omt),
+        "player_location": player_location,
+        "placed_fields": placed_fields,
+        "extracted_map_packs": sorted(set(extracted_packs)),
+        "recompressed_maps": recompressed_maps,
+        "removed_extracted_map_dirs": removed_extracted_dirs,
+        "plain_map_dirs_left_for_game_load": False,
+    }
+
+
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for transform in transforms:
@@ -2403,6 +2557,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "seed_overmap_special_near_player":
             reports.append(apply_seed_overmap_special_near_player_transform(world_dir, transform))
+            continue
+        if kind == "map_fields_near_player":
+            reports.append(apply_map_fields_near_player_transform(world_dir, transform))
             continue
         raise SystemExit(f"Unsupported fixture save transform kind: {kind}")
     return reports
