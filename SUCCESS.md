@@ -56,26 +56,27 @@ Notes:
 
 ## Test-vs-game implementation audit report packet v0
 
-Status: ACTIVE / GREENLIT NOW
+Status: CLOSED / CHECKPOINTED
 
 Success state:
-- [ ] A concrete report exists at `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or an explicitly equivalent path.
-- [ ] The report covers the highest-risk bandit AI / camp lanes, including `tests/bandit_mark_generation_test.cpp`, `tests/bandit_playback_test.cpp`, `tests/bandit_live_world_test.cpp`, and the live dispatch path through `src/do_turn.cpp` / `src/bandit_live_world.cpp`.
-- [ ] The report separately classifies smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior by evidence class.
-- [ ] Each audited pass condition says whether the tested logic is produced/consumed by live gameplay, deterministic playback only, harness setup only, or currently hollow/missing.
-- [ ] Every hollow/missing bridge is assigned to one of the greenlit packages or marked as a new follow-up if it does not fit.
-- [ ] `TESTING.md` gets a compact update summarizing the audit result and preserving the rule that tests cannot impersonate live implementation.
-- [ ] The report names the first implementation package Andi should execute next after the audit.
+- [x] A concrete report exists at `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or an explicitly equivalent path.
+- [x] The report covers the highest-risk bandit AI / camp lanes, including `tests/bandit_mark_generation_test.cpp`, `tests/bandit_playback_test.cpp`, `tests/bandit_live_world_test.cpp`, and the live dispatch path through `src/do_turn.cpp` / `src/bandit_live_world.cpp`.
+- [x] The report separately classifies smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior by evidence class.
+- [x] Each audited pass condition says whether the tested logic is produced/consumed by live gameplay, deterministic playback only, harness setup only, or currently hollow/missing.
+- [x] Every hollow/missing bridge is assigned to one of the greenlit packages or marked as a new follow-up if it does not fit.
+- [x] `TESTING.md` gets a compact update summarizing the audit result and preserving the rule that tests cannot impersonate live implementation.
+- [x] The report names the first implementation package Andi should execute next after the audit.
 
 Notes:
 - Canonical contract lives at `doc/test-vs-game-implementation-audit-report-packet-v0-2026-04-26.md`.
-- This packet is active first because it maps test pass conditions to live producers/consumers before more implementation lands.
+- Closed report lives at `doc/test-vs-game-implementation-audit-report-2026-04-26.md`.
+- First implementation package after the audit is `Bandit live signal + site bootstrap correction v0`.
 
 ---
 
 ## Bandit live signal + site bootstrap correction v0
 
-Status: GREENLIT / QUEUED CORRECTION
+Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [ ] Existing hostile overmap special families that should participate in live hostile-site logic can register abstract `bandit_live_world` site records without requiring the player to enter spawn/load range first.

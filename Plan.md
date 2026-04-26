@@ -39,26 +39,26 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active lane is now **Test-vs-game implementation audit report packet v0**. Josef greenlit the C-AOL debug-note correction stack on 2026-04-26 and explicitly told Schani to point Andi back at C-AOL, reason deeply, remove hollow code, and produce a report mapping tests to real game implementation. Canonical contract: `doc/test-vs-game-implementation-audit-report-packet-v0-2026-04-26.md`.
+The active lane is now **Bandit live signal + site bootstrap correction v0**. Josef greenlit the C-AOL debug-note correction stack on 2026-04-26 and explicitly told Schani to point Andi back at C-AOL, reason deeply, remove hollow code, and map tests to real game implementation before more implementation lands. The audit is now checkpointed at `doc/test-vs-game-implementation-audit-report-2026-04-26.md`; it names this correction as the first implementation target.
 
 Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority. The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this debug-correction stack without fresh explicit clearance.
 
 Active scope:
-- audit current C-AOL tests, especially bandit AI / camp tests, against the real game implementation path they claim to prove
-- classify each tested pass condition as live-wired, deterministic-only, playback-only, harness-only, stale/ambiguous, or hollow/misleading
-- trace smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior from tests to live producers/consumers
-- write `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or an explicitly equivalent report path
-- update `TESTING.md` only with compact audit results and the next implementation target
-- after the report, move to the first implementation package named by the report instead of inventing a fresh lane
+- implement `Bandit live signal + site bootstrap correction v0` from `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`
+- preserve the audit finding: smoke/light/weather mark adapters, generated mark ledgers, authored playback frames, and most scout tuning are not live gameplay until live producers and consumers are wired
+- register bounded hostile-site ownership without relying solely on the player stepping onto a camp tile and causing NPC placement
+- wire real fire/smoke/light observations into bounded live bandit signal candidates under named weather/time conditions
+- make live dispatch consume or explicitly reject those candidates with reviewer-readable range/cadence/hold-chill reasons
+- keep deterministic tests as adapter regressions, then add source-hook plus live/harness/log proof before claiming gameplay
 
 Non-goals:
-- no implementation of every greenlit package inside the audit packet
+- no implementation of every greenlit package inside this correction packet
 - no deletion of useful deterministic tests merely because they are deterministic; relabel them honestly instead
 - no claiming gameplay behavior until the live producer/consumer path and evidence class are named
-- no release publishing, signing, repo-role surgery, Lacapult work, or user-data mutation in this audit lane
+- no release publishing, signing, repo-role surgery, Lacapult work, or user-data mutation in this correction lane
 
-Greenlit implementation stack after the audit, in current order:
-1. **Bandit live signal + site bootstrap correction v0** — 40 OMT system envelope; real fire/smoke/light/weather source hooks; abstract site bootstrap; lazy materialization; live dispatch/mark consumption.
+Greenlit implementation stack, in current order:
+1. **Bandit live signal + site bootstrap correction v0** — ACTIVE; 40 OMT system envelope; real fire/smoke/light/weather source hooks; abstract site bootstrap; lazy materialization; live dispatch/mark consumption.
 2. **Bandit live-wiring audit + visible-light horde bridge correction v0** — visible fire/light to real horde signal path, or honest deferral if not implemented.
 3. **Bandit local sight-avoid + scout return cadence packet v0** — exposed scouts seek cover/break sight, finite sortie window, return-home/writeback cadence.
 4. **Smart Zone Manager v1 Josef playtest corrections** — add `LOOT_MANUALS`, keep book/gun-magazine zone distinction clear, add full-storage `AUTO_EAT` / `AUTO_DRINK` with `ignore_contents=false`.
@@ -107,9 +107,9 @@ Canonical contract: `doc/smart-zone-manager-v1-josef-playtest-followup-2026-04-2
 
 Josef later checked the generated zones in Zone Manager and found the existing zone layout broadly OK. The greenlit correction is now narrow: add `LOOT_MANUALS` on/near the books cluster, keep `LOOT_BOOKS` versus gun `LOOT_MAGAZINES` clear, and add `AUTO_EAT` / `AUTO_DRINK` across the full Basecamp storage zone with the "Ignore items in this area when sorting?" / `ignore_contents` option set to **NO / false** so the Basecamp storage footprint still sorts normally.
 
-## Greenlit correction - Bandit live signal + site bootstrap correction v0
+## Active correction - Bandit live signal + site bootstrap correction v0
 
-**Status:** GREENLIT / QUEUED CORRECTION
+**Status:** ACTIVE / GREENLIT NOW
 
 Canonical contract: `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
 
@@ -129,7 +129,7 @@ Josef caught a real evidence gap: the bandit proof packets implemented light and
 
 Canonical contract: `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
 
-Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a dispatched scout can stand around in the reality bubble for too long, and the previously discussed creepy behavior where a seen bandit slips back out of player/Basecamp sight is not implemented yet. Queue this as one bounded local-stalking correction: stalking/hold-off bandits should use non-magical current/recent exposure heuristics to move toward cover or broken line of sight, scouts should eventually return home and write back what they learned, and any later larger dispatch must come from explicit camp re-evaluation rather than automatic spawn cheating. Keep it queued behind the active audit and higher-priority bandit live-wiring packages unless Schani/Josef explicitly reorders the stack.
+Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a dispatched scout can stand around in the reality bubble for too long, and the previously discussed creepy behavior where a seen bandit slips back out of player/Basecamp sight is not implemented yet. Queue this as one bounded local-stalking correction: stalking/hold-off bandits should use non-magical current/recent exposure heuristics to move toward cover or broken line of sight, scouts should eventually return home and write back what they learned, and any later larger dispatch must come from explicit camp re-evaluation rather than automatic spawn cheating. Keep it queued behind the active live-signal/site-bootstrap package and higher-priority bandit live-wiring packages unless Schani/Josef explicitly reorders the stack.
 
 ## Greenlit follow-up - Basecamp medical consumable readiness v0
 

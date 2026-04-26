@@ -8,16 +8,16 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Test-vs-game implementation audit report packet v0`.
+Active target: `Bandit live signal + site bootstrap correction v0`.
 
 - Work from `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`; `josihosi/Cataclysm-AOL` is project/release truth and `josihosi/C-AOL-mirror` is green-dot-only.
-- Read the canonical contract: `doc/test-vs-game-implementation-audit-report-packet-v0-2026-04-26.md`.
-- Audit current C-AOL tests, especially bandit AI / camp lanes, against the real game paths they claim to prove.
-- Produce `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or an explicitly equivalent report.
-- For each high-risk pass condition, name the test file/scenario, pass condition, source seam, live producer, live consumer, evidence class, and verdict: live-wired / deterministic-only / playback-only / harness-only / stale-ambiguous / hollow-misleading.
-- Explicitly trace smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior through live producers/consumers.
-- Assign each hollow/missing bridge to the greenlit stack item that owns it.
-- Update `TESTING.md` with a compact result and the next implementation target after the audit.
-- Do not publish releases, touch Lacapult, mutate Josef's real saves/userdata, or implement every queued package inside this audit packet.
+- Use `doc/test-vs-game-implementation-audit-report-2026-04-26.md` as the immediate footing: smoke/light/weather marks, generated mark ledgers, human-route sightings, and playback scout tuning are not live until the producer/consumer bridge exists.
+- Implement the first correction package from the report: `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
+- Register bounded hostile-site ownership without relying solely on the player walking into NPC spawn/load range.
+- Wire at least one real fire/smoke/light observation path into live bandit signal candidates under named weather/time conditions.
+- Make live dispatch accept or reject those candidates with reviewer-readable reasons: site count, signal packet, weather/light modifiers, candidate distance, cap used, cadence skip, range rejection, or hold/chill.
+- Preserve deterministic mark/playback tests as adapter regressions, but do not claim gameplay until source hook + live/harness/log evidence reaches the real path.
+- Include one no-signal control.
+- Do not publish releases, touch Lacapult, mutate Josef's real saves/userdata, or start lower-priority follow-ups before this package has a bounded implementation shape.
 
-After this active packet closes, take the next item from `Plan.md`'s greenlit implementation stack. Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.
+Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.

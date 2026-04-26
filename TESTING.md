@@ -44,19 +44,19 @@ A test is not allowed to impersonate implementation. Before claiming gameplay be
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
 The honest bar now includes real overmap-side multi-turn scenario proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics.
 
-### Active validation target - test-vs-game implementation audit report
+### Completed validation checkpoint - test-vs-game implementation audit report
 
-The active audit packet must prove its claims by tracing code paths, not by rereading old success prose. The report should use this evidence shape:
+`doc/test-vs-game-implementation-audit-report-2026-04-26.md` closes the audit checkpoint by tracing high-risk pass conditions to live producers and consumers instead of rereading old success prose.
 
-- for each high-risk pass condition: test file/scenario, pass condition, source seam, live producer, live consumer, evidence class, and verdict
-- required verdict vocabulary: live-wired, deterministic-only, playback-only, harness-only, stale/ambiguous, hollow/misleading
-- required focus: bandit AI / camp tests, smoke, light, weather, horde attraction, site bootstrap, dispatch, local handoff, and scout behavior
-- output report: `doc/test-vs-game-implementation-audit-report-2026-04-26.md` or explicitly equivalent
-- compact closeout: update this file with the audit result and the next implementation target after the report
+Compact result:
+- live-wired substrate: hostile-site ownership after NPC materialization, save/load, nearby-player dispatch from owned sites, local gate/shakedown/writeback, camp locker service, and Smart Zone Manager entry points
+- deterministic/playback-only layer: smoke/light/weather mark adapters, generated mark ledgers, authored playback frames, long-horizon benchmark reports, repeated-site reinforcement, human-route sightings, and most scout tuning packets
+- horde attraction is live-wired through sound; visible fire/light-to-horde attraction is not present in the audited source and must not be claimed without a bridge
+- next implementation target: `Bandit live signal + site bootstrap correction v0`
 
-### Greenlit validation target - bandit live signal + site bootstrap correction
+### Active validation target - bandit live signal + site bootstrap correction
 
-When `Bandit live signal + site bootstrap correction v0` is greenlit, the evidence must reach the live chain rather than stopping at deterministic playback:
+For `Bandit live signal + site bootstrap correction v0`, the evidence must reach the live chain rather than stopping at deterministic playback:
 
 - deterministic: site bootstrap/save-load, lazy materialization/reconciliation if concrete bodies are created, and corrected range matrix (`40` system envelope with separate `10/6/8/15/30` signal-family values)
 - source gates: touched-object compile for `src/bandit_live_world.cpp`, `src/do_turn.cpp`, and any live signal hook, plus focused `[bandit][live_world]` / mark-generation filters
@@ -100,7 +100,15 @@ When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implem
 
 ## Current relevant evidence
 
-Active target: `Test-vs-game implementation audit report packet v0`.
+Active target: `Bandit live signal + site bootstrap correction v0`.
+
+### Test-vs-game implementation audit closeout - 2026-04-26
+
+Report: `doc/test-vs-game-implementation-audit-report-2026-04-26.md`.
+
+Result: the biggest false-confidence risk is the bandit signal/playback layer. Smoke, light, weather, generated marks, human-route sightings, horde-pressure evaluator inputs, and long-horizon scout benchmarks are useful deterministic/playback proof, but they are not currently produced from live map/fire/light/weather/sight data and are not consumed by live dispatch. Live dispatch is real for owned sites near the player, and local gate/shakedown/writeback paths are real for active owned outings. Camp locker and Smart Zone Manager tests have real live consumers, though their greenlit corrections still need targeted proof.
+
+Next validation target: `Bandit live signal + site bootstrap correction v0`; proof must reach one abstract/lazy hostile-site bootstrap path, one real fire/smoke/light live signal path under named weather/time conditions, one live dispatch accept/reject decision with logs, and one no-signal control.
 
 ### GitHub Actions red-state footing - 2026-04-25
 
