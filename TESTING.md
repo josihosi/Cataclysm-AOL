@@ -64,10 +64,17 @@ For `Bandit live signal + site bootstrap correction v0`, the evidence must reach
 
 Current first-slice evidence - 2026-04-26:
 - Source hook: `overmap_npc_move()` now bootstraps abstract hostile overmap-special sites from existing loaded overmaps every `30_minutes` before dispatch, using `overmap_special_at_existing()` so the scan does not create fresh overmaps by accident.
-- Deterministic proof: `[bandit][live_world]` now covers abstract special registration before NPC materialization, save/load of abstract footprint/headcount/profile, and later concrete spawn reconciliation into the same owned-site ledger.
-- Dispatch footing: the live dispatcher candidate scan now uses the `40 OMT` system envelope instead of the old hard `distance <= 10`; signal-specific fire/smoke/light caps remain open until live signal packets exist.
-- Instrumentation footing: debug logs now distinguish empty ownership, zero candidates inside the scan radius, active-pressure cap, paid-shakedown cooldown, invalid dispatch plan notes, missing concrete member, and missing route. Signal-packet/below-threshold/cadence-specific logging remains open with the live signal hook.
+- Deterministic proof: `[bandit][live_world]` covers abstract special registration before NPC materialization, save/load of abstract footprint/headcount/profile, and later concrete spawn reconciliation into the same owned-site ledger.
+- Dispatch footing: the live dispatcher candidate scan uses the `40 OMT` system envelope instead of the old hard `distance <= 10`; ordinary direct-player pressure is demoted to a `10 OMT` direct cap instead of the whole system range.
+- Instrumentation footing: debug logs distinguish empty ownership, zero candidates inside the scan radius, active-pressure cap, paid-shakedown cooldown, invalid dispatch plan notes, missing concrete member, and missing route.
 - Validation run: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o obj/overmapbuffer.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 468 assertions in 19 test cases passed.
+
+Current second-slice evidence - 2026-04-26:
+- Live source hook: `overmap_npc_move()` now scans loaded map fields near the player for real `fd_fire` / `fd_smoke`, maps current live weather into `smoke_weather_band`, builds a real `smoke_packet`, and feeds `bandit_mark_generation::adapt_smoke_packet()` before dispatch candidate selection.
+- Live consumer footing: owned sites inside the `40 OMT` envelope but outside the direct `10 OMT` player cap can become `live_signal` candidates when their anchor is inside the smoke projection cap; accepted signal candidates refresh `known_recent_marks` / remembered mark state through `bandit_live_world::record_live_signal_mark()` before dispatch planning.
+- No-signal / rejection observability: logs now name `signal_packet=no`, below-threshold smoke projections, `signal_packet=yes`, rejected-by-range counts, candidate distance, cap used, signal packet id, missing concrete member, and missing route. Cadence/decay and full hold/chill signal reporting remain open.
+- Deterministic proof added: `[bandit][live_world][live_signal]` covers bounded live-signal mark recording, duplicate suppression, remembered target refresh, bounty/threat estimate refresh, and the eight-mark recent-ledger cap.
+- Validation run: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
 
 ### Greenlit validation target - Smart Zone Manager v1 Josef playtest corrections
 

@@ -1,6 +1,6 @@
 # Bandit live signal + site bootstrap correction v0 (2026-04-26)
 
-Status: greenlit / queued correction.
+Status: active / partial implementation checkpoint.
 
 ## Normalized contract
 
@@ -93,9 +93,25 @@ Core correction: `10 OMT` is a useful ordinary visibility number, but it is not 
 - [ ] Deterministic tests cover the range matrix, site bootstrap serialization, signal-specific caps, and candidate filtering/scoring split.
 - [ ] At least one harness/live proof shows a real current fire/light/smoke source producing a live bandit candidate or mark on a real owned-site path, plus one no-signal control for the same setup.
 
+## Current implementation notes
+
+Source checkpoint in progress:
+
+- Abstract ownership slice: `overmap_npc_move()` bootstraps hostile overmap-special site records from already-loaded overmaps before player-proximity NPC materialization, using the same owned-site ledger that later concrete spawn claims reconcile into.
+- Range slice: live dispatch now scans the `40 OMT` system envelope and treats `10 OMT` as only the direct-player cap, not the master candidate gate.
+- Minimal signal slice: loaded-map `fd_fire` / `fd_smoke` fields near the player now build live smoke packets with current weather, pass through `adapt_smoke_packet()`, and can make owned sites inside the smoke projection cap into `live_signal` dispatch candidates.
+- Signal memory slice: accepted live signal candidates refresh the owned site's remembered mark / `known_recent_marks` via a bounded ledger helper instead of staying as throwaway local variables.
+- Observability slice: logs now identify no signal packet, below-threshold smoke projection, signal packet id, weather band, candidate distance, cap used, rejected-by-range count, missing concrete member, and route failure. Cadence/decay and full hold/chill signal explanations remain open.
+
+Still not closed:
+
+- live light intake, shelter/exposure/detail beyond the smoke adapter's current packet fields, and separated signal decay cadence;
+- lazy abstract-to-concrete materialization for dispatch from abstract rosters;
+- harness/live proof with one real smoke/fire source and one no-signal control.
+
 ## Suggested validation packet
 
-Minimum implementation validation once greenlit:
+Minimum implementation validation:
 
 1. Narrow deterministic tests:
    - site bootstrap/save-load for abstract owned sites;
