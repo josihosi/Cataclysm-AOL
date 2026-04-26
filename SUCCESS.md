@@ -54,6 +54,24 @@ Notes:
 
 ---
 
+## Bandit live-wiring audit + visible-light horde bridge correction v0
+
+Status: PARKED / PACKAGED CORRECTION
+
+Success state:
+- [ ] Docs/canon clearly distinguish deterministic proof/playback behavior from live game behavior for bandit light, smoke, horde-pressure, and handoff claims.
+- [ ] The live visible-light-to-horde bridge is either implemented and proven, or explicitly rejected/deferred with wording that no longer implies it exists.
+- [ ] If implemented, the bridge calls the real horde signal path through bounded thresholds and reviewer-readable reports.
+- [ ] At least one deterministic test proves bridge thresholds and one live/harness proof shows a real light/fire source can affect a real horde signal path.
+- [ ] Existing bandit test claims are audited enough that no closed packet says “game does X” when only an authored proof packet does X.
+
+Notes:
+- Canonical contract lives at `doc/bandit-live-wiring-audit-and-light-horde-bridge-correction-v0-2026-04-26.md`.
+- First sweep found the highest-risk deterministic-only wording in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp`: useful adapter/playback proof, not live game proof by itself.
+- Current live horde attraction still appears sound/JSON-effect driven; no `visible fire/light -> overmap_buffer.signal_hordes(...) -> horde_map` bridge is currently claimed.
+
+---
+
 ## Bandit overmap/local handoff interaction packet v0
 
 Status: CHECKPOINTED / DONE FOR NOW
@@ -83,7 +101,7 @@ Success state:
 - [x] Deterministic proof shows nearby cross-z visibility behaves sensibly instead of collapsing into floor-bound amnesia.
 - [x] Deterministic proof shows elevated exposed light can stay legible or actionable farther than ordinary hidden light under the right conditions without turning into magical global sight.
 - [x] A flagship exposed-high-fire scenario, for example a radio-tower fire in a dead dark world, proves genuinely long-range visibility instead of timid toy-local range.
-- [x] Matching scenarios prove the same meaningful elevated light can influence zombie-horde pressure too instead of living in private bandit-only theater.
+- [x] Matching deterministic scenarios prove the same meaningful elevated light can carry abstract zombie-horde pressure too instead of living in private bandit-only theater; this is **not** live horde attraction until the live light-to-horde bridge exists.
 - [x] Deterministic proof shows smoke does **not** gain magical extra general reach merely from floor changes.
 - [x] Reviewer-readable output exposes the visibility read and benchmark outcomes clearly enough that later playtesting can argue about tuning instead of first principles.
 - [x] The slice stays bounded: no broad world visibility rewrite, no handoff redesign smuggled into the same packet, and no full zombie tactical sim.
@@ -91,7 +109,7 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`.
 - The current tree now closes this packet honestly through vertical-aware smoke/light footing in `src/bandit_mark_generation.{h,cpp}` plus `run_elevated_light_z_level_visibility_packet()` and `render_elevated_light_z_level_visibility_packet( const proof_packet_result &result )` in `src/bandit_playback.{h,cpp}`.
-- Deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the bounded active contract directly: nearby cross-z light stays actionable without magical range creep, hidden ground light stays bounded while elevated exposed light can become actionable, a radio-tower fire carries shared zombie-horde pressure, and vertical smoke keeps `vertical_range_bonus=0`.
+- Deterministic coverage in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` now proves the bounded active contract directly: nearby cross-z light stays actionable without magical range creep, hidden ground light stays bounded while elevated exposed light can become actionable, a radio-tower fire carries shared zombie-horde pressure on the proof/playback seam, and vertical smoke keeps `vertical_range_bonus=0`. It does not prove live horde movement by light.
 - Narrow deterministic validation passed on the current tree via `make -j4 tests`, `./tests/cata_test "[bandit][marks]"`, and `./tests/cata_test "[bandit][playback]"`.
 
 ---
@@ -143,7 +161,7 @@ Status: CHECKPOINTED / DONE FOR NOW
 Success state:
 - [x] One bounded long-range directional-light proof packet exists on the current bandit scenario / playback seam.
 - [x] Deterministic multi-turn proof up to `500` turns shows the hidden-side leakage case stays non-actionable while the visible-side leakage case becomes actionable under the same broader footing.
-- [x] The matching zombie-horde corridor variant proves the same light can influence horde pressure too instead of existing in isolated bandit-only theater.
+- [x] The matching deterministic zombie-horde corridor variant proves the same light can carry abstract horde pressure too instead of existing in isolated bandit-only theater; this is **not** live horde attraction until the live light-to-horde bridge exists.
 - [x] Each scenario carries explicit goals and tuning metrics, and reviewer-readable output shows whether those benchmarks were met.
 - [x] The slice stays bounded: no z-level expansion, no broad light-system rewrite, no handoff redesign, and no fresh world-sim jump.
 

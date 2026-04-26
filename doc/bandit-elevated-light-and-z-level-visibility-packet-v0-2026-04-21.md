@@ -12,7 +12,7 @@ The current product lean is already known:
 - nearby cross-z visibility should behave sensibly
 - elevated exposed light may deserve longer effective visibility and attraction reach than ordinary ground-hidden light
 - a strong exposed elevated fire in a dead dark world, for example a fire on a radio tower, should be visible from very far away instead of being treated like an upstairs candle
-- the same meaningful light should matter to zombie hordes too, not only bandits
+- the same meaningful light should matter to zombie-horde pressure in the deterministic proof packet, not only bandits; this does **not** mean the live horde system already sees fires by light
 
 Together with the active handoff packet ahead of it, this packet forms the current playtesting-readiness train.
 
@@ -23,7 +23,7 @@ Together with the active handoff packet ahead of it, this packet forms the curre
 3. Prove nearby cross-z visibility sanity explicitly, for example cases like a visible basement fire from ground level or visible exposed light on `z +1` / `z +2` from `z 0` when line and exposure support it.
 4. Prove that elevated exposed light can reach farther or stay legible longer than ordinary hidden light under the same broader footing, without turning every vertical difference into magical global sight.
 5. Include at least one flagship long-range case for a strong exposed elevated fire in a dead dark world, for example a radio-tower fire, with an honest expectation that it is visible from very far away and can create shared responder pressure instead of being treated like a tiny local curiosity.
-6. Prove that the same meaningful elevated light can influence zombie-horde pressure too instead of becoming private bandit-only theater.
+6. Prove that the same meaningful elevated light can carry abstract zombie-horde pressure on the deterministic proof seam too instead of becoming private bandit-only theater; do not claim live horde attraction without a live bridge.
 7. Keep smoke honest on the vertical axis too: do **not** smuggle in a rule where smoke automatically gets magical extra general visibility just because the source changed floors.
 8. Carry explicit per-scenario goals, tuning metrics, and reviewer-readable outputs so the packet can be judged as product behavior rather than debugger folklore.
 9. Extend deterministic coverage so the named scenarios and rendered packet output are proven directly on the current tree.
@@ -44,7 +44,7 @@ This item is good enough when:
 2. deterministic proof shows nearby cross-z visibility behaves sensibly instead of collapsing into floor-bound amnesia
 3. deterministic proof shows elevated exposed light can become legible/actionable at longer range under the right conditions without exploding into omniscient global sight
 4. a flagship exposed-high-fire scenario, for example a radio-tower fire in a dead dark world, proves genuinely long-range visibility instead of timid toy-local range
-5. the matching scenarios prove the same elevated light can influence zombie-horde pressure too instead of living in a private bandit bubble
+5. the matching deterministic scenarios prove the same elevated light can carry abstract zombie-horde pressure too instead of living in a private bandit bubble; live horde attraction remains a separate bridge
 6. deterministic proof also shows smoke does **not** gain magical extra general reach merely from floor changes
 7. reviewer-readable output exposes the visibility read and benchmark outcomes clearly enough that later playtesting can argue about tuning instead of first principles
 8. the slice stays bounded and does not widen into broad architecture, full world-sim theater, or orbital-surveillance nonsense for every tiny upstairs light

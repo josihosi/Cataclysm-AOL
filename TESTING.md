@@ -35,6 +35,10 @@ Do not keep rerunning the same startup or test packet when it is no longer the m
 If startup/load is already green, and the missing proof is live behavior, then the next probe must target live behavior.
 If a target is merely waiting on Josef, do not keep revalidating it unless the code changed.
 
+### Test-to-game wiring rule
+
+A test is not allowed to impersonate implementation. Before claiming gameplay behavior, identify the live code path that consumes the tested seam and name the evidence class that proves it: unit/evaluator, playback/proof packet, live source hook, harness/startup, screen, save inspection, or artifact/log. Deterministic-only packets may close only as deterministic-only packets; if the contract says the game does something, the proof must reach the game path or the claim stays open.
+
 ### Bandit overmap-proof rule
 
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.

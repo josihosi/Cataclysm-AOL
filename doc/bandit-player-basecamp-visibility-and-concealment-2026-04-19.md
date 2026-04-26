@@ -597,12 +597,12 @@ But the parked canon should preserve them now so the future test packet does not
 Preserve at least these later scenarios explicitly:
 1. a player camp north of a bandit camp has light, but that light is visible only toward the east. Expected: this should **not** justify north-side staking-out from the bandit camp.
 2. the same north-side player camp has light that is visible toward the south. Expected: it **should** become visible/actionable from the bandit side.
-3. the same as scenario 2, but with a zombie horde sitting in the corridor between the camps. Expected: the light should plausibly attract the horde too, not exist in isolated bandit-only theater.
+3. the same as scenario 2, but with a zombie horde sitting in the corridor between the camps. Expected: the light should plausibly attract the horde too, not exist in isolated bandit-only theater. As of the 2026-04-26 live-wiring audit, this remains desired behavior / proof-seam pressure unless a live `visible light -> signal_hordes` bridge is implemented.
 - these fixtures should use sensible spacing near the maximum meaningful visibility envelope implied by the current hard-coded game footing, not toy adjacent placement
 - ordinary visible light should likely track roughly the general overmap visibility envelope under the right conditions, while smoke should project farther because a high plume can stay legible beyond ordinary local-sight assumptions
 
 ### Cross-system interaction
-- if a meaningful visible light sits between camps with a zombie horde in the corridor, the same light should plausibly attract the horde too; the world should not turn into isolated bandit-only theater
+- if a meaningful visible light sits between camps with a zombie horde in the corridor, the same light should plausibly attract the horde too; the world should not turn into isolated bandit-only theater. As of the 2026-04-26 live-wiring audit, this is not yet live gameplay wiring.
 - once overmap-side tests are real, later handover tests should also prove that local reality can rewrite overmap posture, for example a stalk becoming an honest retreat when the player intersects the bandits directly and the tile becomes too dangerous
 
 ### Z-level edge cases
