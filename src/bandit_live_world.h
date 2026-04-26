@@ -229,6 +229,19 @@ struct shakedown_aftermath_effect {
     std::vector<std::string> notes;
 };
 
+struct live_signal_mark {
+    std::string mark_id;
+    std::string kind;
+    tripoint_abs_omt source_omt;
+    int observed_range_omt = 0;
+    int range_cap_omt = 0;
+    int strength = 0;
+    int confidence = 0;
+    int bounty_add = 0;
+    int threat_add = 0;
+    std::vector<std::string> notes;
+};
+
 bool is_tracked_hostile_template( const std::string &npc_template_id );
 std::optional<owned_site_kind> classify_tracked_source( anchor_source_kind source_kind,
         const std::string &source_id );
@@ -261,6 +274,7 @@ void begin_shakedown_basecamp_defender_observation( site_record &site, int live_
 shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_record &site,
         int live_defenders );
 bool mark_shakedown_reopen_used( site_record &site );
+bool record_live_signal_mark( site_record &site, const live_signal_mark &mark );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
 std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
     const site_record &site, const std::vector<active_member_observation> &observations );

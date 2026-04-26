@@ -164,6 +164,51 @@ TEST_CASE( "bandit_live_world_reconciles_materialized_spawns_with_abstract_speci
     CHECK( site.find_spawn_tile( tripoint_abs_ms( 264, 504, 0 ) )->headcount == 1 );
 }
 
+TEST_CASE( "bandit_live_world_records_bounded_live_signal_marks_on_owned_sites",
+           "[bandit][live_world][live_signal]" )
+{
+    bandit_live_world::world_state world;
+
+    REQUIRE( bandit_live_world::register_abstract_site( world,
+             bandit_live_world::anchor_source_kind::overmap_special, "bandit_camp",
+             tripoint_abs_omt( 11, 21, 0 ), special_lookup,
+             bandit_live_world::abstract_roster_seed_for_site_kind(
+                 bandit_live_world::owned_site_kind::bandit_camp ) ) );
+    REQUIRE( world.sites.size() == 1 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    bandit_live_world::live_signal_mark smoke_mark;
+    smoke_mark.mark_id = "live_smoke@18,20,0";
+    smoke_mark.kind = "smoke";
+    smoke_mark.source_omt = tripoint_abs_omt( 18, 20, 0 );
+    smoke_mark.observed_range_omt = 0;
+    smoke_mark.range_cap_omt = 15;
+    smoke_mark.strength = 1;
+    smoke_mark.confidence = 1;
+    smoke_mark.bounty_add = 1;
+    smoke_mark.threat_add = 0;
+    smoke_mark.notes.push_back( "live source hook: fd_fire=2, fd_smoke=1" );
+
+    REQUIRE( bandit_live_world::record_live_signal_mark( site, smoke_mark ) );
+    CHECK( site.remembered_target_or_mark == "live_smoke@18,20,0" );
+    CHECK( site.remembered_bounty_estimate == 1 );
+    CHECK( site.remembered_threat_estimate == 0 );
+    REQUIRE( site.known_recent_marks.size() == 1 );
+    CHECK( site.known_recent_marks.front() == "live_smoke@18,20,0" );
+
+    CHECK_FALSE( bandit_live_world::record_live_signal_mark( site, smoke_mark ) );
+    CHECK( site.known_recent_marks.size() == 1 );
+
+    for( int i = 0; i < 9; ++i ) {
+        bandit_live_world::live_signal_mark extra_mark = smoke_mark;
+        extra_mark.mark_id = "live_smoke@" + std::to_string( 30 + i ) + ",20,0";
+        CHECK( bandit_live_world::record_live_signal_mark( site, extra_mark ) );
+    }
+    CHECK( site.known_recent_marks.size() == 8 );
+    CHECK( site.known_recent_marks.front() == "live_smoke@31,20,0" );
+    CHECK( site.known_recent_marks.back() == "live_smoke@38,20,0" );
+}
+
 TEST_CASE( "bandit_live_world_survives_a_save_style_round_trip", "[bandit][live_world]" )
 {
     bandit_live_world::world_state original;
