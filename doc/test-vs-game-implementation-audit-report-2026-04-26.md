@@ -71,7 +71,7 @@ That is a good deterministic rehearsal. It is not live gameplay.
 
 ### 2. Live dispatch does not read generated smoke/light/route marks
 
-The live dispatcher is `steer_live_bandit_dispatch_toward_player` in `src/do_turn.cpp`. It:
+The live dispatcher is `steer_live_bandit_dispatch_toward_player` in `src/do_turn.cpp`, with planning and writeback helpers in `src/bandit_live_world.cpp`. It:
 
 - scans `overmap_buffer.global_state.bandit_live_world.sites`;
 - considers sites within `10` OMT of the player;
