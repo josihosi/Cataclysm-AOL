@@ -1011,6 +1011,65 @@ int bootstrap_live_bandit_abstract_sites_near_player()
     return created_sites;
 }
 
+int refresh_live_bandit_signal_marks(
+    const std::vector<live_bandit_signal_observation> &signals )
+{
+    if( signals.empty() ) {
+        return 0;
+    }
+
+    avatar &u = get_avatar();
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    if( state.sites.empty() ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal maintenance skipped: "
+                                   << "reason=empty_ownership_state signal_packet=yes packets="
+                                   << signals.size() << '\n';
+        return 0;
+    }
+
+    int matched_sites = 0;
+    int refreshed_sites = 0;
+    int rejected_by_system_range = 0;
+    int rejected_by_signal_range = 0;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        if( rl_dist( site.anchor, u.pos_abs_omt() ) > live_bandit_system_envelope_omt ) {
+            rejected_by_system_range++;
+            continue;
+        }
+
+        const live_bandit_signal_observation *best_signal = nullptr;
+        int best_signal_distance = 0;
+        for( const live_bandit_signal_observation &signal : signals ) {
+            const int signal_distance = rl_dist( site.anchor, signal.source_omt );
+            if( signal_distance > signal.range_cap_omt ) {
+                continue;
+            }
+            if( best_signal == nullptr || signal_distance < best_signal_distance ) {
+                best_signal = &signal;
+                best_signal_distance = signal_distance;
+            }
+        }
+
+        if( best_signal == nullptr ) {
+            rejected_by_signal_range++;
+            continue;
+        }
+
+        matched_sites++;
+        if( bandit_live_world::record_live_signal_mark( site, best_signal->mark ) ) {
+            refreshed_sites++;
+        }
+    }
+
+    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal maintenance: signal_packet=yes packets="
+                               << signals.size() << " matched_sites=" << matched_sites
+                               << " refreshed_sites=" << refreshed_sites
+                               << " rejected_by_system_range=" << rejected_by_system_range
+                               << " rejected_by_signal_range=" << rejected_by_signal_range
+                               << " scan_radius_omt=" << live_bandit_system_envelope_omt << '\n';
+    return refreshed_sites;
+}
+
 bool steer_live_bandit_dispatch_toward_player(
     const std::vector<live_bandit_signal_observation> &signals )
 {
@@ -1530,11 +1589,22 @@ void overmap_npc_move()
 {
     avatar &u = get_avatar();
     note_live_bandit_aftermath();
-    if( calendar::once_every( 30_minutes ) ) {
+    const bool dispatch_cadence_due = calendar::once_every( 30_minutes );
+    const bool signal_cadence_due = dispatch_cadence_due || calendar::once_every( 5_minutes );
+    std::vector<live_bandit_signal_observation> live_signals;
+    if( signal_cadence_due ) {
         bootstrap_live_bandit_abstract_sites_near_player();
-        const std::vector<live_bandit_signal_observation> live_signals =
-            observe_live_bandit_smoke_signals_near_player();
+        live_signals = observe_live_bandit_smoke_signals_near_player();
+        refresh_live_bandit_signal_marks( live_signals );
+    }
+    if( dispatch_cadence_due ) {
         steer_live_bandit_dispatch_toward_player( live_signals );
+    } else if( signal_cadence_due ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch cadence_skip: reason=30_minute_throttle"
+                                   << " signal_packet=" << ( live_signals.empty() ? "no" : "yes" )
+                                   << " sites=" << overmap_buffer.global_state.bandit_live_world.sites.size()
+                                   << " dispatch_interval=30_minutes"
+                                   << " signal_interval=5_minutes\n";
     }
     std::vector<npc *> travelling_npcs;
     static constexpr int move_search_radius = 600;
