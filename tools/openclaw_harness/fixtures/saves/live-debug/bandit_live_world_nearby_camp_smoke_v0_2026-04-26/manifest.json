@@ -11,7 +11,7 @@
         {
           "field_id": "fd_fire",
           "offset_ms": [
-            10,
+            36,
             0,
             0
           ],
@@ -21,7 +21,7 @@
         {
           "field_id": "fd_smoke",
           "offset_ms": [
-            11,
+            37,
             0,
             0
           ],
