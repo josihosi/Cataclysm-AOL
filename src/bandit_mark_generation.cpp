@@ -1041,6 +1041,33 @@ light_projection adapt_light_packet( const light_packet &packet )
     return projection;
 }
 
+int horde_signal_power_from_light_projection( const light_projection &projection )
+{
+    if( !projection.viable ) {
+        return 0;
+    }
+    const light_packet &packet = projection.packet;
+    if( packet.time == light_time_band::daylight ) {
+        return 0;
+    }
+    if( packet.exposure != light_exposure_band::exposed &&
+        packet.source != light_source_band::searchlight ) {
+        return 0;
+    }
+    if( projection.projected_range_omt < 8 ) {
+        return 0;
+    }
+
+    int signal_power = projection.projected_range_omt * 2;
+    if( packet.source == light_source_band::searchlight ) {
+        signal_power += 4;
+    }
+    if( projection.concealment.elevated_exposure_extended ) {
+        signal_power += 4;
+    }
+    return std::clamp( signal_power, 8, 60 );
+}
+
 human_route_projection adapt_human_route_packet( const human_route_packet &packet )
 {
     human_route_projection projection;

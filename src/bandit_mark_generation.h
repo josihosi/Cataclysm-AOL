@@ -285,6 +285,7 @@ std::string render_report( const ledger_state &state,
                            const std::vector<bandit_dry_run::lead_input> *leads = nullptr );
 smoke_projection adapt_smoke_packet( const smoke_packet &packet );
 light_projection adapt_light_packet( const light_packet &packet );
+int horde_signal_power_from_light_projection( const light_projection &projection );
 human_route_projection adapt_human_route_packet( const human_route_packet &packet );
 std::string to_string( cadence_tier tier );
 std::string to_string( smoke_weather_band weather );
