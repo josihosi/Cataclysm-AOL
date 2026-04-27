@@ -70,6 +70,25 @@ Notes:
 
 ---
 
+## C-AOL harness trust audit + proof-freeze packet v0
+
+Status: GREENLIT / BOTTOM-OF-STACK PROCESS AUDIT
+
+Success state:
+- [ ] A full harness-surface inventory exists and names each current primitive/scenario, its proof artifact, and its known blind spots.
+- [ ] One canonical disposable audit save/profile is selected for the majority of checks, with explicit provenance and justified exceptions for any other fixture.
+- [ ] Each audited primitive has a step ledger with precondition, action/keystroke, expected state, screenshot or metadata proof, failure rule, artifact path, and pass/yellow/red/blocked verdict.
+- [ ] The audit covers launch/load readiness, focus/keystrokes, screenshot capture, debug spawn paths, target-tile metadata checks, save/zzip transforms, Smart Zone UI/layout inspection, fire/smoke setup, wait/time passage, NPC/bandit positioning, and report writing.
+- [ ] False-pass behavior is guarded against: wrong screen, failed spawn, missing target field, missing save metadata, stale binary/profile, and load-only runs all produce explicit non-green verdicts.
+- [ ] The frozen workflow states that load-and-close is startup proof only, and no feature package may close from it.
+- [ ] The relevant harness skill/docs are updated so another agent can run and audit the workflow without chat archaeology.
+- [ ] Frau Knackal or an equivalent review pass checks the proof matrix for contradictions, hidden fixture bias, and claims that outrun their evidence.
+
+Compact reference:
+- Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
+
+---
+
 ## Test-vs-game implementation audit report packet v0
 
 Status: CLOSED / CHECKPOINTED
@@ -136,7 +155,9 @@ Compact reference:
 
 ## Bandit local sight-avoid + scout return cadence packet v0
 
-Status: CLOSED / MOVED DOWNSTREAM
+Status: REOPENED / ACTIVE FOLLOW-UP
+
+Fresh 2026-04-27 live evidence from Josef supersedes the earlier closure for product purposes: smoke attraction now works, but the local scout/hold-off behavior still crowds the player/basecamp too closely and is not visibly timing out/returning home in the current save. Earlier deterministic and pre-aged harness runs remain useful seam evidence; they do not close the reopened live-product gap.
 
 Success state:
 - [x] Stalking / hold-off bandits in the reality bubble can detect current or recent exposure to the player or nearby camp NPCs and attempt a bounded reposition toward cover or broken line of sight. _(Deterministic coverage plus live/harness proof `.userdata/dev-harness/harness_runs/20260427_061344/`: `bandit_live_world sight_avoid: exposed -> repositioned npc=4 ... reason=repositioning because exposed`.)
@@ -146,6 +167,9 @@ Success state:
 - [x] The single-scout current behavior remains explainable: `scout` is still one member unless a later job or escalated decision explicitly requires more.
 - [x] Reviewer-readable output distinguishes `still stalking`, `repositioning because exposed`, `returning home`, and `re-dispatch/escalation decision`. _(Source/report strings cover the branches; live proof now covers returning-home/writeback and `sight_avoid: exposed -> repositioned`. Later redispatch tuning is not claimed beyond explicit owned-site re-evaluation.)_
 - [x] At least one live/harness proof uses `bandit.live_world_nearby_camp_mcw` or an equivalent real owned-site scenario and confirms the same code path would apply to a normal discovered bandit camp, while separately naming the harness bias that places the camp nearby on purpose.
+- [ ] Recent live logs/save fields from Josef's 2026-04-27 playtest are inspected and answer whether the scout timer is actually running in the current save.
+- [ ] Bandit hold-off/stalking placement keeps a meaningful stand-off instead of crowding the immediately adjacent/neighboring OMT-scale area unless an explicit shakedown/fight state has started.
+- [ ] The scout timeout/return path is proven on the current live-product path, or explicitly moved to Josef's playtest package as implemented-but-unproven without calling the packet closed.
 
 
 Compact reference:
@@ -156,7 +180,7 @@ Compact reference:
 
 ## Smart Zone Manager v1 Josef playtest corrections
 
-Status: REOPENED / ACTIVE FOLLOW-UP
+Status: JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN LIVE
 
 Success state:
 - [x] Smart Zone Manager adds `LOOT_MANUALS` coverage on/near the Basecamp books cluster without removing ordinary `LOOT_BOOKS` coverage.
@@ -164,10 +188,10 @@ Success state:
 - [x] Auto-eat and auto-drink coverage spans the full Basecamp storage zone, with `ignore_contents` explicitly false so Basecamp sorting still sees the covered items.
 - [x] Deterministic tests assert the actual zone ids/types and the `ignore_contents == false` option, not just label text.
 - [x] Save inspection confirms generated zones remain saved/reopenable and do not crash or corrupt the camp layout through zone-manager serialize/deserialize proof.
-- [ ] Live/player-visible layout no longer lumps intended-separate generated zones onto a single tile.
-- [ ] Deterministic tests assert zone geometry/separation and the intended-overlap allowlist, not only zone ids/options.
-- [ ] The implementation respects the smart-zone aux-plan separation rules: fire-source / `splintered` / wood placement, readable crafting/food-equipment niches, clothing/dirty support, outside rotten placement, and a larger unsorted intake area where applicable.
-- [ ] Clean live/UI proof or a precise Josef playtest package demonstrates the corrected layout without rerunning the contaminated old McWilliams/bandit macro.
+- [ ] Live/player-visible layout no longer lumps intended-separate generated zones onto a single tile. _(Implemented-but-unproven live: clean GUI macro could not honestly inspect the generated layout; Josef playtest package has the manual close recipe.)_
+- [x] Deterministic tests assert zone geometry/separation and the intended-overlap allowlist, not only zone ids/options.
+- [x] The implementation respects the smart-zone aux-plan separation rules that are deterministic-checkable in the fixture: fire-source / `splintered` / wood placement, readable crafting/food/equipment support separation, clothing/dirty support, outside rotten placement, and a larger unsorted intake area.
+- [x] Clean live/UI proof or a precise Josef playtest package demonstrates the corrected layout without rerunning the contaminated old McWilliams/bandit macro. _(Packaged as `smart-zone-live-layout-separation-correction` in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`.)_
 
 
 Compact reference:

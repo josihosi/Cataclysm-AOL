@@ -44,20 +44,21 @@ Use `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md` as the d
 
 Josef reopened Smart Zone Manager on 2026-04-27 after live testing: generated zones are still lumping onto a single tile / overlapping incorrectly. The deterministic zone-id/type/option and serialize/reload proof is useful but no longer closes the player-visible layout.
 
-Greenlit path:
+Greenlit path / current state:
 
-- Fix the planner so intended-separate generated zones stay visibly separate and only explicitly allowed overlaps remain.
-- Use the v1 aux-plan separation expectations as the product contract: fire-source `SOURCE_FIREWOOD` on the fire tile, adjacent `splintered`, nearby-but-distinct wood, readable crafting/food-equipment niches, clothing/dirty support, rotten outside Basecamp, and a larger unsorted intake area where applicable.
-- Add deterministic tests for zone geometry/separation and the intended-overlap allowlist, not only zone ids/options.
-- If a small harness readiness fix can make the disposable Play Now profile reach explicit save/gameplay readiness, do it and run clean Smart Zone live/UI proof.
-- Do not rerun the old McWilliams/bandit-contaminated macro as closure proof.
-- If the clean live proof still cannot be made honest inside the 4-attempt budget, write a Josef playtest package with the manual recipe and exact expected close condition, then move on.
+- The planner now keeps intended-separate generated zones on reserved separate tiles where the deterministic fixture can prove it, with only documented overlap exceptions.
+- The v1 aux-plan separation expectations are covered deterministically where practical: fire-source `SOURCE_FIREWOOD` on the fire tile, adjacent `splintered`, nearby-but-distinct wood, readable crafting/food-equipment niches, clothing/dirty support, rotten outside Basecamp, and a larger unsorted intake area.
+- Deterministic tests now assert zone geometry/separation and the intended-overlap allowlist, not only zone ids/options.
+- The disposable Play Now startup readiness seam was repaired for current `.mm1/*.zzip` save markers, but the clean Smart Zone live/UI macro still drove the wrong UI/menu path and could not honestly inspect the generated layout.
+- Do not rerun the old McWilliams/bandit-contaminated macro as closure proof. Smart Zone is now in Josef's playtest package as implemented-but-unproven live; move on unless Josef reopens it or the harness primitive materially changes.
 
 ### 3. Any remaining C-AOL debug intake item still open after the above
 
 Use `runtime/c-aol-debug-intake-2026-04-26.md`, `SUCCESS.md`, and `TESTING.md` to verify no current debug note is still hiding behind old parked/review wording.
 
-Known closed notes should stay closed: Basecamp medical consumable readiness, bandit horde visible-light bridge implementation, local sight-avoid / scout return proof, locker armor blocker clearing. Smart Zone deterministic save/reload remains a useful proof seam, but Smart Zone layout is reopened because Josef supplied fresh live evidence. Reopen only a real unproven product/debug gap, not the whole historical packet museum.
+Fresh 2026-04-27 live follow-up from Josef reopens the local bandit stalking/return product gap after Smart Zone: smoke attraction now works, but the scout/hold-off bandit gets far too close and is not visibly timing out/returning home in the current save. Treat the earlier local sight-avoid / scout-return harness evidence as seam proof only until the current live logs/save fields and product path are inspected.
+
+Other known closed notes should stay closed unless fresh evidence says they lied: Basecamp medical consumable readiness, bandit horde visible-light bridge implementation, locker armor blocker clearing. Smart Zone layout was reopened by Josef's live evidence and has now reached the implemented-but-unproven-live boundary; reopen only a real unproven product/debug gap, not the whole historical packet museum.
 
 ## Non-goals
 
@@ -71,5 +72,6 @@ Known closed notes should stay closed: Basecamp medical consumable readiness, ba
 - [x] The active Basecamp job-spam debounce lane is closed/checkpointed honestly before this stack became active.
 - [x] The bandit live signal/site-bootstrap stack has either live/source-hook proof for the remaining smoke/fire/light product claims or a precise Josef playtest package for the exact unproven implemented behavior.
 - [x] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
-- [ ] The Smart Zone live layout separation correction is implemented and proven: deterministic geometry/separation assertions plus clean live/UI proof where possible, or a precise Josef playtest package without rerunning the contaminated McWilliams macro.
+- [x] The Smart Zone live layout separation correction is implemented and proven to its honest agent-side boundary: deterministic geometry/separation assertions are green, and the missing clean live/UI proof is covered by a precise Josef playtest package without rerunning the contaminated McWilliams macro.
+- [ ] The reopened bandit local standoff / scout return live correction is inspected and either fixed/proven on the current product path or moved honestly to Josef's playtest package as implemented-but-unproven: recent log/save timer state answered, hold-off distance no longer crowds the player, and return-home proof is not just a pre-aged harness seam.
 - [x] `Plan.md`, `TODO.md`, `TESTING.md`, and `SUCCESS.md` stop calling current debug notes parked/review-only when Josef has explicitly greenlit another finish pass.

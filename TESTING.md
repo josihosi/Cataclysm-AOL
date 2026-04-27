@@ -56,13 +56,13 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 `C-AOL debug-proof finish stack v0` is active for another honest proof pass.
 
-Current unblocked target: **Smart Zone Manager live layout separation correction**. Josef live-tested the current Smart Zone Manager on 2026-04-27 and reports generated zones still lumping onto one tile / overlapping incorrectly. The previous deterministic zone-id/type/option and serialize/reload proof is now evidence for specific ids/options only; it does not close the player-visible layout.
+Smart Zone Manager live layout separation correction is now **implemented-but-unproven live**: deterministic geometry/separation assertions and the explicit overlap allowlist are green, but the clean GUI macro still could not honestly inspect the generated player-visible layout. The manual close recipe is packaged as `smart-zone-live-layout-separation-correction` in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`; do not rerun the contaminated old McWilliams macro as closure proof.
 
-Required evidence for the reopened Smart Zone target:
-- deterministic assertions for zone geometry/separation, not only zone ids/options;
-- explicit allowlist of intended overlaps versus zones that must be visibly separate;
-- checks for known separation expectations from `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`, including the fire-source / `splintered` / wood layout, the larger unsorted intake area, clothing/dirty support, and outside rotten placement where applicable;
-- clean live/UI proof or a precise Josef playtest package if the harness still cannot honestly prove the live layout.
+Current unblocked target: **Bandit local standoff / scout return live correction**. Josef's 2026-04-27 live test grants smoke attraction, but reports the scout/hold-off bandit still gets too close and does not visibly time out/return home. Required evidence:
+- recent live log/save inspection answering whether `active_sortie_started_minutes` / `active_sortie_local_contact_minutes` are present and advancing in the current save;
+- deterministic coverage for any changed standoff distance/goal logic so hold-off does not collapse into adjacent/neighboring-OMT crowding;
+- live or harness proof that is not merely a pre-aged timer fixture unless the report labels it as fixture-only seam proof;
+- if the live route cannot be honestly proven inside the attempt budget, a Josef playtest package with the exact manual close recipe.
 
 Retained evidence classification for `Bandit live signal + site bootstrap correction v0`:
 - raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
@@ -76,8 +76,8 @@ Retained evidence classification for `Bandit live signal + site bootstrap correc
 Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
 - `Basecamp job spam debounce + locker/patrol exceptions packet v0`: stable-cause debounce for repeated completion/missing-tool/no-progress camp chatter; typed `[camp][locker]` / `[camp][patrol]` reports preserve first and changed states while compressing repeats; deterministic message tests, focused `[camp][patrol]` / `[camp][locker]`, and touched-object compile passed.
 - `Bandit live-wiring audit + visible-light horde bridge correction v0`: loaded-map visible fire/light -> horde signal bridge proof; not player-lit fire proof.
-- `Bandit local sight-avoid + scout return cadence packet v0`: deterministic proof plus live/harness sight-avoid, return-home, and writeback proof; no later redispatch tuning claimed.
-- `Smart Zone Manager v1 Josef playtest corrections`: REOPENED 2026-04-27 for live layout lumping / incorrect overlap. Prior deterministic zone-id/type/option and save/reload proof remains useful but no longer closes the layout.
+- `Bandit local sight-avoid + scout return cadence packet v0`: REOPENED for 2026-04-27 live product evidence that the scout/hold-off bandit still crowds too close and is not timing out/returning home in the current save; earlier pre-aged/fixture proof is seam evidence only.
+- `Smart Zone Manager v1 Josef playtest corrections`: implemented-but-unproven live; deterministic geometry/separation proof is green, while clean live/UI layout inspection is in Josef's playtest package.
 - `Basecamp medical consumable readiness v0`: deterministic camp/locker proof for bounded bandage-family readiness and cap behavior.
 - `Basecamp locker armor ranking + blocker removal packet v0`: deterministic camp/locker proof for generic full-body/protective ranking, blocker clearing, damaged-candidate rejection without repeated requeue/equip churn, ballistic armor preservation, and `[camp][locker]` regression coverage.
 
@@ -85,7 +85,9 @@ Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
 
 ## Pending probes
 
-No active live GUI probe is required for the closed job-spam debounce lane. For the active debug-proof finish stack, use live/harness/product-path proof where the contract asks for product behavior; deterministic-only evidence is not enough for product claims. The current unblocked target is Smart Zone Manager live layout separation correction, not another bandit player-fire loop.
+No active live GUI probe is required for the closed job-spam debounce lane. For the active debug-proof finish stack, use live/harness/product-path proof where the contract asks for product behavior; deterministic-only evidence is not enough for product claims. The current unblocked target is the reopened bandit local standoff / scout return live correction; do not spin another bandit player-fire loop or another Smart Zone GUI macro unless the harness primitive materially changes.
+
+Queued process validation target: **C-AOL harness trust audit + proof-freeze packet v0**. When activated, the evidence target is the harness itself: every primitive/keystroke/setup step needs a precondition, action, expected state, screenshot or exact metadata proof, failure rule, artifact path, and pass/yellow/red/blocked verdict. Use one canonical disposable save/profile where possible; any extra fixture must be justified with provenance. A load-and-close run remains startup/load proof only. Failed spawns, wrong screens, missing target fields, stale binaries/profiles, and missing save metadata must produce explicit non-green results rather than feature-proof claims.
 
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters

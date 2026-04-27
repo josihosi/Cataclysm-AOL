@@ -1,6 +1,8 @@
 # Bandit local sight-avoid + scout return cadence packet v0 (2026-04-26)
 
-Status: closed / moved downstream.
+Status: reopened / active follow-up.
+
+2026-04-27 reopening note: Josef's fresh live playtest grants that smoke attraction is now working, but says the local scout/hold-off behavior still fails product expectations. The bandit gets far too close, sight-avoid is not credible enough on-screen, and the scout is not visibly timing out/returning home in the current save. The proof checkpoint below remains useful seam evidence, but it no longer closes the product packet by itself.
 
 ## Premise
 
@@ -86,7 +88,16 @@ The first live/harness proof for this packet is a return-home decision proof. Sc
 
 The walked-home/writeback follow-through rung is now also live-proved. Run `.userdata/dev-harness/harness_runs/20260427_054353/` used the same copied nearby-owned-site footing on clean runtime `489e629073`, advanced a bounded 2600-turn travel window, and matched `scout_report: returned -> pressure refreshed ... remaining_pressure=ample`. Copied-save inspection shows the site active group/target/member ids and sortie clocks cleared, `remembered_pressure=ample`, and member `4` saved back on the home footprint with no remaining `omt_path`. Stable rerun scenario: `bandit.local_scout_return_followthrough_mcw`.
 
-Final live proof rung: run `.userdata/dev-harness/harness_runs/20260427_061344/` via stable scenario `bandit.local_sight_avoid_exposed_mcw` starts from equivalent nearby-owned-site local-contact footing, moves only the player to an exposed south-of-shelter sightline, disables safe mode, advances 20 turns, and records `bandit_live_world sight_avoid: exposed -> repositioned npc=4 from=(60,23,0) to=(59,22,0) reason=repositioning because exposed`. This closes the packet's local sight-avoid live proof without claiming later redispatch tuning beyond explicit camp re-evaluation.
+Final live proof rung: run `.userdata/dev-harness/harness_runs/20260427_061344/` via stable scenario `bandit.local_sight_avoid_exposed_mcw` starts from equivalent nearby-owned-site local-contact footing, moves only the player to an exposed south-of-shelter sightline, disables safe mode, advances 20 turns, and records `bandit_live_world sight_avoid: exposed -> repositioned npc=4 from=(60,23,0) to=(59,22,0) reason=repositioning because exposed`. This is now treated as a useful seam proof, not final product closure, because Josef's later live playtest contradicted the visible behavior.
+
+## Reopened live-product correction - 2026-04-27
+
+The next pass must answer the actual live playtest failure before making another closure claim:
+
+1. Inspect Josef's recent live logs and save fields for `active_sortie_started_minutes`, `active_sortie_local_contact_minutes`, `return_home`, `local_contact`, and `sight_avoid` so the report says whether the scout timer is actually running.
+2. Fix hold-off/stalking distance if confirmed: the final local/overmap goal must not routinely crowd the immediately adjacent / neighboring-OMT-scale area unless the behavior has escalated into an explicit shakedown or fight.
+3. Prove the return-home path on the current product path, not only by pre-aging a harness clock. If a pre-aged fixture is used, label it as seam proof and keep the live-product condition open.
+4. Any harness proof must include named screenshots/checkpoints for the intended action/result. Opening the game and closing it proves startup only.
 
 ## Notes for later implementation
 
