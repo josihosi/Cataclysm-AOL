@@ -68,6 +68,11 @@ Current named tiered probes for `Bandit extortion playthrough audit + harness-sk
 
 Keep the evidence classes split: screen/OCR for the visible menu, `probe.artifacts.log` for `shakedown_surface` fields, saved-world inspection for branch writeback, and deterministic `./tests/cata_test "[bandit][live_world][shakedown]"` for contract law.
 
+## Bandit local sight-avoid / scout-return probes
+
+Current named probe for `Bandit local sight-avoid + scout return cadence packet v0`:
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.local_scout_return_preaged_mcw` — real nearby-owned-site local-contact footing plus the narrow `bandit_active_sortie_clock` fixture transform; proves the current runtime return-home decision and local-gate/shakedown skip while returning. Evidence class: return-home decision proof, not full walked-home/writeback proof and not live sight-avoid reposition proof.
+
 ## Practical live-probe recipe (current best cheap method)
 1. focus the game window
 2. send the command / utterance

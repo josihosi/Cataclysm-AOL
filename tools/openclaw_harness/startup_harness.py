@@ -1732,6 +1732,26 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             raise SystemExit(f"Fixture save_transforms[{index}] must be an object: {manifest_path}")
         kind = str(raw.get("kind", "")).strip().lower()
         player_save = str(raw.get("player_save", "")).strip()
+
+        if kind == "bandit_active_sortie_clock":
+            site_id = str(raw.get("site_id", "")).strip()
+            active_job_type = str(raw.get("active_job_type", "scout")).strip() or "scout"
+            try:
+                started_minutes = int(raw.get("active_sortie_started_minutes", 0))
+                local_contact_minutes = int(raw.get("active_sortie_local_contact_minutes", started_minutes))
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs integer active sortie minutes in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "site_id": site_id,
+                "active_job_type": active_job_type,
+                "active_sortie_started_minutes": started_minutes,
+                "active_sortie_local_contact_minutes": local_contact_minutes,
+            })
+            continue
+
         if not player_save:
             raise SystemExit(f"Fixture save_transforms[{index}] needs player_save in {manifest_path}")
 
@@ -1864,7 +1884,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
             "supported kinds: player_mutations, player_near_overmap_special, "
-            "seed_overmap_special_near_player, map_fields_near_player, game_turn"
+            "seed_overmap_special_near_player, map_fields_near_player, game_turn, "
+            "bandit_active_sortie_clock"
         )
     return transforms
 
@@ -2593,10 +2614,74 @@ def apply_game_turn_transform(world_dir: Path, transform: Dict[str, Any]) -> Dic
     }
 
 
+def apply_bandit_active_sortie_clock_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture bandit sortie transform target not found: {dimension_path}")
+
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Fixture dimension data is not a JSON object: {dimension_path}")
+    overmapbuffer = payload.get("overmapbuffer", {})
+    if not isinstance(overmapbuffer, dict):
+        raise SystemExit(f"Fixture dimension data lacks overmapbuffer object: {dimension_path}")
+    live_world = overmapbuffer.get("bandit_live_world", {})
+    if not isinstance(live_world, dict):
+        raise SystemExit(f"Fixture dimension data lacks bandit_live_world object: {dimension_path}")
+    sites = live_world.get("sites", [])
+    if not isinstance(sites, list):
+        raise SystemExit(f"Fixture bandit_live_world.sites is not a list: {dimension_path}")
+
+    requested_site_id = str(transform.get("site_id", "")).strip()
+    active_job_type = str(transform.get("active_job_type", "scout")).strip() or "scout"
+    started_minutes = int(transform.get("active_sortie_started_minutes", 0))
+    local_contact_minutes = int(transform.get("active_sortie_local_contact_minutes", started_minutes))
+    touched_sites: List[str] = []
+    for site in sites:
+        if not isinstance(site, dict):
+            continue
+        site_id = str(site.get("site_id", ""))
+        if requested_site_id and site_id != requested_site_id:
+            continue
+        if not site.get("active_group_id") or not site.get("active_member_ids"):
+            continue
+        site["active_job_type"] = active_job_type
+        site["active_sortie_started_minutes"] = started_minutes
+        site["active_sortie_local_contact_minutes"] = local_contact_minutes
+        touched_sites.append(site_id)
+
+    if not touched_sites:
+        raise SystemExit(
+            "Fixture bandit sortie transform found no active owned site"
+            + (f" matching {requested_site_id}" if requested_site_id else "")
+        )
+
+    dimension_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return {
+        "kind": "bandit_active_sortie_clock",
+        "world": world_dir.name,
+        "site_id": requested_site_id,
+        "active_job_type": active_job_type,
+        "active_sortie_started_minutes": started_minutes,
+        "active_sortie_local_contact_minutes": local_contact_minutes,
+        "touched_sites": touched_sites,
+    }
+
+
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for transform in transforms:
         kind = str(transform.get("kind", "")).strip().lower()
+        if kind == "bandit_active_sortie_clock":
+            reports.append(apply_bandit_active_sortie_clock_transform(world_dir, transform))
+            continue
         if kind == "player_mutations":
             reports.append(apply_player_mutations_transform(world_dir, transform))
             continue

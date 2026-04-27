@@ -1,0 +1,15 @@
+{
+  "name": "bandit_local_scout_return_preaged_v0_2026-04-27",
+  "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "source_profile": "live-debug",
+  "description": "Narrow live-proof fixture for the local sight-avoid/scout-return packet: reuse the copied real nearby-owned-site local-contact footing and pre-age only the active scout sortie clock so the current runtime can prove the finite return-home decision without rerunning the old long standoff macro.",
+  "save_transforms": [
+    {
+      "kind": "bandit_active_sortie_clock",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "active_job_type": "scout",
+      "active_sortie_started_minutes": 0,
+      "active_sortie_local_contact_minutes": 0
+    }
+  ]
+}

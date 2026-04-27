@@ -816,6 +816,20 @@ bool note_live_bandit_aftermath()
             }
         }
 
+        const bool active_group_returning_home = !observations.empty() &&
+                std::all_of( observations.begin(), observations.end(),
+        []( const bandit_live_world::active_member_observation & observation ) {
+            return observation.state ==
+                   bandit_live_world::active_member_observation_state::returning_home;
+        } );
+        if( active_group_returning_home ) {
+            DebugLog( D_INFO, DC_ALL )
+                    << "bandit_live_world scout_sortie: returning_home -> local_gate skipped"
+                    << " site=" << site.site_id
+                    << " active_group=" << site.active_group_id << '\n';
+            continue;
+        }
+
         bandit_live_world::local_gate_input gate_input = live_bandit_make_gate_input( site, u );
         gate_input.local_contact_established |= std::any_of( observations.begin(), observations.end(),
         []( const bandit_live_world::active_member_observation & observation ) {

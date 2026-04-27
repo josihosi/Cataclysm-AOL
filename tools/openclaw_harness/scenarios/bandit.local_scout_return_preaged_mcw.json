@@ -1,0 +1,45 @@
+{
+  "name": "bandit.local_scout_return_preaged_mcw",
+  "description": "Short live-proof probe for the finite scout-return packet: start from the real nearby-owned-site local-contact footing with only the active scout sortie clock pre-aged, advance a tiny window, and capture the current runtime return-home reviewer log.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_local_scout_return_preaged_v0_2026-04-27",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world scout_sortie: linger limit reached -> return_home",
+    "bandit_live_world scout_sortie: returning_home -> local_gate skipped"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 12
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode",
+      "keys": ["!"],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 12
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_10_turns_for_return_home_decision",
+      "count": 10,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.local_scout_return_preaged_mcw"
+}
