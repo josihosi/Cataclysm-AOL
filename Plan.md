@@ -95,6 +95,7 @@ Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-pack
 Current checkpoint:
 
 - Harness surface inventory and provisional same-save policy live at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
+- Compact proof-freeze matrix draft lives at `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`; it is ready for Frau review as a process-audit matrix, not as product-feature closure.
 - `startup_harness.py start` now emits a startup step ledger and explicit proof classification: load/readiness remains `startup/load`, `feature_proof=false`.
 - Probe classification requires a clean startup gate before `artifacts_matched` can become feature proof, so stale runtime/profile/load-readiness problems cannot be hidden by later log matches.
 - `audit_saved_map_tile_near_player` reports explicit empty target-tile metadata for requested offsets; `audit_saved_player_items` now distinguishes live-selector-accessible carried/worn/contained items from legacy top-level `player.inv` rows before GUI macros run; `abort_on_metadata_failure` prevents later steps from being credited after missing required fields/items/furniture.
@@ -120,7 +121,7 @@ Active sub-order:
 1. Preserve run `20260427_222635` as the all-green scoped deploy primitive gate evidence; do not inflate it into bandit real-fire/product proof.
 2. Keep the fuel-continuation scenario (`bandit.live_world_nearby_camp_real_fire_exact_items_fuel_tile_audit_mcw`) as a red audit/probe artifact for `blocked_untrusted_drop_filter_or_inventory_visibility` before any count/confirm/post-fuel save/writeback credit, not as closure proof.
 3. Preserve Smart Zone Manager live layout verification as implemented-but-unproven in Josef's playtest package. Do not attempt another clean live/UI macro unless Schani/Josef explicitly reopen it after a materially repaired loadable-profile/UI primitive; current-runtime run `20260428_001347` is startup/load red only (`blocked_clean_profile_no_loadable_character`).
-4. Continue the active harness trust-audit/proof-freeze work by consolidating the proof matrix/workflow and preparing the next reviewable audit primitive; do not continue to lighter/final `fd_fire` until a post-fuel save/writeback gate advances mtime and saved-map metadata proves current-tile `f_brazier` plus `2x4` in the same run.
+4. Send/route the proof-freeze matrix draft for Frau review before treating the workflow as settled, then choose the next named audit primitive (likely debug spawn target-state proof or talker-selector metadata) from the matrix. Do not continue to lighter/final `fd_fire` until a post-fuel save/writeback gate advances mtime and saved-map metadata proves current-tile `f_brazier` plus `2x4` in the same run.
 
 
 ---
