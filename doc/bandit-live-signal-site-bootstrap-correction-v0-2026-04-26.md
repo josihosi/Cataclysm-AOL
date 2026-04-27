@@ -1,6 +1,6 @@
 # Bandit live signal + site bootstrap correction v0 (2026-04-26)
 
-Status: active / partial implementation checkpoint.
+Status: Josef review / move on; partial implementation checkpoint, not closed.
 
 ## Normalized contract
 
@@ -9,6 +9,11 @@ Status: active / partial implementation checkpoint.
 **Request kind:** Josef correction / parked implementation package
 
 **Summary:** Josef's 2026-04-26 live playtest exposed a real chain break, not a tuning complaint: the running world can have a bandit camp about 10 OMT away and a sustained visible fire, while `bandit_live_world` has no registered owned sites and the live dispatcher has no fire/light/smoke lead to consume. This packet corrects the live bootstrap, signal intake, range matrix, cadence, and observability story so the deterministic smoke/light/mark proof seams can become real gameplay pressure without pretending every bandit exists globally from world start.
+
+## Move-on note
+
+Schani/Josef moved the remaining smoke/fire site-refresh playtest to Josef review after the loop crossed the 4-5 attempt threshold. Do not keep rerunning this phase. Preserve the blocker honestly: latest reviewed failed smoke run `.userdata/dev-harness/harness_runs/20260427_013136/` produced `signal_packet=yes` but `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then decayed to no-signal. The review-pile key is `bandit-live-signal-smoke-source-site-refresh-proof`. The process caveat is also preserved: this loop was not cleanly escalated to Frau Knackal at attempt 3 before it crossed the Josef-review threshold.
+
 
 ## Evidence this package is based on
 
@@ -105,9 +110,9 @@ Source checkpoint in progress:
 - Observability slice: logs now identify no signal packet, below-threshold smoke/light projection, signal packet id, weather/light-time/light-weather bands, smoke/light packet counts, matched smoke/light site counts, candidate distance, cap used, rejected-by-range count, cadence skip, missing concrete member, route failure, lazy materialization counts, and failed lazy materialization claims. Decay and full hold/chill signal explanations remain open.
 - Reader proof slice: `bandit.live_world_nearby_camp_smoke_mcw` now starts from the McWilliams/Basecamp playtest-kit save, seeds a real `bandit_camp` just beyond direct-player range at `[0,11,0]`, injects visible/safe same-OMT raw `fd_fire` / `fd_smoke` fields at `[10,0,0]` / `[11,0,0]` with intensity `3` and age `0`, opens the in-game wait command with `|`, chooses `w`ait a while from the alarm prompt, and selects `7` for a three-hour wait. Repaired run `.userdata/dev-harness/harness_runs/20260427_014408/` is the current map-field reader evidence: transform report places the camp at OMT `[140,52,0]` and the raw field source at `[140,41,0]`; artifact logs first show `signal_packet=yes packets=2 smoke_packets=1 light_packets=1` plus `matched_sites=1 refreshed_sites=1 matched_smoke_sites=1 matched_light_sites=0 rejected_by_signal_range=0`, then later smoke-only rejection and finally `signal_packet=no` as the seeded fields decay. That proves the reader/consumer seam and gives decay/stop evidence for seeded fields; it is not product proof that a player-lit fire works. Old `[36,0,0]` / `[37,0,0]` and early repaired-offset runs with `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1` are not closure proof. The no-signal control `.userdata/dev-harness/harness_runs/20260427_001649/` remains useful no-source evidence on the older nearby-camp footing, but should be refreshed before exact paired closure. Earlier debug-screen/on-fire scratch runs are not product proof.
 
-Still not closed:
+Still not closed, but no longer active until Josef reopens it:
 
-- allowed synthetic smoke-source proof: if the full brazier/wood/lighter chain is too hard right now, a bounded smoke source may be created from nothing as a legal shortcut, but it must be labeled `synthetic smoke-source/live-signal proof`. This proves the bandit live signal path can react to a smoke source under live wait/time passage, not that ordinary player fire-lighting works. Keep the player safe, make smoke/fire visibly inspectable where practical, wait several in-game hours with `|`, and require live bandit site matching/refresh logs such as `matched_sites=1 refreshed_sites=1` or an honest decay/stop explanation. If this shortcut is used, park the real brazier/wood/lighter/player-action fire proof as a separate follow-up rather than pretending it was solved;
+- smoke/fire site-refresh proof: moved to Josef review after attempt 5. Do not run more blind reruns for this same phase. The exact blocker to preserve is `.userdata/dev-harness/harness_runs/20260427_013136/` producing `signal_packet=yes` but `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then no-signal decay. If reopened, an allowed synthetic smoke-source proof must be labeled `synthetic smoke-source/live-signal proof`; it proves smoke-source live-signal behavior only, not ordinary player fire-lighting;
 - real product fire proof remains the fuller follow-up shape: use Josef's candidate manual recipe as the proof-shape checklist, not as a verified automation recipe yet: deploy a brazier, place wood next to it, put the firewood source on top of the wood, have/place a lighter, light the fire through normal C-AOL/CDDA mechanics, keep the player out of fire/smoke, visibly confirm fire/smoke, keep mundane survival state safe including thirst/water, wait several in-game hours, and require live bandit signal logs such as `matched_sites=1 refreshed_sites=1` before claiming player-fire escalation/persistence/decay/refresh; if deploying brazier, placing wood/source, lighting, waiting, or drinking/survival cannot be automated cleanly, park/escalate with the exact missing control/mechanic instead of substituting raw save surgery;
 - clean live proof for a threshold-surviving light branch; the source hook now feeds ordinary fire through the light adapter, but the current proof has `matched_light_sites=0`;
 - separated signal decay cadence;

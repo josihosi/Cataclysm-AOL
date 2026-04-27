@@ -8,15 +8,15 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Bandit live signal + site bootstrap correction v0`.
+Active target: `Bandit live-wiring audit + visible-light horde bridge correction v0`.
 
 - Work from `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`; `josihosi/Cataclysm-AOL` is project/release truth and `josihosi/C-AOL-mirror` is green-dot-only.
-- Use `doc/test-vs-game-implementation-audit-report-2026-04-26.md` as the immediate footing: smoke/light/weather marks, generated mark ledgers, human-route sightings, and playback scout tuning are not live until the producer/consumer bridge exists.
-- Implement the first correction package from the report: `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
-- Continue from the current source footing: abstract hostile-site ownership registers from existing loaded overmap specials before NPC materialization; concrete spawn claims reconcile to the same ledger; the live dispatch master candidate gate uses the `40 OMT` system envelope instead of `distance <= 10`; live `fd_fire` / `fd_smoke` fields near the player create bounded smoke signal candidates via the real `overmap_npc_move()` path; live fire also feeds the ordinary-light adapter with current time/weather/exposure detail; selected abstract candidates lazily materialize only a minimum scout-dispatch roster; and repaired run `.userdata/dev-harness/harness_runs/20260427_014408/` now proves the saved-field reader path can initially match/refresh the owned site before decaying.
-- Next: choose the next honest proof rung. Preferred full product chain remains the candidate manual recipe: deploy a brazier in a visible safe spot; place wood next to it; put the firewood source on top of the wood; have/place a lighter; light the fire through normal in-game mechanics; confirm visible fire/smoke with the player kept out of it and basic survival covered, including thirst/water for the several-hour wait; then use `|` to wait several hours and require `matched_sites=1 refreshed_sites=1` / signal refresh evidence before claiming escalation, persistence, decay, or stop behavior.
-- Allowed shortcut if the full fire chain is too hard now: create a bounded synthetic smoke source from nothing, explicitly label it as `synthetic smoke-source/live-signal proof`, keep it safe/visible where practical, drive the `|` several-hour wait, and require matched-site refresh evidence or an honest decay/stop explanation. This may close the smoke-source live-signal rung, but it must not be presented as player-lit-fire proof; park the real brazier/wood/lighter/player-action fire proof as a separate follow-up if this shortcut is used.
-- Preserve deterministic mark/playback tests and raw saved-field fixture runs as adapter/reader regressions, and do not claim full player-fire product proof unless the real wood-plus-ignition action path is implemented and proven or explicitly parked with the missing control/mechanic.
-- Do not publish releases, touch Lacapult, mutate Josef's real saves/userdata, or start lower-priority follow-ups before this package has a bounded implementation shape.
+- Do **not** continue the parked smoke/fire site-refresh proof loop for `Bandit live signal + site bootstrap correction v0`; that item is in Josef review as `bandit-live-signal-smoke-source-site-refresh-proof` after attempt 5.
+- Use `doc/bandit-live-wiring-audit-and-light-horde-bridge-correction-v0-2026-04-26.md` as the active contract.
+- Preserve the core distinction: deterministic bandit light/horde proof packets and playback frames are not live visible-light-to-horde gameplay proof.
+- First implementation pass is done: the bounded source bridge routes qualifying live light observations through `horde_signal_power_from_light_projection(...)` into `overmap_buffer.signal_hordes(...)`.
+- Next proof target: shape one non-blind, non-smoke-orbit live/harness proof for a real visible light/fire source producing `bandit_live_world horde light signal:`; until then, no gameplay closure claim.
+- Keep docs/canon/test wording honest: deterministic threshold coverage and source wiring are not the same thing as proven roof/basecamp fire attracting live hordes.
+- No Lacapult work, no release publication, no repo-role surgery, no user-data mutation, and no broad horde rewrite unless the active bridge truly requires it.
 
 Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.

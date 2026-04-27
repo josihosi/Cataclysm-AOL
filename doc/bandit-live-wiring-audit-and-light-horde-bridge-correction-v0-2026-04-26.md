@@ -1,6 +1,6 @@
 # Bandit live-wiring audit + light/horde bridge correction v0 (2026-04-26)
 
-Status: greenlit / queued correction.
+Status: active / implementation checkpoint; live-harness proof still open.
 
 ## Normalized contract
 
@@ -8,7 +8,7 @@ Status: greenlit / queued correction.
 
 **Request kind:** Josef correction / parked implementation package
 
-**Summary:** Josef caught a real gap: the bandit proof packets implemented light and shared horde-pressure behavior on deterministic proof/playback seams, but the live game does not currently wire visible fire/light into the zombie horde attraction path. This package preserves that distinction, adds a first audit of deterministic-only bandit tests, and defines the bounded correction needed before anyone can claim “roof/basecamp light attracts overmap hordes” as live game behavior.
+**Summary:** Josef caught a real gap: the bandit proof packets implemented light and shared horde-pressure behavior on deterministic proof/playback seams, but the live game did not wire visible fire/light into the zombie horde attraction path. This package preserves that distinction, adds a first audit of deterministic-only bandit tests, and now has a bounded source bridge from live light observations into `overmap_buffer.signal_hordes(...)`. It is not closed until a non-smoke-orbit live/harness proof shows a real visible light/fire source producing reviewer-readable horde-signal evidence.
 
 ## Scope
 
@@ -118,27 +118,29 @@ Status: infrastructure/coverage/determinism tests.
 
 No obvious empty C-AOL gameplay claim surfaced here from this sweep. These tests should not be cited for bandit/horde light behavior.
 
-## Known live bridge absence
+## Live bridge audit and implementation checkpoint
 
-Current live horde attraction still appears sound/JSON-effect driven:
+Initial audit found live horde attraction was sound/JSON-effect driven:
 
 - `src/sounds.cpp` clusters sound and calls `overmap_buffer.signal_hordes(...)` for sufficiently strong signals.
 - JSON dialogue/effect path `signal_hordes` also calls `overmap_buffer.signal_hordes(...)`.
 - `overmapbuffer::signal_hordes(...)` reaches `overmap::signal_hordes(...)` and then `horde_map::signal_entities(...)`.
 
-No equivalent live path was found for:
+This checkpoint adds the missing source bridge on the live bandit field-signal path:
 
 ```text
-visible fire/light -> overmap_buffer.signal_hordes(...) -> horde_map
+live light observation -> horde_signal_power_from_light_projection(...) -> overmap_buffer.signal_hordes(...) -> horde_map
 ```
 
-The deterministic light/horde packets therefore must not be described as live roof-fire horde attraction until this bridge exists and is proven.
+The bridge is deliberately bounded: daylight returns `0`; screened ordinary light returns `0`; weak projections below `8 OMT` return `0`; exposed night light and searchlight-like packets can signal with clamped power `8..60`. `do_turn.cpp` records a reviewer-readable `bandit_live_world horde light signal:` line only when `horde_signal_power > 0`.
+
+Evidence boundary: this is source-wired and deterministically tested, but it is not yet live gameplay closure. The active lane still needs a non-blind, non-smoke-orbit live/harness proof where a real visible fire/light source in the running game produces the horde-light log and therefore reaches the real horde signal path. Do not use the parked smoke/fire site-refresh loop to claim this by drift.
 
 ## Success state
 
 - [ ] Docs/canon clearly distinguish deterministic proof/playback behavior from live game behavior for bandit light, smoke, horde-pressure, and handoff claims.
-- [ ] The live visible-light-to-horde bridge is either implemented and proven, or explicitly rejected/deferred with wording that no longer implies it exists.
-- [ ] If implemented, the bridge calls the real horde signal path through bounded thresholds and reviewer-readable reports.
+- [ ] The live visible-light-to-horde bridge is implemented in source and deterministically tested, but still needs live/harness proof before gameplay closure.
+- [x] If implemented, the bridge calls the real horde signal path through bounded thresholds and reviewer-readable reports.
 - [ ] At least one deterministic test proves bridge thresholds and one live/harness proof shows a real light/fire source can affect a real horde signal path.
 - [ ] Existing bandit test claims are audited enough that no closed packet says “game does X” when only an authored proof packet does X.
 

@@ -76,7 +76,7 @@ Notes:
 
 ## Bandit live signal + site bootstrap correction v0
 
-Status: ACTIVE / GREENLIT NOW
+Status: JOSEF REVIEW / MOVE ON (PARTIAL, NOT CLOSED)
 
 Success state:
 - [x] Existing hostile overmap special families that should participate in live hostile-site logic can register abstract `bandit_live_world` site records without requiring the player to enter spawn/load range first.
@@ -94,26 +94,26 @@ Notes:
 - Canonical contract lives at `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
 - This package supersedes the older 48/60 OMT starter lean with Josef's corrected `40 OMT` overmap AI/system envelope while preserving the anti-tripwire product law.
 - First implementation slice registers abstract overmap-special hostile sites from existing loaded overmaps during the 30-minute overmap NPC cadence, serializes the abstract site footprint/headcount/profile, reconciles later concrete spawn claims into the same ledger, expands live dispatch candidate eligibility to the `40 OMT` system envelope, and adds reviewer-readable dispatch/bootstrap skip/reject logging.
-- Current implementation also has a minimal raw-field `fd_fire` / `fd_smoke` reader hook, accepted live-signal mark memory refresh, candidate-local lazy materialization for abstract overmap-special sites, and repaired several-hour `|`-wait reader proof for initial smoke-site refresh followed by decay/no-signal. The next proof can be an explicitly labeled synthetic smoke-source/live-signal shortcut or the full player-fire chain; if synthetic smoke is used, the real brazier/wood/lighter product proof remains a separate follow-up. Light/detail intake, exact paired control refresh, signal decay design, and remaining hold/chill evidence remain open.
+- Current implementation also has a minimal raw-field `fd_fire` / `fd_smoke` reader hook, accepted live-signal mark memory refresh, candidate-local lazy materialization for abstract overmap-special sites, and repaired several-hour `|`-wait reader proof for initial smoke-site refresh followed by decay/no-signal. Schani/Josef moved the smoke/fire site-refresh proof to Josef review after attempt 5; do not keep rerunning this phase. Preserve the specific failed reviewed run `.userdata/dev-harness/harness_runs/20260427_013136/`: `signal_packet=yes`, but `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then no-signal decay. Full player-fire proof, clean threshold-surviving light proof, signal decay design, and remaining hold/chill evidence remain open unless Josef explicitly reopens this packet.
 - Keep `Basecamp medical consumable readiness v0` separate unless Josef explicitly bundles it.
 
 ---
 
 ## Bandit live-wiring audit + visible-light horde bridge correction v0
 
-Status: GREENLIT / QUEUED CORRECTION
+Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [ ] Docs/canon clearly distinguish deterministic proof/playback behavior from live game behavior for bandit light, smoke, horde-pressure, and handoff claims.
-- [ ] The live visible-light-to-horde bridge is either implemented and proven, or explicitly rejected/deferred with wording that no longer implies it exists.
-- [ ] If implemented, the bridge calls the real horde signal path through bounded thresholds and reviewer-readable reports.
-- [ ] At least one deterministic test proves bridge thresholds and one live/harness proof shows a real light/fire source can affect a real horde signal path.
+- [ ] The live visible-light-to-horde bridge is implemented in source and deterministically tested, but still needs live/harness proof before gameplay closure.
+- [x] If implemented, the bridge calls the real horde signal path through bounded thresholds and reviewer-readable reports.
+- [ ] At least one deterministic test proves bridge thresholds and one live/harness proof shows a real light/fire source can affect a real horde signal path. _(Partial: deterministic threshold coverage passes; live/harness proof is still open.)_
 - [ ] Existing bandit test claims are audited enough that no closed packet says “game does X” when only an authored proof packet does X.
 
 Notes:
 - Canonical contract lives at `doc/bandit-live-wiring-audit-and-light-horde-bridge-correction-v0-2026-04-26.md`.
 - First sweep found the highest-risk deterministic-only wording in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp`: useful adapter/playback proof, not live game proof by itself.
-- Current live horde attraction still appears sound/JSON-effect driven; no `visible fire/light -> overmap_buffer.signal_hordes(...) -> horde_map` bridge is currently claimed.
+- Implementation checkpoint: `src/do_turn.cpp` now assigns `horde_signal_power` to qualifying live light observations and calls `overmap_buffer.signal_hordes(...)`; `src/bandit_mark_generation.cpp` keeps the threshold policy bounded via `horde_signal_power_from_light_projection(...)`. This is not yet gameplay closure because the live/harness proof is still open.
 
 ---
 
