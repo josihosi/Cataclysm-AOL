@@ -119,28 +119,30 @@ Notes:
 
 ## Bandit local sight-avoid + scout return cadence packet v0
 
-Status: ACTIVE / GREENLIT NOW
+Status: CLOSED / MOVED DOWNSTREAM
 
 Success state:
-- [ ] Stalking / hold-off bandits in the reality bubble can detect current or recent exposure to the player or nearby camp NPCs and attempt a bounded reposition toward cover or broken line of sight.
+- [x] Stalking / hold-off bandits in the reality bubble can detect current or recent exposure to the player or nearby camp NPCs and attempt a bounded reposition toward cover or broken line of sight. _(Deterministic coverage plus live/harness proof `.userdata/dev-harness/harness_runs/20260427_061344/`: `bandit_live_world sight_avoid: exposed -> repositioned npc=4 ... reason=repositioning because exposed`.)
 - [x] The sight-avoid behavior is local and heuristic: deterministic tests prove it does not use magical future-cone omniscience and does not teleport.
 - [x] A scout outing has a finite live sortie window and can return home after watching long enough, instead of lingering indefinitely in local contact. _(Deterministic/live-wired source path plus live/harness return-home decision proof `.userdata/dev-harness/harness_runs/20260427_051117/`.)_
-- [ ] Returned scout state writes back through the owned-site memory path and can drive later re-evaluation without automatically conjuring a larger group. _(Deterministic writeback coverage; full walked-home/writeback live proof still open.)_
+- [x] Returned scout state writes back through the owned-site memory path and can drive later re-evaluation without automatically conjuring a larger group. _(Deterministic writeback coverage plus live/harness follow-through `.userdata/dev-harness/harness_runs/20260427_054353/`: returned scout pressure refresh logged, active group/target/member ids and sortie clocks cleared, member `4` saved back on home footprint.)_
 - [x] The single-scout current behavior remains explainable: `scout` is still one member unless a later job or escalated decision explicitly requires more.
-- [ ] Reviewer-readable output distinguishes `still stalking`, `repositioning because exposed`, `returning home`, and `re-dispatch/escalation decision`. _(Source/log/report strings are present and live returning-home output is proved; live sight-avoid/re-dispatch reviewer proof still open.)_
+- [x] Reviewer-readable output distinguishes `still stalking`, `repositioning because exposed`, `returning home`, and `re-dispatch/escalation decision`. _(Source/report strings cover the branches; live proof now covers returning-home/writeback and `sight_avoid: exposed -> repositioned`. Later redispatch tuning is not claimed beyond explicit owned-site re-evaluation.)_
 - [x] At least one live/harness proof uses `bandit.live_world_nearby_camp_mcw` or an equivalent real owned-site scenario and confirms the same code path would apply to a normal discovered bandit camp, while separately naming the harness bias that places the camp nearby on purpose.
 
 Notes:
 - Canonical contract lives at `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
 - 2026-04-27 implementation checkpoint: deterministic `[bandit][live_world]` coverage now passes for bounded adjacent sight-avoid choice, finite scout sortie expiry, return-home/writeback, active job typing, and new active sortie serialization fields. Local gates: `git diff --check`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> 524 assertions in 22 test cases passed.
-- Live/harness return-home decision proof now exists: `.userdata/dev-harness/harness_runs/20260427_051117/` uses equivalent nearby-owned-site local-contact footing plus a narrow pre-aged sortie-clock transform, records `scout_sortie: linger limit reached -> return_home`, and confirms `returning_home -> local_gate skipped` with no shakedown/local-gate artifact. This is not full walked-home/writeback proof. Earlier `.userdata/dev-harness/harness_runs/20260427_040319/` and `.userdata/dev-harness/harness_runs/20260427_041554/` remain inconclusive and must not be counted.
-- Josef's smoke-attraction observation still wants a no-smoke control before we claim smoke itself is the live cause.
+- Live/harness return-home decision proof now exists: `.userdata/dev-harness/harness_runs/20260427_051117/` uses equivalent nearby-owned-site local-contact footing plus a narrow pre-aged sortie-clock transform, records `scout_sortie: linger limit reached -> return_home`, and confirms `returning_home -> local_gate skipped` with no shakedown/local-gate artifact.
+- Live/harness return-home follow-through proof now exists: `.userdata/dev-harness/harness_runs/20260427_054353/` records `scout_report: returned -> pressure refreshed`; copied-save inspection shows active group/target/member ids and sortie clocks cleared, remembered pressure refreshed, and member `4` back on the home footprint.
+- Live/harness sight-avoid proof now exists: `.userdata/dev-harness/harness_runs/20260427_061344/` via stable scenario `bandit.local_sight_avoid_exposed_mcw` records `bandit_live_world sight_avoid: exposed -> repositioned npc=4 from=(60,23,0) to=(59,22,0) reason=repositioning because exposed`. Earlier `.userdata/dev-harness/harness_runs/20260427_040319/`, `.userdata/dev-harness/harness_runs/20260427_041554/`, `.userdata/dev-harness/harness_runs/20260427_060143/`, and `.userdata/dev-harness/harness_runs/20260427_060326/` remain inconclusive/non-proof shaping attempts and must not be counted as closure evidence.
+- Josef's smoke-attraction observation remains parked under the separate live-signal/fire proof caveat; do not claim smoke itself is the live cause from this local-stalking packet.
 
 ---
 
 ## Smart Zone Manager v1 Josef playtest corrections
 
-Status: GREENLIT / QUEUED FOLLOW-UP
+Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [ ] Smart Zone Manager adds `LOOT_MANUALS` coverage on/near the Basecamp books cluster without removing ordinary `LOOT_BOOKS` coverage.

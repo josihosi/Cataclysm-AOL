@@ -1,0 +1,67 @@
+{
+  "name": "bandit.local_sight_avoid_exposed_mcw",
+  "description": "Short live sight-avoid proof: start from nearby-owned-site local-contact footing with the player moved to an exposed south-of-shelter sightline, disable safe mode, advance a tiny bounded window, and capture exposed -> repositioned evidence.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_local_sight_avoid_exposed_v0_2026-04-27",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world sight_avoid: exposed -> repositioned",
+    "bandit_live_world sight_avoid: still stalking",
+    "bandit_live_world local_gate"
+  ],
+  "capture_world_after": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 12
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode",
+      "keys": [
+        "!"
+      ],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 12
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_20_turns_for_sight_avoid",
+      "count": 20,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt",
+      "keys": [
+        "S"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit",
+      "keys": [
+        "Y"
+      ],
+      "settle_seconds": 4.0,
+      "capture_after": true
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.local_sight_avoid_exposed_mcw"
+}

@@ -1,6 +1,6 @@
 # Bandit local sight-avoid + scout return cadence packet v0 (2026-04-26)
 
-Status: active / greenlit now.
+Status: closed / moved downstream.
 
 ## Premise
 
@@ -82,9 +82,11 @@ Prefer a narrow deterministic layer first, then one live/handoff proof:
 
 ## Current proof checkpoint - 2026-04-27
 
-The first live/harness proof for this packet is a return-home decision proof, not a full walked-home/writeback proof.  Scenario `bandit.local_scout_return_preaged_mcw` starts from real nearby-owned-site local-contact footing and uses only the narrow `bandit_active_sortie_clock` fixture transform to pre-age the scout sortie.  Run `.userdata/dev-harness/harness_runs/20260427_051117/` records `scout_sortie: linger limit reached -> return_home` and `returning_home -> local_gate skipped` on the current runtime, with no matched shakedown/local-gate artifact for that returning scout.
+The first live/harness proof for this packet is a return-home decision proof. Scenario `bandit.local_scout_return_preaged_mcw` starts from real nearby-owned-site local-contact footing and uses only the narrow `bandit_active_sortie_clock` fixture transform to pre-age the scout sortie. Run `.userdata/dev-harness/harness_runs/20260427_051117/` records `scout_sortie: linger limit reached -> return_home` and `returning_home -> local_gate skipped` on the current runtime, with no matched shakedown/local-gate artifact for that returning scout.
 
-Open proof rungs remain: live `sight_avoid: exposed -> repositioned`, and full follow-through that a returning scout reaches home and writes back/clears the active group.
+The walked-home/writeback follow-through rung is now also live-proved. Run `.userdata/dev-harness/harness_runs/20260427_054353/` used the same copied nearby-owned-site footing on clean runtime `489e629073`, advanced a bounded 2600-turn travel window, and matched `scout_report: returned -> pressure refreshed ... remaining_pressure=ample`. Copied-save inspection shows the site active group/target/member ids and sortie clocks cleared, `remembered_pressure=ample`, and member `4` saved back on the home footprint with no remaining `omt_path`. Stable rerun scenario: `bandit.local_scout_return_followthrough_mcw`.
+
+Final live proof rung: run `.userdata/dev-harness/harness_runs/20260427_061344/` via stable scenario `bandit.local_sight_avoid_exposed_mcw` starts from equivalent nearby-owned-site local-contact footing, moves only the player to an exposed south-of-shelter sightline, disables safe mode, advances 20 turns, and records `bandit_live_world sight_avoid: exposed -> repositioned npc=4 from=(60,23,0) to=(59,22,0) reason=repositioning because exposed`. This closes the packet's local sight-avoid live proof without claiming later redispatch tuning beyond explicit camp re-evaluation.
 
 ## Notes for later implementation
 

@@ -1,0 +1,15 @@
+{
+  "name": "bandit_local_sight_avoid_exposed_v0_2026-04-27",
+  "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "source_profile": "live-debug",
+  "description": "Narrow live-proof fixture for the local sight-avoid packet: reuse the copied nearby-owned-site local-contact footing and move only the player to an open south-of-shelter sightline far enough from the local-contact scout to keep the local gate in hold-off/stalk rather than immediate shakedown.",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [0, -8, 0]
+    }
+  ]
+}
