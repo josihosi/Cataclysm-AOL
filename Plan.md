@@ -137,9 +137,8 @@ Greenlit order:
 1. **Current active bridge: player fuel continuation behind the green brazier deploy gate.** Keep this inside the active harness audit until the post-fuel save prompt/writeback/current-tile metadata gate either greens or names its exact blocker.
 2. **Smart Zone Manager live layout verification packet v0.** Reopen actual live verification on a clean/disposable path: capture generated zone positions after creation/reopen, prove intended-separate zones do not share a tile, and allow overlaps only where explicitly intended. Deterministic geometry proof is support, not product closure.
 3. **Player-lit fire and bandit signal verification packet v0.** After fuel placement/writeback is green, prove the real lighter/action path, actual `fd_fire`/smoke state, bounded wait/time passage, and bandit signal response. Do not jump here while the fuel gate is red.
-4. **Roof-fire horde detection proof packet v0.** After the real player-lit fire path is green, debug-stage a horde about 10 OMT away if source/control checks confirm that distance is meaningful, put the player on the shelter roof or another source-backed elevated shelter tile, light a real fire there by player actions, and record whether the horde detects/responds. Debug may stage the horde; it must not fake the fire proof.
 
-Non-goals: no Lacapult, no release publishing, no broad debug-note reopening, no contaminated old McWilliams Smart Zone macro as closure proof, no debug-spawned fire as horde proof, and no feature closure from load-and-close or deterministic tests alone.
+Non-goals: no Lacapult, no release publishing, no broad debug-note reopening, no contaminated old McWilliams Smart Zone macro as closure proof, and no feature closure from load-and-close or deterministic tests alone.
 
 ---
 
