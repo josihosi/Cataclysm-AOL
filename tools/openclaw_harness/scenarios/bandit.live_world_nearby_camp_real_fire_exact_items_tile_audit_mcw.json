@@ -1,0 +1,37 @@
+{
+  "name": "bandit.live_world_nearby_camp_real_fire_exact_items_tile_audit_mcw",
+  "description": "Post-Frau attempt 3: exact-id fixture items (brazier, 2x4 fuel, charged lighter), normal deploy/drop/wielded-lighter action route as far as the harness can drive it, then immediate save/snapshot and target-tile fd_fire audit before any long bandit wait. No raw map fields are injected.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world signal scan:"
+  ],
+  "steps": [
+    { "kind": "wait", "label": "exact_items_load_settle", "seconds": 2.0, "capture_after": true },
+    { "kind": "press", "label": "open_wield_inventory_for_brazier", "keys": [ "w" ], "settle_seconds": 0.8, "capture_after": true },
+    { "kind": "press", "label": "filter_wield_inventory_for_brazier", "keys": [ "/" ], "settle_seconds": 0.5, "capture_after": true },
+    { "kind": "type", "label": "type_brazier_filter_for_wield", "text": "brazier", "submit": true, "settle_seconds": 0.8, "capture_after": true },
+    { "kind": "press", "label": "select_filtered_brazier_to_wield", "keys": [ "enter" ], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "activate_wielded_brazier", "keys": [ "A" ], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "place_brazier_east", "keys": [ "right" ], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "step_onto_brazier", "keys": [ "right" ], "settle_seconds": 0.8, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "drop_item", "label": "drop_exact_2x4_on_brazier", "query": "plank", "count": 20, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 32 },
+    { "kind": "press", "label": "step_west_clear_of_brazier", "keys": [ "left" ], "settle_seconds": 0.8, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "open_wield_inventory_for_lighter", "keys": [ "w" ], "settle_seconds": 0.8, "capture_after": true },
+    { "kind": "press", "label": "filter_wield_inventory_for_lighter", "keys": [ "/" ], "settle_seconds": 0.5, "capture_after": true },
+    { "kind": "type", "label": "type_lighter_filter_for_wield", "text": "lighter", "submit": true, "settle_seconds": 0.8, "capture_after": true },
+    { "kind": "press", "label": "select_filtered_lighter_to_wield", "keys": [ "enter" ], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "activate_wielded_lighter", "keys": [ "A" ], "settle_seconds": 0.8, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "target_brazier_with_wielded_lighter", "keys": [ "right", "enter" ], "delay_ms": 250, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 40 },
+    { "kind": "advance_turns", "label": "advance_firestarter_activity_midpoint_only", "count": 180, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 40 },
+    { "kind": "press", "label": "save_after_midpoint_firestarter_activity", "keys": [ "S" ], "delay_ms": 250, "settle_seconds": 3.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 32 }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_real_fire_exact_items_tile_audit_mcw && python3 tools/openclaw_harness/map_fields_near_player_audit.py <run>/saved_world/McWilliams --offset 1 0 0 --field-id fd_fire"
+}

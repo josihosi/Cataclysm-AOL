@@ -1818,6 +1818,54 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "player_items":
+            items_raw = raw.get("items", [])
+            if not isinstance(items_raw, list) or not items_raw:
+                raise SystemExit(f"Fixture save_transforms[{index}] needs non-empty items in {manifest_path}")
+            items: List[Dict[str, Any]] = []
+            for item_index, item_raw in enumerate(items_raw, start=1):
+                if not isinstance(item_raw, dict):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] must be an object in {manifest_path}"
+                    )
+                typeid = str(item_raw.get("typeid", "")).strip()
+                if not typeid:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] needs typeid in {manifest_path}"
+                    )
+                try:
+                    count = int(item_raw.get("count", 1) or 1)
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] count must be integer in {manifest_path}"
+                    )
+                if count <= 0:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] count must be > 0 in {manifest_path}"
+                    )
+                item = {"typeid": typeid, "count": count}
+                if "charges" in item_raw:
+                    try:
+                        item["charges"] = int(item_raw.get("charges"))
+                    except (TypeError, ValueError):
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] charges must be integer in {manifest_path}"
+                        )
+                if "contents" in item_raw:
+                    contents = item_raw.get("contents")
+                    if not isinstance(contents, dict):
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] contents must be object in {manifest_path}"
+                        )
+                    item["contents"] = contents
+                items.append(item)
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "items": items,
+            })
+            continue
+
         if kind == "player_near_overmap_special":
             special_id = str(raw.get("special_id", "")).strip()
             if not special_id:
@@ -1935,7 +1983,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
-            "supported kinds: player_mutations, player_near_overmap_special, "
+            "supported kinds: player_mutations, player_items, player_near_overmap_special, "
             "seed_overmap_special_near_player, map_fields_near_player, game_turn, "
             "bandit_active_sortie_clock"
         )
@@ -2026,6 +2074,66 @@ def apply_player_mutations_transform(world_dir: Path, transform: Dict[str, Any])
         "player_save": str(transform.get("player_save", "")),
         "mutations": requested_mutations,
         "added_traits": added_traits,
+    }
+
+
+def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    player_save = world_dir / player_save_name
+    if not player_save.exists():
+        raise SystemExit(f"Fixture player-items transform target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture player-items transform expects .zzip save path: {player_save}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture player-items transform did not extract save: {extracted_save}")
+
+    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+    inventory = player.setdefault("inv", [])
+    if not isinstance(inventory, list):
+        raise SystemExit(f"Player inventory is not a list in {extracted_save}")
+
+    bday = int(payload.get("turn", 0) or 0)
+    added_items: List[Dict[str, Any]] = []
+    for item in transform.get("items", []):
+        typeid = str(item.get("typeid", "")).strip()
+        count = int(item.get("count", 1) or 1)
+        charges = item.get("charges")
+        contents = item.get("contents")
+        for _ in range(count):
+            entry: Dict[str, Any] = {
+                "typeid": typeid,
+                "bday": bday,
+                "last_temp_check": 0,
+                "template_traits": [],
+            }
+            if charges is not None:
+                entry["charges"] = int(charges)
+            if isinstance(contents, dict):
+                entry["contents"] = contents
+            inventory.append(entry)
+        added: Dict[str, Any] = {"typeid": typeid, "count": count}
+        if charges is not None:
+            added["charges"] = int(charges)
+        added_items.append(added)
+
+    extracted_save.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    run_zzip(extracted_save)
+    if extracted_save.exists():
+        extracted_save.unlink()
+
+    return {
+        "kind": "player_items",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "added_items": added_items,
     }
 
 
@@ -2736,6 +2844,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "player_mutations":
             reports.append(apply_player_mutations_transform(world_dir, transform))
+            continue
+        if kind == "player_items":
+            reports.append(apply_player_items_transform(world_dir, transform))
             continue
         if kind == "player_near_overmap_special":
             reports.append(apply_player_near_overmap_special_transform(world_dir, transform))
