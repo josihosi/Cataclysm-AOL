@@ -91,7 +91,7 @@ Core correction: `10 OMT` is a useful ordinary visibility number, but it is not 
 - [ ] Signal observation/decay cadence is separate from dispatch decision cadence, with event-driven creation and reviewer-readable maintenance.
 - [ ] Instrumentation distinguishes empty ownership, no signal packet, below-threshold signal, rejected-by-range, cadence skip, and hold/chill decisions.
 - [ ] Deterministic tests cover the range matrix, site bootstrap serialization, signal-specific caps, and candidate filtering/scoring split.
-- [ ] At least one product-style harness/live proof shows real wood/fuel plus a real ignition source lit through the normal in-game action path, visibly producing fire/smoke while the player stays safe, then producing or refreshing a live bandit candidate/mark on a real owned-site path during/around a several-hour wait, plus one no-signal control for the same setup. _(Raw saved-field run `.userdata/dev-harness/harness_runs/20260427_014408/` is retained as map-field reader proof only.)_
+- [ ] At least one product-style harness/live proof shows the candidate player-action chain working end-to-end: deploy a brazier, place wood next to it, put the firewood source on top of the wood, have/place a lighter, light the fire through normal in-game mechanics, visibly produce fire/smoke while the player stays safe and basic needs such as thirst/water are handled, then produce or refresh a live bandit candidate/mark on a real owned-site path during/around a several-hour `|` wait, plus one no-signal control for the same setup. _(Raw saved-field run `.userdata/dev-harness/harness_runs/20260427_014408/` is retained as map-field reader proof only.)_
 
 ## Current implementation notes
 
@@ -107,7 +107,7 @@ Source checkpoint in progress:
 
 Still not closed:
 
-- real product fire proof: place actual wood/fuel in a visible safe location, provide an actual ignition source/tool, light the fire through normal C-AOL/CDDA mechanics, keep the player out of fire/smoke, visibly confirm fire/smoke, wait several in-game hours, and require live bandit signal logs such as `matched_sites=1 refreshed_sites=1` before claiming escalation/persistence/decay/refresh; if this cannot be automated cleanly, park/escalate with the exact missing control/mechanic instead of substituting raw save surgery;
+- real product fire proof: use Josef's candidate manual recipe as the proof-shape checklist, not as a verified automation recipe yet: deploy a brazier, place wood next to it, put the firewood source on top of the wood, have/place a lighter, light the fire through normal C-AOL/CDDA mechanics, keep the player out of fire/smoke, visibly confirm fire/smoke, keep mundane survival state safe including thirst/water, wait several in-game hours, and require live bandit signal logs such as `matched_sites=1 refreshed_sites=1` before claiming escalation/persistence/decay/refresh; if deploying brazier, placing wood/source, lighting, waiting, or drinking/survival cannot be automated cleanly, park/escalate with the exact missing control/mechanic instead of substituting raw save surgery;
 - clean live proof for a threshold-surviving light branch; the source hook now feeds ordinary fire through the light adapter, but the current proof has `matched_light_sites=0`;
 - separated signal decay cadence;
 - reviewer-readable hold/chill evidence.
