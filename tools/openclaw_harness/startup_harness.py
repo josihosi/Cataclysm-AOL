@@ -1351,6 +1351,77 @@ def audit_map_tiles_near_player(
     }
 
 
+def audit_saved_player_items(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    required_items: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Read-only saved-player inventory audit for exact item type ids."""
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    selected_player_save = player_save.strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise RuntimeError(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+
+    player_save_path = world_dir / selected_player_save
+    if not player_save_path.exists():
+        raise FileNotFoundError(f"Player save not found: {player_save_path}")
+    if player_save_path.suffix != ".zzip":
+        raise RuntimeError(f"Player inventory audit expects .zzip save path: {player_save_path}")
+
+    extracted_save = player_save_path.with_suffix("")
+    run_zzip(player_save_path)
+    if not extracted_save.exists():
+        raise RuntimeError(f"Player inventory audit did not extract save: {extracted_save}")
+
+    try:
+        payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    finally:
+        if extracted_save.exists():
+            extracted_save.unlink()
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise RuntimeError(f"Extracted player save is missing player object: {extracted_save}")
+    inventory = player.get("inv", [])
+    if not isinstance(inventory, list):
+        raise RuntimeError(f"Extracted player save has non-list inventory: {extracted_save}")
+
+    counts: Dict[str, int] = {}
+    for entry in inventory:
+        if not isinstance(entry, dict):
+            continue
+        typeid = str(entry.get("typeid", "")).strip()
+        if not typeid:
+            continue
+        counts[typeid] = counts.get(typeid, 0) + 1
+
+    required = [item for item in (required_items or []) if item]
+    missing_required_items = [item for item in required if counts.get(item, 0) < 1]
+    if required and not missing_required_items:
+        status = "required_state_present"
+    elif required:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "required_items": required,
+        "observed_items": sorted(counts),
+        "inventory_counts": dict(sorted(counts.items())),
+        "missing_required_items": missing_required_items,
+        "status": status,
+    }
+
+
 def debug_selection_key_moves_highlight(selection_key: str) -> bool:
     normalized = str(selection_key or "").strip().lower()
     return normalized in {
@@ -4099,6 +4170,52 @@ def execute_probe_steps(
                 "inventory_action": "drop_item",
                 "selection_mode": selection_mode,
             })
+        elif kind == "audit_saved_player_items":
+            player_save = str(step.get("player_save", "") or "").strip()
+            required_items = [str(item).strip() for item in step.get("required_items", step.get("required_item_ids", [])) if str(item).strip()]
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_player_items(
+                    world_dir,
+                    player_save=player_save,
+                    required_items=required_items,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_items": required_items,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "metadata": metadata,
+                "action_description": "read saved player inventory and require exact item type metadata",
+                "expected_immediate_state": "saved player inventory contains the required item metadata before feature proof may continue",
+                "failure_rule": "missing required saved-player item metadata or unreadable save metadata makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": metadata_verdict,
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved-player metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
         elif kind == "audit_saved_map_tile_near_player":
             raw_offsets = step.get("offsets", step.get("offset", []))
             offsets: Optional[List[Tuple[int, int, int]]]

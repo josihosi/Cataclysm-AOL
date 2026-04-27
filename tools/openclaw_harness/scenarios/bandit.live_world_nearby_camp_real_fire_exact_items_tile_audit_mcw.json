@@ -1,6 +1,6 @@
 {
   "name": "bandit.live_world_nearby_camp_real_fire_exact_items_tile_audit_mcw",
-  "description": "Exact-id fixture items (brazier, 2x4 fuel, charged lighter), normal deploy/drop/wielded-lighter action route, with same-run saved-map metadata gates after brazier deploy, fuel drop, and final fire checkpoint. No raw map fields are injected.",
+  "description": "Exact-id fixture items (brazier, 2x4 fuel, charged lighter), normal deploy/drop/wielded-lighter action route, with saved-player inventory preflight and same-run saved-map metadata gates after brazier deploy, fuel drop, and final fire checkpoint. No raw map fields are injected.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
@@ -18,7 +18,22 @@
       "kind": "wait",
       "label": "exact_items_load_settle",
       "seconds": 2.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The exact-items McWilliams fixture is loaded on the map before any deploy/drop/lighter macro runs."
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_saved_inventory_has_exact_fire_items",
+      "required_items": [
+        "brazier",
+        "2x4",
+        "lighter"
+      ],
+      "expected_visible_fact": "saved player inventory contains the exact brazier, 2x4 fuel, and lighter fixture items before any GUI deploy/drop/lighter macro is trusted",
+      "preconditions": "fixture install completed for bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
+      "next_step_gate": "do not credit any GUI deploy/drop/lighter step if the exact fixture items are missing from saved-player inventory",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "exact fire fixture items missing before player-action deploy primitive audit"
     },
     {
       "kind": "press",
@@ -27,7 +42,8 @@
         "w"
       ],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The wield inventory opens before filtering for the brazier."
     },
     {
       "kind": "press",
@@ -36,7 +52,8 @@
         "/"
       ],
       "settle_seconds": 0.5,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The wield inventory filter prompt is open for brazier selection."
     },
     {
       "kind": "type",
@@ -44,7 +61,8 @@
       "text": "brazier",
       "submit": true,
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The wield inventory is filtered to brazier-related item(s)."
     },
     {
       "kind": "press",
@@ -55,7 +73,10 @@
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 24
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "The filtered brazier item is selected for wielding or the screen shows why selection did not leave the inventory context.",
+      "failure_rule": "if the following activation/deploy screens do not leave inventory context and saved metadata lacks f_brazier, this selector remains untrusted",
+      "next_step_gate": "do not treat the wielded activation as trusted unless this selector is screen- or metadata-corroborated"
     },
     {
       "kind": "press",
@@ -66,7 +87,10 @@
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 24
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "The wielded-item activation command is sent and should open the brazier deploy direction prompt if the previous selection succeeded.",
+      "failure_rule": "if this action does not produce a deploy prompt or f_brazier metadata, the wielded activation primitive remains untrusted",
+      "next_step_gate": "do not credit place_brazier_east unless deploy prompt/metadata is proven"
     },
     {
       "kind": "press",
@@ -77,7 +101,10 @@
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 24
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "The brazier deploy direction is sent east and should return to the map with brazier furniture placed.",
+      "failure_rule": "if the following saved-map audit cannot see f_brazier east of the player, the direction/deploy primitive is red",
+      "next_step_gate": "the saved-map f_brazier audit is the required gate before any fuel/lighter/fire steps"
     },
     {
       "kind": "press",
@@ -120,7 +147,8 @@
       "settle_seconds": 0.8,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 24
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "The player steps east onto the proven brazier tile after the deploy metadata gate."
     },
     {
       "kind": "drop_item",
@@ -129,7 +157,8 @@
       "count": 20,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 32
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "The exact 2x4 fuel drop route resolves on the current brazier tile."
     },
     {
       "kind": "press",
@@ -175,7 +204,8 @@
       "settle_seconds": 0.8,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 24
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "The player steps west clear of the brazier/fuel tile before using the lighter."
     },
     {
       "kind": "press",
@@ -184,7 +214,8 @@
         "w"
       ],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The wield inventory opens before filtering for the lighter."
     },
     {
       "kind": "press",
@@ -193,7 +224,8 @@
         "/"
       ],
       "settle_seconds": 0.5,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The wield inventory filter prompt is open for lighter selection."
     },
     {
       "kind": "type",
@@ -201,7 +233,8 @@
       "text": "lighter",
       "submit": true,
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "The wield inventory is filtered to lighter-related item(s)."
     },
     {
       "kind": "press",
@@ -212,7 +245,8 @@
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 24
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "The filtered lighter item is selected for wielding or the screen shows why selection did not leave the inventory context."
     },
     {
       "kind": "press",
@@ -223,7 +257,8 @@
       "settle_seconds": 0.8,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 24
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "The wielded lighter activation command is sent and should open the target prompt if the lighter was wielded."
     },
     {
       "kind": "press",
@@ -236,7 +271,8 @@
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 40
+      "extract_text_tail_lines": 40,
+      "expected_visible_fact": "The lighter target flow is aimed at the brazier/fuel tile and submitted."
     },
     {
       "kind": "advance_turns",
@@ -244,7 +280,8 @@
       "count": 180,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 40
+      "extract_text_tail_lines": 40,
+      "expected_visible_fact": "A bounded number of turns advances the firestarter activity toward the midpoint checkpoint."
     },
     {
       "kind": "press",
@@ -256,7 +293,8 @@
       "settle_seconds": 3.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 32
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "The game returns to the map after saving the firestarter midpoint checkpoint."
     },
     {
       "kind": "audit_saved_map_tile_near_player",
