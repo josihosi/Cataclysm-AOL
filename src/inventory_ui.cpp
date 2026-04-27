@@ -97,6 +97,24 @@ static std::string openclaw_harness_quote( const std::string &value )
     return out;
 }
 
+static std::string openclaw_harness_item_location_type_name( const item_location::type location_type )
+{
+    switch( location_type ) {
+        case item_location::type::invalid:
+            return "invalid";
+        case item_location::type::character:
+            return "character";
+        case item_location::type::map:
+            return "map";
+        case item_location::type::vehicle:
+            return "vehicle";
+        case item_location::type::container:
+            return "container";
+    }
+
+    return "unknown";
+}
+
 static void openclaw_harness_trace_inventory_entry( const std::string &event,
         const std::string &title, const std::string &filter, const std::string &action,
         const std::string &selection_method, const inventory_entry *entry )
@@ -184,7 +202,12 @@ static void openclaw_harness_trace_inventory_entries( const inventory_selector &
                     << " name=" << openclaw_harness_quote( it.tname() )
                     << " entry_invlet=" << openclaw_harness_quote( entry_invlet == '\0' ? "" : std::string( 1, entry_invlet ) )
                     << " item_invlet=" << openclaw_harness_quote( item_invlet == '\0' ? "" : std::string( 1, item_invlet ) )
-                    << " stack_count=" << entry->get_available_count();
+                    << " stack_count=" << entry->get_available_count()
+                    << " chosen_count=" << entry->chosen_count
+                    << " location_type=" << openclaw_harness_quote(
+                        openclaw_harness_item_location_type_name( loc.where() ) )
+                    << " recursive_location_type=" << openclaw_harness_quote(
+                        openclaw_harness_item_location_type_name( loc.where_recursive() ) );
         }
     }
 }
@@ -4711,6 +4734,9 @@ drop_locations inventory_drop_selector::execute()
     openclaw_harness_trace_drop_selector( "open", get_title(), get_filter(), "", to_use );
     while( true ) {
         ui_manager::redraw();
+        openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), "redraw", to_use );
+        openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", "redraw",
+                "drop_highlight_after_redraw" );
 
         const inventory_input input = get_input();
         if( input.action == "CONFIRM" ) {
@@ -4740,6 +4766,8 @@ drop_locations inventory_drop_selector::execute()
 
         on_input( input );
         openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), input.action, to_use );
+        openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", input.action,
+                "drop_highlight_after_input" );
     }
 
     drop_locations dropped_pos_and_qty;
