@@ -97,7 +97,7 @@ Current checkpoint:
 - Harness surface inventory and provisional same-save policy live at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
 - `startup_harness.py start` now emits a startup step ledger and explicit proof classification: load/readiness remains `startup/load`, `feature_proof=false`.
 - Probe classification requires a clean startup gate before `artifacts_matched` can become feature proof, so stale runtime/profile/load-readiness problems cannot be hidden by later log matches.
-- `audit_saved_map_tile_near_player` reports explicit empty target-tile metadata for requested offsets; `audit_saved_player_items` proves exact saved inventory prerequisites before GUI macros run; `abort_on_metadata_failure` prevents later steps from being credited after missing required fields/items/furniture.
+- `audit_saved_map_tile_near_player` reports explicit empty target-tile metadata for requested offsets; `audit_saved_player_items` now distinguishes live-selector-accessible carried/worn/contained items from legacy top-level `player.inv` rows before GUI macros run; `abort_on_metadata_failure` prevents later steps from being credited after missing required fields/items/furniture.
 
 Current false-pass evidence:
 
@@ -107,15 +107,15 @@ Current false-pass evidence:
 - `.userdata/dev-harness/harness_runs/20260427_200100/` proves exact fixture inventory first (`brazier=1`, `2x4=20`, `lighter=1`), then still stops red at the missing east-tile `f_brazier` deploy state.
 - `.userdata/dev-harness/harness_runs/20260427_200919/` tried checked GUI text for Josef's GUI-as-text idea and aborted at `open_apply_inventory_for_brazier_text_guard` because source-backed `Use item` menu text was not proven.
 - `.userdata/dev-harness/harness_runs/20260427_202434/` uses harness-gated inventory/direction trace plus richer saved-item metadata. It proves `Use item` opens and the saved brazier definition is `deploy_furn -> f_brazier`, but after filtering `brazier` the selector still does **not** prove a highlighted `brazier` row (`highlight_after_redraw selected_item=no`). The abort fires before `CONFIRM`, so `Deploy where?`, `RIGHT`, save, and east-tile `f_brazier` remain unproven.
-- `.userdata/dev-harness/harness_runs/20260427_203847/` adds selector-entry tracing and sharpens the gap: saved `player.inv` still proves `brazier=1` with `deploy_furn -> f_brazier`, but the live `Use item` selector shows only `smart_phone` before filtering and zero visible entries after filter `brazier`.
+- `.userdata/dev-harness/harness_runs/20260427_203847/` plus a direct updated-audit check sharpens the gap: the exact fire items exist only in legacy top-level `player.inv` (`legacy_top_level_inv_counts={"2x4":20,"brazier":1,"lighter":1}`), while live-selector-accessible carried/worn contents contain no `brazier`, `2x4`, or `lighter`; this matches the live `Use item` selector showing only `smart_phone` before filtering and zero visible entries after filter `brazier`.
 
-Current blocker: Frau Knackal classifies this as `blocked_untrusted_brazier_deploy_selector`, now narrowed to a fixture-to-live inventory availability gap behind `filtered_brazier_selected`. Stop blind key variants. Keep feature proof frozen. Treat normal player-action brazier deployment as the current red harness primitive.
+Current blocker: Frau Knackal classifies this as `blocked_untrusted_brazier_deploy_selector`, now narrowed to a fixture storage/accessibility gap before `filtered_brazier_selected`: the fixture writes exact items into legacy `player.inv`, but the live selector path walks wielded/worn/contained gear and nearby map items. Stop blind key variants. Keep feature proof frozen. Treat normal player-action brazier deployment as the current red harness primitive.
 
-Known source/control footing: `brazier` uses `deploy_furn` -> `f_brazier`; activation should enter `Deploy where?`; `right` is valid only in that direction prompt. Current live trace says saved `player.inv` presence is not live activatable selector availability.
+Known source/control footing: `brazier` uses `deploy_furn` -> `f_brazier`; activation should enter `Deploy where?`; `right` is valid only in that direction prompt. Source inspection confirms `game_menus::inv::use()` adds character top-level worn gear plus nearby items, while `Character::top_items_loc()` returns worn items only; legacy `player.inv` rows are not enough live activatable selector availability.
 
 Active sub-order:
 
-1. Prove why saved `player.inv` contains `brazier` but the live `Use item` selector does not expose it; inspect fixture install/load/inventory ownership/selector predicate seams before any more key motion.
+1. Repair/prove the fixture storage path so exact `brazier`/`2x4`/`lighter` are in live-selector-accessible gear or a deliberately audited nearby-map source, not only legacy top-level `player.inv`.
 2. Do not press confirm/right until a live selector row for `brazier` is proven green; once green, continue the guarded chain: confirm -> prove `Deploy where?` -> direction right -> save -> audit east-tile `f_brazier`.
 3. Keep fuel/lighter/fire steps gated until the menu/selector state and saved east-tile `f_brazier` are green.
 

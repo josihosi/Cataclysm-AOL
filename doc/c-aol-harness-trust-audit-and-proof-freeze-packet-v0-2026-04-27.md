@@ -62,7 +62,7 @@ No scenario may claim feature proof if one of its pre-feature primitives silentl
 
 ### 3a. Expand information extraction before rerunning the blocked UI seam
 
-The current blocked primitive is `blocked_untrusted_brazier_deploy_selector`: the fixture inventory contains the required brazier/wood/lighter items, but the live GUI path has not yet proven that the `brazier` row was selected, that activation entered `Deploy where?`, or that the direction key was consumed by that prompt. Do not keep trying key variants.
+The current blocked primitive is `blocked_untrusted_brazier_deploy_selector`: the fixture writes the required brazier/wood/lighter items into legacy top-level `player.inv`, but the live GUI path has not proven those items are selector-accessible, that the `brazier` row was selected, that activation entered `Deploy where?`, or that the direction key was consumed by that prompt. Do not keep trying key variants.
 
 Before rerunning this part of the audit, add a small observation primitive that can prove the UI/menu state. Preferred exploration order:
 
@@ -71,7 +71,7 @@ Before rerunning this part of the audit, add a small observation primitive that 
 - richer saved-player item metadata for activatable/deploy target details such as `deploy_furn` -> `f_brazier`;
 - terminal/PTY ASCII scraping only as separately labeled recipe discovery, not as SDL GUI closure proof.
 
-Current observation result: run `.userdata/dev-harness/harness_runs/20260427_202434/` proves the `Use item` selector opens and saved-item metadata records `brazier` as `deploy_furn -> f_brazier`, but the filter state `brazier` still does not prove a highlighted/returned brazier row. Follow-up run `.userdata/dev-harness/harness_runs/20260427_203847/` adds selector-entry metadata and proves the live `Use item` list contains only `smart_phone` before filtering and zero entries after filter `brazier`. The next guard is still `filtered_brazier_selected`, but the immediate blocker is now the fixture-to-live inventory availability gap: saved `player.inv` prerequisites are not live selector-row proof. Repair/prove that gap before any further confirm/right attempt.
+Current observation result: run `.userdata/dev-harness/harness_runs/20260427_202434/` proves the `Use item` selector opens and saved-item metadata records `brazier` as `deploy_furn -> f_brazier`, but the filter state `brazier` still does not prove a highlighted/returned brazier row. Follow-up run `.userdata/dev-harness/harness_runs/20260427_203847/` adds selector-entry metadata and proves the live `Use item` list contains only `smart_phone` before filtering and zero entries after filter `brazier`. Direct updated-audit validation now classifies the exact items as legacy top-level `player.inv` rows, not live-selector-accessible carried/worn contents. The next guard is still `filtered_brazier_selected`, but the immediate blocker is now the fixture storage/accessibility gap. Repair/prove that gap before any further confirm/right attempt.
 
 The deploy row only turns green when it proves the relevant menu/selector state and saved east-tile `f_brazier`; fuel/lighter/fire proof remains blocked behind that row.
 
