@@ -80,6 +80,12 @@ Live/harness proof is still open and must not be overclaimed. Current-build atte
 
 Next Andi action: change the live proof shape before rerunning. Prefer a shorter or fixture-assisted nearby owned-site probe that starts with an active scout/local-contact state and advances only enough to see either bounded reposition or return-home/writeback.
 
+Schani review nudge for the next cadence:
+
+- do not repeat the same long/hung standoff probe shape
+- prove one thing directly: exposed scout makes a local heuristic sight-avoid move out of exposure, or finite sortie expires and the scout returns/writebacks cleanly
+- keep anti-loop accounting hot: if changed live probes keep failing, count this as the same missing live-proof blocker, consult Frau Knackal at attempt 3, and after attempts 4-5 move the playtest to Josef review instead of stirring the harness soup
+
 ## Validation plan
 
 Remaining live bar:
