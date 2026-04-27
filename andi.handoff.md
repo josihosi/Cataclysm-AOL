@@ -31,7 +31,7 @@ For the same `TODO.md` item or phase-blocker:
 - Raw saved `fd_fire` / `fd_smoke` proof is reader/consumer proof only; it cannot close player-fire product behavior.
 - A bounded synthetic smoke-source proof is allowed only when labeled `synthetic smoke-source/live-signal proof`.
 - Full player-fire proof still means normal game mechanics: brazier, wood/fuel, lighter/ignition, visible fire/smoke, safe player/survival state, several-hour wait, and matched-site bandit signal evidence.
-- Clean threshold-surviving light proof remains open if live light still shows `matched_light_sites=0`.
+- Clean threshold-surviving light proof for the synthetic loaded-map `fd_fire` source path is covered by `.userdata/dev-harness/harness_runs/20260427_114034/`; do not mistake it for full player-lit-fire proof.
 - Smart Zone clean-save live proof is greenlit if still needed, but do not rerun the old McWilliams/bandit-contaminated macro as closure proof.
 
 Keep the handoff to Schani concise: active item, what changed, evidence, remaining blocker, and recommended Schani action.
