@@ -33,7 +33,8 @@
     { "kind": "press", "label": "select_filtered_lighter_to_activate", "keys": [ "enter" ], "settle_seconds": 0.8, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
     { "kind": "press", "label": "target_brazier_with_lighter", "keys": [ "right" ], "delay_ms": 250, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 32 },
     { "kind": "advance_turns", "label": "advance_firestarter_activity", "count": 300, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 40 },
-    { "kind": "press", "label": "save_after_firestarter_activity", "keys": [ "S" ], "delay_ms": 250, "settle_seconds": 3.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 32 }
+    { "kind": "press", "label": "save_after_firestarter_activity", "keys": [ "S" ], "delay_ms": 250, "settle_seconds": 3.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 32 },
+    { "kind": "audit_saved_map_tile_near_player", "label": "audit_saved_target_tile_for_fd_fire", "offsets": [ [ 1, 0, 0 ] ], "required_fields": [ "fd_fire" ], "expected_visible_fact": "saved target tile east of player contains fd_fire metadata", "preconditions": "previous step saved the game after the brazier/lighter activity route", "next_step_gate": "feature proof cannot continue unless this metadata row is green" }
   ],
-  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_real_fire_tile_audit_mcw && python3 tools/openclaw_harness/map_fields_near_player_audit.py <run>/saved_world/McWilliams --offset 1 0 0 --field-id fd_fire"
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_real_fire_tile_audit_mcw (writes audit_saved_target_tile_for_fd_fire.metadata.json; no external map_fields command is required for the target-tile gate)"
 }

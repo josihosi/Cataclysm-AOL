@@ -27,7 +27,7 @@ import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Pattern, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Pattern, Sequence, Tuple
 
 from bandit_live_world_audit import load_special_placements as load_bandit_special_placements
 
@@ -1178,6 +1178,178 @@ def fill_numeric_prompt(
     time.sleep(settle_seconds)
 
 
+
+def iter_map_triples(value: Any) -> Iterable[Tuple[int, int, Any]]:
+    if not isinstance(value, list):
+        return
+    for entry in value:
+        if isinstance(entry, list) and len(entry) >= 3:
+            try:
+                yield int(entry[0]), int(entry[1]), entry[2]
+            except (TypeError, ValueError):
+                continue
+    for index in range(0, len(value) - 2, 3):
+        try:
+            yield int(value[index]), int(value[index + 1]), value[index + 2]
+        except (TypeError, ValueError):
+            continue
+
+
+def summarize_map_field(payload: Any) -> Dict[str, Any]:
+    if isinstance(payload, list) and payload:
+        return {
+            "field_id": payload[0],
+            "intensity": payload[1] if len(payload) > 1 else None,
+            "age_turns": payload[2] if len(payload) > 2 else None,
+        }
+    return {"raw": payload}
+
+
+def map_item_typeid(item: Any) -> str:
+    if isinstance(item, dict):
+        return str(item.get("typeid", ""))
+    return str(item)
+
+
+def summarize_map_items(payload: Any) -> List[str]:
+    if not isinstance(payload, list):
+        return [map_item_typeid(payload)] if payload else []
+    return [typeid for typeid in (map_item_typeid(item) for item in payload) if typeid]
+
+
+def parse_map_tile_offsets(raw_offsets: Sequence[Any]) -> List[Tuple[int, int, int]]:
+    if not raw_offsets:
+        return []
+    if len(raw_offsets) % 3 != 0:
+        raise ValueError("offset values must be repeated triples: dx dy dz")
+    offsets: List[Tuple[int, int, int]] = []
+    for index in range(0, len(raw_offsets), 3):
+        offsets.append((int(raw_offsets[index]), int(raw_offsets[index + 1]), int(raw_offsets[index + 2])))
+    return offsets
+
+
+def audit_map_tiles_near_player(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    radius: int = 2,
+    offsets: Optional[List[Tuple[int, int, int]]] = None,
+    required_fields: Optional[List[str]] = None,
+    required_items: Optional[List[str]] = None,
+    required_furniture: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Read-only saved-map audit for fields/items/furniture near the saved player."""
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    selected_player_save = player_save.strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise RuntimeError(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+
+    player_abs_omt, player_location = load_player_abs_omt(world_dir, selected_player_save)
+    maps_dir = world_dir / "maps"
+    if offsets is None:
+        scan_radius = max(0, int(radius))
+        offsets = [(dx, dy, 0) for dy in range(-scan_radius, scan_radius + 1) for dx in range(-scan_radius, scan_radius + 1)]
+
+    extracted_packs: set[str] = set()
+    preexisting_packs: set[str] = {path.name for path in maps_dir.iterdir() if path.is_dir()} if maps_dir.exists() else set()
+    tile_reports: List[Dict[str, Any]] = []
+
+    try:
+        for dx, dy, dz in offsets:
+            target = [int(player_location[0]) + dx, int(player_location[1]) + dy, int(player_location[2]) + dz]
+            abs_sm = (target[0] // 12, target[1] // 12, target[2])
+            abs_omt = (target[0] // 24, target[1] // 24, target[2])
+            local = (target[0] - abs_sm[0] * 12, target[1] - abs_sm[1] * 12, target[2])
+            pack_stem = f"{abs_omt[0] // 32}.{abs_omt[1] // 32}.{abs_omt[2]}"
+            pack_dir = maps_dir / pack_stem
+            if not pack_dir.exists():
+                pack_zzip = maps_dir / f"{pack_stem}.zzip"
+                if not pack_zzip.exists():
+                    continue
+                run_zzip(pack_zzip)
+                extracted_packs.add(pack_stem)
+            map_path = pack_dir / f"{abs_omt[0]}.{abs_omt[1]}.{abs_omt[2]}.map"
+            if not map_path.exists():
+                continue
+            map_payload = json.loads(map_path.read_text(encoding="utf-8"))
+            if not isinstance(map_payload, list):
+                continue
+            submap = next(
+                (
+                    sub
+                    for sub in map_payload
+                    if isinstance(sub, dict) and sub.get("coordinates") == [abs_sm[0], abs_sm[1], abs_sm[2]]
+                ),
+                None,
+            )
+            if not isinstance(submap, dict):
+                continue
+            fields = [summarize_map_field(payload) for x, y, payload in iter_map_triples(submap.get("fields")) if x == local[0] and y == local[1]]
+            items: List[str] = []
+            for x, y, payload in iter_map_triples(submap.get("items")):
+                if x == local[0] and y == local[1]:
+                    items.extend(summarize_map_items(payload))
+            furniture = [str(payload) for x, y, payload in iter_map_triples(submap.get("furniture")) if x == local[0] and y == local[1]]
+            if fields or items or furniture:
+                tile_reports.append({
+                    "offset_ms": [dx, dy, dz],
+                    "target_location_ms": target,
+                    "target_abs_omt": list(abs_omt),
+                    "target_abs_sm": list(abs_sm),
+                    "local_ms": [local[0], local[1], local[2]],
+                    "fields": fields,
+                    "items": items,
+                    "furniture": furniture,
+                })
+    finally:
+        for stem in sorted(extracted_packs):
+            if stem not in preexisting_packs:
+                pack_dir = maps_dir / stem
+                if pack_dir.exists():
+                    shutil.rmtree(pack_dir)
+
+    required_fields = [field for field in (required_fields or []) if field]
+    required_items = [item for item in (required_items or []) if item]
+    required_furniture = [furn for furn in (required_furniture or []) if furn]
+    observed_field_ids = [str(field.get("field_id")) for tile in tile_reports for field in tile.get("fields", []) if isinstance(field, dict)]
+    observed_items = [str(item) for tile in tile_reports for item in tile.get("items", [])]
+    observed_furniture = [str(furn) for tile in tile_reports for furn in tile.get("furniture", [])]
+    missing_required_fields = [field for field in required_fields if field not in observed_field_ids]
+    missing_required_items = [item for item in required_items if item not in observed_items]
+    missing_required_furniture = [furn for furn in required_furniture if furn not in observed_furniture]
+    required_count = len(required_fields) + len(required_items) + len(required_furniture)
+    missing_count = len(missing_required_fields) + len(missing_required_items) + len(missing_required_furniture)
+    if required_count and missing_count == 0:
+        status = "required_state_present"
+    elif required_count:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "player_location_ms": player_location,
+        "player_abs_omt": list(player_abs_omt),
+        "scanned_offsets": len(offsets),
+        "required_fields": required_fields,
+        "required_items": required_items,
+        "required_furniture": required_furniture,
+        "observed_field_ids": observed_field_ids,
+        "observed_items": observed_items,
+        "observed_furniture": observed_furniture,
+        "missing_required_fields": missing_required_fields,
+        "missing_required_items": missing_required_items,
+        "missing_required_furniture": missing_required_furniture,
+        "tiles": tile_reports,
+        "status": status,
+    }
+
+
 def debug_selection_key_moves_highlight(selection_key: str) -> bool:
     normalized = str(selection_key or "").strip().lower()
     return normalized in {
@@ -2013,6 +2185,29 @@ def screen_summary_path(screen_summary: Dict[str, Any]) -> str:
     return str(screen_summary.get("png_path", "") or screen_summary.get("path", ""))
 
 
+
+def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str]]:
+    if not metadata:
+        return "yellow_step_no_immediate_screen_or_metadata", ["no_screen_or_metadata_artifact"]
+    status = str(metadata.get("status", "")).strip()
+    if status == "required_state_present":
+        return "green_step_metadata_required_state_present", []
+    if status == "required_state_missing":
+        issues = []
+        if metadata.get("missing_required_fields"):
+            issues.append("missing_required_fields")
+        if metadata.get("missing_required_items"):
+            issues.append("missing_required_items")
+        if metadata.get("missing_required_furniture"):
+            issues.append("missing_required_furniture")
+        return "red_step_metadata_required_state_missing", issues or ["required_state_missing"]
+    if status == "failed":
+        return "blocked_step_metadata_probe_failed", ["metadata_probe_failed"]
+    if status == "scanned":
+        return "yellow_step_metadata_scanned_without_required_state", ["metadata_no_required_state"]
+    return "yellow_step_metadata_inconclusive", ["metadata_status_inconclusive"]
+
+
 def screen_checkpoint_verdict(
     *,
     screen_summary: Dict[str, Any],
@@ -2071,9 +2266,12 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
         kind = str(report.get("kind", "")).strip().lower()
         expected_visible_fact = str(report.get("expected_visible_fact", "")).strip()
         screen_summary: Dict[str, Any] = {}
+        metadata_summary: Dict[str, Any] = {}
         text_expectation: Optional[Dict[str, Any]] = None
         ocr_requested = False
 
+        if isinstance(report.get("metadata"), dict):
+            metadata_summary = report["metadata"]
         if isinstance(report.get("screen_after"), dict):
             screen_summary = report["screen_after"]
             if isinstance(report.get("screen_after_text_expectation"), dict):
@@ -2098,6 +2296,8 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
             else:
                 verdict = "yellow_wait_step_unproven"
             issues.extend(str(issue) for issue in report["wait_step_ledger"].get("issues", []))
+        elif metadata_summary:
+            verdict, issues = metadata_checkpoint_verdict(metadata_summary)
         else:
             verdict, issues = screen_checkpoint_verdict(
                 screen_summary=screen_summary,
@@ -2107,6 +2307,8 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
             )
 
         evidence_artifact = screen_summary_path(screen_summary)
+        if not evidence_artifact and metadata_summary:
+            evidence_artifact = str(metadata_summary.get("artifact_path", "")) or "probe.report.json:steps[].metadata"
         if not evidence_artifact and kind in {"long_wait", "wait_action"}:
             evidence_artifact = str(report.get("wait_step_ledger", {}).get("wait_menu_artifact", ""))
         if not evidence_artifact:
@@ -2122,6 +2324,14 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
             "evidence_artifact": evidence_artifact,
             "expected_visible_fact": expected_visible_fact,
             "screen_text_expectation": text_expectation or {},
+            "metadata_expectation": {
+                "required_fields": metadata_summary.get("required_fields", []),
+                "required_items": metadata_summary.get("required_items", []),
+                "required_furniture": metadata_summary.get("required_furniture", []),
+                "missing_required_fields": metadata_summary.get("missing_required_fields", []),
+                "missing_required_items": metadata_summary.get("missing_required_items", []),
+                "missing_required_furniture": metadata_summary.get("missing_required_furniture", []),
+            } if metadata_summary else {},
             "failure_rule": str(report.get("failure_rule", "missing/wrong screen, failed OCR guard, stale runtime, or absent state metadata makes this non-green")),
             "next_step_gate": str(report.get("next_step_gate", "next step may run mechanically, but feature closure requires this ledger row to be green")),
             "issues": issues,
@@ -3583,6 +3793,8 @@ def execute_probe_steps(
     run_dir: Path,
     steps: List[Dict[str, Any]],
     *,
+    profile: str,
+    world: str,
     artifact_log: Optional[Path] = None,
     artifact_baseline: int = 0,
     filter_debug_noise: bool = False,
@@ -3875,6 +4087,58 @@ def execute_probe_steps(
                 "prompt_settle_seconds": prompt_settle_seconds,
                 "inventory_action": "drop_item",
                 "selection_mode": selection_mode,
+            })
+        elif kind == "audit_saved_map_tile_near_player":
+            raw_offsets = step.get("offsets", step.get("offset", []))
+            offsets: Optional[List[Tuple[int, int, int]]]
+            if isinstance(raw_offsets, list) and raw_offsets and all(isinstance(entry, list) for entry in raw_offsets):
+                offsets = [
+                    (int(entry[0]), int(entry[1]), int(entry[2]))
+                    for entry in raw_offsets
+                    if isinstance(entry, list) and len(entry) >= 3
+                ]
+            elif isinstance(raw_offsets, list):
+                offsets = parse_map_tile_offsets(raw_offsets) if raw_offsets else None
+            else:
+                raise SystemExit(f"Scenario step '{label}' offsets must be a list")
+            radius = int(step.get("radius", 2) or 2)
+            player_save = str(step.get("player_save", "") or "").strip()
+            required_fields = [str(field).strip() for field in step.get("required_fields", step.get("required_field_ids", [])) if str(field).strip()]
+            required_items = [str(item).strip() for item in step.get("required_items", step.get("required_item_ids", [])) if str(item).strip()]
+            required_furniture = [str(furn).strip() for furn in step.get("required_furniture", step.get("required_furniture_ids", [])) if str(furn).strip()]
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_map_tiles_near_player(
+                    world_dir,
+                    player_save=player_save,
+                    radius=radius,
+                    offsets=offsets,
+                    required_fields=required_fields,
+                    required_items=required_items,
+                    required_furniture=required_furniture,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_fields": required_fields,
+                    "required_items": required_items,
+                    "required_furniture": required_furniture,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "offsets": [list(offset) for offset in offsets] if offsets is not None else [],
+                "radius": radius,
+                "metadata": metadata,
+                "action_description": "read saved map tiles near player and require exact field/item/furniture metadata",
+                "expected_immediate_state": "saved map contains the required target-tile metadata before feature proof may continue",
+                "failure_rule": "missing required saved-map field/item/furniture or unreadable save metadata makes this step red/blocked",
             })
         elif kind == "capture":
             capture_crop = normalize_capture_crop(
@@ -5259,6 +5523,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         pid,
         run_dir,
         steps,
+        profile=profile,
+        world=world,
         artifact_log=artifact_log,
         artifact_baseline=artifact_start,
         filter_debug_noise=filter_debug_noise,
