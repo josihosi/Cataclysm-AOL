@@ -4121,18 +4121,32 @@ def startup_proof_classification(*, ok: bool, screen_summary: Dict[str, Any], fa
             "status": "red",
             "verdict": failure_reason or "startup_failed",
             "feature_proof": False,
+            "startup_clean_for_feature_steps": False,
+            "feature_gate": failure_reason or "startup_failed",
             "rule": "A failed startup cannot support feature proof.",
         }
-    status = "yellow"
+    status = "green"
     verdict = "startup_load_only"
-    if screen_summary.get("version_matches_runtime_paths") is False:
+    clean_for_feature_steps = True
+    feature_gate = "startup_clean"
+    if not screen_summary.get("peekaboo_success"):
+        status = "red"
+        verdict = "startup_load_only_screen_capture_failed"
+        clean_for_feature_steps = False
+        feature_gate = "screen_capture_failed"
+    elif screen_summary.get("version_matches_runtime_paths") is False:
+        status = "yellow"
         verdict = "startup_load_only_runtime_version_mismatch"
+        clean_for_feature_steps = False
+        feature_gate = "runtime_version_mismatch"
     return {
         "evidence_class": "startup/load",
         "status": status,
         "verdict": verdict,
         "feature_proof": False,
-        "rule": "Load/readiness plus screenshot prove only startup/load; feature proof needs later step-local ledgers.",
+        "startup_clean_for_feature_steps": clean_for_feature_steps,
+        "feature_gate": feature_gate,
+        "rule": "Load/readiness plus screenshot prove only startup/load; feature proof still needs later step-local ledgers and a clean startup gate.",
     }
 
 
@@ -4148,6 +4162,10 @@ def probe_proof_classification(
 ) -> Dict[str, Any]:
     step_count = len(step_reports)
     matched_artifacts = any(entry.get("lines") for entry in matches_by_pattern)
+    startup_status = str(startup_classification.get("status", "unclassified"))
+    startup_verdict = str(startup_classification.get("verdict", "unclassified"))
+    startup_feature_gate = str(startup_classification.get("feature_gate", startup_verdict))
+    startup_clean_for_feature_steps = bool(startup_classification.get("startup_clean_for_feature_steps", False))
     startup_feature_proof = bool(startup_classification.get("feature_proof", False))
     wait_status = str((wait_step_summary or {}).get("status", "")).strip()
     has_wait_blocker = wait_status in {"blocked_wait_step", "yellow_wait_step_unverified"}
@@ -4157,6 +4175,14 @@ def probe_proof_classification(
     elif has_wait_blocker:
         status = "red" if wait_status.startswith("blocked") else "yellow"
         feature_proof = False
+    elif step_count <= 0:
+        status = "yellow"
+        feature_proof = False
+        verdict = "startup_load_only_no_feature_steps"
+    elif verdict == "artifacts_matched" and step_count > 0 and matched_artifacts and not startup_clean_for_feature_steps:
+        status = "yellow" if startup_status != "red" else "red"
+        feature_proof = False
+        verdict = "startup_gate_not_clean_artifact_match_inconclusive"
     elif verdict == "artifacts_matched" and step_count > 0 and matched_artifacts:
         status = "green"
         feature_proof = True
@@ -4166,21 +4192,21 @@ def probe_proof_classification(
     else:
         status = "yellow"
         feature_proof = False
-    if step_count <= 0 and startup_feature_proof is False:
-        status = "yellow" if status == "green" else status
-        feature_proof = False
-        verdict = "startup_load_only_no_feature_steps"
     return {
         "evidence_class": "feature-path" if feature_proof else "startup/load-or-inconclusive",
         "status": status,
         "verdict": verdict,
         "feature_proof": feature_proof,
         "startup_feature_proof": startup_feature_proof,
+        "startup_clean_for_feature_steps": startup_clean_for_feature_steps,
+        "startup_status": startup_status,
+        "startup_verdict": startup_verdict,
+        "startup_feature_gate": startup_feature_gate,
         "step_count": step_count,
         "artifact_patterns": artifact_patterns,
         "matched_artifact_patterns": [entry.get("pattern", "") for entry in matches_by_pattern if entry.get("lines")],
         "wait_step_status": wait_status,
-        "rule": "Startup/load evidence is never feature proof; only step-local evidence with matched artifacts and no blocked/yellow wait ledger can classify as feature proof.",
+        "rule": "Startup/load evidence is never feature proof; feature classification requires a clean startup gate plus step-local evidence with matched artifacts and no blocked/yellow wait ledger.",
     }
 
 

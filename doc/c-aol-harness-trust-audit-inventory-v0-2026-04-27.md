@@ -155,7 +155,7 @@ Current scenario count: 56. The table is an inventory, not green proof. Any scen
 2. **Wrong screen/key focus**: raw `press`/`type` steps need immediate screen/metadata guardrails before the next step may run.
 3. **Debug spawn ambiguity**: spawned-to-inventory, dropped-to-tile, field-created, and target-tile-read are separate proof points.
 4. **Fixture roulette**: transformed fixtures must show provenance and cannot silently inherit trust from the canonical audit anchor.
-5. **Artifact match overreach**: a log line can prove a logged branch or helper state, not a full GUI/live path when setup failed or was unobserved.
+5. **Artifact match overreach**: a log line can prove a logged branch or helper state, not a full GUI/live path when setup failed or was unobserved. Implementation checkpoint: `probe_proof_classification()` now gates `artifacts_matched` feature proof on `startup_clean_for_feature_steps=true`, so stale runtime/profile/load-readiness problems remain non-green.
 6. **Wait proof slippage**: `wait_action` has the right shape now; other scenarios must not downgrade back to wall-clock `wait` or dot-spam for hours.
 7. **Smart Zone UI gap**: deterministic zone geometry is not visible generated layout proof; the UI/layout path remains untrusted until audited.
 8. **Bandit local/live-world setup**: transformed overmap/site state, active-member ids, target OMT, local gate, timeout clocks, and writeback fields must be same-run/same-save evidence.
