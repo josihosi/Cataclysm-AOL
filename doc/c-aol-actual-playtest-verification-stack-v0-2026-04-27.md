@@ -10,18 +10,18 @@ This is not permission to wander around a live save and call vibes evidence. It 
 
 ## Priority order
 
-1. **Active-now bridge: player fuel continuation behind the green deploy gate.**
-   - This remains inside `C-AOL harness trust audit + proof-freeze packet v0`.
+1. **Fuel continuation behind the green deploy gate — honest boundary reached.**
+   - This remains inside `C-AOL harness trust audit + proof-freeze packet v0` as red/non-green evidence.
    - Preserve `.userdata/dev-harness/harness_runs/20260427_222635/` as scoped deploy proof only.
    - Current honest outcome: the one instrumented diagnostic run `.userdata/dev-harness/harness_runs/20260427_232220/` aborts at `blocked_untrusted_drop_filter_or_inventory_visibility`; filtered Multidrop has no visible/selectable `2x4`/plank row, so no exact-count, confirm-return, save, lighter, or fire claim may proceed.
 
-2. **Smart Zone Manager live layout verification packet v0.**
+2. **Active-now bridge: Smart Zone Manager live layout verification packet v0.**
    - Verify the actual generated Smart Zone layout on a clean/disposable live path.
    - Deterministic geometry/separation tests are supporting evidence only; they do not close the product claim.
    - Do not reuse the contaminated old McWilliams Smart Zone macro as closure proof.
 
 3. **Player-lit fire and bandit signal verification packet v0.**
-   - After fuel placement/writeback is green, prove the real lighter/action path, actual `fd_fire`/smoke state, wait/time passage, and bandit signal response.
+   - Only after fuel placement/writeback is green, prove the real lighter/action path, actual `fd_fire`/smoke state, wait/time passage, and bandit signal response.
    - Do not jump to this while the fuel continuation gate is red.
 
 ## Scope
