@@ -52,19 +52,9 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - Basecamp job spam debounce + locker/patrol exceptions
+### Active validation target - C-AOL debug-proof finish stack
 
-When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implemented, tests must prove repeated noise compresses while real state changes survive:
-
-- repeated completion/no-progress/missing-tool cause -> debounced
-- changed job/NPC/cause -> visible again
-- locker-zone exception -> one typed visible gear/readiness reason, repeats compressed
-- patrol-zone exception -> assignment/interruption/reserve/backfill state changes visible, routine repeats compressed
-- unrelated important messages are not swallowed
-
-### Greenlit follow-up validation - C-AOL debug-proof finish stack
-
-After the active job-spam debounce lane, `C-AOL debug-proof finish stack v0` is greenlit for another honest proof pass.
+`C-AOL debug-proof finish stack v0` is active for another honest proof pass.
 
 Retained evidence classification for `Bandit live signal + site bootstrap correction v0`:
 - raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
@@ -76,6 +66,7 @@ Retained evidence classification for `Bandit live signal + site bootstrap correc
 ### Recently closed validation references
 
 Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
+- `Basecamp job spam debounce + locker/patrol exceptions packet v0`: stable-cause debounce for repeated completion/missing-tool/no-progress camp chatter; typed `[camp][locker]` / `[camp][patrol]` reports preserve first and changed states while compressing repeats; deterministic message tests, focused `[camp][patrol]` / `[camp][locker]`, and touched-object compile passed.
 - `Bandit live-wiring audit + visible-light horde bridge correction v0`: loaded-map visible fire/light -> horde signal bridge proof; not player-lit fire proof.
 - `Bandit local sight-avoid + scout return cadence packet v0`: deterministic proof plus live/harness sight-avoid, return-home, and writeback proof; no later redispatch tuning claimed.
 - `Smart Zone Manager v1 Josef playtest corrections`: deterministic zone-id/type/option and save/reload proof.
@@ -86,7 +77,7 @@ Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
 
 ## Pending probes
 
-No active live GUI probe is required for the current job-spam debounce lane unless deterministic camp/job evidence leaves a real product-path or visible-message question unanswered.
+No active live GUI probe is required for the closed job-spam debounce lane. For the active debug-proof finish stack, use live/harness/product-path proof where the contract asks for product behavior; deterministic-only evidence is not enough for the remaining bandit live-signal claims.
 
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters

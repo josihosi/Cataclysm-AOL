@@ -441,6 +441,14 @@ enum class camp_craft_resolution_outcome {
     NO_MATCH,
 };
 
+enum class camp_job_report_kind {
+    completion,
+    missing_tool,
+    no_progress,
+    locker_exception,
+    patrol_exception,
+};
+
 struct camp_craft_resolution {
   camp_craft_recipe_match match;
   std::optional<resolved_camp_craft_recipe> choice;
@@ -517,6 +525,10 @@ camp_craft_resolution resolve_camp_craft_query(
     std::string_view query,
     const std::function<camp_craft_recipe_candidate(const recipe &)>
         &evaluate_recipe);
+std::string camp_job_report_kind_token( camp_job_report_kind kind );
+bool should_show_camp_job_report( const npc &worker, camp_job_report_kind kind,
+                                  std::string_view stable_cause );
+void reset_camp_job_report_debounce();
 
 } // namespace basecamp_ai
 

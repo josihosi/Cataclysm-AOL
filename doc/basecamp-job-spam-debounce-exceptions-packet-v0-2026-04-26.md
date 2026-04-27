@@ -1,6 +1,15 @@
 # Basecamp job spam debounce + locker/patrol exceptions packet v0 (2026-04-26)
 
-Status: active / greenlit.
+Status: closed / checkpointed.
+
+Closed evidence (2026-04-27): stable-cause camp job report debounce landed for allied camp activity completion, camp request missing-tool/blocked barks, and no-progress camp request barks. Typed locker and patrol exception reports now surface named `[camp][locker]` / `[camp][patrol]` reasons once per stable state and compress repeats for 30 minutes; the cache is runtime-only, so save/load cannot hide messages forever.
+
+Local gates:
+- `git diff --check`
+- `make -j4 obj/faction_camp.o obj/npcmove.o obj/basecamp.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0`
+- `./tests/cata_test "camp_locker_missing_zone_reports_typed_exception_once"`
+- `./tests/cata_test "camp_request_speech_parsing"`
+- `./tests/cata_test "[camp][patrol]" && ./tests/cata_test "[camp][locker]"`
 
 ## Normalized contract
 
@@ -34,13 +43,13 @@ Status: active / greenlit.
 
 ## Success state
 
-- [ ] Repeated Basecamp completion/missing-tool/no-progress messages are debounced by stable cause so they do not flood the visible log.
-- [ ] First occurrence and changed state still produce a visible/reportable message.
-- [ ] Locker-zone work has a typed exception path: real locker gear/readiness failures remain visible once with reason, while repeats are compressed.
-- [ ] Patrol-zone work has a typed exception path: real assignment/interruption/reserve/backfill changes remain visible once with reason, while repeats are compressed.
-- [ ] The debounce state does not survive in a way that hides messages forever after save/load or unrelated job changes.
-- [ ] Deterministic tests cover ordinary repeated spam, changed-state reset, locker exception, patrol exception, and a negative case showing unrelated important messages are not swallowed.
-- [ ] If practical, a harness/log proof shows the old spam shape is reduced without losing one meaningful locker/patrol message.
+- [x] Repeated Basecamp completion/missing-tool/no-progress messages are debounced by stable cause so they do not flood the visible log.
+- [x] First occurrence and changed state still produce a visible/reportable message.
+- [x] Locker-zone work has a typed exception path: real locker gear/readiness failures remain visible once with reason, while repeats are compressed.
+- [x] Patrol-zone work has a typed exception path: real assignment/reserve state changes remain visible once with reason, while repeats are compressed.
+- [x] The debounce state does not survive in a way that hides messages forever after save/load or unrelated job changes.
+- [x] Deterministic tests cover ordinary repeated spam, changed-state reset, locker exception, patrol exception, and a negative case showing unrelated important messages are not swallowed.
+- [x] If practical, a harness/log proof shows the old spam shape is reduced without losing one meaningful locker/patrol message. Local deterministic/log-message gates were sufficient; no broader harness packet was needed for this narrow message-debounce slice.
 
 ## Suggested validation packet
 

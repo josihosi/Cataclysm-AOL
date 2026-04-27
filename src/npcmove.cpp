@@ -4447,6 +4447,14 @@ void npc::worker_downtime() {
                        patrol_runtime->behavior == camp_patrol_guard_behavior::loop ? "loop" : "hold",
                        pos_abs().to_string_writable(), patrol_target.to_string_writable(),
                        route_summary.str() );
+            if( basecamp_ai::should_show_camp_job_report(
+                    *this, basecamp_ai::camp_job_report_kind::patrol_exception, patrol_trace ) ) {
+              add_msg( m_info,
+                       _( "[camp][patrol] %1$s patrol assignment: %2$s route to %3$s." ),
+                       disp_name(),
+                       patrol_runtime->behavior == camp_patrol_guard_behavior::loop ? _( "loop" ) : _( "hold" ),
+                       patrol_target.to_string_writable() );
+            }
             set_value( "camp_patrol_probe_last", patrol_trace );
           }
 
@@ -4461,6 +4469,13 @@ void npc::worker_downtime() {
           return;
         }
 
+        if( get_value( "camp_patrol_probe_last" ).str() != "inactive" &&
+            basecamp_ai::should_show_camp_job_report(
+                *this, basecamp_ai::camp_job_report_kind::patrol_exception, "reserve-or-inactive" ) ) {
+          add_msg( m_info,
+                   _( "[camp][patrol] %s has patrol duty, but no active route is assigned this shift." ),
+                   disp_name() );
+        }
         if( mission == NPC_MISSION_GUARD || mission == NPC_MISSION_GUARD_PATROL ) {
           if( get_value( "camp_patrol_probe_last" ).str() != "inactive" ) {
             DebugLog( D_INFO, DC_ALL )
@@ -5429,9 +5444,14 @@ bool npc::do_player_activity() {
             backlog.pop_front();
       current_activity_id = activity.id();
     } else {
-      if (is_player_ally()) {
-        add_msg(m_info, string_format(_("%s completed the assigned task."),
-                                      disp_name()));
+      if( is_player_ally() ) {
+        const std::string completion_message = string_format( _( "%s completed the assigned task." ),
+                                               disp_name() );
+        if( !assigned_camp || basecamp_ai::should_show_camp_job_report(
+                *this, basecamp_ai::camp_job_report_kind::completion,
+                string_format( "activity=%s", current_activity_id.str() ) ) ) {
+          add_msg( m_info, "%s", completion_message );
+        }
       }
       current_activity_id = activity_id::NULL_ID();
       revert_after_activity();

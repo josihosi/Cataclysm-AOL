@@ -5971,6 +5971,48 @@ TEST_CASE("camp_locker_new_zone_gear_requeues_worker_after_baseline_noop",
   zone_manager::get_manager().clear();
 }
 
+TEST_CASE("camp_locker_missing_zone_reports_typed_exception_once",
+          "[camp][locker][messages]") {
+  restore_on_out_of_scope restore_calendar_turn(calendar::turn);
+  clear_avatar();
+  clear_map_without_vision();
+  zone_manager::get_manager().clear();
+  Messages::clear_messages();
+  basecamp_ai::reset_camp_job_report_debounce();
+
+  map &here = get_map();
+  const tripoint_abs_omt camp_omt = project_to<coords::omt>(here.get_abs(tripoint_bub_ms{6, 5, 0}));
+  here.add_camp(camp_omt, "faction_camp");
+  std::optional<basecamp *> bcp = overmap_buffer.find_camp(camp_omt.xy());
+  REQUIRE(!!bcp);
+  basecamp *test_camp = *bcp;
+  test_camp->set_owner(your_fac);
+
+  npc &worker = spawn_npc(tripoint_bub_ms{5, 5, 0}.xy(), "thug");
+  clear_character(worker, true);
+  test_camp->add_assignee(worker.getID());
+
+  CHECK_FALSE(test_camp->process_camp_locker_downtime(worker));
+  std::vector<std::pair<std::string, std::string>> messages = Messages::recent_messages(0);
+  REQUIRE_FALSE(messages.empty());
+  CHECK(messages.back().second.find("[camp][locker]") != std::string::npos);
+  CHECK(messages.back().second.find("no Basecamp: Locker zone") != std::string::npos);
+
+  CHECK_FALSE(test_camp->process_camp_locker_downtime(worker));
+  CHECK(Messages::recent_messages(0).size() == messages.size());
+
+  calendar::turn += 31_minutes;
+  CHECK_FALSE(test_camp->process_camp_locker_downtime(worker));
+  messages = Messages::recent_messages(0);
+  REQUIRE_FALSE(messages.empty());
+  CHECK(messages.back().second.find("[camp][locker]") != std::string::npos);
+
+  Messages::clear_messages();
+  basecamp_ai::reset_camp_job_report_debounce();
+  zone_manager::get_manager().clear();
+  overmap_buffer.clear_camps(camp_omt.xy());
+}
+
 TEST_CASE("camp_locker_skip_probe_handles_numeric_last_service_turn",
           "[camp][locker]") {
   clear_avatar();
@@ -7104,6 +7146,83 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
     Messages::clear_messages();
     overmap_buffer.clear_camps( origin.xy() );
     overmap_buffer.clear_mongroups();
+  }
+
+  SECTION( "camp job report debounce preserves first, changed, and typed exception reports" ) {
+    clear_avatar();
+    clear_map_without_vision();
+    Messages::clear_messages();
+    basecamp_ai::reset_camp_job_report_debounce();
+    const time_point old_turn = calendar::turn;
+
+    npc &worker = spawn_npc( tripoint_bub_ms{ 4, 4, 0 }.xy(), "thug" );
+    clear_character( worker, true );
+    worker.assigned_camp = tripoint_abs_omt( 1720, 1720, 0 );
+
+    npc &other_worker = spawn_npc( tripoint_bub_ms{ 5, 4, 0 }.xy(), "thug" );
+    clear_character( other_worker, true );
+    other_worker.assigned_camp = worker.assigned_camp;
+
+    CHECK( basecamp_ai::should_show_camp_job_report(
+               worker, basecamp_ai::camp_job_report_kind::completion, "activity=ACT_MULTIPLE_FARM" ) );
+    CHECK_FALSE( basecamp_ai::should_show_camp_job_report(
+                     worker, basecamp_ai::camp_job_report_kind::completion,
+                     "activity=ACT_MULTIPLE_FARM" ) );
+    calendar::turn += 31_minutes;
+    CHECK( basecamp_ai::should_show_camp_job_report(
+               worker, basecamp_ai::camp_job_report_kind::completion,
+               "activity=ACT_MULTIPLE_FARM" ) );
+    CHECK_FALSE( basecamp_ai::should_show_camp_job_report(
+                     worker, basecamp_ai::camp_job_report_kind::completion,
+                     "activity=ACT_MULTIPLE_FARM" ) );
+    CHECK( basecamp_ai::should_show_camp_job_report(
+               worker, basecamp_ai::camp_job_report_kind::completion,
+               "activity=ACT_MULTIPLE_CHOP_PLANKS" ) );
+    CHECK( basecamp_ai::should_show_camp_job_report(
+               other_worker, basecamp_ai::camp_job_report_kind::completion,
+               "activity=ACT_MULTIPLE_CHOP_PLANKS" ) );
+
+    CHECK( basecamp_ai::should_show_camp_job_report(
+               worker, basecamp_ai::camp_job_report_kind::missing_tool,
+               "request=7|blocked=missing hammer" ) );
+    CHECK_FALSE( basecamp_ai::should_show_camp_job_report(
+                     worker, basecamp_ai::camp_job_report_kind::missing_tool,
+                     "request=7|blocked=missing hammer" ) );
+    CHECK( basecamp_ai::should_show_camp_job_report(
+               worker, basecamp_ai::camp_job_report_kind::missing_tool,
+               "request=7|blocked=missing wrench" ) );
+
+    CHECK( basecamp_ai::should_show_camp_job_report(
+               worker, basecamp_ai::camp_job_report_kind::locker_exception,
+               "no-locker-zone" ) );
+    CHECK_FALSE( basecamp_ai::should_show_camp_job_report(
+                     worker, basecamp_ai::camp_job_report_kind::locker_exception,
+                     "no-locker-zone" ) );
+    CHECK( basecamp_ai::should_show_camp_job_report(
+               worker, basecamp_ai::camp_job_report_kind::patrol_exception,
+               "reserve-or-inactive" ) );
+    CHECK_FALSE( basecamp_ai::should_show_camp_job_report(
+                     worker, basecamp_ai::camp_job_report_kind::patrol_exception,
+                     "reserve-or-inactive" ) );
+
+    Messages::clear_messages();
+    CHECK( basecamp_ai::should_show_camp_job_report(
+               worker, basecamp_ai::camp_job_report_kind::no_progress,
+               "launch-ready-empty" ) );
+    add_msg( m_info, "camp repeat source" );
+    CHECK_FALSE( basecamp_ai::should_show_camp_job_report(
+                     worker, basecamp_ai::camp_job_report_kind::no_progress,
+                     "launch-ready-empty" ) );
+    add_msg( m_bad, "unrelated danger stays visible" );
+    const std::vector<std::pair<std::string, std::string>> messages =
+        Messages::recent_messages( 0 );
+    REQUIRE( messages.size() >= 2 );
+    CHECK( messages[messages.size() - 2].second == "camp repeat source" );
+    CHECK( messages.back().second == "unrelated danger stays visible" );
+
+    Messages::clear_messages();
+    basecamp_ai::reset_camp_job_report_debounce();
+    calendar::turn = old_turn;
   }
 
   SECTION("board handoff snapshot stays explicit when the board is empty") {

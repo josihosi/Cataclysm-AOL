@@ -3523,6 +3523,12 @@ void basecamp::mark_camp_locker_dirty(npc &worker, bool high_priority) {
 
 bool basecamp::process_camp_locker_downtime(npc &worker) {
   if (!has_locker_zone()) {
+    if( basecamp_ai::should_show_camp_job_report(
+            worker, basecamp_ai::camp_job_report_kind::locker_exception, "no-locker-zone" ) ) {
+      add_msg( m_info,
+               _( "[camp][locker] %s cannot check camp locker gear: no Basecamp: Locker zone is defined." ),
+               worker.disp_name() );
+    }
     return false;
   }
 

@@ -1676,6 +1676,16 @@ static void add_camp_request_bark( const npc &speaker, const std::string &text )
     add_msg( _( "%1$s says, \"%2$s\"" ), speaker.disp_name(), text );
 }
 
+static void add_debounced_camp_request_bark( const npc &speaker,
+        const basecamp_ai::camp_job_report_kind kind,
+        std::string_view stable_cause, const std::string &text )
+{
+    if( text.empty() || !basecamp_ai::should_show_camp_job_report( speaker, kind, stable_cause ) ) {
+        return;
+    }
+    add_camp_request_bark( speaker, text );
+}
+
 static void log_camp_request_heard( const npc &speaker, const std::string &utterance )
 {
     if( utterance.empty() || !get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
@@ -2510,6 +2520,58 @@ static basecamp_ai::parsed_camp_request_reference finalize_camp_request_referenc
 
 namespace basecamp_ai
 {
+
+struct camp_job_report_debounce_entry {
+    std::string signature;
+    time_point last_shown = calendar::turn_zero;
+};
+
+static constexpr time_duration camp_job_report_debounce_window = 30_minutes;
+
+static std::unordered_map<std::string, camp_job_report_debounce_entry> &camp_job_report_debounce_cache()
+{
+    static std::unordered_map<std::string, camp_job_report_debounce_entry> cache;
+    return cache;
+}
+
+std::string camp_job_report_kind_token( const camp_job_report_kind kind )
+{
+    switch( kind ) {
+        case camp_job_report_kind::completion:
+            return "completion";
+        case camp_job_report_kind::missing_tool:
+            return "missing-tool";
+        case camp_job_report_kind::no_progress:
+            return "no-progress";
+        case camp_job_report_kind::locker_exception:
+            return "locker";
+        case camp_job_report_kind::patrol_exception:
+            return "patrol";
+    }
+    return "unknown";
+}
+
+bool should_show_camp_job_report( const npc &worker, const camp_job_report_kind kind,
+                                  std::string_view stable_cause )
+{
+    const std::string scope = string_format( "%d|%s", worker.getID().get_value(),
+                              camp_job_report_kind_token( kind ) );
+    const std::string signature = stable_cause.empty() ? "generic" : std::string( stable_cause );
+    std::unordered_map<std::string, camp_job_report_debounce_entry> &cache =
+        camp_job_report_debounce_cache();
+    const auto it = cache.find( scope );
+    if( it != cache.end() && it->second.signature == signature &&
+        calendar::turn - it->second.last_shown < camp_job_report_debounce_window ) {
+        return false;
+    }
+    cache[scope] = camp_job_report_debounce_entry{ signature, calendar::turn };
+    return true;
+}
+
+void reset_camp_job_report_debounce()
+{
+    camp_job_report_debounce_cache().clear();
+}
 
 bool uses_basecamp_request_routing( const npc &hearer )
 {
@@ -3950,7 +4012,10 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                                   craft_resolution, basecamp_ai::camp_craft_resolution_outcome::MATCH_BLOCKED,
                                   best_recipe->result_name(), request->blockers, request->request_id,
                                   request->status );
-            add_camp_request_bark( listener, camp_request_blocked_bark( *request ) );
+            add_debounced_camp_request_bark( listener, basecamp_ai::camp_job_report_kind::missing_tool,
+                                             string_format( "request=%d|blocked=%s", request->request_id,
+                                                     request->blockers.empty() ? "unknown" : request->blockers.front() ),
+                                             camp_request_blocked_bark( *request ) );
         } else {
             const camp_craft_risk_snapshot risk = describe_camp_craft_risk( *this, *best_recipe, *best_worker,
                                                   parsed.count );
@@ -3980,7 +4045,10 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             if( started && request->status == "in_progress" ) {
                 add_camp_request_bark( listener, camp_request_launch_bark( *request ) );
             } else if( request->status == "blocked" ) {
-                add_camp_request_bark( listener, camp_request_blocked_bark( *request ) );
+                add_debounced_camp_request_bark( listener, basecamp_ai::camp_job_report_kind::missing_tool,
+                                                 string_format( "request=%d|blocked=%s", request->request_id,
+                                                         request->blockers.empty() ? "unknown" : request->blockers.front() ),
+                                                 camp_request_blocked_bark( *request ) );
             } else {
                 add_camp_request_bark( listener, camp_request_queue_bark( *request ) );
             }
@@ -3993,10 +4061,11 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
                                             basecamp_ai::collect_blocked_camp_request_ids( camp_requests ) :
                                             basecamp_ai::collect_ready_camp_request_ids( camp_requests );
         if( launch_ids.empty() ) {
-            add_camp_request_bark( listener,
-                                   retrying_blocked ?
-                                   _( "Nothing's sitting blocked for another try." ) :
-                                   _( "Nothing's ready to start." ) );
+            add_debounced_camp_request_bark( listener, basecamp_ai::camp_job_report_kind::no_progress,
+                                             retrying_blocked ? "retry-blocked-empty" : "launch-ready-empty",
+                                             retrying_blocked ?
+                                             _( "Nothing's sitting blocked for another try." ) :
+                                             _( "Nothing's ready to start." ) );
             return true;
         }
 
@@ -4031,7 +4100,9 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             add_camp_request_bark( listener,
                                    string_format( _( "Cleared %d old crafting requests off the board." ), cleared ) );
         } else {
-            add_camp_request_bark( listener, _( "No old crafting requests cluttering the board." ) );
+            add_debounced_camp_request_bark( listener, basecamp_ai::camp_job_report_kind::no_progress,
+                                             "clear-archived-empty",
+                                             _( "No old crafting requests cluttering the board." ) );
         }
         return true;
     };
@@ -4257,9 +4328,10 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
             return true;
         }
         if( best_request->status == "in_progress" ) {
-            add_camp_request_bark( listener,
-                                   string_format( _( "%s is already underway." ),
-                                           camp_request_bark_subject( *best_request ) ) );
+            add_debounced_camp_request_bark( listener, basecamp_ai::camp_job_report_kind::no_progress,
+                                             string_format( "request=%d|already-underway", best_request->request_id ),
+                                             string_format( _( "%s is already underway." ),
+                                                     camp_request_bark_subject( *best_request ) ) );
             return true;
         }
 
@@ -4274,10 +4346,14 @@ bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utte
         if( best_request->status == "in_progress" ) {
             add_camp_request_bark( listener, camp_request_launch_bark( *best_request ) );
         } else if( best_request->status == "blocked" ) {
-            add_camp_request_bark( listener, camp_request_blocked_bark( *best_request ) );
+            add_debounced_camp_request_bark( listener, basecamp_ai::camp_job_report_kind::missing_tool,
+                                             string_format( "request=%d|blocked=%s", best_request->request_id,
+                                                     best_request->blockers.empty() ? "unknown" : best_request->blockers.front() ),
+                                             camp_request_blocked_bark( *best_request ) );
         } else {
-            add_camp_request_bark( listener,
-                                   string_format( _( "Leaving %s pinned for now." ), subject ) );
+            add_debounced_camp_request_bark( listener, basecamp_ai::camp_job_report_kind::no_progress,
+                                             string_format( "request=%d|left-pinned", best_request->request_id ),
+                                             string_format( _( "Leaving %s pinned for now." ), subject ) );
         }
         return true;
     }

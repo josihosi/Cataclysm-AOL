@@ -56,24 +56,23 @@ Canonical contract lives at `doc/basecamp-locker-armor-ranking-blocker-removal-p
 
 ---
 
-## Active lane - Basecamp job spam debounce + locker/patrol exceptions packet v0
+## Closed lane - Basecamp job spam debounce + locker/patrol exceptions packet v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
-Compress repeated Basecamp job chatter while preserving first useful messages, changed state, and typed locker/patrol exception reporting.
+Stable-cause camp job chatter debounce landed for camp activity completion, camp request blocked/missing-tool barks, and no-progress request barks. Locker and patrol paths now use typed `[camp][locker]` / `[camp][patrol]` reports with repeated-state compression, preserving first occurrence and changed state visibility without a global message-log rewrite.
 
 Canonical contract lives at `doc/basecamp-job-spam-debounce-exceptions-packet-v0-2026-04-26.md`.
 
 ---
 
-## Greenlit follow-up - C-AOL debug-proof finish stack v0
+## Active lane - C-AOL debug-proof finish stack v0
 
-**Status:** GREENLIT / NEXT AFTER CURRENT ACTIVE LANE
+**Status:** ACTIVE / GREENLIT
 
 Josef explicitly reopened the current C-AOL debug-proof notes on 2026-04-27. Do not leave them in parked/review-only posture just because a proof run is annoying.
 
-- First finish the active Basecamp job-spam/debug lane unless Schani explicitly interrupts it.
-- Then run the reopened bandit live signal/site-bootstrap product-proof work: raw saved-field smoke/fire proof remains reader/consumer evidence only, while real or clearly labeled synthetic smoke/fire/light source proof must reach the running live bandit path before product claims close.
+- Run the reopened bandit live signal/site-bootstrap product-proof work: raw saved-field smoke/fire proof remains reader/consumer evidence only, while real or clearly labeled synthetic smoke/fire/light source proof must reach the running live bandit path before product claims close.
 - If Smart Zone clean-save live proof is still the only missing check, fix the small clean-profile/startup readiness seam or write a precise Josef playtest package; do not rerun the contaminated old McWilliams macro as closure proof.
 - Attempt rule for the same item/blocker: attempts 1-2 solo, consult Frau Knackal before attempt 3, attempts 3-4 changed retries after consultation, then move implemented-but-unproven work to Josef's playtest package and continue the next greenlit debug note.
 - **GitHub normal-download release packet v0** remains held behind this debug-proof finish stack.
