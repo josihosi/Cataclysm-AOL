@@ -51,23 +51,81 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 Compact result:
 - live-wired substrate: hostile-site ownership after NPC materialization, save/load, nearby-player dispatch from owned sites, local gate/shakedown/writeback, camp locker service, and Smart Zone Manager entry points
 - deterministic/playback-only layer: smoke/light/weather mark adapters, generated mark ledgers, authored playback frames, long-horizon benchmark reports, repeated-site reinforcement, human-route sightings, and most scout tuning packets
-- horde attraction is live-wired through sound; visible fire/light-to-horde attraction is not present in the audited source and must not be claimed without a bridge
-- next implementation target: `Bandit live signal + site bootstrap correction v0`
+- horde attraction is live-wired through sound; the audited source previously lacked visible fire/light-to-horde attraction. The first visible-fire/light bridge is now source-wired and live/harness-proved as loaded-map fire/light -> horde signal behavior; it must still not be inflated into player-lit brazier/wood/lighter product proof.
+- next implementation target: `Bandit local sight-avoid + scout return cadence packet v0`; the prior smoke/fire site-refresh proof is in Josef review, not active rerun
 
-### Active validation target - bandit live signal + site bootstrap correction
+### Josef-review validation caveat - bandit live signal + site bootstrap correction
 
-For `Bandit live signal + site bootstrap correction v0`, the evidence must reach the live chain rather than stopping at deterministic playback:
+`Bandit live signal + site bootstrap correction v0` is no longer the active validation target. Keep its evidence classes intact:
 
-- deterministic: site bootstrap/save-load, lazy materialization/reconciliation if concrete bodies are created, and corrected range matrix (`40` system envelope with separate `10/6/8/15/30` signal-family values)
-- source gates: touched-object compile for `src/bandit_live_world.cpp`, `src/do_turn.cpp`, `src/overmapbuffer.cpp`, and any live signal hook, plus focused `[bandit][live_world]` / mark-generation filters
-- live/harness: one owned hostile site not made live solely by walking the player onto the camp, one real fire/light/smoke source producing a live mark/candidate under named weather/light conditions, one no-signal control, and logs/artifacts naming site count, signal packet, weather/light modifiers, candidate distance, cap used, rejected-by-range/cadence/hold-chill decision
+- raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
+- synthetic smoke source proof, if Josef later reopens it, proves only synthetic smoke-source/live-signal behavior
+- player-fire product proof still requires the real brazier/wood/lighter/player-action chain
+- Schani/Josef moved `bandit-live-signal-smoke-source-site-refresh-proof` to Josef review after attempt 5; do not run more blind smoke/fire site-refresh probes for this phase
 
 Current first-slice evidence - 2026-04-26:
 - Source hook: `overmap_npc_move()` now bootstraps abstract hostile overmap-special sites from existing loaded overmaps every `30_minutes` before dispatch, using `overmap_special_at_existing()` so the scan does not create fresh overmaps by accident.
-- Deterministic proof: `[bandit][live_world]` now covers abstract special registration before NPC materialization, save/load of abstract footprint/headcount/profile, and later concrete spawn reconciliation into the same owned-site ledger.
-- Dispatch footing: the live dispatcher candidate scan now uses the `40 OMT` system envelope instead of the old hard `distance <= 10`; signal-specific fire/smoke/light caps remain open until live signal packets exist.
-- Instrumentation footing: debug logs now distinguish empty ownership, zero candidates inside the scan radius, active-pressure cap, paid-shakedown cooldown, invalid dispatch plan notes, missing concrete member, and missing route. Signal-packet/below-threshold/cadence-specific logging remains open with the live signal hook.
+- Deterministic proof: `[bandit][live_world]` covers abstract special registration before NPC materialization, save/load of abstract footprint/headcount/profile, and later concrete spawn reconciliation into the same owned-site ledger.
+- Dispatch footing: the live dispatcher candidate scan uses the `40 OMT` system envelope instead of the old hard `distance <= 10`; ordinary direct-player pressure is demoted to a `10 OMT` direct cap instead of the whole system range.
+- Instrumentation footing: debug logs distinguish empty ownership, zero candidates inside the scan radius, active-pressure cap, paid-shakedown cooldown, invalid dispatch plan notes, missing concrete member, and missing route.
 - Validation run: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o obj/overmapbuffer.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 468 assertions in 19 test cases passed.
+
+Current second-slice evidence - 2026-04-26:
+- Live source hook: `overmap_npc_move()` now scans loaded map fields near the player for real `fd_fire` / `fd_smoke`, maps current live weather into `smoke_weather_band`, builds a real `smoke_packet`, and feeds `bandit_mark_generation::adapt_smoke_packet()` before dispatch candidate selection.
+- Live consumer footing: owned sites inside the `40 OMT` envelope but outside the direct `10 OMT` player cap can become `live_signal` candidates when their anchor is inside the smoke projection cap; accepted signal candidates refresh `known_recent_marks` / remembered mark state through `bandit_live_world::record_live_signal_mark()` before dispatch planning.
+- No-signal / rejection observability: logs now name `signal_packet=no`, below-threshold smoke projections, `signal_packet=yes`, rejected-by-range counts, candidate distance, cap used, signal packet id, missing concrete member, and missing route. Cadence/decay and full hold/chill signal reporting remain open.
+- Deterministic proof added: `[bandit][live_world][live_signal]` covers bounded live-signal mark recording, duplicate suppression, remembered target refresh, bounty/threat estimate refresh, and the eight-mark recent-ledger cap.
+- Validation run: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
+
+Current third-slice evidence - 2026-04-26:
+- Lazy materialization footing: when a selected abstract overmap-special candidate has abstract headcount but not enough at-home concrete members for scout dispatch, `overmap_npc_move()` now creates only the minimum concrete roster needed for that candidate profile (`2` camp-style, `3` cannibal, `1` small hostile) and reconciles those NPCs through `claim_tracked_spawn()` into the same owned-site ledger before dispatch planning.
+- Boundaries: this is candidate-local and headcount-capped, not a global/eager camp spawn. Failed member claims are logged and skipped before insertion so the lazy path does not leave intentionally untracked NPCs behind. The later harness proof now exercises this footing without making it a global/eager camp spawn.
+- Validation run: `git diff --check`; `make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` after clearing stale tiles PCH; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
+
+Current fourth-slice evidence - 2026-04-26/27:
+- Saved-field reader proof: `tools/openclaw_harness/fixtures/saves/live-debug/bandit_live_world_nearby_camp_smoke_v0_2026-04-26/manifest.json` now uses `bandit_basecamp_playtest_kit_v0_2026-04-22`, seeds a real `bandit_camp` just beyond direct-player range at offset `[0,11,0]`, and injects visible/safe same-OMT serialized raw `fd_fire` / `fd_smoke` fields at offsets `[10,0,0]` / `[11,0,0]` with intensity `3` and age `0`. Run `.userdata/dev-harness/harness_runs/20260427_014408/probe.report.json` records the seed at target OMT `[140,52,0]` and the raw fields at player/source OMT `[140,41,0]`; this proves the map-field reader/consumer seam, not the real player fire-starting product chain.
+- Repaired saved-field wait run: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_smoke_mcw` -> `.userdata/dev-harness/harness_runs/20260427_014408/`; the rebuilt runtime title was `Cataclysm: Dark Days Ahead - dfa45b1c57-dirty`, `version_matches_repo_head=true`, and `runtime_relevant_diff_since_capture=[]`. Artifact logs record initial raw-field smoke/fire signal production (`signal_packet=yes`, `packets=2`, `smoke_packets=1`, `light_packets=1`) and the required owned-site refresh before waiting: `matched_sites=1 refreshed_sites=1 matched_smoke_sites=1 matched_light_sites=0 rejected_by_signal_range=0`, followed by `dispatch cadence_skip ... signal_packet=yes`.
+- Post-wait outcome for the raw-field fixture: after the `|` -> `w` -> `7` several-hour wait path, the seeded short-lived fields decay. The same run later records smoke-only `signal_packet=yes` with `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then `signal_packet=no` / cadence-skip and no-signal skipped-dispatch lines. This is reader/decay evidence, not product escalation proof. Direct-player-range or already-active-group rejection lines are not counted as smoke/fire signal escalation.
+- Required proof rungs are now explicit. Full player-fire product proof remains open: use Josef's candidate manual recipe as the proof-shape checklist, not as a verified command sequence yet. Deploy a brazier; place wood next to it; put the firewood source on top of the wood; have/place a lighter; light the fire through the normal in-game action path; keep the player out of fire/smoke; visibly confirm fire/smoke; keep basic survival state safe, including thirst/water for the wait; then use `|` and wait several in-game hours. Only claim player-fire escalation, persistence, decay, or refresh if logs around that real-fire wait show the live bandit signal path matching the site, e.g. `matched_sites=1 refreshed_sites=1`; if deploying brazier, placing wood/source, lighting, waiting, or drinking/survival cannot be automated cleanly, park/escalate with the exact missing control/mechanic instead of substituting raw save surgery.
+- Allowed middle rung: a bounded synthetic smoke source from nothing may be used as `synthetic smoke-source/live-signal proof` if labeled exactly as such. It proves the bandit live signal path can react to a smoke source under live wait/time passage, not that ordinary player fire-lighting works. Keep the player safe, make smoke/fire visibly inspectable where possible, use `|` to wait several hours, and require site matching/refresh evidence (`matched_sites=1 refreshed_sites=1`) or an honest explanation if it decays/stops. If this shortcut is used, park the real brazier/wood/lighter/player-action fire proof as a separate follow-up instead of pretending it was solved.
+- No-signal several-hour control: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_no_signal_control_mcw` -> `.userdata/dev-harness/harness_runs/20260427_001649/`; the older nearby-owned-site footing and same `|` -> `w` -> `7` wait path, without injected fields, records only `signal_packet=no` cadence/dispatch evidence. Re-run or update this control before using it as an exact paired closure control for the repaired `[0,11,0]` camp footing or the real fire-starting product proof.
+- Evidence caveat: old `[36,0,0]` / `[37,0,0]` and first `[10,0,0]` attempts placed the source/camp relationship wrongly and produced `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`; do not use `.userdata/dev-harness/harness_runs/20260427_011845/` or `.userdata/dev-harness/harness_runs/20260427_013136/` as closure proof. The latest reviewed failed smoke run is `.userdata/dev-harness/harness_runs/20260427_013136/`: it produced `signal_packet=yes` but `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then decayed to no-signal. The decisive evidence class for the repaired raw-field reader slice is `.userdata/dev-harness/harness_runs/20260427_014408/probe.artifacts.log` plus the fixture transform report, not screen/OCR, and it remains reader proof only. The smoke/fire site-refresh proof is now Josef-review, not active rerun.
+
+Current fifth-slice evidence - 2026-04-27:
+- Live light/detail source hook: the same loaded-map `fd_fire` scan now also builds ordinary `light_packet` candidates with current `light_time`, `light_weather`, outside/shelter exposure, source strength, persistence, leakage, and terrain before passing through `bandit_mark_generation::adapt_light_packet()`. Below-threshold light is logged separately from smoke so daylight/contained failures are reviewable instead of silent.
+- Reviewer detail: signal scan logs now split `smoke_packets` and `light_packets`; signal maintenance logs now split `matched_smoke_sites` and `matched_light_sites`, so a later mixed-source run can prove which family refreshed the owned-site mark.
+- Local gates: `git diff --check`; `rm -f obj/do_turn.o && make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed; `./tests/cata_test "*bandit_mark_generation*"` -> all 207 assertions in 15 test cases passed.
+- Live-proof caveat: repaired raw-field run `.userdata/dev-harness/harness_runs/20260427_014408/` proves initial mixed smoke/fire/light packet generation and smoke-site refresh from injected fields, but the daylight ordinary-light branch still did not match a site (`matched_light_sites=0`) and the run does not prove a normal player-lit fire. The later closed bridge proof below supplies the clean light-surviving live proof for loaded-map visible fire/light; the real wood-plus-ignition player-action product proof remains deliberately unclaimed.
+
+### Closed validation target - Bandit live-wiring audit + visible-light horde bridge correction
+
+For `Bandit live-wiring audit + visible-light horde bridge correction v0`, the evidence must not pretend deterministic playback is live horde behavior:
+
+- deterministic: `bandit_mark_generation_visible_light_horde_bridge_stays_bounded` now covers exposed night light, daylight rejection, screened ordinary-light rejection, and searchlight-like stronger signaling
+- source gates: touched-object/full target builds pass for `src/bandit_mark_generation.cpp`, `src/do_turn.cpp`, `tests/bandit_mark_generation_test.cpp`, `tests/cata_test`, and `cataclysm`; inspected call chain is `live light observation -> horde_signal_power_from_light_projection(...) -> overmap_buffer.signal_hordes(...) -> overmap::signal_hordes(...) -> horde_map::signal_entities(...)`
+- live/harness: `.userdata/dev-harness/harness_runs/20260427_031951/` closes the bridge proof by showing a copied-save visible `fd_fire` source at night produce reviewer-readable `bandit_live_world horde light signal:` evidence with `horde_signal_power=22`. Do not inflate this into player-lit fire product proof or smoke/site-refresh closure.
+- non-proof: `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` remain useful adapter/playback coverage, not live horde attraction proof by themselves
+
+
+Current bridge checkpoint evidence:
+
+- `git diff --check` passed after the bridge source/test/doc edits.
+- `make -j4 obj/bandit_mark_generation.o obj/do_turn.o tests LINTJSON=0 ASTYLE=0` rebuilt the touched objects and `tests/cata_test`; log: `.userdata/andi-horde-bridge-build-tests.log`.
+- `./tests/cata_test "bandit_mark_generation_visible_light_horde_bridge_stays_bounded"` passed: 7 assertions in 1 test case; log: `.userdata/andi-horde-bridge-test.log`.
+- `./tests/cata_test "*bandit_mark_generation*"` passed: 214 assertions in 16 test cases; log: `.userdata/andi-horde-bridge-bandit-mark-generation.log`.
+- `make -j4 cataclysm LINTJSON=0 ASTYLE=0` linked the current game binary; log: `.userdata/andi-horde-bridge-cata-build.log`.
+- Live bridge closure proof: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_light_horde_mcw` wrote `.userdata/dev-harness/harness_runs/20260427_031951/`; `probe.report.json` records current-runtime screen capture (`version_matches_repo_head=true`, `version_matches_runtime_paths=true`), `game_turn` transform `5234852 -> 5266800`, raw `fd_fire` at `offset_ms=[10,0,0]`, and cleanup termination. `probe.artifacts.log` records `light_time=night`, `light_packets=1`, and `bandit_live_world horde light signal: packet=live_light@140,41,0 ... horde_signal_power=22 range_cap_omt=11`. This is loaded-map fire/light -> live horde signal bridge proof, not player-lit brazier/wood/lighter product proof.
+
+### Active validation target - Bandit local sight-avoid + scout return cadence packet v0
+
+Current deterministic checkpoint - 2026-04-27:
+- Source path: `src/do_turn.cpp` now wires local stalking/hold-off exposure into `choose_sight_avoid_reposition(...)`, checks player LOS plus nearby allied/basecamp observer LOS, and only considers adjacent passable tiles. Scout outings record active job type plus sortie start/contact minutes, route an expired single-scout sortie home, and write `returning_home` observations back through the owned-site aftermath path.
+- Deterministic seam: `src/bandit_live_world.cpp` now owns bounded sight-avoid selection, active sortie clock helpers, scout timeout decision, active job serialization/deserialization, and return-packet job typing/cleanup.
+- Tests: `tests/bandit_live_world_test.cpp` covers current/recent exposure, no-teleport/no-perfect-omniscience adjacency bounds, finite scout sortie expiry, return-home/writeback state transition, and serialization for `active_job_type`, `active_sortie_started_minutes`, and `active_sortie_local_contact_minutes`.
+- Local gates: `git diff --check`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 524 assertions in 22 test cases passed. `make -j4 cataclysm LINTJSON=0 ASTYLE=0` and `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` built current runtime binaries for probe attempts.
+- Live/harness state: not closed yet. `bandit.live_world_nearby_camp_mcw` run `.userdata/dev-harness/harness_runs/20260427_040319/` was `inconclusive_no_new_artifacts`; `bandit.extortion_at_camp_standoff_mcw` run `.userdata/dev-harness/harness_runs/20260427_041554/` reached gameplay screenshots but hung during the long `advance_4500_turns_to_basecamp_standoff` step and was killed. Do not count either as live behavior proof; change the live probe shape before rerunning.
+
+Next validation should produce one live/harness proof on `bandit.live_world_nearby_camp_mcw` or equivalent real owned-site footing showing a scout either repositions out of exposure or returns after a finite sortie window.
 
 ### Greenlit validation target - Smart Zone Manager v1 Josef playtest corrections
 
@@ -107,7 +165,7 @@ When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implem
 
 ## Current relevant evidence
 
-Active target: `Bandit live signal + site bootstrap correction v0`.
+Active target: `Bandit local sight-avoid + scout return cadence packet v0`.
 
 ### Test-vs-game implementation audit closeout - 2026-04-26
 
@@ -115,7 +173,7 @@ Report: `doc/test-vs-game-implementation-audit-report-2026-04-26.md`.
 
 Result: the biggest false-confidence risk is the bandit signal/playback layer. Smoke, light, weather, generated marks, human-route sightings, horde-pressure evaluator inputs, and long-horizon scout benchmarks are useful deterministic/playback proof, but they are not currently produced from live map/fire/light/weather/sight data and are not consumed by live dispatch. Live dispatch is real for owned sites near the player, and local gate/shakedown/writeback paths are real for active owned outings. Camp locker and Smart Zone Manager tests have real live consumers, though their greenlit corrections still need targeted proof.
 
-Next validation target: `Bandit live signal + site bootstrap correction v0`; proof must reach one abstract/lazy hostile-site bootstrap path, one real fire/smoke/light live signal path under named weather/time conditions, one live dispatch accept/reject decision with logs, and one no-signal control.
+Next validation target: `Bandit local sight-avoid + scout return cadence packet v0`; start with deterministic exposure/reposition/sortie-return proof, then one live/harness nearby-owned-site proof. The just-closed visible-light horde bridge remains evidence that loaded-map visible fire/light can reach the live horde signal path, not product proof for a player-lit fire recipe.
 
 ### GitHub Actions red-state footing - 2026-04-25
 

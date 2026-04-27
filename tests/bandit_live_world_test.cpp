@@ -770,6 +770,103 @@ TEST_CASE( "bandit_live_world_chooses_reviewer_readable_local_approach_gate_post
     CHECK_FALSE( decision.combat_forward );
 }
 
+TEST_CASE( "bandit_live_world_sight_avoid_uses_only_bounded_local_reposition_candidates",
+           "[bandit][live_world][sight_avoid]" )
+{
+    const tripoint_abs_ms current( 100, 100, 0 );
+    const std::vector<bandit_live_world::sight_avoid_candidate> candidates = {
+        { tripoint_abs_ms( 101, 100, 0 ), true, true, true, 0 },
+        { tripoint_abs_ms( 99, 100, 0 ), true, false, true, 1 },
+        { tripoint_abs_ms( 110, 100, 0 ), true, false, false, 99 },
+        { tripoint_abs_ms( 100, 99, 0 ), false, false, false, 20 },
+    };
+
+    const bandit_live_world::sight_avoid_decision quiet =
+        bandit_live_world::choose_sight_avoid_reposition( current, false, false, candidates );
+    CHECK( quiet.valid );
+    CHECK_FALSE( quiet.repositions );
+    CHECK( quiet.reason == "still stalking" );
+
+    const bandit_live_world::sight_avoid_decision exposed =
+        bandit_live_world::choose_sight_avoid_reposition( current, true, false, candidates );
+    CHECK( exposed.valid );
+    REQUIRE( exposed.repositions );
+    CHECK( exposed.destination == tripoint_abs_ms( 99, 100, 0 ) );
+    CHECK( exposed.reason == "repositioning because exposed" );
+    CHECK( rl_dist( exposed.destination, current ) == 1 );
+
+    const std::vector<bandit_live_world::sight_avoid_candidate> hollow_candidates = {
+        { tripoint_abs_ms( 101, 100, 0 ), true, true, true, 0 },
+        { tripoint_abs_ms( 100, 101, 0 ), false, false, false, 10 },
+    };
+    const bandit_live_world::sight_avoid_decision no_good_step =
+        bandit_live_world::choose_sight_avoid_reposition( current, true, true, hollow_candidates );
+    CHECK( no_good_step.valid );
+    CHECK_FALSE( no_good_step.repositions );
+}
+
+TEST_CASE( "bandit_live_world_scout_sortie_has_finite_return_home_clock",
+           "[bandit][live_world][scout_return]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 921 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 922 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ),
+                "player@18,20,0" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    CHECK( site.active_job_type == "scout" );
+    CHECK( site.active_member_ids.size() == 1 );
+
+    REQUIRE( bandit_live_world::note_active_sortie_started( site, 100 ) );
+    CHECK_FALSE( bandit_live_world::note_active_sortie_started( site, 105 ) );
+    REQUIRE( bandit_live_world::note_active_sortie_local_contact( site, 130 ) );
+    CHECK_FALSE( bandit_live_world::scout_sortie_should_return_home( site, 299, 180 ) );
+    CHECK( bandit_live_world::scout_sortie_should_return_home( site, 310, 180 ) );
+
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    world.serialize( jsout );
+    JsonValue jsin = json_loader::from_string( out.str() );
+    bandit_live_world::world_state loaded;
+    loaded.deserialize( jsin.get_object() );
+    REQUIRE( loaded.sites.size() == 1 );
+    const bandit_live_world::site_record &loaded_site = loaded.sites.front();
+    CHECK( loaded_site.active_job_type == "scout" );
+    CHECK( loaded_site.active_sortie_started_minutes == 100 );
+    CHECK( loaded_site.active_sortie_local_contact_minutes == 130 );
+
+    REQUIRE( bandit_live_world::update_member_state( site, site.active_member_ids.front(),
+             bandit_live_world::member_state::local_contact, "watched long enough near player@18,20,0" ) );
+    const std::vector<bandit_live_world::active_member_observation> still_watching = {
+        { site.active_member_ids.front(),
+          bandit_live_world::active_member_observation_state::returning_home,
+          "scout sortie limit reached; returning home" }
+    };
+    CHECK_FALSE( bandit_live_world::resolve_active_group_aftermath( site, still_watching ).has_value() );
+
+    const std::vector<bandit_live_world::active_member_observation> home = {
+        { site.active_member_ids.front(), bandit_live_world::active_member_observation_state::home,
+          "npc back on home footprint" }
+    };
+    const std::optional<bandit_pursuit_handoff::return_packet> packet =
+        bandit_live_world::resolve_active_group_aftermath( site, home );
+    REQUIRE( packet.has_value() );
+    CHECK( packet->result == bandit_pursuit_handoff::mission_result::withdrawn );
+    REQUIRE( bandit_live_world::apply_return_packet( site, *packet ) );
+    CHECK( site.active_group_id.empty() );
+    CHECK( site.active_job_type.empty() );
+    CHECK( site.active_sortie_started_minutes == -1 );
+    CHECK( site.find_member( character_id( 921 ) )->state == bandit_live_world::member_state::at_home );
+}
+
 TEST_CASE( "bandit_live_world_makes_cannibal_camp_attack_instead_of_extort", "[bandit][live_world][cannibal][shakedown]" )
 {
     bandit_live_world::world_state world;

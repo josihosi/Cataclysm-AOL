@@ -112,6 +112,36 @@ remaining_return_pressure_state_from_string( const std::string &value )
     return std::nullopt;
 }
 
+std::optional<bandit_dry_run::job_template> job_template_from_string( const std::string &value )
+{
+    using bandit_dry_run::job_template;
+    if( value == "scout" ) {
+        return job_template::scout;
+    }
+    if( value == "scavenge" ) {
+        return job_template::scavenge;
+    }
+    if( value == "toll" ) {
+        return job_template::toll;
+    }
+    if( value == "stalk" ) {
+        return job_template::stalk;
+    }
+    if( value == "steal" ) {
+        return job_template::steal;
+    }
+    if( value == "raid" ) {
+        return job_template::raid;
+    }
+    if( value == "reinforce" ) {
+        return job_template::reinforce;
+    }
+    if( value == "hold / chill" || value == "hold_chill" || value.empty() ) {
+        return job_template::hold_chill;
+    }
+    return std::nullopt;
+}
+
 void push_unique_mark( std::vector<std::string> &marks, const std::string &mark )
 {
     if( mark.empty() ) {
@@ -529,6 +559,9 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "spawn_tiles", spawn_tiles );
     json.member( "active_group_id", active_group_id );
     json.member( "active_target_id", active_target_id );
+    json.member( "active_job_type", active_job_type );
+    json.member( "active_sortie_started_minutes", active_sortie_started_minutes );
+    json.member( "active_sortie_local_contact_minutes", active_sortie_local_contact_minutes );
     std::vector<int> raw_active_member_ids;
     raw_active_member_ids.reserve( active_member_ids.size() );
     for( const character_id &member_id : active_member_ids ) {
@@ -582,6 +615,9 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "spawn_tiles", spawn_tiles );
     jo.read( "active_group_id", active_group_id );
     jo.read( "active_target_id", active_target_id );
+    jo.read( "active_job_type", active_job_type );
+    jo.read( "active_sortie_started_minutes", active_sortie_started_minutes );
+    jo.read( "active_sortie_local_contact_minutes", active_sortie_local_contact_minutes );
     std::vector<int> raw_active_member_ids;
     jo.read( "active_member_ids", raw_active_member_ids );
     active_member_ids.clear();
@@ -1076,7 +1112,10 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
     }
     site.active_group_id = plan.entry.group_id;
     site.active_target_id = plan.target_id;
+    site.active_job_type = bandit_dry_run::to_string( plan.entry.job_type );
     site.active_member_ids = plan.member_ids;
+    site.active_sortie_started_minutes = -1;
+    site.active_sortie_local_contact_minutes = -1;
     site.remembered_target_or_mark = plan.entry.current_target_or_mark;
     site.remembered_threat_estimate = plan.group.current_threat_estimate;
     site.remembered_bounty_estimate = plan.group.current_bounty_estimate;
@@ -1176,6 +1215,7 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
     out << "local_gate site=" << site.site_id
         << " active_group=" << site.active_group_id
         << " target=" << site.active_target_id
+        << " active_job=" << ( site.active_job_type.empty() ? "unknown" : site.active_job_type )
         << " profile=" << to_string( effective_profile( site ) )
         << " posture=" << to_string( decision.posture )
         << " strength=" << decision.dispatch_strength
@@ -1184,6 +1224,8 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
         << " margin=" << decision.pressure_margin
         << " standoff_distance=" << input.standoff_distance
         << " basecamp_or_camp=" << ( input.basecamp_or_camp_scene ? "yes" : "no" )
+        << " recent_exposure=" << ( input.recent_exposure ? "yes" : "no" )
+        << " local_contact=" << ( input.local_contact_established ? "yes" : "no" )
         << " rolling_travel=" << ( input.rolling_travel_scene ? "yes" : "no" )
         << " shakedown=" << ( decision.opens_shakedown_surface ? "yes" : "no" )
         << " combat_forward=" << ( decision.combat_forward ? "yes" : "no" )
@@ -1192,6 +1234,108 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
         out << "- " << note << '\n';
     }
     return out.str();
+}
+
+sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &current_tile,
+        const bool current_exposure, const bool recent_exposure,
+        const std::vector<sight_avoid_candidate> &candidates )
+{
+    sight_avoid_decision decision;
+    decision.valid = true;
+    decision.destination = current_tile;
+
+    if( !current_exposure && !recent_exposure ) {
+        decision.reason = "still stalking";
+        decision.notes.push_back( "sight_avoid: no current or recent exposure, no reposition needed" );
+        return decision;
+    }
+
+    int best_score = -1000000;
+    std::optional<sight_avoid_candidate> best_candidate;
+    for( const sight_avoid_candidate &candidate : candidates ) {
+        if( !candidate.passable || candidate.tile == current_tile || rl_dist( candidate.tile, current_tile ) > 1 ) {
+            continue;
+        }
+        int score = candidate.cover_score;
+        if( !candidate.visible_to_player ) {
+            score += 80;
+        }
+        if( !candidate.visible_to_camp ) {
+            score += 40;
+        }
+        if( candidate.visible_to_player && candidate.visible_to_camp ) {
+            score -= 60;
+        }
+        if( score > best_score ) {
+            best_score = score;
+            best_candidate = candidate;
+        }
+    }
+
+    if( !best_candidate.has_value() ) {
+        decision.reason = "still stalking";
+        decision.notes.push_back( "sight_avoid: exposed but no adjacent passable local reposition candidate" );
+        return decision;
+    }
+
+    const bool breaks_player_sight = !best_candidate->visible_to_player;
+    const bool breaks_camp_sight = !best_candidate->visible_to_camp;
+    if( !breaks_player_sight && !breaks_camp_sight && best_candidate->cover_score <= 0 ) {
+        decision.reason = "still stalking";
+        decision.notes.push_back( "sight_avoid: exposed but adjacent candidates do not improve cover or line of sight" );
+        return decision;
+    }
+
+    decision.repositions = true;
+    decision.destination = best_candidate->tile;
+    decision.reason = "repositioning because exposed";
+    decision.notes.push_back( "sight_avoid: exposed -> bounded adjacent reposition" );
+    decision.notes.push_back( std::string( "sight_avoid: breaks_player_los=" ) +
+                              ( breaks_player_sight ? "yes" : "no" ) +
+                              " breaks_camp_los=" + ( breaks_camp_sight ? "yes" : "no" ) +
+                              " cover_score=" + std::to_string( best_candidate->cover_score ) );
+    return decision;
+}
+
+bool note_active_sortie_started( site_record &site, const int current_minutes )
+{
+    if( site.active_group_id.empty() || site.active_member_ids.empty() || current_minutes < 0 ||
+        site.active_sortie_started_minutes >= 0 ) {
+        return false;
+    }
+    site.active_sortie_started_minutes = current_minutes;
+    return true;
+}
+
+bool note_active_sortie_local_contact( site_record &site, const int current_minutes )
+{
+    if( site.active_group_id.empty() || site.active_member_ids.empty() || current_minutes < 0 ||
+        site.active_sortie_local_contact_minutes >= 0 ) {
+        return false;
+    }
+    site.active_sortie_local_contact_minutes = current_minutes;
+    return true;
+}
+
+bool scout_sortie_should_return_home( const site_record &site, const int current_minutes,
+                                      const int sortie_limit_minutes )
+{
+    if( site.active_group_id.empty() || site.active_member_ids.size() != 1 ||
+        sortie_limit_minutes <= 0 || current_minutes < 0 ||
+        site.last_shakedown_outcome == "fight_unresolved" ) {
+        return false;
+    }
+
+    const std::optional<bandit_dry_run::job_template> active_job =
+        job_template_from_string( site.active_job_type );
+    if( active_job.has_value() && *active_job != bandit_dry_run::job_template::scout &&
+        *active_job != bandit_dry_run::job_template::hold_chill ) {
+        return false;
+    }
+
+    const int anchor_minutes = site.active_sortie_local_contact_minutes >= 0 ?
+                               site.active_sortie_local_contact_minutes : site.active_sortie_started_minutes;
+    return anchor_minutes >= 0 && current_minutes - anchor_minutes >= sortie_limit_minutes;
 }
 
 shakedown_surface build_shakedown_surface( const site_record &site, const local_gate_input &input,
@@ -1475,7 +1619,10 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
 
     site.active_group_id.clear();
     site.active_target_id.clear();
+    site.active_job_type.clear();
     site.active_member_ids.clear();
+    site.active_sortie_started_minutes = -1;
+    site.active_sortie_local_contact_minutes = -1;
     return true;
 }
 
@@ -1491,6 +1638,8 @@ std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_afterm
     packet.valid = true;
     packet.group_id = site.active_group_id;
     packet.source_camp_id = site.site_id;
+    packet.job_type = job_template_from_string( site.active_job_type ).value_or(
+                          bandit_dry_run::job_template::hold_chill );
     packet.current_target_or_mark = site.active_target_id;
     packet.result = bandit_pursuit_handoff::mission_result::withdrawn;
     packet.resolution = bandit_pursuit_handoff::lead_resolution::target_lost;
