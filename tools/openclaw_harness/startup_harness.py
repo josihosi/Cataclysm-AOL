@@ -1250,6 +1250,7 @@ def audit_map_tiles_near_player(
 
     player_abs_omt, player_location = load_player_abs_omt(world_dir, selected_player_save)
     maps_dir = world_dir / "maps"
+    explicit_offsets = offsets is not None
     if offsets is None:
         scan_radius = max(0, int(radius))
         offsets = [(dx, dy, 0) for dy in range(-scan_radius, scan_radius + 1) for dx in range(-scan_radius, scan_radius + 1)]
@@ -1294,7 +1295,7 @@ def audit_map_tiles_near_player(
                 if x == local[0] and y == local[1]:
                     items.extend(summarize_map_items(payload))
             furniture = [str(payload) for x, y, payload in iter_map_triples(submap.get("furniture")) if x == local[0] and y == local[1]]
-            if fields or items or furniture:
+            if explicit_offsets or fields or items or furniture:
                 tile_reports.append({
                     "offset_ms": [dx, dy, dz],
                     "target_location_ms": target,
