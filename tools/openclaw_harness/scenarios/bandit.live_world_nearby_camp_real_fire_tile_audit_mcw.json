@@ -1,0 +1,39 @@
+{
+  "name": "bandit.live_world_nearby_camp_real_fire_tile_audit_mcw",
+  "description": "Attempt 3 after Frau Knackal consult: stop treating this as a bandit-signal wait until the player-action fire exists. Use unambiguous visible item names, drive the normal brazier/fuel/lighter path, pass turns for the firestarter activity, save/snapshot the world, then audit the target tile for real fd_fire. Fixture still injects no raw map fields.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_live_world_nearby_camp_real_fire_v0_2026-04-27",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world signal scan:"
+  ],
+  "steps": [
+    { "kind": "wait", "label": "real_fire_load_settle", "seconds": 2.0, "capture_after": true },
+    { "kind": "debug_spawn_item", "label": "spawn_brazier_item", "item_query": "brazier", "count": 1, "capture_after": true },
+    { "kind": "debug_spawn_item", "label": "spawn_splintered_wood_fuel", "item_query": "splintered wood", "count": 20, "capture_after": true },
+    { "kind": "debug_spawn_item", "label": "spawn_lighter", "item_query": "lighter", "count": 1, "capture_after": true },
+    { "kind": "press", "label": "open_wield_inventory_for_brazier", "keys": [ "w" ], "settle_seconds": 0.8, "capture_after": true },
+    { "kind": "press", "label": "filter_wield_inventory_for_brazier", "keys": [ "/" ], "settle_seconds": 0.5, "capture_after": true },
+    { "kind": "type", "label": "type_brazier_filter_for_wield", "text": "brazier", "submit": true, "settle_seconds": 0.8, "capture_after": true },
+    { "kind": "press", "label": "select_filtered_brazier_to_wield", "keys": [ "enter" ], "settle_seconds": 1.0, "capture_after": true },
+    { "kind": "press", "label": "activate_wielded_brazier", "keys": [ "A" ], "settle_seconds": 1.0, "capture_after": true },
+    { "kind": "press", "label": "place_brazier_east", "keys": [ "right" ], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "step_onto_brazier", "keys": [ "right" ], "settle_seconds": 0.8, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "drop_item", "label": "drop_splintered_wood_on_brazier", "query": "splintered wood", "count": 20, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "step_west_clear_of_brazier", "keys": [ "left" ], "settle_seconds": 0.8, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "open_activate_inventory_for_lighter", "keys": [ "a" ], "settle_seconds": 0.8, "capture_after": true },
+    { "kind": "press", "label": "filter_activate_inventory_for_lighter", "keys": [ "/" ], "settle_seconds": 0.5, "capture_after": true },
+    { "kind": "type", "label": "type_lighter_filter_for_activate", "text": "lighter", "submit": true, "settle_seconds": 0.8, "capture_after": true },
+    { "kind": "press", "label": "select_filtered_lighter_to_activate", "keys": [ "enter" ], "settle_seconds": 0.8, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24 },
+    { "kind": "press", "label": "target_brazier_with_lighter", "keys": [ "right" ], "delay_ms": 250, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 32 },
+    { "kind": "advance_turns", "label": "advance_firestarter_activity", "count": 300, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 40 },
+    { "kind": "press", "label": "save_after_firestarter_activity", "keys": [ "S" ], "delay_ms": 250, "settle_seconds": 3.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 32 }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_real_fire_tile_audit_mcw && python3 tools/openclaw_harness/map_fields_near_player_audit.py <run>/saved_world/McWilliams --offset 1 0 0 --field-id fd_fire"
+}
