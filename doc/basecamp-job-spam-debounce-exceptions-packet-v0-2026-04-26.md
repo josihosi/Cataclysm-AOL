@@ -1,12 +1,12 @@
 # Basecamp job spam debounce + locker/patrol exceptions packet v0 (2026-04-26)
 
-Status: greenlit / queued.
+Status: active / greenlit.
 
 ## Normalized contract
 
 **Title:** Basecamp job spam debounce + locker/patrol exceptions packet v0
 
-**Request kind:** Josef greenlight / queued implementation package
+**Request kind:** Josef greenlight / active implementation package
 
 **Summary:** Josef wants the repeated Basecamp job chatter fixed: repeated “completed the assigned task,” missing-tool, or similar job-state spam should be debounced so the message log stays readable. But locker-zone and patrol-zone behavior need explicit exceptions/typed reporting, because those systems produce important gear/guard state and should not be silently swallowed into generic cooldown mush.
 

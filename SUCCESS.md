@@ -196,7 +196,7 @@ Notes:
 
 ## Basecamp job spam debounce + locker/patrol exceptions packet v0
 
-Status: GREENLIT / QUEUED FOLLOW-UP
+Status: ACTIVE / GREENLIT
 
 Success state:
 - [ ] Repeated Basecamp completion/missing-tool/no-progress messages are debounced by stable cause so they do not flood the visible log.
