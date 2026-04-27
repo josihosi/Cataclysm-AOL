@@ -14,31 +14,38 @@
 
 Active lane is `C-AOL harness trust audit + proof-freeze v0`.
 
-Do **not** steer back into the older `C-AOL debug-proof finish stack v0`; that stack reached its honest Schani-review/implemented-but-unproven boundaries where needed. Current work is a primitive trust audit: make the harness unable to turn load-and-close, wrong-screen key macros, stale runtime, or missing metadata into feature proof.
+Do **not** steer back into the older `C-AOL debug-proof finish stack v0`; that stack reached its honest Schani-review/implemented-but-unproven boundaries where needed. Current work is a primitive trust audit: make the harness unable to turn load-and-close, wrong-screen key macros, stale runtime, missing metadata, or stale save state into feature proof.
 
-## Current next evidence target
+## Current state boundary
 
-Current blocker: `blocked_untrusted_brazier_deploy_selector`, now narrowed to the fixture-to-live inventory availability gap behind `filtered_brazier_selected`.
+The old blocker `blocked_untrusted_brazier_deploy_selector` is obsolete. Do **not** restart from the `20260427_203847` selector gap or burn proof budget rediscovering it.
 
-Do **not** run the older real-fire metadata-gated probe as the next step, and do **not** press `CONFIRM` / `RIGHT` in the deploy chain until the live selector row is proven. The current evidence target is one question:
+Run `.userdata/dev-harness/harness_runs/20260427_214207/` greens the focused normal player-action brazier deploy primitive gate:
 
-> Why does saved `player.inv` contain `brazier`, while the live `Use item` activatable selector exposes only `smart_phone` before filtering and zero visible entries after filter `brazier`?
+- fixture storage/accessibility repaired for this primitive: `brazier` is `live_accessible_wielded`; `2x4` and `lighter` are in a `live_accessible_worn_pocket`;
+- UI trace proves selected `brazier`, `Deploy where?`, and right/east direction consumption;
+- save prompt proof matched `and quit?` and `Case Sensitive`;
+- confirmation was sent as uppercase `Y` for the case-sensitive `query_yn` prompt;
+- saved-player mtime advanced from `1777318941193895502` to `1777318962722412486`;
+- saved east tile `[3368,994,0]` contains `f_brazier` in `audit_saved_target_tile_for_brazier.metadata.json`.
 
-Current evidence anchors:
+This is **not** real-fire proof and not bandit product proof. It is only the green deploy primitive gate. The fuel/lighter/final `fd_fire` chain remains separate and must carry its own saved-state/writeback guards before any product claim.
 
-- `.userdata/dev-harness/harness_runs/20260427_203847/audit_saved_inventory_has_brazier_before_apply.metadata.json` proves saved `player.inv` has `brazier=1` and item metadata says `deploy_furn -> f_brazier`.
-- `.userdata/dev-harness/harness_runs/20260427_203847/probe.artifacts.log` / `audit_ui_trace_filtered_brazier_selected.log_delta.txt` prove the live `Use item` selector list shows only `smart_phone` before filtering and zero entries after filter `brazier`.
-- The run aborts at `audit_ui_trace_filtered_brazier_selected` before `CONFIRM`, `Deploy where?`, `RIGHT`, save, or east-tile `f_brazier` can be credited.
+## Recommended next evidence target
 
-Recommended next action: inspect fixture install/load path, active avatar inventory ownership, and `activatable_inventory_preset`/selector predicate behavior until the saved-vs-live availability mismatch has a source-backed explanation or repair. Then rerun the guarded selector audit only up to `filtered_brazier_selected`.
+Next work should start from the now-green `f_brazier` deploy gate and decide one of two narrow paths:
+
+1. If the goal is to make `bandit.live_world_nearby_camp_brazier_deploy_text_audit_mcw` itself an all-green proof packet, prune or link the remaining non-decisive yellow rows (`ocr_without_expected_text_guard`, baseline mtime scan, and confirmation step with no immediate artifact) so the step ledger no longer stays yellow for bookkeeping reasons.
+2. If the goal is to continue toward player-lit fire proof, extend the same discipline behind the green deploy gate: fuel/drop guard, lighter/firestarter guard, post-action save/writeback guard, and final saved east-tile `fd_fire` / smoke metadata. Do not call this done until those later gates are green.
 
 ## Proof rules to keep in view
 
 - Load/readiness/close is `startup/load`, with `feature_proof=false`.
 - `artifacts_matched` is not feature proof unless startup is clean, every step-local ledger row is green, and wait ledgers are not yellow/blocked.
 - Screenshot/OCR steps need named expected visible facts; missing guards stay yellow/red/blocked instead of becoming green by silence.
-- Exact saved-map state now belongs inside the probe via `kind: "audit_saved_map_tile_near_player"`, with `required_fields` / `required_items` / `required_furniture`; the step writes `<label>.metadata.json` and feeds `metadata_expectation` into `probe.step_ledger.json`.
-- The still-red brazier deploy selector primitive remains untrusted until live selector availability, selected row, deploy prompt, right/east consumption, and saved east-tile `f_brazier` are each proven by step-local evidence. Do not start a key-variant loop around it.
+- Exact saved-map state belongs inside the probe via `kind: "audit_saved_map_tile_near_player"`, with `required_fields` / `required_items` / `required_furniture`; the step writes `<label>.metadata.json` and feeds `metadata_expectation` into `probe.step_ledger.json`.
+- Exact save/writeback state now belongs inside the probe via `kind: "audit_player_save_mtime"`; do not read saved-map proof after a live action unless the same-run writeback gate is green.
+- A green deploy primitive is not a green fire chain. Keep evidence classes explicit, ja, otherwise we are back to serving yesterday's soup as fresh.
 
 ## Attempt rule
 
