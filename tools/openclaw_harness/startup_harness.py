@@ -1432,7 +1432,7 @@ def audit_player_save_mtime(
     elif required_change:
         status = "required_state_missing"
     else:
-        status = "scanned"
+        status = "baseline_recorded"
 
     return {
         "world": world_dir.name,
@@ -2537,6 +2537,8 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
         return "red_step_metadata_required_state_missing", issues or [status]
     if status == "failed":
         return "blocked_step_metadata_probe_failed", ["metadata_probe_failed"]
+    if status == "baseline_recorded":
+        return "green_step_metadata_baseline_recorded", []
     if status == "scanned":
         return "yellow_step_metadata_scanned_without_required_state", ["metadata_no_required_state"]
     return "yellow_step_metadata_inconclusive", ["metadata_status_inconclusive"]
@@ -2574,6 +2576,37 @@ def screen_checkpoint_verdict(
     return "green_step_screen_checkpoint_named", issues
 
 
+def direct_report_checkpoint_verdict(report: Dict[str, Any]) -> Tuple[str, List[str], str]:
+    """Return the direct screen/metadata checkpoint verdict and artifact for one step report."""
+    metadata_summary = report.get("metadata") if isinstance(report.get("metadata"), dict) else {}
+    screen_summary: Dict[str, Any] = {}
+    text_expectation: Optional[Dict[str, Any]] = None
+    ocr_requested = False
+    if isinstance(report.get("screen_after"), dict):
+        screen_summary = report["screen_after"]
+        if isinstance(report.get("screen_after_text_expectation"), dict):
+            text_expectation = report["screen_after_text_expectation"]
+        ocr_requested = isinstance(report.get("screen_after_text"), dict)
+    elif isinstance(report.get("screen"), dict):
+        screen_summary = report["screen"]
+        if isinstance(report.get("screen_text_expectation"), dict):
+            text_expectation = report["screen_text_expectation"]
+        ocr_requested = isinstance(report.get("screen_text"), dict)
+
+    if metadata_summary:
+        verdict, issues = metadata_checkpoint_verdict(metadata_summary)
+        artifact = str(metadata_summary.get("artifact_path", "")) or "probe.report.json:steps[].metadata"
+        return verdict, issues, artifact
+
+    verdict, issues = screen_checkpoint_verdict(
+        screen_summary=screen_summary,
+        expected_visible_fact=str(report.get("expected_visible_fact", "")).strip(),
+        text_expectation=text_expectation,
+        ocr_requested=ocr_requested,
+    )
+    return verdict, issues, screen_summary_path(screen_summary)
+
+
 def auto_step_action_description(report: Dict[str, Any]) -> str:
     kind = str(report.get("kind", "")).strip()
     if kind == "press":
@@ -2597,6 +2630,7 @@ def auto_step_action_description(report: Dict[str, Any]) -> str:
 
 def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     ledger: List[Dict[str, Any]] = []
+    reports_by_label = {str(report.get("label", "")).strip(): report for report in step_reports}
     for report in step_reports:
         label = str(report.get("label", "")).strip()
         kind = str(report.get("kind", "")).strip().lower()
@@ -2620,6 +2654,7 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
             ocr_requested = isinstance(report.get("screen_text"), dict)
 
         issues: List[str] = []
+        deferred_evidence_artifact = ""
         if isinstance(report.get("abort"), dict) and report["abort"].get("guard") == "metadata":
             verdict, issues = metadata_checkpoint_verdict(metadata_summary)
             if not verdict.startswith(("red", "blocked")):
@@ -2639,6 +2674,23 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
             issues.extend(str(issue) for issue in report["wait_step_ledger"].get("issues", []))
         elif metadata_summary:
             verdict, issues = metadata_checkpoint_verdict(metadata_summary)
+        elif str(report.get("proof_deferred_to_label", "")).strip():
+            deferred_label = str(report.get("proof_deferred_to_label", "")).strip()
+            target_report = reports_by_label.get(deferred_label)
+            if target_report:
+                target_verdict, target_issues, deferred_evidence_artifact = direct_report_checkpoint_verdict(target_report)
+                if target_verdict.startswith("green"):
+                    verdict = "green_step_proof_deferred_to_guard"
+                    issues = []
+                elif target_verdict.startswith(("red", "blocked")):
+                    verdict = "red_step_deferred_guard_failed"
+                    issues = ["deferred_guard_failed"] + target_issues
+                else:
+                    verdict = "yellow_step_deferred_guard_incomplete"
+                    issues = ["deferred_guard_incomplete"] + target_issues
+            else:
+                verdict = "yellow_step_deferred_guard_missing"
+                issues = ["deferred_guard_missing"]
         else:
             verdict, issues = screen_checkpoint_verdict(
                 screen_summary=screen_summary,
@@ -2650,6 +2702,8 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
         evidence_artifact = screen_summary_path(screen_summary)
         if not evidence_artifact and metadata_summary:
             evidence_artifact = str(metadata_summary.get("artifact_path", "")) or "probe.report.json:steps[].metadata"
+        if not evidence_artifact and deferred_evidence_artifact:
+            evidence_artifact = deferred_evidence_artifact
         if not evidence_artifact and kind in {"long_wait", "wait_action"}:
             evidence_artifact = str(report.get("wait_step_ledger", {}).get("wait_menu_artifact", ""))
         if not evidence_artifact:
@@ -2673,6 +2727,7 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 "missing_required_items": metadata_summary.get("missing_required_items", []),
                 "missing_required_furniture": metadata_summary.get("missing_required_furniture", []),
             } if metadata_summary else {},
+            "proof_deferred_to_label": str(report.get("proof_deferred_to_label", "")),
             "failure_rule": str(report.get("failure_rule", "missing/wrong screen, failed OCR guard, stale runtime, or absent state metadata makes this non-green")),
             "next_step_gate": str(report.get("next_step_gate", "next step may run mechanically, but feature closure requires this ledger row to be green")),
             "issues": issues,
@@ -4231,6 +4286,16 @@ def execute_probe_steps(
         expected_visible_fact = str(step.get("expected_visible_fact", "")).strip()
         if expected_visible_fact:
             report["expected_visible_fact"] = expected_visible_fact
+        for optional_key in (
+            "preconditions",
+            "expected_immediate_state",
+            "failure_rule",
+            "next_step_gate",
+            "proof_deferred_to_label",
+        ):
+            optional_value = str(step.get(optional_key, "") or "").strip()
+            if optional_value:
+                report[optional_key] = optional_value
         if kind == "press":
             raw_keys = step.get("keys", [])
             if isinstance(raw_keys, str):
@@ -4571,8 +4636,16 @@ def execute_probe_steps(
                 "changed_since_label": changed_since_label,
                 "metadata": metadata,
                 "action_description": "read saved-player file mtime and optionally require same-run save/writeback progress",
-                "expected_immediate_state": "saved-player file mtime changed after the requested baseline before saved-map feature proof may continue",
-                "failure_rule": "missing player-save mtime progress or unreadable save metadata makes this step red/blocked",
+                "expected_immediate_state": (
+                    "saved-player file mtime changed after the requested baseline before saved-map feature proof may continue"
+                    if changed_since_label
+                    else "saved-player file mtime baseline is recorded for a later same-run save/writeback gate"
+                ),
+                "failure_rule": (
+                    "missing player-save mtime progress or unreadable save metadata makes this step red/blocked"
+                    if changed_since_label
+                    else "missing or unreadable player-save mtime baseline makes the later writeback gate untrusted"
+                ),
             })
             if bool(step.get("abort_on_metadata_failure", False)):
                 metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)

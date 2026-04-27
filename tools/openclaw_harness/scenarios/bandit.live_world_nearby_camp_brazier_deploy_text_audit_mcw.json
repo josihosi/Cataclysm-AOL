@@ -41,8 +41,6 @@
       ],
       "settle_seconds": 0.8,
       "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 64,
       "expected_visible_fact": "The source-backed Apply key is sent; the following harness UI trace gate must prove the Use item inventory opened before another unsafe key fires."
     },
     {
@@ -66,9 +64,7 @@
       ],
       "settle_seconds": 0.5,
       "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 64,
-      "expected_visible_fact": "The filter key is sent only after the Use item inventory-open trace is green; OCR is secondary discovery evidence only."
+      "expected_visible_fact": "The filter key is sent only after the Use item inventory-open trace is green; OCR is not used as the selector proof for this step."
     },
     {
       "kind": "type",
@@ -77,9 +73,7 @@
       "submit": true,
       "settle_seconds": 0.8,
       "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 64,
-      "expected_visible_fact": "The brazier filter text is submitted only after the Apply inventory-open trace is green."
+      "expected_visible_fact": "The brazier filter text is submitted only after the Apply inventory-open trace is green; the following UI trace gate proves the highlighted filtered row."
     },
     {
       "kind": "audit_log_contains",
@@ -103,8 +97,6 @@
       ],
       "settle_seconds": 1.0,
       "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 64,
       "expected_visible_fact": "The filtered inventory row is confirmed; following harness UI trace gates must prove the returned item is brazier and Deploy where? opened."
     },
     {
@@ -130,9 +122,7 @@
       ],
       "settle_seconds": 1.0,
       "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 64,
-      "expected_visible_fact": "The source-backed Deploy where? prompt accepts right/east and returns to the map."
+      "expected_visible_fact": "The source-backed Deploy where? prompt accepts right/east and returns to the map; the following UI trace gate proves right/east was consumed by that prompt."
     },
     {
       "kind": "audit_log_contains",
@@ -182,6 +172,9 @@
       "delay_ms": 250,
       "settle_seconds": 5.0,
       "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_post_deploy_save",
+      "failure_rule": "the uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "next_step_gate": "feature proof may proceed only when audit_player_save_mtime_after_post_deploy_save is green",
       "expected_visible_fact": "The proven case-sensitive Save and quit prompt is confirmed with uppercase Y so the following saved-file mtime gate can prove same-run writeback."
     },
     {

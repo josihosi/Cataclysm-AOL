@@ -188,7 +188,14 @@
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 64,
-      "expected_visible_fact": "A post-fuel save is requested after dropping fuel; the following mtime and saved-map gates, not the screen text alone, decide whether same-run writeback happened."
+      "expected_screen_text_after_contains": [
+        "and quit?",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_post_fuel_save_prompt",
+      "abort_reason": "screen text did not prove the Save and quit prompt existed before confirming the post-fuel save",
+      "expected_visible_fact": "A post-fuel Save and quit prompt is requested after dropping fuel; confirmation must not be sent before this prompt is proven."
     },
     {
       "kind": "press",
@@ -199,6 +206,9 @@
       "delay_ms": 250,
       "settle_seconds": 6.0,
       "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_post_fuel_save",
+      "failure_rule": "the uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run post-fuel writeback",
+      "next_step_gate": "feature proof may proceed only when audit_player_save_mtime_after_post_fuel_save is green",
       "expected_visible_fact": "The source-backed Save and quit request is confirmed with uppercase Y; this row is not closure by itself, and the following mtime plus saved-map metadata gates decide whether same-run fuel writeback actually happened."
     },
     {
