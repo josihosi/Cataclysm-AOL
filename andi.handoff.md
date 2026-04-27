@@ -18,19 +18,19 @@ Do **not** steer back into the older `C-AOL debug-proof finish stack v0`; that s
 
 ## Current next evidence target
 
-Before any wider feature claim, run exactly one current-runtime real-fire metadata-gated probe and inspect the bounded report fields:
+Current blocker: `blocked_untrusted_brazier_deploy_selector`, now narrowed to the fixture-to-live inventory availability gap behind `filtered_brazier_selected`.
 
-```sh
-python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_real_fire_exact_items_tile_audit_mcw
-```
+Do **not** run the older real-fire metadata-gated probe as the next step, and do **not** press `CONFIRM` / `RIGHT` in the deploy chain until the live selector row is proven. The current evidence target is one question:
 
-Expected evidence artifacts from the run:
+> Why does saved `player.inv` contain `brazier`, while the live `Use item` activatable selector exposes only `smart_phone` before filtering and zero visible entries after filter `brazier`?
 
-- `<run>/probe.report.json`
-- `<run>/probe.step_ledger.json`
-- `<run>/audit_saved_target_tile_for_fd_fire.metadata.json`
+Current evidence anchors:
 
-The probe is green for this slice only if startup is clean/current-runtime, the step ledger is green through the saved-map audit step, and `audit_saved_target_tile_for_fd_fire.metadata.json` reports required target-tile `fd_fire` present. If the metadata is missing/unreadable, classify it as red/blocked harness evidence, not as a feature regression and not as feature proof.
+- `.userdata/dev-harness/harness_runs/20260427_203847/audit_saved_inventory_has_brazier_before_apply.metadata.json` proves saved `player.inv` has `brazier=1` and item metadata says `deploy_furn -> f_brazier`.
+- `.userdata/dev-harness/harness_runs/20260427_203847/probe.artifacts.log` / `audit_ui_trace_filtered_brazier_selected.log_delta.txt` prove the live `Use item` selector list shows only `smart_phone` before filtering and zero entries after filter `brazier`.
+- The run aborts at `audit_ui_trace_filtered_brazier_selected` before `CONFIRM`, `Deploy where?`, `RIGHT`, save, or east-tile `f_brazier` can be credited.
+
+Recommended next action: inspect fixture install/load path, active avatar inventory ownership, and `activatable_inventory_preset`/selector predicate behavior until the saved-vs-live availability mismatch has a source-backed explanation or repair. Then rerun the guarded selector audit only up to `filtered_brazier_selected`.
 
 ## Proof rules to keep in view
 
@@ -38,7 +38,7 @@ The probe is green for this slice only if startup is clean/current-runtime, the 
 - `artifacts_matched` is not feature proof unless startup is clean, every step-local ledger row is green, and wait ledgers are not yellow/blocked.
 - Screenshot/OCR steps need named expected visible facts; missing guards stay yellow/red/blocked instead of becoming green by silence.
 - Exact saved-map state now belongs inside the probe via `kind: "audit_saved_map_tile_near_player"`, with `required_fields` / `required_items` / `required_furniture`; the step writes `<label>.metadata.json` and feeds `metadata_expectation` into `probe.step_ledger.json`.
-- The still-red dialogue/rules selector primitive remains untrusted unless a tiny menu-entry/hotkey metadata capture is added. Do not start a key-variant loop around it.
+- The still-red brazier deploy selector primitive remains untrusted until live selector availability, selected row, deploy prompt, right/east consumption, and saved east-tile `f_brazier` are each proven by step-local evidence. Do not start a key-variant loop around it.
 
 ## Attempt rule
 

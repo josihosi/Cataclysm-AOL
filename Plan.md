@@ -107,15 +107,16 @@ Current false-pass evidence:
 - `.userdata/dev-harness/harness_runs/20260427_200100/` proves exact fixture inventory first (`brazier=1`, `2x4=20`, `lighter=1`), then still stops red at the missing east-tile `f_brazier` deploy state.
 - `.userdata/dev-harness/harness_runs/20260427_200919/` tried checked GUI text for Josef's GUI-as-text idea and aborted at `open_apply_inventory_for_brazier_text_guard` because source-backed `Use item` menu text was not proven.
 - `.userdata/dev-harness/harness_runs/20260427_202434/` uses harness-gated inventory/direction trace plus richer saved-item metadata. It proves `Use item` opens and the saved brazier definition is `deploy_furn -> f_brazier`, but after filtering `brazier` the selector still does **not** prove a highlighted `brazier` row (`highlight_after_redraw selected_item=no`). The abort fires before `CONFIRM`, so `Deploy where?`, `RIGHT`, save, and east-tile `f_brazier` remain unproven.
+- `.userdata/dev-harness/harness_runs/20260427_203847/` adds selector-entry tracing and sharpens the gap: saved `player.inv` still proves `brazier=1` with `deploy_furn -> f_brazier`, but the live `Use item` selector shows only `smart_phone` before filtering and zero visible entries after filter `brazier`.
 
-Current blocker: Frau Knackal classifies this as `blocked_untrusted_brazier_deploy_selector`, now narrowed to the `filtered_brazier_selected` guard. Stop blind key variants. Keep feature proof frozen. Treat normal player-action brazier deployment as the current red harness primitive.
+Current blocker: Frau Knackal classifies this as `blocked_untrusted_brazier_deploy_selector`, now narrowed to a fixture-to-live inventory availability gap behind `filtered_brazier_selected`. Stop blind key variants. Keep feature proof frozen. Treat normal player-action brazier deployment as the current red harness primitive.
 
-Known source/control footing: `brazier` uses `deploy_furn` -> `f_brazier`; activation should enter `Deploy where?`; `right` is valid only in that direction prompt. Current live trace says the present filter recipe does not select the brazier row.
+Known source/control footing: `brazier` uses `deploy_furn` -> `f_brazier`; activation should enter `Deploy where?`; `right` is valid only in that direction prompt. Current live trace says saved `player.inv` presence is not live activatable selector availability.
 
 Active sub-order:
 
-1. Do source/control lookup or stronger selector-list observation for why `Use item` + filter `brazier` leaves no selected brazier row; do not press confirm/right until that state is green.
-2. Once `filtered_brazier_selected` is green, continue the existing guarded chain: confirm -> prove `Deploy where?` -> direction right -> save -> audit east-tile `f_brazier`.
+1. Prove why saved `player.inv` contains `brazier` but the live `Use item` selector does not expose it; inspect fixture install/load/inventory ownership/selector predicate seams before any more key motion.
+2. Do not press confirm/right until a live selector row for `brazier` is proven green; once green, continue the guarded chain: confirm -> prove `Deploy where?` -> direction right -> save -> audit east-tile `f_brazier`.
 3. Keep fuel/lighter/fire steps gated until the menu/selector state and saved east-tile `f_brazier` are green.
 
 
