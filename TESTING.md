@@ -35,6 +35,12 @@ Do not keep rerunning the same startup or test packet when it is no longer the m
 If startup/load is already green, and the missing proof is live behavior, then the next probe must target live behavior.
 If a target is merely waiting on Josef, do not keep revalidating it unless the code changed.
 
+Current debug-stack attempt rule for the same item/blocker:
+- attempts 1-2 may be Andi solo retries, including multiple focused harness attempts in one cron run when each attempt changes setup, instrumentation, or evidence class
+- before attempt 3, consult Frau Knackal
+- attempts 3-4 are the final changed retries after consultation
+- after attempt 4, if code is implemented but proof still fails, add a concise implemented-but-unproven packet to Josef's playtest package and move to the next greenlit debug note; do not close it and do not park it as dead
+
 ### Test-to-game wiring rule
 
 A test is not allowed to impersonate implementation. Before claiming gameplay behavior, identify the live code path that consumes the tested seam and name the evidence class that proves it: unit/evaluator, playback/proof packet, live source hook, harness/startup, screen, save inspection, or artifact/log. Deterministic-only packets may close only as deterministic-only packets; if the contract says the game does something, the proof must reach the game path or the claim stays open.
@@ -56,15 +62,16 @@ When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implem
 - patrol-zone exception -> assignment/interruption/reserve/backfill state changes visible, routine repeats compressed
 - unrelated important messages are not swallowed
 
-### Josef-review caveat - bandit live signal + site bootstrap correction
+### Greenlit follow-up validation - C-AOL debug-proof finish stack
 
-Do not rerun the parked smoke/fire site-refresh loop by drift.
+After the active job-spam debounce lane, `C-AOL debug-proof finish stack v0` is greenlit for another honest proof pass.
 
-Retained evidence classification:
+Retained evidence classification for `Bandit live signal + site bootstrap correction v0`:
 - raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
-- synthetic smoke proof, if reopened, proves only synthetic smoke-source/live-signal behavior
+- synthetic smoke proof proves only synthetic smoke-source/live-signal behavior and must be labeled as such
 - player-fire product proof still requires the real brazier/wood/lighter/player-action chain and fresh matched-site evidence
-- `bandit-live-signal-smoke-source-site-refresh-proof` was moved to Josef review after attempt 5
+- threshold-surviving light proof remains open if the live light branch still shows `matched_light_sites=0`
+- if the implemented live behavior cannot be proven after the 4-attempt escalation rule, write a Josef playtest package with the manual recipe and exact close condition instead of closing or parking it
 
 ### Recently closed validation references
 
@@ -85,7 +92,8 @@ If a later live probe is needed:
 - build the current runtime first when binary freshness matters
 - use one named scenario/command path
 - extract only decisive report/log fields into context
-- stop after two same-reason inconclusive attempts and escalate/park instead of rerunning a ritual macro
+- multiple focused attempts in one run are allowed when each changes setup/instrumentation/evidence and output stays small
+- after two same-item failures, consult Frau Knackal before attempt 3; after four total failures, write the implemented-but-unproven item to Josef's playtest package instead of looping
 
 ---
 

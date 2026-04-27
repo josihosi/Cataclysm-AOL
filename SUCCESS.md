@@ -53,6 +53,23 @@ Notes:
 
 ---
 
+## C-AOL debug-proof finish stack v0
+
+Status: GREENLIT / NEXT AFTER CURRENT ACTIVE LANE
+
+Success state:
+- [ ] The active Basecamp job-spam debounce lane is either closed honestly or placed on Josef's playtest package if implemented-but-unproven after the attempt budget.
+- [ ] The reopened bandit live signal/site-bootstrap stack has live/source-hook proof for remaining smoke/fire/light product claims, or a precise Josef playtest package for exact implemented-but-unproven behavior.
+- [ ] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
+- [ ] Smart Zone clean-save live proof is either honestly run on a clean disposable profile or converted into a precise Josef playtest package without reopening the contaminated McWilliams macro.
+- [ ] Canon files stop calling current debug notes parked/review-only when Josef has explicitly greenlit another finish pass.
+
+Notes:
+- Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`.
+- Attempt rule for this stack: attempts 1-2 solo, consult Frau Knackal before attempt 3, attempts 3-4 changed retries after consultation, then move implemented-but-unproven work to Josef's playtest package and continue the next greenlit debug note.
+
+---
+
 ## Test-vs-game implementation audit report packet v0
 
 Status: CLOSED / CHECKPOINTED
@@ -76,7 +93,7 @@ Compact reference:
 
 ## Bandit live signal + site bootstrap correction v0
 
-Status: JOSEF REVIEW / MOVE ON (PARTIAL, NOT CLOSED)
+Status: GREENLIT / REOPENED FOR DEBUG-PROOF FINISH (PARTIAL, NOT CLOSED)
 
 Success state:
 - [x] Existing hostile overmap special families that should participate in live hostile-site logic can register abstract `bandit_live_world` site records without requiring the player to enter spawn/load range first.
@@ -94,7 +111,7 @@ Notes:
 - Canonical contract lives at `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.
 - This package supersedes the older 48/60 OMT starter lean with Josef's corrected `40 OMT` overmap AI/system envelope while preserving the anti-tripwire product law.
 - First implementation slice registers abstract overmap-special hostile sites from existing loaded overmaps during the 30-minute overmap NPC cadence, serializes the abstract site footprint/headcount/profile, reconciles later concrete spawn claims into the same ledger, expands live dispatch candidate eligibility to the `40 OMT` system envelope, and adds reviewer-readable dispatch/bootstrap skip/reject logging.
-- Current implementation also has a minimal raw-field `fd_fire` / `fd_smoke` reader hook, accepted live-signal mark memory refresh, candidate-local lazy materialization for abstract overmap-special sites, and repaired several-hour `|`-wait reader proof for initial smoke-site refresh followed by decay/no-signal. Schani/Josef moved the smoke/fire site-refresh proof to Josef review after attempt 5; do not keep rerunning this phase. Preserve the specific failed reviewed run `.userdata/dev-harness/harness_runs/20260427_013136/`: `signal_packet=yes`, but `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then no-signal decay. Full player-fire proof, clean threshold-surviving light proof, signal decay design, and remaining hold/chill evidence remain open unless Josef explicitly reopens this packet.
+- Current implementation also has a minimal raw-field `fd_fire` / `fd_smoke` reader hook, accepted live-signal mark memory refresh, candidate-local lazy materialization for abstract overmap-special sites, and repaired several-hour `|`-wait reader proof for initial smoke-site refresh followed by decay/no-signal. Josef explicitly reopened the remaining debug-proof work on 2026-04-27 under `C-AOL debug-proof finish stack v0`; do not close from raw saved-field proof, and do not park failed implemented behavior as dead. Preserve the specific failed reviewed run `.userdata/dev-harness/harness_runs/20260427_013136/`: `signal_packet=yes`, but `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then no-signal decay. Full player-fire proof, clean threshold-surviving light proof, signal decay design, and remaining hold/chill evidence remain open under the 4-attempt escalation/playtest-package rule.
 - Keep `Basecamp medical consumable readiness v0` separate unless Josef explicitly bundles it.
 
 ---

@@ -24,6 +24,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 - Josef being unavailable for playtesting is **not** a blocker by itself.
 - When a target is waiting on Josef, move to the next best unblocked target.
 - If no good unblocked target remains, send Josef a short parked-options note so he can greenlight the next lane; do not just keep revalidating the old packet.
+- During the current debug-proof finish stack, failed agent-side proof does **not** close or park implemented code. After the attempt budget, move implemented-but-unproven items to Josef's playtest package and continue the next greenlit debug note.
 - Prefer batching human-only asks where practical. One useful packet with two real product questions beats two tiny pings.
 - Keep these files lean. Remove finished fluff from `TODO.md` and `TESTING.md` instead of piling up crossed-off archaeology.
 - Each real roadmap item needs an explicit success state in `SUCCESS.md` (or an equally explicit inline auxiliary) so completion is visible instead of guessed.
@@ -65,14 +66,19 @@ Canonical contract lives at `doc/basecamp-job-spam-debounce-exceptions-packet-v0
 
 ---
 
-## Parked / held - release and bandit review leftovers
+## Greenlit follow-up - C-AOL debug-proof finish stack v0
 
-**Status:** PARKED / HELD
+**Status:** GREENLIT / NEXT AFTER CURRENT ACTIVE LANE
 
-These are not active rerun targets.
+Josef explicitly reopened the current C-AOL debug-proof notes on 2026-04-27. Do not leave them in parked/review-only posture just because a proof run is annoying.
 
-- **GitHub normal-download release packet v0** remains held behind the C-AOL debug-correction stack.
-- **Bandit live signal + site bootstrap correction v0** is Josef-review / move-on. Raw saved-field smoke/fire proof remains reader/consumer evidence only; full player-fire proof stays unclaimed unless Josef explicitly reopens it.
+- First finish the active Basecamp job-spam/debug lane unless Schani explicitly interrupts it.
+- Then run the reopened bandit live signal/site-bootstrap product-proof work: raw saved-field smoke/fire proof remains reader/consumer evidence only, while real or clearly labeled synthetic smoke/fire/light source proof must reach the running live bandit path before product claims close.
+- If Smart Zone clean-save live proof is still the only missing check, fix the small clean-profile/startup readiness seam or write a precise Josef playtest package; do not rerun the contaminated old McWilliams macro as closure proof.
+- Attempt rule for the same item/blocker: attempts 1-2 solo, consult Frau Knackal before attempt 3, attempts 3-4 changed retries after consultation, then move implemented-but-unproven work to Josef's playtest package and continue the next greenlit debug note.
+- **GitHub normal-download release packet v0** remains held behind this debug-proof finish stack.
+
+Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`.
 
 ---
 
