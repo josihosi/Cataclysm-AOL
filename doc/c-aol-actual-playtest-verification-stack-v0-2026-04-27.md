@@ -1,0 +1,62 @@
+# C-AOL actual playtest verification stack v0 (2026-04-27)
+
+Status: GREENLIT / ACTUAL PLAYTEST STACK.
+
+## Why this exists
+
+Josef explicitly greenlit moving beyond paper/audit closure into actual playtests, but with the same proof discipline that the harness trust audit just made useful: every feature claim needs step-by-step screenshots, menu/UI trace or checked text when relevant, exact metadata, save/writeback gates when persistence matters, and honest non-green states when the live path cannot be proven.
+
+This is not permission to wander around a live save and call vibes evidence. It is a small greenlit stack of actual product verification items for Andi to pull after the current active slice reaches its next honest boundary.
+
+## Priority order
+
+1. **Active-now bridge: player fuel continuation behind the green deploy gate.**
+   - This remains inside `C-AOL harness trust audit + proof-freeze packet v0`.
+   - Preserve `.userdata/dev-harness/harness_runs/20260427_222635/` as scoped deploy proof only.
+   - Current honest outcome: changed run `.userdata/dev-harness/harness_runs/20260427_224113/` still aborts at `blocked_untrusted_post_fuel_save_prompt` after source-backed multidrop `MARK_WITH_COUNT`; the failed primitive is post-fuel return-to-map/drop-menu exit before save request, so no lighter/fire claim may proceed.
+
+2. **Smart Zone Manager live layout verification packet v0.**
+   - Verify the actual generated Smart Zone layout on a clean/disposable live path.
+   - Deterministic geometry/separation tests are supporting evidence only; they do not close the product claim.
+   - Do not reuse the contaminated old McWilliams Smart Zone macro as closure proof.
+
+3. **Player-lit fire and bandit signal verification packet v0.**
+   - After fuel placement/writeback is green, prove the real lighter/action path, actual `fd_fire`/smoke state, wait/time passage, and bandit signal response.
+   - Do not jump to this while the fuel continuation gate is red.
+
+4. **Roof-fire horde detection proof packet v0.**
+   - After the real player-lit fire path is green, use debug/control tooling only to stage the horde, not to fake the fire.
+   - Spawn or place a horde about 10 OMT away when source/control checks confirm that distance is meaningful; otherwise record the source-backed distance actually used.
+   - Put the player on the shelter roof or another source-backed elevated shelter tile, light a real fire there by player actions, and determine whether the horde detects/responds.
+
+## Scope
+
+- Use actual playtest-style live paths where the product question is visual/player-facing.
+- For each feature path, capture before state, relevant menu/selector or prompt state, the exact action, post-action state, persistence/writeback if relevant, and final saved/game metadata.
+- Prefer disposable/provenance-visible profiles and saves; do not mutate Josef's personal playtest state.
+- Treat failed UI control, missing metadata, stale binary/profile, wrong screen, unproven save prompt, or load-and-close as non-green.
+
+## Non-goals
+
+- No release work.
+- No Lacapult work.
+- No broad debug-note stack reopening.
+- No product closure from deterministic tests alone when Josef is asking about actual live behavior.
+- No repeating known-bad macros unless the harness primitive or scenario setup has materially changed.
+- No debug-spawned fire as horde proof; debug may stage the horde/positioning, but the roof fire itself must be player-created or honestly classified as not product proof.
+
+## Success state
+
+- [x] Fuel continuation behind the green brazier deploy gate has an honest outcome: non-green run `.userdata/dev-harness/harness_runs/20260427_224113/` names `blocked_untrusted_post_fuel_save_prompt` / post-fuel return-to-map/drop-menu exit before save request; no post-fuel mtime, current-tile `2x4`, lighter, or `fd_fire` proof is credited.
+- [ ] Smart Zone Manager live layout verification has a clean/disposable actual-playtest packet with screenshots and/or exact zone metadata proving generated zones are separate where intended and overlap only when explicitly allowed, or a named non-green UI/harness blocker.
+- [ ] Player-lit fire/bandit signal verification, if reached, proves real player-action ignition, actual `fd_fire`/smoke state, bounded wait/time passage, and bandit signal response with matching artifacts; otherwise it stays blocked behind the fuel gate.
+- [ ] Roof-fire horde detection proof has a clean yes/no result: debug-staged horde distance/provenance, player roof position/elevation, real player-created roof fire, bounded wait/time passage, and horde detection/response metadata or a named non-green blocker.
+- [ ] Andi reports each item with evidence class boundaries intact: what is live product proof, what is deterministic support, what is startup/load, and what remains unproven.
+
+## Testing expectations
+
+- Every live step should have a proof row: precondition, action, expected state, screenshot or exact metadata, failure rule, artifact path, and verdict.
+- Smart Zone proof must include generated zone positions after creation/reopen; visible screenshots are useful, but exact saved/UI metadata is preferred when available.
+- Fire proof must include the real in-game sequence, not synthetic loaded-map fire alone.
+- Horde proof must record both sides of the causal chain: the actual roof fire/light/smoke state and the horde's before/after state or signal-consumption metadata. A null result is useful if the setup is proven.
+- If two materially similar attempts fail at the same primitive, consult Frau Knackal before attempt 3; after four total attempts, package implemented-but-unproven behavior instead of looping.

@@ -1135,6 +1135,7 @@ def drop_item(
     menu_settle_seconds: float = 0.35,
     prompt_settle_seconds: float = 0.25,
     exit_menu: bool = True,
+    count_selection_mode: str = "type_before_select",
 ) -> str:
     selector = query_or_slot.strip()
     if not selector:
@@ -1156,12 +1157,27 @@ def drop_item(
             settle_seconds=prompt_settle_seconds,
         )
 
-    if count > 1:
-        peekaboo_type_text(pid, str(count), delay_ms=type_delay_ms)
-        time.sleep(prompt_settle_seconds)
+    count_selection_mode = count_selection_mode.strip() or "type_before_select"
+    if count_selection_mode not in {"type_before_select", "mark_with_count"}:
+        raise SystemExit(f"Unsupported drop-item count_selection_mode: {count_selection_mode}")
 
-    peekaboo_press_sequence(pid, [selection_key], delay_ms=delay_ms)
-    time.sleep(prompt_settle_seconds)
+    if count > 1 and count_selection_mode == "mark_with_count":
+        peekaboo_press_sequence(pid, ["!"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+        fill_numeric_prompt(
+            pid,
+            count,
+            delay_ms=delay_ms,
+            type_delay_ms=type_delay_ms,
+            settle_seconds=prompt_settle_seconds,
+        )
+    else:
+        if count > 1:
+            peekaboo_type_text(pid, str(count), delay_ms=type_delay_ms)
+            time.sleep(prompt_settle_seconds)
+
+        peekaboo_press_sequence(pid, [selection_key], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
 
     if exit_menu:
         peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
@@ -4578,6 +4594,7 @@ def execute_probe_steps(
             type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
             menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
             prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            count_selection_mode = str(step.get("count_selection_mode", "type_before_select") or "type_before_select").strip()
             selection_mode = drop_item(
                 pid,
                 query_or_slot=query_or_slot,
@@ -4586,6 +4603,7 @@ def execute_probe_steps(
                 type_delay_ms=type_delay_ms,
                 menu_settle_seconds=menu_settle_seconds,
                 prompt_settle_seconds=prompt_settle_seconds,
+                count_selection_mode=count_selection_mode,
             )
             report.update({
                 "query_or_slot": query_or_slot,
@@ -4594,6 +4612,7 @@ def execute_probe_steps(
                 "type_delay_ms": type_delay_ms,
                 "menu_settle_seconds": menu_settle_seconds,
                 "prompt_settle_seconds": prompt_settle_seconds,
+                "count_selection_mode": count_selection_mode,
                 "inventory_action": "drop_item",
                 "selection_mode": selection_mode,
             })

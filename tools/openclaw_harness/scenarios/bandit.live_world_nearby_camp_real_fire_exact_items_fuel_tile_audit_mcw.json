@@ -167,10 +167,12 @@
       "label": "drop_exact_2x4_on_prompted_brazier",
       "query": "plank",
       "count": 20,
+      "count_selection_mode": "mark_with_count",
+      "settle_seconds": 1.0,
       "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 40,
-      "expected_visible_fact": "The exact 2x4 fuel drop route resolves on the current brazier tile."
+      "expected_visible_fact": "The exact 2x4 fuel drop route uses the multidrop MARK_WITH_COUNT path, returns to the map, and leaves fuel proof to the following same-run save plus saved-map metadata gate.",
+      "proof_deferred_to_label": "audit_saved_current_tile_for_brazier_fuel",
+      "failure_rule": "the multidrop key path is only trusted if the later same-run saved-map metadata proves current-tile f_brazier plus exact 2x4"
     },
     {
       "kind": "audit_player_save_mtime",
