@@ -243,6 +243,7 @@ struct camp_locker_service_probe {
   int cleanup_item_count = 0;
   int magazines_to_take = 0;
   int magazines_to_reload = 0;
+  int medical_supplies_to_take = 0;
 };
 
 std::string render_camp_locker_service_probe(
