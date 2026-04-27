@@ -149,15 +149,49 @@
       "abort_reason": "harness UI trace did not prove right/east was consumed by Deploy where?"
     },
     {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_post_deploy_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the Deploy where? prompt consumed right/east and before the post-action save is requested"
+    },
+    {
       "kind": "press",
-      "label": "save_after_text_guarded_brazier_deploy",
+      "label": "open_save_prompt_after_text_guarded_brazier_deploy",
       "keys": [
         "S"
       ],
       "delay_ms": 250,
-      "settle_seconds": 3.0,
+      "settle_seconds": 1.0,
       "capture_after": true,
-      "expected_visible_fact": "The game returns to the map after saving the text-guarded brazier deploy checkpoint."
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "and quit?",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_post_action_save_writeback",
+      "abort_reason": "screen text did not prove the Save and quit prompt existed before confirming post-action save",
+      "expected_visible_fact": "The Save and quit prompt is open after the text-guarded brazier deploy checkpoint; confirmation must not be sent before this prompt is proven."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_text_guarded_brazier_deploy",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "expected_visible_fact": "The proven case-sensitive Save and quit prompt is confirmed with uppercase Y so the following saved-file mtime gate can prove same-run writeback."
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_post_deploy_save",
+      "changed_since_label": "audit_player_save_mtime_before_post_deploy_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_post_action_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after the post-deploy save confirmation",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed post-deploy save, proving the following saved-map audit reads same-run state"
     },
     {
       "kind": "audit_saved_map_tile_near_player",

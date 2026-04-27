@@ -25,6 +25,7 @@ import signal
 import subprocess
 import sys
 import time
+from datetime import datetime
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Pattern, Sequence, Tuple
@@ -1390,6 +1391,63 @@ def audit_map_tiles_near_player(
         "missing_required_items": missing_required_items,
         "missing_required_furniture": missing_required_furniture,
         "tiles": tile_reports,
+        "status": status,
+    }
+
+
+def audit_player_save_mtime(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    changed_since: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Read-only saved-player file mtime audit for post-action save/writeback gates."""
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    selected_player_save = player_save.strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise RuntimeError(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+    save_path = world_dir / selected_player_save
+    if not save_path.exists():
+        raise FileNotFoundError(f"Player save not found: {save_path}")
+
+    stat = save_path.stat()
+    save_mtime_ns = int(stat.st_mtime_ns)
+    save_mtime = float(stat.st_mtime)
+    required_change = changed_since is not None
+    baseline_mtime_ns: Optional[int] = None
+    baseline_label = ""
+    if isinstance(changed_since, dict):
+        baseline_label = str(changed_since.get("label", "") or "")
+        try:
+            baseline_mtime_ns = int(changed_since.get("save_mtime_ns"))
+        except (TypeError, ValueError):
+            baseline_mtime_ns = None
+
+    if required_change and baseline_mtime_ns is not None and save_mtime_ns > baseline_mtime_ns:
+        status = "required_state_present"
+    elif required_change:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "save_path": str(save_path),
+        "save_mtime": save_mtime,
+        "save_mtime_ns": save_mtime_ns,
+        "save_mtime_iso": datetime.fromtimestamp(save_mtime).isoformat(timespec="microseconds"),
+        "required_change_since_label": baseline_label,
+        "required_change_since_mtime_ns": baseline_mtime_ns,
+        "mtime_changed_since_required_label": (
+            save_mtime_ns > baseline_mtime_ns if baseline_mtime_ns is not None else False
+        ),
+        "missing_required_items": ["player_save_mtime_changed"] if status == "required_state_missing" else [],
         "status": status,
     }
 
@@ -2926,6 +2984,13 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             continue
 
         if kind == "player_items":
+            storage = str(raw.get("storage", "legacy_top_level_inv")).strip().lower()
+            supported_storage = {"legacy_top_level_inv", "live_accessible_worn_pocket", "live_accessible_wielded"}
+            if storage not in supported_storage:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] player_items storage must be one of "
+                    f"{sorted(supported_storage)} in {manifest_path}"
+                )
             items_raw = raw.get("items", [])
             if not isinstance(items_raw, list) or not items_raw:
                 raise SystemExit(f"Fixture save_transforms[{index}] needs non-empty items in {manifest_path}")
@@ -2969,6 +3034,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
+                "storage": storage,
                 "items": items,
             })
             continue
@@ -3207,8 +3273,63 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
     if not isinstance(inventory, list):
         raise SystemExit(f"Player inventory is not a list in {extracted_save}")
 
+    storage = str(transform.get("storage", "legacy_top_level_inv")).strip().lower()
+    target_container: Optional[List[Any]] = None
+    target_path = "player.inv"
+    if storage == "legacy_top_level_inv":
+        target_container = inventory
+    elif storage == "live_accessible_wielded":
+        existing_weapon = player.get("weapon")
+        if isinstance(existing_weapon, dict) and str(existing_weapon.get("typeid", "")).strip():
+            raise SystemExit(
+                "Fixture player-items transform requested live_accessible_wielded, "
+                f"but player already has weapon {existing_weapon.get('typeid')!r} in {extracted_save}"
+            )
+        requested_count = sum(int(item.get("count", 1) or 1) for item in transform.get("items", []))
+        if requested_count != 1:
+            raise SystemExit(
+                "Fixture player-items transform requested live_accessible_wielded, "
+                f"but wielded storage accepts exactly one item (got {requested_count}) in {extracted_save}"
+            )
+        target_container = []
+        target_path = "player.weapon"
+    elif storage == "live_accessible_worn_pocket":
+        for worn_index, worn_item in enumerate(saved_player_worn_items(player)):
+            if not isinstance(worn_item, dict):
+                continue
+            contents_obj = worn_item.get("contents")
+            if not isinstance(contents_obj, dict):
+                continue
+            pockets = contents_obj.get("contents", [])
+            if not isinstance(pockets, list):
+                continue
+            for pocket_index, pocket in enumerate(pockets):
+                if not isinstance(pocket, dict):
+                    continue
+                try:
+                    pocket_type = int(pocket.get("pocket_type", -1))
+                except (TypeError, ValueError):
+                    continue
+                pocket_contents = pocket.setdefault("contents", [])
+                if pocket_type == 0 and isinstance(pocket_contents, list):
+                    target_container = pocket_contents
+                    target_path = (
+                        f"player.worn.worn[{worn_index}]/contents/contents[{pocket_index}]/contents"
+                    )
+                    break
+            if target_container is not None:
+                break
+        if target_container is None:
+            raise SystemExit(
+                "Fixture player-items transform requested live_accessible_worn_pocket, "
+                f"but found no writable worn container pocket in {extracted_save}"
+            )
+    else:
+        raise SystemExit(f"Unsupported player-items storage target: {storage}")
+
     bday = int(payload.get("turn", 0) or 0)
     added_items: List[Dict[str, Any]] = []
+    inserted_paths: List[str] = []
     for item in transform.get("items", []):
         typeid = str(item.get("typeid", "")).strip()
         count = int(item.get("count", 1) or 1)
@@ -3225,7 +3346,15 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
                 entry["charges"] = int(charges)
             if isinstance(contents, dict):
                 entry["contents"] = contents
-            inventory.append(entry)
+            assert target_container is not None
+            if storage == "live_accessible_wielded":
+                player["weapon"] = entry
+                target_container.append(entry)
+                inserted_paths.append(target_path)
+            else:
+                inserted_index = len(target_container)
+                target_container.append(entry)
+                inserted_paths.append(f"{target_path}[{inserted_index}]")
         added: Dict[str, Any] = {"typeid": typeid, "count": count}
         if charges is not None:
             added["charges"] = int(charges)
@@ -3240,7 +3369,10 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
         "kind": "player_items",
         "world": world_dir.name,
         "player_save": player_save_name,
+        "storage": storage,
+        "target_path": target_path,
         "added_items": added_items,
+        "inserted_paths": inserted_paths,
     }
 
 
@@ -4400,6 +4532,65 @@ def execute_probe_steps(
                 "inventory_action": "drop_item",
                 "selection_mode": selection_mode,
             })
+        elif kind == "audit_player_save_mtime":
+            player_save = str(step.get("player_save", "") or "").strip()
+            changed_since_label = str(step.get("changed_since_label", "") or "").strip()
+            changed_since: Optional[Dict[str, Any]] = None
+            if changed_since_label:
+                for previous_report in reversed(reports):
+                    if str(previous_report.get("label", "")) == changed_since_label:
+                        previous_metadata = previous_report.get("metadata")
+                        if isinstance(previous_metadata, dict):
+                            changed_since = dict(previous_metadata)
+                            changed_since.setdefault("label", changed_since_label)
+                        break
+                if changed_since is None:
+                    changed_since = {"label": changed_since_label}
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_player_save_mtime(
+                    world_dir,
+                    player_save=player_save,
+                    changed_since=changed_since,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "player_save": player_save,
+                    "required_change_since_label": changed_since_label,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "changed_since_label": changed_since_label,
+                "metadata": metadata,
+                "action_description": "read saved-player file mtime and optionally require same-run save/writeback progress",
+                "expected_immediate_state": "saved-player file mtime changed after the requested baseline before saved-map feature proof may continue",
+                "failure_rule": "missing player-save mtime progress or unreadable save metadata makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": metadata_verdict,
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required player-save mtime progress was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
         elif kind == "audit_saved_player_items":
             player_save = str(step.get("player_save", "") or "").strip()
             required_items = [str(item).strip() for item in step.get("required_items", step.get("required_item_ids", [])) if str(item).strip()]
