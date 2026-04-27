@@ -1,6 +1,6 @@
 {
-  "name": "basecamp.package2_dialog_rules_probe_mcw",
-  "description": "Probe the current McWilliams ally dialogue/rules UI so Package 2 can restage a non-following assigned-camp hearer without guessing menu keys; talker selection uses the highlighted creature_select_menu row via Enter rather than an unproven alpha hotkey.",
+  "name": "basecamp.follower_rules_menu_probe_mcw",
+  "description": "Focused proof-freeze primitive for the McWilliams follower rules menu path after the scoped talker-selector recipe: prove the dialogue response surface has the [rules] option visible before using its source-backed first alpha hotkey, then prove the rules UI opens.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
@@ -26,13 +26,13 @@
       "settle_seconds": 0.8,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "expected_visible_fact": "The adjacent-creature interaction chooser is open.",
+      "expected_visible_fact": "The nearby-creature interaction chooser is open.",
       "expected_screen_text_after_contains": ["What do you want to do"],
-      "failure_rule": "If the interaction chooser text is absent after pressing C, later talk/rules keys are wrong-screen evidence."
+      "failure_rule": "If the interaction chooser text is absent after pressing C, later talker/dialogue keys are wrong-screen evidence."
     },
     {
       "kind": "press",
-      "label": "choose_talk_to",
+      "label": "open_talker_selector",
       "keys": ["t"],
       "settle_seconds": 1.0,
       "capture_after": true,
@@ -41,22 +41,22 @@
       "expected_screen_text_after_contains": ["Talk to whom"],
       "abort_if_text_contains": ["What do you want to do"],
       "abort_verdict": "blocked_still_on_interaction_menu",
-      "abort_reason": "still on the adjacent-creature interaction chooser after the talk-to key",
-      "failure_rule": "If the interaction chooser is still visible, stop instead of treating later keys as rules-dialogue proof."
+      "abort_reason": "still on the nearby-creature interaction chooser after the talk-to key",
+      "failure_rule": "If the interaction chooser is still visible, stop instead of treating later keys as talker-selector proof."
     },
     {
       "kind": "press",
-      "label": "choose_first_talker",
+      "label": "confirm_highlighted_talker",
       "keys": ["enter"],
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "expected_visible_fact": "The highlighted first row in the Talk to whom selector opens that NPC's dialogue surface.",
+      "expected_visible_fact": "Confirming the highlighted Talk to whom row opens Katharina Leach's dialogue response surface.",
       "expected_screen_text_after_contains": ["Your response"],
       "abort_if_text_contains": ["What do you want to do", "Talk to whom"],
       "abort_verdict": "blocked_still_on_talk_selector",
-      "abort_reason": "still on a selector screen after confirming the highlighted first talker",
-      "failure_rule": "If the talker selector remains visible, do not treat later keys as follower dialogue/rules evidence."
+      "abort_reason": "still on a selector screen after confirming the highlighted talker",
+      "failure_rule": "If the talker selector remains visible, do not treat later dialogue/rules keys as proven."
     },
     {
       "kind": "press",
@@ -65,26 +65,26 @@
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "expected_visible_fact": "The follower dialogue response list is visible and includes the rules/work-together response before selecting it.",
+      "expected_visible_fact": "The dialogue response list is visible and includes the follower rules response before selecting it.",
       "expected_screen_text_after_contains": ["rules", "work together"],
       "abort_if_text_contains": ["What do you want to do", "Talk to whom"],
-      "abort_verdict": "blocked_rules_response_not_visible",
-      "abort_reason": "the follower dialogue response list did not visibly contain the rules/work-together response",
+      "abort_verdict": "blocked_wrong_screen_before_rules_response",
+      "abort_reason": "not on the follower dialogue response list before selecting the rules response",
       "failure_rule": "Do not press a response hotkey unless the response list visibly contains the rules/work-together option."
     },
     {
       "kind": "press",
-      "label": "open_rules_window",
+      "label": "select_rules_response",
       "keys": ["a"],
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "expected_visible_fact": "The first visible follower dialogue response opens the follower rules UI.",
+      "expected_visible_fact": "Selecting the visible first dialogue response opens the follower rules UI.",
       "expected_screen_text_after_contains": ["Rules for your follower"],
       "abort_if_text_contains": ["What do you want to do", "Talk to whom"],
-      "abort_verdict": "blocked_rules_window_not_opened",
+      "abort_verdict": "blocked_wrong_screen_after_rules_response",
       "abort_reason": "rules response did not open the follower rules UI",
-      "failure_rule": "If the rules UI text is absent, the scenario remains process-audit evidence only."
+      "failure_rule": "If the rules UI text is absent, this scenario remains process-audit evidence only and must not close follower-rules/package-dialogue behavior."
     }
   ]
 }

@@ -1,0 +1,62 @@
+{
+  "name": "basecamp.talker_selector_metadata_probe_mcw",
+  "description": "Focused proof-freeze primitive for the McWilliams nearby talker selector: prove C opens the interaction menu, t opens Talk to whom, and Enter confirms the highlighted first talker into an NPC dialogue response menu without treating follower rules navigation as proven.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "wait_for_gameplay_settle",
+      "seconds": 12,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "McWilliams gameplay is loaded with the nearby follower roster visible before dialogue input.",
+      "expected_screen_text_after_contains": ["Katharina Leach"],
+      "failure_rule": "If the loaded screen does not OCR a known nearby follower name, this scenario cannot prove nearby talker selector navigation."
+    },
+    {
+      "kind": "press",
+      "label": "open_interaction_menu",
+      "keys": ["C"],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The nearby-creature interaction chooser is open.",
+      "expected_screen_text_after_contains": ["What do you want to do"],
+      "failure_rule": "If the interaction chooser text is absent after pressing C, later talker-selector keys are wrong-screen evidence."
+    },
+    {
+      "kind": "press",
+      "label": "open_talker_selector",
+      "keys": ["t"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The interaction-menu Talk to hotkey opens the creature talk selector.",
+      "expected_screen_text_after_contains": ["Talk to whom"],
+      "abort_if_text_contains": ["What do you want to do"],
+      "abort_verdict": "blocked_still_on_interaction_menu",
+      "abort_reason": "still on the nearby-creature interaction chooser after the talk-to key",
+      "failure_rule": "If the interaction chooser is still visible, stop instead of treating later keys as talker-selector proof."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_highlighted_talker",
+      "keys": ["enter"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "Confirming the highlighted Talk to whom row opens Katharina Leach's dialogue response surface.",
+      "expected_screen_text_after_contains": ["Your response"],
+      "abort_if_text_contains": ["What do you want to do", "Talk to whom"],
+      "abort_verdict": "blocked_still_on_talk_selector",
+      "abort_reason": "still on a selector screen after confirming the highlighted talker",
+      "failure_rule": "If the talker selector remains visible, do not treat later dialogue/rules keys as proven. This scenario does not prove follower-rules response selection."
+    }
+  ]
+}
