@@ -51,8 +51,8 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 Compact result:
 - live-wired substrate: hostile-site ownership after NPC materialization, save/load, nearby-player dispatch from owned sites, local gate/shakedown/writeback, camp locker service, and Smart Zone Manager entry points
 - deterministic/playback-only layer: smoke/light/weather mark adapters, generated mark ledgers, authored playback frames, long-horizon benchmark reports, repeated-site reinforcement, human-route sightings, and most scout tuning packets
-- horde attraction is live-wired through sound; the audited source previously lacked visible fire/light-to-horde attraction. A first bridge is now source-wired, but it must not be claimed as closed gameplay until live/harness proof exists
-- next implementation target: `Bandit live-wiring audit + visible-light horde bridge correction v0`; the prior smoke/fire site-refresh proof is in Josef review, not active rerun
+- horde attraction is live-wired through sound; the audited source previously lacked visible fire/light-to-horde attraction. The first visible-fire/light bridge is now source-wired and live/harness-proved as loaded-map fire/light -> horde signal behavior; it must still not be inflated into player-lit brazier/wood/lighter product proof.
+- next implementation target: `Bandit local sight-avoid + scout return cadence packet v0`; the prior smoke/fire site-refresh proof is in Josef review, not active rerun
 
 ### Josef-review validation caveat - bandit live signal + site bootstrap correction
 
