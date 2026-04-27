@@ -1147,7 +1147,7 @@ def drop_item(
     time.sleep(menu_settle_seconds)
 
     selection_mode = "slot" if looks_like_inventory_slot(selector) else "filter"
-    selection_key = selector if selection_mode == "slot" else "a"
+    selection_key = selector if selection_mode == "slot" else "l"
     if selection_mode == "filter":
         apply_uilist_filter(
             pid,
@@ -1162,6 +1162,11 @@ def drop_item(
         raise SystemExit(f"Unsupported drop-item count_selection_mode: {count_selection_mode}")
 
     if count > 1 and count_selection_mode == "mark_with_count":
+        # MARK_WITH_COUNT applies to the selector's selected entries, not merely the
+        # highlighted filtered row.  Prime the filtered/slot row first, then replace
+        # that selection with the exact requested count.
+        peekaboo_press_sequence(pid, [selection_key], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
         peekaboo_press_sequence(pid, ["!"], delay_ms=delay_ms)
         time.sleep(prompt_settle_seconds)
         fill_numeric_prompt(

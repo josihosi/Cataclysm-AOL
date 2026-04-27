@@ -189,6 +189,30 @@ static void openclaw_harness_trace_inventory_entries( const inventory_selector &
     }
 }
 
+template<typename DropCollection>
+static void openclaw_harness_trace_drop_selector( const std::string &event,
+        const std::string &title, const std::string &filter, const std::string &action,
+        const DropCollection &selected )
+{
+    if( !openclaw_harness_ui_trace_enabled() ) {
+        return;
+    }
+
+    int total_selected_qty = 0;
+    for( const drop_location &drop : selected ) {
+        total_selected_qty += drop.second;
+    }
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=inventory_drop_selector"
+            << " event=" << event
+            << " title=" << openclaw_harness_quote( title )
+            << " filter=" << openclaw_harness_quote( filter )
+            << " action=" << openclaw_harness_quote( action )
+            << " selected_stacks=" << selected.size()
+            << " total_selected_qty=" << total_selected_qty;
+}
+
 static const flag_id json_flag_NO_UNLOAD( "NO_UNLOAD" );
 static const flag_id json_flag_SHREDDED( "SHREDDED" );
 
@@ -4684,6 +4708,7 @@ drop_locations inventory_drop_selector::execute()
 {
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
+    openclaw_harness_trace_drop_selector( "open", get_title(), get_filter(), "", to_use );
     while( true ) {
         ui_manager::redraw();
 
@@ -4691,23 +4716,30 @@ drop_locations inventory_drop_selector::execute()
         if( input.action == "CONFIRM" ) {
             for( drop_location &stuff : to_use ) {
                 if( !avatar_action::check_stealing( get_player_character(), *stuff.first ) ) {
+                    openclaw_harness_trace_drop_selector( "return", get_title(), get_filter(), input.action,
+                                                          drop_locations() );
                     return drop_locations();
                 }
             }
 
             if( to_use.empty() ) {
+                openclaw_harness_trace_drop_selector( "blocked", get_title(), get_filter(), input.action, to_use );
                 popup_getkey( _( "No items were selected.  Use %s to select them." ),
                               ctxt.get_desc( "TOGGLE_ENTRY" ) );
                 continue;
             }
+            openclaw_harness_trace_drop_selector( "return", get_title(), get_filter(), input.action, to_use );
             break;
         }
 
         if( input.action == "QUIT" ) {
+            openclaw_harness_trace_drop_selector( "return", get_title(), get_filter(), input.action,
+                                                  drop_locations() );
             return drop_locations();
         }
 
         on_input( input );
+        openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), input.action, to_use );
     }
 
     drop_locations dropped_pos_and_qty;

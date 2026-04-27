@@ -100,7 +100,7 @@ Compact reference:
 Status: GREENLIT / ACTUAL PLAYTEST STACK
 
 Success state:
-- [x] Fuel continuation behind the green brazier deploy gate has an honest outcome: run `.userdata/dev-harness/harness_runs/20260427_224113/` keeps the chain non-green at `blocked_untrusted_post_fuel_save_prompt` / post-fuel return-to-map/drop-menu exit before save request; no post-fuel mtime/current-tile `2x4`/lighter/`fd_fire` proof is credited.
+- [x] Fuel continuation behind the green brazier deploy gate has an honest outcome: post-drop guard run `.userdata/dev-harness/harness_runs/20260427_225909/` keeps the chain non-green at `blocked_untrusted_drop_menu_exit_primitive`; `TOGGLE_ENTRY` and `MARK_WITH_COUNT` leave `selected_stacks=0 total_selected_qty=0`, so no save request, post-fuel mtime/current-tile `2x4`/lighter/`fd_fire` proof is credited.
 - [ ] Smart Zone Manager live layout verification has a clean/disposable actual-playtest packet with screenshots and/or exact zone metadata proving generated zones are separate where intended and overlap only when explicitly allowed, or a named non-green UI/harness blocker.
 - [ ] Player-lit fire/bandit signal verification, if reached, proves real player-action ignition, actual `fd_fire`/smoke state, bounded wait/time passage, and bandit signal response with matching artifacts; otherwise it stays blocked behind the fuel gate.
 - [ ] Andi reports evidence class boundaries intact: live product proof vs deterministic support vs startup/load vs unproven.

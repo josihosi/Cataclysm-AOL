@@ -175,9 +175,24 @@
       "failure_rule": "the multidrop key path is only trusted if the later same-run saved-map metadata proves current-tile f_brazier plus exact 2x4"
     },
     {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_multidrop_closed_after_fuel_drop",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_drop_selector event=return title=\"Multidrop\"",
+        "action=\"CONFIRM\"",
+        "total_selected_qty=20"
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the Multidrop menu accepted the exact 20-item fuel selection and returned before any save key is sent",
+      "preconditions": "drop_exact_2x4_on_prompted_brazier used MARK_WITH_COUNT for the exact 20 planks.",
+      "next_step_gate": "do not request a post-fuel save unless the Multidrop selector return is proven first",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_drop_menu_exit_primitive",
+      "abort_reason": "harness UI trace did not prove the drop-menu-exit primitive closed Multidrop after the exact fuel drop before requesting save"
+    },
+    {
       "kind": "audit_player_save_mtime",
       "label": "audit_player_save_mtime_before_post_fuel_save",
-      "expected_visible_fact": "saved-player file mtime baseline is recorded after fuel drop and before the post-fuel save is requested"
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after fuel drop-menu exit proof and before the post-fuel save is requested"
     },
     {
       "kind": "press",
