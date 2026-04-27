@@ -8,7 +8,8 @@
 - success ledger: `SUCCESS.md`
 - active contract: `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`
 - actual-playtest stack: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`
-- inventory/proof matrix: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`
+- inventory checkpoint: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`
+- Frau-reviewed proof-freeze matrix: `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`
 - current harness entry point: `tools/openclaw_harness/startup_harness.py`
 
 ## Current active lane
@@ -39,7 +40,9 @@ This is **not** real-fire proof and not bandit product proof. It is deploy proof
 
 ## Recommended next evidence target
 
-Next work is **harness trust-audit / proof-freeze consolidation** or a Schani/Josef-named next audit primitive.
+Next work is **debug spawn target-state proof first**, from the Frau-reviewed proof-freeze matrix `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`.
+
+Prove one debug spawn path end-to-end with target-state metadata before using spawn macros for closure elsewhere. The target is a narrow primitive proof pattern: scenario contract names the exact spawn claim, step ledger guards the GUI/key path, and same-run metadata proves the spawned state at the target inventory/tile/NPC/field location. After that, talker-selector metadata is the next candidate unless a dialogue lane becomes urgent.
 
 Smart Zone Manager live layout verification is no longer the next target. It is implemented-but-unproven in Josef's playtest package:
 
@@ -55,11 +58,15 @@ Fire/player-lit bandit signal work stays blocked behind fuel. Do not continue to
 ## Proof rules to keep in view
 
 - Load/readiness/close is `startup/load`, with `feature_proof=false`.
-- `artifacts_matched` is not feature proof unless startup is clean, every step-local ledger row is green, and wait ledgers are not yellow/blocked.
+- `artifacts_matched` is not feature proof unless startup is clean, every step-local ledger row is green, wait ledgers are not yellow/blocked, and the matched artifact is **claim-scoped**: named in the scenario contract as evidence for that exact claim, not just some generic debug line.
+- The current classifier is not a metadata-only feature-proof mode. All-green metadata rows without a claim-scoped artifact match remain process/metadata evidence unless a later harness change adds an explicit metadata-only proof classification.
+- Green ledger rows are necessary, not magical. Raw `press`/`type` steps only go green with immediate screen/metadata proof or a named causal deferred guard; baseline-only rows are setup, not closure.
+- `proof_deferred_to_label` may only credit a step when the deferred guard actually covers that step's expected effect. One final state must not launder several unrelated blind keypresses.
 - Screenshot/OCR steps need named expected visible facts; missing guards stay yellow/red/blocked instead of becoming green by silence.
 - Exact saved-map state belongs inside the probe via `kind: "audit_saved_map_tile_near_player"`, with `required_fields` / `required_items` / `required_furniture`; the step writes `<label>.metadata.json` and feeds `metadata_expectation` into `probe.step_ledger.json`.
 - Exact save/writeback state belongs inside the probe via `kind: "audit_player_save_mtime"`; do not read saved-map proof after a live action unless the same-run writeback gate is green.
-- A green deploy primitive is not a green fire chain. A red fuel visibility blocker is not permission for another blind key variant. Keep evidence classes explicit, ja, otherwise we are back to serving yesterday's soup as fresh.
+- Same-save/provenance is an anti-fixture-bias gate: a transform may not create the exact state being claimed as product behavior. If it does, the run is setup/synthetic proof only. Copied saves need post-copy live-accessible preflight; do not trust inherited inventory by vibes, because apparently that is how the soup gets haunted.
+- A green deploy primitive is scoped primitive proof, not product proof. A green deploy primitive is not a green fire chain. A red fuel visibility blocker is not permission for another blind key variant. Keep evidence classes explicit, ja, otherwise we are back to serving yesterday's soup as fresh.
 
 ## Attempt rule
 
