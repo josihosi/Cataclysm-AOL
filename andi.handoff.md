@@ -40,9 +40,19 @@ This is **not** real-fire proof and not bandit product proof. It is deploy proof
 
 ## Recommended next evidence target
 
-Next work is **debug spawn target-state proof first**, from the Frau-reviewed proof-freeze matrix `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`.
+The first debug-spawn item path, scoped talker-selector recipe, and scoped follower-rules menu recipe are already green as primitives:
 
-Prove one debug spawn path end-to-end with target-state metadata before using spawn macros for closure elsewhere. The target is a narrow primitive proof pattern: scenario contract names the exact spawn claim, step ledger guards the GUI/key path, and same-run metadata proves the spawned state at the target inventory/tile/NPC/field location. After that, talker-selector metadata is the next candidate unless a dialogue lane becomes urgent.
+- `.userdata/dev-harness/harness_runs/20260428_011205/`: debug item spawn -> save/writeback -> same-run saved-player `toothbrush_electric=1` metadata.
+- `.userdata/dev-harness/harness_runs/20260428_014348/`: nearby interaction menu -> `Talk to whom` -> highlighted-row `enter` -> NPC dialogue response surface (`Your response`).
+- `.userdata/dev-harness/harness_runs/20260428_014825/`: visible `[rules] ... work together` response -> `Rules for your follower`.
+
+Do **not** steer back into those already-credited primitives. The current unblocked next target is one of:
+
+1. broader debug-spawn family target-state gates, e.g. field/furniture/NPC/weather same-run metadata proof shaped like the item primitive;
+2. follower rules toggle proof after the already-proven rules UI opens;
+3. another explicit Schani/Josef-named harness seam.
+
+Keep the same proof burden: scenario contract names the exact claim, step ledger guards the GUI/key path, and same-run metadata or claim-scoped artifacts prove the target state. Scoped navigation/process proof remains scoped; do not inflate it into package product behavior.
 
 Smart Zone Manager live layout verification is no longer the next target. It is implemented-but-unproven in Josef's playtest package:
 
