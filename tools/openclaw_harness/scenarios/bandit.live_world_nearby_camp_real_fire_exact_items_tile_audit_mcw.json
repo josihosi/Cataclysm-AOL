@@ -1,6 +1,6 @@
 {
   "name": "bandit.live_world_nearby_camp_real_fire_exact_items_tile_audit_mcw",
-  "description": "Exact-id fixture items (brazier, 2x4 fuel, charged lighter), normal deploy/drop/wielded-lighter action route, with saved-player inventory preflight and same-run saved-map metadata gates after brazier deploy, fuel drop, and final fire checkpoint. No raw map fields are injected.",
+  "description": "Exact-id fixture items (brazier, 2x4 fuel, charged lighter), normal deploy/drop/wielded-lighter action route, with live-accessible saved-player inventory preflight and same-run saved-map metadata gates after brazier deploy, fuel drop, and final fire checkpoint. No raw map fields are injected.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
@@ -29,11 +29,11 @@
         "2x4",
         "lighter"
       ],
-      "expected_visible_fact": "saved player inventory contains the exact brazier, 2x4 fuel, and lighter fixture items before any GUI deploy/drop/lighter macro is trusted",
+      "expected_visible_fact": "saved player live-accessible carried/worn inventory contains the exact brazier, 2x4 fuel, and lighter fixture items before any GUI deploy/drop/lighter macro is trusted",
       "preconditions": "fixture install completed for bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
-      "next_step_gate": "do not credit any GUI deploy/drop/lighter step if the exact fixture items are missing from saved-player inventory",
+      "next_step_gate": "do not credit any GUI deploy/drop/lighter step if the exact fixture items are missing from live-accessible saved-player inventory",
       "abort_on_metadata_failure": true,
-      "abort_reason": "exact fire fixture items missing before player-action deploy primitive audit"
+      "abort_reason": "exact fire fixture items missing from live-accessible saved-player inventory before player-action deploy primitive audit"
     },
     {
       "kind": "press",

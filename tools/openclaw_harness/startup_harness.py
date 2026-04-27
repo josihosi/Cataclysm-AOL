@@ -1440,6 +1440,88 @@ def item_use_action_summary(entry: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [row for row in summary if row.get("type")]
 
 
+def iter_saved_item_entries(entry: Any, path: str) -> Iterable[Tuple[str, Dict[str, Any]]]:
+    """Yield a saved item and recursive container-pocket contents with stable JSON-ish paths."""
+    if not isinstance(entry, dict):
+        return
+    yield path, entry
+    contents_obj = entry.get("contents")
+    if not isinstance(contents_obj, dict):
+        return
+    pockets = contents_obj.get("contents", [])
+    if not isinstance(pockets, list):
+        return
+    for pocket_index, pocket in enumerate(pockets):
+        if not isinstance(pocket, dict):
+            continue
+        pocket_contents = pocket.get("contents", [])
+        if not isinstance(pocket_contents, list):
+            continue
+        for item_index, child in enumerate(pocket_contents):
+            child_path = f"{path}/contents/contents[{pocket_index}]/contents[{item_index}]"
+            yield from iter_saved_item_entries(child, child_path)
+
+
+def saved_player_worn_items(player: Dict[str, Any]) -> List[Dict[str, Any]]:
+    worn = player.get("worn", {})
+    if isinstance(worn, dict):
+        worn_items = worn.get("worn", [])
+    else:
+        worn_items = worn
+    return worn_items if isinstance(worn_items, list) else []
+
+
+def saved_player_item_rows(
+    player: Dict[str, Any]
+) -> Tuple[List[Tuple[str, Dict[str, Any]]], List[Tuple[str, Dict[str, Any]]]]:
+    """Return (live-accessible worn/held rows, legacy top-level inv rows).
+
+    The modern inventory selector walks wielded gear plus worn items and their
+    contained items.  It does not expose old top-level ``player.inv`` rows by
+    itself, so keep that save bucket separate to avoid treating an inaccessible
+    fixture injection as live Use-item proof.
+    """
+    accessible_rows: List[Tuple[str, Dict[str, Any]]] = []
+    weapon = player.get("weapon")
+    if isinstance(weapon, dict):
+        accessible_rows.extend(iter_saved_item_entries(weapon, "player.weapon"))
+    for worn_index, worn_item in enumerate(saved_player_worn_items(player)):
+        accessible_rows.extend(
+            iter_saved_item_entries(worn_item, f"player.worn.worn[{worn_index}]")
+        )
+
+    legacy_rows: List[Tuple[str, Dict[str, Any]]] = []
+    inventory = player.get("inv", [])
+    if not isinstance(inventory, list):
+        raise RuntimeError("Extracted player save has non-list inventory")
+    for inv_index, inv_item in enumerate(inventory):
+        legacy_rows.extend(iter_saved_item_entries(inv_item, f"player.inv[{inv_index}]"))
+    return accessible_rows, legacy_rows
+
+
+def summarize_saved_item_rows(
+    rows: Iterable[Tuple[str, Dict[str, Any]]]
+) -> Tuple[Dict[str, int], Dict[str, List[Dict[str, Any]]]]:
+    counts: Dict[str, int] = {}
+    item_rows: Dict[str, List[Dict[str, Any]]] = {}
+    for path, entry in rows:
+        typeid = str(entry.get("typeid", "")).strip()
+        if not typeid:
+            continue
+        counts[typeid] = counts.get(typeid, 0) + 1
+        item_rows.setdefault(typeid, []).append({
+            "typeid": typeid,
+            "source_path": path,
+            "custom_invlet": str(entry.get("invlet", "") or ""),
+            "charges": entry.get("charges"),
+            "count_by_charges": entry.get("count_by_charges"),
+            "flags": sorted(
+                str(flag) for flag in entry.get("item_tags", []) if str(flag).strip()
+            ) if isinstance(entry.get("item_tags"), list) else [],
+        })
+    return counts, item_rows
+
+
 def audit_saved_player_items(
     world_dir: Path,
     *,
@@ -1477,26 +1559,9 @@ def audit_saved_player_items(
     player = payload.get("player")
     if not isinstance(player, dict):
         raise RuntimeError(f"Extracted player save is missing player object: {extracted_save}")
-    inventory = player.get("inv", [])
-    if not isinstance(inventory, list):
-        raise RuntimeError(f"Extracted player save has non-list inventory: {extracted_save}")
-
-    counts: Dict[str, int] = {}
-    item_rows: Dict[str, List[Dict[str, Any]]] = {}
-    for entry in inventory:
-        if not isinstance(entry, dict):
-            continue
-        typeid = str(entry.get("typeid", "")).strip()
-        if not typeid:
-            continue
-        counts[typeid] = counts.get(typeid, 0) + 1
-        item_rows.setdefault(typeid, []).append({
-            "typeid": typeid,
-            "custom_invlet": str(entry.get("invlet", "") or ""),
-            "charges": entry.get("charges"),
-            "count_by_charges": entry.get("count_by_charges"),
-            "flags": sorted(str(flag) for flag in entry.get("item_tags", []) if str(flag).strip()) if isinstance(entry.get("item_tags"), list) else [],
-        })
+    accessible_rows, legacy_rows = saved_player_item_rows(player)
+    counts, item_rows = summarize_saved_item_rows(accessible_rows)
+    legacy_counts, legacy_item_rows = summarize_saved_item_rows(legacy_rows)
 
     required = [item for item in (required_items or []) if item]
     interesting_typeids = sorted(set(required) if required else set(counts))
@@ -1509,6 +1574,7 @@ def audit_saved_player_items(
             "display_name": item_display_name_from_definition(definition),
             "use_actions": item_use_action_summary(definition),
             "saved_rows": item_rows.get(typeid, []),
+            "legacy_top_level_inv_rows": legacy_item_rows.get(typeid, []),
         }
 
     missing_required_items = [item for item in required if counts.get(item, 0) < 1]
@@ -1526,6 +1592,8 @@ def audit_saved_player_items(
         "required_items": required,
         "observed_items": sorted(counts),
         "inventory_counts": dict(sorted(counts.items())),
+        "live_accessible_counts": dict(sorted(counts.items())),
+        "legacy_top_level_inv_counts": dict(sorted(legacy_counts.items())),
         "item_details": item_details,
         "missing_required_items": missing_required_items,
         "status": status,

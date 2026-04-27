@@ -1,6 +1,6 @@
 {
   "name": "bandit.live_world_nearby_camp_brazier_deploy_text_audit_mcw",
-  "description": "Focused normal player-action brazier deployment primitive audit. Uses saved-player exact inventory preflight, harness-gated UI selector/direction traces, secondary GUI-as-text/OCR captures, then requires saved east-tile f_brazier before any fuel/lighter/fire proof can continue.",
+  "description": "Focused normal player-action brazier deployment primitive audit. Uses live-accessible saved-player exact inventory preflight, harness-gated UI selector/direction traces, secondary GUI-as-text/OCR captures, then requires saved east-tile f_brazier before any fuel/lighter/fire proof can continue.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
@@ -27,11 +27,11 @@
       "required_items": [
         "brazier"
       ],
-      "expected_visible_fact": "saved player inventory contains the exact brazier item before the Apply inventory is opened",
+      "expected_visible_fact": "saved player live-accessible carried/worn inventory contains the exact brazier item before the Apply inventory is opened",
       "preconditions": "fixture install completed for bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
-      "next_step_gate": "do not credit any Apply/deploy UI step if the exact brazier item is missing from saved-player inventory",
+      "next_step_gate": "do not credit any Apply/deploy UI step if the exact brazier item is missing from live-accessible saved-player inventory",
       "abort_on_metadata_failure": true,
-      "abort_reason": "exact brazier fixture item missing before player-action deploy primitive audit"
+      "abort_reason": "exact brazier fixture item missing from live-accessible saved-player inventory before player-action deploy primitive audit"
     },
     {
       "kind": "press",
