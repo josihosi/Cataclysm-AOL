@@ -36,6 +36,19 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 | Force temperature from debug path | `}`, `m`, `T`, `Down`, `Enter` | Landed harness helper path (`debug_force_temperature`). The current submenu lists `Reset` first and `Set` second, so the harness explicitly moves to `Set` before filling the numeric prompt. The shipped dev/dev-harness probe path currently assumes Fahrenheit. |
 | Spawn Rubik from debug path | `}`, `s`, `p`, `O` | Current remembered path only; treat as provisional until reverified in automation. |
 
+### Brazier deploy source/control lookup (2026-04-27)
+
+This is a harness-primitive blocker, not a real-fire product failure. The normal player-action deploy primitive remains untrusted until a live confirmation proves the deploy prompt/selector state and saved target tile.
+
+Source-backed facts:
+- `data/json/items/tool/deployable.json` gives `brazier` `use_action: { "type": "deploy_furn", "furn_type": "f_brazier" }`.
+- `game_menus::inv::use()` opens the `Use item` inventory via `activatable_inventory_preset`; activatable items include tool use methods such as the brazier.
+- `inventory_pick_selector::execute()` returns the highlighted selectable item on `CONFIRM`, or an item selected by invlet/`SELECT`; filtering alone is not proof that the intended entry was returned.
+- `deploy_furn_actor` calls `choose_adjacent( "Deploy where?" )` when deploying at the player position.
+- `choose_adjacent` uses `choose_direction`, which registers `RIGHT`; default keybindings include right arrow and `l` for `RIGHT`. So `right` is valid only after the harness has really entered the `Deploy where?` direction prompt.
+
+Current blocker label: `blocked_untrusted_brazier_deploy_selector`. Run `.userdata/dev-harness/harness_runs/20260427_200100/` proves the fixture inventory exists (`brazier=1`, `2x4=20`, `lighter=1`) but the saved east tile remains empty/missing `f_brazier`; do not try more blind key variants. Next acceptable proof needs menu-entry/hotkey metadata for the inventory selector/deploy prompt before one source-backed live confirmation.
+
 ### Debug-menu caution for Package 2
 - The shorthand `}`, `p`, `p`, `b`, `A` is **not** the current camp-state seam on the McWilliams fixture.
 - After selecting an NPC in the debug editor, `b` currently opens **bionics**, and `A` there is CBM install, not camp assignment.

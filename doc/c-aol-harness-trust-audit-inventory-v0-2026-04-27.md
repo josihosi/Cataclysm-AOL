@@ -54,6 +54,22 @@ Every later proof run should record: source commit, scenario/profile, fixture/pr
 | Harness skill `SKILL.md` | Operator workflow guardrails and evidence-class discipline. | Workspace skill doc. | Skill can still lag repo primitives; must be frozen from audit matrix, not chat memory. | yellow/reference. |
 
 
+## Current red primitive: normal player-action brazier deployment
+
+Status: `blocked_untrusted_brazier_deploy_selector`; feature proof remains frozen. This is not yet a failed real-fire proof. It is a failed normal player-action brazier deployment primitive.
+
+Source/control lookup completed for the deploy path:
+
+| Question | Source-backed answer | Proof consequence |
+|---|---|---|
+| Inventory apply menu selection semantics | `game_menus::inv::use()` opens `Use item` through `activatable_inventory_preset`; `inventory_pick_selector::execute()` returns the highlighted selectable item on `CONFIRM`, or an item selected by invlet/`SELECT`. Filtering by text is not itself proof that the intended entry was returned. | The harness needs selector/menu-entry/hotkey metadata before it can trust that the brazier was actually selected. |
+| Brazier use action | `data/json/items/tool/deployable.json` gives `brazier` `use_action` type `deploy_furn` with `furn_type=f_brazier`. | A successful activation should be provable as saved-map furniture `f_brazier`, not inferred from a completed key macro. |
+| Deploy prompt expected state | `deploy_furn_actor::check_deploy_square()` calls `choose_adjacent( "Deploy where?" )` when the target is the player's position. | The immediate UI state after activation should be the `Deploy where?` direction prompt or an explicit failure/abort message. |
+| Direction validity | `choose_adjacent()` uses `choose_direction()`, which registers directions including `RIGHT`; default keybindings bind `RIGHT` to right arrow and `l`. | `right` is valid only after the deploy prompt is actually active; sent on the map or inventory screen it is just another wrong-context key. |
+
+Current evidence: canonical run `.userdata/dev-harness/harness_runs/20260427_200100/` proves saved-player prerequisites before the GUI macro (`inventory_counts={"2x4":20,"brazier":1,"lighter":1}`) but still aborts at `audit_saved_target_tile_for_brazier` because east target `[3368,994,0]` has `fields=[]`, `items=[]`, `furniture=[]`, missing `f_brazier`. Selector/activation/place rows remain non-green. No more blind key variants are allowed; the next live confirmation is allowed only after selector/deploy UI metadata gives a concrete recipe, and must green-gate on saved east-tile `f_brazier`.
+
+
 ## Scenario inventory
 
 Current scenario count: 56. The table is an inventory, not green proof. Any scenario without target-state metadata or labeled screenshots at every pre-feature step remains untrusted for closure claims.
