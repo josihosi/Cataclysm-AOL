@@ -13,35 +13,64 @@
       "kind": "wait",
       "label": "wait_for_gameplay_settle",
       "seconds": 12,
-      "capture_after": true
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "McWilliams gameplay is loaded with the nearby follower roster visible before dialogue input.",
+      "expected_screen_text_after_contains": ["Katharina Leach"],
+      "failure_rule": "If the loaded screen does not OCR a known nearby follower name, this scenario cannot prove follower dialogue/rules navigation."
     },
     {
       "kind": "press",
       "label": "open_interaction_menu",
       "keys": ["C"],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The adjacent-creature interaction chooser is open.",
+      "expected_screen_text_after_contains": ["What do you want to do"],
+      "failure_rule": "If the interaction chooser text is absent after pressing C, later talk/rules keys are wrong-screen evidence."
     },
     {
       "kind": "press",
       "label": "choose_talk_to",
-      "keys": ["1"],
+      "keys": ["t"],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The interaction-menu Talk to hotkey opens the creature talk selector.",
+      "expected_screen_text_after_contains": ["Talk to whom"],
+      "abort_if_text_contains": ["What do you want to do"],
+      "abort_verdict": "blocked_still_on_interaction_menu",
+      "abort_reason": "still on the adjacent-creature interaction chooser after the talk-to key",
+      "failure_rule": "If the interaction chooser is still visible, stop instead of treating later keys as rules-dialogue proof."
     },
     {
       "kind": "press",
-      "label": "open_rules_window_first_try",
+      "label": "choose_first_talker",
       "keys": ["a"],
-      "settle_seconds": 0.8,
-      "capture_after": true
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The first talker selection opens that NPC's dialogue surface.",
+      "expected_screen_text_after_contains": ["What is it"],
+      "abort_if_text_contains": ["What do you want to do", "Talk to whom"],
+      "abort_verdict": "blocked_still_on_talk_selector",
+      "abort_reason": "still on a selector screen after choosing the first talker",
+      "failure_rule": "If the talker selector remains visible, do not treat later keys as follower dialogue/rules evidence."
     },
     {
       "kind": "press",
-      "label": "open_rules_window_second_try",
+      "label": "open_rules_window",
       "keys": ["a"],
-      "settle_seconds": 0.8,
-      "capture_after": true
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "The first follower dialogue response opens the follower rules UI.",
+      "expected_screen_text_after_contains": ["Rules for your follower"],
+      "abort_if_text_contains": ["What do you want to do", "Talk to whom"],
+      "abort_verdict": "blocked_rules_window_not_opened",
+      "abort_reason": "still on a pre-dialogue selector after the supposed rules-window key",
+      "failure_rule": "If the rules UI text is absent, the scenario remains process-audit evidence only."
     }
   ]
 }
