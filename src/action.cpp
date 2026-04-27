@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <cstdlib>
 #include <istream>
 #include <iterator>
 #include <memory>
@@ -45,6 +46,47 @@
 #include "vpart_position.h"
 
 static const itype_id itype_swim_fins( "swim_fins" );
+
+static bool openclaw_harness_ui_trace_enabled()
+{
+    const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
+}
+
+static std::string openclaw_harness_quote( const std::string &value )
+{
+    std::string out = "\"";
+    for( const char c : value ) {
+        if( c == '\\' || c == '"' ) {
+            out += '\\';
+        }
+        out += c;
+    }
+    out += '"';
+    return out;
+}
+
+static void openclaw_harness_trace_direction_prompt( const std::string &event,
+        const std::string &message, const std::string &action,
+        const std::optional<tripoint_rel_ms> &dir )
+{
+    if( !openclaw_harness_ui_trace_enabled() ) {
+        return;
+    }
+    std::string line = "openclaw_harness_ui_trace: component=direction_prompt";
+    line += " event=" + event;
+    line += " message=" + openclaw_harness_quote( message );
+    line += " action=" + openclaw_harness_quote( action );
+    if( dir ) {
+        DebugLog( D_INFO, DC_ALL ) << line
+                                   << " chosen_direction=yes"
+                                   << " dx=" << dir->x()
+                                   << " dy=" << dir->y()
+                                   << " dz=" << dir->z();
+    } else {
+        DebugLog( D_INFO, DC_ALL ) << line << " chosen_direction=no";
+    }
+}
 
 static const quality_id qual_BUTCHER( "BUTCHER" );
 static const quality_id qual_CUT_FINE( "CUT_FINE" );
@@ -1173,6 +1215,7 @@ std::optional<tripoint_rel_ms> choose_direction( const std::string &message,
                    : _( "%s (Direction button)" ), message ).on_top( true );
 
     temp_hide_advanced_inv();
+    openclaw_harness_trace_direction_prompt( "open", message, "", std::nullopt );
     std::string action;
     bool done = false;
     do {
@@ -1186,12 +1229,16 @@ std::optional<tripoint_rel_ms> choose_direction( const std::string &message,
             } else if( vec->x() < 0 ) {
                 facing = FacingDirection::LEFT;
             }
+            openclaw_harness_trace_direction_prompt( "return", message, action, vec );
             return vec;
         } else if( action == "pause" ) {
+            openclaw_harness_trace_direction_prompt( "return", message, action, tripoint_rel_ms::zero );
             return tripoint_rel_ms::zero;
         } else if( action == "LEVEL_UP" ) {
+            openclaw_harness_trace_direction_prompt( "return", message, action, tripoint_rel_ms::above );
             return tripoint_rel_ms::above;
         } else if( action == "LEVEL_DOWN" ) {
+            openclaw_harness_trace_direction_prompt( "return", message, action, tripoint_rel_ms::below );
             return tripoint_rel_ms::below;
         } else if( action == "QUIT" ) {
             done = true;
@@ -1203,11 +1250,13 @@ std::optional<tripoint_rel_ms> choose_direction( const std::string &message,
                 && ret.second->x() <= 1 && ret.second->x() >= -1
                 && ret.second->y() <= 1 && ret.second->y() >= -1 && ( allow_vertical
                         ? ret.second->z() <= 1 && ret.second->z() >= -1 : ret.second->z() == 0 ) ) {
+                openclaw_harness_trace_direction_prompt( "return", message, action, ret.second );
                 return ret.second;
             }
         }
     } while( !done );
 
+    openclaw_harness_trace_direction_prompt( "return", message, action, std::nullopt );
     add_msg( _( "Never mind." ) );
     return std::nullopt;
 }

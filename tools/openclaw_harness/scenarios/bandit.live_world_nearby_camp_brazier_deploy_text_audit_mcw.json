@@ -1,6 +1,6 @@
 {
   "name": "bandit.live_world_nearby_camp_brazier_deploy_text_audit_mcw",
-  "description": "Focused normal player-action brazier deployment primitive audit. Uses saved-player exact inventory preflight, checked GUI-as-text/OCR guards for the Apply inventory and Deploy where? prompt, then requires saved east-tile f_brazier before any fuel/lighter/fire proof can continue.",
+  "description": "Focused normal player-action brazier deployment primitive audit. Uses saved-player exact inventory preflight, harness-gated UI selector/direction traces, secondary GUI-as-text/OCR captures, then requires saved east-tile f_brazier before any fuel/lighter/fire proof can continue.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
@@ -10,7 +10,9 @@
   "replace_existing_worlds": true,
   "capture_world_after": true,
   "artifact_source": "debug.log",
-  "artifact_patterns": [ "bandit_live_world signal scan:" ],
+  "artifact_patterns": [
+    "bandit_live_world signal scan:"
+  ],
   "steps": [
     {
       "kind": "wait",
@@ -22,7 +24,9 @@
     {
       "kind": "audit_saved_player_items",
       "label": "audit_saved_inventory_has_brazier_before_apply",
-      "required_items": [ "brazier" ],
+      "required_items": [
+        "brazier"
+      ],
       "expected_visible_fact": "saved player inventory contains the exact brazier item before the Apply inventory is opened",
       "preconditions": "fixture install completed for bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
       "next_step_gate": "do not credit any Apply/deploy UI step if the exact brazier item is missing from saved-player inventory",
@@ -32,30 +36,39 @@
     {
       "kind": "press",
       "label": "open_apply_inventory_for_brazier_text_guard",
-      "keys": [ "a" ],
+      "keys": [
+        "a"
+      ],
       "settle_seconds": 0.8,
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": [ "Use item" ],
-      "abort_on_screen_text_expectation_failure": true,
+      "expected_visible_fact": "The source-backed Apply key is sent; the following harness UI trace gate must prove the Use item inventory opened before another unsafe key fires."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_apply_inventory_open",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=open title=\"Use item\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the Use item inventory opened",
+      "preconditions": "open_apply_inventory_for_brazier_text_guard sent the source-backed Apply key.",
+      "next_step_gate": "do not type inventory filter keys unless the Use item inventory-open trace is present",
+      "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
-      "abort_reason": "Apply inventory text guard did not see the source-backed Use item menu",
-      "expected_visible_fact": "The source-backed Apply key opens the Use item inventory before selecting the brazier."
+      "abort_reason": "harness UI trace did not prove the Use item inventory opened before filtering"
     },
     {
       "kind": "press",
       "label": "filter_apply_inventory_for_brazier_text_guard",
-      "keys": [ "/" ],
+      "keys": [
+        "/"
+      ],
       "settle_seconds": 0.5,
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": [ "Filter" ],
-      "abort_on_screen_text_expectation_failure": true,
-      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
-      "abort_reason": "Apply inventory filter text guard did not see the filter prompt",
-      "expected_visible_fact": "The Use item inventory filter prompt is active before typing brazier."
+      "expected_visible_fact": "The filter key is sent only after the Use item inventory-open trace is green; OCR is secondary discovery evidence only."
     },
     {
       "kind": "type",
@@ -66,30 +79,55 @@
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": [ "brazier" ],
-      "abort_on_screen_text_expectation_failure": true,
+      "expected_visible_fact": "The brazier filter text is submitted only after the Apply inventory-open trace is green."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_filtered_brazier_selected",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=state title=\"Use item\" filter=\"brazier\" action=\"redraw\" selection_method=\"highlight_after_redraw\"",
+        "selection_method=\"highlight_after_redraw\" selected_item=yes typeid=\"brazier\" name=\"brazier\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace after redraw proves the Apply inventory filter is brazier and the highlighted row is the brazier item",
+      "preconditions": "the Use item inventory is open and the brazier filter text was typed.",
+      "next_step_gate": "do not press confirm unless the highlighted filtered row is proven as brazier",
+      "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
-      "abort_reason": "Apply inventory filter text guard did not see brazier after filtering",
-      "expected_visible_fact": "The Apply inventory is filtered to a brazier entry before confirmation."
+      "abort_reason": "harness UI trace did not prove filtered highlighted item was brazier before confirm"
     },
     {
       "kind": "press",
       "label": "select_filtered_brazier_expect_deploy_prompt",
-      "keys": [ "enter" ],
+      "keys": [
+        "enter"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": [ "Deploy where" ],
-      "abort_on_screen_text_expectation_failure": true,
+      "expected_visible_fact": "The filtered inventory row is confirmed; following harness UI trace gates must prove the returned item is brazier and Deploy where? opened."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_brazier_selected_and_deploy_prompt_open",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=return title=\"Use item\"",
+        "selection_method=\"highlight_confirm\" selected_item=yes typeid=\"brazier\" name=\"brazier\"",
+        "openclaw_harness_ui_trace: component=direction_prompt event=open message=\"Deploy where?\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the selector returned brazier and opened Deploy where?",
+      "preconditions": "select_filtered_brazier_expect_deploy_prompt confirmed the filtered Apply inventory row.",
+      "next_step_gate": "do not send right/east unless the returned item is brazier and the Deploy where? prompt is open",
+      "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
-      "abort_reason": "Selecting the filtered Apply inventory row did not enter the source-backed Deploy where? prompt",
-      "expected_visible_fact": "Confirming the filtered brazier entry enters the Deploy where? direction prompt."
+      "abort_reason": "harness UI trace did not prove selected brazier plus Deploy where? before right/east"
     },
     {
       "kind": "press",
       "label": "place_prompted_brazier_east",
-      "keys": [ "right" ],
+      "keys": [
+        "right"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
@@ -97,9 +135,25 @@
       "expected_visible_fact": "The source-backed Deploy where? prompt accepts right/east and returns to the map."
     },
     {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_deploy_prompt_consumed_right",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=direction_prompt event=return message=\"Deploy where?\"",
+        "chosen_direction=yes dx=1 dy=0 dz=0"
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves right/east was consumed by the Deploy where? direction prompt",
+      "preconditions": "audit_ui_trace_brazier_selected_and_deploy_prompt_open proved Deploy where? was open.",
+      "next_step_gate": "do not save/audit east tile unless right/east was consumed by the Deploy where? prompt",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "harness UI trace did not prove right/east was consumed by Deploy where?"
+    },
+    {
       "kind": "press",
       "label": "save_after_text_guarded_brazier_deploy",
-      "keys": [ "S" ],
+      "keys": [
+        "S"
+      ],
       "delay_ms": 250,
       "settle_seconds": 3.0,
       "capture_after": true,
@@ -108,8 +162,16 @@
     {
       "kind": "audit_saved_map_tile_near_player",
       "label": "audit_saved_target_tile_for_brazier",
-      "offsets": [ [ 1, 0, 0 ] ],
-      "required_furniture": [ "f_brazier" ],
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "required_furniture": [
+        "f_brazier"
+      ],
       "expected_visible_fact": "saved target tile east of player contains f_brazier furniture metadata after the text-guarded Apply/deploy step",
       "preconditions": "save_after_text_guarded_brazier_deploy wrote a same-run save immediately after normal item activation placement.",
       "next_step_gate": "do not run or credit fuel/lighter/fire proof unless this deploy metadata row is green",

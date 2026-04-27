@@ -60,6 +60,21 @@ This applies to every little step. Loading into the game is one step. Opening de
 
 No scenario may claim feature proof if one of its pre-feature primitives silently failed.
 
+### 3a. Expand information extraction before rerunning the blocked UI seam
+
+The current blocked primitive is `blocked_untrusted_brazier_deploy_selector`: the fixture inventory contains the required brazier/wood/lighter items, but the live GUI path has not yet proven that the `brazier` row was selected, that activation entered `Deploy where?`, or that the direction key was consumed by that prompt. Do not keep trying key variants.
+
+Before rerunning this part of the audit, add a small observation primitive that can prove the UI/menu state. Preferred exploration order:
+
+- harness-gated selector/menu trace for inventory use, returned item type/id/name/invlet or selection method, prompt text, and direction-choice consumption;
+- checked GUI text extraction or OCR regions for menu header, filter prompt, item list/selected row, and bottom prompt;
+- richer saved-player item metadata for activatable/deploy target details such as `deploy_furn` -> `f_brazier`;
+- terminal/PTY ASCII scraping only as separately labeled recipe discovery, not as SDL GUI closure proof.
+
+Current observation result: run `.userdata/dev-harness/harness_runs/20260427_202434/` proves the `Use item` selector opens and saved-item metadata records `brazier` as `deploy_furn -> f_brazier`, but the filter state `brazier` still does not prove a highlighted/returned brazier row. The next guard is `filtered_brazier_selected`; do source/control lookup or add stronger selector-list metadata before any further confirm/right attempt.
+
+The deploy row only turns green when it proves the relevant menu/selector state and saved east-tile `f_brazier`; fuel/lighter/fire proof remains blocked behind that row.
+
 ### 4. Audit high-risk primitives first
 
 The audit should prioritize primitives that already caused or masked false confidence:

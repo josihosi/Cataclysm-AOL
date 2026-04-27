@@ -931,6 +931,49 @@ def capture_wait_artifact_delta(
     }
 
 
+def audit_log_contains(
+    run_dir: Path,
+    label: str,
+    *,
+    artifact_log: Optional[Path],
+    artifact_baseline: int,
+    patterns: List[str],
+    filter_debug_noise: bool = False,
+) -> Dict[str, Any]:
+    if artifact_log is None:
+        return {
+            "status": "failed",
+            "reason": "artifact_log_not_configured",
+            "required_items": patterns,
+            "missing_required_items": patterns,
+            "source_log": "",
+        }
+    text = read_log_delta(artifact_log, artifact_baseline, filter_debug_noise=filter_debug_noise)
+    out_path = run_dir / f"{label}.log_delta.txt"
+    if text:
+        out_path.write_text(text, encoding="utf-8")
+    matches_by_pattern: List[Dict[str, Any]] = []
+    missing: List[str] = []
+    for pattern in patterns:
+        lines = [line for line in text.splitlines() if pattern in line]
+        matches_by_pattern.append({"pattern": pattern, "lines": lines})
+        if not lines:
+            missing.append(pattern)
+    return {
+        "status": "required_state_present" if patterns and not missing else ("required_state_missing" if patterns else "scanned"),
+        "source_log": str(artifact_log),
+        "artifact_path": str(out_path) if text else "",
+        "start_size": artifact_baseline,
+        "end_size": artifact_log.stat().st_size if artifact_log.exists() else artifact_baseline,
+        "required_items": patterns,
+        "observed_items": [entry["pattern"] for entry in matches_by_pattern if entry.get("lines")],
+        "missing_required_items": missing,
+        "matches_by_pattern": matches_by_pattern,
+        "matched_lines": [line for entry in matches_by_pattern for line in entry.get("lines", [])],
+        "line_count": len(text.splitlines()) if text else 0,
+    }
+
+
 def execute_long_wait_action(
     pid: int,
     run_dir: Path,
@@ -1351,13 +1394,59 @@ def audit_map_tiles_near_player(
     }
 
 
+def load_item_definitions_for(typeids: Iterable[str]) -> Dict[str, Dict[str, Any]]:
+    wanted = {str(typeid).strip() for typeid in typeids if str(typeid).strip()}
+    found: Dict[str, Dict[str, Any]] = {}
+    if not wanted:
+        return found
+    for path in (repo_root() / "data" / "json").rglob("*.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        entries = payload if isinstance(payload, list) else [payload]
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            item_id = str(entry.get("id", "")).strip()
+            if item_id in wanted and item_id not in found:
+                found[item_id] = entry
+        if len(found) == len(wanted):
+            break
+    return found
+
+
+def item_display_name_from_definition(entry: Dict[str, Any]) -> str:
+    name = entry.get("name")
+    if isinstance(name, dict):
+        return str(name.get("str") or name.get("str_sp") or name.get("ctxt") or "").strip()
+    return str(name or "").strip()
+
+
+def item_use_action_summary(entry: Dict[str, Any]) -> List[Dict[str, Any]]:
+    raw_use_action = entry.get("use_action")
+    actions = raw_use_action if isinstance(raw_use_action, list) else [raw_use_action]
+    summary: List[Dict[str, Any]] = []
+    for action in actions:
+        if isinstance(action, str):
+            summary.append({"type": action})
+        elif isinstance(action, dict):
+            row: Dict[str, Any] = {"type": str(action.get("type", "")).strip()}
+            if action.get("furn_type"):
+                row["furn_type"] = str(action.get("furn_type"))
+            if action.get("terrain"):
+                row["terrain"] = str(action.get("terrain"))
+            summary.append(row)
+    return [row for row in summary if row.get("type")]
+
+
 def audit_saved_player_items(
     world_dir: Path,
     *,
     player_save: str = "",
     required_items: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Read-only saved-player inventory audit for exact item type ids."""
+    """Read-only saved-player inventory audit for exact item type ids plus deploy metadata."""
     if not world_dir.exists():
         raise FileNotFoundError(f"World dir not found: {world_dir}")
     selected_player_save = player_save.strip()
@@ -1393,6 +1482,7 @@ def audit_saved_player_items(
         raise RuntimeError(f"Extracted player save has non-list inventory: {extracted_save}")
 
     counts: Dict[str, int] = {}
+    item_rows: Dict[str, List[Dict[str, Any]]] = {}
     for entry in inventory:
         if not isinstance(entry, dict):
             continue
@@ -1400,8 +1490,27 @@ def audit_saved_player_items(
         if not typeid:
             continue
         counts[typeid] = counts.get(typeid, 0) + 1
+        item_rows.setdefault(typeid, []).append({
+            "typeid": typeid,
+            "custom_invlet": str(entry.get("invlet", "") or ""),
+            "charges": entry.get("charges"),
+            "count_by_charges": entry.get("count_by_charges"),
+            "flags": sorted(str(flag) for flag in entry.get("item_tags", []) if str(flag).strip()) if isinstance(entry.get("item_tags"), list) else [],
+        })
 
     required = [item for item in (required_items or []) if item]
+    interesting_typeids = sorted(set(required) if required else set(counts))
+    definitions = load_item_definitions_for(interesting_typeids)
+    item_details: Dict[str, Dict[str, Any]] = {}
+    for typeid in interesting_typeids:
+        definition = definitions.get(typeid, {})
+        item_details[typeid] = {
+            "count": counts.get(typeid, 0),
+            "display_name": item_display_name_from_definition(definition),
+            "use_actions": item_use_action_summary(definition),
+            "saved_rows": item_rows.get(typeid, []),
+        }
+
     missing_required_items = [item for item in required if counts.get(item, 0) < 1]
     if required and not missing_required_items:
         status = "required_state_present"
@@ -1417,6 +1526,7 @@ def audit_saved_player_items(
         "required_items": required,
         "observed_items": sorted(counts),
         "inventory_counts": dict(sorted(counts.items())),
+        "item_details": item_details,
         "missing_required_items": missing_required_items,
         "status": status,
     }
@@ -2352,6 +2462,8 @@ def auto_step_action_description(report: Dict[str, Any]) -> str:
         return f"send one-turn wait key {int(report.get('count', 0) or 0)} time(s)"
     if kind == "wait":
         return f"sleep wall-clock {report.get('seconds', '')} second(s)"
+    if kind == "audit_log_contains":
+        return "scan harness debug log delta for required UI trace patterns"
     if kind.startswith("debug_"):
         return f"debug helper primitive {kind}"
     return kind or "scenario step"
@@ -2627,7 +2739,9 @@ def launch_game(profile: str, target_world: str, run_dir: Path) -> subprocess.Po
         cmd.extend(["--world", target_world])
     stdout_log = (run_dir / "game.stdout.log").open("w", encoding="utf-8")
     stderr_log = (run_dir / "game.stderr.log").open("w", encoding="utf-8")
-    return subprocess.Popen(cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log, text=True)
+    env = os.environ.copy()
+    env["OPENCLAW_HARNESS_UI_TRACE"] = "1"
+    return subprocess.Popen(cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log, text=True, env=env)
 
 
 def pid_command(pid: int) -> str:
@@ -3976,6 +4090,33 @@ def execute_probe_steps(
                 raise SystemExit(f"Scenario step '{label}' needs seconds > 0")
             time.sleep(seconds)
             report["seconds"] = seconds
+        elif kind == "audit_log_contains":
+            patterns = normalize_screen_text_patterns(
+                step.get("required_patterns", step.get("patterns", step.get("required_items", [])))
+            )
+            if not patterns:
+                raise SystemExit(f"Scenario step '{label}' needs required_patterns/patterns")
+            metadata = audit_log_contains(
+                run_dir,
+                label,
+                artifact_log=artifact_log,
+                artifact_baseline=artifact_baseline,
+                patterns=patterns,
+                filter_debug_noise=filter_debug_noise,
+            )
+            metadata["artifact_path"] = str(run_dir / f"{label}.metadata.json")
+            write_json(run_dir / f"{label}.metadata.json", metadata)
+            report["metadata"] = metadata
+            if metadata.get("status") == "required_state_missing" and bool(step.get("abort_on_metadata_failure", False)):
+                report["abort"] = {
+                    "guard": "metadata",
+                    "status": "aborted_by_metadata_guard",
+                    "verdict": str(step.get("abort_verdict", "red_step_required_log_pattern_missing")),
+                    "reason": str(step.get("abort_reason", "required log pattern was missing")),
+                    "missing_required_items": metadata.get("missing_required_items", []),
+                }
+                reports.append(report)
+                return reports
         elif kind == "debug_spawn_item":
             item_query = str(
                 step.get("item_query")

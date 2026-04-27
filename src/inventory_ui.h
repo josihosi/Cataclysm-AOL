@@ -685,6 +685,10 @@ class inventory_selector
         void set_filter( const std::string &str );
         /** Get last filter string set by set_filter or entered by player */
         std::string get_filter() const;
+        /** Get the selector title shown in the menu header. */
+        std::string get_title() const {
+            return title;
+        }
 
         enum selector_invlet_type {
             SELECTOR_INVLET_DEFAULT,

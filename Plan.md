@@ -92,7 +92,32 @@ This package does not replace the current active Smart Zone / bandit debug-proof
 
 Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
 
-Current checkpoint: harness surface inventory and provisional same-save policy live at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`. `startup_harness.py start` now emits a startup step ledger and explicit proof classification: load/readiness remains `startup/load`, `feature_proof=false`. Probe classification now also requires a clean startup gate before `artifacts_matched` may become feature proof, so stale runtime/profile/load-readiness problems cannot be hidden by later log matches. Current-runtime audit runs prove the step-ledger freeze catches real false-passes: `.userdata/dev-harness/harness_runs/20260427_175051/` proves source-backed `t` opens `Talk to whom` but still blocks/red-classifies the alpha talker-selection step; `.userdata/dev-harness/harness_runs/20260427_184319/` keeps the real-fire chain red because the saved target tile lacks `fd_fire` while the preceding GUI steps are still yellow/untrusted; `.userdata/dev-harness/harness_runs/20260427_191725/` adds aborting same-run metadata gates for brazier deploy/fuel/final fire and stops the chain at the first deploy gate because the saved tile east of the player lacks `f_brazier`; and `.userdata/dev-harness/harness_runs/20260427_200100/` adds a saved-player exact inventory preflight (`brazier=1`, `2x4=20`, `lighter=1`) before repeating the canonical path, then still stops red at the same missing east-tile `f_brazier` deploy state. `audit_saved_map_tile_near_player` now reports explicit empty target-tile metadata for requested offsets, `audit_saved_player_items` proves exact saved inventory prerequisites before GUI macros run, and `abort_on_metadata_failure` prevents later steps from being credited after missing required fields/items/furniture. Frau Knackal classified this as `blocked_untrusted_brazier_deploy_selector`: stop blind key variants, keep feature proof frozen, and treat normal player-action brazier deployment as the current red harness primitive. Static/source/control lookup is recorded in the inventory doc and `CONTROL_LOOKUP.md`: `brazier` uses `deploy_furn` -> `f_brazier`, activation should enter `Deploy where?`, and `right` is valid only in that direction prompt. Josef suggested GUI-as-text validation; focused run `.userdata/dev-harness/harness_runs/20260427_200919/` added checked text guards but aborted at `open_apply_inventory_for_brazier_text_guard` because the source-backed `Use item` menu text was not proven. Next honest state: strengthen menu-entry/hotkey/GUI text capture for the inventory selector/deploy UI before any further live confirmation; the deploy primitive remains blocked until text/menu state plus saved east-tile `f_brazier` are green.
+Current checkpoint:
+
+- Harness surface inventory and provisional same-save policy live at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
+- `startup_harness.py start` now emits a startup step ledger and explicit proof classification: load/readiness remains `startup/load`, `feature_proof=false`.
+- Probe classification requires a clean startup gate before `artifacts_matched` can become feature proof, so stale runtime/profile/load-readiness problems cannot be hidden by later log matches.
+- `audit_saved_map_tile_near_player` reports explicit empty target-tile metadata for requested offsets; `audit_saved_player_items` proves exact saved inventory prerequisites before GUI macros run; `abort_on_metadata_failure` prevents later steps from being credited after missing required fields/items/furniture.
+
+Current false-pass evidence:
+
+- `.userdata/dev-harness/harness_runs/20260427_175051/` proves source-backed `t` opens `Talk to whom`, then blocks/red-classifies the alpha talker-selection step.
+- `.userdata/dev-harness/harness_runs/20260427_184319/` keeps the real-fire chain red because the saved target tile lacks `fd_fire` while the preceding GUI steps remain yellow/untrusted.
+- `.userdata/dev-harness/harness_runs/20260427_191725/` stops at the first deploy gate because the saved tile east of the player lacks `f_brazier`.
+- `.userdata/dev-harness/harness_runs/20260427_200100/` proves exact fixture inventory first (`brazier=1`, `2x4=20`, `lighter=1`), then still stops red at the missing east-tile `f_brazier` deploy state.
+- `.userdata/dev-harness/harness_runs/20260427_200919/` tried checked GUI text for Josef's GUI-as-text idea and aborted at `open_apply_inventory_for_brazier_text_guard` because source-backed `Use item` menu text was not proven.
+- `.userdata/dev-harness/harness_runs/20260427_202434/` uses harness-gated inventory/direction trace plus richer saved-item metadata. It proves `Use item` opens and the saved brazier definition is `deploy_furn -> f_brazier`, but after filtering `brazier` the selector still does **not** prove a highlighted `brazier` row (`highlight_after_redraw selected_item=no`). The abort fires before `CONFIRM`, so `Deploy where?`, `RIGHT`, save, and east-tile `f_brazier` remain unproven.
+
+Current blocker: Frau Knackal classifies this as `blocked_untrusted_brazier_deploy_selector`, now narrowed to the `filtered_brazier_selected` guard. Stop blind key variants. Keep feature proof frozen. Treat normal player-action brazier deployment as the current red harness primitive.
+
+Known source/control footing: `brazier` uses `deploy_furn` -> `f_brazier`; activation should enter `Deploy where?`; `right` is valid only in that direction prompt. Current live trace says the present filter recipe does not select the brazier row.
+
+Active sub-order:
+
+1. Do source/control lookup or stronger selector-list observation for why `Use item` + filter `brazier` leaves no selected brazier row; do not press confirm/right until that state is green.
+2. Once `filtered_brazier_selected` is green, continue the existing guarded chain: confirm -> prove `Deploy where?` -> direction right -> save -> audit east-tile `f_brazier`.
+3. Keep fuel/lighter/fire steps gated until the menu/selector state and saved east-tile `f_brazier` are green.
+
 
 ---
 
