@@ -703,6 +703,180 @@ def classify_wait_screen_text(
     }
 
 
+
+
+def screen_text_body( screen_text_report: Dict[str, Any] ) -> str:
+    text = screen_text_report.get( "text", "" )
+    if isinstance( text, str ):
+        return text
+    lines = screen_text_report.get( "lines", [] )
+    if isinstance( lines, list ):
+        return "\n".join( str( line ) for line in lines )
+    return ""
+
+
+def wait_duration_seconds( duration: str ) -> Optional[int]:
+    value = duration.strip().lower()
+    if not value:
+        return None
+    match = re.fullmatch( r"(\d+)\s*s(?:ec(?:ond)?s?)?", value )
+    if match:
+        return int( match.group( 1 ) )
+    match = re.fullmatch( r"(\d+)\s*m(?:in(?:ute)?s?)?", value )
+    if match:
+        return int( match.group( 1 ) ) * 60
+    match = re.fullmatch( r"(\d+)\s*h(?:our)?s?", value )
+    if match:
+        return int( match.group( 1 ) ) * 60 * 60
+    return None
+
+
+def wait_menu_expected_duration_patterns( expected_duration: str ) -> List[str]:
+    seconds = wait_duration_seconds( expected_duration )
+    if seconds is None:
+        return [expected_duration] if expected_duration else []
+    if seconds < 60:
+        amount = seconds
+        unit = "second" if amount == 1 else "seconds"
+    elif seconds < 60 * 60:
+        amount = seconds // 60
+        unit = "minute" if amount == 1 else "minutes"
+    else:
+        amount = seconds // ( 60 * 60 )
+        unit = "hour" if amount == 1 else "hours"
+    return [
+        expected_duration,
+        f"{amount} {unit}",
+        f"{amount}{unit[0]}",
+    ]
+
+
+def extract_clock_or_turn_evidence( screen_text_report: Dict[str, Any] ) -> Dict[str, Any]:
+    text = screen_text_body( screen_text_report )
+    clock_matches: List[Dict[str, Any]] = []
+    for match in re.finditer( r"\b([0-2]?\d):([0-5]\d)(?::([0-5]\d))?\b", text ):
+        hour = int( match.group( 1 ) )
+        minute = int( match.group( 2 ) )
+        second = int( match.group( 3 ) or 0 )
+        if hour <= 23:
+            clock_matches.append( {
+                "text": match.group( 0 ),
+                "seconds_since_midnight": hour * 3600 + minute * 60 + second,
+            } )
+    turn_matches: List[Dict[str, Any]] = []
+    for match in re.finditer( r"\bturn\s*[:#]?\s*(\d{1,12})\b", text, flags=re.IGNORECASE ):
+        turn_matches.append( {"text": match.group( 0 ), "turn": int( match.group( 1 ) )} )
+    return {
+        "clock_matches": clock_matches[:5],
+        "turn_matches": turn_matches[:5],
+        "source": str( screen_text_report.get( "source_png", "" ) or screen_text_report.get( "image_path", "" ) ),
+    }
+
+
+def classify_wait_step_ledger(
+    *,
+    label: str,
+    choice_key: str,
+    expected_duration: str,
+    before_text: Dict[str, Any],
+    menu_text: Dict[str, Any],
+    after_text: Dict[str, Any],
+    wait_classification: Dict[str, Any],
+) -> Dict[str, Any]:
+    expected_seconds = wait_duration_seconds( expected_duration )
+    duration_patterns = wait_menu_expected_duration_patterns( expected_duration )
+    menu_body = screen_text_body( menu_text ).lower()
+    menu_expected_matches = [pattern for pattern in duration_patterns if pattern.lower() in menu_body]
+    menu_has_wait_prompt = "wait" in menu_body and bool( menu_body.strip() )
+    before_clock = extract_clock_or_turn_evidence( before_text )
+    after_clock = extract_clock_or_turn_evidence( after_text )
+    elapsed: Dict[str, Any] = {
+        "status": "not_parsed",
+        "expected_seconds": expected_seconds,
+    }
+    if before_clock["turn_matches"] and after_clock["turn_matches"]:
+        delta = after_clock["turn_matches"][0]["turn"] - before_clock["turn_matches"][0]["turn"]
+        elapsed.update( {"status": "turn_delta_parsed", "delta_turns": delta} )
+    elif before_clock["clock_matches"] and after_clock["clock_matches"]:
+        before_seconds = before_clock["clock_matches"][0]["seconds_since_midnight"]
+        after_seconds = after_clock["clock_matches"][0]["seconds_since_midnight"]
+        delta = after_seconds - before_seconds
+        if delta < 0:
+            delta += 24 * 60 * 60
+        elapsed.update( {"status": "clock_delta_parsed", "delta_seconds": delta} )
+
+    wait_status = str( wait_classification.get( "status", "" ) )
+    issues: List[str] = []
+    if not menu_has_wait_prompt:
+        issues.append( "wait_menu_ocr_missing_prompt" )
+    if expected_seconds is not None and not menu_expected_matches:
+        issues.append( "wait_menu_ocr_missing_expected_duration" )
+    if elapsed["status"] == "not_parsed":
+        issues.append( "before_after_clock_or_turn_not_parsed" )
+    if wait_status == "interrupted_or_prompt_visible":
+        verdict = "blocked_wait_interrupted_or_prompt_visible"
+    elif wait_status != "completed":
+        verdict = "yellow_wait_finish_or_interrupt_not_classified"
+        issues.append( "missing_finish_or_interruption_signal" )
+    elif issues:
+        verdict = "yellow_wait_elapsed_or_menu_not_fully_proven"
+    else:
+        verdict = "green_wait_step_proven"
+
+    return {
+        "label": label,
+        "choice_key": choice_key,
+        "expected_duration": expected_duration,
+        "expected_seconds": expected_seconds,
+        "wait_menu_artifact": f"{label}.wait_menu.png / {label}.wait_menu.screen_text.json",
+        "menu_has_wait_prompt": menu_has_wait_prompt,
+        "menu_expected_duration_patterns": duration_patterns,
+        "menu_expected_matches": menu_expected_matches,
+        "before_clock_or_turn": before_clock,
+        "after_clock_or_turn": after_clock,
+        "elapsed": elapsed,
+        "finish_or_interrupt_status": wait_status,
+        "issues": issues,
+        "verdict": verdict,
+        "review_rule": (
+            "Artifact matches do not make this wait step green. Green requires the wait menu, "
+            "a parsed before/after clock or turn delta, and either a finish signal or classified interruption."
+        ),
+    }
+
+
+def summarize_wait_step_ledgers( step_reports: List[Dict[str, Any]] ) -> Dict[str, Any]:
+    ledgers = [step.get( "wait_step_ledger" ) for step in step_reports if isinstance( step.get( "wait_step_ledger" ), dict )]
+    verdicts = [str( ledger.get( "verdict", "" ) ) for ledger in ledgers]
+    blocked = [ledger for ledger in ledgers if str( ledger.get( "verdict", "" ) ).startswith( "blocked" )]
+    yellow = [ledger for ledger in ledgers if str( ledger.get( "verdict", "" ) ).startswith( "yellow" )]
+    green = [ledger for ledger in ledgers if str( ledger.get( "verdict", "" ) ).startswith( "green" )]
+    if blocked:
+        status = "blocked_wait_step"
+    elif yellow:
+        status = "yellow_wait_step_unverified"
+    elif ledgers and len( green ) == len( ledgers ):
+        status = "green_wait_steps_proven"
+    else:
+        status = "no_wait_steps"
+    return {
+        "status": status,
+        "count": len( ledgers ),
+        "green_count": len( green ),
+        "yellow_count": len( yellow ),
+        "blocked_count": len( blocked ),
+        "verdicts": verdicts,
+        "non_green_steps": [
+            {
+                "label": str( ledger.get( "label", "" ) ),
+                "verdict": str( ledger.get( "verdict", "" ) ),
+                "issues": ledger.get( "issues", [] ),
+            }
+            for ledger in ledgers if not str( ledger.get( "verdict", "" ) ).startswith( "green" )
+        ],
+        "review_rule": "Overall artifact verdict must not be green when wait ledgers are yellow or blocked.",
+    }
+
 def capture_wait_artifact_delta(
     artifact_log: Optional[Path],
     run_dir: Path,
@@ -874,6 +1048,15 @@ def execute_long_wait_action(
     )
     report["wait_classification"] = classify_wait_screen_text(
         after_text, complete_patterns, interrupt_patterns
+    )
+    report["wait_step_ledger"] = classify_wait_step_ledger(
+        label=label,
+        choice_key=choice_key,
+        expected_duration=expected_duration,
+        before_text=before_text,
+        menu_text=menu_text,
+        after_text=after_text,
+        wait_classification=report["wait_classification"],
     )
     if bool(step.get("abort_on_interrupt", False)) and \
             report["wait_classification"].get("status") == "interrupted_or_prompt_visible":
@@ -4505,6 +4688,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     patrol_summary = summarize_patrol_artifacts(str(scenario.get("name", args.scenario)), all_matched_lines)
     if patrol_summary is not None:
         companion_helpers.append(write_patrol_summary(run_dir, patrol_summary))
+    wait_step_summary = summarize_wait_step_ledgers(step_reports)
 
     verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
@@ -4513,6 +4697,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         verdict = str(abort_report.get("verdict", "inconclusive_screen_text_guard"))
     elif version_matches_runtime is False:
         verdict = "inconclusive_version_mismatch"
+    elif wait_step_summary["status"] == "blocked_wait_step":
+        verdict = "blocked_wait_step_ledger"
+    elif wait_step_summary["status"] == "yellow_wait_step_unverified":
+        verdict = "yellow_wait_step_unverified"
     elif any(entry["lines"] for entry in matches_by_pattern):
         verdict = "artifacts_matched"
     elif not artifact_text.strip():
@@ -4560,6 +4748,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "matched_lines": all_matched_lines,
             "line_count": len(artifact_text.splitlines()) if artifact_text else 0,
         },
+        "wait_step_summary": wait_step_summary,
         "runtime_warnings": runtime_warnings,
         "abort": abort_report,
         "verdict": verdict,
