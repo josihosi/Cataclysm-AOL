@@ -1,18 +1,31 @@
 {
-  "name": "smart_zone.live_probe_mcw_prepped",
-  "description": "BLOCKED legacy Smart Zone Manager v1 probe on the old McWilliams footing. Do not rerun for closure: the save can be bandit/safe-mode contaminated, and repeated Zone Manager macro failures here are inconclusive rather than product evidence.",
-  "status": "blocked",
-  "blocked_reason": "Smart Zone live probe failure #2: McWilliams footing can be bandit-adjacent and safe-mode contaminated. Use smart_zone.live_probe_safe_clean instead; if safe mode triggers before zone setup, stop as inconclusive_safe_mode.",
-  "required_helpers": ["smart_zone.live_probe_safe_clean"],
-  "profile": "dev-harness",
-  "world": "McWilliams",
-  "artifact_pattern": "Smart Zone Manager",
+  "name": "smart_zone.live_probe_safe_clean",
+  "description": "Smart Zone Manager v1 clean-save live probe: start from a fresh disposable Play Now evacuee profile/world instead of the bandit-adjacent McWilliams footing, assert no safe-mode trigger before Zone Manager input, disable safe mode, create a Basecamp: Storage zone, accept Smart Zone Manager stamping, save the zone changes, and reopen Zone Manager for screen evidence. This proves only safe clean setup/save-reopenable layout behavior; deterministic clzones tests remain the zone-id/type/options proof.",
+  "profile": "smart-zone-safe-clean-20260427",
+  "artifact_source": "debug.log",
   "steps": [
     {
       "kind": "wait",
-      "label": "wait_for_gameplay_settle",
-      "seconds": 10,
-      "capture_after": true
+      "label": "fresh_play_now_settle_and_safe_mode_guard",
+      "seconds": 5.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "abort_if_text_contains": ["Stop moving?", "Spotted", "hostile spotted", "Safe mode is triggered"],
+      "abort_verdict": "inconclusive_safe_mode",
+      "abort_reason": "safe-mode/hostile trigger visible before Smart Zone setup; no Zone Manager keys driven"
+    },
+    {
+      "kind": "press",
+      "label": "disable_safe_mode_before_zone_setup",
+      "keys": ["!"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "abort_if_text_contains": ["Stop moving?", "Spotted", "hostile spotted", "Safe mode is triggered"],
+      "abort_verdict": "inconclusive_safe_mode",
+      "abort_reason": "safe-mode/hostile trigger visible after safe-mode toggle; no Zone Manager keys driven"
     },
     {
       "kind": "debug_spawn_item",
@@ -69,7 +82,12 @@
       "label": "pass_turn_after_brazier",
       "keys": ["."],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "abort_if_text_contains": ["Stop moving?", "Spotted", "hostile spotted", "Safe mode is triggered"],
+      "abort_verdict": "inconclusive_safe_mode",
+      "abort_reason": "safe-mode/hostile trigger visible before Zone Manager setup; no Zone Manager keys driven"
     },
     {
       "kind": "press",
@@ -185,7 +203,9 @@
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_after_capture_tail_lines": 24
+      "extract_text_after_capture_tail_lines": 32
     }
-  ]
+  ],
+  "recommended_test_command": "./tests/cata_test \"[smart_zone]\"",
+  "recommended_probe_command": "python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_probe_safe_clean"
 }

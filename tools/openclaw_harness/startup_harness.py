@@ -1498,6 +1498,58 @@ def capture_screen_text_artifact(
     return result
 
 
+def normalize_screen_text_patterns(raw_value: Any) -> List[str]:
+    if isinstance(raw_value, str):
+        return [raw_value.strip()] if raw_value.strip() else []
+    if not isinstance(raw_value, list):
+        return []
+    return [str(value).strip() for value in raw_value if str(value).strip()]
+
+
+def find_screen_text_matches(screen_text_report: Dict[str, Any], patterns: List[str]) -> List[Dict[str, str]]:
+    if not patterns:
+        return []
+    json_path_value = str(screen_text_report.get("json_path", "")).strip()
+    if not json_path_value:
+        return []
+    try:
+        payload = json.loads(Path(json_path_value).read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+    raw_lines = payload.get("lines", []) if isinstance(payload, dict) else []
+    lines = [str(line).strip() for line in raw_lines if str(line).strip()] if isinstance(raw_lines, list) else []
+    raw_text = str(payload.get("text", "")).strip() if isinstance(payload, dict) else ""
+    haystacks = lines + ([raw_text] if raw_text else [])
+    matches: List[Dict[str, str]] = []
+    for pattern in patterns:
+        needle = pattern.lower()
+        for line in haystacks:
+            if needle in line.lower():
+                matches.append({"pattern": pattern, "line": line})
+                break
+    return matches
+
+
+def apply_screen_text_abort_guard(
+    report: Dict[str, Any],
+    step: Dict[str, Any],
+    screen_text_report: Dict[str, Any],
+) -> bool:
+    patterns = normalize_screen_text_patterns(step.get("abort_if_text_contains", []))
+    matches = find_screen_text_matches(screen_text_report, patterns)
+    if not matches:
+        return False
+    report["abort"] = {
+        "status": "aborted_by_screen_text_guard",
+        "verdict": str(step.get("abort_verdict", "inconclusive_screen_text_guard")),
+        "reason": str(step.get("abort_reason", "screen text matched abort guard")),
+        "patterns": patterns,
+        "matches": matches,
+    }
+    return True
+
+
 def render_blink_compare(
     run_dir: Path,
     label: str,
@@ -3081,13 +3133,19 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             )
             capture = capture_screenshot(pid, run_dir, label, crop=capture_crop)
             report["screen"] = capture.get("screen_summary", {})
-            if bool(step.get("extract_text", False)):
-                report["screen_text"] = capture_screen_text_artifact(
+            if bool(step.get("extract_text", False)) or normalize_screen_text_patterns(
+                step.get("abort_if_text_contains", [])
+            ):
+                screen_text_report = capture_screen_text_artifact(
                     run_dir,
                     label,
                     capture,
                     tail_lines=int(step.get("extract_text_tail_lines", 8) or 8),
                 )
+                report["screen_text"] = screen_text_report
+                if apply_screen_text_abort_guard(report, step, screen_text_report):
+                    reports.append(report)
+                    return reports
         else:
             raise SystemExit(f"Unsupported scenario step kind: {kind or '<empty>'}")
         if settle_seconds > 0:
@@ -3098,13 +3156,19 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             )
             capture = capture_screenshot(pid, run_dir, f"{label}.after", crop=capture_after_crop)
             report["screen_after"] = capture.get("screen_summary", {})
-            if bool(step.get("extract_text_after_capture", False)):
-                report["screen_after_text"] = capture_screen_text_artifact(
+            if bool(step.get("extract_text_after_capture", False)) or normalize_screen_text_patterns(
+                step.get("abort_if_text_contains", [])
+            ):
+                screen_text_report = capture_screen_text_artifact(
                     run_dir,
                     f"{label}.after",
                     capture,
                     tail_lines=int(step.get("extract_text_tail_lines", step.get("extract_text_after_capture_tail_lines", 8)) or 8),
                 )
+                report["screen_after_text"] = screen_text_report
+                if apply_screen_text_abort_guard(report, step, screen_text_report):
+                    reports.append(report)
+                    return reports
         reports.append(report)
     return reports
 
@@ -3974,7 +4038,11 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         all_matched_lines.extend(lines)
 
     companion_helpers: List[Dict[str, Any]] = []
+    abort_report: Optional[Dict[str, Any]] = None
     for step_report in step_reports:
+        step_abort = step_report.get("abort")
+        if abort_report is None and isinstance(step_abort, dict):
+            abort_report = step_abort
         for helper_key in ("screen_text", "screen_after_text"):
             helper = step_report.get(helper_key)
             if isinstance(helper, dict):
@@ -3986,7 +4054,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
     version_matches_runtime = screen_summary.get("version_matches_runtime_paths")
-    if version_matches_runtime is False:
+    if abort_report is not None:
+        verdict = str(abort_report.get("verdict", "inconclusive_screen_text_guard"))
+    elif version_matches_runtime is False:
         verdict = "inconclusive_version_mismatch"
     elif any(entry["lines"] for entry in matches_by_pattern):
         verdict = "artifacts_matched"
@@ -4036,6 +4106,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "line_count": len(artifact_text.splitlines()) if artifact_text else 0,
         },
         "runtime_warnings": runtime_warnings,
+        "abort": abort_report,
         "verdict": verdict,
     }
     if capture_world_after:
