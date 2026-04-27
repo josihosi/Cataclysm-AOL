@@ -1311,31 +1311,39 @@ int refresh_live_bandit_signal_marks(
             continue;
         }
 
-        const live_bandit_signal_observation *best_signal = nullptr;
-        int best_signal_distance = 0;
+        std::vector<const live_bandit_signal_observation *> matching_signals;
+        bool smoke_signal_matched = false;
+        bool light_signal_matched = false;
         for( const live_bandit_signal_observation &signal : signals ) {
             const int signal_distance = rl_dist( site.anchor, signal.source_omt );
             if( signal_distance > signal.range_cap_omt ) {
                 continue;
             }
-            if( best_signal == nullptr || signal_distance < best_signal_distance ) {
-                best_signal = &signal;
-                best_signal_distance = signal_distance;
+            matching_signals.push_back( &signal );
+            if( signal.mark.kind == "light" || signal.mark.kind == "searchlight" ) {
+                light_signal_matched = true;
+            } else if( signal.mark.kind == "smoke" ) {
+                smoke_signal_matched = true;
             }
         }
 
-        if( best_signal == nullptr ) {
+        if( matching_signals.empty() ) {
             rejected_by_signal_range++;
             continue;
         }
 
         matched_sites++;
-        if( best_signal->mark.kind == "light" || best_signal->mark.kind == "searchlight" ) {
+        if( light_signal_matched ) {
             matched_light_sites++;
-        } else if( best_signal->mark.kind == "smoke" ) {
+        }
+        if( smoke_signal_matched ) {
             matched_smoke_sites++;
         }
-        if( bandit_live_world::record_live_signal_mark( site, best_signal->mark ) ) {
+        bool site_refreshed = false;
+        for( const live_bandit_signal_observation *signal : matching_signals ) {
+            site_refreshed |= bandit_live_world::record_live_signal_mark( site, signal->mark );
+        }
+        if( site_refreshed ) {
             refreshed_sites++;
         }
     }

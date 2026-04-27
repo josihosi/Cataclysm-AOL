@@ -60,8 +60,8 @@ Retained evidence classification for `Bandit live signal + site bootstrap correc
 - raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
 - synthetic smoke proof proves only synthetic smoke-source/live-signal behavior and must be labeled as such
 - player-fire product proof still requires the real brazier/wood/lighter/player-action chain and fresh matched-site evidence
-- threshold-surviving light proof remains open if the live light branch still shows `matched_light_sites=0`
-- if the implemented live behavior cannot be proven after the 4-attempt escalation rule, write a Josef playtest package with the manual recipe and exact close condition instead of closing or parking it
+- threshold-surviving light proof for the synthetic loaded-map `fd_fire` source path is now covered by run `.userdata/dev-harness/harness_runs/20260427_113606/`: current-runtime probe, night `light_packets=1`, horde light signal, and `matched_light_sites=1` / `refreshed_sites=1`; this is not full player-lit-fire proof
+- remaining player-fire product proof still requires the real brazier/wood/lighter/player-action chain plus paired no-signal/control evidence; if the implemented live behavior cannot be proven after the 4-attempt escalation rule, write a Josef playtest package with the manual recipe and exact close condition instead of closing or parking it
 
 ### Recently closed validation references
 

@@ -37,8 +37,8 @@ Use `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md` as the d
 - Try to prove a normal running-game fire/smoke/light source through the live bandit path: source exists in game, signal packet forms, owned site matches/refreshed or honestly rejects, and logs distinguish why.
 - A bounded synthetic smoke-source shortcut is allowed only when labeled `synthetic smoke-source/live-signal proof`; it proves smoke-source live-signal behavior, not ordinary player-lit fire.
 - The full player-fire recipe remains the honest product bar: deployed brazier, wood beside it, firewood source on the wood, lighter/ignition through normal game mechanics, visible fire/smoke, safe player placement and survival needs handled, several-hour wait, and matched-site bandit signal evidence.
-- Clean threshold-surviving light proof remains open if current light packets still show `matched_light_sites=0`.
-- Remaining range-matrix, candidate/scoring split, signal decay, and hold/chill evidence should be finished or explicitly moved to the playtest package under the same 4-attempt rule.
+- Clean threshold-surviving light proof is now satisfied for the synthetic loaded-map `fd_fire` source path by run `.userdata/dev-harness/harness_runs/20260427_113606/`: current-runtime probe, night fire source, `light_packets=1`, horde light signal power, and `matched_light_sites=1` / `refreshed_sites=1` while inside the 40 OMT scan envelope. This is **not** full player-lit-fire proof.
+- Remaining full player-fire product proof, paired refreshed no-signal control, range-matrix/candidate split audit, signal decay, and hold/chill evidence should be finished or explicitly moved to the playtest package under the same 4-attempt rule.
 
 ### 2. Smart Zone clean-save live proof, if still unproven
 
