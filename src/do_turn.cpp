@@ -710,12 +710,38 @@ bool note_live_bandit_aftermath()
                               "local contact loss near " + site.active_target_id );
                 }
             } else if( site_contains_omt( site, member_npc->pos_abs_omt() ) ) {
-                if( member->state == bandit_live_world::member_state::local_contact ) {
+                if( member->state == bandit_live_world::member_state::local_contact ||
+                    bandit_live_world::scout_sortie_should_return_home( site, current_minutes,
+                            scout_sortie_limit_minutes ) ) {
                     observation.state = bandit_live_world::active_member_observation_state::home;
-                    observation.summary = "npc back on home footprint";
+                    observation.summary = "npc back on home footprint after scout sortie";
+                    DebugLog( D_INFO, DC_ALL )
+                            << "bandit_live_world scout_sortie: home footprint observed"
+                            << " site=" << site.site_id
+                            << " active_group=" << site.active_group_id
+                            << " member=" << member_id.get_value()
+                            << " pos=" << member_npc->pos_abs_omt().to_string()
+                            << " elapsed_minutes=" << ( current_minutes -
+                                    ( site.active_sortie_local_contact_minutes >= 0 ?
+                                      site.active_sortie_local_contact_minutes :
+                                      site.active_sortie_started_minutes ) ) << '\n';
                 } else {
                     observation.summary = "outbound member still on home footprint";
                 }
+            } else if( bandit_live_world::scout_sortie_should_return_home( site, current_minutes,
+                       scout_sortie_limit_minutes ) && live_bandit_route_member_home( *member_npc, site ) ) {
+                observation.state = bandit_live_world::active_member_observation_state::returning_home;
+                observation.summary = "scout sortie limit reached; returning home";
+                DebugLog( D_INFO, DC_ALL )
+                        << "bandit_live_world scout_sortie: linger limit reached -> return_home"
+                        << " site=" << site.site_id
+                        << " active_group=" << site.active_group_id
+                        << " member=" << member_id.get_value()
+                        << " elapsed_minutes=" << ( current_minutes -
+                                ( site.active_sortie_local_contact_minutes >= 0 ?
+                                  site.active_sortie_local_contact_minutes :
+                                  site.active_sortie_started_minutes ) )
+                        << " limit_minutes=" << scout_sortie_limit_minutes << '\n';
             } else if( rl_dist( member_npc->pos_abs_omt(), u.pos_abs_omt() ) <= 1 &&
                        ( member_npc->is_active() || !member_npc->is_travelling() ) ) {
                 observation.state = bandit_live_world::active_member_observation_state::local_contact;
@@ -736,20 +762,6 @@ bool note_live_bandit_aftermath()
                 if( live_bandit_member_routing_home( *member_npc, site ) ) {
                     observation.state = bandit_live_world::active_member_observation_state::returning_home;
                     observation.summary = "scout returning home after sortie limit";
-                } else if( bandit_live_world::scout_sortie_should_return_home( site, current_minutes,
-                           scout_sortie_limit_minutes ) && live_bandit_route_member_home( *member_npc, site ) ) {
-                    observation.state = bandit_live_world::active_member_observation_state::returning_home;
-                    observation.summary = "scout sortie limit reached; returning home";
-                    DebugLog( D_INFO, DC_ALL )
-                            << "bandit_live_world scout_sortie: linger limit reached -> return_home"
-                            << " site=" << site.site_id
-                            << " active_group=" << site.active_group_id
-                            << " member=" << member_id.get_value()
-                            << " elapsed_minutes=" << ( current_minutes -
-                                    ( site.active_sortie_local_contact_minutes >= 0 ?
-                                      site.active_sortie_local_contact_minutes :
-                                      site.active_sortie_started_minutes ) )
-                            << " limit_minutes=" << scout_sortie_limit_minutes << '\n';
                 }
             } else if( member->state == bandit_live_world::member_state::local_contact ) {
                 if( !member_npc->is_active() &&
