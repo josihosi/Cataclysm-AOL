@@ -32,6 +32,6 @@ For the same `TODO.md` item or phase-blocker:
 - A bounded synthetic smoke-source proof is allowed only when labeled `synthetic smoke-source/live-signal proof`.
 - Full player-fire proof still means normal game mechanics: brazier, wood/fuel, lighter/ignition, visible fire/smoke, safe player/survival state, several-hour wait, and matched-site bandit signal evidence.
 - Clean threshold-surviving light proof for the synthetic loaded-map `fd_fire` source path is covered by `.userdata/dev-harness/harness_runs/20260427_114034/`; do not mistake it for full player-lit-fire proof.
-- Smart Zone clean-save live proof is greenlit if still needed, but do not rerun the old McWilliams/bandit-contaminated macro as closure proof.
+- Smart Zone Manager layout is reopened by Josef's 2026-04-27 live test: generated zones still lump onto one tile / overlap incorrectly. Fix the planner so intended-separate zones stay visibly separate and only explicitly allowed overlaps remain; add deterministic geometry/separation assertions plus clean live/UI proof where possible. Do not rerun the old McWilliams/bandit-contaminated macro as closure proof.
 
 Keep the handoff to Schani concise: active item, what changed, evidence, remaining blocker, and recommended Schani action.

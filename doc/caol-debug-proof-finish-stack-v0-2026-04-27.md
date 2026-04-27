@@ -40,13 +40,16 @@ Use `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md` as the d
 - Clean threshold-surviving light proof is now satisfied for the synthetic loaded-map `fd_fire` source path by run `.userdata/dev-harness/harness_runs/20260427_114034/`: current-runtime probe at commit `daa2f1694c`, night fire source, `light_packets=1`, horde light signal power, and `matched_light_sites=1` / `refreshed_sites=1` while inside the 40 OMT scan envelope. This is **not** full player-lit-fire proof.
 - Full player-fire product proof is now moved to Josef's playtest package as implemented-but-unproven after the allowed changed retries. Post-Frau attempt 3 used exact-id fixture items (`brazier`, `2x4`, charged `lighter`) and the normal deploy/drop/wielded-lighter route as far as the harness could drive it, then stopped at the midpoint gate: run `.userdata/dev-harness/harness_runs/20260427_124445/`, `tile_fire_audit.east.json` still missing target-tile `fd_fire`; saved-player inspection showed the GUI route had not actually moved/activated those items. Deterministic non-GUI primitive `fire_start_activity_exact_brazier_wood_lighter_creates_fd_fire` proves the current-build fire-start activity creates target-tile `fd_fire` from exact `f_brazier` + `2x4` + charged `lighter`, but only as activity-seam proof. Final activity-bridge experiment `.userdata/dev-harness/harness_runs/20260427_134253/` serialized `ACT_START_FIRE` near a seeded `bandit_camp`; the live log produced smoke/fire/light signal lines, but saved-world audit still showed no target-tile `fd_fire`/`fd_smoke` and the activity remained pending, so it is not player-fire closure. The manual close recipe, paired no-signal/control, range/candidate split, signal decay, and hold/chill expectations are listed under `runtime/josef-playtest-package.md` for `bandit-live-signal-real-fire-product-proof`.
 
-### 2. Smart Zone clean-save live proof, if still unproven
+### 2. Smart Zone Manager live layout separation correction
 
-The deterministic Smart Zone proof is closed, but the clean live GUI proof was previously blocked by harness startup/readiness detection rather than product behavior.
+Josef reopened Smart Zone Manager on 2026-04-27 after live testing: generated zones are still lumping onto a single tile / overlapping incorrectly. The deterministic zone-id/type/option and serialize/reload proof is useful but no longer closes the player-visible layout.
 
 Greenlit path:
 
-- If a small harness readiness fix can make the disposable Play Now profile reach explicit save/gameplay readiness, do it and run the clean Smart Zone live proof.
+- Fix the planner so intended-separate generated zones stay visibly separate and only explicitly allowed overlaps remain.
+- Use the v1 aux-plan separation expectations as the product contract: fire-source `SOURCE_FIREWOOD` on the fire tile, adjacent `splintered`, nearby-but-distinct wood, readable crafting/food-equipment niches, clothing/dirty support, rotten outside Basecamp, and a larger unsorted intake area where applicable.
+- Add deterministic tests for zone geometry/separation and the intended-overlap allowlist, not only zone ids/options.
+- If a small harness readiness fix can make the disposable Play Now profile reach explicit save/gameplay readiness, do it and run clean Smart Zone live/UI proof.
 - Do not rerun the old McWilliams/bandit-contaminated macro as closure proof.
 - If the clean live proof still cannot be made honest inside the 4-attempt budget, write a Josef playtest package with the manual recipe and exact expected close condition, then move on.
 
@@ -54,7 +57,7 @@ Greenlit path:
 
 Use `runtime/c-aol-debug-intake-2026-04-26.md`, `SUCCESS.md`, and `TESTING.md` to verify no current debug note is still hiding behind old parked/review wording.
 
-Known closed notes should stay closed: Basecamp medical consumable readiness, Smart Zone deterministic save/reload, bandit horde visible-light bridge implementation, local sight-avoid / scout return proof, locker armor blocker clearing. Reopen only a real unproven product/debug gap, not the whole historical packet museum.
+Known closed notes should stay closed: Basecamp medical consumable readiness, bandit horde visible-light bridge implementation, local sight-avoid / scout return proof, locker armor blocker clearing. Smart Zone deterministic save/reload remains a useful proof seam, but Smart Zone layout is reopened because Josef supplied fresh live evidence. Reopen only a real unproven product/debug gap, not the whole historical packet museum.
 
 ## Non-goals
 
@@ -68,5 +71,5 @@ Known closed notes should stay closed: Basecamp medical consumable readiness, Sm
 - [x] The active Basecamp job-spam debounce lane is closed/checkpointed honestly before this stack became active.
 - [x] The bandit live signal/site-bootstrap stack has either live/source-hook proof for the remaining smoke/fire/light product claims or a precise Josef playtest package for the exact unproven implemented behavior.
 - [x] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
-- [ ] The Smart Zone clean-save live proof is either honestly run on a clean disposable profile or converted into a precise Josef playtest package without reopening the contaminated McWilliams macro.
+- [ ] The Smart Zone live layout separation correction is implemented and proven: deterministic geometry/separation assertions plus clean live/UI proof where possible, or a precise Josef playtest package without rerunning the contaminated McWilliams macro.
 - [x] `Plan.md`, `TODO.md`, `TESTING.md`, and `SUCCESS.md` stop calling current debug notes parked/review-only when Josef has explicitly greenlit another finish pass.

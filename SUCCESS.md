@@ -156,7 +156,7 @@ Compact reference:
 
 ## Smart Zone Manager v1 Josef playtest corrections
 
-Status: CLOSED / MOVED DOWNSTREAM
+Status: REOPENED / ACTIVE FOLLOW-UP
 
 Success state:
 - [x] Smart Zone Manager adds `LOOT_MANUALS` coverage on/near the Basecamp books cluster without removing ordinary `LOOT_BOOKS` coverage.
@@ -164,6 +164,10 @@ Success state:
 - [x] Auto-eat and auto-drink coverage spans the full Basecamp storage zone, with `ignore_contents` explicitly false so Basecamp sorting still sees the covered items.
 - [x] Deterministic tests assert the actual zone ids/types and the `ignore_contents == false` option, not just label text.
 - [x] Save inspection confirms generated zones remain saved/reopenable and do not crash or corrupt the camp layout through zone-manager serialize/deserialize proof.
+- [ ] Live/player-visible layout no longer lumps intended-separate generated zones onto a single tile.
+- [ ] Deterministic tests assert zone geometry/separation and the intended-overlap allowlist, not only zone ids/options.
+- [ ] The implementation respects the smart-zone aux-plan separation rules: fire-source / `splintered` / wood placement, readable crafting/food-equipment niches, clothing/dirty support, outside rotten placement, and a larger unsorted intake area where applicable.
+- [ ] Clean live/UI proof or a precise Josef playtest package demonstrates the corrected layout without rerunning the contaminated old McWilliams/bandit macro.
 
 
 Compact reference:

@@ -56,6 +56,14 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 `C-AOL debug-proof finish stack v0` is active for another honest proof pass.
 
+Current unblocked target: **Smart Zone Manager live layout separation correction**. Josef live-tested the current Smart Zone Manager on 2026-04-27 and reports generated zones still lumping onto one tile / overlapping incorrectly. The previous deterministic zone-id/type/option and serialize/reload proof is now evidence for specific ids/options only; it does not close the player-visible layout.
+
+Required evidence for the reopened Smart Zone target:
+- deterministic assertions for zone geometry/separation, not only zone ids/options;
+- explicit allowlist of intended overlaps versus zones that must be visibly separate;
+- checks for known separation expectations from `doc/smart-zone-manager-v1-aux-plan-2026-04-06.md`, including the fire-source / `splintered` / wood layout, the larger unsorted intake area, clothing/dirty support, and outside rotten placement where applicable;
+- clean live/UI proof or a precise Josef playtest package if the harness still cannot honestly prove the live layout.
+
 Retained evidence classification for `Bandit live signal + site bootstrap correction v0`:
 - raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
 - synthetic smoke proof proves only synthetic smoke-source/live-signal behavior and must be labeled as such
@@ -69,7 +77,7 @@ Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
 - `Basecamp job spam debounce + locker/patrol exceptions packet v0`: stable-cause debounce for repeated completion/missing-tool/no-progress camp chatter; typed `[camp][locker]` / `[camp][patrol]` reports preserve first and changed states while compressing repeats; deterministic message tests, focused `[camp][patrol]` / `[camp][locker]`, and touched-object compile passed.
 - `Bandit live-wiring audit + visible-light horde bridge correction v0`: loaded-map visible fire/light -> horde signal bridge proof; not player-lit fire proof.
 - `Bandit local sight-avoid + scout return cadence packet v0`: deterministic proof plus live/harness sight-avoid, return-home, and writeback proof; no later redispatch tuning claimed.
-- `Smart Zone Manager v1 Josef playtest corrections`: deterministic zone-id/type/option and save/reload proof.
+- `Smart Zone Manager v1 Josef playtest corrections`: REOPENED 2026-04-27 for live layout lumping / incorrect overlap. Prior deterministic zone-id/type/option and save/reload proof remains useful but no longer closes the layout.
 - `Basecamp medical consumable readiness v0`: deterministic camp/locker proof for bounded bandage-family readiness and cap behavior.
 - `Basecamp locker armor ranking + blocker removal packet v0`: deterministic camp/locker proof for generic full-body/protective ranking, blocker clearing, damaged-candidate rejection without repeated requeue/equip churn, ballistic armor preservation, and `[camp][locker]` regression coverage.
 
@@ -77,7 +85,7 @@ Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
 
 ## Pending probes
 
-No active live GUI probe is required for the closed job-spam debounce lane. For the active debug-proof finish stack, use live/harness/product-path proof where the contract asks for product behavior; deterministic-only evidence is not enough for product claims. The current unblocked target is Smart Zone clean-save live proof, not another bandit player-fire loop.
+No active live GUI probe is required for the closed job-spam debounce lane. For the active debug-proof finish stack, use live/harness/product-path proof where the contract asks for product behavior; deterministic-only evidence is not enough for product claims. The current unblocked target is Smart Zone Manager live layout separation correction, not another bandit player-fire loop.
 
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters

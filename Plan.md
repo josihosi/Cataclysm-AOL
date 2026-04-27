@@ -73,7 +73,7 @@ Canonical contract lives at `doc/basecamp-job-spam-debounce-exceptions-packet-v0
 Josef explicitly reopened the current C-AOL debug-proof notes on 2026-04-27. Do not leave them in parked/review-only posture just because a proof run is annoying.
 
 - Bandit live signal/site-bootstrap product-proof work reached its honest agent-side boundary: synthetic loaded-map fire/light reaches the running live path and the real player-lit fire bridge is listed in Josef's playtest package as implemented-but-unproven; do not loop on it again without a fresh reopen/material blocker change.
-- Current next target: Smart Zone clean-save live proof. Fix the small clean-profile/startup readiness seam or write a precise Josef playtest package; do not rerun the contaminated old McWilliams macro as closure proof.
+- Current next target: Smart Zone Manager live layout separation correction. Josef live-tested the current build on 2026-04-27 and reports generated zones still lumping on a single tile / overlapping incorrectly; reopen the Smart Zone Manager v1 layout work as an active debug-stack target instead of treating the deterministic save/reload proof as closure. Fix the planner so intended separate zones stay visibly separate and only explicitly allowed overlaps remain, then prove it with deterministic zone-geometry assertions plus clean live/UI proof where possible. Do not rerun the contaminated old McWilliams macro as closure proof.
 - Attempt rule for the same item/blocker: attempts 1-2 solo, consult Frau Knackal before attempt 3, attempts 3-4 changed retries after consultation, then move implemented-but-unproven work to Josef's playtest package and continue the next greenlit debug note.
 - **GitHub normal-download release packet v0** remains held behind this debug-proof finish stack.
 
@@ -88,7 +88,7 @@ Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`
 Do not reopen these by drift:
 - **Bandit live-wiring audit + visible-light horde bridge correction v0** — loaded-map visible fire/light -> horde signal bridge proof, not player-lit fire proof.
 - **Bandit local sight-avoid + scout return cadence packet v0** — deterministic proof plus bounded live/harness sight-avoid, return-home, and writeback proof; no later redispatch tuning is claimed.
-- **Smart Zone Manager v1 Josef playtest corrections** — deterministic zone layout and save/reload proof.
+- **Smart Zone Manager v1 Josef playtest corrections** — REOPENED 2026-04-27 because Josef observed live generated zones lumping onto one tile / overlapping incorrectly; deterministic zone-id/save proof is no longer sufficient closure.
 - **Basecamp medical consumable readiness v0** — deterministic camp/locker proof for bounded bandage-family readiness, including carried-stock cap behavior.
 - **Basecamp locker armor ranking + blocker removal packet v0** — generic protective/full-body armor comparison and blocker clearing proof; no RM13 special case.
 
