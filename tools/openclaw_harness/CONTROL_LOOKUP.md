@@ -47,7 +47,7 @@ Source-backed facts:
 - `deploy_furn_actor` calls `choose_adjacent( "Deploy where?" )` when deploying at the player position.
 - `choose_adjacent` uses `choose_direction`, which registers `RIGHT`; default keybindings include right arrow and `l` for `RIGHT`. So `right` is valid only after the harness has really entered the `Deploy where?` direction prompt.
 
-Current blocker label: `blocked_untrusted_brazier_deploy_selector`. Run `.userdata/dev-harness/harness_runs/20260427_200100/` proves the fixture inventory exists (`brazier=1`, `2x4=20`, `lighter=1`) but the saved east tile remains empty/missing `f_brazier`; do not try more blind key variants. Next acceptable proof needs menu-entry/hotkey metadata for the inventory selector/deploy prompt before one source-backed live confirmation.
+Current blocker label: `blocked_untrusted_brazier_deploy_selector`. Run `.userdata/dev-harness/harness_runs/20260427_200100/` proves the fixture inventory exists (`brazier=1`, `2x4=20`, `lighter=1`) but the saved east tile remains empty/missing `f_brazier`; run `.userdata/dev-harness/harness_runs/20260427_200919/` adds checked GUI-as-text guards and blocks at the first `Use item` menu proof. Do not try more blind key variants. Next acceptable proof needs stronger menu-entry/hotkey/GUI-text metadata for the inventory selector/deploy prompt before another live confirmation.
 
 ### Debug-menu caution for Package 2
 - The shorthand `}`, `p`, `p`, `b`, `A` is **not** the current camp-state seam on the McWilliams fixture.

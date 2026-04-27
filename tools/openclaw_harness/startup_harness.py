@@ -2253,6 +2253,27 @@ def evaluate_screen_text_expectation(
     }
 
 
+def apply_screen_text_expectation_abort_guard(
+    report: Dict[str, Any],
+    step: Dict[str, Any],
+    text_expectation: Dict[str, Any],
+) -> bool:
+    if not bool(step.get("abort_on_screen_text_expectation_failure", False)):
+        return False
+    if str(text_expectation.get("status", "")).strip() != "missing":
+        return False
+    report["abort"] = {
+        "status": "aborted_by_screen_text_expectation_guard",
+        "verdict": str(step.get("abort_verdict", "red_step_expected_screen_text_missing")),
+        "reason": str(step.get("abort_reason", "required screen text was missing")),
+        "patterns": text_expectation.get("patterns", []),
+        "missing": text_expectation.get("missing", []),
+        "matches": text_expectation.get("matches", []),
+        "source": str(text_expectation.get("source", "")),
+    }
+    return True
+
+
 def screen_summary_path(screen_summary: Dict[str, Any]) -> str:
     return str(screen_summary.get("png_path", "") or screen_summary.get("path", ""))
 
@@ -4311,6 +4332,13 @@ def execute_probe_steps(
                         screen_text_report,
                         expected_screen_text_patterns,
                     )
+                    if apply_screen_text_expectation_abort_guard(
+                        report,
+                        step,
+                        report["screen_text_expectation"],
+                    ):
+                        reports.append(report)
+                        return reports
                 if apply_screen_text_abort_guard(report, step, screen_text_report):
                     reports.append(report)
                     return reports
@@ -4344,6 +4372,13 @@ def execute_probe_steps(
                         screen_text_report,
                         expected_screen_text_patterns,
                     )
+                    if apply_screen_text_expectation_abort_guard(
+                        report,
+                        step,
+                        report["screen_after_text_expectation"],
+                    ):
+                        reports.append(report)
+                        return reports
                 if apply_screen_text_abort_guard(report, step, screen_text_report):
                     reports.append(report)
                     return reports

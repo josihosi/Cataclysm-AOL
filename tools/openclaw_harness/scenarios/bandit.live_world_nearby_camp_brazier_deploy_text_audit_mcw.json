@@ -1,0 +1,120 @@
+{
+  "name": "bandit.live_world_nearby_camp_brazier_deploy_text_audit_mcw",
+  "description": "Focused normal player-action brazier deployment primitive audit. Uses saved-player exact inventory preflight, checked GUI-as-text/OCR guards for the Apply inventory and Deploy where? prompt, then requires saved east-tile f_brazier before any fuel/lighter/fire proof can continue.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [ "bandit_live_world signal scan:" ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "exact_items_load_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "The exact-items McWilliams fixture is loaded on the map before the focused deploy primitive audit."
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_saved_inventory_has_brazier_before_apply",
+      "required_items": [ "brazier" ],
+      "expected_visible_fact": "saved player inventory contains the exact brazier item before the Apply inventory is opened",
+      "preconditions": "fixture install completed for bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
+      "next_step_gate": "do not credit any Apply/deploy UI step if the exact brazier item is missing from saved-player inventory",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "exact brazier fixture item missing before player-action deploy primitive audit"
+    },
+    {
+      "kind": "press",
+      "label": "open_apply_inventory_for_brazier_text_guard",
+      "keys": [ "a" ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [ "Use item" ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "Apply inventory text guard did not see the source-backed Use item menu",
+      "expected_visible_fact": "The source-backed Apply key opens the Use item inventory before selecting the brazier."
+    },
+    {
+      "kind": "press",
+      "label": "filter_apply_inventory_for_brazier_text_guard",
+      "keys": [ "/" ],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [ "Filter" ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "Apply inventory filter text guard did not see the filter prompt",
+      "expected_visible_fact": "The Use item inventory filter prompt is active before typing brazier."
+    },
+    {
+      "kind": "type",
+      "label": "type_brazier_filter_for_apply_text_guard",
+      "text": "brazier",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [ "brazier" ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "Apply inventory filter text guard did not see brazier after filtering",
+      "expected_visible_fact": "The Apply inventory is filtered to a brazier entry before confirmation."
+    },
+    {
+      "kind": "press",
+      "label": "select_filtered_brazier_expect_deploy_prompt",
+      "keys": [ "enter" ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [ "Deploy where" ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "Selecting the filtered Apply inventory row did not enter the source-backed Deploy where? prompt",
+      "expected_visible_fact": "Confirming the filtered brazier entry enters the Deploy where? direction prompt."
+    },
+    {
+      "kind": "press",
+      "label": "place_prompted_brazier_east",
+      "keys": [ "right" ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_visible_fact": "The source-backed Deploy where? prompt accepts right/east and returns to the map."
+    },
+    {
+      "kind": "press",
+      "label": "save_after_text_guarded_brazier_deploy",
+      "keys": [ "S" ],
+      "delay_ms": 250,
+      "settle_seconds": 3.0,
+      "capture_after": true,
+      "expected_visible_fact": "The game returns to the map after saving the text-guarded brazier deploy checkpoint."
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_target_tile_for_brazier",
+      "offsets": [ [ 1, 0, 0 ] ],
+      "required_furniture": [ "f_brazier" ],
+      "expected_visible_fact": "saved target tile east of player contains f_brazier furniture metadata after the text-guarded Apply/deploy step",
+      "preconditions": "save_after_text_guarded_brazier_deploy wrote a same-run save immediately after normal item activation placement.",
+      "next_step_gate": "do not run or credit fuel/lighter/fire proof unless this deploy metadata row is green",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "text-guarded normal player-action brazier deploy metadata missing before fuel/lighter/fire steps"
+    }
+  ]
+}
