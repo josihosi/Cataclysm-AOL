@@ -2379,6 +2379,75 @@ const zone_data *find_single_zone( const zone_type_id &type, const std::string &
     return found;
 }
 
+std::string smart_zone_filter( const zone_data &zone )
+{
+    if( const auto *loot = dynamic_cast<const loot_options *>( &zone.get_options() ) ) {
+        return loot->get_mark();
+    }
+    return {};
+}
+
+std::string smart_zone_debug_name( const zone_data &zone )
+{
+    return zone.get_type().str() + "|" + smart_zone_filter( zone ) + "|" + zone.get_name();
+}
+
+bool smart_zones_overlap( const zone_data &lhs, const zone_data &rhs )
+{
+    return lhs.get_start_point().z() == rhs.get_start_point().z() &&
+           lhs.get_start_point().x() <= rhs.get_end_point().x() &&
+           lhs.get_end_point().x() >= rhs.get_start_point().x() &&
+           lhs.get_start_point().y() <= rhs.get_end_point().y() &&
+           lhs.get_end_point().y() >= rhs.get_start_point().y();
+}
+
+bool smart_zone_overlap_is_allowed( const zone_data &lhs, const zone_data &rhs )
+{
+    const zone_type_id lhs_type = lhs.get_type();
+    const zone_type_id rhs_type = rhs.get_type();
+    if( lhs_type == zone_type_AUTO_EAT || lhs_type == zone_type_AUTO_DRINK ||
+        rhs_type == zone_type_AUTO_EAT || rhs_type == zone_type_AUTO_DRINK ) {
+        return true;
+    }
+    if( ( lhs_type == zone_type_SOURCE_FIREWOOD && rhs_type == zone_type_LOOT_CUSTOM &&
+          smart_zone_filter( rhs ) == "splintered" ) ||
+        ( rhs_type == zone_type_SOURCE_FIREWOOD && lhs_type == zone_type_LOOT_CUSTOM &&
+          smart_zone_filter( lhs ) == "splintered" ) ) {
+        return true;
+    }
+    if( ( lhs_type == zone_type_LOOT_BOOKS && rhs_type == zone_type_LOOT_MANUALS ) ||
+        ( rhs_type == zone_type_LOOT_BOOKS && lhs_type == zone_type_LOOT_MANUALS ) ) {
+        return true;
+    }
+    if( ( lhs_type == zone_type_LOOT_AMMO && rhs_type == zone_type_LOOT_MAGAZINES ) ||
+        ( rhs_type == zone_type_LOOT_AMMO && lhs_type == zone_type_LOOT_MAGAZINES ) ) {
+        return true;
+    }
+    if( lhs_type == zone_type_LOOT_CUSTOM && rhs_type == zone_type_LOOT_CUSTOM ) {
+        const std::set<std::string> filters = { smart_zone_filter( lhs ), smart_zone_filter( rhs ) };
+        return filters == std::set<std::string> { "blanket", "quilt" };
+    }
+    return false;
+}
+
+void check_no_unplanned_smart_zone_overlaps()
+{
+    std::vector<const zone_data *> zones;
+    for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
+        zones.push_back( &zone_ref.get() );
+    }
+    for( size_t i = 0; i < zones.size(); ++i ) {
+        for( size_t j = i + 1; j < zones.size(); ++j ) {
+            if( !smart_zones_overlap( *zones[i], *zones[j] ) ) {
+                continue;
+            }
+            CAPTURE( smart_zone_debug_name( *zones[i] ) );
+            CAPTURE( smart_zone_debug_name( *zones[j] ) );
+            CHECK( smart_zone_overlap_is_allowed( *zones[i], *zones[j] ) );
+        }
+    }
+}
+
 std::vector<std::string> snapshot_zone_layout()
 {
     std::vector<std::string> snapshot;
@@ -2444,6 +2513,38 @@ TEST_CASE( "basecamp_smart_zoning_places_expected_layout", "[zones][smart_zone][
     CHECK( find_single_zone( zone_type_LOOT_CHEMICAL ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_DRUGS ) != nullptr );
 
+    const zone_data *splintered = find_single_zone( zone_type_LOOT_CUSTOM, "splintered" );
+    REQUIRE( splintered != nullptr );
+    const std::vector<const zone_data *> crafting_supports = {
+        find_single_zone( zone_type_LOOT_WOOD ),
+        find_single_zone( zone_type_LOOT_TOOLS ),
+        find_single_zone( zone_type_LOOT_SPARE_PARTS ),
+        find_single_zone( zone_type_LOOT_BOOKS ),
+        find_single_zone( zone_type_LOOT_CONTAINERS ),
+        find_single_zone( zone_type_LOOT_CHEMICAL ),
+        find_single_zone( zone_type_LOOT_DRUGS )
+    };
+    for( const zone_data *zone : crafting_supports ) {
+        REQUIRE( zone != nullptr );
+        CAPTURE( smart_zone_debug_name( *zone ) );
+        CHECK( zone->get_start_point() == zone->get_end_point() );
+        CHECK( zone->get_center_point() != fixture.fire_anchor );
+        CHECK( zone->get_center_point() != splintered->get_center_point() );
+    }
+    for( size_t i = 0; i < crafting_supports.size(); ++i ) {
+        for( size_t j = i + 1; j < crafting_supports.size(); ++j ) {
+            CAPTURE( smart_zone_debug_name( *crafting_supports[i] ) );
+            CAPTURE( smart_zone_debug_name( *crafting_supports[j] ) );
+            CHECK( crafting_supports[i]->get_center_point() != crafting_supports[j]->get_center_point() );
+        }
+    }
+    const auto fire_dist = [&]( const tripoint_abs_ms &point ) {
+        return std::abs( point.x() - fixture.fire_anchor.x() ) +
+               std::abs( point.y() - fixture.fire_anchor.y() );
+    };
+    CHECK( fire_dist( find_single_zone( zone_type_LOOT_CHEMICAL )->get_center_point() ) >= 2 );
+    CHECK( fire_dist( find_single_zone( zone_type_LOOT_DRUGS )->get_center_point() ) >= 2 );
+
     const zone_data *weapon_magazines = nullptr;
     for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
         const zone_data &zone = zone_ref.get();
@@ -2473,6 +2574,8 @@ TEST_CASE( "basecamp_smart_zoning_places_expected_layout", "[zones][smart_zone][
     const zone_data *unsorted = find_single_zone( zone_type_LOOT_UNSORTED );
     REQUIRE( unsorted != nullptr );
     CHECK( unsorted->get_start_point() != unsorted->get_end_point() );
+
+    check_no_unplanned_smart_zone_overlaps();
 
     std::ostringstream serialized_zones;
     JsonOut jsout( serialized_zones );
