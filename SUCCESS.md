@@ -161,25 +161,25 @@ Notes:
 
 ## Basecamp medical consumable readiness v0
 
-Status: ACTIVE / GREENLIT NOW
+Status: CLOSED / CHECKPOINTED
 
 Success state:
-- [ ] Camp locker/service logic recognizes at least `bandages` and `adhesive_bandages` as bounded medical readiness supplies when stocking NPCs.
-- [ ] NPCs can pick up a small reserve from the relevant Basecamp/locker storage path without hoarding all medical items.
-- [ ] Existing carried bandages and adhesive bandages are preserved through locker refresh instead of being discarded as clutter.
-- [ ] Non-medical loadout behavior, ammo/magazine readiness, and clothing/armor selection remain unchanged.
-- [ ] Deterministic tests cover fresh pickup, carried-item preservation, cap/anti-hoarding behavior, and a negative case for unrelated drugs/items.
-- [ ] If a live/harness proof is practical, one Basecamp/locker probe shows an NPC can acquire the intended medical consumable from camp storage; otherwise the packet states plainly why deterministic proof is sufficient for the first slice.
+- [x] Camp locker/service logic recognizes the practical bandage family, including at least `bandages`, `adhesive_bandages`, and medical gauze / obvious bandage-like wound-care stock when item definitions expose it cleanly, as bounded medical readiness supplies when stocking NPCs.
+- [x] NPCs can pick up roughly 10 pieces/charges of bandage-family stock from the relevant Basecamp/locker storage path without hoarding all medical items.
+- [x] Existing carried bandage-family stock is preserved through locker refresh and counts toward the reserve cap instead of being discarded as clutter.
+- [x] Non-medical loadout behavior, ammo/magazine readiness, and clothing/armor selection remain unchanged.
+- [x] Deterministic tests cover fresh pickup, carried-item preservation, cap/anti-hoarding behavior, and a negative case for unrelated drugs/items.
+- [x] Live/harness proof is not required for this first slice; deterministic camp/locker tests exercise the actual service path and the focused `[camp][locker]` regression pass covers readiness behavior.
 
 Notes:
 - Canonical contract lives at `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`.
-- This is parked separately from the bandit live-signal correction.
+- Evidence: `git diff --check`; `make -j4 obj/basecamp.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0`; focused medical locker tests; `./tests/cata_test "[camp][locker]"` -> 2009 assertions in 67 test cases.
 
 ---
 
 ## Basecamp locker armor ranking + blocker removal packet v0
 
-Status: GREENLIT / QUEUED FOLLOW-UP
+Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [ ] A generic helper scores candidate protective/full-body gear against currently worn blockers using body-part priority, protection/coverage, encumbrance, condition, and active locker policy.

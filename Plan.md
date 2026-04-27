@@ -39,17 +39,18 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active lane is now **Basecamp medical consumable readiness v0**. Josef greenlit the C-AOL debug-note correction stack on 2026-04-26 and explicitly told Schani to point Andi back at C-AOL, reason deeply, remove hollow code, and map tests to real game implementation before more implementation lands. The first correction packet, `Bandit live signal + site bootstrap correction v0`, remains Josef-review/parked rather than kept in the smoke/fire proof loop; the second correction packet, `Bandit live-wiring audit + visible-light horde bridge correction v0`, closes with a bounded live/harness light-to-horde bridge proof and caveats; `Bandit local sight-avoid + scout return cadence packet v0` closes with deterministic proof plus bounded live/harness reposition and scout-return/writeback proof; and `Smart Zone Manager v1 Josef playtest corrections` closes with deterministic zone layout/save-reload proof.
+The active lane is now **Basecamp locker armor ranking + blocker removal packet v0**. Josef greenlit the C-AOL debug-note correction stack on 2026-04-26 and explicitly told Schani to point Andi back at C-AOL, reason deeply, remove hollow code, and map tests to real game implementation before more implementation lands. The first correction packet, `Bandit live signal + site bootstrap correction v0`, remains Josef-review/parked rather than kept in the smoke/fire proof loop; the second correction packet, `Bandit live-wiring audit + visible-light horde bridge correction v0`, closes with a bounded live/harness light-to-horde bridge proof and caveats; `Bandit local sight-avoid + scout return cadence packet v0` closes with deterministic proof plus bounded live/harness reposition and scout-return/writeback proof; and `Smart Zone Manager v1 Josef playtest corrections` closes with deterministic zone layout/save-reload proof.
 
 Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority. The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this debug-correction stack without fresh explicit clearance.
 
 Active scope:
-- implement `Basecamp medical consumable readiness v0` from `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`
-- make camp locker/service logic recognize at least `bandages` and `adhesive_bandages` as bounded medical readiness supplies
-- let NPCs stock a small reserve from Basecamp locker/storage without turning locker service into a pharmacy hoover
-- preserve already-carried bandages/adhesive bandages through locker refresh
-- prove fresh pickup, carried preservation, anti-hoarding/cap behavior, negative unrelated-item behavior, and no ammo/mag/readiness regression with deterministic tests first
-- do not re-enter the parked smoke/fire site-refresh playtest loop, reopen the just-closed bandit local sight-avoid packet, or reopen Smart Zone Manager layout work unless Josef explicitly reopens them
+- implement `Basecamp locker armor ranking + blocker removal packet v0` from `doc/basecamp-locker-armor-ranking-blocker-removal-packet-v0-2026-04-26.md`
+- add a generic, reviewer-readable protective/full-body armor comparison helper; do not special-case `RM13 combat armor`
+- when a candidate is clearly superior for active locker policy, remove/drop only the blocking worn items needed to equip it
+- when a candidate is worse, too damaged, too encumbering, or otherwise not clearly superior, avoid repeated failed swap/wear spam
+- preserve stronger current ballistic/full-body armor against worse candidates
+- prove generic positive/negative blocker behavior, original-symptom coverage, and no locker readiness regression with deterministic tests first
+- do not re-enter the parked smoke/fire site-refresh playtest loop, reopen the just-closed bandit local sight-avoid packet, reopen Smart Zone Manager layout work, or extend the just-closed medical-readiness slice unless Josef explicitly reopens them
 
 Non-goals:
 - no implementation of every greenlit package inside this correction packet
@@ -62,8 +63,8 @@ Greenlit implementation stack, in current order:
 2. **Bandit live-wiring audit + visible-light horde bridge correction v0** — CLOSED / MOVED DOWNSTREAM; bounded source bridge implemented, deterministically tested, and live/harness-proved with copied-save visible `fd_fire` -> `bandit_live_world horde light signal:` evidence; not player-lit fire product proof.
 3. **Bandit local sight-avoid + scout return cadence packet v0** — CLOSED / MOVED DOWNSTREAM; exposed scouts seek cover/break sight, finite sortie window, return-home/writeback cadence, with bounded live/harness proof.
 4. **Smart Zone Manager v1 Josef playtest corrections** — CLOSED / MOVED DOWNSTREAM; `LOOT_MANUALS`, preserved `LOOT_BOOKS`, clearer weapon-magazine `LOOT_MAGAZINES`, full-storage `AUTO_EAT` / `AUTO_DRINK`, and save/reload `ignore_contents=false` proof are landed.
-5. **Basecamp medical consumable readiness v0** — ACTIVE; bounded `bandages` / `adhesive_bandages` pickup/preservation from camp storage.
-6. **Basecamp locker armor ranking + blocker removal packet v0** — generic full-body/protective armor comparison and blocker clearing, not RM13-specific.
+5. **Basecamp medical consumable readiness v0** — CLOSED / MOVED DOWNSTREAM; bounded bandage-family pickup/preservation from camp storage, including medical gauze and makeshift variants where item definitions make them cleanly testable, capped at roughly 10 pieces per NPC with carried stock counted toward the cap.
+6. **Basecamp locker armor ranking + blocker removal packet v0** — ACTIVE; generic full-body/protective armor comparison and blocker clearing, not RM13-specific.
 7. **Basecamp job spam debounce + locker/patrol exceptions packet v0** — compress repeated camp-job chatter while preserving typed locker/patrol state changes.
 
 Held but still valid:
@@ -137,17 +138,17 @@ Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a d
 
 Current checkpoint: deterministic implementation, bounded live return-home decision proof, live walked-home/writeback follow-through, and live sight-avoid reposition proof are landed. Run `.userdata/dev-harness/harness_runs/20260427_051117/` uses equivalent nearby-owned-site local-contact footing plus a narrow pre-aged scout-sortie clock transform to prove `scout_sortie: linger limit reached -> return_home` and `returning_home -> local_gate skipped`. Follow-through run `.userdata/dev-harness/harness_runs/20260427_054353/` advances the same footing through a bounded 2600-turn return window and proves `scout_report: returned -> pressure refreshed`; copied save inspection shows the active group/target/member ids and sortie clocks cleared, `remembered_pressure=ample`, and scout member `4` back on the home footprint. Sight-avoid run `.userdata/dev-harness/harness_runs/20260427_061344/` uses stable scenario `bandit.local_sight_avoid_exposed_mcw` on equivalent nearby-owned-site local-contact footing with the player moved to an exposed south-of-shelter sightline, disables safe mode, advances 20 turns, and records `bandit_live_world sight_avoid: exposed -> repositioned npc=4 from=(60,23,0) to=(59,22,0) reason=repositioning because exposed`. This closes the local sight-avoid/scout-return packet without claiming later redispatch tuning beyond the existing explicit camp re-evaluation path.
 
-## Active correction - Basecamp medical consumable readiness v0
+## Recently closed lane - Basecamp medical consumable readiness v0
 
-**Status:** ACTIVE / GREENLIT NOW
+**Status:** CLOSED / CHECKPOINTED
 
 Canonical contract: `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`.
 
-Josef's locker/bandage report is a separate Basecamp readiness node, not part of the bandit signal chain. Current locker service keeps or equips loadout-style items and preserves some already-carried bandages, but it does not fetch fresh `bandages` / `adhesive_bandages` from `CAMP_LOCKER` as medical readiness stock. Queue this as one bounded medical-consumable slice: recognize obvious first-aid consumables, let NPCs take a small sensible reserve, preserve existing carried medical supplies, and prove the behavior without turning the camp locker into a full pharmacy/autodoc system.
+Josef's locker/bandage report is a separate Basecamp readiness node, not part of the bandit signal chain. Current locker service keeps or equips loadout-style items and preserves some already-carried bandages, but it does not fetch fresh `bandages` / `adhesive_bandages` from `CAMP_LOCKER` as medical readiness stock. Josef later clarified that the target is the practical bandage family, including medical gauze and other obvious bandage-like wound-care stock when the item definitions make them cleanly testable, with roughly 10 pieces/charges per NPC. This closes as one bounded medical-consumable slice: locker service recognizes obvious bandage-family first-aid consumables, lets NPCs take a small sensible reserve, preserves/counts existing carried medical supplies, and avoids turning the camp locker into a full pharmacy/autodoc system. Local proof: `git diff --check`, touched-object/test build through `make -j4 obj/basecamp.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0`, focused medical tests, and `./tests/cata_test "[camp][locker]"` (2009 assertions in 67 test cases).
 
-## Greenlit follow-up - Basecamp locker armor ranking + blocker removal packet v0
+## Active lane - Basecamp locker armor ranking + blocker removal packet v0
 
-**Status:** GREENLIT / QUEUED FOLLOW-UP
+**Status:** ACTIVE / GREENLIT NOW
 
 Canonical contract: `doc/basecamp-locker-armor-ranking-blocker-removal-packet-v0-2026-04-26.md`.
 

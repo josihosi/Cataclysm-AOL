@@ -52,7 +52,7 @@ Compact result:
 - live-wired substrate: hostile-site ownership after NPC materialization, save/load, nearby-player dispatch from owned sites, local gate/shakedown/writeback, camp locker service, and Smart Zone Manager entry points
 - deterministic/playback-only layer: smoke/light/weather mark adapters, generated mark ledgers, authored playback frames, long-horizon benchmark reports, repeated-site reinforcement, human-route sightings, and most scout tuning packets
 - horde attraction is live-wired through sound; the audited source previously lacked visible fire/light-to-horde attraction. The first visible-fire/light bridge is now source-wired and live/harness-proved as loaded-map fire/light -> horde signal behavior; it must still not be inflated into player-lit brazier/wood/lighter product proof.
-- next implementation target: `Basecamp medical consumable readiness v0`; the prior smoke/fire site-refresh proof is in Josef review, not active rerun, the local sight-avoid/scout-return packet is closed with bounded live proof, and Smart Zone Manager has deterministic zone layout/save-reload proof
+- next implementation target: `Basecamp locker armor ranking + blocker removal packet v0`; the prior smoke/fire site-refresh proof is in Josef review, not active rerun, the local sight-avoid/scout-return packet is closed with bounded live proof, Smart Zone Manager has deterministic zone layout/save-reload proof, and Basecamp medical readiness has deterministic camp/locker proof
 
 ### Josef-review validation caveat - bandit live signal + site bootstrap correction
 
@@ -142,11 +142,11 @@ Non-proof shaping attempts: `.userdata/dev-harness/harness_runs/20260427_060143/
 - validation passed: `make -j4 TILES=1 tests`; `./tests/cata_test "basecamp_smart_zoning_places_expected_layout"` -> 745 assertions in 1 test case; `./tests/cata_test "[smart_zone]"` -> 2847 assertions in 4 test cases; focused `git diff --check`
 - harness caveat: prior live artifact capture was inconclusive because the captured `zoneszmgr-temp.json` contained only ordinary camp zones, not generated Smart Zone Manager output; do not claim GUI artifact proof from that path
 
-### Active validation target - Basecamp medical consumable readiness
+### Closed validation - Basecamp medical consumable readiness
 
-When `Basecamp medical consumable readiness v0` is implemented, the first bar is deterministic camp/locker proof for `bandages` and `adhesive_bandages`: fresh pickup, carried preservation, anti-hoarding cap, negative unrelated-item case, and no regression to ammo/mag/clothing readiness. Add a live/harness Basecamp probe only if implementation risk or reviewer clarity needs it.
+`Basecamp medical consumable readiness v0` closes on deterministic camp/locker proof: practical bandage-family pickup (`bandages`, `adhesive_bandages`, `medical_gauze`, `bandages_makeshift`), carried stock counted toward the roughly 10-piece reserve cap, anti-hoarding leftover locker stock, negative unrelated `aspirin`, and no regression across the broader locker readiness suite. Evidence: `git diff --check`; `make -j4 obj/basecamp.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0`; focused medical locker tests; `./tests/cata_test "[camp][locker]"` -> 2009 assertions in 67 test cases. No live/harness Basecamp proof was added because the deterministic tests exercise the actual `service_camp_locker` path and there is no remaining product-path risk for this first slice.
 
-### Greenlit validation target - Basecamp locker armor ranking + blocker removal
+### Active validation target - Basecamp locker armor ranking + blocker removal
 
 When `Basecamp locker armor ranking + blocker removal packet v0` is implemented, the proof must be generic, not RM13-specific:
 
@@ -170,7 +170,7 @@ When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implem
 
 ## Current relevant evidence
 
-Active target: `Basecamp medical consumable readiness v0`.
+Active target: `Basecamp locker armor ranking + blocker removal packet v0`.
 
 ### Test-vs-game implementation audit closeout - 2026-04-26
 
@@ -178,7 +178,7 @@ Report: `doc/test-vs-game-implementation-audit-report-2026-04-26.md`.
 
 Result: the biggest false-confidence risk is the bandit signal/playback layer. Smoke, light, weather, generated marks, human-route sightings, horde-pressure evaluator inputs, and long-horizon scout benchmarks are useful deterministic/playback proof, but they are not currently produced from live map/fire/light/weather/sight data and are not consumed by live dispatch. Live dispatch is real for owned sites near the player, and local gate/shakedown/writeback paths are real for active owned outings. Smart Zone Manager now has targeted deterministic correction proof; camp locker medical readiness is the next live-consumer lane needing bounded proof.
 
-Next validation target: `Basecamp medical consumable readiness v0`; start with deterministic camp/locker proof for fresh pickup, carried preservation, cap/anti-hoarding, negative unrelated item, and no readiness regression. The just-closed visible-light horde bridge remains evidence that loaded-map visible fire/light can reach the live horde signal path, not product proof for a player-lit fire recipe.
+Next validation target: `Basecamp locker armor ranking + blocker removal packet v0`; start with deterministic locker/combat-policy proof for a generic superior full-body/protective candidate displacing worse blockers, negative preservation of stronger current armor, damaged/encumbering loser cases, original-symptom-shaped regression, and no locker readiness regression. The just-closed visible-light horde bridge remains evidence that loaded-map visible fire/light can reach the live horde signal path, not product proof for a player-lit fire recipe.
 
 ### GitHub Actions red-state footing - 2026-04-25
 
