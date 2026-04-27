@@ -1,13 +1,13 @@
 # C-AOL harness proof-freeze matrix v0 (2026-04-28)
 
-Status: PROOF-FREEZE MATRIX DRAFT / READY FOR FRAU REVIEW.
+Status: FRAU-REVIEWED PROOF-FREEZE MATRIX / TIGHTENED PROCESS RULES.
 
 Canonical contract: `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
 Inventory checkpoint: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
 
 ## Verdict
 
-This is the compact reviewer matrix for the current harness trust-audit state. It freezes what the harness is currently allowed to claim, which artifacts make those claims reviewable, and which primitives remain red/yellow/blocked.
+This is the compact reviewer matrix for the current harness trust-audit state. It freezes what the harness is currently allowed to claim, which artifacts make those claims reviewable, and which primitives remain red/yellow/blocked. Frau Knackal reviewed the draft and found no major false-pass route, then requested the tighter locks now folded below: claim-scoped artifacts, explicit metadata-only limits, causal deferred guards, and harder anti-fixture-bias wording.
 
 It is **not** a product-feature closure packet. Load/readiness remains startup/load evidence only. Feature proof requires a clean startup gate, green step-local ledger rows, same-run/same-save state proof where relevant, and no yellow/blocked wait ledger.
 
@@ -21,24 +21,24 @@ Allowed exceptions must stay named in the scenario/report before they can suppor
 - old `dev` locker/patrol fixtures only when auditing those legacy contracts directly;
 - temporary `tmp.*` scenarios only as workbench evidence unless promoted with provenance.
 
-Every feature-proof report must preserve: source/runtime commit evidence, scenario/profile/world, fixture/profile snapshot, run directory, applied save transforms, and whether the run used the canonical anchor or a justified exception.
+Every feature-proof report must preserve: source/runtime commit evidence, scenario/profile/world, fixture/profile snapshot, run directory, applied save transforms, and whether the run used the canonical anchor or a justified exception. A transform may not create the exact state being claimed as product behavior; if it does, the run is setup/synthetic proof only. Copied saves also need post-copy preflight for live-accessible inventory/state before inherited fixture contents can support closure.
 
 ## Current proof matrix
 
 | Primitive / seam | Current verdict | Evidence / artifact | Frozen claim rule | Next honest action |
 |---|---|---|---|---|
 | Startup launch/load/focus/screenshot | green/yellow/red as startup only | `startup.step_ledger.json`; `.userdata/dev-harness/harness_runs/20260427_164639/` caught stale runtime as yellow | Startup/load can never be feature proof; stale runtime or screenshot failure blocks later feature proof | Keep as gate; no more load-only closure claims |
-| Probe report classifier | green only when startup is clean, artifacts match, step ledger is all-green, and wait ledger is not yellow/blocked | `tools/openclaw_harness/startup_harness.py` report fields `proof_classification`, `evidence_class`, `feature_proof`, `step_ledger_summary` | `ok: true` means harness machinery completed, not necessarily feature proof | Frau review for hidden classification loopholes before final freeze |
+| Probe report classifier | green only when startup is clean, claim-scoped artifacts match, step ledger is all-green, and wait ledger is not yellow/blocked | `tools/openclaw_harness/startup_harness.py` report fields `proof_classification`, `evidence_class`, `feature_proof`, `step_ledger_summary` | `ok: true` means harness machinery completed, not necessarily feature proof; a generic debug/log match cannot close an unrelated claim | Freeze tightened by Frau review |
 | Step-local proof ledger | partially frozen / active | `<mode>.step_ledger.json`; deploy run `20260427_222635` all-green; fuel run `20260427_232220` red | Every live/GUI step needs precondition, action, expected state, artifact, failure rule, gate, verdict | Extend only by named primitive; do not create unguarded macro soup |
 | Screenshot / OCR guard | yellow unless expected visible fact/text is named and checked | screen/OCR companion JSON in probe runs; GUI-as-text run `20260427_200919` blocked safely | Decorative screenshots do not prove a step; missing expected text before unsafe keypress is red/blocked | Add expected text/fact before trusting menu navigation |
 | Saved-player item preflight | green only for live-accessible carried/worn/contained rows; legacy top-level `player.inv` is explanatory only | `audit_saved_player_items` metadata; direct updated audit after `20260427_203847` | Legacy inventory presence cannot prove live selector availability | Keep live-accessible distinction; repair fixtures instead of over-crediting |
 | Saved-map target-tile audit | green only when required fields/items/furniture are present at the exact requested tile in the same run/save | `audit_saved_map_tile_near_player` metadata; `20260427_184319`, `191725`, `222635` | Empty requested tile is red evidence, not ambiguous absence | Keep aborting metadata gates before later feature steps |
-| Normal player-action brazier deploy | green for scoped deploy primitive only | `.userdata/dev-harness/harness_runs/20260427_222635/`: 16/16 green, `feature_proof=true`, east tile `f_brazier` | Proves selected `brazier`, `Deploy where?`, east/right consumption, uppercase-`Y` save/writeback, saved east-tile `f_brazier`; not fuel/fire/bandit proof | Preserve as reusable audited primitive |
+| Normal player-action brazier deploy | green for scoped primitive proof only | `.userdata/dev-harness/harness_runs/20260427_222635/`: 16/16 green, `feature_proof=true` scoped to this primitive, east tile `f_brazier` | Proves selected `brazier`, `Deploy where?`, east/right consumption, uppercase-`Y` save/writeback, saved east-tile `f_brazier`; not product fire/fuel/bandit proof | Preserve as reusable audited primitive |
 | Save/writeback mtime gate | green when save prompt is proven and mtime advances; red when prompt/confirmation is untrusted | `20260427_213850` lower-case `y` no mtime; `20260427_222635` uppercase `Y` mtime advance | Post-action map state cannot be credited until saved-player mtime/writeback gate advances | Require this before any saved-map post-action closure |
 | Fuel Multidrop / exact `2x4` visibility | red / blocked | `.userdata/dev-harness/harness_runs/20260427_232220/`: filtered Multidrop has no visible/selectable `typeid="2x4"` row | No count selection, confirm-return, post-fuel save/writeback, lighter, or `fd_fire` credit after this gate | Repair fixture/live fuel availability or package/manual; do not retry lighter/fire blindly |
 | `wait_action` / long-wait proof | strongest current wait primitive; scenario-specific audit still required | wait ledgers in live bandit/standoff runs, especially `.userdata/dev-harness/harness_runs/20260427_154309/` | Artifact matches cannot override yellow/blocked wait ledger | Reuse for long live-world proofs; do not downgrade to dot-spam for hours |
 | Talk/dialog keypath primitive | red / blocked at talker selection | `.userdata/dev-harness/harness_runs/20260427_175051/`: source-backed `t` opens `Talk to whom`, alpha selector still visible after `a` | Source-backed key opens first menu, but recipient selection is not proven | Needs menu-entry/hotkey metadata or replacement recipe before closure use |
-| Debug spawn item/monster/NPC/weather primitives | yellow/untrusted for product closure | inventory doc primitive table; no complete target-state proof matrix yet | Spawn macro completion is not target-tile/inventory/NPC identity proof | Next audit candidate after Frau review: one spawn path with metadata gate |
+| Debug spawn item/monster/NPC/weather primitives | yellow/untrusted for product closure | inventory doc primitive table; no complete target-state proof matrix yet | Spawn macro completion is not target-tile/inventory/NPC identity proof | Next audit primitive per Frau: one debug spawn path with target-state metadata gate |
 | Smart Zone live layout inspection | implemented-but-unproven / Josef package | `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/`: startup/load red, no feature steps | Deterministic geometry is support only; clean GUI layout proof is not captured | Do not rerun blind clean-profile probe unless reopened after a loadable-profile/UI primitive repair |
 | Real player-lit fire / bandit signal chain | blocked behind fuel | fuel red run `20260427_232220`; deploy green run `20260427_222635` only covers brazier placement | Fire/smoke/bandit proof requires current-tile `f_brazier` + exact fuel writeback, then lighter/`fd_fire`/bandit response in the same disciplined chain | Stay blocked until fuel gate is honestly green or manual package is chosen |
 
@@ -46,11 +46,14 @@ Every feature-proof report must preserve: source/runtime commit evidence, scenar
 
 1. Classify the evidence class before running anything: startup/load, deterministic contract, live behavior, artifact/log visibility, or metadata/save inspection.
 2. For live/GUI feature proof, each step must name the expected visible fact or exact metadata state before the next risky action runs.
-3. A probe report is feature proof only when `proof_classification.feature_proof=true`, `evidence_class=feature-path`, startup is clean, all step-local ledger rows are green, matched artifacts exist where the scenario contract asks for them, and wait ledgers are not yellow/blocked.
-4. Target-tile, inventory, NPC, clock, overmap, and save/writeback claims must be same-run/same-save evidence. Fixture transforms or logs alone are setup evidence.
-5. Red/yellow/blocked rows stop credit for later dependent steps. The macro may mechanically continue only when explicitly marked safe; feature closure does not.
-6. A deterministic test may close a deterministic contract. It cannot close a screen-visible/product claim unless the product contract explicitly names the deterministic seam as the target.
-7. Failed harness proof does not prove feature failure by itself. If code is implemented but agent-side proof stays blocked after the escalation budget, package it as implemented-but-unproven for Josef and move on.
+3. A probe report is feature proof only when `proof_classification.feature_proof=true`, `evidence_class=feature-path`, startup is clean, all step-local ledger rows are green, matched artifacts exist where the scenario contract asks for them, and wait ledgers are not yellow/blocked. The artifact match must be claim-scoped: the scenario contract has to name that exact artifact/log field as evidence for the exact claim, not merely match some generic debug line.
+4. The current classifier is not a metadata-only feature-proof mode: all-green metadata rows without a claim-scoped artifact match remain process/metadata evidence unless the harness later adds an explicit metadata-only proof classification.
+5. Green ledger rows are necessary but not magical. Raw `press`/`type` rows only become green when they have immediate screen/metadata proof or a named causal deferred guard; baseline-only rows are setup, not closure.
+6. `proof_deferred_to_label` may only credit a step when the deferred guard actually covers that step's expected effect. One final state must not launder several unrelated blind keypresses.
+7. Target-tile, inventory, NPC, clock, overmap, and save/writeback claims must be same-run/same-save evidence. Fixture transforms or logs alone are setup evidence, and a transform-created target state is synthetic/setup proof only.
+8. Red/yellow/blocked rows stop credit for later dependent steps. The macro may mechanically continue only when explicitly marked safe; feature closure does not.
+9. A deterministic test may close a deterministic contract. It cannot close a screen-visible/product claim unless the product contract explicitly names the deterministic seam as the target.
+10. Failed harness proof does not prove feature failure by itself. If code is implemented but agent-side proof stays blocked after the escalation budget, package it as implemented-but-unproven for Josef and move on.
 
 ## Untrusted until reviewed/repaired
 
@@ -60,6 +63,6 @@ Every feature-proof report must preserve: source/runtime commit evidence, scenar
 - Smart Zone live layout inspection from the current clean profile path.
 - Any scenario that still relies on raw `press`/`type`, decorative screenshots, or artifact string matches without a green step-local ledger.
 
-## Recommended review
+## Frau review result / next primitive
 
-Ask Frau Knackal to review this matrix before treating the proof-freeze workflow as settled. The review target is not product behavior; it is whether the matrix still hides a false-pass route, fixture bias, or claim that outruns its evidence.
+Frau Knackal reviewed the matrix at process altitude and found no major false-pass route after the tightenings above. Her next-primitive recommendation is **debug spawn target-state proof first**, because it is broader and more load-bearing than talker-selector metadata: prove one spawn path end-to-end with target-state metadata, then use that pattern for item/field/furniture/NPC/weather. Talker-selector metadata remains the next candidate after that unless a dialogue lane becomes urgent.
