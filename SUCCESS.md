@@ -55,24 +55,25 @@ Notes:
 
 ## C-AOL debug-proof finish stack v0
 
-Status: ACTIVE / GREENLIT
+Status: CLOSED / CHECKPOINTED
 
 Success state:
 - [x] The active Basecamp job-spam debounce lane is closed/checkpointed honestly before this stack became active.
 - [x] The reopened bandit live signal/site-bootstrap stack has live/source-hook proof for remaining smoke/fire/light product claims, or a precise Josef playtest package for exact implemented-but-unproven behavior.
 - [x] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
-- [ ] Smart Zone clean-save live proof is either honestly run on a clean disposable profile or converted into a precise Josef playtest package without reopening the contaminated McWilliams macro.
+- [x] Smart Zone clean-save live proof is converted into a precise Josef playtest package without reopening the contaminated McWilliams macro.
+- [x] The reopened bandit local standoff / scout return live correction is inspected and fixed/proven on the current product path: current-runtime run `.userdata/dev-harness/harness_runs/20260427_154309/` logs five-OMT hold-off (`live_dispatch_goal=140,46,0`), return-home timeout, home-footprint observation, and returned pressure refresh.
 - [x] Canon files stop calling current debug notes parked/review-only when Josef has explicitly greenlit another finish pass.
 
 Notes:
 - Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`.
-- Attempt rule for this stack: attempts 1-2 solo, consult Frau Knackal before attempt 3, attempts 3-4 changed retries after consultation, then move implemented-but-unproven work to Josef's playtest package and continue the next greenlit debug note.
+- Attempt rule for this stack was observed: the bandit local standoff / scout-return attempt 3 happened after Frau Knackal consultation and a material code-path/instrumentation change.
 
 ---
 
 ## C-AOL harness trust audit + proof-freeze packet v0
 
-Status: GREENLIT / BOTTOM-OF-STACK PROCESS AUDIT
+Status: ACTIVE / GREENLIT PROCESS AUDIT
 
 Success state:
 - [ ] A full harness-surface inventory exists and names each current primitive/scenario, its proof artifact, and its known blind spots.
@@ -155,9 +156,9 @@ Compact reference:
 
 ## Bandit local sight-avoid + scout return cadence packet v0
 
-Status: REOPENED / ACTIVE FOLLOW-UP
+Status: RECLOSED / CURRENT-RUNTIME PRODUCT PROOF
 
-Fresh 2026-04-27 live evidence from Josef supersedes the earlier closure for product purposes: smoke attraction now works, but the local scout/hold-off behavior still crowds the player/basecamp too closely and is not visibly timing out/returning home in the current save. Earlier deterministic and pre-aged harness runs remain useful seam evidence; they do not close the reopened live-product gap.
+Fresh 2026-04-27 live evidence from Josef superseded the earlier closure for product purposes: smoke attraction worked, but the local scout/hold-off behavior crowded the player/basecamp too closely and was not visibly timing out/returning home in the current save. The reopened product gap is now reclosed on current runtime: the correction handles timed-out scouts before local-contact gating, preserves five-OMT hold-off standoff, and proves returned scout writeback through the live McWilliams/Basecamp path.
 
 Success state:
 - [x] Stalking / hold-off bandits in the reality bubble can detect current or recent exposure to the player or nearby camp NPCs and attempt a bounded reposition toward cover or broken line of sight. _(Deterministic coverage plus live/harness proof `.userdata/dev-harness/harness_runs/20260427_061344/`: `bandit_live_world sight_avoid: exposed -> repositioned npc=4 ... reason=repositioning because exposed`.)
@@ -167,9 +168,9 @@ Success state:
 - [x] The single-scout current behavior remains explainable: `scout` is still one member unless a later job or escalated decision explicitly requires more.
 - [x] Reviewer-readable output distinguishes `still stalking`, `repositioning because exposed`, `returning home`, and `re-dispatch/escalation decision`. _(Source/report strings cover the branches; live proof now covers returning-home/writeback and `sight_avoid: exposed -> repositioned`. Later redispatch tuning is not claimed beyond explicit owned-site re-evaluation.)_
 - [x] At least one live/harness proof uses `bandit.live_world_nearby_camp_mcw` or an equivalent real owned-site scenario and confirms the same code path would apply to a normal discovered bandit camp, while separately naming the harness bias that places the camp nearby on purpose.
-- [ ] Recent live logs/save fields from Josef's 2026-04-27 playtest are inspected and answer whether the scout timer is actually running in the current save.
+- [x] Recent live logs/save fields from the 2026-04-27 McWilliams/Basecamp fixture are inspected and answer whether the scout timer was actually running before proof: copied-save inspection found `active_sortie_started_minutes=-1`, `active_sortie_local_contact_minutes=-1`, and no active group/target/job ids for the stale inspected site, so pre-aged closure was rejected.
 - [x] Bandit hold-off/stalking placement keeps a meaningful stand-off instead of crowding the immediately adjacent/neighboring OMT-scale area unless an explicit shakedown/fight state has started. _(Deterministic five-OMT correction plus live harness proof `.userdata/dev-harness/harness_runs/20260427_152117/`: real `wait_action` 30m path completed, `local_gate ... posture=hold_off ... standoff_distance=5`, `live_dispatch_goal=140,46,0`.)_
-- [ ] The scout timeout/return path is proven on the current live-product path, or explicitly moved to Josef's playtest package as implemented-but-unproven without calling the packet closed.
+- [x] The scout timeout/return path is proven on the current live-product path. _(Current-runtime live run `.userdata/dev-harness/harness_runs/20260427_154309/`: real `wait_action` path logged `scout_sortie: linger limit reached -> return_home`, `scout_sortie: home footprint observed ... pos=(140,51,0)`, and `scout_report: returned -> pressure refreshed`; copied save later showed a fresh redispatch, not the stale returning-home loop.)_
 
 
 Compact reference:

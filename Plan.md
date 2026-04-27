@@ -66,25 +66,25 @@ Canonical contract lives at `doc/basecamp-job-spam-debounce-exceptions-packet-v0
 
 ---
 
-## Active lane - C-AOL debug-proof finish stack v0
+## Completed lane - C-AOL debug-proof finish stack v0
 
-**Status:** ACTIVE / GREENLIT
+**Status:** CLOSED / CHECKPOINTED
 
-Josef explicitly reopened the current C-AOL debug-proof notes on 2026-04-27. Do not leave them in parked/review-only posture just because a proof run is annoying.
+Josef explicitly reopened the current C-AOL debug-proof notes on 2026-04-27. The stack has now reached an honest agent-side boundary without leaving failed proof in parked/review-only posture.
 
 - Bandit live signal/site-bootstrap product-proof work reached its honest agent-side boundary: synthetic loaded-map fire/light reaches the running live path and the real player-lit fire bridge is listed in Josef's playtest package as implemented-but-unproven; do not loop on it again without a fresh reopen/material blocker change.
 - Smart Zone Manager live layout separation correction reached its honest agent-side boundary: the planner now keeps intended-separate generated zones on separate reserved tiles with deterministic geometry/separation coverage, and the failed clean live/UI macro has been packaged for Josef as implemented-but-unproven instead of using the contaminated old McWilliams macro as closure proof.
-- Current next target: Bandit local standoff / scout return live correction. Josef's 2026-04-27 live test says smoke attraction now exists, but the scout/hold-off behavior still fails product expectations: the bandit gets far too close, sight-avoid is not visibly credible, and the scout is not timing out/returning home in the current live save. Reopen the local sight-avoid + scout return packet as a product-proof follow-up: inspect recent logs/save clocks first, fix the standoff/timeout if confirmed, and do not treat pre-aged harness return proof or load-and-close screenshots as live closure.
-- Attempt rule for the same item/blocker: attempts 1-2 solo, consult Frau Knackal before attempt 3, attempts 3-4 changed retries after consultation, then move implemented-but-unproven work to Josef's playtest package and continue the next greenlit debug note.
-- **GitHub normal-download release packet v0** remains held behind this debug-proof finish stack.
+- Bandit local standoff / scout return live correction is now fixed/proven on the current live product path: deterministic coverage asserts the pre-local-contact scout timeout, rebuilt current-runtime run `.userdata/dev-harness/harness_runs/20260427_154309/` used the real `wait_action` path, logged `local_gate ... posture=hold_off ... standoff_distance=5 ... live_dispatch_goal=140,46,0`, then logged `scout_sortie: linger limit reached -> return_home`, `scout_sortie: home footprint observed ... pos=(140,51,0)`, and `scout_report: returned -> pressure refreshed`.
+- Attempt rule for this stack was observed: attempt 3 happened only after Frau Knackal consultation and a material code-path/instrumentation change.
+- **GitHub normal-download release packet v0** should stay held until Schani/Josef decide whether the greenlit harness trust audit/proof-freeze package or release posture is next.
 
 Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`.
 
 ---
 
-## Greenlit process package - C-AOL harness trust audit + proof-freeze v0
+## Active lane - C-AOL harness trust audit + proof-freeze v0
 
-**Status:** GREENLIT / BOTTOM-OF-STACK PROCESS AUDIT
+**Status:** ACTIVE / GREENLIT PROCESS AUDIT
 
 Josef requested this on 2026-04-27 after watching harness runs load the game, close it, and still risk being treated as feature proof. This is a large audit of the C-AOL harness skill/procedures, preferably Andi execution with Frau Knackal review: inventory every harness primitive, prove every keystroke/setup step with screenshots or exact game metadata, enforce same-save/provenance discipline where possible, and freeze the workflow so false passes become red states instead of polite nonsense.
 
@@ -100,7 +100,7 @@ Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-pack
 
 Do not reopen these by drift:
 - **Bandit live-wiring audit + visible-light horde bridge correction v0** — loaded-map visible fire/light -> horde signal bridge proof, not player-lit fire proof.
-- **Bandit local sight-avoid + scout return cadence packet v0** — REOPENED 2026-04-27 for Josef's live report that the bandit still crowds too close and does not time out/return home in the current save; earlier deterministic/pre-aged harness proof remains useful seam evidence only.
+- **Bandit local sight-avoid + scout return cadence packet v0** — reclosed for the 2026-04-27 product gap: current-runtime live proof now covers five-OMT hold-off standoff plus scout timeout, home-footprint observation, and returned pressure-refresh writeback on the McWilliams/Basecamp product path.
 - **Smart Zone Manager v1 Josef playtest corrections** — implemented-but-unproven live: deterministic geometry/separation proof is green and the clean live/UI macro failure is in Josef's playtest package; do not loop on it again without a fresh reopen or materially repaired harness primitive.
 - **Basecamp medical consumable readiness v0** — deterministic camp/locker proof for bounded bandage-family readiness, including carried-stock cap behavior.
 - **Basecamp locker armor ranking + blocker removal packet v0** — generic protective/full-body armor comparison and blocker clearing proof; no RM13 special case.

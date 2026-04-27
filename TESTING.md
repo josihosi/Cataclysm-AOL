@@ -52,16 +52,19 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - C-AOL debug-proof finish stack
+### Recently completed validation target - C-AOL debug-proof finish stack
 
-`C-AOL debug-proof finish stack v0` is active for another honest proof pass.
+`C-AOL debug-proof finish stack v0` is complete and ready for Schani review.
 
-Smart Zone Manager live layout separation correction is now **implemented-but-unproven live**: deterministic geometry/separation assertions and the explicit overlap allowlist are green, but the clean GUI macro still could not honestly inspect the generated player-visible layout. The manual close recipe is packaged as `smart-zone-live-layout-separation-correction` in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`; do not rerun the contaminated old McWilliams macro as closure proof.
+Smart Zone Manager live layout separation correction is **implemented-but-unproven live** at its honest agent-side boundary: deterministic geometry/separation assertions and the explicit overlap allowlist are green, but the clean GUI macro still could not honestly inspect the generated player-visible layout. The manual close recipe is packaged as `smart-zone-live-layout-separation-correction` in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`; do not rerun the contaminated old McWilliams macro as closure proof.
 
-Current unblocked target: **Bandit local standoff / scout return live correction**. Josef's 2026-04-27 live test grants smoke attraction, but reports the scout/hold-off bandit still gets too close and does not visibly time out/return home. Current state: deterministic standoff-distance correction is green (`choose_hold_off_standoff_goal()` minimum five-OMT goal), copied-save inspection showed the inspected McWilliams site had `active_sortie_started_minutes=-1` / `active_sortie_local_contact_minutes=-1` and no active group, and old live probe run `.userdata/dev-harness/harness_runs/20260427_145148/` is **load proof only / inconclusive for standoff/return** because it reached startup/gameplay screenshots and then hung in old dot-spam advancement without the local-gate/return artifact. The replacement `wait_action` proof path is now verified: run `.userdata/dev-harness/harness_runs/20260427_152117/` used the real `|` wait action, handled the alarm/watch pre-menu with explicit `w`, chose bounded 30m (`4`), captured before/initial-menu/duration-menu/after screenshots and OCR, classified the wait as completed from `You finish waiting.`, and captured `local_gate ... posture=hold_off ... standoff_distance=5 ... live_dispatch_goal=140,46,0`. Required remaining evidence:
-- live log/save inspection from the actual current product path answering whether `active_sortie_started_minutes` / `active_sortie_local_contact_minutes` are present and advancing when Josef sees the too-close scout;
-- scout timeout/return proof on the current live-product path, with pre-aged timer fixtures labeled as seam proof only;
-- if the scout-return live route cannot be honestly proven inside the attempt budget, a Josef playtest package with the exact manual close recipe.
+Bandit local standoff / scout return live correction is reclosed on current runtime. Evidence:
+- deterministic standoff-distance correction is green (`choose_hold_off_standoff_goal()` minimum five-OMT goal);
+- copied-save inspection answered the stale fixture state: the inspected McWilliams site had `active_sortie_started_minutes=-1` / `active_sortie_local_contact_minutes=-1` and no active group before the live proof setup;
+- live standoff proof `.userdata/dev-harness/harness_runs/20260427_152117/` used the real `|` wait action, handled the alarm/watch pre-menu with explicit `w`, chose bounded 30m (`4`), captured before/menu/after evidence, and logged `local_gate ... posture=hold_off ... standoff_distance=5 ... live_dispatch_goal=140,46,0`;
+- final current-runtime proof `.userdata/dev-harness/harness_runs/20260427_154309/` used the same real `wait_action` path and required artifacts, then logged `bandit_live_world scout_sortie: linger limit reached -> return_home`, `bandit_live_world scout_sortie: home footprint observed ... pos=(140,51,0)`, and `bandit_live_world scout_report: returned -> pressure refreshed`.
+
+Attempt 3 for this item happened only after Frau Knackal consultation and a material code-path/instrumentation change, satisfying the repeated-test escalation rule.
 
 Retained evidence classification for `Bandit live signal + site bootstrap correction v0`:
 - raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
@@ -75,7 +78,7 @@ Retained evidence classification for `Bandit live signal + site bootstrap correc
 Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
 - `Basecamp job spam debounce + locker/patrol exceptions packet v0`: stable-cause debounce for repeated completion/missing-tool/no-progress camp chatter; typed `[camp][locker]` / `[camp][patrol]` reports preserve first and changed states while compressing repeats; deterministic message tests, focused `[camp][patrol]` / `[camp][locker]`, and touched-object compile passed.
 - `Bandit live-wiring audit + visible-light horde bridge correction v0`: loaded-map visible fire/light -> horde signal bridge proof; not player-lit fire proof.
-- `Bandit local sight-avoid + scout return cadence packet v0`: REOPENED for 2026-04-27 live product evidence that the scout/hold-off bandit still crowds too close and is not timing out/returning home in the current save; earlier pre-aged/fixture proof is seam evidence only.
+- `Bandit local sight-avoid + scout return cadence packet v0`: reclosed for the 2026-04-27 live product gap; current-runtime live proof now covers five-OMT hold-off standoff plus scout timeout, home-footprint observation, and returned pressure-refresh writeback.
 - `Smart Zone Manager v1 Josef playtest corrections`: implemented-but-unproven live; deterministic geometry/separation proof is green, while clean live/UI layout inspection is in Josef's playtest package.
 - `Basecamp medical consumable readiness v0`: deterministic camp/locker proof for bounded bandage-family readiness and cap behavior.
 - `Basecamp locker armor ranking + blocker removal packet v0`: deterministic camp/locker proof for generic full-body/protective ranking, blocker clearing, damaged-candidate rejection without repeated requeue/equip churn, ballistic armor preservation, and `[camp][locker]` regression coverage.
@@ -84,9 +87,9 @@ Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
 
 ## Pending probes
 
-No active live GUI probe is required for the closed job-spam debounce lane. For the active debug-proof finish stack, use live/harness/product-path proof where the contract asks for product behavior; deterministic-only evidence is not enough for product claims. The current unblocked target is the reopened bandit local standoff / scout return live correction; do not spin another bandit player-fire loop or another Smart Zone GUI macro unless the harness primitive materially changes.
+No active live GUI probe is required for the completed debug-proof finish stack. Deterministic-only evidence remains insufficient for future product claims, but the reopened bandit local standoff / scout return correction now has current-runtime live proof. Do not spin another bandit player-fire loop or another Smart Zone GUI macro unless Josef/Schani explicitly reopens the item or the harness primitive materially changes.
 
-Queued process validation target: **C-AOL harness trust audit + proof-freeze packet v0**. When activated, the evidence target is the harness itself: every primitive/keystroke/setup step needs a precondition, action, expected state, screenshot or exact metadata proof, failure rule, artifact path, and pass/yellow/red/blocked verdict. Use one canonical disposable save/profile where possible; any extra fixture must be justified with provenance. A load-and-close run remains startup/load proof only. Failed spawns, wrong screens, missing target fields, stale binaries/profiles, and missing save metadata must produce explicit non-green results rather than feature-proof claims.
+Active process validation target: **C-AOL harness trust audit + proof-freeze packet v0**. The evidence target is the harness itself: every primitive/keystroke/setup step needs a precondition, action, expected state, screenshot or exact metadata proof, failure rule, artifact path, and pass/yellow/red/blocked verdict. Use one canonical disposable save/profile where possible; any extra fixture must be justified with provenance. A load-and-close run remains startup/load proof only. Failed spawns, wrong screens, missing target fields, stale binaries/profiles, and missing save metadata must produce explicit non-green results rather than feature-proof claims.
 
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters

@@ -1,6 +1,6 @@
 # C-AOL harness trust audit + proof-freeze packet v0 (2026-04-27)
 
-Status: greenlit / bottom-of-stack process audit.
+Status: ACTIVE / GREENLIT PROCESS AUDIT.
 
 ## Why this exists
 
@@ -12,8 +12,8 @@ This is deliberately a large packet. It should be executed by Andi with Frau Kna
 
 ## Classification and placement
 
-- Classification: greenlit / bottom-of-stack process package.
-- It does not replace the current active `C-AOL debug-proof finish stack v0` unless Josef explicitly promotes it.
+- Classification: active / greenlit process package.
+- It became the next active lane after `C-AOL debug-proof finish stack v0` reached its completed Schani-review boundary.
 - It does block future confidence in harness-based closure claims: a run that only proves startup/load must be labeled startup/load proof only.
 - When this packet becomes active, it should be treated as infrastructure repair, not as a side errand tucked under a feature fix.
 

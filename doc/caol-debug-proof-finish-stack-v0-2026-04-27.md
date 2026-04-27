@@ -1,6 +1,6 @@
 # C-AOL debug-proof finish stack v0 (2026-04-27)
 
-Status: ACTIVE / GREENLIT
+Status: CLOSED / CHECKPOINTED
 
 Source: Josef's 2026-04-27 handoff after the C-AOL status readout. This supersedes the old "move on / Josef review" posture for current debug-proof notes.
 
@@ -56,7 +56,7 @@ Greenlit path / current state:
 
 Use `runtime/c-aol-debug-intake-2026-04-26.md`, `SUCCESS.md`, and `TESTING.md` to verify no current debug note is still hiding behind old parked/review wording.
 
-Fresh 2026-04-27 live follow-up from Josef reopens the local bandit stalking/return product gap after Smart Zone: smoke attraction now works, but the scout/hold-off bandit gets far too close and is not visibly timing out/returning home in the current save. Treat the earlier local sight-avoid / scout-return harness evidence as seam proof only until the current live logs/save fields and product path are inspected.
+Fresh 2026-04-27 live follow-up from Josef reopened the local bandit stalking/return product gap after Smart Zone: smoke attraction now works, but the scout/hold-off bandit got far too close and was not visibly timing out/returning home in the current save. That reopened product gap is now reclosed on the current runtime: the code handles timed-out scout return-home before local-contact gating, deterministic coverage asserts the pre-local-contact timeout, and live run `.userdata/dev-harness/harness_runs/20260427_154309/` proves five-OMT hold-off, return-home, home-footprint observation, and returned pressure refresh on the McWilliams/Basecamp product path.
 
 Other known closed notes should stay closed unless fresh evidence says they lied: Basecamp medical consumable readiness, bandit horde visible-light bridge implementation, locker armor blocker clearing. Smart Zone layout was reopened by Josef's live evidence and has now reached the implemented-but-unproven-live boundary; reopen only a real unproven product/debug gap, not the whole historical packet museum.
 
@@ -73,5 +73,5 @@ Other known closed notes should stay closed unless fresh evidence says they lied
 - [x] The bandit live signal/site-bootstrap stack has either live/source-hook proof for the remaining smoke/fire/light product claims or a precise Josef playtest package for the exact unproven implemented behavior.
 - [x] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
 - [x] The Smart Zone live layout separation correction is implemented and proven to its honest agent-side boundary: deterministic geometry/separation assertions are green, and the missing clean live/UI proof is covered by a precise Josef playtest package without rerunning the contaminated McWilliams macro.
-- [ ] The reopened bandit local standoff / scout return live correction is inspected and either fixed/proven on the current product path or moved honestly to Josef's playtest package as implemented-but-unproven: recent log/save timer state answered, hold-off distance no longer crowds the player, and return-home proof is not just a pre-aged harness seam.
+- [x] The reopened bandit local standoff / scout return live correction is inspected and fixed/proven on the current product path: copied-save inspection answered the stale fixture timer state, deterministic coverage asserts the pre-local-contact scout timeout, and current-runtime live proof `.userdata/dev-harness/harness_runs/20260427_154309/` logs five-OMT hold-off (`live_dispatch_goal=140,46,0`), return-home timeout, `home footprint observed`, and `scout_report: returned -> pressure refreshed`.
 - [x] `Plan.md`, `TODO.md`, `TESTING.md`, and `SUCCESS.md` stop calling current debug notes parked/review-only when Josef has explicitly greenlit another finish pass.
