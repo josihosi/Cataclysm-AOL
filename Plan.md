@@ -72,8 +72,8 @@ Canonical contract lives at `doc/basecamp-job-spam-debounce-exceptions-packet-v0
 
 Josef explicitly reopened the current C-AOL debug-proof notes on 2026-04-27. Do not leave them in parked/review-only posture just because a proof run is annoying.
 
-- Run the reopened bandit live signal/site-bootstrap product-proof work: raw saved-field smoke/fire proof remains reader/consumer evidence only, while real or clearly labeled synthetic smoke/fire/light source proof must reach the running live bandit path before product claims close.
-- If Smart Zone clean-save live proof is still the only missing check, fix the small clean-profile/startup readiness seam or write a precise Josef playtest package; do not rerun the contaminated old McWilliams macro as closure proof.
+- Bandit live signal/site-bootstrap product-proof work reached its honest agent-side boundary: synthetic loaded-map fire/light reaches the running live path and the real player-lit fire bridge is listed in Josef's playtest package as implemented-but-unproven; do not loop on it again without a fresh reopen/material blocker change.
+- Current next target: Smart Zone clean-save live proof. Fix the small clean-profile/startup readiness seam or write a precise Josef playtest package; do not rerun the contaminated old McWilliams macro as closure proof.
 - Attempt rule for the same item/blocker: attempts 1-2 solo, consult Frau Knackal before attempt 3, attempts 3-4 changed retries after consultation, then move implemented-but-unproven work to Josef's playtest package and continue the next greenlit debug note.
 - **GitHub normal-download release packet v0** remains held behind this debug-proof finish stack.
 

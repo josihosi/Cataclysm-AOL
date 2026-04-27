@@ -59,10 +59,10 @@ Status: ACTIVE / GREENLIT
 
 Success state:
 - [x] The active Basecamp job-spam debounce lane is closed/checkpointed honestly before this stack became active.
-- [ ] The reopened bandit live signal/site-bootstrap stack has live/source-hook proof for remaining smoke/fire/light product claims, or a precise Josef playtest package for exact implemented-but-unproven behavior.
-- [ ] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
+- [x] The reopened bandit live signal/site-bootstrap stack has live/source-hook proof for remaining smoke/fire/light product claims, or a precise Josef playtest package for exact implemented-but-unproven behavior.
+- [x] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
 - [ ] Smart Zone clean-save live proof is either honestly run on a clean disposable profile or converted into a precise Josef playtest package without reopening the contaminated McWilliams macro.
-- [ ] Canon files stop calling current debug notes parked/review-only when Josef has explicitly greenlit another finish pass.
+- [x] Canon files stop calling current debug notes parked/review-only when Josef has explicitly greenlit another finish pass.
 
 Notes:
 - Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`.

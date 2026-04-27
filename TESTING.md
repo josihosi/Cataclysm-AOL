@@ -59,9 +59,9 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 Retained evidence classification for `Bandit live signal + site bootstrap correction v0`:
 - raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
 - synthetic smoke proof proves only synthetic smoke-source/live-signal behavior and must be labeled as such
-- player-fire product proof still requires the real brazier/wood/lighter/player-action chain and fresh matched-site evidence
+- if Josef reopens player-fire product proof, it still requires the real brazier/wood/lighter/player-action chain and fresh matched-site evidence; current agent-side status is implemented-but-unproven in the playtest package
 - threshold-surviving light proof for the synthetic loaded-map `fd_fire` source path is now covered by run `.userdata/dev-harness/harness_runs/20260427_114034/`: current-runtime probe at commit `daa2f1694c`, night `light_packets=1`, horde light signal, and `matched_light_sites=1` / `refreshed_sites=1`; this is not full player-lit-fire proof
-- remaining player-fire product proof still requires the real brazier/wood/lighter/player-action chain plus paired no-signal/control evidence; post-Frau attempt 3 (`bandit.live_world_nearby_camp_real_fire_exact_items_tile_audit_mcw`, run `.userdata/dev-harness/harness_runs/20260427_124445/`) used exact-id fixture items (`brazier`, `2x4`, charged `lighter`) and stopped at the required midpoint because `tile_fire_audit.east.json` found no target-tile `fd_fire`, with saved-player inspection showing the GUI route had not actually moved/activated those items; deterministic non-GUI primitive `fire_start_activity_exact_brazier_wood_lighter_creates_fd_fire` now proves the current-build fire-start activity creates target-tile `fd_fire` from exact `f_brazier` + `2x4` + charged `lighter`, but this is activity-seam proof rather than full live GUI recipe proof; if the remaining live bridge is moved to Josef's playtest package, keep fire creation proof separate from bandit scan consumption from that player fire unproven
+- full player-fire product proof is now in `runtime/josef-playtest-package.md` as `bandit-live-signal-real-fire-product-proof` implemented-but-unproven: post-Frau attempt 3 (`bandit.live_world_nearby_camp_real_fire_exact_items_tile_audit_mcw`, run `.userdata/dev-harness/harness_runs/20260427_124445/`) failed the target-tile `fd_fire` midpoint audit, deterministic non-GUI primitive `fire_start_activity_exact_brazier_wood_lighter_creates_fd_fire` proves only the activity seam, and final activity-bridge experiment `.userdata/dev-harness/harness_runs/20260427_134253/` did not leave audited target-tile `fd_fire`/`fd_smoke` before live bandit product closure
 
 ### Recently closed validation references
 
@@ -77,7 +77,7 @@ Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
 
 ## Pending probes
 
-No active live GUI probe is required for the closed job-spam debounce lane. For the active debug-proof finish stack, use live/harness/product-path proof where the contract asks for product behavior; deterministic-only evidence is not enough for the remaining bandit live-signal claims.
+No active live GUI probe is required for the closed job-spam debounce lane. For the active debug-proof finish stack, use live/harness/product-path proof where the contract asks for product behavior; deterministic-only evidence is not enough for product claims. The current unblocked target is Smart Zone clean-save live proof, not another bandit player-fire loop.
 
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters
