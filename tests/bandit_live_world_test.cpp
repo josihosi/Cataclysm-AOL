@@ -845,6 +845,7 @@ TEST_CASE( "bandit_live_world_scout_sortie_has_finite_return_home_clock",
 
     REQUIRE( bandit_live_world::note_active_sortie_started( site, 100 ) );
     CHECK_FALSE( bandit_live_world::note_active_sortie_started( site, 105 ) );
+    CHECK( bandit_live_world::scout_sortie_should_return_home( site, 280, 180 ) );
     REQUIRE( bandit_live_world::note_active_sortie_local_contact( site, 130 ) );
     CHECK_FALSE( bandit_live_world::scout_sortie_should_return_home( site, 299, 180 ) );
     CHECK( bandit_live_world::scout_sortie_should_return_home( site, 310, 180 ) );
