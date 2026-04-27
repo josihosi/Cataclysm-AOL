@@ -556,8 +556,16 @@ def require_peekaboo_permissions() -> None:
         raise SystemExit(f"Peekaboo permissions missing: {details}")
 
 
-def peekaboo_focus_pid(pid: int) -> None:
-    subprocess.run(["peekaboo", "window", "focus", "--pid", str(pid)], check=False, capture_output=True, text=True)
+def peekaboo_focus_pid(pid: int) -> Dict[str, Any]:
+    cmd = ["peekaboo", "window", "focus", "--pid", str(pid)]
+    proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    return {
+        "command": cmd,
+        "returncode": proc.returncode,
+        "ok": proc.returncode == 0,
+        "stdout": proc.stdout.strip(),
+        "stderr": proc.stderr.strip(),
+    }
 
 
 def run_peekaboo_interaction(
@@ -3942,6 +3950,240 @@ def install_profile_snapshot(profile: str, snapshot_name: str, snapshot_profile:
     }
 
 
+def startup_ledger_row(
+    *,
+    step: str,
+    preconditions: str,
+    action: str,
+    expected_state: str,
+    evidence_artifact: str,
+    failure_rule: str,
+    next_step_gate: str,
+    verdict: str,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    row: Dict[str, Any] = {
+        "primitive_or_step": step,
+        "preconditions": preconditions,
+        "action": action,
+        "expected_immediate_state": expected_state,
+        "evidence_artifact": evidence_artifact,
+        "failure_rule": failure_rule,
+        "next_step_gate": next_step_gate,
+        "verdict": verdict,
+    }
+    if metadata:
+        row["metadata"] = metadata
+    return row
+
+
+def startup_fixture_install_verdict(fixture_name: str, install_result: Dict[str, Any]) -> str:
+    if not fixture_name:
+        return "green_not_requested"
+    installed_worlds = install_result.get("installed_worlds", [])
+    if isinstance(installed_worlds, list) and installed_worlds:
+        return "green_fixture_installed"
+    return "red_fixture_not_installed"
+
+
+def startup_profile_snapshot_verdict(snapshot_name: str, snapshot_result: Dict[str, Any]) -> str:
+    if not snapshot_name:
+        return "green_not_requested"
+    copied_entries = snapshot_result.get("copied_entries", [])
+    if isinstance(copied_entries, list) and copied_entries:
+        return "green_profile_snapshot_installed"
+    return "red_profile_snapshot_not_installed"
+
+
+def startup_screen_capture_verdict(screen_summary: Dict[str, Any]) -> str:
+    if not screen_summary.get("peekaboo_success"):
+        return "red_screen_capture_failed"
+    if screen_summary.get("version_matches_runtime_paths") is False:
+        return "yellow_runtime_version_mismatch"
+    return "green_screen_captured"
+
+
+def build_startup_step_ledger(
+    *,
+    plan: StartupPlan,
+    profile_snapshot_name: str,
+    profile_snapshot_result: Dict[str, Any],
+    fixture_name: str,
+    fixture_install_result: Dict[str, Any],
+    process_path: Path,
+    focus_result: Dict[str, Any],
+    readiness: Dict[str, Any],
+    readiness_ok: bool,
+    screen_summary: Dict[str, Any],
+    screen_label: str,
+    run_dir: Path,
+    failure_reason: str = "",
+) -> List[Dict[str, Any]]:
+    plan_path = run_dir / "plan.json"
+    ledger = [
+        startup_ledger_row(
+            step="dry plan / runtime resolution",
+            preconditions="repo checkout and requested profile/world/fixture are known",
+            action="build_plan(profile, world, fixture)",
+            expected_state="profile, userdir, executable, strategy, target world, existing worlds, and run dir are resolved without launching",
+            evidence_artifact=str(plan_path),
+            failure_rule="missing executable/profile/run_dir or contradictory target world is red; valid metadata is plan-only proof",
+            next_step_gate="launch may run only after plan metadata resolves",
+            verdict="green_plan_resolved" if plan.executable and plan.run_dir else "red_plan_unresolved",
+            metadata={
+                "profile": plan.profile,
+                "target_world": plan.target_world,
+                "strategy": plan.strategy,
+                "executable": plan.executable,
+                "fixture": plan.fixture,
+            },
+        ),
+        startup_ledger_row(
+            step="profile snapshot install metadata",
+            preconditions="optional disposable profile snapshot requested before launch",
+            action="install_profile_snapshot(...) if --profile-snapshot is present",
+            expected_state="requested snapshot entries are copied into the harness profile userdir, or explicitly not requested",
+            evidence_artifact=str(run_dir / "startup.result.json"),
+            failure_rule="requested snapshot with no copied entries is red; not requested is not feature evidence",
+            next_step_gate="fixture install/launch may continue when snapshot is installed or explicitly not requested",
+            verdict=startup_profile_snapshot_verdict(profile_snapshot_name, profile_snapshot_result),
+            metadata={
+                "profile_snapshot": profile_snapshot_name,
+                "result": profile_snapshot_result,
+            },
+        ),
+        startup_ledger_row(
+            step="fixture install metadata",
+            preconditions="optional disposable save fixture requested before launch",
+            action="install_fixture(...) if --fixture is present",
+            expected_state="requested fixture world(s) copied into target profile save dir, including manifest/save-transform metadata when present",
+            evidence_artifact=str(run_dir / "startup.result.json"),
+            failure_rule="requested fixture with no installed worlds is red; manifest metadata remains fixture/setup proof only",
+            next_step_gate="launch may continue when fixture is installed or explicitly not requested",
+            verdict=startup_fixture_install_verdict(fixture_name, fixture_install_result),
+            metadata={
+                "fixture": fixture_name,
+                "result": fixture_install_result,
+            },
+        ),
+        startup_ledger_row(
+            step="launch process",
+            preconditions="plan resolved and previous game processes have been killed",
+            action="launch_game(profile, target_world, run_dir)",
+            expected_state="cataclysm process starts with the requested userdir/world arguments",
+            evidence_artifact=str(process_path),
+            failure_rule="missing pid or early process exit is red",
+            next_step_gate="focus/load polling may continue only with a live pid",
+            verdict="green_process_started" if readiness_ok or not failure_reason == "process_exited" else "red_process_exited",
+            metadata={"pid": readiness.get("pid", 0)},
+        ),
+        startup_ledger_row(
+            step="window focus",
+            preconditions="cataclysm process is running",
+            action="peekaboo window focus --pid <pid>",
+            expected_state="the game window is selected before any title/load keystrokes or screenshots",
+            evidence_artifact=str(run_dir / "startup.result.json"),
+            failure_rule="non-zero focus returncode is yellow for startup and red for any keystroke-dependent feature proof",
+            next_step_gate="startup polling may continue, but feature proof needs a green focus row before key delivery is trusted",
+            verdict="green_focus_returned" if focus_result.get("ok") else "yellow_focus_unproven",
+            metadata=focus_result,
+        ),
+        startup_ledger_row(
+            step="load/readiness gate",
+            preconditions="game process is running after focus and optional default-flow keystrokes",
+            action="poll lastworld.json and world save markers until expected world readiness changes",
+            expected_state="lastworld metadata or a save marker changes for the requested world",
+            evidence_artifact=str(run_dir / "lastworld.after.json"),
+            failure_rule="timeout, wrong world, missing character/save metadata, or process exit is red",
+            next_step_gate="success screenshot may be captured only after readiness metadata changes",
+            verdict="green_load_ready" if readiness_ok else f"red_{failure_reason or 'load_not_ready'}",
+            metadata=readiness,
+        ),
+        startup_ledger_row(
+            step="success/failure screenshot capture",
+            preconditions="readiness gate reached or failure state needs artifact capture",
+            action=f"peekaboo image capture label={screen_label}",
+            expected_state="named PNG/Peekaboo JSON records the actual window selected for the startup result",
+            evidence_artifact=str(run_dir / f"{screen_label}.png"),
+            failure_rule="capture failure is red; stale runtime metadata is yellow; screenshot alone remains startup/load proof only",
+            next_step_gate="startup command may report success, but no feature step may close from this ledger alone",
+            verdict=startup_screen_capture_verdict(screen_summary),
+            metadata=screen_summary,
+        ),
+    ]
+    return ledger
+
+
+def startup_proof_classification(*, ok: bool, screen_summary: Dict[str, Any], failure_reason: str = "") -> Dict[str, Any]:
+    if not ok:
+        return {
+            "evidence_class": "startup/load",
+            "status": "red",
+            "verdict": failure_reason or "startup_failed",
+            "feature_proof": False,
+            "rule": "A failed startup cannot support feature proof.",
+        }
+    status = "yellow"
+    verdict = "startup_load_only"
+    if screen_summary.get("version_matches_runtime_paths") is False:
+        verdict = "startup_load_only_runtime_version_mismatch"
+    return {
+        "evidence_class": "startup/load",
+        "status": status,
+        "verdict": verdict,
+        "feature_proof": False,
+        "rule": "Load/readiness plus screenshot prove only startup/load; feature proof needs later step-local ledgers.",
+    }
+
+
+def probe_proof_classification(
+    *,
+    verdict: str,
+    startup_classification: Dict[str, Any],
+    step_reports: List[Dict[str, Any]],
+    artifact_patterns: List[str],
+    matches_by_pattern: List[Dict[str, Any]],
+    wait_step_summary: Optional[Dict[str, Any]] = None,
+    abort_report: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    step_count = len(step_reports)
+    matched_artifacts = any(entry.get("lines") for entry in matches_by_pattern)
+    startup_feature_proof = bool(startup_classification.get("feature_proof", False))
+    wait_status = str((wait_step_summary or {}).get("status", "")).strip()
+    has_wait_blocker = wait_status in {"blocked_wait_step", "yellow_wait_step_unverified"}
+    if abort_report is not None:
+        status = "red" if str(verdict).startswith("blocked") else "yellow"
+        feature_proof = False
+    elif has_wait_blocker:
+        status = "red" if wait_status.startswith("blocked") else "yellow"
+        feature_proof = False
+    elif verdict == "artifacts_matched" and step_count > 0 and matched_artifacts:
+        status = "green"
+        feature_proof = True
+    elif verdict.startswith("blocked") or verdict.startswith("inconclusive"):
+        status = "red" if verdict.startswith("blocked") else "yellow"
+        feature_proof = False
+    else:
+        status = "yellow"
+        feature_proof = False
+    if step_count <= 0 and startup_feature_proof is False:
+        status = "yellow" if status == "green" else status
+        feature_proof = False
+        verdict = "startup_load_only_no_feature_steps"
+    return {
+        "evidence_class": "feature-path" if feature_proof else "startup/load-or-inconclusive",
+        "status": status,
+        "verdict": verdict,
+        "feature_proof": feature_proof,
+        "startup_feature_proof": startup_feature_proof,
+        "step_count": step_count,
+        "artifact_patterns": artifact_patterns,
+        "matched_artifact_patterns": [entry.get("pattern", "") for entry in matches_by_pattern if entry.get("lines")],
+        "wait_step_status": wait_status,
+        "rule": "Startup/load evidence is never feature proof; only step-local evidence with matched artifacts and no blocked/yellow wait ledger can classify as feature proof.",
+    }
+
+
 def success_from_lastworld(profile: str, baseline_mtime: float, expected_world: str) -> Tuple[bool, Dict[str, str]]:
     path = config_dir_for_profile(profile) / "lastworld.json"
     if not path.exists():
@@ -3996,7 +4238,24 @@ def success_from_world_save_marker(
 
 def run_startup(args: argparse.Namespace) -> int:
     profile = resolve_profile_name(args.profile)
+    config = load_profile_config(profile)
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
+
+    if args.dry_run:
+        plan = build_plan(profile, args.world, args.fixture)
+        run_dir = Path(plan.run_dir)
+        write_json(run_dir / "plan.json", asdict(plan))
+        dry_result = asdict(plan)
+        dry_result["dry_run_contract"] = {
+            "profile_snapshot_install": "not_run_dry_run",
+            "fixture_install": "not_run_dry_run",
+            "launch": "not_run_dry_run",
+            "feature_proof": False,
+            "evidence_class": "plan-only",
+        }
+        print(json.dumps(dry_result, indent=2, ensure_ascii=False))
+        return 0
+
     profile_snapshot_result: Dict[str, Any] = {}
     if profile_snapshot:
         profile_snapshot_result = install_profile_snapshot(
@@ -4012,14 +4271,9 @@ def run_startup(args: argparse.Namespace) -> int:
             replace=args.replace_existing_worlds,
             fixture_profile=getattr(args, "fixture_profile", ""),
         )
-    config = load_profile_config(profile)
     plan = build_plan(profile, args.world, args.fixture)
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
-
-    if args.dry_run:
-        print(json.dumps(asdict(plan), indent=2, ensure_ascii=False))
-        return 0
 
     require_peekaboo_permissions()
     killed_pids = kill_existing_game_processes()
@@ -4040,7 +4294,7 @@ def run_startup(args: argparse.Namespace) -> int:
 
     startup_cfg = config["startup"]
     time.sleep(float(startup_cfg["initial_wait_seconds"]))
-    peekaboo_focus_pid(proc.pid)
+    focus_result = peekaboo_focus_pid(proc.pid)
     if plan.strategy == "play_now_default":
         peekaboo_press_sequence(proc.pid, list(startup_cfg["play_now_default_sequence"]))
         time.sleep(float(startup_cfg["post_input_wait_seconds"]))
@@ -4059,6 +4313,28 @@ def run_startup(args: argparse.Namespace) -> int:
             screen = capture_screenshot(proc.pid, run_dir, "failure_process_exit")
             copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
+            screen_summary = screen.get("screen_summary", {})
+            readiness = {"kind": "process_exit", "pid": proc.pid, "returncode": code}
+            startup_step_ledger = build_startup_step_ledger(
+                plan=plan,
+                profile_snapshot_name=profile_snapshot,
+                profile_snapshot_result=profile_snapshot_result,
+                fixture_name=args.fixture,
+                fixture_install_result=fixture_install_result,
+                process_path=run_dir / "process.json",
+                focus_result=focus_result,
+                readiness=readiness,
+                readiness_ok=False,
+                screen_summary=screen_summary,
+                screen_label="failure_process_exit",
+                run_dir=run_dir,
+                failure_reason="process_exited",
+            )
+            proof_classification = startup_proof_classification(
+                ok=False,
+                screen_summary=screen_summary,
+                failure_reason="process_exited",
+            )
             result = {
                 "ok": False,
                 "reason": "process_exited",
@@ -4068,8 +4344,13 @@ def run_startup(args: argparse.Namespace) -> int:
                 "profile_snapshot": profile_snapshot_result,
                 "fixture_install": fixture_install_result,
                 "run_dir": str(run_dir),
-                "screen": screen.get("screen_summary", {}),
+                "screen": screen_summary,
+                "startup_step_ledger": startup_step_ledger,
+                "proof_classification": proof_classification,
+                "evidence_class": proof_classification["evidence_class"],
+                "feature_proof": proof_classification["feature_proof"],
             }
+            write_json(run_dir / "startup.step_ledger.json", {"startup_step_ledger": startup_step_ledger})
             write_json(run_dir / "startup.result.json", result)
             print(json.dumps(result, indent=2, ensure_ascii=False))
             return 1
@@ -4091,6 +4372,29 @@ def run_startup(args: argparse.Namespace) -> int:
             screen = capture_screenshot(proc.pid, run_dir, "success")
             copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
+            screen_summary = screen.get("screen_summary", {})
+            readiness = {
+                "kind": readiness_kind,
+                "reason": data.get("readiness", "lastworld_updated") if isinstance(data, dict) else "lastworld_updated",
+                "marker": data if readiness_kind == "world_save_marker" else {},
+                "baseline_save_marker": baseline_save_marker,
+                "pid": proc.pid,
+            }
+            startup_step_ledger = build_startup_step_ledger(
+                plan=plan,
+                profile_snapshot_name=profile_snapshot,
+                profile_snapshot_result=profile_snapshot_result,
+                fixture_name=args.fixture,
+                fixture_install_result=fixture_install_result,
+                process_path=run_dir / "process.json",
+                focus_result=focus_result,
+                readiness=readiness,
+                readiness_ok=True,
+                screen_summary=screen_summary,
+                screen_label="success",
+                run_dir=run_dir,
+            )
+            proof_classification = startup_proof_classification(ok=True, screen_summary=screen_summary)
             result = {
                 "ok": True,
                 "pid": proc.pid,
@@ -4102,15 +4406,15 @@ def run_startup(args: argparse.Namespace) -> int:
                 "fixture_install": fixture_install_result,
                 "post_lastworld_wait_seconds": post_lastworld_wait,
                 "lastworld": data if readiness_kind == "lastworld" else {},
-                "readiness": {
-                    "kind": readiness_kind,
-                    "reason": data.get("readiness", "lastworld_updated") if isinstance(data, dict) else "lastworld_updated",
-                    "marker": data if readiness_kind == "world_save_marker" else {},
-                    "baseline_save_marker": baseline_save_marker,
-                },
+                "readiness": readiness,
                 "run_dir": str(run_dir),
-                "screen": screen.get("screen_summary", {}),
+                "screen": screen_summary,
+                "startup_step_ledger": startup_step_ledger,
+                "proof_classification": proof_classification,
+                "evidence_class": proof_classification["evidence_class"],
+                "feature_proof": proof_classification["feature_proof"],
             }
+            write_json(run_dir / "startup.step_ledger.json", {"startup_step_ledger": startup_step_ledger})
             write_json(run_dir / "startup.result.json", result)
             print(json.dumps(result, indent=2, ensure_ascii=False))
             return 0
@@ -4127,6 +4431,33 @@ def run_startup(args: argparse.Namespace) -> int:
     screen = capture_screenshot(proc.pid, run_dir, "failure_timeout")
     copy_filtered_debug_log_delta_if_exists(debug_log, debug_size, run_dir / "debug.final.log")
     copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
+    screen_summary = screen.get("screen_summary", {})
+    readiness = {
+        "kind": "timeout",
+        "baseline_save_marker": baseline_save_marker,
+        "latest_save_marker": latest_world_save_marker(profile, expected_world),
+        "pid": proc.pid,
+    }
+    startup_step_ledger = build_startup_step_ledger(
+        plan=plan,
+        profile_snapshot_name=profile_snapshot,
+        profile_snapshot_result=profile_snapshot_result,
+        fixture_name=args.fixture,
+        fixture_install_result=fixture_install_result,
+        process_path=run_dir / "process.json",
+        focus_result=focus_result,
+        readiness=readiness,
+        readiness_ok=False,
+        screen_summary=screen_summary,
+        screen_label="failure_timeout",
+        run_dir=run_dir,
+        failure_reason="startup_timeout",
+    )
+    proof_classification = startup_proof_classification(
+        ok=False,
+        screen_summary=screen_summary,
+        failure_reason="startup_timeout",
+    )
     result = {
         "ok": False,
         "reason": "startup_timeout",
@@ -4135,14 +4466,15 @@ def run_startup(args: argparse.Namespace) -> int:
         "strategy": plan.strategy,
         "profile_snapshot": profile_snapshot_result,
         "fixture_install": fixture_install_result,
-        "readiness": {
-            "kind": "timeout",
-            "baseline_save_marker": baseline_save_marker,
-            "latest_save_marker": latest_world_save_marker(profile, expected_world),
-        },
+        "readiness": readiness,
         "run_dir": str(run_dir),
-        "screen": screen.get("screen_summary", {}),
+        "screen": screen_summary,
+        "startup_step_ledger": startup_step_ledger,
+        "proof_classification": proof_classification,
+        "evidence_class": proof_classification["evidence_class"],
+        "feature_proof": proof_classification["feature_proof"],
     }
+    write_json(run_dir / "startup.step_ledger.json", {"startup_step_ledger": startup_step_ledger})
     write_json(run_dir / "startup.result.json", result)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 1
@@ -4460,6 +4792,13 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
 
     if blocker_info["status"] == "blocked":
         run_dir = create_run_dir(profile)
+        proof_classification = {
+            "evidence_class": "not-run",
+            "status": "red",
+            "verdict": "blocked_helper_gap",
+            "feature_proof": False,
+            "rule": "Blocked scenarios do not run startup or feature steps.",
+        }
         report = {
             "ok": False,
             "mode": mode,
@@ -4511,6 +4850,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "line_count": 0,
             },
             "blocked": blocker_info,
+            "proof_classification": proof_classification,
+            "evidence_class": proof_classification["evidence_class"],
+            "feature_proof": proof_classification["feature_proof"],
             "verdict": "blocked_helper_gap",
         }
         finalize_probe_report(run_dir, report, report_filename=report_filename)
@@ -4561,12 +4903,22 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     run_dir_value = str(start_result.get("run_dir", "")).strip()
     run_dir = Path(run_dir_value) if run_dir_value else None
     if start_rc != 0 or not start_result.get("ok"):
+        proof_classification = start_result.get("proof_classification") if isinstance(start_result.get("proof_classification"), dict) else {
+            "evidence_class": "startup/load",
+            "status": "red",
+            "verdict": "startup_failed",
+            "feature_proof": False,
+            "rule": "Startup command failed before any feature-path proof could run.",
+        }
         report = {
             "ok": False,
             "mode": mode,
             "scenario": str(scenario.get("name", args.scenario)),
             "reason": "startup_failed",
             "startup": start_result,
+            "proof_classification": proof_classification,
+            "evidence_class": proof_classification.get("evidence_class", "startup/load"),
+            "feature_proof": proof_classification.get("feature_proof", False),
             "start_command": start_cmd,
             "start_stdout": start_stdout,
             "start_stderr": start_stderr,
@@ -4581,12 +4933,22 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
 
     pid = int(start_result.get("pid", 0))
     if pid <= 0 or run_dir is None:
+        proof_classification = start_result.get("proof_classification") if isinstance(start_result.get("proof_classification"), dict) else {
+            "evidence_class": "startup/load",
+            "status": "red",
+            "verdict": "startup_missing_runtime_details",
+            "feature_proof": False,
+            "rule": "Startup omitted pid/run_dir, so no feature-path proof can run.",
+        }
         report = {
             "ok": False,
             "mode": mode,
             "scenario": str(scenario.get("name", args.scenario)),
             "reason": "startup_missing_runtime_details",
             "startup": start_result,
+            "proof_classification": proof_classification,
+            "evidence_class": proof_classification.get("evidence_class", "startup/load"),
+            "feature_proof": proof_classification.get("feature_proof", False),
         }
         finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
         return 1
@@ -4596,6 +4958,16 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     runtime_warnings = probe_runtime_warnings(profile, resolved_artifact_source)
     if runtime_blockers:
         blocked_screen = capture_screenshot(pid, run_dir, f"{mode}_blocked")
+        startup_classification = start_result.get("proof_classification") if isinstance(start_result.get("proof_classification"), dict) else {}
+        proof_classification = probe_proof_classification(
+            verdict="blocked_runtime_prereqs",
+            startup_classification=startup_classification,
+            step_reports=[],
+            artifact_patterns=artifact_patterns,
+            matches_by_pattern=[],
+            wait_step_summary={},
+            abort_report=None,
+        )
         report = {
             "ok": True,
             "mode": mode,
@@ -4645,6 +5017,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             },
             "runtime_blockers": runtime_blockers,
             "runtime_warnings": runtime_warnings,
+            "proof_classification": proof_classification,
+            "evidence_class": proof_classification.get("evidence_class", "startup/load-or-inconclusive"),
+            "feature_proof": proof_classification.get("feature_proof", False),
             "verdict": "blocked_runtime_prereqs",
         }
         finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
@@ -4706,6 +5081,17 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     elif not artifact_text.strip():
         verdict = "inconclusive_no_new_artifacts"
 
+    startup_classification = start_result.get("proof_classification") if isinstance(start_result.get("proof_classification"), dict) else {}
+    proof_classification = probe_proof_classification(
+        verdict=verdict,
+        startup_classification=startup_classification,
+        step_reports=step_reports,
+        artifact_patterns=artifact_patterns,
+        matches_by_pattern=matches_by_pattern,
+        wait_step_summary=wait_step_summary,
+        abort_report=abort_report,
+    )
+
     report = {
         "ok": True,
         "mode": mode,
@@ -4751,6 +5137,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         "wait_step_summary": wait_step_summary,
         "runtime_warnings": runtime_warnings,
         "abort": abort_report,
+        "proof_classification": proof_classification,
+        "evidence_class": proof_classification.get("evidence_class", "startup/load-or-inconclusive"),
+        "feature_proof": proof_classification.get("feature_proof", False),
         "verdict": verdict,
     }
     if capture_world_after:

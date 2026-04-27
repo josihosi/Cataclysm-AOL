@@ -151,7 +151,7 @@ Current scenario count: 56. The table is an inventory, not green proof. Any scen
 
 ## High-risk false-pass traps to freeze next
 
-1. **Load-only pass**: startup screen, auto-close, and cleanup are startup/load proof only.
+1. **Load-only pass**: startup screen, auto-close, and cleanup are startup/load proof only. Implementation checkpoint: `startup_harness.py start` now records `evidence_class=startup/load` and `feature_proof=false` even when load/readiness succeeds.
 2. **Wrong screen/key focus**: raw `press`/`type` steps need immediate screen/metadata guardrails before the next step may run.
 3. **Debug spawn ambiguity**: spawned-to-inventory, dropped-to-tile, field-created, and target-tile-read are separate proof points.
 4. **Fixture roulette**: transformed fixtures must show provenance and cannot silently inherit trust from the canonical audit anchor.
@@ -175,4 +175,6 @@ Current scenario count: 56. The table is an inventory, not green proof. Any scen
 
 ## Recommended next audit slice
 
-Audit launch/load/focus/screenshot first on the canonical `dev-harness` / `McWilliams` anchor, then patch `startup_harness.py` report classification or docs wherever this inventory reveals a false green. A good narrow next proof is: dry plan -> fixture/profile install metadata -> launch/load -> focused screen capture -> one inert keypress with immediate screen/OCR guard -> cleanup, with all rows using the ledger above.
+Launch/load/focus/screenshot ledger is now implemented for `startup_harness.py start`. Validation run `.userdata/dev-harness/harness_runs/20260427_164639/` on `dev-harness` / `McWilliams` produced seven startup rows: plan/focus/load were green, fixture/profile install were explicitly not requested, and screenshot capture was yellow because stale runtime was detected (`84b1e3a604-dirty` window title vs repo `821cbf01c6`, runtime diff `src/do_turn.cpp`). This is the intended false-pass freeze shape: successful load is still startup/load proof only, not feature proof.
+
+Next audit slice: refresh/rebuild runtime if current-runtime proof matters, then extend the same ledger/report classification to one inert keypress with immediate screen/OCR guard and cleanup. After that, apply the same pattern to scenario step reports so feature closure requires step-local proof rather than load-and-close.
