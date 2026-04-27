@@ -139,11 +139,6 @@ bool site_contains_omt( const bandit_live_world::site_record &site, const tripoi
     return std::find( site.footprint.begin(), site.footprint.end(), omt ) != site.footprint.end();
 }
 
-int signum( const int value )
-{
-    return ( value > 0 ) - ( value < 0 );
-}
-
 bool live_bandit_player_at_basecamp( const avatar &u )
 {
     return overmap_buffer.find_camp( u.pos_abs_omt().xy() ).has_value();
@@ -157,18 +152,6 @@ bool live_bandit_player_near_basecamp( const avatar &u )
 
     static constexpr int camp_adjacent_radius_submaps = 24;
     return !overmap_buffer.get_camps_near( u.pos_abs_sm(), camp_adjacent_radius_submaps ).empty();
-}
-
-tripoint_abs_omt live_bandit_standoff_goal( const bandit_live_world::site_record &site,
-        const tripoint_abs_omt &player_omt, const int desired_distance )
-{
-    const int dx = signum( site.anchor.x() - player_omt.x() );
-    const int dy = signum( site.anchor.y() - player_omt.y() );
-    if( dx == 0 && dy == 0 ) {
-        return player_omt;
-    }
-    return tripoint_abs_omt( player_omt.x() + dx * desired_distance,
-                             player_omt.y() + dy * desired_distance, player_omt.z() );
 }
 
 bool live_bandit_player_in_rolling_travel_scene( const avatar &u )
@@ -1529,8 +1512,8 @@ bool steer_live_bandit_dispatch_toward_player(
 
         tripoint_abs_omt dispatch_goal = u.pos_abs_omt();
         if( gate_decision.posture == bandit_live_world::local_gate_posture::hold_off ) {
-            static constexpr int desired_standoff_omt = 2;
-            dispatch_goal = live_bandit_standoff_goal( gate_site, u.pos_abs_omt(), desired_standoff_omt );
+            dispatch_goal = bandit_live_world::choose_hold_off_standoff_goal( gate_site.anchor,
+                            u.pos_abs_omt(), 2 );
             gate_input.standoff_distance = rl_dist( dispatch_goal, u.pos_abs_omt() );
         }
 

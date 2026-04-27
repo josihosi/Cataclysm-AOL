@@ -1,6 +1,6 @@
 {
   "name": "bandit.extortion_at_camp_standoff_mcw",
-  "description": "Named Basecamp extortion restage: start from the honest claimed nearby-owned-site McWilliams/Basecamp footing, disable safe mode, advance through the real live owner/dispatch/local-contact path until the local gate reaches camp-adjacent stand-off pressure, and stop there for probe capture or manual handoff.",
+  "description": "Named Basecamp extortion restage: start from the honest claimed nearby-owned-site McWilliams/Basecamp footing, disable safe mode, advance through the real live owner/dispatch/local-contact path until the local gate reaches camp-adjacent stand-off pressure at a visible five-OMT hold-off distance, and stop there for probe capture or manual handoff.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "tmp_bandit_live_world_owned_site2_basecamp_probe_2026-04-22",
@@ -14,7 +14,7 @@
     "active_group=overmap_special:bandit_camp@140,51,0#dispatch",
     "posture=hold_off",
     "basecamp_or_camp=yes",
-    "live_dispatch_goal=140,43,0"
+    "live_dispatch_goal=140,46,0"
   ],
   "steps": [
     {
@@ -23,16 +23,20 @@
       "seconds": 2.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 12
+      "extract_text_tail_lines": 12,
+      "expected_visible_fact": "post-load gameplay screen for McWilliams fixture; this is startup/load evidence only"
     },
     {
       "kind": "press",
       "label": "disable_safe_mode",
-      "keys": ["!"],
+      "keys": [
+        "!"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 16
+      "extract_text_tail_lines": 16,
+      "expected_visible_fact": "safe mode off and gameplay still focused before time advancement"
     },
     {
       "kind": "advance_turns",
@@ -41,9 +45,19 @@
       "settle_seconds": 2.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_tail_lines": 32
+      "extract_text_tail_lines": 32,
+      "expected_visible_fact": "local-gate hold_off result reached; debug artifact must show live_dispatch_goal=140,46,0"
     }
   ],
   "recommended_probe_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_at_camp_standoff_mcw",
-  "recommended_handoff_command": "python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw"
+  "recommended_handoff_command": "python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw",
+  "evidence_contract": {
+    "load_only_verdict": "load proof only / inconclusive for standoff/return behavior",
+    "live_required_checkpoints": [
+      "post load: normal McWilliams gameplay screen after fixture install",
+      "safe mode off: gameplay still focused after safe-mode toggle",
+      "after advancement: debug log contains local_gate hold_off and live_dispatch_goal at visible five-OMT standoff"
+    ],
+    "failure_rule": "If the run only reaches startup/gameplay screens, hangs during advancement, or lacks local_gate/dispatch artifacts, it is not standoff proof."
+  }
 }

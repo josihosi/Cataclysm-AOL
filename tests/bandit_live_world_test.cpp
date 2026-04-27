@@ -770,6 +770,24 @@ TEST_CASE( "bandit_live_world_chooses_reviewer_readable_local_approach_gate_post
     CHECK_FALSE( decision.combat_forward );
 }
 
+TEST_CASE( "bandit_live_world_hold_off_goal_keeps_visible_standoff",
+           "[bandit][live_world][local_gate]" )
+{
+    const tripoint_abs_omt player( 140, 41, 0 );
+    const tripoint_abs_omt camp_anchor( 140, 51, 0 );
+    const tripoint_abs_omt goal = bandit_live_world::choose_hold_off_standoff_goal(
+                                      camp_anchor, player, 2 );
+
+    CHECK( rl_dist( goal, player ) >= bandit_live_world::minimum_hold_off_standoff_omt() );
+    CHECK( goal == tripoint_abs_omt( 140, 46, 0 ) );
+
+    const tripoint_abs_omt diagonal_goal = bandit_live_world::choose_hold_off_standoff_goal(
+            tripoint_abs_omt( 150, 51, 0 ), player, 2 );
+    CHECK( diagonal_goal == tripoint_abs_omt( 145, 46, 0 ) );
+
+    CHECK( bandit_live_world::choose_hold_off_standoff_goal( player, player, 2 ) == player );
+}
+
 TEST_CASE( "bandit_live_world_sight_avoid_uses_only_bounded_local_reposition_candidates",
            "[bandit][live_world][sight_avoid]" )
 {

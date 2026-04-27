@@ -1208,6 +1208,26 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
     return decision;
 }
 
+int minimum_hold_off_standoff_omt()
+{
+    return 5;
+}
+
+tripoint_abs_omt choose_hold_off_standoff_goal( const tripoint_abs_omt &site_anchor,
+        const tripoint_abs_omt &player_omt, const int requested_distance )
+{
+    const int desired_distance = std::max( requested_distance, minimum_hold_off_standoff_omt() );
+    const int dx = ( site_anchor.x() > player_omt.x() ) -
+                   ( site_anchor.x() < player_omt.x() );
+    const int dy = ( site_anchor.y() > player_omt.y() ) -
+                   ( site_anchor.y() < player_omt.y() );
+    if( dx == 0 && dy == 0 ) {
+        return player_omt;
+    }
+    return tripoint_abs_omt( player_omt.x() + dx * desired_distance,
+                             player_omt.y() + dy * desired_distance, player_omt.z() );
+}
+
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
                                       const local_gate_decision &decision )
 {

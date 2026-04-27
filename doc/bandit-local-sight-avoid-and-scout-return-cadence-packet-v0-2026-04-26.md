@@ -92,6 +92,13 @@ Final live proof rung: run `.userdata/dev-harness/harness_runs/20260427_061344/`
 
 ## Reopened live-product correction - 2026-04-27
 
+Current 2026-04-27 correction pass:
+
+- Hold-off dispatch goal now uses `bandit_live_world::choose_hold_off_standoff_goal()` with a minimum five-OMT visible standoff instead of the previous two-OMT crowding goal. Deterministic coverage asserts straight and diagonal goals stay at/above `minimum_hold_off_standoff_omt()` and keep the no-movement case stable.
+- The standoff scenario's expected artifact moved from `live_dispatch_goal=140,43,0` to `live_dispatch_goal=140,46,0`, matching the intended visible hold-off distance for the McWilliams/Basecamp footing.
+- Recent copied-save inspection of `.userdata/dev-harness/save/McWilliams/dimension_data.gsav` after inflating the current player save shows the inspected site with `active_sortie_started_minutes=-1`, `active_sortie_local_contact_minutes=-1`, and no active group/target/job ids. That answers only the inspected fixture/save state: the scout timer was not running there.
+- A fresh live probe attempt at `.userdata/dev-harness/harness_runs/20260427_145148/` loaded the game and captured only startup/normal-gameplay screens (`post_load_settle`, `disable_safe_mode`). It then hung in the long advancement path and was killed. Classify that run as **load proof only / inconclusive for standoff and scout-return behavior**, not as feature proof.
+
 The next pass must answer the actual live playtest failure before making another closure claim:
 
 1. Inspect Josef's recent live logs and save fields for `active_sortie_started_minutes`, `active_sortie_local_contact_minutes`, `return_home`, `local_contact`, and `sight_avoid` so the report says whether the scout timer is actually running.
