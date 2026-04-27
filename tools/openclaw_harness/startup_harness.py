@@ -2191,9 +2191,14 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
     if not metadata:
         return "yellow_step_no_immediate_screen_or_metadata", ["no_screen_or_metadata_artifact"]
     status = str(metadata.get("status", "")).strip()
-    if status == "required_state_present":
+    if status in {"required_state_present", "required_fields_present"}:
         return "green_step_metadata_required_state_present", []
-    if status == "required_state_missing":
+    if status in {
+        "required_state_missing",
+        "required_fields_missing",
+        "required_items_missing",
+        "required_furniture_missing",
+    }:
         issues = []
         if metadata.get("missing_required_fields"):
             issues.append("missing_required_fields")
@@ -2201,7 +2206,7 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_items")
         if metadata.get("missing_required_furniture"):
             issues.append("missing_required_furniture")
-        return "red_step_metadata_required_state_missing", issues or ["required_state_missing"]
+        return "red_step_metadata_required_state_missing", issues or [status]
     if status == "failed":
         return "blocked_step_metadata_probe_failed", ["metadata_probe_failed"]
     if status == "scanned":
@@ -2285,7 +2290,12 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
             ocr_requested = isinstance(report.get("screen_text"), dict)
 
         issues: List[str] = []
-        if isinstance(report.get("abort"), dict):
+        if isinstance(report.get("abort"), dict) and report["abort"].get("guard") == "metadata":
+            verdict, issues = metadata_checkpoint_verdict(metadata_summary)
+            if not verdict.startswith(("red", "blocked")):
+                verdict = "red_step_aborted_by_metadata_guard"
+            issues = issues + ["metadata_abort_guard"]
+        elif isinstance(report.get("abort"), dict):
             verdict = "red_step_aborted_by_screen_text_guard"
             issues.append("screen_text_abort_guard")
         elif kind in {"long_wait", "wait_action"} and isinstance(report.get("wait_step_ledger"), dict):
@@ -4141,6 +4151,23 @@ def execute_probe_steps(
                 "expected_immediate_state": "saved map contains the required target-tile metadata before feature proof may continue",
                 "failure_rule": "missing required saved-map field/item/furniture or unreadable save metadata makes this step red/blocked",
             })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": metadata_verdict,
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved-map metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
         elif kind == "capture":
             capture_crop = normalize_capture_crop(
                 step.get("capture_crop", step.get("crop"))
