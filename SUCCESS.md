@@ -76,8 +76,8 @@ Notes:
 Status: ACTIVE / GREENLIT PROCESS AUDIT
 
 Success state:
-- [ ] A full harness-surface inventory exists and names each current primitive/scenario, its proof artifact, and its known blind spots.
-- [ ] One canonical disposable audit save/profile is selected for the majority of checks, with explicit provenance and justified exceptions for any other fixture.
+- [x] A full harness-surface inventory exists and names each current primitive/scenario, its proof artifact, and its known blind spots: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
+- [x] One canonical disposable audit save/profile is selected for the majority of checks, with explicit provenance and justified exceptions for any other fixture: provisional anchor `dev-harness` / `McWilliams` using `mcwilliams_live_debug_2026-04-07`, with transformed bandit and legacy dev fixtures called out as exceptions in the inventory doc.
 - [ ] Each audited primitive has a step ledger with precondition, action/keystroke, expected state, screenshot or metadata proof, failure rule, artifact path, and pass/yellow/red/blocked verdict.
 - [ ] The audit covers launch/load readiness, focus/keystrokes, screenshot capture, debug spawn paths, target-tile metadata checks, save/zzip transforms, Smart Zone UI/layout inspection, fire/smoke setup, wait/time passage, NPC/bandit positioning, and report writing.
 - [ ] False-pass behavior is guarded against: wrong screen, failed spawn, missing target field, missing save metadata, stale binary/profile, and load-only runs all produce explicit non-green verdicts.

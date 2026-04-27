@@ -92,6 +92,8 @@ This package does not replace the current active Smart Zone / bandit debug-proof
 
 Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
 
+Current checkpoint: harness surface inventory and provisional same-save policy live at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`. This is an inventory/provenance boundary only, not a feature-proof freeze; the next honest state is step-ledger audit of launch/load/focus/screenshot on the canonical `dev-harness` / `McWilliams` anchor.
+
 ---
 
 ## Recently closed correction checkpoints
