@@ -727,6 +727,7 @@ struct live_bandit_signal_observation {
     bandit_mark_generation::signal_input signal;
     tripoint_abs_omt source_omt;
     int range_cap_omt = 0;
+    int horde_signal_power = 0;
     std::string weather_summary;
 };
 
@@ -1033,6 +1034,8 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         light_observation.mark.bounty_add = light_projection.signal.bounty_add;
         light_observation.mark.threat_add = light_projection.signal.threat_add;
         light_observation.mark.notes = light_projection.signal.notes;
+        light_observation.horde_signal_power =
+            bandit_mark_generation::horde_signal_power_from_light_projection( light_projection );
         observations.push_back( light_observation );
     }
 
@@ -1185,6 +1188,27 @@ int refresh_live_bandit_signal_marks(
                                << " rejected_by_signal_range=" << rejected_by_signal_range
                                << " scan_radius_omt=" << live_bandit_system_envelope_omt << '\n';
     return refreshed_sites;
+}
+
+int signal_live_hordes_from_light_observations(
+    const std::vector<live_bandit_signal_observation> &signals )
+{
+    int signaled_sources = 0;
+    for( const live_bandit_signal_observation &signal : signals ) {
+        if( signal.horde_signal_power <= 0 ) {
+            continue;
+        }
+        const tripoint_abs_sm source_sm = coords::project_to<coords::sm>( signal.source_omt );
+        overmap_buffer.signal_hordes( source_sm, signal.horde_signal_power );
+        signaled_sources++;
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world horde light signal: packet="
+                                   << signal.mark.mark_id << " kind=" << signal.mark.kind
+                                   << " source_omt=" << signal.source_omt.to_string()
+                                   << " horde_signal_power=" << signal.horde_signal_power
+                                   << " range_cap_omt=" << signal.range_cap_omt
+                                   << " weather=" << signal.weather_summary << '\n';
+    }
+    return signaled_sources;
 }
 
 bool steer_live_bandit_dispatch_toward_player(
@@ -1713,6 +1737,7 @@ void overmap_npc_move()
         bootstrap_live_bandit_abstract_sites_near_player();
         live_signals = observe_live_bandit_field_signals_near_player();
         refresh_live_bandit_signal_marks( live_signals );
+        signal_live_hordes_from_light_observations( live_signals );
     }
     if( dispatch_cadence_due ) {
         steer_live_bandit_dispatch_toward_player( live_signals );

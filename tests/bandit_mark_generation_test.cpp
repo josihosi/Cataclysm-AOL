@@ -306,6 +306,92 @@ TEST_CASE( "bandit_mark_generation_light_adapter_keeps_night_leaks_long_range_bu
     CHECK( contained_projection.review_summary.find( "verdict=blocked" ) != std::string::npos );
 }
 
+TEST_CASE( "bandit_mark_generation_visible_light_horde_bridge_stays_bounded",
+           "[bandit][marks]" )
+{
+    const bandit_mark_generation::light_packet exposed_night_packet = {
+        "farm_window_light",
+        "farm_window_light",
+        "farmstead",
+        bandit_dry_run::lead_family::site,
+        6,
+        2,
+        1,
+        1,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::exposed,
+        bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::open,
+        { "Exposed night light can pull horde interest through the live bridge." }
+    };
+    const bandit_mark_generation::light_packet daylight_packet = {
+        "day_window_glow",
+        "day_window_glow",
+        "farmstead",
+        bandit_dry_run::lead_family::site,
+        3,
+        3,
+        1,
+        1,
+        bandit_mark_generation::light_time_band::daylight,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::exposed,
+        bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::open,
+        { "Daylight glow should not become horde bait." }
+    };
+    const bandit_mark_generation::light_packet screened_packet = {
+        "screened_side_light",
+        "screened_side_light",
+        "farmstead",
+        bandit_dry_run::lead_family::site,
+        5,
+        2,
+        1,
+        2,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::screened,
+        bandit_mark_generation::light_source_band::ordinary,
+        bandit_mark_generation::light_terrain_band::open,
+        { "Screened side light may interest bandits without calling hordes." }
+    };
+    const bandit_mark_generation::light_packet searchlight_packet = {
+        "searchlight_road",
+        "searchlight_road",
+        "roadblock",
+        bandit_dry_run::lead_family::corridor,
+        7,
+        2,
+        1,
+        1,
+        bandit_mark_generation::light_time_band::night,
+        bandit_mark_generation::light_weather_band::clear,
+        bandit_mark_generation::light_exposure_band::exposed,
+        bandit_mark_generation::light_source_band::searchlight,
+        bandit_mark_generation::light_terrain_band::open,
+        { "Searchlight-like cases can signal harder." }
+    };
+
+    const bandit_mark_generation::light_projection exposed_projection =
+        bandit_mark_generation::adapt_light_packet( exposed_night_packet );
+    const bandit_mark_generation::light_projection daylight_projection =
+        bandit_mark_generation::adapt_light_packet( daylight_packet );
+    const bandit_mark_generation::light_projection screened_projection =
+        bandit_mark_generation::adapt_light_packet( screened_packet );
+    const bandit_mark_generation::light_projection searchlight_projection =
+        bandit_mark_generation::adapt_light_packet( searchlight_packet );
+
+    REQUIRE( exposed_projection.viable );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( exposed_projection ) == 18 );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( daylight_projection ) == 0 );
+    REQUIRE( screened_projection.viable );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( screened_projection ) == 0 );
+    REQUIRE( searchlight_projection.viable );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( searchlight_projection ) == 26 );
+}
+
 TEST_CASE( "bandit_mark_generation_portal_storm_light_keeps_bright_exposed_leaks_legible_but_bounded",
            "[bandit][marks]" )
 {
