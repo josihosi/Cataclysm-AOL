@@ -39,17 +39,17 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active lane is now **Smart Zone Manager v1 Josef playtest corrections**. Josef greenlit the C-AOL debug-note correction stack on 2026-04-26 and explicitly told Schani to point Andi back at C-AOL, reason deeply, remove hollow code, and map tests to real game implementation before more implementation lands. The first correction packet, `Bandit live signal + site bootstrap correction v0`, remains Josef-review/parked rather than kept in the smoke/fire proof loop; the second correction packet, `Bandit live-wiring audit + visible-light horde bridge correction v0`, closes with a bounded live/harness light-to-horde bridge proof and caveats; and `Bandit local sight-avoid + scout return cadence packet v0` now closes with deterministic proof plus bounded live/harness reposition and scout-return/writeback proof.
+The active lane is now **Basecamp medical consumable readiness v0**. Josef greenlit the C-AOL debug-note correction stack on 2026-04-26 and explicitly told Schani to point Andi back at C-AOL, reason deeply, remove hollow code, and map tests to real game implementation before more implementation lands. The first correction packet, `Bandit live signal + site bootstrap correction v0`, remains Josef-review/parked rather than kept in the smoke/fire proof loop; the second correction packet, `Bandit live-wiring audit + visible-light horde bridge correction v0`, closes with a bounded live/harness light-to-horde bridge proof and caveats; `Bandit local sight-avoid + scout return cadence packet v0` closes with deterministic proof plus bounded live/harness reposition and scout-return/writeback proof; and `Smart Zone Manager v1 Josef playtest corrections` closes with deterministic zone layout/save-reload proof.
 
 Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority. The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this debug-correction stack without fresh explicit clearance.
 
 Active scope:
-- implement `Smart Zone Manager v1 Josef playtest corrections` from `doc/smart-zone-manager-v1-josef-playtest-followup-2026-04-26.md`
-- add `LOOT_MANUALS` coverage on/near the Basecamp books cluster while keeping ordinary `LOOT_BOOKS`
-- keep gun magazines as `LOOT_MAGAZINES` and make the label unambiguous if the current wording can be confused with readable magazines/manuals
-- add full Basecamp storage `AUTO_EAT` and `AUTO_DRINK` zones with `ignore_contents=false`
-- start with deterministic zone-id/option proof, then use one focused harness/save inspection only if the static shape is honest
-- do not re-enter the parked smoke/fire site-refresh playtest loop or reopen the just-closed bandit local sight-avoid packet unless Josef explicitly reopens them
+- implement `Basecamp medical consumable readiness v0` from `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`
+- make camp locker/service logic recognize at least `bandages` and `adhesive_bandages` as bounded medical readiness supplies
+- let NPCs stock a small reserve from Basecamp locker/storage without turning locker service into a pharmacy hoover
+- preserve already-carried bandages/adhesive bandages through locker refresh
+- prove fresh pickup, carried preservation, anti-hoarding/cap behavior, negative unrelated-item behavior, and no ammo/mag/readiness regression with deterministic tests first
+- do not re-enter the parked smoke/fire site-refresh playtest loop, reopen the just-closed bandit local sight-avoid packet, or reopen Smart Zone Manager layout work unless Josef explicitly reopens them
 
 Non-goals:
 - no implementation of every greenlit package inside this correction packet
@@ -61,8 +61,8 @@ Greenlit implementation stack, in current order:
 1. **Bandit live signal + site bootstrap correction v0** — JOSEF REVIEW / MOVE ON; partial 40 OMT system envelope, abstract site bootstrap, lazy materialization, raw-field reader proof, and live dispatch/mark consumption are landed, but the smoke/fire site-refresh playtest loop is parked for Josef review rather than rerun.
 2. **Bandit live-wiring audit + visible-light horde bridge correction v0** — CLOSED / MOVED DOWNSTREAM; bounded source bridge implemented, deterministically tested, and live/harness-proved with copied-save visible `fd_fire` -> `bandit_live_world horde light signal:` evidence; not player-lit fire product proof.
 3. **Bandit local sight-avoid + scout return cadence packet v0** — CLOSED / MOVED DOWNSTREAM; exposed scouts seek cover/break sight, finite sortie window, return-home/writeback cadence, with bounded live/harness proof.
-4. **Smart Zone Manager v1 Josef playtest corrections** — ACTIVE; add `LOOT_MANUALS`, keep book/gun-magazine zone distinction clear, add full-storage `AUTO_EAT` / `AUTO_DRINK` with `ignore_contents=false`.
-5. **Basecamp medical consumable readiness v0** — bounded `bandages` / `adhesive_bandages` pickup/preservation from camp storage.
+4. **Smart Zone Manager v1 Josef playtest corrections** — CLOSED / MOVED DOWNSTREAM; `LOOT_MANUALS`, preserved `LOOT_BOOKS`, clearer weapon-magazine `LOOT_MAGAZINES`, full-storage `AUTO_EAT` / `AUTO_DRINK`, and save/reload `ignore_contents=false` proof are landed.
+5. **Basecamp medical consumable readiness v0** — ACTIVE; bounded `bandages` / `adhesive_bandages` pickup/preservation from camp storage.
 6. **Basecamp locker armor ranking + blocker removal packet v0** — generic full-body/protective armor comparison and blocker clearing, not RM13-specific.
 7. **Basecamp job spam debounce + locker/patrol exceptions packet v0** — compress repeated camp-job chatter while preserving typed locker/patrol state changes.
 
@@ -99,13 +99,15 @@ The latest closed lane is now `Bandit extortion playthrough audit + harness-skil
 
 ---
 
-## Active correction - Smart Zone Manager v1 Josef playtest corrections
+## Closed correction - Smart Zone Manager v1 Josef playtest corrections
 
-**Status:** ACTIVE / GREENLIT NOW
+**Status:** CLOSED / MOVED DOWNSTREAM
 
 Canonical contract: `doc/smart-zone-manager-v1-josef-playtest-followup-2026-04-26.md`.
 
 Josef later checked the generated zones in Zone Manager and found the existing zone layout broadly OK. The greenlit correction is now narrow: add `LOOT_MANUALS` on/near the books cluster, keep `LOOT_BOOKS` versus gun `LOOT_MAGAZINES` clear, and add `AUTO_EAT` / `AUTO_DRINK` across the full Basecamp storage zone with the "Ignore items in this area when sorting?" / `ignore_contents` option set to **NO / false** so the Basecamp storage footprint still sorts normally.
+
+Current checkpoint: `src/clzones.cpp` now adds `LOOT_MANUALS` on the Basecamp books tile, keeps `LOOT_BOOKS`, labels gun magazines as `Basecamp weapon magazines`, and adds full-footprint `AUTO_EAT` / `AUTO_DRINK`. `ignorable_options` defaults `ignore_contents` to false and generated ignorable zones set it explicitly. `tests/clzones_test.cpp` proves the zone ids/types, full footprint, label, `ignore_contents == false`, and serialize/deserialize persistence. Validation: `make -j4 TILES=1 tests`, `./tests/cata_test "basecamp_smart_zoning_places_expected_layout"` -> 745 assertions in 1 test case, `./tests/cata_test "[smart_zone]"` -> 2847 assertions in 4 test cases, and focused `git diff --check` all passed. A live harness artifact probe remained inconclusive because its `zoneszmgr-temp.json` captured only the ordinary camp zones, so the decisive persistence evidence is the deterministic zone-manager serialize/reload proof rather than the flaky GUI artifact path.
 
 ## Josef-review checkpoint - Bandit live signal + site bootstrap correction v0
 
@@ -135,9 +137,9 @@ Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a d
 
 Current checkpoint: deterministic implementation, bounded live return-home decision proof, live walked-home/writeback follow-through, and live sight-avoid reposition proof are landed. Run `.userdata/dev-harness/harness_runs/20260427_051117/` uses equivalent nearby-owned-site local-contact footing plus a narrow pre-aged scout-sortie clock transform to prove `scout_sortie: linger limit reached -> return_home` and `returning_home -> local_gate skipped`. Follow-through run `.userdata/dev-harness/harness_runs/20260427_054353/` advances the same footing through a bounded 2600-turn return window and proves `scout_report: returned -> pressure refreshed`; copied save inspection shows the active group/target/member ids and sortie clocks cleared, `remembered_pressure=ample`, and scout member `4` back on the home footprint. Sight-avoid run `.userdata/dev-harness/harness_runs/20260427_061344/` uses stable scenario `bandit.local_sight_avoid_exposed_mcw` on equivalent nearby-owned-site local-contact footing with the player moved to an exposed south-of-shelter sightline, disables safe mode, advances 20 turns, and records `bandit_live_world sight_avoid: exposed -> repositioned npc=4 from=(60,23,0) to=(59,22,0) reason=repositioning because exposed`. This closes the local sight-avoid/scout-return packet without claiming later redispatch tuning beyond the existing explicit camp re-evaluation path.
 
-## Greenlit follow-up - Basecamp medical consumable readiness v0
+## Active correction - Basecamp medical consumable readiness v0
 
-**Status:** GREENLIT / QUEUED FOLLOW-UP
+**Status:** ACTIVE / GREENLIT NOW
 
 Canonical contract: `doc/basecamp-medical-consumable-readiness-v0-2026-04-26.md`.
 

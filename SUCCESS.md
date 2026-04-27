@@ -142,24 +142,26 @@ Notes:
 
 ## Smart Zone Manager v1 Josef playtest corrections
 
-Status: ACTIVE / GREENLIT NOW
+Status: CLOSED / MOVED DOWNSTREAM
 
 Success state:
-- [ ] Smart Zone Manager adds `LOOT_MANUALS` coverage on/near the Basecamp books cluster without removing ordinary `LOOT_BOOKS` coverage.
-- [ ] Gun-magazine coverage remains `LOOT_MAGAZINES`, preferably with an unambiguous user-facing label such as "Basecamp weapon magazines" if label text is touched.
-- [ ] Auto-eat and auto-drink coverage spans the full Basecamp storage zone, with `ignore_contents` explicitly false so Basecamp sorting still sees the covered items.
-- [ ] Deterministic tests assert the actual zone ids/types and the `ignore_contents == false` option, not just label text.
-- [ ] Harness or save inspection confirms generated zones remain saved/reopenable and do not crash or corrupt the camp layout.
+- [x] Smart Zone Manager adds `LOOT_MANUALS` coverage on/near the Basecamp books cluster without removing ordinary `LOOT_BOOKS` coverage.
+- [x] Gun-magazine coverage remains `LOOT_MAGAZINES`, preferably with an unambiguous user-facing label such as "Basecamp weapon magazines" if label text is touched.
+- [x] Auto-eat and auto-drink coverage spans the full Basecamp storage zone, with `ignore_contents` explicitly false so Basecamp sorting still sees the covered items.
+- [x] Deterministic tests assert the actual zone ids/types and the `ignore_contents == false` option, not just label text.
+- [x] Save inspection confirms generated zones remain saved/reopenable and do not crash or corrupt the camp layout through zone-manager serialize/deserialize proof.
 
 Notes:
 - Canonical contract lives at `doc/smart-zone-manager-v1-josef-playtest-followup-2026-04-26.md`.
 - Josef checked the existing generated zones manually and narrowed this follow-up to `LOOT_MANUALS`, book/manual/gun-magazine clarity, and full-storage auto-consume zones.
+- Implementation adds `LOOT_MANUALS` on the books tile, preserves `LOOT_BOOKS`, renames the gun magazine label to `Basecamp weapon magazines`, adds full-footprint `AUTO_EAT` / `AUTO_DRINK`, and keeps generated ignorable zone `ignore_contents` false.
+- Validation passed: `make -j4 TILES=1 tests`, `./tests/cata_test "basecamp_smart_zoning_places_expected_layout"` (745 assertions in 1 test case), `./tests/cata_test "[smart_zone]"` (2847 assertions in 4 test cases), and focused `git diff --check`.
 
 ---
 
 ## Basecamp medical consumable readiness v0
 
-Status: GREENLIT / QUEUED FOLLOW-UP
+Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [ ] Camp locker/service logic recognizes at least `bandages` and `adhesive_bandages` as bounded medical readiness supplies when stocking NPCs.

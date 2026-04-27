@@ -79,6 +79,7 @@ static const zone_type_id zone_type_LOOT_GUNS( "LOOT_GUNS" );
 static const zone_type_id zone_type_LOOT_IGNORE( "LOOT_IGNORE" );
 static const zone_type_id zone_type_LOOT_ITEM_GROUP( "LOOT_ITEM_GROUP" );
 static const zone_type_id zone_type_LOOT_MAGAZINES( "LOOT_MAGAZINES" );
+static const zone_type_id zone_type_LOOT_MANUALS( "LOOT_MANUALS" );
 static const zone_type_id zone_type_LOOT_PDRINK( "LOOT_PDRINK" );
 static const zone_type_id zone_type_LOOT_PFOOD( "LOOT_PFOOD" );
 static const zone_type_id zone_type_LOOT_SEEDS( "LOOT_SEEDS" );
@@ -2016,6 +2017,9 @@ void mapgen_place_zone( tripoint_abs_ms const &start, tripoint_abs_ms const &end
             dynamic_cast<loot_options *>( &*options )->set_mark( filter );
         }
     }
+    if( const auto ignorable = dynamic_cast<ignorable_options *>( &*options ) ) {
+        ignorable->set_ignore_contents( false );
+    }
     mgr.add( name, type, fac, false, true, s_, e_, options, true, pmap );
 }
 
@@ -2452,10 +2456,12 @@ basecamp_smart_zone_result auto_place_basecamp_smart_zones(
                             _( "Basecamp spare parts" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_BOOKS, *books_tile,
                             _( "Basecamp books" ) );
+    smart_zone_plan_single( ctx, zone_type_LOOT_MANUALS, *books_tile,
+                            _( "Basecamp manuals" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_CONTAINERS, *containers_tile,
                             _( "Basecamp containers" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_MAGAZINES, *magazines_tile,
-                            _( "Basecamp magazines" ) );
+                            _( "Basecamp weapon magazines" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_CHEMICAL, *chemical_tile,
                             _( "Basecamp chemicals" ) );
     smart_zone_plan_single( ctx, zone_type_LOOT_DRUGS, *drugs_tile,
@@ -2482,6 +2488,12 @@ basecamp_smart_zone_result auto_place_basecamp_smart_zones(
     smart_zone_plan_rect( ctx, zone_type_LOOT_UNSORTED,
                           unsorted_rect->first, unsorted_rect->second,
                           _( "Basecamp unsorted" ) );
+    smart_zone_plan_rect( ctx, zone_type_AUTO_EAT,
+                          ctx.start, ctx.end,
+                          _( "Basecamp auto eat" ) );
+    smart_zone_plan_rect( ctx, zone_type_AUTO_DRINK,
+                          ctx.start, ctx.end,
+                          _( "Basecamp auto drink" ) );
 
     for( const tripoint_abs_ms &bed : beds ) {
         smart_zone_plan_single( ctx, zone_type_LOOT_CUSTOM, bed,

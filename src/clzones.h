@@ -225,7 +225,7 @@ class blueprint_options : public zone_options, public mark_option
 class ignorable_options : public zone_options
 {
     private:
-        bool ignore_contents;
+        bool ignore_contents = false;
 
         enum query_ignorable_result {
             canceled,
@@ -238,6 +238,9 @@ class ignorable_options : public zone_options
     public:
         bool get_ignore_contents() const {
             return ignore_contents;
+        }
+        void set_ignore_contents( const bool value ) {
+            ignore_contents = value;
         }
         bool has_options() const override {
             return true;

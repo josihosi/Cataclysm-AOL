@@ -1,6 +1,6 @@
 # Basecamp medical consumable readiness v0 (2026-04-26)
 
-Status: greenlit / queued follow-up.
+Status: active / greenlit now.
 
 ## Normalized contract
 

@@ -4,6 +4,7 @@
 #include <initializer_list>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,7 @@
 #include "enums.h"
 #include "item.h"
 #include "item_pocket.h"
+#include "json_loader.h"
 #include "map.h"
 #include "map_helpers.h"
 #include "player_activity.h"
@@ -2258,6 +2260,8 @@ TEST_CASE( "route_cache_invalidation_on_mass_change",
 
 namespace
 {
+static const zone_type_id zone_type_AUTO_DRINK( "AUTO_DRINK" );
+static const zone_type_id zone_type_AUTO_EAT( "AUTO_EAT" );
 static const zone_type_id zone_type_LOOT_AMMO( "LOOT_AMMO" );
 static const zone_type_id zone_type_LOOT_BOOKS( "LOOT_BOOKS" );
 static const zone_type_id zone_type_LOOT_CHEMICAL( "LOOT_CHEMICAL" );
@@ -2267,6 +2271,7 @@ static const zone_type_id zone_type_LOOT_CUSTOM( "LOOT_CUSTOM" );
 static const zone_type_id zone_type_LOOT_DRUGS( "LOOT_DRUGS" );
 static const zone_type_id zone_type_LOOT_GUNS( "LOOT_GUNS" );
 static const zone_type_id zone_type_LOOT_MAGAZINES( "LOOT_MAGAZINES" );
+static const zone_type_id zone_type_LOOT_MANUALS( "LOOT_MANUALS" );
 static const zone_type_id zone_type_LOOT_SPARE_PARTS( "LOOT_SPARE_PARTS" );
 static const zone_type_id zone_type_LOOT_TOOLS( "LOOT_TOOLS" );
 static const zone_type_id zone_type_LOOT_WOOD( "LOOT_WOOD" );
@@ -2432,14 +2437,65 @@ TEST_CASE( "basecamp_smart_zoning_places_expected_layout", "[zones][smart_zone][
     CHECK( find_single_zone( zone_type_LOOT_WOOD ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_TOOLS ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_SPARE_PARTS ) != nullptr );
-    CHECK( find_single_zone( zone_type_LOOT_BOOKS ) != nullptr );
+    const zone_data *books = find_single_zone( zone_type_LOOT_BOOKS );
+    REQUIRE( books != nullptr );
+    CHECK( find_zone_at( zone_type_LOOT_MANUALS, books->get_center_point() ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_CONTAINERS ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_CHEMICAL ) != nullptr );
     CHECK( find_single_zone( zone_type_LOOT_DRUGS ) != nullptr );
 
+    const zone_data *weapon_magazines = nullptr;
+    for( const zone_manager::ref_const_zone_data zone_ref : zone_manager::get_manager().get_zones( your_fac ) ) {
+        const zone_data &zone = zone_ref.get();
+        if( zone.get_type() == zone_type_LOOT_MAGAZINES ) {
+            CHECK( zone.get_name() == "Basecamp weapon magazines" );
+            weapon_magazines = &zone;
+        }
+    }
+    REQUIRE( weapon_magazines != nullptr );
+
+    const zone_data *auto_eat = find_single_zone( zone_type_AUTO_EAT );
+    REQUIRE( auto_eat != nullptr );
+    CHECK( auto_eat->get_start_point() == fixture.start );
+    CHECK( auto_eat->get_end_point() == fixture.end );
+    const auto *eat_options = dynamic_cast<const ignorable_options *>( &auto_eat->get_options() );
+    REQUIRE( eat_options != nullptr );
+    CHECK( !eat_options->get_ignore_contents() );
+
+    const zone_data *auto_drink = find_single_zone( zone_type_AUTO_DRINK );
+    REQUIRE( auto_drink != nullptr );
+    CHECK( auto_drink->get_start_point() == fixture.start );
+    CHECK( auto_drink->get_end_point() == fixture.end );
+    const auto *drink_options = dynamic_cast<const ignorable_options *>( &auto_drink->get_options() );
+    REQUIRE( drink_options != nullptr );
+    CHECK( !drink_options->get_ignore_contents() );
+
     const zone_data *unsorted = find_single_zone( zone_type_LOOT_UNSORTED );
     REQUIRE( unsorted != nullptr );
     CHECK( unsorted->get_start_point() != unsorted->get_end_point() );
+
+    std::ostringstream serialized_zones;
+    JsonOut jsout( serialized_zones );
+    zone_manager::get_manager().serialize( jsout );
+    zone_manager::get_manager().clear();
+    JsonValue jsin = json_loader::from_string( serialized_zones.str() );
+    zone_manager::get_manager().deserialize( jsin );
+
+    const zone_data *reloaded_books = find_single_zone( zone_type_LOOT_BOOKS );
+    REQUIRE( reloaded_books != nullptr );
+    CHECK( find_zone_at( zone_type_LOOT_MANUALS, reloaded_books->get_center_point() ) != nullptr );
+    const zone_data *reloaded_auto_eat = find_single_zone( zone_type_AUTO_EAT );
+    REQUIRE( reloaded_auto_eat != nullptr );
+    const auto *reloaded_eat_options = dynamic_cast<const ignorable_options *>(
+            &reloaded_auto_eat->get_options() );
+    REQUIRE( reloaded_eat_options != nullptr );
+    CHECK( !reloaded_eat_options->get_ignore_contents() );
+    const zone_data *reloaded_auto_drink = find_single_zone( zone_type_AUTO_DRINK );
+    REQUIRE( reloaded_auto_drink != nullptr );
+    const auto *reloaded_drink_options = dynamic_cast<const ignorable_options *>(
+            &reloaded_auto_drink->get_options() );
+    REQUIRE( reloaded_drink_options != nullptr );
+    CHECK( !reloaded_drink_options->get_ignore_contents() );
 
     const zone_data *rotten = find_single_zone( zone_type_LOOT_CUSTOM, "rotten" );
     REQUIRE( rotten != nullptr );
