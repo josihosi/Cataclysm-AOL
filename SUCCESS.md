@@ -101,25 +101,25 @@ Notes:
 
 ## Bandit live-wiring audit + visible-light horde bridge correction v0
 
-Status: ACTIVE / GREENLIT NOW
+Status: CLOSED / MOVED DOWNSTREAM
 
 Success state:
-- [ ] Docs/canon clearly distinguish deterministic proof/playback behavior from live game behavior for bandit light, smoke, horde-pressure, and handoff claims.
-- [ ] The live visible-light-to-horde bridge is implemented in source and deterministically tested, but still needs live/harness proof before gameplay closure.
+- [x] Docs/canon clearly distinguish deterministic proof/playback behavior from live game behavior for bandit light, smoke, horde-pressure, and handoff claims.
+- [x] The live visible-light-to-horde bridge is implemented in source and deterministically tested.
 - [x] If implemented, the bridge calls the real horde signal path through bounded thresholds and reviewer-readable reports.
-- [ ] At least one deterministic test proves bridge thresholds and one live/harness proof shows a real light/fire source can affect a real horde signal path. _(Partial: deterministic threshold coverage passes; live/harness proof is still open.)_
-- [ ] Existing bandit test claims are audited enough that no closed packet says “game does X” when only an authored proof packet does X.
+- [x] At least one deterministic test proves bridge thresholds and one live/harness proof shows a real light/fire source can affect a real horde signal path.
+- [x] Existing bandit test claims are audited enough that no closed packet says “game does X” when only an authored proof packet does X.
 
 Notes:
 - Canonical contract lives at `doc/bandit-live-wiring-audit-and-light-horde-bridge-correction-v0-2026-04-26.md`.
 - First sweep found the highest-risk deterministic-only wording in `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp`: useful adapter/playback proof, not live game proof by itself.
-- Implementation checkpoint: `src/do_turn.cpp` now assigns `horde_signal_power` to qualifying live light observations and calls `overmap_buffer.signal_hordes(...)`; `src/bandit_mark_generation.cpp` keeps the threshold policy bounded via `horde_signal_power_from_light_projection(...)`. This is not yet gameplay closure because the live/harness proof is still open.
+- Implementation checkpoint: `src/do_turn.cpp` assigns `horde_signal_power` to qualifying live light observations and calls `overmap_buffer.signal_hordes(...)`; `src/bandit_mark_generation.cpp` keeps the threshold policy bounded via `horde_signal_power_from_light_projection(...)`. Live/harness closure proof now exists at `.userdata/dev-harness/harness_runs/20260427_031951/`: scenario `bandit.live_world_nearby_camp_light_horde_mcw` sets a copied save to night, injects a safe raw `fd_fire` source near the player, and logs `bandit_live_world horde light signal:` with `horde_signal_power=22`. This is loaded-map visible fire/light bridge proof, not player-lit brazier/wood/lighter product proof.
 
 ---
 
 ## Bandit local sight-avoid + scout return cadence packet v0
 
-Status: GREENLIT / QUEUED FOLLOW-UP
+Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [ ] Stalking / hold-off bandits in the reality bubble can detect current or recent exposure to the player or nearby camp NPCs and attempt a bounded reposition toward cover or broken line of sight.

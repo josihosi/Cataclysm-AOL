@@ -95,15 +95,15 @@ Current fifth-slice evidence - 2026-04-27:
 - Live light/detail source hook: the same loaded-map `fd_fire` scan now also builds ordinary `light_packet` candidates with current `light_time`, `light_weather`, outside/shelter exposure, source strength, persistence, leakage, and terrain before passing through `bandit_mark_generation::adapt_light_packet()`. Below-threshold light is logged separately from smoke so daylight/contained failures are reviewable instead of silent.
 - Reviewer detail: signal scan logs now split `smoke_packets` and `light_packets`; signal maintenance logs now split `matched_smoke_sites` and `matched_light_sites`, so a later mixed-source run can prove which family refreshed the owned-site mark.
 - Local gates: `git diff --check`; `rm -f obj/do_turn.o && make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed; `./tests/cata_test "*bandit_mark_generation*"` -> all 207 assertions in 15 test cases passed.
-- Live-proof caveat: repaired raw-field run `.userdata/dev-harness/harness_runs/20260427_014408/` proves initial mixed smoke/fire/light packet generation and smoke-site refresh from injected fields, but the daylight ordinary-light branch still did not match a site (`matched_light_sites=0`) and the run does not prove a normal player-lit fire. The next missing evidence is the real wood-plus-ignition action-chain proof, then a clean light-surviving live proof plus explicit signal decay/hold-chill coverage.
+- Live-proof caveat: repaired raw-field run `.userdata/dev-harness/harness_runs/20260427_014408/` proves initial mixed smoke/fire/light packet generation and smoke-site refresh from injected fields, but the daylight ordinary-light branch still did not match a site (`matched_light_sites=0`) and the run does not prove a normal player-lit fire. The later closed bridge proof below supplies the clean light-surviving live proof for loaded-map visible fire/light; the real wood-plus-ignition player-action product proof remains deliberately unclaimed.
 
-### Active validation target - Bandit live-wiring audit + visible-light horde bridge correction
+### Closed validation target - Bandit live-wiring audit + visible-light horde bridge correction
 
 For `Bandit live-wiring audit + visible-light horde bridge correction v0`, the evidence must not pretend deterministic playback is live horde behavior:
 
 - deterministic: `bandit_mark_generation_visible_light_horde_bridge_stays_bounded` now covers exposed night light, daylight rejection, screened ordinary-light rejection, and searchlight-like stronger signaling
 - source gates: touched-object/full target builds pass for `src/bandit_mark_generation.cpp`, `src/do_turn.cpp`, `tests/bandit_mark_generation_test.cpp`, `tests/cata_test`, and `cataclysm`; inspected call chain is `live light observation -> horde_signal_power_from_light_projection(...) -> overmap_buffer.signal_hordes(...) -> overmap::signal_hordes(...) -> horde_map::signal_entities(...)`
-- live/harness: still open; at least one real visible fire/light source must affect the real horde signal path with reviewer-readable artifact/log evidence before gameplay closure. Do not reuse the parked smoke/fire site-refresh proof loop as a blind rerun.
+- live/harness: `.userdata/dev-harness/harness_runs/20260427_031951/` closes the bridge proof by showing a copied-save visible `fd_fire` source at night produce reviewer-readable `bandit_live_world horde light signal:` evidence with `horde_signal_power=22`. Do not inflate this into player-lit fire product proof or smoke/site-refresh closure.
 - non-proof: `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` remain useful adapter/playback coverage, not live horde attraction proof by themselves
 
 
@@ -114,7 +114,11 @@ Current bridge checkpoint evidence:
 - `./tests/cata_test "bandit_mark_generation_visible_light_horde_bridge_stays_bounded"` passed: 7 assertions in 1 test case; log: `.userdata/andi-horde-bridge-test.log`.
 - `./tests/cata_test "*bandit_mark_generation*"` passed: 214 assertions in 16 test cases; log: `.userdata/andi-horde-bridge-bandit-mark-generation.log`.
 - `make -j4 cataclysm LINTJSON=0 ASTYLE=0` linked the current game binary; log: `.userdata/andi-horde-bridge-cata-build.log`.
-- No live gameplay closure is claimed yet. The active missing proof is a deliberately shaped non-smoke-orbit live/harness run showing `bandit_live_world horde light signal:` from a real visible light/fire source in the running game.
+- Live bridge closure proof: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_light_horde_mcw` wrote `.userdata/dev-harness/harness_runs/20260427_031951/`; `probe.report.json` records current-runtime screen capture (`version_matches_repo_head=true`, `version_matches_runtime_paths=true`), `game_turn` transform `5234852 -> 5266800`, raw `fd_fire` at `offset_ms=[10,0,0]`, and cleanup termination. `probe.artifacts.log` records `light_time=night`, `light_packets=1`, and `bandit_live_world horde light signal: packet=live_light@140,41,0 ... horde_signal_power=22 range_cap_omt=11`. This is loaded-map fire/light -> live horde signal bridge proof, not player-lit brazier/wood/lighter product proof.
+
+### Active validation target - Bandit local sight-avoid + scout return cadence packet v0
+
+Next validation should start narrow: deterministic sight-exposure/no-teleport/no-perfect-omniscience coverage first, then one live/harness proof on `bandit.live_world_nearby_camp_mcw` or equivalent real owned-site footing showing a scout either repositions out of exposure or returns after a finite sortie window.
 
 ### Greenlit validation target - Smart Zone Manager v1 Josef playtest corrections
 
@@ -154,7 +158,7 @@ When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implem
 
 ## Current relevant evidence
 
-Active target: `Bandit live-wiring audit + visible-light horde bridge correction v0`.
+Active target: `Bandit local sight-avoid + scout return cadence packet v0`.
 
 ### Test-vs-game implementation audit closeout - 2026-04-26
 
@@ -162,7 +166,7 @@ Report: `doc/test-vs-game-implementation-audit-report-2026-04-26.md`.
 
 Result: the biggest false-confidence risk is the bandit signal/playback layer. Smoke, light, weather, generated marks, human-route sightings, horde-pressure evaluator inputs, and long-horizon scout benchmarks are useful deterministic/playback proof, but they are not currently produced from live map/fire/light/weather/sight data and are not consumed by live dispatch. Live dispatch is real for owned sites near the player, and local gate/shakedown/writeback paths are real for active owned outings. Camp locker and Smart Zone Manager tests have real live consumers, though their greenlit corrections still need targeted proof.
 
-Next validation target: `Bandit live-wiring audit + visible-light horde bridge correction v0`; proof must either wire visible fire/light into the real horde signal path with deterministic + live/harness evidence, or explicitly defer/reject that behavior and repair wording so no deterministic packet impersonates live gameplay.
+Next validation target: `Bandit local sight-avoid + scout return cadence packet v0`; start with deterministic exposure/reposition/sortie-return proof, then one live/harness nearby-owned-site proof. The just-closed visible-light horde bridge remains evidence that loaded-map visible fire/light can reach the live horde signal path, not product proof for a player-lit fire recipe.
 
 ### GitHub Actions red-state footing - 2026-04-25
 

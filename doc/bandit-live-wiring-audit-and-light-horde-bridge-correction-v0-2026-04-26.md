@@ -1,6 +1,6 @@
 # Bandit live-wiring audit + light/horde bridge correction v0 (2026-04-26)
 
-Status: active / implementation checkpoint; live-harness proof still open.
+Status: closed / live-harness bridge proof landed; player-lit fire product proof remains out of scope.
 
 ## Normalized contract
 
@@ -8,7 +8,7 @@ Status: active / implementation checkpoint; live-harness proof still open.
 
 **Request kind:** Josef correction / parked implementation package
 
-**Summary:** Josef caught a real gap: the bandit proof packets implemented light and shared horde-pressure behavior on deterministic proof/playback seams, but the live game did not wire visible fire/light into the zombie horde attraction path. This package preserves that distinction, adds a first audit of deterministic-only bandit tests, and now has a bounded source bridge from live light observations into `overmap_buffer.signal_hordes(...)`. It is not closed until a non-smoke-orbit live/harness proof shows a real visible light/fire source producing reviewer-readable horde-signal evidence.
+**Summary:** Josef caught a real gap: the bandit proof packets implemented light and shared horde-pressure behavior on deterministic proof/playback seams, but the live game did not wire visible fire/light into the zombie horde attraction path. This package preserves that distinction, adds a first audit of deterministic-only bandit tests, wires qualifying live light observations into `overmap_buffer.signal_hordes(...)`, and lands a copied-save live/harness proof where a visible loaded-map `fd_fire` source at night emits reviewer-readable `bandit_live_world horde light signal:` evidence. This closes the light-to-horde bridge slice without claiming full player-lit brazier/wood/lighter product proof.
 
 ## Scope
 
@@ -134,15 +134,41 @@ live light observation -> horde_signal_power_from_light_projection(...) -> overm
 
 The bridge is deliberately bounded: daylight returns `0`; screened ordinary light returns `0`; weak projections below `8 OMT` return `0`; exposed night light and searchlight-like packets can signal with clamped power `8..60`. `do_turn.cpp` records a reviewer-readable `bandit_live_world horde light signal:` line only when `horde_signal_power > 0`.
 
-Evidence boundary: this is source-wired and deterministically tested, but it is not yet live gameplay closure. The active lane still needs a non-blind, non-smoke-orbit live/harness proof where a real visible fire/light source in the running game produces the horde-light log and therefore reaches the real horde signal path. Do not use the parked smoke/fire site-refresh loop to claim this by drift.
+Evidence boundary: source wiring, deterministic threshold proof, and a live/harness bridge proof now exist. The live proof is `.userdata/dev-harness/harness_runs/20260427_031951/` using scenario `bandit.live_world_nearby_camp_light_horde_mcw`: the fixture transform sets the copied save to night (`turn 5266800`), places a safe nearby raw `fd_fire` field at `[10,0,0]` from the player, and the running game logs `bandit_live_world horde light signal:` with `horde_signal_power=22` / `range_cap_omt=11`. This proves the loaded-map fire/light reader reaches the live horde signal bridge. It still does **not** prove the full player-lit fire product recipe; raw saved fields are not a brazier/wood/lighter/action proof, and the old smoke/fire site-refresh loop remains parked.
 
 ## Success state
 
-- [ ] Docs/canon clearly distinguish deterministic proof/playback behavior from live game behavior for bandit light, smoke, horde-pressure, and handoff claims.
-- [ ] The live visible-light-to-horde bridge is implemented in source and deterministically tested, but still needs live/harness proof before gameplay closure.
+- [x] Docs/canon clearly distinguish deterministic proof/playback behavior from live game behavior for bandit light, smoke, horde-pressure, and handoff claims.
+- [x] The live visible-light-to-horde bridge is implemented in source and deterministically tested.
 - [x] If implemented, the bridge calls the real horde signal path through bounded thresholds and reviewer-readable reports.
-- [ ] At least one deterministic test proves bridge thresholds and one live/harness proof shows a real light/fire source can affect a real horde signal path.
-- [ ] Existing bandit test claims are audited enough that no closed packet says “game does X” when only an authored proof packet does X.
+- [x] At least one deterministic test proves bridge thresholds and one live/harness proof shows a real light/fire source can affect a real horde signal path.
+- [x] Existing bandit test claims are audited enough that no closed packet says “game does X” when only an authored proof packet does X.
+
+## Live/harness closure proof (2026-04-27)
+
+Command:
+
+```sh
+python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_light_horde_mcw
+```
+
+Run: `.userdata/dev-harness/harness_runs/20260427_031951/`
+
+Key setup evidence from `probe.report.json`:
+
+- `startup.screen.version_matches_repo_head = true` and `version_matches_runtime_paths = true`
+- fixture transform `game_turn`: `old_turn=5234852`, `new_turn=5266800`
+- fixture transform `map_fields_near_player`: raw `fd_fire`, `intensity=3`, `offset_ms=[10,0,0]`, `target_abs_omt=[140,41,0]`
+- cleanup terminated the launched harness game; no Josef real save/userdata mutation
+
+Key artifact evidence from `probe.artifacts.log`:
+
+```text
+03:20:14.017 INFO : bandit_live_world signal scan: signal_packet=yes kind=smoke/fire/light packets=2 smoke_packets=1 light_packets=1 scan_radius_ms=60 weather=clear light_time=night light_weather=clear
+03:20:14.018 INFO : bandit_live_world horde light signal: packet=live_light@140,41,0 kind=light source_omt=(140,41,0) horde_signal_power=22 range_cap_omt=11 weather=light concealment: verdict=allowed, weather=clear, ... projected_range_omt=11, visibility_score=7
+```
+
+Verdict: passed for **loaded-map visible fire/light source -> live light observation -> `overmap_buffer.signal_hordes(...)` horde bridge**. The run also has smoke/site-refresh lines because the raw `fd_fire` source generates smoke and light observations; those lines are not used to claim light-site matching or player-lit fire product proof.
 
 ## Testing expectations
 

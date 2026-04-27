@@ -39,16 +39,16 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-The active lane is now **Bandit live-wiring audit + visible-light horde bridge correction v0**. Josef greenlit the C-AOL debug-note correction stack on 2026-04-26 and explicitly told Schani to point Andi back at C-AOL, reason deeply, remove hollow code, and map tests to real game implementation before more implementation lands. The first correction packet, `Bandit live signal + site bootstrap correction v0`, is moved to Josef review rather than kept in the smoke/fire proof loop; its partial implementation and caveats remain canon.
+The active lane is now **Bandit local sight-avoid + scout return cadence packet v0**. Josef greenlit the C-AOL debug-note correction stack on 2026-04-26 and explicitly told Schani to point Andi back at C-AOL, reason deeply, remove hollow code, and map tests to real game implementation before more implementation lands. The first correction packet, `Bandit live signal + site bootstrap correction v0`, remains Josef-review/parked rather than kept in the smoke/fire proof loop; the second correction packet, `Bandit live-wiring audit + visible-light horde bridge correction v0`, now closes with a bounded live/harness light-to-horde bridge proof and caveats.
 
 Repo policy remains the load-bearing full-history project: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree, `josihosi/Cataclysm-AOL` is the real project/release repo, and `josihosi/C-AOL-mirror` is only a non-fork full-history contribution-graph mirror with no planning, issue, release, or local-work authority. The earlier standalone snapshot cutover note is historical/superseded; do not reopen destructive GitHub migration, release/tag repair, or repo-role surgery from this debug-correction stack without fresh explicit clearance.
 
 Active scope:
-- implement `Bandit live-wiring audit + visible-light horde bridge correction v0` from `doc/bandit-live-wiring-audit-and-light-horde-bridge-correction-v0-2026-04-26.md`
-- preserve the audit finding: deterministic/playback bandit light, smoke, horde-pressure, and handoff proofs are not live game behavior by themselves
-- decide, with source evidence, whether to add a bounded visible-fire/light-to-horde bridge or explicitly defer/reject that behavior
-- if implemented, route meaningful exposed light/fire through the real `overmap_buffer.signal_hordes(...)` / `horde_map` path with thresholds and reviewer-readable proof
-- audit/repair docs and tests so no closed packet says “the live game does X” when only an authored proof packet does X
+- implement `Bandit local sight-avoid + scout return cadence packet v0` from `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`
+- keep stalking/hold-off bandit sight-avoid local and heuristic: current/recent exposure can nudge a reposition toward cover or broken line of sight, but no teleporting or perfect future sight-cone knowledge
+- add a finite scout sortie law so a scout can stop lingering, return home, write back what it learned, and let the owned site re-evaluate later
+- make reviewer-readable output distinguish `still stalking`, `repositioning because exposed`, `returning home`, and later re-dispatch/escalation decisions
+- prove the slice first with deterministic coverage, then one bounded live/harness proof on nearby owned-site footing
 - do not re-enter the parked smoke/fire site-refresh playtest loop unless Josef explicitly reopens it
 
 Non-goals:
@@ -59,8 +59,8 @@ Non-goals:
 
 Greenlit implementation stack, in current order:
 1. **Bandit live signal + site bootstrap correction v0** — JOSEF REVIEW / MOVE ON; partial 40 OMT system envelope, abstract site bootstrap, lazy materialization, raw-field reader proof, and live dispatch/mark consumption are landed, but the smoke/fire site-refresh playtest loop is parked for Josef review rather than rerun.
-2. **Bandit live-wiring audit + visible-light horde bridge correction v0** — ACTIVE; bounded source bridge implemented and deterministically tested, live/harness proof still open.
-3. **Bandit local sight-avoid + scout return cadence packet v0** — exposed scouts seek cover/break sight, finite sortie window, return-home/writeback cadence.
+2. **Bandit live-wiring audit + visible-light horde bridge correction v0** — CLOSED / MOVED DOWNSTREAM; bounded source bridge implemented, deterministically tested, and live/harness-proved with copied-save visible `fd_fire` -> `bandit_live_world horde light signal:` evidence; not player-lit fire product proof.
+3. **Bandit local sight-avoid + scout return cadence packet v0** — ACTIVE; exposed scouts seek cover/break sight, finite sortie window, return-home/writeback cadence.
 4. **Smart Zone Manager v1 Josef playtest corrections** — add `LOOT_MANUALS`, keep book/gun-magazine zone distinction clear, add full-storage `AUTO_EAT` / `AUTO_DRINK` with `ignore_contents=false`.
 5. **Basecamp medical consumable readiness v0** — bounded `bandages` / `adhesive_bandages` pickup/preservation from camp storage.
 6. **Basecamp locker armor ranking + blocker removal packet v0** — generic full-body/protective armor comparison and blocker clearing, not RM13-specific.
@@ -117,21 +117,21 @@ Josef's 2026-04-26 fire-at-camp test exposed a live-chain break: a remote bandit
 
 Stop condition: Schani/Josef moved the smoke/fire site-refresh playtest to Josef review after the repeated loop crossed the 4-5 attempt threshold. Preserve the blocker honestly: the latest reviewed failed smoke run `.userdata/dev-harness/harness_runs/20260427_013136/` produced `signal_packet=yes` but `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then decayed to no-signal. Do not keep rerunning this phase. The exact gap is now in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-review-pile.md` under `bandit-live-signal-smoke-source-site-refresh-proof`; process drift also notes that this loop crossed the Frau Knackal attempt-3 consultation rule unclearly. If Josef later reopens the proof, keep the evidence classes separate: raw saved fields are reader proof, synthetic smoke is smoke-source/live-signal proof only, and full product proof still requires the real brazier/wood/lighter/player-action chain.
 
-## Active correction - Bandit live-wiring audit + visible-light horde bridge
+## Closed correction - Bandit live-wiring audit + visible-light horde bridge
 
-**Status:** ACTIVE / GREENLIT NOW
+**Status:** CLOSED / MOVED DOWNSTREAM
 
 Canonical contract: `doc/bandit-live-wiring-audit-and-light-horde-bridge-correction-v0-2026-04-26.md`.
 
-Josef caught a real evidence gap: the bandit proof packets implemented light and shared horde-pressure behavior on deterministic mark-generation/playback seams, but the live game did not wire visible fire/light into `overmap_buffer.signal_hordes(...)` / `horde_map`. A first bounded source bridge now carries qualifying live light observations through `bandit_mark_generation::horde_signal_power_from_light_projection(...)` into `overmap_buffer.signal_hordes(...)`; deterministic threshold coverage and source builds pass. Do not claim roof/basecamp light attracts overmap hordes as closed gameplay until a non-smoke-orbit live/harness proof shows a real visible light/fire source producing reviewer-readable horde-signal evidence.
+Josef caught a real evidence gap: the bandit proof packets implemented light and shared horde-pressure behavior on deterministic mark-generation/playback seams, but the live game did not wire visible fire/light into `overmap_buffer.signal_hordes(...)` / `horde_map`. A bounded source bridge now carries qualifying live light observations through `bandit_mark_generation::horde_signal_power_from_light_projection(...)` into `overmap_buffer.signal_hordes(...)`; deterministic threshold coverage and source builds pass. Live/harness proof `.userdata/dev-harness/harness_runs/20260427_031951/` shows copied-save nighttime raw `fd_fire` produces `bandit_live_world horde light signal:` with `horde_signal_power=22`. This closes the loaded-map visible fire/light bridge without claiming the full player-lit brazier/wood/lighter product proof.
 
-## Greenlit follow-up - Bandit local sight-avoid + scout return cadence packet v0
+## Active correction - Bandit local sight-avoid + scout return cadence packet v0
 
-**Status:** GREENLIT / QUEUED FOLLOW-UP
+**Status:** ACTIVE / GREENLIT NOW
 
 Canonical contract: `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
 
-Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a dispatched scout can stand around in the reality bubble for too long, and the previously discussed creepy behavior where a seen bandit slips back out of player/Basecamp sight is not implemented yet. Queue this as one bounded local-stalking correction: stalking/hold-off bandits should use non-magical current/recent exposure heuristics to move toward cover or broken line of sight, scouts should eventually return home and write back what they learned, and any later larger dispatch must come from explicit camp re-evaluation rather than automatic spawn cheating. Keep it queued behind the active live-signal/site-bootstrap package and higher-priority bandit live-wiring packages unless Schani/Josef explicitly reorders the stack.
+Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a dispatched scout can stand around in the reality bubble for too long, and the previously discussed creepy behavior where a seen bandit slips back out of player/Basecamp sight is not implemented yet. This is now the active bounded local-stalking correction: stalking/hold-off bandits should use non-magical current/recent exposure heuristics to move toward cover or broken line of sight, scouts should eventually return home and write back what they learned, and any later larger dispatch must come from explicit camp re-evaluation rather than automatic spawn cheating.
 
 ## Greenlit follow-up - Basecamp medical consumable readiness v0
 

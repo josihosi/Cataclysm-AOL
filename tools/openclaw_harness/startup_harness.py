@@ -1847,10 +1847,24 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "game_turn":
+            try:
+                turn = int(raw.get("turn"))
+            except (TypeError, ValueError):
+                raise SystemExit(f"Fixture save_transforms[{index}] needs integer turn in {manifest_path}")
+            if turn < 0:
+                raise SystemExit(f"Fixture save_transforms[{index}] needs turn >= 0 in {manifest_path}")
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "turn": turn,
+            })
+            continue
+
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
             "supported kinds: player_mutations, player_near_overmap_special, "
-            "seed_overmap_special_near_player, map_fields_near_player"
+            "seed_overmap_special_near_player, map_fields_near_player, game_turn"
         )
     return transforms
 
@@ -2545,6 +2559,40 @@ def apply_map_fields_near_player_transform(world_dir: Path, transform: Dict[str,
     }
 
 
+def apply_game_turn_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    player_save = world_dir / player_save_name
+    if not player_save.exists():
+        raise SystemExit(f"Fixture game-turn transform target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture game-turn transform expects .zzip save path: {player_save}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture game-turn transform did not extract save: {extracted_save}")
+
+    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+
+    old_turn = int(payload.get("turn", 0))
+    new_turn = int(transform.get("turn", old_turn))
+    payload["turn"] = new_turn
+    extracted_save.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    run_zzip(extracted_save)
+    if extracted_save.exists():
+        extracted_save.unlink()
+
+    return {
+        "kind": "game_turn",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "old_turn": old_turn,
+        "new_turn": new_turn,
+    }
+
+
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for transform in transforms:
@@ -2560,6 +2608,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "map_fields_near_player":
             reports.append(apply_map_fields_near_player_transform(world_dir, transform))
+            continue
+        if kind == "game_turn":
+            reports.append(apply_game_turn_transform(world_dir, transform))
             continue
         raise SystemExit(f"Unsupported fixture save transform kind: {kind}")
     return reports
