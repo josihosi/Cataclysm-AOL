@@ -5,6 +5,8 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 ## Principles
 - These are **pragmatic automation notes**, not authoritative game documentation.
 - Context matters. The same key may do something slightly different depending on UI state, quest prompts, nearby NPCs, or branch-specific menu differences.
+- Keep evidence classes separate: startup/load, deterministic test, live/screen behavior, and artifact/log proof are not interchangeable. A probe that only loads a save and closes is `load proof only / inconclusive for feature`, even when auto-close and artifact capture worked correctly.
+- For GUI/live feature probes, every screenshot checkpoint should name the expected visible fact it is supposed to prove. If the screenshot only shows “the game loaded”, do not reuse it as proof that Smart Zones, bandit standoff, fire setup, or another feature worked.
 - Prefer **observables + logs** over blind faith. If possible, confirm the resulting state from `llm_intent.log`, screenshots, or another artifact.
 - Beware raw keybind semantics: gameplay `t` is throw, so accidental hotkey mismatches can produce surreal results like trying to throw boxer shorts at a cow. Typed characters and raw keybinds are not always interchangeable for harness work.
 
@@ -15,6 +17,7 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 | New Game -> Play Now! (default path on current `master`) | `n`, `d` | Current harness Phase-0 uses this minimal sequence. Branch-specific variants may diverge later. |
 | Ignore debug popup | `i` | Popup text says `I/i` to ignore in the future. Timing/focus still matters. |
 | Pass one turn / let queued output resolve | `.` | Current `dev` keybindings map pause/pass-turn to `.` (also `5` / keypad 5). Use this for deterministic one-turn advancement in harness probes. |
+| Wait for several minutes | <kbd>&#124;</kbd> (`Shift+\`) then menu choice | Current `dev` keybindings map action id `wait` / `ACTION_WAIT` to <kbd>&#124;</kbd>. The menu currently offers `1`=20s, `2`=1m, `3`=5m, `4`=30m, and with a watch `5`=1h, `6`=2h, `7`=3h, `8`=6h, plus daylight/noon/night/midnight/weather options. Use this for long time-passage probes instead of hundreds of `.` turns, but only after proving interruption/prompt handling for the scenario. |
 | Let queued NPC answer injection resolve after `C+b` | `.` x1-2 | The current practical path is to burn one or two real turns, not `Tab`; on this branch `Tab` opens the main menu and sabotages live probes. |
 
 ## In-game interaction probes
@@ -38,6 +41,13 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 - For visible post-restage state inspection, the useful current debug-editor path is `}`, `p`, `p`, `2`, `Enter` on McWilliams (Katharina-specific index), which exposes the header with attitude / mission / faction after the real dialogue-side camp assignment path above.
 
 ## Important caveats learned live
+
+### Long wait is a real primitive, not accelerated dot spam
+- `.` / `5` is one-turn pause. It is appropriate for tiny deterministic turn burns and queued UI resolution.
+- `|` is the real long-wait action. It creates an `ACT_WAIT` activity through the wait menu, and should be preferred for minutes/hours of live-world time passage once the scenario has verified the menu path.
+- Treat any interruption as evidence, not noise: safe mode, hostile sightings, noises, hunger/thirst/sleep, damage, activity cancellation prompts, and wrong-screen focus can all invalidate a long-wait proof.
+- Do not type `I`, `N`, `Y`, or `Esc` through prompts blindly. Capture the prompt/screen, classify it, and only ignore/cancel when the proof contract says that is the expected branch.
+- A long-wait proof should record before/after game clock or turn, expected elapsed duration, whether the wait completed or interrupted, the typed choice, and the artifact/screenshot path. If elapsed time or prompt handling is missing, the verdict is not green.
 
 ### `C+b` recipient selection is situational
 A live probe in the current `master` / `Sandy Creek` save showed:

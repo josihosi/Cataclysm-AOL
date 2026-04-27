@@ -3009,6 +3009,9 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             "label": label,
             "settle_seconds": settle_seconds,
         }
+        expected_visible_fact = str(step.get("expected_visible_fact", "")).strip()
+        if expected_visible_fact:
+            report["expected_visible_fact"] = expected_visible_fact
         if kind == "press":
             raw_keys = step.get("keys", [])
             if isinstance(raw_keys, str):
@@ -3275,6 +3278,8 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             )
             capture = capture_screenshot(pid, run_dir, label, crop=capture_crop)
             report["screen"] = capture.get("screen_summary", {})
+            if expected_visible_fact:
+                report["screen"]["expected_visible_fact"] = expected_visible_fact
             if bool(step.get("extract_text", False)) or normalize_screen_text_patterns(
                 step.get("abort_if_text_contains", [])
             ):
@@ -3298,6 +3303,8 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
             )
             capture = capture_screenshot(pid, run_dir, f"{label}.after", crop=capture_after_crop)
             report["screen_after"] = capture.get("screen_summary", {})
+            if expected_visible_fact:
+                report["screen_after"]["expected_visible_fact"] = expected_visible_fact
             if bool(step.get("extract_text_after_capture", False)) or normalize_screen_text_patterns(
                 step.get("abort_if_text_contains", [])
             ):

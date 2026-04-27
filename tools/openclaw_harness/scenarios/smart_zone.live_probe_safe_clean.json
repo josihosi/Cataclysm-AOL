@@ -1,6 +1,6 @@
 {
   "name": "smart_zone.live_probe_safe_clean",
-  "description": "Smart Zone Manager v1 clean-save live probe: start from a fresh disposable Play Now evacuee profile/world instead of the bandit-adjacent McWilliams footing, assert no safe-mode trigger before Zone Manager input, disable safe mode, create a Basecamp: Storage zone, accept Smart Zone Manager stamping, save the zone changes, and reopen Zone Manager for screen evidence. This proves only safe clean setup/save-reopenable layout behavior; deterministic clzones tests remain the zone-id/type/options proof.",
+  "description": "Smart Zone Manager v1 clean-save live probe. Evidence-class firewall: this scenario is live/UI proof only if the screenshots show the named checkpoint facts for before-action gameplay, Zone Manager/type picker, Smart Zone generation prompt/result, and reopened generated layout. If it merely loads the game and exits, classify it as load proof only / inconclusive for layout. Deterministic clzones geometry/overlap tests are the required first proof class.",
   "profile": "smart-zone-safe-clean-20260427",
   "artifact_source": "debug.log",
   "steps": [
@@ -11,42 +11,63 @@
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 24,
-      "abort_if_text_contains": ["Stop moving?", "Spotted", "hostile spotted", "Safe mode is triggered"],
+      "abort_if_text_contains": [
+        "Stop moving?",
+        "Spotted",
+        "hostile spotted",
+        "Safe mode is triggered"
+      ],
       "abort_verdict": "inconclusive_safe_mode",
-      "abort_reason": "safe-mode/hostile trigger visible before Smart Zone setup; no Zone Manager keys driven"
+      "abort_reason": "safe-mode/hostile trigger visible before Smart Zone setup; no Zone Manager keys driven",
+      "expected_visible_fact": "before action: gameplay loaded on a safe normal screen, with no Stop moving/Spotted/Safe mode interruption visible"
     },
     {
       "kind": "press",
       "label": "disable_safe_mode_before_zone_setup",
-      "keys": ["!"],
+      "keys": [
+        "!"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 24,
-      "abort_if_text_contains": ["Stop moving?", "Spotted", "hostile spotted", "Safe mode is triggered"],
+      "abort_if_text_contains": [
+        "Stop moving?",
+        "Spotted",
+        "hostile spotted",
+        "Safe mode is triggered"
+      ],
       "abort_verdict": "inconclusive_safe_mode",
-      "abort_reason": "safe-mode/hostile trigger visible after safe-mode toggle; no Zone Manager keys driven"
+      "abort_reason": "safe-mode/hostile trigger visible after safe-mode toggle; no Zone Manager keys driven",
+      "expected_visible_fact": "safe-mode toggle completed and gameplay is still on a normal safe screen before setup"
     },
     {
       "kind": "debug_spawn_item",
       "label": "spawn_brazier_item",
       "item_query": "brazier",
       "count": 1,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "brazier spawn step completed; later checkpoints must prove the item was actually available/placed"
     },
     {
       "kind": "press",
       "label": "open_wield_inventory",
-      "keys": ["w"],
+      "keys": [
+        "w"
+      ],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "wield inventory menu is open, not throw/debug/zone UI"
     },
     {
       "kind": "press",
       "label": "filter_wield_inventory",
-      "keys": ["/"],
+      "keys": [
+        "/"
+      ],
       "settle_seconds": 0.5,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "wield inventory filter prompt is active"
     },
     {
       "kind": "type",
@@ -54,61 +75,88 @@
       "text": "brazier",
       "submit": true,
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "wield inventory is filtered to brazier-related item(s)"
     },
     {
       "kind": "press",
       "label": "select_filtered_brazier",
-      "keys": ["enter"],
+      "keys": [
+        "enter"
+      ],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "brazier is selected/wielded or the screen clearly indicates the selected wield result"
     },
     {
       "kind": "press",
       "label": "apply_wielded_brazier",
-      "keys": ["A"],
+      "keys": [
+        "A"
+      ],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "apply/place flow for the brazier is open, not a different inventory menu"
     },
     {
       "kind": "press",
       "label": "place_brazier_east",
-      "keys": ["right"],
+      "keys": [
+        "right"
+      ],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "brazier placement resolves on the map; if this is not visible, layout proof cannot rely on it"
     },
     {
       "kind": "press",
       "label": "pass_turn_after_brazier",
-      "keys": ["."],
+      "keys": [
+        "."
+      ],
       "settle_seconds": 0.8,
       "capture_after": true,
       "extract_text_after_capture": true,
       "extract_text_tail_lines": 24,
-      "abort_if_text_contains": ["Stop moving?", "Spotted", "hostile spotted", "Safe mode is triggered"],
+      "abort_if_text_contains": [
+        "Stop moving?",
+        "Spotted",
+        "hostile spotted",
+        "Safe mode is triggered"
+      ],
       "abort_verdict": "inconclusive_safe_mode",
-      "abort_reason": "safe-mode/hostile trigger visible before Zone Manager setup; no Zone Manager keys driven"
+      "abort_reason": "safe-mode/hostile trigger visible before Zone Manager setup; no Zone Manager keys driven",
+      "expected_visible_fact": "gameplay returns after placement with no hostile/safe-mode interruption"
     },
     {
       "kind": "press",
       "label": "open_zones_manager",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Zone Manager UI is visibly open"
     },
     {
       "kind": "press",
       "label": "add_zone",
-      "keys": ["a"],
+      "keys": [
+        "a"
+      ],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Zone Manager add-zone/type picker flow is visibly open"
     },
     {
       "kind": "press",
       "label": "filter_zone_type_picker",
-      "keys": ["/"],
+      "keys": [
+        "/"
+      ],
       "settle_seconds": 0.5,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "zone type picker filter prompt is active"
     },
     {
       "kind": "type",
@@ -116,57 +164,118 @@
       "text": "Basecamp: Storage",
       "submit": true,
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "zone type picker is filtered to Basecamp: Storage"
     },
     {
       "kind": "press",
       "label": "select_filtered_storage_zone_type",
-      "keys": ["enter"],
+      "keys": [
+        "enter"
+      ],
       "settle_seconds": 0.8,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_after_capture_tail_lines": 20
+      "extract_text_after_capture_tail_lines": 20,
+      "expected_visible_fact": "Basecamp: Storage type is selected, not another Loot/Mutagens/etc. type"
     },
     {
       "kind": "press",
       "label": "accept_default_storage_zone_name",
-      "keys": ["enter"],
+      "keys": [
+        "enter"
+      ],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Basecamp: Storage naming/area selection flow is accepted"
     },
     {
       "kind": "press",
       "label": "pick_zone_start",
-      "keys": ["left", "left", "left", "left", "left", "left", "left", "up", "up", "up", "up", "up", "up", "enter"],
+      "keys": [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "enter"
+      ],
       "delay_ms": 120,
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "zone area selection cursor/start point is visible on the intended map area"
     },
     {
       "kind": "press",
       "label": "move_to_zone_end",
-      "keys": ["right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "right", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down", "down"],
+      "keys": [
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down"
+      ],
       "delay_ms": 120,
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "zone rectangle end point spans the intended storage/basecamp area"
     },
     {
       "kind": "press",
       "label": "confirm_zone_end",
-      "keys": ["enter"],
+      "keys": [
+        "enter"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_after_capture_tail_lines": 20
+      "extract_text_after_capture_tail_lines": 20,
+      "expected_visible_fact": "zone area confirmation completed and Smart Zone Manager generation prompt/result is expected next"
     },
     {
       "kind": "press",
       "label": "accept_smart_zone_prompt",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 1.2,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_after_capture_tail_lines": 20
+      "extract_text_after_capture_tail_lines": 20,
+      "expected_visible_fact": "Smart Zone Manager prompt/result is accepted; this is the generation checkpoint"
     },
     {
       "kind": "wait",
@@ -174,38 +283,60 @@
       "seconds": 2,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_after_capture_tail_lines": 20
+      "extract_text_after_capture_tail_lines": 20,
+      "expected_visible_fact": "post-generation screen is stable after Smart Zone stamping"
     },
     {
       "kind": "press",
       "label": "exit_zones_manager",
-      "keys": ["escape"],
+      "keys": [
+        "escape"
+      ],
       "settle_seconds": 0.8,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "Zone Manager exits from generated-zone state rather than a wrong menu"
     },
     {
       "kind": "press",
       "label": "confirm_save_changes",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 1.0,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "zone changes save confirmation is accepted"
     },
     {
       "kind": "wait",
       "label": "post_save_gameplay_settle",
       "seconds": 2,
-      "capture_after": true
+      "capture_after": true,
+      "expected_visible_fact": "gameplay is stable after saving zone changes"
     },
     {
       "kind": "press",
       "label": "reopen_zones_manager_for_layout_capture",
-      "keys": ["Y"],
+      "keys": [
+        "Y"
+      ],
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "extract_text_after_capture_tail_lines": 32
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_visible_fact": "reopened Zone Manager/map overlay shows the actual generated Smart Zone positions and separations"
     }
   ],
   "recommended_test_command": "./tests/cata_test \"[smart_zone]\"",
-  "recommended_probe_command": "python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_probe_safe_clean"
+  "recommended_probe_command": "python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_probe_safe_clean",
+  "evidence_contract": {
+    "deterministic_first": "tests/clzones_test.cpp must assert generated-zone geometry and overlap allowlist before any live/UI closure claim.",
+    "load_only_verdict": "load proof only / inconclusive for layout",
+    "live_required_checkpoints": [
+      "before action: normal gameplay screen, no hostile/safe-mode interruption",
+      "relevant UI/menu open: Zone Manager and Basecamp: Storage type selection are visibly on the intended screens",
+      "generation triggered: Smart Zone Manager prompt/result is visible after selecting the Basecamp: Storage area",
+      "layout inspected: reopened Zone Manager or map overlay visibly shows generated zone positions, not just serialized artifacts"
+    ],
+    "failure_rule": "If any checkpoint lands on the wrong screen, wrong menu item, missing placed fixture, or only startup/load screen, the live verdict is inconclusive for Smart Zone layout."
+  }
 }

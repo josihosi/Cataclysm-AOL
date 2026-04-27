@@ -58,10 +58,9 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 Smart Zone Manager live layout separation correction is now **implemented-but-unproven live**: deterministic geometry/separation assertions and the explicit overlap allowlist are green, but the clean GUI macro still could not honestly inspect the generated player-visible layout. The manual close recipe is packaged as `smart-zone-live-layout-separation-correction` in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`; do not rerun the contaminated old McWilliams macro as closure proof.
 
-Current unblocked target: **Bandit local standoff / scout return live correction**. Josef's 2026-04-27 live test grants smoke attraction, but reports the scout/hold-off bandit still gets too close and does not visibly time out/return home. Required evidence:
-- recent live log/save inspection answering whether `active_sortie_started_minutes` / `active_sortie_local_contact_minutes` are present and advancing in the current save;
-- deterministic coverage for any changed standoff distance/goal logic so hold-off does not collapse into adjacent/neighboring-OMT crowding;
-- live or harness proof that is not merely a pre-aged timer fixture unless the report labels it as fixture-only seam proof;
+Current unblocked target: **Bandit local standoff / scout return live correction**. Josef's 2026-04-27 live test grants smoke attraction, but reports the scout/hold-off bandit still gets too close and does not visibly time out/return home. Current state: deterministic standoff-distance correction is green (`choose_hold_off_standoff_goal()` minimum five-OMT goal), copied-save inspection showed the inspected McWilliams site had `active_sortie_started_minutes=-1` / `active_sortie_local_contact_minutes=-1` and no active group, and live probe run `.userdata/dev-harness/harness_runs/20260427_145148/` is **load proof only / inconclusive for standoff/return** because it reached startup/gameplay screenshots and then hung in advancement without the local-gate/return artifact. Required remaining evidence:
+- live log/save inspection from the actual current product path answering whether `active_sortie_started_minutes` / `active_sortie_local_contact_minutes` are present and advancing when Josef sees the too-close scout;
+- live or harness proof that reaches the standoff/return action/result path, not merely startup/load, and labels any pre-aged timer fixture as seam proof only;
 - if the live route cannot be honestly proven inside the attempt budget, a Josef playtest package with the exact manual close recipe.
 
 Retained evidence classification for `Bandit live signal + site bootstrap correction v0`:
