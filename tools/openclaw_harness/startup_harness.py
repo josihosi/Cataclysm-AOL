@@ -90,6 +90,7 @@ class WorldInfo:
     path: Path
     has_save: bool
     save_files: List[str]
+    save_markers: List[str]
 
 
 @dataclass
@@ -254,6 +255,26 @@ def load_profile_config(profile: str) -> Dict[str, Any]:
     return merged
 
 
+def world_save_marker_paths(world_dir: Path) -> List[Path]:
+    markers: List[Path] = list(world_dir.glob("*.sav*"))
+    for character_dir in sorted(world_dir.glob("*.mm1"), key=lambda p: p.name.lower()):
+        if not character_dir.is_dir():
+            continue
+        payloads = sorted(character_dir.glob("*.zzip"), key=lambda p: p.name.lower())
+        markers.extend(payloads if payloads else [character_dir])
+    return sorted(markers, key=lambda p: str(p.relative_to(world_dir)).lower())
+
+
+def world_save_marker_names(world_dir: Path) -> List[str]:
+    marker_names = []
+    for marker in world_save_marker_paths(world_dir):
+        try:
+            marker_names.append(str(marker.relative_to(world_dir)))
+        except ValueError:
+            marker_names.append(marker.name)
+    return marker_names
+
+
 def list_worlds(profile: str) -> List[WorldInfo]:
     save_dir = save_dir_for_profile(profile)
     if not save_dir.exists():
@@ -261,7 +282,16 @@ def list_worlds(profile: str) -> List[WorldInfo]:
     worlds: List[WorldInfo] = []
     for path in sorted([p for p in save_dir.iterdir() if p.is_dir()], key=lambda p: p.name.lower()):
         save_files = sorted([p.name for p in path.glob("*.sav*")])
-        worlds.append(WorldInfo(name=path.name, path=path, has_save=bool(save_files), save_files=save_files))
+        save_markers = world_save_marker_names(path)
+        worlds.append(
+            WorldInfo(
+                name=path.name,
+                path=path,
+                has_save=bool(save_markers),
+                save_files=save_files,
+                save_markers=save_markers,
+            )
+        )
     return worlds
 
 
@@ -508,6 +538,7 @@ def asdict_world(world: WorldInfo) -> Dict[str, Any]:
         "path": str(world.path),
         "has_save": world.has_save,
         "save_files": list(world.save_files),
+        "save_markers": list(world.save_markers),
     }
 
 
@@ -3492,6 +3523,43 @@ def success_from_lastworld(profile: str, baseline_mtime: float, expected_world: 
     return True, data
 
 
+def latest_world_save_marker(profile: str, expected_world: str = "") -> Dict[str, Any]:
+    latest: Dict[str, Any] = {}
+    for world in list_worlds(profile):
+        if expected_world and world.name != expected_world:
+            continue
+        for marker in world_save_marker_paths(world.path):
+            try:
+                stat = marker.stat()
+            except OSError:
+                continue
+            try:
+                marker_name = str(marker.relative_to(world.path))
+            except ValueError:
+                marker_name = marker.name
+            if not latest or stat.st_mtime > float(latest.get("mtime", 0.0)):
+                latest = {
+                    "world_name": world.name,
+                    "marker": marker_name,
+                    "path": str(marker),
+                    "mtime": stat.st_mtime,
+                    "reason": "world_save_marker",
+                }
+    return latest
+
+
+def success_from_world_save_marker(
+    profile: str, baseline_mtime: float, expected_world: str
+) -> Tuple[bool, Dict[str, Any]]:
+    marker = latest_world_save_marker(profile, expected_world)
+    if not marker:
+        return False, {}
+    if float(marker.get("mtime", 0.0)) <= baseline_mtime:
+        return False, marker
+    marker["readiness"] = "new_world_save_marker_after_startup"
+    return True, marker
+
+
 def run_startup(args: argparse.Namespace) -> int:
     profile = resolve_profile_name(args.profile)
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
@@ -3526,6 +3594,8 @@ def run_startup(args: argparse.Namespace) -> int:
     lastworld = config_dir_for_profile(profile) / "lastworld.json"
     debug_size = debug_log.stat().st_size if debug_log.exists() else 0
     baseline_mtime = lastworld.stat().st_mtime if lastworld.exists() else 0.0
+    baseline_save_marker = latest_world_save_marker(profile, plan.target_world)
+    baseline_save_marker_mtime = float(baseline_save_marker.get("mtime", 0.0) or 0.0)
     copy_file_if_exists(lastworld, run_dir / "lastworld.before.json")
     proc = launch_game(profile, plan.target_world, run_dir)
     write_json(run_dir / "process.json", {
@@ -3571,6 +3641,10 @@ def run_startup(args: argparse.Namespace) -> int:
             return 1
 
         ok, data = success_from_lastworld(profile, baseline_mtime, expected_world)
+        readiness_kind = "lastworld"
+        if not ok:
+            ok, data = success_from_world_save_marker(profile, baseline_save_marker_mtime, expected_world)
+            readiness_kind = "world_save_marker"
         if ok:
             post_lastworld_wait = float(startup_cfg.get("post_lastworld_wait_seconds", 0.0) or 0.0)
             if post_lastworld_wait > 0:
@@ -3593,7 +3667,13 @@ def run_startup(args: argparse.Namespace) -> int:
                 "profile_snapshot": profile_snapshot_result,
                 "fixture_install": fixture_install_result,
                 "post_lastworld_wait_seconds": post_lastworld_wait,
-                "lastworld": data,
+                "lastworld": data if readiness_kind == "lastworld" else {},
+                "readiness": {
+                    "kind": readiness_kind,
+                    "reason": data.get("readiness", "lastworld_updated") if isinstance(data, dict) else "lastworld_updated",
+                    "marker": data if readiness_kind == "world_save_marker" else {},
+                    "baseline_save_marker": baseline_save_marker,
+                },
                 "run_dir": str(run_dir),
                 "screen": screen.get("screen_summary", {}),
             }
@@ -3621,6 +3701,11 @@ def run_startup(args: argparse.Namespace) -> int:
         "strategy": plan.strategy,
         "profile_snapshot": profile_snapshot_result,
         "fixture_install": fixture_install_result,
+        "readiness": {
+            "kind": "timeout",
+            "baseline_save_marker": baseline_save_marker,
+            "latest_save_marker": latest_world_save_marker(profile, expected_world),
+        },
         "run_dir": str(run_dir),
         "screen": screen.get("screen_summary", {}),
     }
