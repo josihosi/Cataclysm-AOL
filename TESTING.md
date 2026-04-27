@@ -118,7 +118,14 @@ Current bridge checkpoint evidence:
 
 ### Active validation target - Bandit local sight-avoid + scout return cadence packet v0
 
-Next validation should start narrow: deterministic sight-exposure/no-teleport/no-perfect-omniscience coverage first, then one live/harness proof on `bandit.live_world_nearby_camp_mcw` or equivalent real owned-site footing showing a scout either repositions out of exposure or returns after a finite sortie window.
+Current deterministic checkpoint - 2026-04-27:
+- Source path: `src/do_turn.cpp` now wires local stalking/hold-off exposure into `choose_sight_avoid_reposition(...)`, checks player LOS plus nearby allied/basecamp observer LOS, and only considers adjacent passable tiles. Scout outings record active job type plus sortie start/contact minutes, route an expired single-scout sortie home, and write `returning_home` observations back through the owned-site aftermath path.
+- Deterministic seam: `src/bandit_live_world.cpp` now owns bounded sight-avoid selection, active sortie clock helpers, scout timeout decision, active job serialization/deserialization, and return-packet job typing/cleanup.
+- Tests: `tests/bandit_live_world_test.cpp` covers current/recent exposure, no-teleport/no-perfect-omniscience adjacency bounds, finite scout sortie expiry, return-home/writeback state transition, and serialization for `active_job_type`, `active_sortie_started_minutes`, and `active_sortie_local_contact_minutes`.
+- Local gates: `git diff --check`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 524 assertions in 22 test cases passed. `make -j4 cataclysm LINTJSON=0 ASTYLE=0` and `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` built current runtime binaries for probe attempts.
+- Live/harness state: not closed yet. `bandit.live_world_nearby_camp_mcw` run `.userdata/dev-harness/harness_runs/20260427_040319/` was `inconclusive_no_new_artifacts`; `bandit.extortion_at_camp_standoff_mcw` run `.userdata/dev-harness/harness_runs/20260427_041554/` reached gameplay screenshots but hung during the long `advance_4500_turns_to_basecamp_standoff` step and was killed. Do not count either as live behavior proof; change the live probe shape before rerunning.
+
+Next validation should produce one live/harness proof on `bandit.live_world_nearby_camp_mcw` or equivalent real owned-site footing showing a scout either repositions out of exposure or returns after a finite sortie window.
 
 ### Greenlit validation target - Smart Zone Manager v1 Josef playtest corrections
 

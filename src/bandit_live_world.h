@@ -103,7 +103,10 @@ struct site_record {
     std::vector<spawn_tile_record> spawn_tiles;
     std::string active_group_id;
     std::string active_target_id;
+    std::string active_job_type;
     std::vector<character_id> active_member_ids;
+    int active_sortie_started_minutes = -1;
+    int active_sortie_local_contact_minutes = -1;
     std::string remembered_target_or_mark;
     int remembered_threat_estimate = 0;
     int remembered_bounty_estimate = 0;
@@ -189,6 +192,22 @@ struct local_gate_decision {
     std::vector<std::string> notes;
 };
 
+struct sight_avoid_candidate {
+    tripoint_abs_ms tile;
+    bool passable = true;
+    bool visible_to_player = false;
+    bool visible_to_camp = false;
+    int cover_score = 0;
+};
+
+struct sight_avoid_decision {
+    bool valid = false;
+    bool repositions = false;
+    tripoint_abs_ms destination;
+    std::string reason;
+    std::vector<std::string> notes;
+};
+
 struct shakedown_goods_pool {
     int player_carried_value = 0;
     int companion_carried_value = 0;
@@ -266,6 +285,13 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );
+sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &current_tile,
+        bool current_exposure, bool recent_exposure,
+        const std::vector<sight_avoid_candidate> &candidates );
+bool note_active_sortie_started( site_record &site, int current_minutes );
+bool note_active_sortie_local_contact( site_record &site, int current_minutes );
+bool scout_sortie_should_return_home( const site_record &site, int current_minutes,
+                                      int sortie_limit_minutes );
 shakedown_surface build_shakedown_surface( const site_record &site, const local_gate_input &input,
         const local_gate_decision &decision, const shakedown_goods_pool &goods_pool );
 shakedown_aftermath_effect apply_shakedown_outcome( site_record &site,

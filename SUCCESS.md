@@ -123,16 +123,17 @@ Status: ACTIVE / GREENLIT NOW
 
 Success state:
 - [ ] Stalking / hold-off bandits in the reality bubble can detect current or recent exposure to the player or nearby camp NPCs and attempt a bounded reposition toward cover or broken line of sight.
-- [ ] The sight-avoid behavior is local and heuristic: deterministic tests prove it does not use magical future-cone omniscience and does not teleport.
-- [ ] A scout outing has a finite live sortie window and can return home after watching long enough, instead of lingering indefinitely in local contact.
-- [ ] Returned scout state writes back through the owned-site memory path and can drive later re-evaluation without automatically conjuring a larger group.
-- [ ] The single-scout current behavior remains explainable: `scout` is still one member unless a later job or escalated decision explicitly requires more.
-- [ ] Reviewer-readable output distinguishes `still stalking`, `repositioning because exposed`, `returning home`, and `re-dispatch/escalation decision`.
+- [x] The sight-avoid behavior is local and heuristic: deterministic tests prove it does not use magical future-cone omniscience and does not teleport.
+- [ ] A scout outing has a finite live sortie window and can return home after watching long enough, instead of lingering indefinitely in local contact. _(Deterministic/live-wired source path covered; live/harness proof still open below.)_
+- [ ] Returned scout state writes back through the owned-site memory path and can drive later re-evaluation without automatically conjuring a larger group. _(Deterministic writeback coverage; live/harness proof still open below.)_
+- [x] The single-scout current behavior remains explainable: `scout` is still one member unless a later job or escalated decision explicitly requires more.
+- [ ] Reviewer-readable output distinguishes `still stalking`, `repositioning because exposed`, `returning home`, and `re-dispatch/escalation decision`. _(Source/log/report strings are present; live reviewer proof still open.)_
 - [ ] At least one live/harness proof uses `bandit.live_world_nearby_camp_mcw` or an equivalent real owned-site scenario and confirms the same code path would apply to a normal discovered bandit camp, while separately naming the harness bias that places the camp nearby on purpose.
 
 Notes:
 - Canonical contract lives at `doc/bandit-local-sight-avoid-and-scout-return-cadence-packet-v0-2026-04-26.md`.
-- Current code read: `return_clock` is carried through handoff/writeback memory, but it is not a live timeout that forces a scout to stop watching after N hours/days; `resolve_active_group_aftermath()` resolves only after home/dead/missing observations, while local contact and unresolved outbound states stay open.
+- 2026-04-27 implementation checkpoint: deterministic `[bandit][live_world]` coverage now passes for bounded adjacent sight-avoid choice, finite scout sortie expiry, return-home/writeback, active job typing, and new active sortie serialization fields. Local gates: `git diff --check`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> 524 assertions in 22 test cases passed.
+- Live/harness proof remains the open bar. `.userdata/dev-harness/harness_runs/20260427_040319/` and `.userdata/dev-harness/harness_runs/20260427_041554/` are inconclusive and must not be counted as proof; use a changed live probe shape next.
 - Josef's smoke-attraction observation still wants a no-smoke control before we claim smoke itself is the live cause.
 
 ---

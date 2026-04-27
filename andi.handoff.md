@@ -54,13 +54,36 @@ Desired slice:
 - returned scouts can refresh owned-site memory/pressure for later re-evaluation, but no automatic larger spawn cheat
 - reviewer-readable output should distinguish `still stalking`, `repositioning because exposed`, `returning home`, and later re-dispatch/escalation decisions
 
+## Current checkpoint - 2026-04-27
+
+Deterministic/source slice is now ready as a reviewable behavior checkpoint:
+
+- `src/bandit_live_world.cpp` / `.h`: bounded adjacent sight-avoid choice, active sortie start/contact clocks, scout timeout decision, active job typing, active sortie serialization/deserialization, return-packet job typing and cleanup
+- `src/do_turn.cpp`: live local gate now feeds player LOS plus nearby allied/basecamp observer LOS into sight-avoid, notes sortie start/contact, routes an expired single scout home, observes already-returning scouts as `returning_home`, and logs scout return pressure refresh
+- `tests/bandit_live_world_test.cpp`: covers current/recent exposure, no teleport/no perfect omniscience, finite scout expiry, return-home/writeback, and serialization of the new active sortie fields
+
+Validated locally:
+
+```sh
+git diff --check
+make -j4 tests LINTJSON=0 ASTYLE=0
+./tests/cata_test "[bandit][live_world]"
+# all 524 assertions in 22 test cases passed
+make -j4 cataclysm LINTJSON=0 ASTYLE=0
+make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0
+```
+
+Live/harness proof is still open and must not be overclaimed. Current-build attempts:
+
+- `.userdata/dev-harness/harness_runs/20260427_040319/` (`bandit.live_world_nearby_camp_mcw`) -> `inconclusive_no_new_artifacts`
+- `.userdata/dev-harness/harness_runs/20260427_041554/` (`bandit.extortion_at_camp_standoff_mcw`) -> reached gameplay screenshots but hung during the long standoff advance; killed manually
+
+Next Andi action: change the live proof shape before rerunning. Prefer a shorter or fixture-assisted nearby owned-site probe that starts with an active scout/local-contact state and advances only enough to see either bounded reposition or return-home/writeback.
+
 ## Validation plan
 
-Start deterministic, then live:
+Remaining live bar:
 
-- deterministic tests for exposure classification and no-teleport/no-perfect-omniscience reposition choice
-- deterministic tests for finite scout sortie expiry and return-home/writeback state transition
-- deterministic/integration proof that returned scout state can refresh pressure without auto-spawning a larger group
 - one live/harness proof on nearby owned-site footing showing a scout either scooches out of exposure or returns after the sortie window
 
 ## Non-goals

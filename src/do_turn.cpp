@@ -566,16 +566,121 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
     return true;
 }
 
+int live_bandit_current_minutes()
+{
+    return to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+}
+
+bool live_bandit_member_routing_home( const npc &member_npc, const bandit_live_world::site_record &site )
+{
+    return member_npc.is_travelling() && member_npc.has_omt_destination() &&
+           site_contains_omt( site, member_npc.goal );
+}
+
+bool live_bandit_route_member_home( npc &member_npc, const bandit_live_world::site_record &site )
+{
+    if( live_bandit_member_routing_home( member_npc, site ) ) {
+        return true;
+    }
+
+    std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( member_npc.pos_abs_omt(),
+                                           site.anchor, overmap_path_params::for_npc() ).points;
+    if( path.empty() ) {
+        return false;
+    }
+    member_npc.goal = site.anchor;
+    member_npc.omt_path = std::move( path );
+    member_npc.set_mission( NPC_MISSION_TRAVELLING );
+    return true;
+}
+
+bool live_bandit_seen_by_nearby_ally( const map &here, const avatar &u,
+                                      const tripoint_bub_ms &target )
+{
+    static constexpr int nearby_observer_radius = 30;
+    for( const npc &guy : g->all_npcs() ) {
+        if( !guy.is_player_ally() || guy.is_dead() ||
+            rl_dist( guy.pos_abs(), u.pos_abs() ) > nearby_observer_radius ) {
+            continue;
+        }
+        if( guy.sees( here, target ) ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
+        const bandit_live_world::local_gate_input &gate_input,
+        const bandit_live_world::local_gate_decision &gate_decision )
+{
+    if( gate_decision.posture != bandit_live_world::local_gate_posture::stalk &&
+        gate_decision.posture != bandit_live_world::local_gate_posture::hold_off ) {
+        return false;
+    }
+
+    map &here = get_map();
+    avatar &u = get_avatar();
+    const tripoint_bub_ms current = member_npc.pos_bub( here );
+    const bool current_player_exposure = get_player_view().sees( here, current );
+    const bool current_camp_exposure = live_bandit_seen_by_nearby_ally( here, u, current );
+    const bool current_exposure = current_player_exposure || current_camp_exposure;
+    if( !current_exposure && !gate_input.recent_exposure ) {
+        return false;
+    }
+
+    const int current_player_distance = rl_dist( current, u.pos_bub( here ) );
+    std::vector<bandit_live_world::sight_avoid_candidate> candidates;
+    for( const tripoint_bub_ms &candidate_tile : here.points_in_radius( current, 1 ) ) {
+        if( candidate_tile == current ) {
+            continue;
+        }
+        bandit_live_world::sight_avoid_candidate candidate;
+        candidate.tile = here.get_abs( candidate_tile );
+        candidate.passable = member_npc.can_move_to( candidate_tile, true );
+        candidate.visible_to_player = get_player_view().sees( here, candidate_tile );
+        candidate.visible_to_camp = live_bandit_seen_by_nearby_ally( here, u, candidate_tile );
+        candidate.cover_score = rl_dist( candidate_tile, u.pos_bub( here ) ) - current_player_distance;
+        candidates.push_back( candidate );
+    }
+
+    const bandit_live_world::sight_avoid_decision decision =
+        bandit_live_world::choose_sight_avoid_reposition( member_npc.pos_abs(), current_exposure,
+                gate_input.recent_exposure, candidates );
+    if( !decision.repositions ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sight_avoid: still stalking npc="
+                                   << member_npc.getID().get_value() << " reason=" << decision.reason
+                                   << " current_exposure=" << ( current_exposure ? "yes" : "no" )
+                                   << " player_exposure=" << ( current_player_exposure ? "yes" : "no" )
+                                   << " camp_exposure=" << ( current_camp_exposure ? "yes" : "no" )
+                                   << " recent_exposure=" << ( gate_input.recent_exposure ? "yes" : "no" )
+                                   << '\n';
+        return false;
+    }
+
+    member_npc.move_to( here.get_bub( decision.destination ), true );
+    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world sight_avoid: exposed -> repositioned npc="
+                               << member_npc.getID().get_value() << " from="
+                               << current.to_string_writable() << " to="
+                               << here.get_bub( decision.destination ).to_string_writable()
+                               << " reason=" << decision.reason << '\n';
+    return true;
+}
+
 bool note_live_bandit_aftermath()
 {
     avatar &u = get_avatar();
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const int current_minutes = live_bandit_current_minutes();
+    static constexpr int scout_sortie_limit_minutes = 180;
     bool changed = false;
 
     for( bandit_live_world::site_record &site : state.sites ) {
         if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
             continue;
         }
+
+        changed |= bandit_live_world::note_active_sortie_started( site, current_minutes );
 
         std::vector<bandit_live_world::active_member_observation> observations;
         observations.reserve( site.active_member_ids.size() );
@@ -639,10 +744,29 @@ bool note_live_bandit_aftermath()
                             << member_npc->pos_abs_omt().to_string() << " player="
                             << u.pos_abs_omt().to_string();
                 }
+                changed |= bandit_live_world::note_active_sortie_local_contact( site, current_minutes );
                 if( member->state == bandit_live_world::member_state::outbound ) {
                     changed |= bandit_live_world::update_member_state( site, member_id,
                               bandit_live_world::member_state::local_contact,
                               "local contact near " + site.active_target_id );
+                }
+                if( live_bandit_member_routing_home( *member_npc, site ) ) {
+                    observation.state = bandit_live_world::active_member_observation_state::returning_home;
+                    observation.summary = "scout returning home after sortie limit";
+                } else if( bandit_live_world::scout_sortie_should_return_home( site, current_minutes,
+                           scout_sortie_limit_minutes ) && live_bandit_route_member_home( *member_npc, site ) ) {
+                    observation.state = bandit_live_world::active_member_observation_state::returning_home;
+                    observation.summary = "scout sortie limit reached; returning home";
+                    DebugLog( D_INFO, DC_ALL )
+                            << "bandit_live_world scout_sortie: linger limit reached -> return_home"
+                            << " site=" << site.site_id
+                            << " active_group=" << site.active_group_id
+                            << " member=" << member_id.get_value()
+                            << " elapsed_minutes=" << ( current_minutes -
+                                    ( site.active_sortie_local_contact_minutes >= 0 ?
+                                      site.active_sortie_local_contact_minutes :
+                                      site.active_sortie_started_minutes ) )
+                            << " limit_minutes=" << scout_sortie_limit_minutes << '\n';
                 }
             } else if( member->state == bandit_live_world::member_state::local_contact ) {
                 if( !member_npc->is_active() &&
@@ -700,6 +824,18 @@ bool note_live_bandit_aftermath()
         } );
         const bandit_live_world::local_gate_decision gate_decision =
             bandit_live_world::choose_local_gate_posture( site, gate_input );
+        if( gate_decision.posture == bandit_live_world::local_gate_posture::stalk ||
+            gate_decision.posture == bandit_live_world::local_gate_posture::hold_off ) {
+            for( const character_id &member_id : site.active_member_ids ) {
+                if( npc *member_npc = g->find_npc( member_id ) ) {
+                    const bandit_live_world::member_record *member = site.find_member( member_id );
+                    if( member != nullptr && member->state == bandit_live_world::member_state::local_contact ) {
+                        changed |= live_bandit_try_sight_avoid_reposition( *member_npc, gate_input,
+                                   gate_decision );
+                    }
+                }
+            }
+        }
         if( gate_decision.opens_shakedown_surface ) {
             changed |= open_live_bandit_shakedown_surface( site, gate_input, gate_decision );
             if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
@@ -709,7 +845,18 @@ bool note_live_bandit_aftermath()
 
         if( const std::optional<bandit_pursuit_handoff::return_packet> packet =
                 bandit_live_world::resolve_active_group_aftermath( site, observations ) ) {
-            changed |= bandit_live_world::apply_return_packet( site, *packet );
+            const std::string site_id = site.site_id;
+            const std::string group_id = site.active_group_id;
+            const bool applied_return = bandit_live_world::apply_return_packet( site, *packet );
+            changed |= applied_return;
+            if( applied_return && packet->job_type == bandit_dry_run::job_template::scout ) {
+                DebugLog( D_INFO, DC_ALL )
+                        << "bandit_live_world scout_report: returned -> pressure refreshed"
+                        << " site=" << site_id
+                        << " active_group=" << group_id
+                        << " remaining_pressure="
+                        << bandit_pursuit_handoff::to_string( packet->remaining_pressure ) << '\n';
+            }
         }
     }
 
@@ -1390,6 +1537,7 @@ bool steer_live_bandit_dispatch_toward_player(
         if( !bandit_live_world::apply_dispatch_plan( site, plan ) ) {
             continue;
         }
+        bandit_live_world::note_active_sortie_started( site, live_bandit_current_minutes() );
 
         const std::string gate_summary = live_bandit_gate_summary( plan, gate_decision, dispatch_goal );
         for( const character_id &member_id : plan.member_ids ) {
