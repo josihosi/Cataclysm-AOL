@@ -80,6 +80,12 @@ Prefer a narrow deterministic layer first, then one live/handoff proof:
 - live handoff/probe proof on the current nearby-camp scenario showing a scout either scooches out of sight when exposed or returns after the sortie window
 - a no-smoke control run remains useful when judging Josef's current smoke-attraction observation; do not claim smoke itself is the live cause without that control
 
+## Current proof checkpoint - 2026-04-27
+
+The first live/harness proof for this packet is a return-home decision proof, not a full walked-home/writeback proof.  Scenario `bandit.local_scout_return_preaged_mcw` starts from real nearby-owned-site local-contact footing and uses only the narrow `bandit_active_sortie_clock` fixture transform to pre-age the scout sortie.  Run `.userdata/dev-harness/harness_runs/20260427_051117/` records `scout_sortie: linger limit reached -> return_home` and `returning_home -> local_gate skipped` on the current runtime, with no matched shakedown/local-gate artifact for that returning scout.
+
+Open proof rungs remain: live `sight_avoid: exposed -> repositioned`, and full follow-through that a returning scout reaches home and writes back/clears the active group.
+
 ## Notes for later implementation
 
 The current harness scenario `bandit.live_world_nearby_camp_mcw` is not hollow: it seeds a real nearby `bandit_camp` and then exercises the current build's live owned-site dispatch/control path.  The caveat is frequency and setup: the harness guarantees a nearby site on useful Basecamp footing, while a normal world must naturally place/encounter a qualifying hostile site before the same behavior matters.

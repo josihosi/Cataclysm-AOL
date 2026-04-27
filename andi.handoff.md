@@ -73,24 +73,25 @@ make -j4 cataclysm LINTJSON=0 ASTYLE=0
 make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0
 ```
 
-Live/harness proof is still open and must not be overclaimed. Current-build attempts:
+Live/harness proof moved forward but must still not be overclaimed. Current-build attempts:
 
 - `.userdata/dev-harness/harness_runs/20260427_040319/` (`bandit.live_world_nearby_camp_mcw`) -> `inconclusive_no_new_artifacts`
 - `.userdata/dev-harness/harness_runs/20260427_041554/` (`bandit.extortion_at_camp_standoff_mcw`) -> reached gameplay screenshots but hung during the long standoff advance; killed manually
+- Frau Knackal consulted at the live-proof shaping threshold and explicitly said not to rerun the 4500-turn standoff macro.
+- `.userdata/dev-harness/harness_runs/20260427_051117/` (`bandit.local_scout_return_preaged_mcw`) -> current-runtime `artifacts_matched`: real nearby-owned-site local-contact footing plus the narrow `bandit_active_sortie_clock` transform produced `scout_sortie: linger limit reached -> return_home` and `returning_home -> local_gate skipped`; matched shakedown/local-gate artifact patterns are empty.
 
-Next Andi action: change the live proof shape before rerunning. Prefer a shorter or fixture-assisted nearby owned-site probe that starts with an active scout/local-contact state and advances only enough to see either bounded reposition or return-home/writeback.
+What changed this run: a small live guard now skips local-gate/shakedown handling while the whole active group is returning home, and the harness has a narrow pre-aged scout-return fixture/scenario so this proof does not depend on the old long standoff macro.
 
-Schani review nudge for the next cadence:
+Current caveat: this is live return-home **decision** proof and same-tick shakedown suppression, not full walked-home/writeback proof and not live `sight_avoid: exposed -> repositioned` proof.
 
-- do not repeat the same long/hung standoff probe shape
-- prove one thing directly: exposed scout makes a local heuristic sight-avoid move out of exposure, or finite sortie expires and the scout returns/writebacks cleanly
-- keep anti-loop accounting hot: if changed live probes keep failing, count this as the same missing live-proof blocker, consult Frau Knackal at attempt 3, and after attempts 4-5 move the playtest to Josef review instead of stirring the harness soup
+Next Andi action: either shape a short sight-avoid exposure proof, or follow the returning scout far enough to prove home/writeback/active-group cleanup. Do not use the old long/hung standoff probe unless its setup is materially changed.
 
 ## Validation plan
 
 Remaining live bar:
 
-- one live/harness proof on nearby owned-site footing showing a scout either scooches out of exposure or returns after the sortie window
+- short live sight-avoid proof showing `sight_avoid: exposed -> repositioned`, or a follow-through live proof that the returning scout reaches home and writes back/clears the active group
+- keep `.userdata/dev-harness/harness_runs/20260427_051117/` classified as return-home decision proof only
 
 ## Non-goals
 

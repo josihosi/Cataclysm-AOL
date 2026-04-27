@@ -133,6 +133,8 @@ Canonical contract: `doc/bandit-local-sight-avoid-and-scout-return-cadence-packe
 
 Josef's 2026-04-26 nearby-camp playtest found a credible local-stalking gap: a dispatched scout can stand around in the reality bubble for too long, and the previously discussed creepy behavior where a seen bandit slips back out of player/Basecamp sight is not implemented yet. This is now the active bounded local-stalking correction: stalking/hold-off bandits should use non-magical current/recent exposure heuristics to move toward cover or broken line of sight, scouts should eventually return home and write back what they learned, and any later larger dispatch must come from explicit camp re-evaluation rather than automatic spawn cheating.
 
+Current checkpoint: deterministic implementation and the first bounded live return-home decision proof are landed. Run `.userdata/dev-harness/harness_runs/20260427_051117/` uses equivalent nearby-owned-site local-contact footing plus a narrow pre-aged scout-sortie clock transform; it proves `scout_sortie: linger limit reached -> return_home` and `returning_home -> local_gate skipped` on the current runtime, without claiming full walked-home/writeback or live sight-avoid reposition proof yet.
+
 ## Greenlit follow-up - Basecamp medical consumable readiness v0
 
 **Status:** GREENLIT / QUEUED FOLLOW-UP
