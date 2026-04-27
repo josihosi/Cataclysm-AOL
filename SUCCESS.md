@@ -168,7 +168,7 @@ Success state:
 - [x] Reviewer-readable output distinguishes `still stalking`, `repositioning because exposed`, `returning home`, and `re-dispatch/escalation decision`. _(Source/report strings cover the branches; live proof now covers returning-home/writeback and `sight_avoid: exposed -> repositioned`. Later redispatch tuning is not claimed beyond explicit owned-site re-evaluation.)_
 - [x] At least one live/harness proof uses `bandit.live_world_nearby_camp_mcw` or an equivalent real owned-site scenario and confirms the same code path would apply to a normal discovered bandit camp, while separately naming the harness bias that places the camp nearby on purpose.
 - [ ] Recent live logs/save fields from Josef's 2026-04-27 playtest are inspected and answer whether the scout timer is actually running in the current save.
-- [ ] Bandit hold-off/stalking placement keeps a meaningful stand-off instead of crowding the immediately adjacent/neighboring OMT-scale area unless an explicit shakedown/fight state has started.
+- [x] Bandit hold-off/stalking placement keeps a meaningful stand-off instead of crowding the immediately adjacent/neighboring OMT-scale area unless an explicit shakedown/fight state has started. _(Deterministic five-OMT correction plus live harness proof `.userdata/dev-harness/harness_runs/20260427_152117/`: real `wait_action` 30m path completed, `local_gate ... posture=hold_off ... standoff_distance=5`, `live_dispatch_goal=140,46,0`.)_
 - [ ] The scout timeout/return path is proven on the current live-product path, or explicitly moved to Josef's playtest package as implemented-but-unproven without calling the packet closed.
 
 

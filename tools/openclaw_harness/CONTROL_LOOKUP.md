@@ -48,6 +48,7 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 - Treat any interruption as evidence, not noise: safe mode, hostile sightings, noises, hunger/thirst/sleep, damage, activity cancellation prompts, and wrong-screen focus can all invalidate a long-wait proof.
 - Do not type `I`, `N`, `Y`, or `Esc` through prompts blindly. Capture the prompt/screen, classify it, and only ignore/cancel when the proof contract says that is the expected branch.
 - A long-wait proof should record before/after game clock or turn, expected elapsed duration, whether the wait completed or interrupted, the typed choice, and the artifact/screenshot path. If elapsed time or prompt handling is missing, the verdict is not green.
+- Harness scenario primitive: use `{"kind":"wait_action","choice_key":"3"}` for a 5m proof or `choice_key":"4"` for 30m. It captures `<label>.before`, `<label>.initial_wait_menu` when an alarm/watch pre-menu appears, `<label>.wait_menu`, and `<label>.after` screenshots/OCR, records expected duration plus prompt classification, and writes `<label>.before_wait.artifacts.log` / `<label>.after_wait.artifacts.log` deltas when artifact patterns are configured. It does not type through interruption prompts.
 
 ### `C+b` recipient selection is situational
 A live probe in the current `master` / `Sandy Creek` save showed:

@@ -1,6 +1,6 @@
 {
   "name": "bandit.extortion_at_camp_standoff_mcw",
-  "description": "Named Basecamp extortion restage: start from the honest claimed nearby-owned-site McWilliams/Basecamp footing, disable safe mode, advance through the real live owner/dispatch/local-contact path until the local gate reaches camp-adjacent stand-off pressure at a visible five-OMT hold-off distance, and stop there for probe capture or manual handoff.",
+  "description": "Named Basecamp extortion restage: start from the honest claimed nearby-owned-site McWilliams/Basecamp footing, disable safe mode, use the real wait action to advance through the live owner/dispatch/local-contact path until the local gate reaches camp-adjacent stand-off pressure at a visible five-OMT hold-off distance, and stop there for probe capture or manual handoff.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "tmp_bandit_live_world_owned_site2_basecamp_probe_2026-04-22",
@@ -39,14 +39,20 @@
       "expected_visible_fact": "safe mode off and gameplay still focused before time advancement"
     },
     {
-      "kind": "advance_turns",
-      "label": "advance_4500_turns_to_basecamp_standoff",
-      "count": 4500,
-      "settle_seconds": 2.0,
-      "capture_after": true,
-      "extract_text_after_capture": true,
-      "extract_text_tail_lines": 32,
-      "expected_visible_fact": "local-gate hold_off result reached; debug artifact must show live_dispatch_goal=140,46,0"
+      "kind": "wait_action",
+      "label": "wait_30m_to_basecamp_standoff_gate",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "menu_settle_seconds": 0.8,
+      "after_choice_settle_seconds": 0.5,
+      "completion_wait_seconds": 10.0,
+      "extract_text_tail_lines": 40,
+      "abort_on_interrupt": true,
+      "abort_verdict": "inconclusive_wait_interrupted",
+      "abort_reason": "long wait was interrupted or produced a prompt before local-gate standoff evidence could be captured",
+      "expected_visible_fact": "wait action proof: before/initial-menu/duration-menu/after screenshots exist; debug artifact must show local_gate hold_off and live_dispatch_goal=140,46,0 after the bounded 30m wait",
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the duration menu"
     }
   ],
   "recommended_probe_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_at_camp_standoff_mcw",
@@ -56,8 +62,9 @@
     "live_required_checkpoints": [
       "post load: normal McWilliams gameplay screen after fixture install",
       "safe mode off: gameplay still focused after safe-mode toggle",
-      "after advancement: debug log contains local_gate hold_off and live_dispatch_goal at visible five-OMT standoff"
+      "wait menu: Wait for how long? menu is visible before choosing 30m",
+      "after wait: either completed wait or classified interruption prompt is captured; debug log must contain local_gate hold_off and live_dispatch_goal at visible five-OMT standoff for a green standoff proof"
     ],
-    "failure_rule": "If the run only reaches startup/gameplay screens, hangs during advancement, or lacks local_gate/dispatch artifacts, it is not standoff proof."
+    "failure_rule": "If the run only reaches startup/gameplay screens, hangs during advancement, lacks wait-menu/after-wait screenshots, sees an unhandled interruption prompt, or lacks local_gate/dispatch artifacts, it is not standoff proof."
   }
 }

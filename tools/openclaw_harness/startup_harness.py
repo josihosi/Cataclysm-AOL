@@ -664,6 +664,227 @@ def advance_turns(pid: int, count: int) -> Dict[str, Any]:
     return timing
 
 
+LONG_WAIT_MENU_CHOICES = {
+    "1": "20s",
+    "2": "1m",
+    "3": "5m",
+    "4": "30m",
+    "5": "1h",
+    "6": "2h",
+    "7": "3h",
+    "8": "6h",
+    "d": "daylight",
+    "n": "noon",
+    "k": "night",
+    "m": "midnight",
+    "W": "weather",
+}
+
+
+def classify_wait_screen_text(
+    screen_text_report: Dict[str, Any],
+    complete_patterns: List[str],
+    interrupt_patterns: List[str],
+) -> Dict[str, Any]:
+    complete_matches = find_screen_text_matches(screen_text_report, complete_patterns)
+    interrupt_matches = find_screen_text_matches(screen_text_report, interrupt_patterns)
+    if interrupt_matches:
+        status = "interrupted_or_prompt_visible"
+    elif complete_matches:
+        status = "completed"
+    else:
+        status = "unknown_after_wait"
+    return {
+        "status": status,
+        "complete_patterns": complete_patterns,
+        "interrupt_patterns": interrupt_patterns,
+        "complete_matches": complete_matches,
+        "interrupt_matches": interrupt_matches,
+    }
+
+
+def capture_wait_artifact_delta(
+    artifact_log: Optional[Path],
+    run_dir: Path,
+    label: str,
+    suffix: str,
+    start_size: int,
+    patterns: List[str],
+    *,
+    filter_debug_noise: bool,
+) -> Dict[str, Any]:
+    if artifact_log is None:
+        return {
+            "status": "not_configured",
+            "source_log": "",
+            "start_size": start_size,
+            "end_size": start_size,
+            "line_count": 0,
+            "patterns": patterns,
+            "matches_by_pattern": [],
+            "matched_lines": [],
+            "path": "",
+        }
+    end_size = artifact_log.stat().st_size if artifact_log.exists() else start_size
+    text = read_log_delta(artifact_log, start_size, filter_debug_noise=filter_debug_noise)
+    out_path = run_dir / f"{label}.{suffix}.artifacts.log"
+    if text:
+        out_path.write_text(text, encoding="utf-8")
+    matches_by_pattern: List[Dict[str, Any]] = []
+    matched_lines: List[str] = []
+    for pattern in patterns:
+        lines = [line for line in text.splitlines() if pattern in line]
+        matches_by_pattern.append({"pattern": pattern, "lines": lines})
+        matched_lines.extend(lines)
+    return {
+        "status": "captured" if text else "no_new_artifacts",
+        "source_log": str(artifact_log),
+        "start_size": start_size,
+        "end_size": end_size,
+        "line_count": len(text.splitlines()) if text else 0,
+        "patterns": patterns,
+        "matches_by_pattern": matches_by_pattern,
+        "matched_lines": matched_lines,
+        "path": str(out_path) if text else "",
+    }
+
+
+def execute_long_wait_action(
+    pid: int,
+    run_dir: Path,
+    label: str,
+    step: Dict[str, Any],
+    *,
+    artifact_log: Optional[Path] = None,
+    artifact_baseline: int = 0,
+    filter_debug_noise: bool = False,
+    artifact_patterns: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    wait_key = str(step.get("wait_key", "|") or "|")
+    choice_key = str(step.get("choice_key", step.get("choice", "3")) or "3")
+    expected_duration = str(
+        step.get("expected_duration") or LONG_WAIT_MENU_CHOICES.get(choice_key, "unknown")
+    )
+    delay_ms = int(step.get("delay_ms", 200) or 200)
+    pre_menu_choice_key = str(step.get("pre_menu_choice_key", "") or "").strip()
+    menu_settle_seconds = float(step.get("menu_settle_seconds", 0.8) or 0.8)
+    pre_menu_settle_seconds = float(step.get("pre_menu_settle_seconds", 0.5) or 0.5)
+    after_choice_settle_seconds = float(step.get("after_choice_settle_seconds", 0.5) or 0.5)
+    completion_wait_seconds = float(step.get("completion_wait_seconds", 8.0) or 8.0)
+    tail_lines = int(step.get("extract_text_tail_lines", step.get("extract_text_after_capture_tail_lines", 32)) or 32)
+    complete_patterns = normalize_screen_text_patterns(
+        step.get("wait_complete_text_contains", ["You finish waiting."])
+    )
+    state_patterns = normalize_string_list(step.get("artifact_state_patterns", artifact_patterns or []))
+    interrupt_patterns = normalize_screen_text_patterns(
+        step.get("wait_interrupt_text_contains", [
+            "Stop moving?",
+            "Spotted",
+            "hostile spotted",
+            "Safe mode is triggered",
+            "Ignore",
+            "ignore",
+            "What do you want to do",
+            "Set an alarm",
+            "Wait a while",
+            "Continue",
+            "continue",
+            "interrupted",
+            "You stop waiting",
+        ])
+    )
+    report: Dict[str, Any] = {
+        "wait_key": wait_key,
+        "choice_key": choice_key,
+        "pre_menu_choice_key": pre_menu_choice_key,
+        "expected_duration": expected_duration,
+        "delay_ms": delay_ms,
+        "menu_settle_seconds": menu_settle_seconds,
+        "pre_menu_settle_seconds": pre_menu_settle_seconds,
+        "after_choice_settle_seconds": after_choice_settle_seconds,
+        "completion_wait_seconds": completion_wait_seconds,
+        "proof_rule": (
+            "captures before/initial-menu/duration-menu/after screens plus before/after artifact deltas; "
+            "does not type through prompts; interruptions remain evidence and must not be classified green by default"
+        ),
+        "artifact_state_patterns": state_patterns,
+        "elapsed_time_evidence": {
+            "duration_choice_key": choice_key,
+            "expected_duration": expected_duration,
+            "before_clock_source": f"{label}.before.png / {label}.before.screen_text.json",
+            "after_clock_source": f"{label}.after.png / {label}.after.screen_text.json",
+            "completion_signal": "wait_complete_text_contains match after choosing the bounded duration",
+            "parse_note": "HUD clock/turn evidence is archived in screenshots/OCR; exact OCR parsing may be noisy and is not normalized here.",
+        },
+    }
+
+    wait_start_size = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_baseline
+    report["artifact_before_wait"] = capture_wait_artifact_delta(
+        artifact_log,
+        run_dir,
+        label,
+        "before_wait",
+        artifact_baseline,
+        state_patterns,
+        filter_debug_noise=filter_debug_noise,
+    )
+
+    before_capture = capture_screenshot(pid, run_dir, f"{label}.before")
+    report["screen_before"] = before_capture.get("screen_summary", {})
+    before_text = capture_screen_text_artifact(run_dir, f"{label}.before", before_capture, tail_lines=tail_lines)
+    report["screen_before_text"] = before_text
+
+    peekaboo_press_sequence(pid, [wait_key], delay_ms=delay_ms)
+    if menu_settle_seconds > 0:
+        time.sleep(menu_settle_seconds)
+    initial_menu_capture = capture_screenshot(pid, run_dir, f"{label}.initial_wait_menu")
+    report["screen_initial_wait_menu"] = initial_menu_capture.get("screen_summary", {})
+    initial_menu_text = capture_screen_text_artifact(
+        run_dir, f"{label}.initial_wait_menu", initial_menu_capture, tail_lines=tail_lines
+    )
+    report["screen_initial_wait_menu_text"] = initial_menu_text
+
+    if pre_menu_choice_key:
+        peekaboo_press_sequence(pid, [pre_menu_choice_key], delay_ms=delay_ms)
+        if pre_menu_settle_seconds > 0:
+            time.sleep(pre_menu_settle_seconds)
+
+    menu_capture = capture_screenshot(pid, run_dir, f"{label}.wait_menu")
+    report["screen_wait_menu"] = menu_capture.get("screen_summary", {})
+    menu_text = capture_screen_text_artifact(run_dir, f"{label}.wait_menu", menu_capture, tail_lines=tail_lines)
+    report["screen_wait_menu_text"] = menu_text
+
+    peekaboo_press_sequence(pid, [choice_key], delay_ms=delay_ms)
+    if after_choice_settle_seconds > 0:
+        time.sleep(after_choice_settle_seconds)
+    if completion_wait_seconds > 0:
+        time.sleep(completion_wait_seconds)
+    after_capture = capture_screenshot(pid, run_dir, f"{label}.after")
+    report["screen_after"] = after_capture.get("screen_summary", {})
+    after_text = capture_screen_text_artifact(run_dir, f"{label}.after", after_capture, tail_lines=tail_lines)
+    report["screen_after_text"] = after_text
+    report["artifact_after_wait"] = capture_wait_artifact_delta(
+        artifact_log,
+        run_dir,
+        label,
+        "after_wait",
+        wait_start_size,
+        state_patterns,
+        filter_debug_noise=filter_debug_noise,
+    )
+    report["wait_classification"] = classify_wait_screen_text(
+        after_text, complete_patterns, interrupt_patterns
+    )
+    if bool(step.get("abort_on_interrupt", False)) and \
+            report["wait_classification"].get("status") == "interrupted_or_prompt_visible":
+        report["status"] = "aborted_by_wait_interruption"
+        report["verdict"] = str(step.get("abort_verdict", "inconclusive_wait_interrupted"))
+        report["abort_reason"] = str(
+            step.get("abort_reason", "wait action was interrupted or showed a prompt")
+        )
+    return report
+
+
 def looks_like_inventory_slot(selector: str) -> bool:
     selector = selector.strip()
     return len(selector) == 1 and selector.isprintable() and not selector.isspace()
@@ -2997,7 +3218,16 @@ def normalize_scenario_steps(raw_steps: Any, advance_count: int, settle_seconds:
     return []
 
 
-def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def execute_probe_steps(
+    pid: int,
+    run_dir: Path,
+    steps: List[Dict[str, Any]],
+    *,
+    artifact_log: Optional[Path] = None,
+    artifact_baseline: int = 0,
+    filter_debug_noise: bool = False,
+    artifact_patterns: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for index, step in enumerate(steps, start=1):
         kind = str(step.get("kind", "")).strip().lower()
@@ -3051,6 +3281,20 @@ def execute_probe_steps(pid: int, run_dir: Path, steps: List[Dict[str, Any]]) ->
                 raise SystemExit(f"Scenario step '{label}' needs count > 0")
             report["count"] = count
             report["timing"] = advance_turns(pid, count)
+        elif kind in {"long_wait", "wait_action"}:
+            report.update(execute_long_wait_action(
+                pid,
+                run_dir,
+                label,
+                step,
+                artifact_log=artifact_log,
+                artifact_baseline=artifact_baseline,
+                filter_debug_noise=filter_debug_noise,
+                artifact_patterns=artifact_patterns,
+            ))
+            if report.get("status") == "aborted_by_wait_interruption":
+                reports.append(report)
+                return reports
         elif kind == "wait":
             seconds = float(step.get("seconds", 0.0) or 0.0)
             if seconds <= 0:
@@ -4225,7 +4469,15 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
 
     artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
     screen_before = capture_screenshot(pid, run_dir, f"{mode}_before")
-    step_reports = execute_probe_steps(pid, run_dir, steps)
+    step_reports = execute_probe_steps(
+        pid,
+        run_dir,
+        steps,
+        artifact_log=artifact_log,
+        artifact_baseline=artifact_start,
+        filter_debug_noise=filter_debug_noise,
+        artifact_patterns=artifact_patterns,
+    )
     derived_screen_reports = render_derived_screens(run_dir, derived_screens)
     screen_after = capture_screenshot(pid, run_dir, f"{mode}_after")
 
