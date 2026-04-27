@@ -130,6 +130,65 @@ static void openclaw_harness_trace_inventory_entry( const std::string &event,
                                << " stack_count=" << entry->get_available_count();
 }
 
+static void openclaw_harness_trace_inventory_entries( const inventory_selector &selector,
+        const std::vector<inventory_column *> &columns,
+        const std::string &event, const std::string &action, const std::string &selection_method )
+{
+    if( !openclaw_harness_ui_trace_enabled() ) {
+        return;
+    }
+
+    const std::pair<size_t, size_t> highlighted_position = selector.get_highlighted_position();
+
+    for( size_t column_index = 0; column_index < columns.size(); ++column_index ) {
+        const inventory_column *column = columns[column_index];
+        if( column == nullptr ) {
+            continue;
+        }
+        const bool active_column = column_index == highlighted_position.first;
+        const inventory_entry &highlighted = column->get_highlighted();
+        const std::vector<inventory_entry *> entries = column->get_entries( []( const inventory_entry &entry ) {
+            return entry.is_item();
+        } );
+
+        DebugLog( D_INFO, DC_ALL )
+                << "openclaw_harness_ui_trace: component=inventory_selector_entries"
+                << " event=" << event
+                << " title=" << openclaw_harness_quote( selector.get_title() )
+                << " filter=" << openclaw_harness_quote( selector.get_filter() )
+                << " action=" << openclaw_harness_quote( action )
+                << " selection_method=" << openclaw_harness_quote( selection_method )
+                << " column_index=" << column_index
+                << " active_column=" << ( active_column ? "yes" : "no" )
+                << " highlighted_index=" << column->get_highlighted_index()
+                << " visible_item_count=" << entries.size();
+
+        for( size_t index = 0; index < entries.size(); ++index ) {
+            const inventory_entry *entry = entries[index];
+            const item_location loc = entry->any_item();
+            const item &it = *loc;
+            const char entry_invlet = entry->get_invlet();
+            const char item_invlet = it.invlet;
+            DebugLog( D_INFO, DC_ALL )
+                    << "openclaw_harness_ui_trace: component=inventory_selector_entry"
+                    << " event=" << event
+                    << " title=" << openclaw_harness_quote( selector.get_title() )
+                    << " filter=" << openclaw_harness_quote( selector.get_filter() )
+                    << " action=" << openclaw_harness_quote( action )
+                    << " selection_method=" << openclaw_harness_quote( selection_method )
+                    << " column_index=" << column_index
+                    << " visible_item_index=" << index
+                    << " highlighted=" << ( *entry == highlighted ? "yes" : "no" )
+                    << " selectable=" << ( entry->is_selectable() ? "yes" : "no" )
+                    << " typeid=" << openclaw_harness_quote( it.typeId().str() )
+                    << " name=" << openclaw_harness_quote( it.tname() )
+                    << " entry_invlet=" << openclaw_harness_quote( entry_invlet == '\0' ? "" : std::string( 1, entry_invlet ) )
+                    << " item_invlet=" << openclaw_harness_quote( item_invlet == '\0' ? "" : std::string( 1, item_invlet ) )
+                    << " stack_count=" << entry->get_available_count();
+        }
+    }
+}
+
 static const flag_id json_flag_NO_UNLOAD( "NO_UNLOAD" );
 static const flag_id json_flag_SHREDDED( "SHREDDED" );
 
@@ -3878,6 +3937,8 @@ item_location inventory_pick_selector::execute()
         const inventory_entry &highlighted_after_redraw = get_active_column().get_highlighted();
         openclaw_harness_trace_inventory_entry( "state", get_title(), get_filter(), "redraw",
                 "highlight_after_redraw", &highlighted_after_redraw );
+        openclaw_harness_trace_inventory_entries( *this, columns, "state", "redraw",
+                "highlight_after_redraw" );
         const inventory_input input = get_input();
 
         if( input.entry != nullptr ) {
@@ -3937,6 +3998,8 @@ item_location inventory_pick_selector::execute()
             const inventory_entry &highlighted = get_active_column().get_highlighted();
             openclaw_harness_trace_inventory_entry( "state", get_title(), get_filter(), input.action,
                     "highlight_after_input", &highlighted );
+            openclaw_harness_trace_inventory_entries( *this, columns, "state", input.action,
+                    "highlight_after_input" );
         }
     }
 }

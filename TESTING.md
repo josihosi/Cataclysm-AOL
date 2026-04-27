@@ -101,11 +101,11 @@ Current target-tile audit evidence: after relinking `cataclysm-tiles` to repo HE
 
 Next evidence target: `blocked_untrusted_brazier_deploy_selector`.
 
-Do not try more blind live key variants. Static/source/control lookup says `brazier` activation should run `deploy_furn` -> `Deploy where?`, and `right` is valid only once that direction prompt is active. GUI-as-text observation run `.userdata/dev-harness/harness_runs/20260427_200919/` aborts at missing checked `Use item` menu text. Harness-gated UI trace run `.userdata/dev-harness/harness_runs/20260427_202434/` improves the primitive: `Use item` opens, saved-player metadata proves `brazier` exists with `deploy_furn -> f_brazier`, but after filter `brazier` the post-redraw selector trace does not prove a highlighted brazier row, so the guard aborts before confirm/right.
+Do not try more blind live key variants. Static/source/control lookup says `brazier` activation should run `deploy_furn` -> `Deploy where?`, and `right` is valid only once that direction prompt is active. GUI-as-text observation run `.userdata/dev-harness/harness_runs/20260427_200919/` aborts at missing checked `Use item` menu text. Harness-gated UI trace run `.userdata/dev-harness/harness_runs/20260427_202434/` improves the primitive: `Use item` opens, saved-player metadata proves `brazier` exists with `deploy_furn -> f_brazier`, but after filter `brazier` the post-redraw selector trace does not prove a highlighted brazier row, so the guard aborts before confirm/right. Follow-up run `.userdata/dev-harness/harness_runs/20260427_203847/` uses stronger selector-entry tracing and proves the live `Use item` selector has only `smart_phone` visible before filtering and zero visible entries after filter `brazier`; the saved `player.inv` exact-items audit is therefore not sufficient proof that the deployable `brazier` is available to the live activatable selector.
 
 Active validation order:
 
-1. Resolve the `filtered_brazier_selected` guard by source/control lookup or stronger selector-list observation; do not press confirm/right while filter `brazier` produces no proven brazier row.
+1. Resolve the fixture-to-live inventory availability gap behind `filtered_brazier_selected`; do not press confirm/right while filter `brazier` produces zero live selector entries and no proven brazier row.
 2. Then rerun the guarded chain to prove selected `brazier` -> `Deploy where?` -> right/east consumed by that prompt -> saved east-tile `f_brazier`.
 3. Permit fuel/lighter/fire confirmation only after that deploy primitive is green.
 
