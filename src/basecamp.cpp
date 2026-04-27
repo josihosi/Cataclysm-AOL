@@ -1649,9 +1649,13 @@ static bool is_camp_locker_medical_readiness_supply(const item &it) {
          it.typeId() == itype_medical_gauze;
 }
 
+static bool is_camp_locker_armor_insert(const item &it) {
+  return it.is_armor() && it.has_flag(flag_CANT_WEAR);
+}
+
 static bool is_camp_locker_kept_carried_item(const item &it) {
   return is_camp_locker_medical_readiness_supply(it) || it.is_ammo() ||
-         it.is_magazine();
+         it.is_magazine() || is_camp_locker_armor_insert(it);
 }
 
 static bool is_camp_locker_dumpable_carried_item(npc &worker, const item &it) {
@@ -3791,6 +3795,73 @@ bool basecamp::service_camp_locker_impl(npc &worker,
   std::vector<item> displaced_items;
   bool applied_changes = false;
 
+  struct removed_camp_locker_planned_item {
+    camp_locker_slot slot = camp_locker_slot::underwear;
+    const item *source = nullptr;
+    item moved;
+    camp_locker_extracted_contents extracted_contents;
+  };
+
+  std::vector<const item *> accepted_pre_removed_duplicate_sources;
+  auto was_accepted_pre_removed_duplicate =
+      [&accepted_pre_removed_duplicate_sources](const item *source) {
+        return std::find(accepted_pre_removed_duplicate_sources.begin(),
+                         accepted_pre_removed_duplicate_sources.end(),
+                         source) !=
+               accepted_pre_removed_duplicate_sources.end();
+      };
+
+  auto remove_planned_duplicate =
+      [&](camp_locker_slot duplicate_slot, const item *duplicate,
+          std::vector<removed_camp_locker_planned_item> &removed) {
+        if (duplicate == nullptr ||
+            was_accepted_pre_removed_duplicate(duplicate) ||
+            std::any_of(removed.begin(), removed.end(),
+                        [duplicate](const removed_camp_locker_planned_item &entry) {
+                          return entry.source == duplicate;
+                        })) {
+          return true;
+        }
+        item *mutable_duplicate = const_cast<item *>(duplicate);
+        camp_locker_extracted_contents extracted_duplicate_contents =
+            extract_camp_locker_item_contents(*mutable_duplicate,
+                                              cleanup_drop_tile.has_value());
+        item moved_duplicate = remove_worker_equipped_item(worker, duplicate);
+        if (moved_duplicate.is_null()) {
+          restore_camp_locker_item_contents(*mutable_duplicate,
+                                            extracted_duplicate_contents);
+          return false;
+        }
+        removed.push_back({duplicate_slot, duplicate, std::move(moved_duplicate),
+                           std::move(extracted_duplicate_contents)});
+        return true;
+      };
+
+  auto restore_planned_duplicates =
+      [&](std::vector<removed_camp_locker_planned_item> &removed) {
+        for (auto it = removed.rbegin(); it != removed.rend(); ++it) {
+          restore_camp_locker_item_contents(it->moved,
+                                            it->extracted_contents);
+          if (!equip_camp_locker_item(worker, it->slot, it->moved)) {
+            store_camp_locker_item(locker_drop_tile, std::move(it->moved));
+          }
+        }
+      };
+
+  auto accept_planned_duplicates =
+      [&](std::vector<removed_camp_locker_planned_item> &removed) {
+        for (removed_camp_locker_planned_item &entry : removed) {
+          applied_changes = true;
+          applied_changes =
+              place_camp_locker_item_contents(worker, entry.extracted_contents,
+                                              locker_drop_tile,
+                                              cleanup_drop_tile) ||
+              applied_changes;
+          accepted_pre_removed_duplicate_sources.push_back(entry.source);
+          displaced_items.emplace_back(std::move(entry.moved));
+        }
+      };
+
   std::vector<const std::pair<const camp_locker_slot, camp_locker_slot_plan> *>
       apply_entries;
   apply_entries.reserve(plan.size());
@@ -3831,7 +3902,34 @@ bool basecamp::service_camp_locker_impl(npc &worker,
       }
     }
 
-    if (equip_camp_locker_item(worker, slot, candidate)) {
+    std::vector<removed_camp_locker_planned_item> pre_removed_duplicates;
+    bool removed_all_planned_blockers = true;
+    for (const item *duplicate : slot_plan.duplicate_current) {
+      removed_all_planned_blockers =
+          remove_planned_duplicate(slot, duplicate, pre_removed_duplicates) &&
+          removed_all_planned_blockers;
+    }
+    if (is_camp_locker_protective_full_body_suit(candidate)) {
+      for (const auto &blocker_entry : plan) {
+        if (&blocker_entry == entry) {
+          continue;
+        }
+        const camp_locker_slot_plan &blocker_plan = blocker_entry.second;
+        if (blocker_plan.selected_candidate != nullptr ||
+            blocker_plan.kept_current != nullptr) {
+          continue;
+        }
+        for (const item *duplicate : blocker_plan.duplicate_current) {
+          removed_all_planned_blockers =
+              remove_planned_duplicate(blocker_entry.first, duplicate,
+                                       pre_removed_duplicates) &&
+              removed_all_planned_blockers;
+        }
+      }
+    }
+
+    if (removed_all_planned_blockers &&
+        equip_camp_locker_item(worker, slot, candidate)) {
       applied_changes = true;
       applied_changes =
           place_camp_locker_item_contents(worker, extracted_replaced_contents,
@@ -3841,6 +3939,7 @@ bool basecamp::service_camp_locker_impl(npc &worker,
       if (!replaced_current.is_null()) {
         displaced_items.emplace_back(std::move(replaced_current));
       }
+      accept_planned_duplicates(pre_removed_duplicates);
       continue;
     }
 
@@ -3851,12 +3950,16 @@ bool basecamp::service_camp_locker_impl(npc &worker,
         store_camp_locker_item(locker_drop_tile, std::move(replaced_current));
       }
     }
+    restore_planned_duplicates(pre_removed_duplicates);
     store_camp_locker_item(locker_drop_tile, std::move(candidate));
   }
 
   for (const auto &plan_entry : plan) {
     const camp_locker_slot_plan &slot_plan = plan_entry.second;
     for (const item *duplicate : slot_plan.duplicate_current) {
+      if (was_accepted_pre_removed_duplicate(duplicate)) {
+        continue;
+      }
       item *mutable_duplicate = const_cast<item *>(duplicate);
       camp_locker_extracted_contents extracted_duplicate_contents =
           extract_camp_locker_item_contents(*mutable_duplicate,

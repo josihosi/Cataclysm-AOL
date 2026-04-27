@@ -44,119 +44,9 @@ A test is not allowed to impersonate implementation. Before claiming gameplay be
 For the remaining bandit AI proof packets, single-turn deterministic checks are **not** enough by themselves.
 The honest bar now includes real overmap-side multi-turn scenario proof, up to `500` turns where needed, with explicit per-scenario goals and tuning metrics.
 
-### Completed validation checkpoint - test-vs-game implementation audit report
+## Current validation targets
 
-`doc/test-vs-game-implementation-audit-report-2026-04-26.md` closes the audit checkpoint by tracing high-risk pass conditions to live producers and consumers instead of rereading old success prose.
-
-Compact result:
-- live-wired substrate: hostile-site ownership after NPC materialization, save/load, nearby-player dispatch from owned sites, local gate/shakedown/writeback, camp locker service, and Smart Zone Manager entry points
-- deterministic/playback-only layer: smoke/light/weather mark adapters, generated mark ledgers, authored playback frames, long-horizon benchmark reports, repeated-site reinforcement, human-route sightings, and most scout tuning packets
-- horde attraction is live-wired through sound; the audited source previously lacked visible fire/light-to-horde attraction. The first visible-fire/light bridge is now source-wired and live/harness-proved as loaded-map fire/light -> horde signal behavior; it must still not be inflated into player-lit brazier/wood/lighter product proof.
-- next implementation target: `Basecamp locker armor ranking + blocker removal packet v0`; the prior smoke/fire site-refresh proof is in Josef review, not active rerun, the local sight-avoid/scout-return packet is closed with bounded live proof, Smart Zone Manager has deterministic zone layout/save-reload proof, and Basecamp medical readiness has deterministic camp/locker proof
-
-### Josef-review validation caveat - bandit live signal + site bootstrap correction
-
-`Bandit live signal + site bootstrap correction v0` is no longer the active validation target. Keep its evidence classes intact:
-
-- raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
-- synthetic smoke source proof, if Josef later reopens it, proves only synthetic smoke-source/live-signal behavior
-- player-fire product proof still requires the real brazier/wood/lighter/player-action chain
-- Schani/Josef moved `bandit-live-signal-smoke-source-site-refresh-proof` to Josef review after attempt 5; do not run more blind smoke/fire site-refresh probes for this phase
-
-Current first-slice evidence - 2026-04-26:
-- Source hook: `overmap_npc_move()` now bootstraps abstract hostile overmap-special sites from existing loaded overmaps every `30_minutes` before dispatch, using `overmap_special_at_existing()` so the scan does not create fresh overmaps by accident.
-- Deterministic proof: `[bandit][live_world]` covers abstract special registration before NPC materialization, save/load of abstract footprint/headcount/profile, and later concrete spawn reconciliation into the same owned-site ledger.
-- Dispatch footing: the live dispatcher candidate scan uses the `40 OMT` system envelope instead of the old hard `distance <= 10`; ordinary direct-player pressure is demoted to a `10 OMT` direct cap instead of the whole system range.
-- Instrumentation footing: debug logs distinguish empty ownership, zero candidates inside the scan radius, active-pressure cap, paid-shakedown cooldown, invalid dispatch plan notes, missing concrete member, and missing route.
-- Validation run: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o obj/overmapbuffer.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 468 assertions in 19 test cases passed.
-
-Current second-slice evidence - 2026-04-26:
-- Live source hook: `overmap_npc_move()` now scans loaded map fields near the player for real `fd_fire` / `fd_smoke`, maps current live weather into `smoke_weather_band`, builds a real `smoke_packet`, and feeds `bandit_mark_generation::adapt_smoke_packet()` before dispatch candidate selection.
-- Live consumer footing: owned sites inside the `40 OMT` envelope but outside the direct `10 OMT` player cap can become `live_signal` candidates when their anchor is inside the smoke projection cap; accepted signal candidates refresh `known_recent_marks` / remembered mark state through `bandit_live_world::record_live_signal_mark()` before dispatch planning.
-- No-signal / rejection observability: logs now name `signal_packet=no`, below-threshold smoke projections, `signal_packet=yes`, rejected-by-range counts, candidate distance, cap used, signal packet id, missing concrete member, and missing route. Cadence/decay and full hold/chill signal reporting remain open.
-- Deterministic proof added: `[bandit][live_world][live_signal]` covers bounded live-signal mark recording, duplicate suppression, remembered target refresh, bounty/threat estimate refresh, and the eight-mark recent-ledger cap.
-- Validation run: `git diff --check`; `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
-
-Current third-slice evidence - 2026-04-26:
-- Lazy materialization footing: when a selected abstract overmap-special candidate has abstract headcount but not enough at-home concrete members for scout dispatch, `overmap_npc_move()` now creates only the minimum concrete roster needed for that candidate profile (`2` camp-style, `3` cannibal, `1` small hostile) and reconciles those NPCs through `claim_tracked_spawn()` into the same owned-site ledger before dispatch planning.
-- Boundaries: this is candidate-local and headcount-capped, not a global/eager camp spawn. Failed member claims are logged and skipped before insertion so the lazy path does not leave intentionally untracked NPCs behind. The later harness proof now exercises this footing without making it a global/eager camp spawn.
-- Validation run: `git diff --check`; `make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0` after clearing stale tiles PCH; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed.
-
-Current fourth-slice evidence - 2026-04-26/27:
-- Saved-field reader proof: `tools/openclaw_harness/fixtures/saves/live-debug/bandit_live_world_nearby_camp_smoke_v0_2026-04-26/manifest.json` now uses `bandit_basecamp_playtest_kit_v0_2026-04-22`, seeds a real `bandit_camp` just beyond direct-player range at offset `[0,11,0]`, and injects visible/safe same-OMT serialized raw `fd_fire` / `fd_smoke` fields at offsets `[10,0,0]` / `[11,0,0]` with intensity `3` and age `0`. Run `.userdata/dev-harness/harness_runs/20260427_014408/probe.report.json` records the seed at target OMT `[140,52,0]` and the raw fields at player/source OMT `[140,41,0]`; this proves the map-field reader/consumer seam, not the real player fire-starting product chain.
-- Repaired saved-field wait run: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_smoke_mcw` -> `.userdata/dev-harness/harness_runs/20260427_014408/`; the rebuilt runtime title was `Cataclysm: Dark Days Ahead - dfa45b1c57-dirty`, `version_matches_repo_head=true`, and `runtime_relevant_diff_since_capture=[]`. Artifact logs record initial raw-field smoke/fire signal production (`signal_packet=yes`, `packets=2`, `smoke_packets=1`, `light_packets=1`) and the required owned-site refresh before waiting: `matched_sites=1 refreshed_sites=1 matched_smoke_sites=1 matched_light_sites=0 rejected_by_signal_range=0`, followed by `dispatch cadence_skip ... signal_packet=yes`.
-- Post-wait outcome for the raw-field fixture: after the `|` -> `w` -> `7` several-hour wait path, the seeded short-lived fields decay. The same run later records smoke-only `signal_packet=yes` with `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then `signal_packet=no` / cadence-skip and no-signal skipped-dispatch lines. This is reader/decay evidence, not product escalation proof. Direct-player-range or already-active-group rejection lines are not counted as smoke/fire signal escalation.
-- Required proof rungs are now explicit. Full player-fire product proof remains open: use Josef's candidate manual recipe as the proof-shape checklist, not as a verified command sequence yet. Deploy a brazier; place wood next to it; put the firewood source on top of the wood; have/place a lighter; light the fire through the normal in-game action path; keep the player out of fire/smoke; visibly confirm fire/smoke; keep basic survival state safe, including thirst/water for the wait; then use `|` and wait several in-game hours. Only claim player-fire escalation, persistence, decay, or refresh if logs around that real-fire wait show the live bandit signal path matching the site, e.g. `matched_sites=1 refreshed_sites=1`; if deploying brazier, placing wood/source, lighting, waiting, or drinking/survival cannot be automated cleanly, park/escalate with the exact missing control/mechanic instead of substituting raw save surgery.
-- Allowed middle rung: a bounded synthetic smoke source from nothing may be used as `synthetic smoke-source/live-signal proof` if labeled exactly as such. It proves the bandit live signal path can react to a smoke source under live wait/time passage, not that ordinary player fire-lighting works. Keep the player safe, make smoke/fire visibly inspectable where possible, use `|` to wait several hours, and require site matching/refresh evidence (`matched_sites=1 refreshed_sites=1`) or an honest explanation if it decays/stops. If this shortcut is used, park the real brazier/wood/lighter/player-action fire proof as a separate follow-up instead of pretending it was solved.
-- No-signal several-hour control: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_no_signal_control_mcw` -> `.userdata/dev-harness/harness_runs/20260427_001649/`; the older nearby-owned-site footing and same `|` -> `w` -> `7` wait path, without injected fields, records only `signal_packet=no` cadence/dispatch evidence. Re-run or update this control before using it as an exact paired closure control for the repaired `[0,11,0]` camp footing or the real fire-starting product proof.
-- Evidence caveat: old `[36,0,0]` / `[37,0,0]` and first `[10,0,0]` attempts placed the source/camp relationship wrongly and produced `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`; do not use `.userdata/dev-harness/harness_runs/20260427_011845/` or `.userdata/dev-harness/harness_runs/20260427_013136/` as closure proof. The latest reviewed failed smoke run is `.userdata/dev-harness/harness_runs/20260427_013136/`: it produced `signal_packet=yes` but `matched_sites=0 refreshed_sites=0 rejected_by_signal_range=1`, then decayed to no-signal. The decisive evidence class for the repaired raw-field reader slice is `.userdata/dev-harness/harness_runs/20260427_014408/probe.artifacts.log` plus the fixture transform report, not screen/OCR, and it remains reader proof only. The smoke/fire site-refresh proof is now Josef-review, not active rerun.
-
-Current fifth-slice evidence - 2026-04-27:
-- Live light/detail source hook: the same loaded-map `fd_fire` scan now also builds ordinary `light_packet` candidates with current `light_time`, `light_weather`, outside/shelter exposure, source strength, persistence, leakage, and terrain before passing through `bandit_mark_generation::adapt_light_packet()`. Below-threshold light is logged separately from smoke so daylight/contained failures are reviewable instead of silent.
-- Reviewer detail: signal scan logs now split `smoke_packets` and `light_packets`; signal maintenance logs now split `matched_smoke_sites` and `matched_light_sites`, so a later mixed-source run can prove which family refreshed the owned-site mark.
-- Local gates: `git diff --check`; `rm -f obj/do_turn.o && make -j4 obj/do_turn.o LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm LINTJSON=0 ASTYLE=0`; `make -j4 cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 490 assertions in 20 test cases passed; `./tests/cata_test "*bandit_mark_generation*"` -> all 207 assertions in 15 test cases passed.
-- Live-proof caveat: repaired raw-field run `.userdata/dev-harness/harness_runs/20260427_014408/` proves initial mixed smoke/fire/light packet generation and smoke-site refresh from injected fields, but the daylight ordinary-light branch still did not match a site (`matched_light_sites=0`) and the run does not prove a normal player-lit fire. The later closed bridge proof below supplies the clean light-surviving live proof for loaded-map visible fire/light; the real wood-plus-ignition player-action product proof remains deliberately unclaimed.
-
-### Closed validation target - Bandit live-wiring audit + visible-light horde bridge correction
-
-For `Bandit live-wiring audit + visible-light horde bridge correction v0`, the evidence must not pretend deterministic playback is live horde behavior:
-
-- deterministic: `bandit_mark_generation_visible_light_horde_bridge_stays_bounded` now covers exposed night light, daylight rejection, screened ordinary-light rejection, and searchlight-like stronger signaling
-- source gates: touched-object/full target builds pass for `src/bandit_mark_generation.cpp`, `src/do_turn.cpp`, `tests/bandit_mark_generation_test.cpp`, `tests/cata_test`, and `cataclysm`; inspected call chain is `live light observation -> horde_signal_power_from_light_projection(...) -> overmap_buffer.signal_hordes(...) -> overmap::signal_hordes(...) -> horde_map::signal_entities(...)`
-- live/harness: `.userdata/dev-harness/harness_runs/20260427_031951/` closes the bridge proof by showing a copied-save visible `fd_fire` source at night produce reviewer-readable `bandit_live_world horde light signal:` evidence with `horde_signal_power=22`. Do not inflate this into player-lit fire product proof or smoke/site-refresh closure.
-- non-proof: `tests/bandit_mark_generation_test.cpp` and `tests/bandit_playback_test.cpp` remain useful adapter/playback coverage, not live horde attraction proof by themselves
-
-
-Current bridge checkpoint evidence:
-
-- `git diff --check` passed after the bridge source/test/doc edits.
-- `make -j4 obj/bandit_mark_generation.o obj/do_turn.o tests LINTJSON=0 ASTYLE=0` rebuilt the touched objects and `tests/cata_test`; log: `.userdata/andi-horde-bridge-build-tests.log`.
-- `./tests/cata_test "bandit_mark_generation_visible_light_horde_bridge_stays_bounded"` passed: 7 assertions in 1 test case; log: `.userdata/andi-horde-bridge-test.log`.
-- `./tests/cata_test "*bandit_mark_generation*"` passed: 214 assertions in 16 test cases; log: `.userdata/andi-horde-bridge-bandit-mark-generation.log`.
-- `make -j4 cataclysm LINTJSON=0 ASTYLE=0` linked the current game binary; log: `.userdata/andi-horde-bridge-cata-build.log`.
-- Live bridge closure proof: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_light_horde_mcw` wrote `.userdata/dev-harness/harness_runs/20260427_031951/`; `probe.report.json` records current-runtime screen capture (`version_matches_repo_head=true`, `version_matches_runtime_paths=true`), `game_turn` transform `5234852 -> 5266800`, raw `fd_fire` at `offset_ms=[10,0,0]`, and cleanup termination. `probe.artifacts.log` records `light_time=night`, `light_packets=1`, and `bandit_live_world horde light signal: packet=live_light@140,41,0 ... horde_signal_power=22 range_cap_omt=11`. This is loaded-map fire/light -> live horde signal bridge proof, not player-lit brazier/wood/lighter product proof.
-
-### Closed validation target - Bandit local sight-avoid + scout return cadence packet v0
-
-Current deterministic checkpoint - 2026-04-27:
-- Source path: `src/do_turn.cpp` now wires local stalking/hold-off exposure into `choose_sight_avoid_reposition(...)`, checks player LOS plus nearby allied/basecamp observer LOS, and only considers adjacent passable tiles. Scout outings record active job type plus sortie start/contact minutes, route an expired single-scout sortie home, and write `returning_home` observations back through the owned-site aftermath path.
-- Deterministic seam: `src/bandit_live_world.cpp` now owns bounded sight-avoid selection, active sortie clock helpers, scout timeout decision, active job serialization/deserialization, and return-packet job typing/cleanup.
-- Tests: `tests/bandit_live_world_test.cpp` covers current/recent exposure, no-teleport/no-perfect-omniscience adjacency bounds, finite scout sortie expiry, return-home/writeback state transition, and serialization for `active_job_type`, `active_sortie_started_minutes`, and `active_sortie_local_contact_minutes`.
-- Local gates: `git diff --check`; `python3 -m py_compile tools/openclaw_harness/startup_harness.py`; `rm -f obj/tiles/do_turn.o obj/tiles/version.o cataclysm-tiles && make -j4 obj/tiles/do_turn.o cataclysm-tiles TILES=1 LINTJSON=0 ASTYLE=0`; `rm -f obj/tests/version.o tests/cata_test && make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world]"` -> all 524 assertions in 22 test cases passed. The live probe runtime title was `Cataclysm: Dark Days Ahead - 6cfc83f6df-dirty` with `version_matches_repo_head=true`, `version_matches_runtime_paths=true`, and no runtime-relevant diff since capture.
-- Live/harness return-home decision proof: after Frau Knackal consultation, the old 4500-turn standoff macro was abandoned. New fixture alias `bandit_local_scout_return_preaged_v0_2026-04-27` uses the real nearby-owned-site local-contact footing and applies only `bandit_active_sortie_clock` to pre-age `active_job_type=scout`, `active_sortie_started_minutes=0`, and `active_sortie_local_contact_minutes=0`. Scenario `bandit.local_scout_return_preaged_mcw` run `.userdata/dev-harness/harness_runs/20260427_051117/` records `bandit_live_world scout_sortie: linger limit reached -> return_home ... member=4 elapsed_minutes=8160 limit_minutes=180` and then `bandit_live_world scout_sortie: returning_home -> local_gate skipped ...`; matched shakedown/local-gate patterns are empty. This proves the live return-home decision and same-tick shakedown suppression on copied nearby-camp footing.
-- Live/harness return-home follow-through proof: disposable run `.userdata/dev-harness/harness_runs/20260427_054353/` used the same pre-aged local-contact footing, current clean runtime `489e629073`, and a bounded 2600-turn travel window. `probe.artifacts.log` matches `scout_report: returned -> pressure refreshed ... remaining_pressure=ample` after repeated `returning_home -> local_gate skipped` lines. Copied-save inspection shows site `overmap_special:bandit_camp@140,51,0` with `active_group_id=""`, `active_target_id=""`, `active_member_ids=[]`, `active_job_type=""`, sortie clocks reset to `-1`, `remembered_pressure=ample`, and NPC member `4` saved at `[3362,1238,0]` on the home footprint with an empty `omt_path`. Stable rerun scenario for this shape is `bandit.local_scout_return_followthrough_mcw`; it proves walked-home/writeback/active-group cleanup, not live sight-avoid reposition.
-- Non-proof history: `bandit.live_world_nearby_camp_mcw` run `.userdata/dev-harness/harness_runs/20260427_040319/` was `inconclusive_no_new_artifacts`; `bandit.extortion_at_camp_standoff_mcw` run `.userdata/dev-harness/harness_runs/20260427_041554/` reached gameplay screenshots but hung during the long `advance_4500_turns_to_basecamp_standoff` step and was killed. Do not count either as live behavior proof.
-
-Live/harness sight-avoid proof now exists: `python3 tools/openclaw_harness/startup_harness.py probe bandit.local_sight_avoid_exposed_mcw` -> `.userdata/dev-harness/harness_runs/20260427_061344/`; current clean runtime `489e629073`, `version_matches_repo_head=true`, `version_matches_runtime_paths=true`, safe mode disabled, 20-turn bounded window, and `probe.artifacts.log` records `bandit_live_world sight_avoid: exposed -> repositioned npc=4 from=(60,23,0) to=(59,22,0) reason=repositioning because exposed`. The fixture alias `bandit_local_sight_avoid_exposed_v0_2026-04-27` starts from the same nearby-owned-site local-contact footing and moves only the player to an exposed south-of-shelter sightline. Keep this classified as live local sight-avoid proof, not later redispatch tuning.
-
-Non-proof shaping attempts: `.userdata/dev-harness/harness_runs/20260427_060143/` accidentally reached shakedown/local contact from direct movement and did not prove reposition; `.userdata/dev-harness/harness_runs/20260427_060326/` advanced too few useful turns without safemode-off and produced no artifact; killed run `.userdata/dev-harness/harness_runs/20260427_060652/` hung in the long advance path before artifact capture. Do not use those as closure evidence.
-
-### Closed validation target - Smart Zone Manager v1 Josef playtest corrections
-
-`Smart Zone Manager v1 Josef playtest corrections` now has deterministic zone-id, option, and save/reload proof:
-
-- `LOOT_MANUALS` exists on the books tile while `LOOT_BOOKS` remains present
-- gun magazines remain `LOOT_MAGAZINES` with the unambiguous label `Basecamp weapon magazines`
-- `AUTO_EAT` and `AUTO_DRINK` span the full Basecamp storage footprint
-- both auto-consume zones have `ignore_contents == false` before and after zone-manager serialize/deserialize
-- validation passed: `make -j4 TILES=1 tests`; `./tests/cata_test "basecamp_smart_zoning_places_expected_layout"` -> 745 assertions in 1 test case; `./tests/cata_test "[smart_zone]"` -> 2847 assertions in 4 test cases; focused `git diff --check`
-- harness caveat: prior live artifact capture was inconclusive because the captured `zoneszmgr-temp.json` contained only ordinary camp zones, not generated Smart Zone Manager output; do not claim GUI artifact proof from that path
-
-### Closed validation - Basecamp medical consumable readiness
-
-`Basecamp medical consumable readiness v0` closes on deterministic camp/locker proof: practical bandage-family pickup (`bandages`, `adhesive_bandages`, `medical_gauze`, `bandages_makeshift`), carried stock counted toward the roughly 10-piece reserve cap, anti-hoarding leftover locker stock, negative unrelated `aspirin`, and no regression across the broader locker readiness suite. Evidence: `git diff --check`; `make -j4 obj/basecamp.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0`; focused medical locker tests; `./tests/cata_test "[camp][locker]"` -> 2009 assertions in 67 test cases. No live/harness Basecamp proof was added because the deterministic tests exercise the actual `service_camp_locker` path and there is no remaining product-path risk for this first slice.
-
-### Active validation target - Basecamp locker armor ranking + blocker removal
-
-When `Basecamp locker armor ranking + blocker removal packet v0` is implemented, the proof must be generic, not RM13-specific:
-
-- deterministic locker/combat-policy tests for superior full-body/protective gear displacing worse blockers
-- negative cases where worse or too-damaged/too-encumbering candidates do not displace better current armor
-- explicit preservation of stronger current ballistic armor against worse candidates
-- regression for the original repeated failed-swap/wear-spam shape without using one item id as the whole proof
-- focused camp/locker test filter plus touched-object compile
-
-### Greenlit validation target - Basecamp job spam debounce + locker/patrol exceptions
+### Active validation target - Basecamp job spam debounce + locker/patrol exceptions
 
 When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implemented, tests must prove repeated noise compresses while real state changes survive:
 
@@ -166,381 +56,36 @@ When `Basecamp job spam debounce + locker/patrol exceptions packet v0` is implem
 - patrol-zone exception -> assignment/interruption/reserve/backfill state changes visible, routine repeats compressed
 - unrelated important messages are not swallowed
 
----
+### Josef-review caveat - bandit live signal + site bootstrap correction
 
-## Current relevant evidence
+Do not rerun the parked smoke/fire site-refresh loop by drift.
 
-Active target: `Basecamp locker armor ranking + blocker removal packet v0`.
+Retained evidence classification:
+- raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
+- synthetic smoke proof, if reopened, proves only synthetic smoke-source/live-signal behavior
+- player-fire product proof still requires the real brazier/wood/lighter/player-action chain and fresh matched-site evidence
+- `bandit-live-signal-smoke-source-site-refresh-proof` was moved to Josef review after attempt 5
 
-### Test-vs-game implementation audit closeout - 2026-04-26
+### Recently closed validation references
 
-Report: `doc/test-vs-game-implementation-audit-report-2026-04-26.md`.
-
-Result: the biggest false-confidence risk is the bandit signal/playback layer. Smoke, light, weather, generated marks, human-route sightings, horde-pressure evaluator inputs, and long-horizon scout benchmarks are useful deterministic/playback proof, but they are not currently produced from live map/fire/light/weather/sight data and are not consumed by live dispatch. Live dispatch is real for owned sites near the player, and local gate/shakedown/writeback paths are real for active owned outings. Smart Zone Manager now has targeted deterministic correction proof; camp locker medical readiness is the next live-consumer lane needing bounded proof.
-
-Next validation target: `Basecamp locker armor ranking + blocker removal packet v0`; start with deterministic locker/combat-policy proof for a generic superior full-body/protective candidate displacing worse blockers, negative preservation of stronger current armor, damaged/encumbering loser cases, original-symptom-shaped regression, and no locker readiness regression. The just-closed visible-light horde bridge remains evidence that loaded-map visible fire/light can reach the live horde signal path, not product proof for a player-lit fire recipe.
-
-### GitHub Actions red-state footing - 2026-04-25
-
-Schani inspected the current failing Actions before packaging the lane:
-
-- `General build matrix` run `24931588361` failed on `dev` at `4432bb9a8c Document macOS dylib portability gate`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24931588361>
-- Earlier same-family `General build matrix` run `24931574601` failed on `dev` at `2ff3b32b0a Fail macOS releases with unbundled local dylibs`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24931574601>
-- `Cataclysm Windows build` run `24931574609` failed on `dev` at `2ff3b32b0a`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24931574609>
-- `CodeQL` run `24932236370` failed on `master` at `86f786bee5`; C++ extraction shows the same missing-declaration family in `src/basecamp.cpp`: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24932236370>
-- `Clang-tidy 18` and `IWYU` were green around the same commits, so the failure picture is build/CodeQL/Windows/package-flow shaped, not a blanket “all checks are nonsense” situation.
-
-Observed decisive failure lines/classes:
-
-- `tests/faction_camp_test.cpp:6118` and neighbors use C++20 designated initializers and omit `source_utterance`; CI builds as C++17 with warnings as errors.
-- `src/basecamp.cpp` triggers many `-Werror=missing-declarations` failures for camp-locker helpers.
-- `src/bandit_playback.cpp` reports missing declaration for `bandit_playback::visibility_reads( const checkpoint_result & )`.
-- Windows build compiled deep into MSVC/test build and then exited `1`; classify this with a tighter log read before treating it as source or runner failure.
-- macOS release packaging has an intentional dylib portability guardrail; distinguish an expected guard failure on broken `/opt/local/...` app links from accidental red CI.
-
-CI recovery closure evidence:
-
-- `git diff --check`
-- narrow local build/test reproducing or preventing the C++17 and missing-declaration failures
-- relevant filtered tests for edited source/test areas
-- post-push `gh run list` / `gh run view` evidence showing current Actions green or remaining red checks honestly classified
-- final `c5ff712e01` Actions are green: General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865`
-
-Latest recovery checkpoint evidence - 2026-04-25:
-
-- Changed file class: source/tests plus JSON/style and docs/process.
-- Local gates on `5aec51cc6c`: `make -j4 tests LINTJSON=0 ASTYLE=0`, `./tests/cata_test "[camp][basecamp_ai]"` (345 assertions in 1 test case), forced `make RELEASE=1 TESTS=0 obj/data/json/mapgen/hells_raiders/cannibal_camp.jstyle-check-stamp obj/data/json/itemgroups/cannibal_camp.jstyle-check-stamp`, and `git diff --check` all exited `0`.
-- Current Actions links: Windows run `24936570455` is still in progress at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24936570455>; General matrix run `24936570456` for `5aec51cc6c` was cancelled by a newer docs checkpoint, and the current General matrix should be read from fresh `gh run list` because each docs-only checkpoint supersedes the previous queued General run.
-- Previous Windows failure `24931574609` is source-classified from MSVC errors in `tests/faction_camp_test.cpp` (`C7555` designated initializers / C++20 construction); current source fix is waiting on the fresh Windows run rather than widening workflow/package changes.
-- Previous CodeQL failure `24936474575` after source fixes was JSON/style-classified: all Analyze jobs failed while building `tools/format/json_formatter.cgi` because `data/json/mapgen/hells_raiders/cannibal_camp.json` was linted; `5aec51cc6c` was the style-only formatter checkpoint.
-- Post-source checkpoint `ca8eb0e3be` (`test: stabilize Windows CI portability checks`) was inspected with fresh `gh run list`: `IWYU` `24938191284` green, `Clang-tidy 18` `24938191292` green, `CodeQL` `24938191289` red, `Cataclysm Windows build` `24938191281` still running, and `General build matrix` `24938191279` still pending/in progress at the time of that checkpoint.
-- `CodeQL` run `24938191289` is classified as JSON/style, not source compile/extraction: all Analyze jobs failed during `Run make RELEASE=1 TESTS=0` because `tools/format/json_formatter.cgi data/json/mapgen_palettes/cannibal_camp.json` reported `Has been linted`; decisive fresh log stored at `.userdata/andi-ci/codeql-24938191289-fresh.log` and linked at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24938191289>.
-- Bounded palette JSON/style fix on `4733c7a3e1` triggered fresh Actions: `Cataclysm Windows build` `24938305397` was later superseded/cancelled by a newer same-workflow request, and `General build matrix` `24938305401` had `Basic Build and Test` job `73029102977` red during `Build CDDA` because `make style-all-json-parallel RELEASE=1` reported `Has been linted : data/json/npcs/cannibals/classes.json`; decisive log stored at `.userdata/andi-ci/job-73029102977.log` and linked at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24938305401/job/73029102977>.
-- Bounded JSON/style fix evidence on `471d4ef8e6`: `tools/format/json_formatter.cgi data/json/npcs/cannibals/classes.json`, forced `make RELEASE=1 TESTS=0 obj/data/json/npcs/cannibals/classes.jstyle-check-stamp`, full `make style-all-json-parallel RELEASE=1`, `python3 -m json.tool data/json/npcs/cannibals/classes.json`, and `git diff --check` all exited `0`.
-- Fresh General Basic Build run `24939016247` on `471d4ef8e6` then failed during `Build CDDA` after JSON style/dialogue validation, when `tools/json_tools/generic_guns_validator.py` imported all `data/json` entries and rejected the nonruntime support file `data/json/npcs/Backgrounds/summary_registry.json` for having no runtime `type`; decisive log stored at `.userdata/andi-ci/job-73031289895.log` and linked at <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24939016247/job/73031289895>.
-- Windows evidence: `Cataclysm Windows build` run `24939016251` on `471d4ef8e6` completed green in job `73029471626`, closing the earlier C++17/test-construction Windows failure family; run `24938305397` on `4733c7a3e1` was cancelled only because a higher-priority `msvc-build-dev` request superseded it.
-- Bounded tool-validator fix on `6d7eef08bf`: `tools/json_tools/util.py` now skips the same nonruntime JSON support files that `src/init.cpp` skips (`summary_registry.json`, `Summaries_short`, and `Summaries_extra`) before importing data for JSON tools. Local gates `python3 -m py_compile tools/json_tools/util.py`, `tools/json_tools/generic_guns_validator.py`, and `git diff --check` exited `0`; General run `24939870697` was cancelled by a newer docs checkpoint, and later docs-only pushes can supersede the active General run before it reaches conclusion, so the next closure read must use fresh `gh run list` output.
-- Fresh General run `24942284589` after `a79632a108` is not source-compile red: macOS job `73037891250` and GCC 9 LTO job `73037891248` both reached `run tests` and failed `overmap_terrain_coverage` at `tests/overmap_test.cpp:700`. Decisive failures were rare TEST_DATA coverage misses for `urban_dd_[1-6]` (`6 == 0`) and `riverside_dwelling1(_roof)?` (`2 == 0`), with logs stored at `.userdata/andi-ci/job-73037891250-macos.log` and `.userdata/andi-ci/job-73037891248-gcc9-lto.log`; run link: <https://github.com/josihosi/Cataclysm-AOL/actions/runs/24942284589>. Current bounded fix changes only `data/mods/TEST_DATA/overmap_terrain_coverage_test/overmap_terrain_coverage_whitelist.json`; local gates `git diff --check`, `python3 -m json.tool data/mods/TEST_DATA/overmap_terrain_coverage_test/overmap_terrain_coverage_whitelist.json`, and `./tests/cata_test "overmap_terrain_coverage" --rng-seed 1777158941` passed locally.
-
-### Active GitHub release evidence obligations - 2026-04-26
-
-Josef has greenlit a normal-download GitHub release, and CI recovery is now closed on `c5ff712e01`.  Before publishing this active release packet:
-
-- `gh release list` / tag inspection must prove the next release identifier will not collide with existing releases; latest stable observed before packaging was `v0.2.0`.
-- CI recovery is closed on `c5ff712e01`: General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` are green.
-- Release asset inspection must prove the downloadable files exist and match the release notes.
-- A shipped macOS app must pass the dylib portability guard; otherwise macOS is withheld or plainly marked blocked instead of silently shipping another `/opt/local/...` dud.
-- After publish, `gh release view <tag>` or equivalent must prove the final release URL/assets.
-
-### Release preflight / asset inspection - 2026-04-26
-
-Fresh preflight for the active normal-download release packet found a decision point rather than a publish-ready state:
-
-- Current stable releases are `v0.1.0` and latest `v0.2.0`; existing prerelease/assets also include port-family tags such as `caol-cdda-0-h-2026-03-29-1556`, `caol-cdda-0-i-2026-03-29-1423`, `caol-ctlg-master-2026-03-29-1447`, and `caol-cdda-master-2026-03-27-0836`.
-- Latest `dev` source is `95fae29717` (`docs: promote normal release lane`), with fresh green General run `24948351614`; the CI-green code checkpoint remains `c5ff712e01` with General `24944793868`, Windows `24944793884`, CodeQL `24944793877`, IWYU `24944793878`, and Clang-tidy `24944793865` green.
-- Current stable `v0.2.0` is a bundle of port-branch assets, not a single current-`dev` build: 4 branch families (`cdda-master`, `cdda-0.H`, `cdda-0.I`, `ctlg-master`) × Windows/Linux/macOS assets.
-- Current `README.md` still presents release artifacts as built for `port/*` branches, while the active packet asks for the now-green `dev` release-source checkpoint.  That makes the intended artifact family ambiguous: current `dev` only, refreshed port branches, or some staged combination.
-- `.github/workflows/release.yml` is the established automated asset path, but it creates public `cdda-experimental-<timestamp>` prereleases and asset names, not a stable `v0.3.0` C-AOL release; latest successful run was `24591151413` on `master` at `86f786bee5`.
-- Latest `dev` Actions artifacts are not downloadable game packages (`basic-build` / `pull_request_id` only), so there are no current Windows/Linux/macOS release assets ready to attach.
-- macOS support must not be claimed from old assets: current `dmgdist` now invokes `build-data/osx/bundle_portable_dependencies.sh`, but no current DMG has passed that guard; the local Mac lacks `/opt/local/lib/libfreetype.6.dylib` and `/opt/local/lib/libz.1.dylib`, so this host cannot locally prove a fresh portable tiles DMG by rerunning the old broken MacPorts-shaped path.
-
-Decision needed before publishing: choose whether the next public stable tag should be `v0.3.0` and whether its assets should be (A) current `dev` only with macOS withheld until a guarded DMG passes, (B) refreshed `port/*` branch assets like `v0.2.0`, or (C) an experimental/prerelease workflow run first whose assets are later promoted/renamed into a stable release.
-
-### macOS release portability guardrail - 2026-04-25
-
-- Lacapult installer path evidence remains separate: `python3 tools/prove_caol_game_launch_smoke.py --observe-seconds 8` in `/Users/josefhorvath/Schanigarten/Lacapult-Doobdab` still installs the selected C-AOL `v0.2.0` macOS DMG into an isolated Lacapult-style tree with `Cataclysm.app` plus `catapult_install_info.json` and `looks_launchable_after_move=true`.
-- Actual game-launch evidence remains separate: the same isolated launch smoke exits before a running game process with return code `134`; dyld reports `Library not loaded: /opt/local/lib/libfreetype.6.dylib`, referenced from `Cataclysm.app/Contents/Resources/cataclysm-tiles`.
-- C-AOL packaging guardrail: `build-data/osx/bundle_portable_dependencies.sh` now runs during the macOS `app` make target instead of the old ignored `dylibbundler ... || true` line.  It bundles dependencies into `Contents/Resources` with `@executable_path/` install names and then fails if `otool -L` still sees local package-manager prefixes.
-- Preflight proof on the current broken `v0.2.0` installed app: `bash build-data/osx/bundle_portable_dependencies.sh --verify-only "$APP/Cataclysm.app" "$APP/Cataclysm.app/Contents/Resources/cataclysm-tiles"` exits `1` and reports both `/opt/local/lib/libfreetype.6.dylib` and `/opt/local/lib/libz.1.dylib`, proving the guard catches the exact bad artifact shape before a future DMG is shipped.
-- Local full rebuild/rebundle was not attempted because the required MacPorts dylibs are not present under `/opt/local/lib` on this Mac and installing MacPorts packages was out of scope; the landed fix is the deterministic release-packaging failure/bundling guard, not a newly published replacement DMG.
-
-Latest closed cannibal attack-not-extort evidence:
-- implementation: `src/bandit_live_world.cpp` routes `hostile_site_profile::cannibal_camp` favorable local contact to `attack_now` with `combat_forward=true` and never to `open_shakedown`; weaker cannibal footing can still `probe`, exposed camp-adjacent footing can `hold_off`, overwhelming threat can `abort`, and the local-gate report now exposes the active `profile` for review.
-- guardrail: `build_shakedown_surface(...)` blocks cannibal-profile sites even if a future caller accidentally hands it a robbery-surface decision.
-- deterministic proof: `tests/bandit_live_world_test.cpp` covers cannibal no-extort / attack-to-kill, cautious probe, exposed hold-off, overwhelming abort, and the existing bandit pay/fight shakedown path unchanged under the same broad favorable-contact footing.
-- validation: `make -j4 tests`, `./tests/cata_test "[bandit][live_world][cannibal]"` (67 assertions in 2 test cases), `./tests/cata_test "[bandit][live_world][shakedown]"` (116 assertions in 4 test cases), and `git diff --check` passed on the current dirty tree.
-The extortion-at-camp restage / handoff packet and the tiered extortion audit packet now provide named scenario surfaces for setup, first demand, pay/fight, fight-forward message, pay/writeback, and controlled reopened second demand.  The natural redispatch-from-no-active-group gap is not claimed closed and should stay dormant unless Josef explicitly promotes it.
-
-Latest closed aftermath evidence:
-- deterministic implementation: `site_record` now persists shakedown aftermath fields for last outcome, demanded/surrendered/reachable value, abstract loot, defender losses, bandit losses, anger, caution, nearby Basecamp defender snapshot/pending-observation state, and the one-use stronger-reopen latch; live pay/fight branches call `apply_shakedown_outcome(...)`, Basecamp fight snapshots nearby allied defenders, the per-turn observer can convert a defender-strength drop into stronger reopen state, and return-packet writeback records bandit-loss/failure cooling for unresolved shakedown fights instead of only generic retreat memory.
-- deterministic proof: `tests/bandit_live_world_test.cpp` covers the stored aftermath seam, save/load persistence of the reopen state, the Basecamp defender-observation path (`2 -> 1` live defenders) producing one harsher reopened demand (`350 -> 490`) with `pay` and `fight` still available, one-use reopen consumption, a cooled later demand after direct bandit loss (`350 -> 263`), and the active-return-packet path where a missing shakedown bandit increments `shakedown_bandit_losses` / caution and collapses pressure.
-- live defender-observer caveat proof: `.userdata/dev-harness/harness_runs/20260424_142054/` uses a copied-save/code-level exact-member setup and proves the observer can persist `fight_defender_loss`, `shakedown_defender_losses=2`, `shakedown_reopen_available=true`, active member `4` missing, and collapsed pressure.  This proves persistence of the defender-observer/reopen state, not a natural live defender-kill trigger.
-- live bandit-loss cooling proof: `.userdata/dev-harness/harness_runs/20260424_143107/` uses `tmp.bandit_basecamp_shakedown_exact_member4_dead_cooling_probe` with the proper-world fixture `tmp_bandit_shakedown_exact_member4_dead_isolated_2026-04-24`; copied-save inspection records active group cleared, active_member_ids `[]`, member `4` as `missing`, `last_shakedown_outcome = fight_bandit_loss`, `shakedown_bandit_losses = 1`, `shakedown_caution = 1`, `remembered_pressure = collapsed`, and no defender reopen latch.  This is the missing exact-active-member/failure-cooling proof Frau Knackal asked for.
-- validation: `make -j4 tests`, `./tests/cata_test "[bandit][live_world][shakedown]"` (88 assertions in 3 test cases), `./tests/cata_test "[bandit][live_world]"` (411 assertions in 16 test cases), and focused `git diff --check` passed on the dirty tree before the copied-save live proof; no code changed during the final copied-save probe run.
-
-Latest closed shakedown packet evidence:
-- deterministic surface: `src/bandit_live_world.{h,cpp}` exposes `shakedown_goods_pool`, `shakedown_surface`, `build_shakedown_surface(...)`, and `render_shakedown_surface_report(...)` behind an `open_shakedown` local-gate decision
-- deterministic proof: `tests/bandit_live_world_test.cpp` proves the first blunt shakedown surface reports a readable bark, explicit `pay` and `fight` options, a 35%-style painful demanded toll, Basecamp/camp inventory reach for camp scenes, current vehicle reach for off-base scenes, direct-ambush bypass for rolling-travel contexts, and the single-bandit local-contact open-shakedown case used by the nearby live fixture
-- live Basecamp fight proof: `.userdata/dev-harness/harness_runs/20260424_053502/` uses `tmp.bandit_basecamp_shakedown_fight_probe`; the current-build menu opens from the raw local-contact owned-site fixture with `Bandit shakedown`, `Reachable goods: 45134`, `Demanded toll: 15797`, `p Pay the demanded goods`, and `f Fight`; pressing `f` reports `You refuse the shakedown.  The bandits come at you.`
-- live Basecamp pay proof: `.userdata/dev-harness/harness_runs/20260424_054046/` uses `tmp.bandit_basecamp_shakedown_pay_probe`; pressing `p` reports `You surrender goods worth about 18390 to the bandits.`, and copied saved-world inspection records no active group plus member `4` as `at_home` with `last_writeback_summary = "shakedown_surface paid toll=18390 demanded=15797 reachable=45134"`
-- live off-base reach proof: `.userdata/dev-harness/harness_runs/20260424_070845/` uses `tmp.bandit_offbase_shakedown_fight_probe` on non-road/non-Basecamp footing at `player@140,54,0`; after a forced relink, the current-build window title is `021190ee64`, `version_matches_repo_head=true`, and the artifact reports `basecamp_inventory=no`, `vehicle_inventory=yes`, `reachable_goods=3211`, `demanded_toll=1124`, explicit `pay` / `fight`, and `pool includes player, companion, and current vehicle goods only`
-- validation: `make -j4 tests && ./tests/cata_test "[bandit][live_world][shakedown]"` passed earlier for this packet (31 assertions), `make -j4 obj/do_turn.o`, `./tests/cata_test "[bandit][live_world][shakedown]"` (31 assertions), focused `git diff --check`, and the forced current-build relink command `make -j4 TILES=1 SOUND=0 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 cataclysm-tiles` passed before the off-base live proof
-
-Closed proof shape for the extortion-at-camp restage packet:
-- named restage path exists at `tools/openclaw_harness/scenarios/bandit.extortion_at_camp_standoff_mcw.json`
-- reviewer probe command: `python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_at_camp_standoff_mcw`
-- manual handoff command: `python3 tools/openclaw_harness/startup_harness.py handoff bandit.extortion_at_camp_standoff_mcw`
-- probe evidence: `.userdata/dev-harness/harness_runs/20260424_145617/` advanced from the honest claimed nearby-owned-site Basecamp fixture and `probe.artifacts.log` records `local_gate site=overmap_special:bandit_camp@140,51,0 active_group=overmap_special:bandit_camp@140,51,0#dispatch target=player@140,41,0 posture=hold_off ... basecamp_or_camp=yes`, with `live_dispatch_goal=140,43,0`; this proves the real controlled group and camp-adjacent stand-off state, not a shakedown menu
-- handoff evidence: `.userdata/dev-harness/harness_runs/20260424_153309/` records `mode = handoff`, `cleanup.status = deferred_handoff`, live pid `79412`, the same controlled-site `hold_off` local gate, and the `live_dispatch_goal=140,43,0` line; this proves the handoff mode leaves the scene alive instead of auto-cleaning like probe mode
-- caveat: both runs report `inconclusive_version_mismatch` because the runtime binary does not match later repo-head/runtime-path diff; for a Josef-facing playthrough packet, rebuild/rerun if strict current-source freshness matters
-
-Closed proof shape for the extortion playthrough audit packet:
-- named scenarios: `bandit.extortion_at_camp_standoff_mcw`, `bandit.extortion_first_demand_fight_mcw`, `bandit.extortion_first_demand_pay_mcw`, and `bandit.extortion_reopened_demand_mcw`
-- first-demand/fight evidence: `.userdata/dev-harness/harness_runs/20260424_162002/` uses the local-contact raw fixture; screen proof shows `Bandit shakedown`, `Reachable goods: 45134`, `Demanded toll: 15797`, and explicit `Pay the demanded goods` / `Fight`; pressing `f` shows `You refuse the shakedown. The bandits come at you.`; `probe.artifacts.log` records the matching `shakedown_surface ... pay_option=yes fight_option=yes ... basecamp_inventory=yes`
-- current-runtime reopened-demand evidence: stable scenario run `.userdata/dev-harness/harness_runs/20260424_174913/` uses rebuilt runtime `9e3c14260b-dirty` with `version_matches_repo_head=true` and `version_matches_runtime_paths=true`; screen proof shows reopened `Bandit shakedown`, `Reachable goods: 45134`, `Demanded toll: 22116`, and explicit `Pay the demanded goods` / `Fight`; `probe.artifacts.log` records `shakedown_surface ... pay_option=yes fight_option=yes ... demanded_toll=22116 ... basecamp_inventory=yes`
-- deterministic proof: `./tests/cata_test "[bandit][live_world][shakedown]"` passed with 88 assertions in 3 test cases, covering first pay/fight, aftermath/reopen contracts, one-use raised reopen, and cooled bandit-loss pressure
-- natural redispatch caveat: `.userdata/dev-harness/harness_runs/20260424_170908/` started from persisted defender-loss/no-active-group state on current runtime and stayed artifact-silent after 6000 turns; this is recorded as a separate live-path gap, not a blocker for the tiered audit packet
-- evidence classes stay separate: screen state for visible menus/messages, deterministic tests for branch/writeback contract, copied-save/report fields for exact controlled site/group state, and harness artifacts/logs for setup visibility
-
-### Recently closed lane - Cannibal camp first hostile-profile adopter packet v0
-
-- canonical packet: `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
-- implementation surface: `src/bandit_live_world.{h,cpp}` now has explicit `owned_site_kind::cannibal_camp` and `hostile_site_profile::cannibal_camp`, routes `cannibal_camp` overmap-special anchors to that profile, and tracks `cannibal_hunter`, `cannibal_butcher`, and `cannibal_camp_leader` templates on the shared live-world substrate.
-- profile behavior: cannibal camp keeps a larger home reserve than bandit camp, uses the shared `30_minutes` cadence, applies tighter pressure/return-clock behavior, and writes back as hungry camp pressure instead of pretending to be ordinary bandit camp pressure.
-- dedicated rare anchor/theme: `data/json/overmap/overmap_terrain/overmap_terrain.json`, `data/json/overmap/overmap_special/specials.json`, `data/json/mapgen/hells_raiders/cannibal_camp.json`, `data/json/mapgen_palettes/cannibal_camp.json`, `data/json/npcs/factions.json`, `data/json/npcs/cannibals/{npc,classes}.json`, and `data/json/itemgroups/cannibal_camp.json` now define a real cannibal-camp site family instead of attaching the profile to vapor.
-- deterministic side-by-side proof: `tests/bandit_live_world_test.cpp` test `bandit live world keeps cannibal camp separate from bandit camp ownership` proves a bandit camp and cannibal camp claim separate site IDs/profiles/footprints, dispatch independently, serialize active outing state separately, and preserve cannibal profile writeback fields across load.
-- fresh validation:
-  - `python3 -m json.tool` passed for the new cannibal-camp mapgen, palette, NPC, class, and item-group JSON files
-  - `./tests/cata_test "[bandit][live_world][cannibal]"` passed: 39 assertions in 1 test case, after the first JSON consistency issue was fixed
-  - `./tests/cata_test "[bandit][live_world]"` passed: 287 assertions in 12 test cases
-  - `make -j4 tests && ./tests/cata_test "[bandit][live_world]"` exited 0 on the current dirty tree
-  - `git diff --check` produced no whitespace/style errors
-- no heavier live probe was run for this packet because the packet validation expectation preferred deterministic second-family substrate proof plus data-load consistency; richer live-play belongs after the local approach/gate layer starts using the dispatched groups.
-
-### Recently closed lane - Hostile site profile layer packet v0
-
-- canonical packet: `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`
-- implementation surface: `src/bandit_live_world.{h,cpp}` now persists explicit `hostile_site_profile` state and routes reserve/dispatch capacity, threat/posture bias, return-clock lean, and default writeback pressure through profile rules instead of raw site-kind folklore
-- deterministic side-by-side proof: `tests/bandit_live_world_test.cpp` test `bandit live world dispatch rules are driven by hostile site profile` proves a `bandit_camp` using `camp_style` and an `mx_bandits_block` using `small_hostile_site` can both dispatch from the same substrate with distinct reserve, retreat, return-clock, and pressure behavior
-- fresh narrow validation:
-  - `make -j4 tests` exited 0 and rebuilt/linked the test binary on the current dirty tree
-  - `./tests/cata_test "[bandit][live_world][profile]"` passed: 21 assertions in 1 test case
-  - `./tests/cata_test "[bandit][live_world]"` passed: 248 assertions in 11 test cases
-  - `make -j4 obj/bandit_live_world.o` reported the source object up to date after the test build
-  - `git diff --check -- src/bandit_live_world.h src/bandit_live_world.cpp tests/bandit_live_world_test.cpp` produced no whitespace/style errors
-- no heavier live probe was run for this packet because the packet validation expectation preferred deterministic substrate/profile proof and the side-by-side behavior is visible without full live encounter theatrics
-
-### Recently closed lane - Multi-site hostile owner scheduler packet v0
-
-- canonical packet: `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`
-- deterministic multi-owner save/load and writeback separation lives in `tests/bandit_live_world_test.cpp` via `bandit live world keeps several hostile sites independent across save and writeback`
-- fresh current-build live scheduler proof lives under `.userdata/dev-harness/harness_runs/20260424_003005/`:
-  - scenario `tmp.bandit_multi_site_two_site_dispatch_probe_1860` used fixture chain `tmp_bandit_live_world_multi_site_two_claimed_centered_2026-04-24` -> `tmp_bandit_live_world_multi_site_two_claimed_2026-04-24`
-  - the run disabled safe mode, advanced `1860` turns across the `30_minutes` scheduler cadence, save-quit cleanly, copied the saved world, and auto-terminated the launched game
-  - copied-save inspection shows `overmap_special:bandit_camp@140,51,0` at `headcount = 14`, member `4` as `state = outbound`, `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,43,0`, and remembered mark/pressure kept on that site
-  - the same copied save separately shows `overmap_special:bandit_camp@140,44,0` at `headcount = 7`, member `18` as `state = local_contact`, `active_group_id = overmap_special:bandit_camp@140,44,0#dispatch`, the same target, and its own remembered mark/pressure kept on that site
-  - the generic harness verdict was `inconclusive_no_new_artifacts`, but the evidence class was copied saved-world inspection, not debug-log narration
-- fresh narrow validation for this final slice passed via `make -j4 TILES=1 SOUND=1 LOCALIZE=0 LINTJSON=0 ASTYLE=0 TESTS=0 obj/tiles/do_turn.o cataclysm-tiles`, `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py list-scenarios`, and `git diff --check`
-
-### Recently closed lane - Bandit live-world control + playtest restage packet v0
-
-- canonical packet: `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`
-- the first owner/headcount substrate is now landed on current tree:
-  - `src/bandit_live_world.{h,cpp}` defines the saveable live owner ledger with explicit site/member/spawn-tile records
-  - `map::place_npc` now claims tracked `bandit_camp`, `bandit_work_camp`, `bandit_cabin`, `mx_looters`, and `mx_bandits_block` spawns into `overmap_global_state.bandit_live_world`
-  - save/load coverage now exists for that ledger through `tests/bandit_live_world_test.cpp`
-- the first bounded control seam is now landed on current tree too:
-  - `bandit_live_world::plan_site_dispatch(...)` and `apply_dispatch_plan(...)` turn one owned nearby site into a real bounded scout dispatch plan backed by the current saved member roster
-  - site-backed camps now keep one member home by rule while micro-sites can still commit their full small roster, because dispatchable capacity comes from `site_record::dispatchable_member_capacity()` instead of folklore counts
-  - `bandit_live_world::update_member_state(...)` now shrinks site and spawn-tile headcount when a member becomes `dead` or `missing`, so later writeback can reduce future dispatch capacity continuously instead of snapping back to the original claim count
-  - site records now also persist one active outing summary (`active_group_id`, `active_target_id`, `active_member_ids`), and `bandit_live_world::apply_return_packet(...)` can apply a bounded handoff return packet back onto those exact owned members after save/load, clearing the active outing only when survivor accounting matches the packet instead of folklore-guessing the losses
-  - `overmap_npc_move()` can now apply the dispatch plan, mark the chosen members outbound, and hand those actual NPCs a normal `NPC_MISSION_TRAVELLING` overmap route toward the nearby player target
-- fresh narrow validation for the earlier reserve/writeback seam passed via:
-  - touched-object compile of `obj/bandit_live_world.o`
-  - exact test-object compile of `tests/bandit_live_world_test.cpp`
-  - `git diff --check`
-- the first bounded live aftermath observer is now landed on current tree too:
-  - `overmap_npc_move()` now inspects active owned outing members on the real NPC seam and records bounded `local_contact`, `dead`, and home-return observations instead of leaving the persisted outing summary inert once the dispatched bodies enter play
-  - `bandit_live_world::resolve_active_group_aftermath(...)` converts those observations into a bounded return packet only after every active member is resolved, so the owner no longer has to folklore-reconstruct which exact members died or made it back
-  - dead observed members can now shrink site/spawn-tile headcount on the live seam before the outing clears, while fully resolved aftermath still reuses the exact-member return-packet writeback path
-- fresh narrow validation for that live-aftermath hook passed via:
-  - touched-object compile of `obj/tiles/bandit_live_world.o`
-  - touched-object compile of `obj/tiles/do_turn.o`
-  - exact current-build compile of `tests/bandit_live_world_test.cpp`
-  - `git diff --check`
-- earlier owner-ledger-only proof also passed on the current tree via:
-  - touched-object compile of `obj/{bandit_live_world,mapgen,overmapbuffer,savegame}.o`
-  - standalone filtered run `./tests/cata_test_bandit_live_world "[bandit][live_world]"`
-- the harness mode split is now real too, and the helper surface grew one bounded nearby-restage transform:
-  - `tools/openclaw_harness/startup_harness.py handoff <scenario>` now reuses packaged scenario setup but writes `handoff.report.json`, records `cleanup.status = deferred_handoff`, and leaves the launched game alive instead of running `cleanup_game_process(...)` on success
-  - fixture manifests can now also apply bounded `seed_overmap_special_near_player` transforms alongside `player_mutations` and `player_near_overmap_special`, and the landed nearby-restage names stay `bandit_live_world_nearby_camp_v0_2026-04-22` plus `bandit.live_world_nearby_camp_mcw`
-  - narrow helper validation now passes via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py install-fixture bandit_live_world_nearby_camp_v0_2026-04-22 --profile andi-nearby-seed-check --fixture-profile live-debug --replace`, plus current-build `probe` / `handoff` on `bandit.live_world_nearby_camp_mcw`
-  - the seeded helper now keeps the player/basecamp footing at `om_pos [140, 41, 0]` and copies a real `bandit_camp` footprint onto `target_abs_omt [140, 51, 0]`, so the nearby site is about `10 OMT` away in the same overmap instead of by flinging the player across the world
-  - fresh current-build nearby-restage proof now lives under `.userdata/dev-harness/harness_runs/20260422_205630/` and `.userdata/dev-harness/harness_runs/20260422_205658/`; both runs stayed runtime-current (`version_matches_runtime_paths = true`), the probe auto-cleaned with `cleanup.status = terminated`, the handoff run stayed alive with `cleanup.status = deferred_handoff`, and the old `validate_camps()` / `invalid map position` load error no longer appears
-- fresh current-build `500`-turn save proof on that same nearby helper now lives under `.userdata/dev-harness/harness_runs/20260422_214610/`: the run advanced `500` turns, save-quit cleanly back to the menu, and `dimension_data.gsav` persisted `"bandit_live_world": { "owner_id": "hells_raiders_live_owner_v0", "sites": [] }`, which means the current seed-only nearby restage still has no claimed owned site/member roster to dispatch or write back
-- the disposable moved-player bootstrap retry was also not an honest workaround yet, but the current defect class is now grounded more precisely than “old popup vibes”: save inspection after `.userdata/dev-harness/harness_runs/20260422_221150/` showed `player.location = [3372,1212,0]` for target OMT `[140,50,0]` while top-level load anchor fields still stayed at `levx/levy = 275/77`, so the helper had rewritten the player position without actually moving the map-load anchor onto the seeded site footing
-- the helper bug is now fixed narrowly in `tools/openclaw_harness/startup_harness.py`: `player_near_overmap_special` also rewrites top-level `om_x/om_y/levx/levy/levz` while preserving the old player-to-bubble offset, and fresh install-only validation via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py install-fixture tmp_bandit_live_world_nearby_site2_bootstrap --profile andi-nearby-site2-fixcheck --fixture-profile live-debug --replace`, plus direct save inspection now shows `target_location = [3372,1212,0]` with matching `target_load_anchor = { om_x: 0, om_y: 0, levx: 276, levy: 96, levz: 0 }`
-- fresh current-build corrected-anchor ownership proof now lives under `.userdata/dev-harness/harness_runs/20260422_224132/`: disposable scenario `tmp.bandit_nearby_site2_bootstrap_save_probe` loaded beside the seeded nearby camp on the corrected anchor, saved immediately, and `dimension_data.gsav` now serializes one owned site `overmap_special:bandit_camp@140,51,0` with `headcount: 14`, the full `(140..141, 51..52)` footprint, and 14 explicit claimed member ids/spawn tiles; that closes the nearby-owned-site bootstrap blocker and shows the seed-only path was missing real nearby generation rather than silently dropping a spawned claim
-- one changed diagnostic retry still sharpened the other half of the distinction instead of rerunning ceremony: immediate seed-only save probe `.userdata/dev-harness/harness_runs/20260422_220046/` again serialized `bandit_live_world ... sites: []`, while direct string inspection found no nearby bandit roster/template markers in `#Wm9yYWlkYSBWaWNr.sav.zzip`; that points the current blocker more toward “nearby roster never spawned/generated here” than “roster spawned and claim silently missed it” on the seed-only path
-- fresh current-build live dispatch proof now exists on the honest claimed nearby footing, and it killed one more bad folklore assumption on the way:
-  - the earlier `320`-turn probes were not disproving dispatch; they were only advancing about `5m20s` because `.` waits are one-second turns on current build, while the live dispatch gate inside `overmap_npc_move()` only evaluates every `30_minutes`
-  - disposable `1860`-turn road-footing probe `.userdata/dev-harness/harness_runs/20260422_231413/` (`tmp.bandit_owned_site2_road_dispatch_probe_1860`) now saves `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,42,0`, `active_member_ids = [4]`, member `4` as `state = outbound`, and the matching overmap NPC on mission `10` with goal `(140,42)` and a live `omt_path` length of `8`
-  - disposable `1860`-turn basecamp-footing probe `.userdata/dev-harness/harness_runs/20260422_232225/` (`tmp.bandit_owned_site2_basecamp_dispatch_probe_1860`) proves the same seam on the real basecamp tile too: member `4` stays the dispatched outbound scout, `active_target_id = player@140,41,0`, and the matching NPC carries mission `10` with goal `(140,41)` and a live `omt_path` length of `9`
-- `tools/openclaw_harness/startup_harness.py` also needed one honest long-run hardening to make those real cadence probes possible: `advance_turns(...)` now batches long repeated `.` input instead of firing one giant uninterrupted stream, and current narrow helper validation still passes via `python3 -m py_compile tools/openclaw_harness/startup_harness.py` plus rerun `probe tmp.bandit_owned_site2_road_dispatch_probe`
-- fresh current-build nearby local-contact proof now exists on the same honest basecamp footing too:
-  - disposable `3600`-turn basecamp probe `.userdata/dev-harness/harness_runs/20260422_234628/` pushed the dispatched scout into the live player bubble hard enough to record `Giuseppe Bachman gets angry!`, `Giuseppe Bachman picks up a flaking rock.`, and the safe-mode survivor ping in `#Wm9yYWlkYSBWaWNr.sav.zzip`
-  - materially changed safemode-off follow-up `.userdata/dev-harness/harness_runs/20260423_000656/` then saved the exact same owned outing with member `4` as `state = local_contact`, `last_writeback_summary = local contact near player@140,41,0`, while the matching overmap NPC sat near the basecamp bubble at `[3372,1007,0]` on mission `7` / previous `10` with empty `omt_path`
-  - that is honest proof that the newly landed live local-contact observer fires on the real nearby owned-site setup instead of only existing as code plus deterministic aftermath tests
-- `tools/openclaw_harness/startup_harness.py` now also has one bounded save-inspection helper for this lane: scenario field `capture_world_after` copies the post-save world into `saved_world/` under the run dir, and narrow helper validation passed via `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, `python3 tools/openclaw_harness/startup_harness.py probe tmp.bandit_owned_site2_basecamp_aftermath_probe_7200_safemode_off --dry-run`, and `git diff --check`
-- fresh snapshot-preserving aftermath evidence now splits cleanly into blocker and resolution runs:
-  - copied-save run `.userdata/dev-harness/harness_runs/20260423_042618/` still preserves `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,41,0`, `active_member_ids = [4]`, and member `4` in `state = local_contact` with `last_writeback_summary = local contact near player@140,41,0` after the full `7200`-turn wait
-  - materially changed player-away continuation run `.userdata/dev-harness/harness_runs/20260423_054050/` kept the same copied stuck snapshot but only advanced `1860` turns after moving the player `20 OMT` south of site2; that still preserved the active outing, so it was honest evidence that the continuation path needed more runway rather than a menu-level shrug
-  - materially changed player-away continuation run `.userdata/dev-harness/harness_runs/20260423_055255/` then advanced `3600` turns from that same copied stuck snapshot and finally resolved the exact scout back onto the owned site ledger: member `4` saved as `state = at_home` with `last_writeback_summary = return withdrawn from player@140,41,0`, while `active_group_id`, `active_target_id`, and `active_member_ids` all cleared
-  - the after-step screenshots for these runs are still secondary; the honest evidence class here is the copied `saved_world/` inspection, not whether the menu looked tidy
-- fresh current-build same-site post-writeback follow-through now also exists on that same honest nearby footing:
-  - fixture `tools/openclaw_harness/fixtures/saves/live-debug/tmp_bandit_live_world_post_writeback_snapshot_2026-04-23/` started with `active_group_id = ''`, `active_target_id = ''`, `active_member_ids = []`, and member `4` at `state = at_home` with `last_writeback_summary = return withdrawn from player@140,41,0`
-  - continuation probe `.userdata/dev-harness/harness_runs/20260423_082832/` then advanced `1860` turns from that post-writeback snapshot back on the original basecamp footing and saved the same owned site with `active_group_id = overmap_special:bandit_camp@140,51,0#dispatch`, `active_target_id = player@140,41,0`, `active_member_ids = [4]`, and member `4` back in `state = outbound` with `last_writeback_summary = dispatch scout toward player@140,41,0`
-  - the generic harness verdict stayed `inconclusive_no_new_artifacts`, but the honest evidence class here was the copied `saved_world/` inspection, and that save inspection is enough to close the calm return->re-dispatch question
-- fresh reviewer-clean perf evidence now also exists on the same honest nearby footing:
-  - `.userdata/dev-harness/harness_runs/20260423_004225/` / `advance_1_turn`: `count 1`, `total_s 0.566692`, `avg_ms 566.692`, `max_batch_turn_ms 566.692`
-  - `.userdata/dev-harness/harness_runs/20260423_004253/` / `advance_120_turns`: `count 120`, `total_s 27.980205`, `avg_ms 233.168`, `max_batch_turn_ms 233.168`
-  - `.userdata/dev-harness/harness_runs/20260423_004349/` / `advance_1860_turns`: `count 1860`, `total_s 436.095456`, `avg_ms 234.460`, `max_batch_s 28.394650`, `max_batch_turn_ms 236.622`
-  - `.userdata/dev-harness/harness_runs/20260423_012819/` / `advance_4200_turns`: `count 4200`, `total_s 983.073795`, `avg_ms 234.065`, `max_batch_s 28.599248`, `max_batch_turn_ms 238.327`
-  - derived ratios on the same current-build packet stay flat after startup overhead: `single_vs_wait = 2.430x`, `single_vs_cadence = 2.417x`, `cadence_vs_wait = 1.006x`, `stress_vs_cadence = 0.998x`, `cadence_spike_ratio = 1.009x`, `stress_spike_ratio = 1.018x`
-- fresh current-build dirty later-world disturbance proof now also exists on the same honest nearby footing:
-  - raw-local-contact continuation `.userdata/dev-harness/harness_runs/20260423_194416/` resumed from fixture `tmp_bandit_live_world_local_contact_raw_2026-04-23`, killed the exact local-contact scout, advanced `10` turns, and saved the owned site with `headcount = 13`, member `4` as `state = missing` with `last_writeback_summary = return broken from player@140,41,0 (missing)`, home `spawn_tile [3371,1230,0]` at `headcount = 0`, and the next active outing already rotated to `active_member_ids = [5]`
-  - the generic harness verdict again stayed `inconclusive_no_new_artifacts`, but the honest evidence class was the copied `saved_world/` inspection, and that save is enough to close the dirty-disturbance bar without pretending the log had to narrate it
-- required evidence on the now-closed live-world lane ended up mixing live-world control proof, restage proof, and perf proof:
-  - [x] fresh current-build live proof that the new dispatch seam actually drives that honestly owned nearby site in play instead of stopping at compile-time route plumbing
-  - [x] fresh current-build live proof that the newly landed **real** local-contact hook actually fires on that owned nearby setup instead of only existing as code plus deterministic return-packet tests
-  - [x] fresh current-build proof that that same nearby setup resolves beyond first `local_contact` into exact-member aftermath/writeback instead of saving the outing mid-contact forever
-  - [x] fresh current-build proof that the nearby controlled-restage handoff path leaves the session alive for playtesting instead of auto-terminating after setup
-  - [x] fresh reviewer-clean evidence that the nearby setup exercised the real overmap/bubble handoff plus local writeback path instead of stopping at a code-landed-but-unplayed observer seam
-  - [x] a concrete perf packet on that nearby setup using baseline single-turn cost, wait/pass-time cost, bandit-cadence turn cost, spike ratio, and max turn cost
-  - [x] at least one explicit dirty later-world disturbance proof on that same nearby owned setup, via the loss/missing shrinkage continuation above
-- the live-world lane is now honestly closed for current canon: bootstrap, dispatch, local-contact, exact-member writeback, calm same-site re-dispatch, dirty loss/missing follow-through, handoff support, and the reviewer-clean perf packet all exist on current build without widening into generic hostile-human empire work
-- the useful landed helper substrate from the old `v2` lane stays relevant here rather than wasted:
-  - `tools/openclaw_harness/startup_harness.py` already resolves fixture-manifest `save_transforms`
-  - the current bounded shipped transform kinds are `player_mutations`, `player_near_overmap_special`, and `seed_overmap_special_near_player`
-  - install/startup/probe/handoff reports already surface `applied_save_transforms`
-  - the first mutation-backed hostile-contact preset already exists at `tools/openclaw_harness/scenarios/bandit.basecamp_clairvoyance_contact_audit_mcw.json`
-  - the first nearby-restage preset at `tools/openclaw_harness/scenarios/bandit.live_world_nearby_camp_mcw.json` is now honest nearby-restage substrate instead of a load-breaking moved-player fakeout
-- but do **not** let that helper substrate masquerade as the next answer either:
-  - the next missing proof is no longer single-site ownership/control existence or later-world disturbance on one camp; it is small independent multi-site owner state across save/load without coalition mush
-  - the missing playtest bar still includes a handoff/save path that stays legible after setup instead of collapsing back to menu theater when the scene gets interesting
-  - the broader closeout still needs ugly-interaction coverage on the real nearby live setup, not abstract helper elegance or folklore about what probably happened off-screen
-
-### Latest closed lane - Bandit + Basecamp playtest kit packet v1
-
-- canonical packet: `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
-- the prepared-base family is now closed honestly:
-  - save/profile alias pair `tools/openclaw_harness/fixtures/{saves,profiles}/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/`
-  - save/profile alias pair `tools/openclaw_harness/fixtures/{saves,profiles}/live-debug/bandit_basecamp_clairvoyance_v1_2026-04-22/`
-  - named audit scenarios `tools/openclaw_harness/scenarios/bandit.basecamp_prepared_base_audit_mcw.json` and `tools/openclaw_harness/scenarios/bandit.basecamp_clairvoyance_audit_mcw.json`
-- the key closeout change is method honesty, not more fixture sprawl:
-  - `bandit_basecamp_clairvoyance_v1_2026-04-22` no longer needs its own copied save payload
-  - the fixture now reuses `bandit_basecamp_prepared_base_v1_2026-04-22` and applies a bounded manifest-level `player_mutations` restage for `DEBUG_CLAIRVOYANCE_PLUS` and `DEBUG_CLAIRVOYANCE`
-  - `startup.result.json` / `probe.report.json` now surface that restage in `fixture_install.applied_save_transforms`
-- fresh current-build closeout proof:
-  - load/capture audit under `.userdata/dev-harness/harness_runs/20260422_172658/`
-  - temp install proof via `python3 tools/openclaw_harness/startup_harness.py install-fixture bandit_basecamp_clairvoyance_v1_2026-04-22 --profile andi-v1-check --fixture-profile live-debug --replace`
-  - post-load save inspection on the installed dev-harness world still shows both clairvoyance mutations in `traits`, `mutations`, and `cached_mutations`
-- honest remaining rough edge from `v1` stays explicit:
-  - mutation-screen OCR still clearly catches `Debug Clairvoyance Super` better than the second entry
-  - that is an on-screen capture limitation, not a missing installed mutation state
-
-### Latest closed lane - Bandit + Basecamp playtest kit packet v0
-
-- canonical packet: `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
-- starting helper/readability footing came from the already-closed helper and first-pass packets:
-  - `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`
-  - `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`
-  - fresh current-build helper proof under `.userdata/dev-harness/harness_runs/20260422_132353/`
-  - fresh current-build first-pass readability proof under `.userdata/dev-harness/harness_runs/20260422_144921/`
-- fresh harness-side repeatability/reporting/cleanup proof lives under `.userdata/dev-harness/harness_runs/20260422_151547/`, via `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
-  - the packaged helper reran three times on the same McWilliams footing
-  - `filter_bandit_template.after` matched the expected filtered-bandit menu lines on all three runs
-  - each probe report records a `cleanup` block, and all three repeatability runs exited with `cleanup.status = terminated`
-  - the run stayed runtime-current (`version_matches_runtime_paths = true`) while `version_matches_repo_head = false`, which is expected here because the tree changed only in harness/scenario files and no fresh tiles rebuild was required for this slice
-  - the new `repeatability.summary.txt` / `repeatability.report.json` surface is screen-first enough to show the remaining rough edge honestly: the right-panel anger line only OCR-matched on one of the three runs, so the operator can see capture sensitivity directly instead of pretending the generic `inconclusive_no_new_artifacts` verdict settled it
-- the fast-reload pack now exists as a thin alias pair on top of the captured McWilliams live-debug footing:
-  - save fixture alias: `tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/manifest.json`
-  - profile snapshot alias: `tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_playtest_kit_v0_2026-04-22/manifest.json`
-  - `startup_harness.py` now resolves manifest-only `source_fixture` and `source_snapshot` aliases so the pack can reuse the captured footing without another full copied save/profile blob
-- fresh live proof on that pack alias footing lives under:
-  - `.userdata/dev-harness/harness_runs/20260422_152650/` via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_restage_mcw`
-  - `.userdata/dev-harness/harness_runs/20260422_152819/` via `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_readability_mcw`
-  - both runs stayed runtime-current (`version_matches_runtime_paths = true`) and both cleanup blocks ended in `cleanup.status = terminated`
-  - the pack-family restage run still shows stable filtered-bandit menu proof on the alias footing
-  - the pack-family readability run still shows the same honest encounter shape on the alias footing: immediate read remains cluttered/weak, while the eight-turn right panel captures `Bandit gets angry!`, gunfire, taunts, and survivor hits cleanly enough to confirm the readability sibling still works through the fast-reload path
-- the packet now says its rough edges plainly and stops cleanly where it should: captured-save footing, named-NPC debug spawn dependency, screen-first/no-new-debug-log evidence, mixed immediate anger OCR, and no extra richer variants because those belong to `v1` and `v2`
-
-### Latest closed lane - Bandit + Basecamp first-pass encounter/readability packet v0
-
-- canonical packet: `doc/bandit-basecamp-first-pass-encounter-readability-packet-v0-2026-04-22.md`
-- fresh current-build proof lives under `.userdata/dev-harness/harness_runs/20260422_144921/`
-- the bounded live readability helper for this packet is now `tools/openclaw_harness/scenarios/bandit.basecamp_first_pass_readability_mcw.json`
-- the packet used the already-closed helper seam and then captured immediate plus short-horizon screen artifacts (`immediate_{full,local,right_panel}` and `after_8_turns_{full,local,right_panel}`) instead of pretending the generic artifact verdict could answer the product question by itself
-- immediate on-screen read is weak: the spawn mostly reads as one more purple nearby-NPC name plus old movement/saving clutter, so the player does not get a strong first-pass spatial read on why this new person is the threat
-- eight turns later the encounter is unmistakably real and dangerous, but still mostly through the right-panel log rather than clean spatial staging: `Heath Griffith, Bandit gets angry!`, taunts, safe-mode survivor ping, gunfire, and the deaths of Katharina Leach and Robbie Knox all land in the log
-- honest verdict: the encounter is mechanically present and dangerous enough to justify more follow-through, but first-pass readability is weak/confusing enough that the correct next step is playtest-surface polish rather than another setup/readability feasibility lap
-- no deterministic tests were added or rerun because this packet stayed on live probe / artifact work only; fresh live proof came from the current tiles binary and `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_first_pass_readability_mcw`
-
-### Latest closed lane - Live bandit + Basecamp playtest packaging/helper packet v0
-
-- canonical packet: `doc/live-bandit-basecamp-playtest-packaging-helper-packet-v0-2026-04-22.md`
-- landed helper: `tools/openclaw_harness/scenarios/bandit.basecamp_named_spawn_mcw.json`
-- fresh current-build proof lives under `.userdata/dev-harness/harness_runs/20260422_132353/`
-- current-build proof is honest: `window_title = Cataclysm: Dark Days Ahead - 7ab535f0c7`, `version_matches_repo_head = true`, and `version_matches_runtime_paths = true`
-- reviewer-readable helper artifacts now exist directly on the run path:
-  - `filter_bandit_template.after.{png,screen_text.txt}` showing the filtered `bandit` menu entries
-  - `post_spawn_settle.after.{png,screen_text.txt}` showing `Joshua Wilkes, Bandit gets angry!`
-- forced rebuild was used here not because the packet needed gameplay-code validation, but because an earlier stale tiles binary made the first helper proof carry an avoidable asterisk before handoff
-- honest remaining rough edges: the packaged path still uses the named-NPC debug spawn surface, still depends on the captured McWilliams fixture, and the generic probe artifact verdict is still less useful than the screen/OCR companions for this seam
-- no deterministic tests were added or rerun because this packet landed as harness/helper/docs work only
-
-### Latest closed lane - Live bandit + Basecamp playtesting feasibility probe v0
-
-- canonical packet: `doc/live-bandit-basecamp-playtesting-feasibility-probe-v0-2026-04-21.md`
-- fresh current-build startup proof lives under `.userdata/dev/harness_runs/20260422_002122/`, with build head `5af2fb80d8-dirty`, `version_matches_repo_head = true`, and `version_matches_runtime_paths = true`
-- bounded live restage proof lives under `.userdata/dev-harness/harness_runs/20260422_002329/`, showing named NPC debug spawn of hostile `Stefany Billings, Bandit`
-- honest verdict: current-build bandit + Basecamp live playtesting is practical now, but reviewer-clean packaged overmap-bandit harness footing is still absent
-
-### Latest closed lane - Basecamp AI capability audit/readout packet v0
-
-- canonical packet: `doc/basecamp-ai-capability-audit-readout-packet-v0-2026-04-21.md`
-- honest verdict: the player-facing spoken Basecamp surface is still a narrow deterministic craft-request plus board/job router, while the richer prompt-shaped layer is mostly snapshot/planner packaging rather than core spoken command interpretation
-- no compile or live probe was required because this was a current-tree capability readout, not a fresh runtime behavior claim
-
-### Latest closed lane - Locker Zone V3
-
-- canonical packet: `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`
-- honest verdict: hot/cold outerwear bias, hot/cold legwear bias, moderate-temperature seasonal dressing, rainy moderate-weather rainproof preference, and bounded worker-specific wardrobe preservation now all land on the same real locker seam
-- current focused validation: `make -j4 tests` and `./tests/cata_test "[camp][locker]"`
-
-### Closed bandit readiness train
-
-Use the auxiliary packet docs for the detailed proof shape.
-The canonical closed packets are:
-- `doc/bandit-overmap-local-handoff-interaction-packet-v0-2026-04-21.md`
-- `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`
-- `doc/bandit-overmap-benchmark-suite-packet-v0-2026-04-21.md`
-- `doc/bandit-weather-concealment-refinement-packet-v0-2026-04-21.md`
-- `doc/bandit-overmap-local-pressure-rewrite-packet-v0-2026-04-21.md`
-- `doc/bandit-long-range-directional-light-proof-packet-v0-2026-04-21.md`
-- `doc/bandit-bounded-scout-explore-seam-v0-2026-04-21.md`
-- `doc/bandit-repeated-site-revisit-behavior-packet-v0-2026-04-21.md`
-- `doc/bandit-scoring-refinement-seam-v0-2026-04-21.md`
-- `doc/bandit-moving-bounty-memory-seam-v0-2026-04-21.md`
-
-Current honest summary:
-- the playback/proof surface is now checkpointed through the handoff, visibility, benchmark, weather, pressure-rewrite, long-range-light, scout/explore, moving-memory, scoring, and repeated-site packets
-- the bandit proof family has current deterministic coverage on the tree, with `./tests/cata_test "[bandit]"` as the broad filtered confidence pass when code in that family changes
-- no further rerun is warranted until a fresh greenlight or contradictory evidence appears
+Use the auxiliary docs / `SUCCESS.md` for details. Current short closure map:
+- `Bandit live-wiring audit + visible-light horde bridge correction v0`: loaded-map visible fire/light -> horde signal bridge proof; not player-lit fire proof.
+- `Bandit local sight-avoid + scout return cadence packet v0`: deterministic proof plus live/harness sight-avoid, return-home, and writeback proof; no later redispatch tuning claimed.
+- `Smart Zone Manager v1 Josef playtest corrections`: deterministic zone-id/type/option and save/reload proof.
+- `Basecamp medical consumable readiness v0`: deterministic camp/locker proof for bounded bandage-family readiness and cap behavior.
+- `Basecamp locker armor ranking + blocker removal packet v0`: deterministic camp/locker proof for generic full-body/protective ranking, blocker clearing, damaged-candidate rejection without repeated requeue/equip churn, ballistic armor preservation, and `[camp][locker]` regression coverage.
 
 ---
 
 ## Pending probes
 
-A live probe is still greenlit, but the next probe must answer control/restage questions on top of the now-landed owner ledger instead of reopening the already-closed fixture-method argument.
+No active live GUI probe is required for the current job-spam debounce lane unless deterministic camp/job evidence leaves a real product-path or visible-message question unanswered.
 
-- Do **not** rerun the first-pass readability packet ceremonially now that its product question has an honest answer.
-- Do **not** keep rerunning the closed thin `v0` pack or the closed `v1` load audits unless a new live-control helper specifically needs that regression footing.
-- The nearby ownership/bootstrap question is now answered yes on current build via `.userdata/dev-harness/harness_runs/20260422_224132/`, and the scout-reaches-the-bubble question is already answered too: `.userdata/dev-harness/harness_runs/20260422_234628/` plus `.userdata/dev-harness/harness_runs/20260423_000656/` prove real nearby local contact, while `.userdata/dev-harness/harness_runs/20260423_055255/` now proves exact-member aftermath/writeback beyond that first contact state.
-- The first missing live proof after this owner slice is no longer dispatch/control existence, basic writeback existence, or calm same-site re-dispatch; it is one dirtier later-world follow-through on the same nearby site, such as a live loss/missing path that shrinks later outing size or a save/load/player-disruption proof that keeps the owned roster honest.
-- The current `seed_overmap_special_near_player` helper is still not enough by itself for this packet; seed-only saves still land as `sites: []`, so copied terrain alone is not owned roster truth.
-- When the next harness/probe helper lands, give it one named scenario or command path for reviewer use instead of laundering it through the old thin-pack names.
-- If the control/restage work surfaces a real blocker, name it concretely instead of laundering operator annoyance into vague harness vibes.
+If a later live probe is needed:
+- build the current runtime first when binary freshness matters
+- use one named scenario/command path
+- extract only decisive report/log fields into context
+- stop after two same-reason inconclusive attempts and escalate/park instead of rerunning a ritual macro
 
 ---
 
@@ -548,9 +93,10 @@ A live probe is still greenlit, but the next probe must answer control/restage q
 
 Use these when they are actually the missing evidence, not as ritual.
 
-### Narrow locker deterministic pass after a code slice lands
-- `make -j4 tests`
-- `./tests/cata_test "[camp][locker]"`
+### Narrow camp deterministic pass after a code slice lands
+- `git diff --check`
+- `make -j4 obj/basecamp.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0`
+- focused `./tests/cata_test` filters for the touched camp/locker/patrol reporting path
 
 ### Plan status summary command
 - `python3 tools/plan_status_summary.py --self-test`
@@ -559,30 +105,8 @@ Use these when they are actually the missing evidence, not as ritual.
 - `python3 tools/plan_status_summary.py /plan greenlit`
 - `python3 tools/plan_status_summary.py /plan parked`
 
-### Bandit dry-run evaluator seam foundation
-- `make -j4 tests`
-- `./tests/cata_test "[bandit][dry_run]"`
-
-### Fresh tiles rebuild only if a later combat-policy handoff really needs live proof
+### Fresh tiles rebuild only if a later handoff really needs live proof
 - `make -j4 TILES=1 cataclysm-tiles`
-
-### Current live playtest-packaging/helper seam
-- `make -B -j4 TILES=1 cataclysm-tiles`
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`
-
-### Closed first-pass encounter/readability seam
-- `make -B -j4 TILES=1 cataclysm-tiles`
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_first_pass_readability_mcw`
-
-### Current active playtest-kit footing
-- `make -B -j4 TILES=1 cataclysm-tiles`
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_named_spawn_mcw`
-- `python3 tools/openclaw_harness/startup_harness.py repeatability bandit.basecamp_named_spawn_mcw`
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_restage_mcw`
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_playtestkit_readability_mcw`
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_first_pass_readability_mcw`
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.basecamp_clairvoyance_contact_audit_mcw`
-- preserve the screen/OCR artifacts that show repeatability, readability, cleanup behavior, and later pack-backed variants
 
 ## Local build caveat
 

@@ -8,15 +8,15 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Basecamp locker armor ranking + blocker removal packet v0`.
+Active target: `Basecamp job spam debounce + locker/patrol exceptions packet v0`.
 
 - Work from `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`; `josihosi/Cataclysm-AOL` is project/release truth and `josihosi/C-AOL-mirror` is green-dot-only.
-- Use `doc/basecamp-locker-armor-ranking-blocker-removal-packet-v0-2026-04-26.md` as the active contract.
+- Use `doc/basecamp-job-spam-debounce-exceptions-packet-v0-2026-04-26.md` as the active contract.
+- Preserve the just-closed locker armor caveat: generic protective/full-body ranking and blocker clearing are landed and tested; do not reopen it into broad outfit AI or RM13-specific handling unless new evidence says it lied.
 - Preserve the just-closed Smart Zone Manager caveat: deterministic zone-id/type/option and serialize/reload proof is landed; do not reopen Smart Zone layout work unless Josef explicitly reopens it.
 - Preserve the bandit caveats: `Bandit live signal + site bootstrap correction v0` remains Josef-review/product-proof work, and `Bandit local sight-avoid + scout return cadence packet v0` is closed without claiming later redispatch tuning beyond explicit camp re-evaluation.
-- Preserve the just-closed medical-readiness caveat: bandage-family pickup/preservation is now capped and tested; do not broaden it into pharmacy/medical AI unless Josef explicitly greenlights that.
-- Inspect existing locker armor/combat-policy helpers and tests, then add the narrow generic armor-ranking correction only: score candidate protective/full-body gear against current blockers, drop/remove blockers only when the candidate clearly wins, avoid repeated failed swap/wear spam, and preserve stronger current ballistic/full-body armor.
-- First validation target: deterministic locker/combat-policy proof for superior candidate displacement, worse/damaged/encumbering candidate rejection, original-symptom-shaped regression without RM13-only special casing, and no camp locker readiness regression; add one focused harness/log proof only if it answers a real visible-spam/product-path risk.
-- No Lacapult work, no release publication, no repo-role surgery, no user-data mutation, no Smart Zone sprawl, no broad outfit AI rewrite, and no RM13 hardcode.
+- Inspect existing Basecamp/camp job message emission paths, then add the narrow debounce only: stable-cause compression for repeated completion / missing-tool / no-progress chatter, first occurrence and changed state still visible, and typed locker/patrol exceptions preserved once with reason.
+- First validation target: deterministic camp job reporting tests for repeated same-cause compression, changed job/NPC/cause visibility reset, locker exception behavior, patrol exception behavior, unrelated important messages not swallowed, plus touched-object compile and focused camp/locker/patrol tests.
+- No Lacapult work, no release publication, no repo-role surgery, no user-data mutation, no Smart Zone sprawl, no broad camp-message rewrite, and no global message-log suppression.
 
 Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.

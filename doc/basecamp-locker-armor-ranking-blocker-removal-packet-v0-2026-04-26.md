@@ -1,6 +1,6 @@
 # Basecamp locker armor ranking + blocker removal packet v0 (2026-04-26)
 
-Status: greenlit / queued.
+Status: closed / checkpointed.
 
 ## Normalized contract
 
@@ -33,13 +33,13 @@ Status: greenlit / queued.
 
 ## Success state
 
-- [ ] A generic helper scores candidate protective/full-body gear against currently worn blockers using body-part priority, protection/coverage, encumbrance, condition, and active locker policy.
-- [ ] The helper is not item-id-specific and does not special-case `RM13 combat armor`.
-- [ ] When a candidate is clearly superior, the locker path removes/drops the blocking worn items needed to equip it.
-- [ ] When a candidate is not clearly superior or cannot be equipped, the locker path stops retrying the same failed swap and does not produce visible repeated wear spam.
-- [ ] Existing superior-full-body and ballistic-maintenance tests are reused/extended, including positive and negative cases.
-- [ ] Tests prove a clearly superior full-body/protective suit can displace worse blockers, while stronger current ballistic armor is preserved against worse candidates.
-- [ ] At least one targeted regression covers the original symptom shape without depending on the exact RM13 item ID as the only proof.
+- [x] A generic helper scores candidate protective/full-body gear against currently worn blockers using body-part priority, protection/coverage, encumbrance, condition, and active locker policy.
+- [x] The helper is not item-id-specific and does not special-case `RM13 combat armor`.
+- [x] When a candidate is clearly superior, the locker path removes/drops the blocking worn items needed to equip it.
+- [x] When a candidate is not clearly superior or cannot be equipped, the locker path stops retrying the same failed swap and does not produce visible repeated wear spam.
+- [x] Existing superior-full-body and ballistic-maintenance tests are reused/extended, including positive and negative cases.
+- [x] Tests prove a clearly superior full-body/protective suit can displace worse blockers, while stronger current ballistic armor is preserved against worse candidates.
+- [x] At least one targeted regression covers the original symptom shape without depending on the exact RM13 item ID as the only proof.
 
 ## Suggested validation packet
 
@@ -57,3 +57,11 @@ Status: greenlit / queued.
 ## Handoff note for Andi
 
 Start from the existing armor/locker tests. Do not create an RM13 exception. The wanted behavior is “better armor wins and blockers get cleared,” not “the cursed spacesuit gets a royal decree.”
+
+## Closure evidence
+
+- Implementation is generic: scoring and blocker logic lives in `src/basecamp.cpp` via camp locker armor scoring/protective-full-body helpers and planned duplicate/blocker removal, with no `RM13 combat armor` item-id branch.
+- `camp_locker_service_equips_full_body_candidate_after_clearing_weaker_blockers` proves a superior `survivor_suit` displaces cargo pants, t-shirt, and crude plastic vest blockers.
+- `camp_locker_service_preserves_ballistic_armor_while_adding_full_body_candidate` proves compatible stronger ballistic armor and inserted ESAPI plates stay with the worker while the full-body candidate is added.
+- `camp_locker_service_rejects_damaged_full_body_candidate` proves a damaged same-family full-body candidate is rejected and a repeated service call remains a no-op instead of requeueing the failed swap.
+- Validation passed: `make -j4 obj/basecamp.o tests/faction_camp_test.o tests LINTJSON=0 ASTYLE=0`; focused three-test armor pass; `./tests/cata_test "[camp][locker]"` (2050 assertions in 70 test cases); `git diff --check`.
