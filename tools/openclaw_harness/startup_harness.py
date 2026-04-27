@@ -939,39 +939,49 @@ def audit_log_contains(
     artifact_log: Optional[Path],
     artifact_baseline: int,
     patterns: List[str],
+    required_line_patterns: Optional[List[List[str]]] = None,
     filter_debug_noise: bool = False,
 ) -> Dict[str, Any]:
+    line_pattern_groups = required_line_patterns or []
+    required_items = patterns + [" && ".join(group) for group in line_pattern_groups]
     if artifact_log is None:
         return {
             "status": "failed",
             "reason": "artifact_log_not_configured",
-            "required_items": patterns,
-            "missing_required_items": patterns,
+            "required_items": required_items,
+            "missing_required_items": required_items,
             "source_log": "",
         }
     text = read_log_delta(artifact_log, artifact_baseline, filter_debug_noise=filter_debug_noise)
     out_path = run_dir / f"{label}.log_delta.txt"
     if text:
         out_path.write_text(text, encoding="utf-8")
+    log_lines = text.splitlines()
     matches_by_pattern: List[Dict[str, Any]] = []
     missing: List[str] = []
     for pattern in patterns:
-        lines = [line for line in text.splitlines() if pattern in line]
+        lines = [line for line in log_lines if pattern in line]
         matches_by_pattern.append({"pattern": pattern, "lines": lines})
         if not lines:
             missing.append(pattern)
+    for group in line_pattern_groups:
+        group_label = " && ".join(group)
+        lines = [line for line in log_lines if all(pattern in line for pattern in group)]
+        matches_by_pattern.append({"pattern": group_label, "line_patterns": group, "lines": lines})
+        if not lines:
+            missing.append(group_label)
     return {
-        "status": "required_state_present" if patterns and not missing else ("required_state_missing" if patterns else "scanned"),
+        "status": "required_state_present" if required_items and not missing else ("required_state_missing" if required_items else "scanned"),
         "source_log": str(artifact_log),
         "artifact_path": str(out_path) if text else "",
         "start_size": artifact_baseline,
         "end_size": artifact_log.stat().st_size if artifact_log.exists() else artifact_baseline,
-        "required_items": patterns,
+        "required_items": required_items,
         "observed_items": [entry["pattern"] for entry in matches_by_pattern if entry.get("lines")],
         "missing_required_items": missing,
         "matches_by_pattern": matches_by_pattern,
         "matched_lines": [line for entry in matches_by_pattern for line in entry.get("lines", [])],
-        "line_count": len(text.splitlines()) if text else 0,
+        "line_count": len(log_lines) if text else 0,
     }
 
 
@@ -4380,14 +4390,17 @@ def execute_probe_steps(
             patterns = normalize_screen_text_patterns(
                 step.get("required_patterns", step.get("patterns", step.get("required_items", [])))
             )
-            if not patterns:
-                raise SystemExit(f"Scenario step '{label}' needs required_patterns/patterns")
+            raw_line_groups = step.get("required_line_patterns", []) or []
+            line_groups = [normalize_screen_text_patterns(group) for group in raw_line_groups]
+            if not patterns and not line_groups:
+                raise SystemExit(f"Scenario step '{label}' needs required_patterns/patterns/required_line_patterns")
             metadata = audit_log_contains(
                 run_dir,
                 label,
                 artifact_log=artifact_log,
                 artifact_baseline=artifact_baseline,
                 patterns=patterns,
+                required_line_patterns=line_groups,
                 filter_debug_noise=filter_debug_noise,
             )
             metadata["artifact_path"] = str(run_dir / f"{label}.metadata.json")

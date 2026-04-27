@@ -176,11 +176,46 @@
     },
     {
       "kind": "audit_log_contains",
+      "label": "audit_ui_trace_multidrop_filtered_fuel_row_visible",
+      "required_line_patterns": [
+        [
+          "openclaw_harness_ui_trace: component=inventory_drop_selector_entry event=state title=\"Multidrop\" filter=\"plank\"",
+          "selectable=yes",
+          "typeid=\"2x4\""
+        ]
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the filtered Multidrop view contains a selectable 2x4/plank fuel row before trusting count selection",
+      "preconditions": "drop_exact_2x4_on_prompted_brazier opened Multidrop and filtered for plank.",
+      "next_step_gate": "do not credit MARK_WITH_COUNT unless the filtered 2x4/plank row is visible and selectable",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_drop_filter_or_inventory_visibility",
+      "abort_reason": "harness UI trace did not prove a visible selectable 2x4/plank row in filtered Multidrop"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_multidrop_exact_fuel_count_selected",
+      "required_line_patterns": [
+        [
+          "openclaw_harness_ui_trace: component=inventory_drop_selector event=state title=\"Multidrop\" filter=\"plank\" action=\"MARK_WITH_COUNT\"",
+          "total_selected_qty=20"
+        ]
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves MARK_WITH_COUNT selected the exact intended 20-item fuel quantity",
+      "preconditions": "the filtered Multidrop 2x4/plank row is visible and selectable.",
+      "next_step_gate": "do not trust Multidrop confirm unless exact 20 fuel quantity is selected first",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_drop_mark_count_primitive",
+      "abort_reason": "harness UI trace showed the filtered fuel row but did not prove MARK_WITH_COUNT selected exact 20 fuel"
+    },
+    {
+      "kind": "audit_log_contains",
       "label": "audit_ui_trace_multidrop_closed_after_fuel_drop",
-      "required_patterns": [
-        "openclaw_harness_ui_trace: component=inventory_drop_selector event=return title=\"Multidrop\"",
-        "action=\"CONFIRM\"",
-        "total_selected_qty=20"
+      "required_line_patterns": [
+        [
+          "openclaw_harness_ui_trace: component=inventory_drop_selector event=return title=\"Multidrop\"",
+          "action=\"CONFIRM\"",
+          "total_selected_qty=20"
+        ]
       ],
       "expected_visible_fact": "harness-gated UI trace proves the Multidrop menu accepted the exact 20-item fuel selection and returned before any save key is sent",
       "preconditions": "drop_exact_2x4_on_prompted_brazier used MARK_WITH_COUNT for the exact 20 planks.",

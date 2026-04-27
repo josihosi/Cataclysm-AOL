@@ -13,7 +13,7 @@ This is not permission to wander around a live save and call vibes evidence. It 
 1. **Active-now bridge: player fuel continuation behind the green deploy gate.**
    - This remains inside `C-AOL harness trust audit + proof-freeze packet v0`.
    - Preserve `.userdata/dev-harness/harness_runs/20260427_222635/` as scoped deploy proof only.
-   - Current honest outcome: post-drop guard run `.userdata/dev-harness/harness_runs/20260427_225909/` aborts at `blocked_untrusted_drop_menu_exit_primitive`; the filtered multidrop path never proves exact-20 selection or `Multidrop` return (`selected_stacks=0 total_selected_qty=0` after `TOGGLE_ENTRY` / `MARK_WITH_COUNT`), so no save/lighter/fire claim may proceed.
+   - Current honest outcome: the one instrumented diagnostic run `.userdata/dev-harness/harness_runs/20260427_232220/` aborts at `blocked_untrusted_drop_filter_or_inventory_visibility`; filtered Multidrop has no visible/selectable `2x4`/plank row, so no exact-count, confirm-return, save, lighter, or fire claim may proceed.
 
 2. **Smart Zone Manager live layout verification packet v0.**
    - Verify the actual generated Smart Zone layout on a clean/disposable live path.
@@ -41,7 +41,7 @@ This is not permission to wander around a live save and call vibes evidence. It 
 
 ## Success state
 
-- [x] Fuel continuation behind the green brazier deploy gate has an honest outcome: non-green run `.userdata/dev-harness/harness_runs/20260427_225909/` names `blocked_untrusted_drop_menu_exit_primitive`; no save request, post-fuel mtime, current-tile `2x4`, lighter, or `fd_fire` proof is credited.
+- [x] Fuel continuation behind the green brazier deploy gate has an honest outcome: non-green run `.userdata/dev-harness/harness_runs/20260427_232220/` names `blocked_untrusted_drop_filter_or_inventory_visibility`; no count selection, confirm-return, save request, post-fuel mtime, current-tile `2x4`, lighter, or `fd_fire` proof is credited.
 - [ ] Smart Zone Manager live layout verification has a clean/disposable actual-playtest packet with screenshots and/or exact zone metadata proving generated zones are separate where intended and overlap only when explicitly allowed, or a named non-green UI/harness blocker.
 - [ ] Player-lit fire/bandit signal verification, if reached, proves real player-action ignition, actual `fd_fire`/smoke state, bounded wait/time passage, and bandit signal response with matching artifacts; otherwise it stays blocked behind the fuel gate.
 - [ ] Andi reports each item with evidence class boundaries intact: what is live product proof, what is deterministic support, what is startup/load, and what remains unproven.
