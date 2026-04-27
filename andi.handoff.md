@@ -39,17 +39,16 @@ This is **not** real-fire proof and not bandit product proof. It is deploy proof
 
 ## Recommended next evidence target
 
-Next work is **Smart Zone Manager live layout verification packet v0** on a clean/disposable actual-playtest path.
+Next work is **harness trust-audit / proof-freeze consolidation** or a Schani/Josef-named next audit primitive.
 
-Proof burden:
+Smart Zone Manager live layout verification is no longer the next target. It is implemented-but-unproven in Josef's playtest package:
 
-- capture/generated zone positions after creation and reopen;
-- prove intended-separate zones do not share a tile;
-- allow overlaps only where explicitly intended by the deterministic allowlist;
-- use screenshots and/or exact saved/UI zone metadata as live product proof;
-- treat deterministic geometry tests as support only, not product closure;
-- do not reuse the contaminated old McWilliams Smart Zone macro as closure proof;
-- if the clean live path cannot honestly reach or inspect generated layout, name the UI/harness blocker instead of closing the claim.
+- the prior bounded attempts exhausted the Smart Zone live/UI budget without generated-layout proof;
+- the current-runtime follow-up `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` is startup/load red only;
+- OCR on `failure_timeout.png` says `Dunn has no characters to load`;
+- no Smart Zone feature steps ran and no product layout proof is credited.
+
+Do **not** run another Smart Zone clean-profile probe unless Schani/Josef explicitly reopen it after a materially repaired loadable-profile/UI primitive. Do not reuse the contaminated old McWilliams Smart Zone macro as closure proof.
 
 Fire/player-lit bandit signal work stays blocked behind fuel. Do not continue to lighter/final `fd_fire` until a post-fuel same-run save/writeback advances mtime and saved-map metadata proves current-tile `f_brazier` plus exact `2x4`.
 
