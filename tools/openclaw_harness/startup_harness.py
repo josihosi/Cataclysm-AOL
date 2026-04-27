@@ -1993,6 +1993,175 @@ def apply_screen_text_abort_guard(
     return True
 
 
+def evaluate_screen_text_expectation(
+    screen_text_report: Dict[str, Any],
+    patterns: List[str],
+) -> Dict[str, Any]:
+    matches = find_screen_text_matches(screen_text_report, patterns)
+    matched_patterns = {str(match.get("pattern", "")) for match in matches}
+    missing = [pattern for pattern in patterns if pattern not in matched_patterns]
+    return {
+        "status": "matched" if patterns and not missing else ("not_requested" if not patterns else "missing"),
+        "patterns": patterns,
+        "matches": matches,
+        "missing": missing,
+        "source": str(screen_text_report.get("json_path", "") or screen_text_report.get("source_png", "")),
+    }
+
+
+def screen_summary_path(screen_summary: Dict[str, Any]) -> str:
+    return str(screen_summary.get("png_path", "") or screen_summary.get("path", ""))
+
+
+def screen_checkpoint_verdict(
+    *,
+    screen_summary: Dict[str, Any],
+    expected_visible_fact: str,
+    text_expectation: Optional[Dict[str, Any]] = None,
+    ocr_requested: bool = False,
+) -> Tuple[str, List[str]]:
+    issues: List[str] = []
+    if not screen_summary:
+        return "yellow_step_no_immediate_screen_or_metadata", ["no_screen_or_metadata_artifact"]
+    if not screen_summary.get("peekaboo_success"):
+        return "red_step_screen_capture_failed", ["screen_capture_failed"]
+    if screen_summary.get("version_matches_runtime_paths") is False:
+        issues.append("runtime_version_mismatch")
+
+    if not expected_visible_fact:
+        issues.append("missing_expected_visible_fact")
+    if ocr_requested and text_expectation is None:
+        issues.append("ocr_without_expected_text_guard")
+    if text_expectation is not None:
+        if text_expectation.get("status") == "missing":
+            return "red_step_expected_screen_text_missing", issues + ["expected_screen_text_missing"]
+        if text_expectation.get("status") == "matched":
+            if issues:
+                return "yellow_step_screen_text_matched_with_caveats", issues
+            return "green_step_screen_text_guarded", issues
+
+    if issues:
+        return "yellow_step_screen_checkpoint_caveated", issues
+    return "green_step_screen_checkpoint_named", issues
+
+
+def auto_step_action_description(report: Dict[str, Any]) -> str:
+    kind = str(report.get("kind", "")).strip()
+    if kind == "press":
+        return "peekaboo press sequence " + json.dumps(report.get("keys", []), ensure_ascii=False)
+    if kind == "type":
+        return "peekaboo type text" + (" and submit" if report.get("submit") else "")
+    if kind == "capture":
+        return "capture screenshot / optional OCR"
+    if kind in {"long_wait", "wait_action"}:
+        return "open bounded wait menu and select duration"
+    if kind == "advance_turns":
+        return f"send one-turn wait key {int(report.get('count', 0) or 0)} time(s)"
+    if kind == "wait":
+        return f"sleep wall-clock {report.get('seconds', '')} second(s)"
+    if kind.startswith("debug_"):
+        return f"debug helper primitive {kind}"
+    return kind or "scenario step"
+
+
+def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    ledger: List[Dict[str, Any]] = []
+    for report in step_reports:
+        label = str(report.get("label", "")).strip()
+        kind = str(report.get("kind", "")).strip().lower()
+        expected_visible_fact = str(report.get("expected_visible_fact", "")).strip()
+        screen_summary: Dict[str, Any] = {}
+        text_expectation: Optional[Dict[str, Any]] = None
+        ocr_requested = False
+
+        if isinstance(report.get("screen_after"), dict):
+            screen_summary = report["screen_after"]
+            if isinstance(report.get("screen_after_text_expectation"), dict):
+                text_expectation = report["screen_after_text_expectation"]
+            ocr_requested = isinstance(report.get("screen_after_text"), dict)
+        elif isinstance(report.get("screen"), dict):
+            screen_summary = report["screen"]
+            if isinstance(report.get("screen_text_expectation"), dict):
+                text_expectation = report["screen_text_expectation"]
+            ocr_requested = isinstance(report.get("screen_text"), dict)
+
+        issues: List[str] = []
+        if isinstance(report.get("abort"), dict):
+            verdict = "red_step_aborted_by_screen_text_guard"
+            issues.append("screen_text_abort_guard")
+        elif kind in {"long_wait", "wait_action"} and isinstance(report.get("wait_step_ledger"), dict):
+            wait_verdict = str(report["wait_step_ledger"].get("verdict", ""))
+            if wait_verdict.startswith("green"):
+                verdict = "green_wait_step_proven"
+            elif wait_verdict.startswith("blocked"):
+                verdict = "blocked_wait_step_unproven"
+            else:
+                verdict = "yellow_wait_step_unproven"
+            issues.extend(str(issue) for issue in report["wait_step_ledger"].get("issues", []))
+        else:
+            verdict, issues = screen_checkpoint_verdict(
+                screen_summary=screen_summary,
+                expected_visible_fact=expected_visible_fact,
+                text_expectation=text_expectation,
+                ocr_requested=ocr_requested,
+            )
+
+        evidence_artifact = screen_summary_path(screen_summary)
+        if not evidence_artifact and kind in {"long_wait", "wait_action"}:
+            evidence_artifact = str(report.get("wait_step_ledger", {}).get("wait_menu_artifact", ""))
+        if not evidence_artifact:
+            evidence_artifact = "probe.report.json:steps"
+
+        ledger.append({
+            "index": report.get("index"),
+            "primitive_step": label,
+            "kind": kind,
+            "preconditions": str(report.get("preconditions", "previous scenario gate allowed this step; profile/world/fixture from probe contract")),
+            "action": str(report.get("action_description", "") or auto_step_action_description(report)),
+            "expected_immediate_state": str(report.get("expected_immediate_state", "") or expected_visible_fact or "step-local state must be observed before this can support feature proof"),
+            "evidence_artifact": evidence_artifact,
+            "expected_visible_fact": expected_visible_fact,
+            "screen_text_expectation": text_expectation or {},
+            "failure_rule": str(report.get("failure_rule", "missing/wrong screen, failed OCR guard, stale runtime, or absent state metadata makes this non-green")),
+            "next_step_gate": str(report.get("next_step_gate", "next step may run mechanically, but feature closure requires this ledger row to be green")),
+            "issues": issues,
+            "verdict": verdict,
+        })
+    return ledger
+
+
+def summarize_probe_step_ledger(step_ledger: List[Dict[str, Any]]) -> Dict[str, Any]:
+    verdicts = [str(row.get("verdict", "")) for row in step_ledger]
+    red_or_blocked = [row for row in step_ledger if str(row.get("verdict", "")).startswith(("red", "blocked"))]
+    yellow = [row for row in step_ledger if str(row.get("verdict", "")).startswith("yellow")]
+    green = [row for row in step_ledger if str(row.get("verdict", "")).startswith("green")]
+    if red_or_blocked:
+        status = "red_step_local_proof_failed"
+    elif yellow:
+        status = "yellow_step_local_proof_incomplete"
+    elif step_ledger and len(green) == len(step_ledger):
+        status = "green_step_local_proof"
+    else:
+        status = "no_feature_steps"
+    return {
+        "status": status,
+        "count": len(step_ledger),
+        "green_count": len(green),
+        "yellow_count": len(yellow),
+        "red_or_blocked_count": len(red_or_blocked),
+        "verdicts": verdicts,
+        "non_green_steps": [
+            {
+                "label": str(row.get("primitive_step", "")),
+                "verdict": str(row.get("verdict", "")),
+                "issues": row.get("issues", []),
+            }
+            for row in step_ledger if not str(row.get("verdict", "")).startswith("green")
+        ],
+        "review_rule": "Artifact matches are not feature proof unless every scenario step has green step-local proof.",
+    }
+
+
 def render_blink_compare(
     run_dir: Path,
     label: str,
@@ -3715,9 +3884,12 @@ def execute_probe_steps(
             report["screen"] = capture.get("screen_summary", {})
             if expected_visible_fact:
                 report["screen"]["expected_visible_fact"] = expected_visible_fact
+            expected_screen_text_patterns = normalize_screen_text_patterns(
+                step.get("expected_screen_text_contains", [])
+            )
             if bool(step.get("extract_text", False)) or normalize_screen_text_patterns(
                 step.get("abort_if_text_contains", [])
-            ):
+            ) or expected_screen_text_patterns:
                 screen_text_report = capture_screen_text_artifact(
                     run_dir,
                     label,
@@ -3725,6 +3897,11 @@ def execute_probe_steps(
                     tail_lines=int(step.get("extract_text_tail_lines", 8) or 8),
                 )
                 report["screen_text"] = screen_text_report
+                if expected_screen_text_patterns:
+                    report["screen_text_expectation"] = evaluate_screen_text_expectation(
+                        screen_text_report,
+                        expected_screen_text_patterns,
+                    )
                 if apply_screen_text_abort_guard(report, step, screen_text_report):
                     reports.append(report)
                     return reports
@@ -3740,9 +3917,12 @@ def execute_probe_steps(
             report["screen_after"] = capture.get("screen_summary", {})
             if expected_visible_fact:
                 report["screen_after"]["expected_visible_fact"] = expected_visible_fact
+            expected_screen_text_patterns = normalize_screen_text_patterns(
+                step.get("expected_screen_text_after_contains", step.get("expected_screen_text_contains", []))
+            )
             if bool(step.get("extract_text_after_capture", False)) or normalize_screen_text_patterns(
                 step.get("abort_if_text_contains", [])
-            ):
+            ) or expected_screen_text_patterns:
                 screen_text_report = capture_screen_text_artifact(
                     run_dir,
                     f"{label}.after",
@@ -3750,6 +3930,11 @@ def execute_probe_steps(
                     tail_lines=int(step.get("extract_text_tail_lines", step.get("extract_text_after_capture_tail_lines", 8)) or 8),
                 )
                 report["screen_after_text"] = screen_text_report
+                if expected_screen_text_patterns:
+                    report["screen_after_text_expectation"] = evaluate_screen_text_expectation(
+                        screen_text_report,
+                        expected_screen_text_patterns,
+                    )
                 if apply_screen_text_abort_guard(report, step, screen_text_report):
                     reports.append(report)
                     return reports
@@ -4159,6 +4344,7 @@ def probe_proof_classification(
     matches_by_pattern: List[Dict[str, Any]],
     wait_step_summary: Optional[Dict[str, Any]] = None,
     abort_report: Optional[Dict[str, Any]] = None,
+    step_ledger_summary: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     step_count = len(step_reports)
     matched_artifacts = any(entry.get("lines") for entry in matches_by_pattern)
@@ -4168,13 +4354,23 @@ def probe_proof_classification(
     startup_clean_for_feature_steps = bool(startup_classification.get("startup_clean_for_feature_steps", False))
     startup_feature_proof = bool(startup_classification.get("feature_proof", False))
     wait_status = str((wait_step_summary or {}).get("status", "")).strip()
+    step_ledger_status = str((step_ledger_summary or {}).get("status", "")).strip()
     has_wait_blocker = wait_status in {"blocked_wait_step", "yellow_wait_step_unverified"}
+    has_step_ledger_blocker = step_ledger_status in {
+        "red_step_local_proof_failed",
+        "yellow_step_local_proof_incomplete",
+    }
     if abort_report is not None:
         status = "red" if str(verdict).startswith("blocked") else "yellow"
         feature_proof = False
     elif has_wait_blocker:
         status = "red" if wait_status.startswith("blocked") else "yellow"
         feature_proof = False
+    elif has_step_ledger_blocker:
+        status = "red" if step_ledger_status.startswith("red") else "yellow"
+        feature_proof = False
+        if verdict == "artifacts_matched":
+            verdict = step_ledger_status
     elif step_count <= 0:
         status = "yellow"
         feature_proof = False
@@ -4184,8 +4380,13 @@ def probe_proof_classification(
         feature_proof = False
         verdict = "startup_gate_not_clean_artifact_match_inconclusive"
     elif verdict == "artifacts_matched" and step_count > 0 and matched_artifacts:
-        status = "green"
-        feature_proof = True
+        if step_ledger_status == "green_step_local_proof":
+            status = "green"
+            feature_proof = True
+        else:
+            status = "yellow"
+            feature_proof = False
+            verdict = "step_local_proof_missing_artifact_match_inconclusive"
     elif verdict.startswith("blocked") or verdict.startswith("inconclusive"):
         status = "red" if verdict.startswith("blocked") else "yellow"
         feature_proof = False
@@ -4206,7 +4407,8 @@ def probe_proof_classification(
         "artifact_patterns": artifact_patterns,
         "matched_artifact_patterns": [entry.get("pattern", "") for entry in matches_by_pattern if entry.get("lines")],
         "wait_step_status": wait_status,
-        "rule": "Startup/load evidence is never feature proof; feature classification requires a clean startup gate plus step-local evidence with matched artifacts and no blocked/yellow wait ledger.",
+        "step_ledger_status": step_ledger_status,
+        "rule": "Startup/load evidence is never feature proof; feature classification requires a clean startup gate, green step-local ledger rows, matched artifacts, and no blocked/yellow wait ledger.",
     }
 
 
@@ -5090,6 +5292,14 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     if patrol_summary is not None:
         companion_helpers.append(write_patrol_summary(run_dir, patrol_summary))
     wait_step_summary = summarize_wait_step_ledgers(step_reports)
+    step_ledger = build_probe_step_ledger(step_reports)
+    step_ledger_summary = summarize_probe_step_ledger(step_ledger)
+    write_json(run_dir / f"{mode}.step_ledger.json", {
+        "mode": mode,
+        "scenario": str(scenario.get("name", args.scenario)),
+        "step_ledger_summary": step_ledger_summary,
+        "step_ledger": step_ledger,
+    })
 
     verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
@@ -5102,6 +5312,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         verdict = "blocked_wait_step_ledger"
     elif wait_step_summary["status"] == "yellow_wait_step_unverified":
         verdict = "yellow_wait_step_unverified"
+    elif step_ledger_summary["status"] == "red_step_local_proof_failed":
+        verdict = "blocked_step_local_proof"
+    elif step_ledger_summary["status"] == "yellow_step_local_proof_incomplete":
+        verdict = "yellow_step_local_proof_incomplete"
     elif any(entry["lines"] for entry in matches_by_pattern):
         verdict = "artifacts_matched"
     elif not artifact_text.strip():
@@ -5116,6 +5330,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         matches_by_pattern=matches_by_pattern,
         wait_step_summary=wait_step_summary,
         abort_report=abort_report,
+        step_ledger_summary=step_ledger_summary,
     )
 
     report = {
@@ -5140,6 +5355,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         },
         "startup": start_result,
         "steps": step_reports,
+        "step_ledger": step_ledger,
+        "step_ledger_summary": step_ledger_summary,
         "derived_screens": derived_screen_reports,
         "companion_helpers": companion_helpers,
         "screen": {
