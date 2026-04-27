@@ -38,7 +38,7 @@ Use `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md` as the d
 - A bounded synthetic smoke-source shortcut is allowed only when labeled `synthetic smoke-source/live-signal proof`; it proves smoke-source live-signal behavior, not ordinary player-lit fire.
 - The full player-fire recipe remains the honest product bar: deployed brazier, wood beside it, firewood source on the wood, lighter/ignition through normal game mechanics, visible fire/smoke, safe player placement and survival needs handled, several-hour wait, and matched-site bandit signal evidence.
 - Clean threshold-surviving light proof is now satisfied for the synthetic loaded-map `fd_fire` source path by run `.userdata/dev-harness/harness_runs/20260427_114034/`: current-runtime probe at commit `daa2f1694c`, night fire source, `light_packets=1`, horde light signal power, and `matched_light_sites=1` / `refreshed_sites=1` while inside the 40 OMT scan envelope. This is **not** full player-lit-fire proof.
-- Remaining full player-fire product proof, paired refreshed no-signal control, range-matrix/candidate split audit, signal decay, and hold/chill evidence should be finished or explicitly moved to the playtest package under the same 4-attempt rule.
+- Full player-fire product proof is now in Josef's playtest package as implemented-but-unproven: the agent-side route proved the scanner on synthetic loaded-map `fd_fire`, but the normal brazier/fuel/lighter route failed at tile-level fire creation in run `.userdata/dev-harness/harness_runs/20260427_123256/`. Keep fire creation unproven separate from bandit scan consumption from that player fire unproven. Remaining paired refreshed no-signal control, range-matrix/candidate split audit, signal decay, and hold/chill evidence should be finished or explicitly moved to the playtest package under the same escalation discipline.
 
 ### 2. Smart Zone clean-save live proof, if still unproven
 
@@ -66,7 +66,7 @@ Known closed notes should stay closed: Basecamp medical consumable readiness, Sm
 ## Success state
 
 - [x] The active Basecamp job-spam debounce lane is closed/checkpointed honestly before this stack became active.
-- [ ] The bandit live signal/site-bootstrap stack has either live/source-hook proof for the remaining smoke/fire/light product claims or a precise Josef playtest package for the exact unproven implemented behavior.
+- [x] The bandit live signal/site-bootstrap player-fire proof has either live/source-hook proof or a precise Josef playtest package for the exact unproven implemented behavior.
 - [ ] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
 - [ ] The Smart Zone clean-save live proof is either honestly run on a clean disposable profile or converted into a precise Josef playtest package without reopening the contaminated McWilliams macro.
-- [ ] `Plan.md`, `TODO.md`, `TESTING.md`, and `SUCCESS.md` stop calling current debug notes parked/review-only when Josef has explicitly greenlit another finish pass.
+- [x] `Plan.md`, `TODO.md`, `TESTING.md`, and `SUCCESS.md` stop calling current debug notes parked/review-only when Josef has explicitly greenlit another finish pass.

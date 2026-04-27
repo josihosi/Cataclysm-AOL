@@ -59,9 +59,11 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 Retained evidence classification for `Bandit live signal + site bootstrap correction v0`:
 - raw saved `fd_fire` / `fd_smoke` fixtures prove map-field reader / consumer behavior only
 - synthetic smoke proof proves only synthetic smoke-source/live-signal behavior and must be labeled as such
-- player-fire product proof still requires the real brazier/wood/lighter/player-action chain and fresh matched-site evidence
-- threshold-surviving light proof for the synthetic loaded-map `fd_fire` source path is now covered by run `.userdata/dev-harness/harness_runs/20260427_114034/`: current-runtime probe at commit `daa2f1694c`, night `light_packets=1`, horde light signal, and `matched_light_sites=1` / `refreshed_sites=1`; this is not full player-lit-fire proof
-- remaining player-fire product proof still requires the real brazier/wood/lighter/player-action chain plus paired no-signal/control evidence; attempt 3 (`bandit.live_world_nearby_camp_real_fire_tile_audit_mcw`, run `.userdata/dev-harness/harness_runs/20260427_123256/`) failed earlier at fire creation because `tile_fire_audit.east.json` found no target-tile `fd_fire` and the live scan logged `signal_packet=no`; do not spend the remaining budget on another GUI-key variant unless a new exact primitive first proves player-created `fd_fire`; if the implemented live behavior cannot be proven after the escalation rule, write a Josef playtest package with the manual recipe and exact close condition instead of closing or parking it
+- threshold-surviving light proof for the synthetic loaded-map `fd_fire` source path is covered by run `.userdata/dev-harness/harness_runs/20260427_114034/`: current-runtime probe at commit `daa2f1694c`, night `light_packets=1`, horde light signal, and `matched_light_sites=1` / `refreshed_sites=1`; this is not full player-lit-fire proof
+- player-fire product proof is now implemented-but-unproven in Josef's playtest package: attempt 3 (`bandit.live_world_nearby_camp_real_fire_tile_audit_mcw`, run `.userdata/dev-harness/harness_runs/20260427_123256/`) failed at fire creation because `tile_fire_audit.east.json` found no target-tile `fd_fire` and the live scan logged `signal_packet=no`; keep the two missing facts separated as fire creation unproven vs bandit scan consumption from that player fire unproven
+
+Current agent-side target after that handoff:
+- Smart Zone clean-save live proof: fix the small clean-profile/startup readiness seam if needed, then run a clean live proof; do not use the contaminated old McWilliams macro as closure proof
 
 ### Recently closed validation references
 
