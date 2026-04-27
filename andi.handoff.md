@@ -6,15 +6,15 @@
 - active queue: `TODO.md`
 - validation ledger: `TESTING.md`
 - success ledger: `SUCCESS.md`
-- active contract: `doc/basecamp-job-spam-debounce-exceptions-packet-v0-2026-04-26.md`
-- next greenlit contract: `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`
-- reopened bandit contract: `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`
+- active contract: `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`
+- closed prerequisite: `doc/basecamp-job-spam-debounce-exceptions-packet-v0-2026-04-26.md`
+- first reopened product-proof contract: `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`
 
 ## Current state
 
-Active lane remains `Basecamp job spam debounce + locker/patrol exceptions packet v0` unless Schani explicitly interrupts it.
+Active lane is now `C-AOL debug-proof finish stack v0`.
 
-After that, Josef has greenlit `C-AOL debug-proof finish stack v0`. Do not treat the remaining debug-proof items as parked/review-only. Finish them or move implemented-but-unproven behavior to Josef's playtest package under the attempt rule below.
+`Basecamp job spam debounce + locker/patrol exceptions packet v0` is closed/checkpointed by `5ecf5ebdf2 Debounce basecamp job chatter`. Do not treat the remaining debug-proof items as parked/review-only. Finish them or move implemented-but-unproven behavior to Josef's playtest package under the attempt rule below.
 
 ## Attempt rule
 

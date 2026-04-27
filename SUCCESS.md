@@ -55,10 +55,10 @@ Notes:
 
 ## C-AOL debug-proof finish stack v0
 
-Status: GREENLIT / NEXT AFTER CURRENT ACTIVE LANE
+Status: ACTIVE / GREENLIT
 
 Success state:
-- [ ] The active Basecamp job-spam debounce lane is either closed honestly or placed on Josef's playtest package if implemented-but-unproven after the attempt budget.
+- [x] The active Basecamp job-spam debounce lane is closed/checkpointed honestly before this stack became active.
 - [ ] The reopened bandit live signal/site-bootstrap stack has live/source-hook proof for remaining smoke/fire/light product claims, or a precise Josef playtest package for exact implemented-but-unproven behavior.
 - [ ] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
 - [ ] Smart Zone clean-save live proof is either honestly run on a clean disposable profile or converted into a precise Josef playtest package without reopening the contaminated McWilliams macro.
@@ -105,7 +105,7 @@ Success state:
 - [ ] Signal observation/decay cadence is separate from dispatch decision cadence, with event-driven creation and reviewer-readable maintenance. _(Partial: signal observation/mark refresh now runs on a `5_minutes` cadence while dispatch stays `30_minutes`; the current wait proof observes seeded smoke/fire fields decaying to no-signal, but decay policy still needs reviewer-readable design/coverage.)_
 - [ ] Instrumentation distinguishes empty ownership, no signal packet, below-threshold signal, rejected-by-range, cadence skip, and hold/chill decisions. _(Partial: empty ownership, no signal packet, below-threshold smoke/light, smoke/light packet counts, matched smoke/light site counts, rejected-by-range, signal packet id, candidate distance, cap used, cadence skip, missing concrete member, and route failure are now logged; full hold/chill signal reasons remain open.)_
 - [ ] Deterministic tests cover the range matrix, site bootstrap serialization, signal-specific caps, and candidate filtering/scoring split. _(Partial: site bootstrap serialization/reconciliation and live-signal mark ledger refresh/capping are covered; candidate scoring split and full range matrix remain open.)_
-- [ ] At least one bounded smoke-source/live-signal proof shows a smoke source under live wait/time passage producing or refreshing a live bandit candidate/mark on a real owned-site path during/around a several-hour `|` wait, plus one no-signal control for the same setup. This may be either the full player-action fire chain or an explicitly labeled synthetic smoke-source shortcut. If the shortcut is used, park the full player-fire proof separately; the full proof remains: deploy a brazier, place wood next to it, put the firewood source on top of the wood, have/place a lighter, light the fire through normal in-game mechanics, visibly produce fire/smoke while the player stays safe and basic needs such as thirst/water are handled. _(Raw saved-field run `.userdata/dev-harness/harness_runs/20260427_014408/` is retained as map-field reader proof only.)_
+- [ ] At least one bounded smoke-source/live-signal proof shows a smoke source under live wait/time passage producing or refreshing a live bandit candidate/mark on a real owned-site path during/around a several-hour `|` wait, plus one no-signal control for the same setup. This may be either the full player-action fire chain or an explicitly labeled synthetic smoke-source shortcut. If the shortcut is used, keep the full player-fire proof open or move it to Josef's playtest package under the 4-attempt rule; the full proof remains: deploy a brazier, place wood next to it, put the firewood source on top of the wood, have/place a lighter, light the fire through normal in-game mechanics, visibly produce fire/smoke while the player stays safe and basic needs such as thirst/water are handled. _(Raw saved-field run `.userdata/dev-harness/harness_runs/20260427_014408/` is retained as map-field reader proof only.)_
 
 Notes:
 - Canonical contract lives at `doc/bandit-live-signal-site-bootstrap-correction-v0-2026-04-26.md`.

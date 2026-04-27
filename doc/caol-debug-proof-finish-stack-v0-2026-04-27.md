@@ -1,6 +1,6 @@
 # C-AOL debug-proof finish stack v0 (2026-04-27)
 
-Status: GREENLIT / NEXT AFTER CURRENT ACTIVE LANE
+Status: ACTIVE / GREENLIT
 
 Source: Josef's 2026-04-27 handoff after the C-AOL status readout. This supersedes the old "move on / Josef review" posture for current debug-proof notes.
 
@@ -8,7 +8,7 @@ Source: Josef's 2026-04-27 handoff after the C-AOL status readout. This supersed
 
 Finish the current C-AOL debug notes instead of leaving implemented-but-unproven work in a vague parked state.
 
-The current Basecamp job-spam debounce lane remains active unless Schani explicitly interrupts it. After that, Andi should work this stack in order and move each item to its next honest state boundary.
+The Basecamp job-spam debounce prerequisite is closed/checkpointed. Andi should now work this stack in order and move each item to its next honest state boundary.
 
 ## Escalation rule for this stack
 
@@ -23,9 +23,9 @@ Failed proof is not completion. It is also not permission to loop forever. Sehr 
 
 ## Greenlit stack
 
-### 0. Current active Basecamp message-debug lane
+### 0. Closed prerequisite: Basecamp message-debug lane
 
-Finish `Basecamp job spam debounce + locker/patrol exceptions packet v0` first unless Schani explicitly supersedes it. This is part of the current debug-correction stack, not unrelated housekeeping.
+`Basecamp job spam debounce + locker/patrol exceptions packet v0` is closed/checkpointed by `5ecf5ebdf2 Debounce basecamp job chatter`. Do not reopen it unless new evidence shows the landed debounce lied.
 
 ### 1. Bandit live signal + site bootstrap product proof finish
 
@@ -65,7 +65,7 @@ Known closed notes should stay closed: Basecamp medical consumable readiness, Sm
 
 ## Success state
 
-- [ ] The active Basecamp job-spam debounce lane is either closed honestly or placed on Josef's playtest package if implemented-but-unproven after the attempt budget.
+- [x] The active Basecamp job-spam debounce lane is closed/checkpointed honestly before this stack became active.
 - [ ] The bandit live signal/site-bootstrap stack has either live/source-hook proof for the remaining smoke/fire/light product claims or a precise Josef playtest package for the exact unproven implemented behavior.
 - [ ] Signal range, candidate/scoring split, decay/maintenance, and hold/chill instrumentation are either completed with tests/evidence or explicitly listed as implemented-but-unproven playtest items.
 - [ ] The Smart Zone clean-save live proof is either honestly run on a clean disposable profile or converted into a precise Josef playtest package without reopening the contaminated McWilliams macro.
