@@ -1,0 +1,263 @@
+{
+  "name": "smart_zone.live_probe_harness_audit_retry_no_setup",
+  "description": "Supported-step Smart Zone Manager harness-audit retry using a fresh/loadable profile with profile-local function-key bindings for harness reliability; live Zone Manager add flow, prompt/result trace, row coordinate-label trace, then saved-zone metadata inspection.",
+  "profile": "smart-zone-audit-live-20260429e",
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "[harness][smart_zone] prompt accepted",
+    "[harness][smart_zone] result success=1",
+    "openclaw_harness_ui_trace: component=zone_manager_row"
+  ],
+  "recommended_test_command": "./tests/cata_test \"[smart_zone]\"",
+  "recommended_probe_command": "python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_probe_harness_audit_retry_no_setup --profile smart-zone-audit-live-20260429e",
+  "evidence_contract": {
+    "green_path": "loadable character -> real Zone Manager UI -> Basecamp: Storage add flow -> Smart Zone prompt accepted -> reopened/listed generated zones with row coordinate-label trace and saved-zone metadata inspected after run",
+    "non_green_rule": "startup/load, preexisting zone metadata, unguarded key typing, or metadata without the live prompt/result and row-coordinate trace is not feature proof; expected_visible_fact screenshots are not credited unless paired with required screen-text guards."
+  },
+  "steps": [
+    {
+      "label": "gameplay_loaded_screen_gate",
+      "kind": "wait",
+      "seconds": 3.0,
+      "capture_after": true,
+      "expected_visible_fact": "normal gameplay is loaded before Zone Manager input"
+    },
+    {
+      "label": "disable_safe_mode_before_zone_setup",
+      "kind": "press",
+      "keys": [
+        "!"
+      ],
+      "proof_deferred_to_label": "open_zones_manager"
+    },
+    {
+      "label": "open_zones_manager",
+      "kind": "press",
+      "keys": [
+        "f1"
+      ],
+      "capture_after": true,
+      "expected_visible_fact": "Zone Manager UI is visibly open through profile-local F1 binding for DEFAULTMODE zones",
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 24,
+      "expected_screen_text_after_contains": [
+        "Zones manager"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_zone_manager_ui_entry_guard_failed",
+      "abort_reason": "Zone Manager title text missing after open-zones key; stop before add/filter/generation keys."
+    },
+    {
+      "label": "add_zone",
+      "kind": "press",
+      "keys": [
+        "f2"
+      ],
+      "capture_after": true,
+      "expected_visible_fact": "Zone Manager add-zone/type picker flow is open through profile-local F2 binding",
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_screen_text_after_contains": [
+        "select zone type"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_zone_type_picker_ui_entry_guard_failed",
+      "abort_reason": "zone type picker text missing after add-zone key; stop before filter/generation keys."
+    },
+    {
+      "label": "filter_zone_type_picker",
+      "kind": "press",
+      "keys": [
+        "f3"
+      ],
+      "proof_deferred_to_label": "placed_layout_debug_trace",
+      "expected_visible_fact": "zone type picker filter prompt is active through profile-local F3 binding"
+    },
+    {
+      "label": "type_storage_zone_filter",
+      "kind": "type",
+      "text": "Basecamp: Storage",
+      "proof_deferred_to_label": "placed_layout_debug_trace",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "Zone type picker filter has been submitted for Basecamp: Storage before selecting the filtered row",
+      "expected_screen_text_after_contains": [
+        "Basecamp",
+        "Storage"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_storage_zone_filter_guard_failed",
+      "abort_reason": "filtered zone type picker did not show Basecamp Storage text before selection."
+    },
+    {
+      "label": "select_filtered_storage_zone_type",
+      "kind": "press",
+      "keys": [
+        "enter"
+      ],
+      "proof_deferred_to_label": "placed_layout_debug_trace",
+      "settle_seconds": 0.8
+    },
+    {
+      "label": "accept_default_storage_zone_name",
+      "kind": "press",
+      "keys": [
+        "enter"
+      ],
+      "proof_deferred_to_label": "placed_layout_debug_trace",
+      "settle_seconds": 0.8
+    },
+    {
+      "label": "pick_zone_start",
+      "kind": "press",
+      "keys": [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "enter"
+      ],
+      "proof_deferred_to_label": "placed_layout_debug_trace",
+      "delay_ms": 120,
+      "settle_seconds": 0.8
+    },
+    {
+      "label": "move_to_zone_end",
+      "kind": "press",
+      "keys": [
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down"
+      ],
+      "proof_deferred_to_label": "placed_layout_debug_trace",
+      "delay_ms": 120,
+      "settle_seconds": 0.8
+    },
+    {
+      "label": "confirm_zone_end",
+      "kind": "press",
+      "keys": [
+        "enter"
+      ],
+      "proof_deferred_to_label": "placed_layout_debug_trace",
+      "settle_seconds": 0.8
+    },
+    {
+      "label": "accept_smart_zone_prompt",
+      "kind": "press",
+      "keys": [
+        "f4"
+      ],
+      "capture_after": true,
+      "expected_visible_fact": "Smart Zone Manager prompt/result checkpoint after accepting generation (accepted through profile-local F4 YES binding)",
+      "settle_seconds": 0.8,
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_screen_text_after_contains": [
+        "Smart Zone"
+      ],
+      "abort_on_screen_text_expectation_failure": false
+    },
+    {
+      "label": "post_generation_settle",
+      "kind": "wait",
+      "seconds": 1.0,
+      "proof_deferred_to_label": "placed_layout_debug_trace"
+    },
+    {
+      "label": "placed_layout_debug_trace",
+      "kind": "audit_log_contains",
+      "required_patterns": [
+        "[harness][smart_zone] prompt accepted",
+        "[harness][smart_zone] result success=1"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_missing_live_smart_zone_generation_trace",
+      "expected_immediate_state": "debug log contains accepted prompt and successful generated-zone result from this probe's log delta"
+    },
+    {
+      "label": "exit_zones_manager",
+      "kind": "press",
+      "keys": [
+        "escape"
+      ],
+      "proof_deferred_to_label": "zone_manager_row_trace_audit"
+    },
+    {
+      "label": "confirm_save_changes",
+      "kind": "press",
+      "keys": [
+        "f4"
+      ],
+      "proof_deferred_to_label": "zone_manager_row_trace_audit",
+      "expected_visible_fact": " (accepted through profile-local F4 YES binding)"
+    },
+    {
+      "label": "post_save_gameplay_settle",
+      "kind": "wait",
+      "seconds": 1.0,
+      "proof_deferred_to_label": "zone_manager_row_trace_audit"
+    },
+    {
+      "label": "reopen_zones_manager_for_layout_inspection",
+      "kind": "press",
+      "keys": [
+        "f1"
+      ],
+      "capture_after": true,
+      "expected_visible_fact": "Zone Manager UI is visibly open through profile-local F1 binding for DEFAULTMODE zones",
+      "settle_seconds": 0.8
+    },
+    {
+      "label": "zone_manager_row_trace_audit",
+      "kind": "audit_log_contains",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=zone_manager_row",
+        "visible_label=",
+        "compact_label=",
+        "Basecamp fire source"
+      ],
+      "expected_immediate_state": "debug log contains Zone Manager row trace entries with relative coordinate labels for generated Smart Zones"
+    }
+  ],
+  "harness_profile_precondition": {
+    "profile_local_keybindings": "smart-zone-audit-live-20260429e/config/keybindings.json binds DEFAULTMODE zones=F1, ZONES_MANAGER ADD_ZONE=F2, UILIST.FILTER/FILTER/SEARCH=F3, YES=F4 so the proof observes live UI without printable-command delivery ambiguity."
+  }
+}
