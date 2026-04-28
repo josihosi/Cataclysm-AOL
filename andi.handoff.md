@@ -18,33 +18,33 @@ Canonical anchors:
 
 ## Current evidence boundary
 
-Deterministic/code support now covers a camp-owned `camp_intelligence_map`, normal serialize/deserialize support, active target OMT persistence, scout-return writeback into the source camp map, live signal marks writing camp-map signal leads, legacy scalar remembered-memory migration only as fallback, remembered camp-map lead selection through the real live dispatch cadence/report path, two-OMT ordinary scout stand-off, half-day ordinary scout timeout/return through the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, active-outside dogpile blocking, wounded/unready and killed-member dispatch shrinkage, bounded stockpile-pressure willingness, high-threat/poor-reward non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing when risk/reward justifies it, no-opening hold/return in the camp-map decision seam, and green feature-path proof for the sight-avoid and vanished-signal redispatch guardrails.
+Deterministic/code support now covers a camp-owned `camp_intelligence_map`, normal serialize/deserialize support, active target OMT persistence, scout-return writeback into the source camp map, live signal marks writing camp-map signal leads, legacy scalar remembered-memory migration only as fallback, remembered camp-map lead selection through the real live dispatch cadence/report path, two-OMT ordinary scout stand-off, half-day ordinary scout timeout/return through the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, active-outside dogpile blocking, wounded/unready and killed-member dispatch shrinkage, bounded stockpile-pressure willingness, high-threat/poor-reward non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing when risk/reward justifies it, and no-opening hold/return in the camp-map decision seam.
+
+Green feature-path evidence now exists for these named guardrails:
+
+- `bandit.scout_stalker_sight_avoid_live` in `.userdata/dev-harness/harness_runs/20260428_173626/`: saved active scout/member footing, saved turn delta >= 2, same-run `local_gate ... live_existing_active_group=yes`, and claim-scoped `sight_avoid: exposed -> repositioned ... distance=1`.
+- `bandit.camp_map_vanished_signal_redispatch` in `.userdata/dev-harness/harness_runs/20260428_185947/`: saved remembered lead, green bounded 30-minute cadence wait, same-run no-live-signal remembered-lead stalk plan, local-gate `active_job=stalk`, and saved active stalk state with four concrete members.
+- `bandit.variable_roster_tiny_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_193433/`: two-member camp keeps reserve one and dispatches one scout, with saved one-active/one-ready split.
+- `bandit.variable_roster_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_192059/`: five-member camp keeps reserve two and dispatches a two-member stalk, with saved two-active/three-ready split.
+- `bandit.variable_roster_large_cooled_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_193621/`: ten-member camp with prior bandit losses keeps reserve five and dispatches a cooled two-member stalk, with saved two-active/eight-ready split.
 
 Current validation:
 
 - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-- `python3 -m json.tool tools/openclaw_harness/scenarios/bandit.camp_map_vanished_signal_redispatch.json`
+- `python3 -m json.tool` on the relevant variable-roster scenario/fixture files
 - `python3 tools/openclaw_harness/proof_classification_unit_test.py`
 - `git diff --check`
-- `make -j4 TILES=1 LINTJSON=0 ASTYLE=0`
+- `make -j4 tests LINTJSON=0 ASTYLE=0`
 - `./tests/cata_test "[bandit][live_world][camp_map]" --success`
-- `python3 tools/openclaw_harness/startup_harness.py probe bandit.camp_map_vanished_signal_redispatch`
+- the three variable-roster harness probes named above
 
-`bandit.camp_map_vanished_signal_redispatch` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_185947/`: saved preflight camp-map lead state, green bounded 30-minute wait/cadence evidence, same-run no-live-signal remembered-lead dispatch plan (`candidate_reason=remembered_camp_map_lead`, `signal_packet=none`, `reward=13`, `risk=1`, `margin=12`, `members=4`, `reserve=5`, `dispatchable=8`), same-run `local_gate ... active_job=stalk`, and saved active stalk dispatch state with four concrete active members all matched.
-
-`bandit.scout_stalker_sight_avoid_live` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_173626/`: saved active scout/member footing, saved turn delta >= 2, same-run `local_gate ... live_existing_active_group=yes`, and claim-scoped `sight_avoid: exposed -> repositioned ... distance=1` all matched.
-
-These close the vanished-signal redispatch and sight-avoid matrix guardrails only; they do not close stalk/no-opening, variable-roster live sizing, or broader product proof.
+These close their named guardrail slices only. Do **not** inflate them into broader product closure: stalk/no-opening return still needs live proof, and the variable-roster matrix row still needs live high-threat/low-reward plus active-outside dogpile guardrails if Schani wants that row fully closed.
 
 ## Next implementation/proof target
 
-Continue the camp-map ecology contract by proving the remaining named live/product scenarios before attempting product closure:
+Continue the camp-map ecology contract by proving stalk/pressure wait-for-opening and no-opening return through the real path before attempting product closure.
 
-- stalk/pressure wait-for-opening and no-opening return through the real path;
-- variable-roster sizing through the real live path, not only the helper;
-- reviewer-readable reports/logs showing lead source, reward/risk inputs, intent, member count, reserve, opening state, and live-signal-vs-remembered-map driver for those remaining scenarios.
-
-Do **not** rerun `bandit.scout_stalker_sight_avoid_live` or `bandit.camp_map_vanished_signal_redispatch` unless Schani/Josef/Frau explicitly reopen them; follow `Plan.md` / `TODO.md` / `TESTING.md` toward stalk/no-opening return or variable-roster live sizing next.
+Do **not** rerun the green medium/five-member case. Do **not** rerun sight-avoid, vanished-signal, tiny-roster, or large/cooled-roster proofs unless Schani/Josef/Frau explicitly reopen them. Follow `Plan.md` / `TODO.md` / `TESTING.md` toward stalk/no-opening return next, while keeping remaining variable-roster guardrails explicit.
 
 ## Queued after this lane
 

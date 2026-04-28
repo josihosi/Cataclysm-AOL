@@ -69,7 +69,7 @@ Required proof:
 
 Claim: tiny, medium, and large camps size action from current living/ready/home roster, reserve, wounds/unready state, active outside groups, risk/reward, and target confidence rather than fixed folklore.
 
-Status: **partial green feature-path evidence** for the medium/five-member case in `.userdata/dev-harness/harness_runs/20260428_192059/` via `bandit.variable_roster_dispatch_sizing_live`. This proves fixture-shaped five-member footing, roster/reserve/dispatchable reporting, selected stalk pair, and saved 3-ready/2-active state. It does **not** yet close the full row: tiny and large/large-cooled variants plus live high-threat/active-outside guardrails still need named evidence.
+Status: **partial green feature-path evidence** for roster-size dispatch sizing across 2/5/10-member variants: tiny run `.userdata/dev-harness/harness_runs/20260428_193433/` via `bandit.variable_roster_tiny_dispatch_sizing_live`, medium run `.userdata/dev-harness/harness_runs/20260428_192059/` via `bandit.variable_roster_dispatch_sizing_live`, and large/cooled run `.userdata/dev-harness/harness_runs/20260428_193621/` via `bandit.variable_roster_large_cooled_dispatch_sizing_live`. Together these prove fixture-shaped roster footing, roster/reserve/dispatchable reporting, selected scout/stalk member count, and saved ready/active roster split for tiny, medium, and large/cooled cases. This still does **not** close the full row: live high-threat/low-reward and active-outside dogpile guardrails still need named evidence.
 
 Required proof:
 - fixture/precondition proves roster shape for at least 2-, 4/5-, and 7/10-member cases over bounded runs or variants;
