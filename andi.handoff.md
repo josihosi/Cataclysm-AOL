@@ -18,16 +18,19 @@ Canonical anchors:
 
 ## Current evidence boundary
 
-Deterministic/code support now covers a camp-owned `camp_intelligence_map`, normal serialize/deserialize support, active target OMT persistence, scout-return writeback into the source camp map, live signal marks writing camp-map signal leads, legacy scalar remembered-memory migration only as fallback, remembered camp-map lead selection through the real live dispatch cadence/report path, two-OMT ordinary scout stand-off, half-day ordinary scout timeout/return through the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, active-outside dogpile blocking, wounded/unready and killed-member dispatch shrinkage, bounded stockpile-pressure willingness, high-threat/poor-reward non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing when risk/reward justifies it, and no-opening hold/return in the camp-map decision seam.
+Deterministic/code support now covers a camp-owned `camp_intelligence_map`, normal serialize/deserialize support, active target OMT persistence, scout-return writeback into the source camp map, live signal marks writing camp-map signal leads, legacy scalar remembered-memory migration only as fallback, remembered camp-map lead selection through the real live dispatch cadence/report path, two-OMT ordinary scout stand-off, half-day ordinary scout timeout/return through the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, active-outside dogpile blocking, wounded/unready and killed-member dispatch shrinkage, bounded stockpile-pressure willingness, high-threat/poor-reward non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing when risk/reward justifies it, no-opening hold/return in the camp-map decision seam, and green feature-path proof for the sight-avoid guardrail.
 
 Prior validation:
 
+- `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
+- `python3 -m json.tool tools/openclaw_harness/scenarios/bandit.scout_stalker_sight_avoid_live.json`
 - `git diff --check`
 - `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`
-- `./tests/cata_test "[bandit][live_world][camp_map]" --success`
-- `./tests/cata_test "[bandit][live_world]"`
+- `./tests/cata_test "[bandit][live_world]" --success`
+- `make -j4 TILES=1 LINTJSON=0 ASTYLE=0`
+- `python3 tools/openclaw_harness/startup_harness.py probe bandit.scout_stalker_sight_avoid_live`
 
-This is deterministic/code evidence plus live-source-hook wiring evidence only, not live product proof.
+`bandit.scout_stalker_sight_avoid_live` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_173626/`: saved active scout/member footing, saved turn delta >= 2, same-run `local_gate ... live_existing_active_group=yes`, and claim-scoped `sight_avoid: exposed -> repositioned ... distance=1` all matched. This closes that sight-avoid matrix guardrail only; it does not close vanished-signal redispatch or stalk/no-opening proof.
 
 ## Next implementation/proof target
 
@@ -36,8 +39,9 @@ Continue the camp-map ecology contract by proving the newly wired remembered-lea
 - vanished-signal redispatch from remembered scout-confirmed leads;
 - variable-roster sizing through the real live path, not only the helper;
 - stalk/pressure wait-for-opening and no-opening return through the real path;
-- sight-avoid reposition/abort within at most two visible local turns without teleporting;
 - reviewer-readable reports/logs showing lead source, reward/risk inputs, intent, member count, reserve, opening state, and live-signal-vs-remembered-map driver.
+
+Do **not** rerun `bandit.scout_stalker_sight_avoid_live` unless Schani/Josef explicitly reopen it; follow `Plan.md` / `TODO.md` / `TESTING.md` toward vanished-signal redispatch and stalk/no-opening next.
 
 ## Queued after this lane
 
