@@ -1,6 +1,6 @@
 # Andi lane: bandit camp-map risk/reward dispatch v0 (2026-04-28)
 
-Status: READY / NOT YET UNLEASHED
+Status: ACTIVE / UNLEASHED
 
 ## Canon anchors
 
@@ -11,7 +11,7 @@ Status: READY / NOT YET UNLEASHED
 - Bandit live product playtest matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`
 - Ledgers: `Plan.md`, `SUCCESS.md`, `TESTING.md`
 
-## Active instruction when promoted
+## Active instruction
 
 Implement the bandit camp-map risk/reward dispatch packet through the real game path. Do not close it as an evaluator-only helper.
 

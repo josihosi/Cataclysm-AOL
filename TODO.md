@@ -8,33 +8,26 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Cannibal camp night-raid behavior packet v0` live/harness product-proof slice.
+Active target: `Bandit camp-map risk/reward dispatch planning packet v0`.
 
-Current state: deterministic/code substrate is green, and the live matrix has real feature-path evidence under proof-freeze rules for the named cannibal scenarios; only optional labeled bandit-control contrast remains if product review wants it. Green runs:
+Current state: the cannibal night-raid live slice is checkpointed green for the named scenarios; the optional bandit-control contrast is non-blocking unless product review explicitly reopens it. The bandit camp-map lane is now the next unblocked implementation/proof target.
 
-- Day smoke/light pressure: `.userdata/dev-harness/harness_runs/20260428_124902/` — smoke lead, cannibal `active_job=stalk`, `posture=hold_off`, no shakedown/combat-forward.
-- Night local-contact attack window: `.userdata/dev-harness/harness_runs/20260428_124947/` — direct/local contact, `darkness_or_concealment=yes`, `pack_size=2`, `posture=attack_now`, `combat_forward=yes`, `shakedown=no`.
-- Exposed/recent-sight hold-off: `.userdata/dev-harness/harness_runs/20260428_125138/` — bounded 20-turn live window, cannibal `sight_exposure=recent`, `posture=hold_off`, no shakedown/combat-forward.
-- Daylight/high-threat negative: `.userdata/dev-harness/harness_runs/20260428_135323/` — current runtime `48abd82de9`, daylight smoke/light scan, cannibal `threat=3`, `opportunity=2`, `darkness_or_concealment=no`, `posture=hold_off`, no shakedown/combat-forward.
-- Fixture-bias smoke: `repeatability --count 2 cannibal.live_world_day_smoke_pressure_mcw`, stable pass in `.userdata/dev-harness/harness_runs/20260428_125319/` and `.userdata/dev-harness/harness_runs/20260428_125342/`.
-- Save/writeback persistence: `.userdata/dev-harness/harness_runs/20260428_130948/` — day-smoke creates active cannibal `stalk` group, guarded save advances player-save mtime, saved `dimension_data.gsav` contains `profile=cannibal_camp`, active group/target, `active_member_ids=[4,5]`, and `known_recent_marks` with `live_smoke@...`; `intelligence_map.leads=[]` is explicitly out of scope, not credited.
-- No-fixture reload support: `.userdata/dev-harness/harness_runs/20260428_131031/` — fresh startup without fixture reinstall plus metadata audit still sees the active cannibal group/profile/target/member state and `known_recent_marks` smoke signal.
+Known footing:
 
-Playtest matrix: `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md`.
+- Product source: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`.
+- Contract: `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
+- Andi lane: `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
+- Live matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
+- Existing deterministic/code support already covers a camp-owned `camp_intelligence_map`, serialization/deserialization, active target OMT persistence, scout-return writeback into the source camp map, and legacy scalar migration fallback; it is not live product proof.
 
-Next audited scenario, only if product review wants extra contrast:
+Next narrow work queue:
 
-1. Optional bandit-control contrast for shakedown/pay/fight beyond the green cannibal `shakedown=no` contact proof.
+1. Inspect the current `bandit_live_world` hooks before coding: site roster/member state, dispatch cadence, scout-return writeback, local sight-avoidance, serialization, and reports/logs.
+2. Extend deterministic proof for the next camp-map ecology slice: two-OMT ordinary scout stand-off, half-day scout-watch timeout/return, roster/reserve sizing for 2/4/5/7/10 member camps, active-outside dogpile blocking, and high-threat non-escalation.
+3. Keep product proof downstream: no live/harness closure until the deterministic seams and live dispatch/writeback bridge are explicit.
 
 Proof discipline:
 
-- Every setup/action/wait/input needs a step-ledger row, screenshot/OCR or exact metadata/log proof, failure rule, and artifact path.
-- Load-and-close is startup proof only; deterministic evaluator output is support only; no product closure from hidden setup or red prerequisites.
-- Stop after two same-blocker attempts and consult Frau Knackal before attempt three; after four unresolved attempts, package the implemented-but-unproven result for Josef instead of looping.
-
-Remaining boundary:
-
-- The separated daylight/high-threat negative is now green; do not claim a labeled bandit-control contrast unless it is either run or explicitly scoped out by product review. Scenarios already marked green have feature-path evidence, and scenario 6 is saved-state persistence with reload saved-file support, not magical in-memory proof.
-- Do not widen into cannibal lore/capture mechanics/unrelated bandit rewrites while chasing playtest coverage.
-
-Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.
+- Code changes need `git diff --check`, the narrow touched-object build, and focused `[bandit][live_world]` / `[bandit][live_world][camp_map]` tests before checkpoint.
+- Deterministic evidence can close deterministic sub-slices only; live game claims need named harness/product scenarios from the matrix.
+- Do not reopen fuel, Smart Zone, or cannibal optional-control seams unless canon or Josef/Schani explicitly does so.

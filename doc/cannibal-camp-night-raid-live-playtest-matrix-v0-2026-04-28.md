@@ -1,6 +1,6 @@
 # Cannibal camp night-raid live playtest matrix v0 (2026-04-28)
 
-Status: ACTIVE / PRODUCT-PROOF SLICE GREENLIT
+Status: CHECKPOINTED / PRODUCT-PROOF SLICE GREEN
 
 Imagination source: `doc/cannibal-camp-night-raid-imagination-source-of-truth-2026-04-28.md`
 Canonical contract: `doc/cannibal-camp-night-raid-behavior-packet-v0-2026-04-28.md`
@@ -37,7 +37,7 @@ Green feature-path runs so far:
 - Scenario 7 repeatability smoke: `repeatability --count 2 cannibal.live_world_day_smoke_pressure_mcw`, stable pass, runs `.userdata/dev-harness/harness_runs/20260428_125319/` and `.userdata/dev-harness/harness_runs/20260428_125342/`.
 - Scenario 6 saved-state persistence: `.userdata/dev-harness/harness_runs/20260428_130948/`, `feature_proof=true`, `7/7` green step rows, day-smoke active cannibal `stalk` group created and saved through guarded mtime writeback; saved `dimension_data.gsav` reports `profile=cannibal_camp`, active group/target, `active_member_ids=[4,5]`, and `known_recent_marks` containing `live_smoke@...`; `intelligence_map.leads=[]` is out of scope, not camp-map proof. No-fixture reload support: `.userdata/dev-harness/harness_runs/20260428_131031/`, `2/2` green step rows after fresh startup without fixture reinstall, same saved active cannibal state still present; top-level classifier yellow/no-new-artifacts, so this is reload support, not a separate behavior artifact.
 
-Still open only if product review wants extra separation: optional labeled bandit-control contrast for shakedown/pay/fight beyond the green cannibal `shakedown=no` local-contact proof.
+Optional non-blocking follow-up only if product review wants extra separation: labeled bandit-control contrast for shakedown/pay/fight beyond the green cannibal `shakedown=no` local-contact proof.
 
 ## Scenario matrix
 
@@ -136,7 +136,7 @@ Current verdict: GREEN smoke repeatability for scenario 1. `python3 tools/opencl
 4. Run scenario 2 night/darkness attack window.
 5. Run scenario 3 exposure hold/reposition/abort.
 6. Scenario 4 daylight/high-threat negative is now covered by `20260428_135323`; rerun only if the negative-proof contract changes.
-7. Scenario 5 cannibal no-shakedown surface is supported by the green local-contact attack report (`20260428_124947`, `shakedown=no`); run an optional bandit control only if product review wants a labeled pay/fight contrast.
+7. Scenario 5 cannibal no-shakedown surface is supported by the green local-contact attack report (`20260428_124947`, `shakedown=no`); the optional bandit control is non-blocking and should only run if product review explicitly wants a labeled pay/fight contrast.
 8. Scenario 6 saved-state persistence is now covered by `20260428_130948`; no-fixture reload/saved-file support is `20260428_131031`; rerun only if the persistence proof contract changes.
 9. Run scenario 7 repeatability only after a passing scenario exists.
 

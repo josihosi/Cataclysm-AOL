@@ -73,7 +73,7 @@ Notes:
 
 ## Cannibal camp night-raid behavior packet v0
 
-Status: ACTIVE / DETERMINISTIC SUBSTRATE LANDED / LIVE MATRIX GREEN EXCEPT OPTIONAL CONTROL
+Status: CLOSED / CHECKPOINTED
 
 Success state:
 - [x] Deterministic coverage proves cannibal planned attacks/raids require a meaningful pack size under ordinary conditions, while scout/probe behavior may remain smaller only when explicitly classified that way.
@@ -147,9 +147,27 @@ Compact reference:
 
 ---
 
+## C-AOL live AI performance audit packet v0
+
+Status: GREENLIT / BOTTOM-OF-STACK PERFORMANCE AUDIT
+
+Success state:
+- [ ] A live/harness performance matrix exists for baseline/one, two, three, and four active hostile overmap AI sites, or an explicit blocker explains which cases could not be staged honestly.
+- [ ] Each measured case names the profile/job mix, active site count, in-game elapsed window, wall-clock timing, and relevant counters/log fields.
+- [ ] The measured path reaches the real live game dispatch/local-gate/sight-avoid/signal work; evaluator-only, benchmark-only, or startup/load evidence is classified as support only.
+- [ ] A code performance audit names hot-loop/scaling risks in `src/do_turn.cpp`, `src/bandit_live_world.cpp`, save/serialization, signal matching, sight/exposure checks, and report/log emission.
+- [ ] Any optimization is tied to a measured bottleneck and has before/after evidence; if no optimization is needed, the packet says why the current envelope is green enough.
+- [ ] The final verdict is one of: green enough for current playtest scale, green with watchlist, blocked by missing fixture/instrumentation, or red with concrete hot spots.
+
+Notes:
+- Imagination source lives at `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`.
+- Canonical contract lives at `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`.
+
+---
+
 ## Bandit camp-map risk/reward dispatch planning packet v0
 
-Status: GREENLIT / READY FOR ANDI PROMOTION
+Status: ACTIVE / GREENLIT IMPLEMENTATION + LIVE PRODUCT MATRIX
 
 Success state:
 - [ ] Every bandit camp owns an independent bandit-side intelligence map, not merely loose shared/global remembered fields or a single current mark.

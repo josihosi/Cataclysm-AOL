@@ -1,6 +1,6 @@
 # Bandit camp-map risk/reward dispatch planning packet v0 (2026-04-28)
 
-Status: GREENLIT / READY FOR ANDI PROMOTION AFTER SCHANI-JOSEF CONFIRMATION
+Status: ACTIVE / GREENLIT IMPLEMENTATION + LIVE PRODUCT MATRIX
 
 Source-of-truth framing: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`.
 Code-only implementation map: `doc/bandit-camp-map-ecology-implementation-map-2026-04-28.md`.
