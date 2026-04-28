@@ -102,14 +102,15 @@ Required proof:
 - if a control bandit run is used, it is labeled regression/control and not merged into cannibal proof;
 - no cannibal run is allowed to close from merely not reaching contact.
 
-### 6. Save/load persistence for active cannibal proof state
+### 6. Saved-state persistence for active cannibal proof state
 
-Claim: once a cannibal scout/pack/contact state is created, save/load preserves enough state for reviewer trust: profile, active member ids, target id/location, camp roster state, live-signal mark state, and posture/intent fields that are serialized.
+Claim: once a cannibal scout/pack/contact state is created, the save/writeback path preserves the reviewer-critical saved state: profile, active member ids, target id/location, camp roster state, live-signal `known_recent_marks`, and serialized posture/intent fields. A no-fixture reload audit may support this by proving the saved world still loads and the same saved `dimension_data.gsav` fields remain present, but it is not fresh in-memory local-gate proof unless a post-load live report is captured.
 
 Required proof:
 - pre-save metadata captures active state;
 - guarded save prompt and uppercase `Y` / writeback mtime proof are green if saving through GUI;
-- post-load metadata/report matches the relevant active group/profile/target and live-signal `known_recent_marks` fields;
+- post-save metadata matches the relevant active group/profile/target and live-signal `known_recent_marks` fields;
+- any reload audit is labeled as clean reload/saved-file support when it reads saved `dimension_data.gsav` and reports `inconclusive_no_new_artifacts`;
 - `intelligence_map.leads=[]` is called out as out-of-scope downstream camp-map evidence for this packet, not hidden as green proof;
 - missing non-serialized fields are called out as product gaps instead of hidden.
 
@@ -133,7 +134,7 @@ Current verdict: GREEN smoke repeatability for scenario 1. `python3 tools/opencl
 5. Run scenario 3 exposure hold/reposition/abort.
 6. Run scenario 4 daylight/high-threat negative.
 7. Run scenario 5 no-shakedown surface plus optional bandit control.
-8. Scenario 6 save/load persistence is now covered by `20260428_130948` plus no-fixture reload support `20260428_131031`; rerun only if the persistence proof contract changes.
+8. Scenario 6 saved-state persistence is now covered by `20260428_130948`; no-fixture reload/saved-file support is `20260428_131031`; rerun only if the persistence proof contract changes.
 9. Run scenario 7 repeatability only after a passing scenario exists.
 
 ## Stop conditions

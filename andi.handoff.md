@@ -2,7 +2,7 @@
 
 ## Active target
 
-`Cannibal camp night-raid behavior packet v0` is active. Josef promoted the live/harness product-proof slice, and the live matrix is now mostly green, with persistence covered as saved-state plus no-fixture reload support.
+`Cannibal camp night-raid behavior packet v0` is active. Josef promoted the live/harness product-proof slice, and the live matrix is now mostly green, with persistence covered as saved-state/writeback proof plus no-fixture reload saved-file support.
 
 Canonical anchors:
 
@@ -46,7 +46,7 @@ Green feature-path runs:
 
 ## Current boundary / next review target
 
-Do not overclaim in-memory reload behavior: persistence is green as saved-state/writeback plus no-fixture reload support. Remaining open seams are optional/product-review seams:
+Do not overclaim in-memory reload behavior: persistence is green as saved-state/writeback proof; the no-fixture reload audit is saved-file support only, not fresh in-memory local-gate proof. Remaining open seams are optional/product-review seams:
 
 - explicit high-threat/comparable daylight negative if Schani wants that separated from the green day-smoke hold-off proof;
 - optional labeled bandit-control contrast for shakedown/pay/fight, if product review wants it beyond the cannibal `shakedown=no` contact proof.

@@ -34,7 +34,7 @@ Proof discipline:
 
 Remaining boundary:
 
-- Do not claim full live night-raid closure until the remaining optional negative/control proof is either green or explicitly scoped out; scenarios already marked green have feature-path evidence, and scenario 6 is saved-state persistence plus reload support, not magical in-memory proof.
+- Do not claim full live night-raid closure until the remaining optional negative/control proof is either green or explicitly scoped out; scenarios already marked green have feature-path evidence, and scenario 6 is saved-state persistence with reload saved-file support, not magical in-memory proof.
 - Do not widen into cannibal lore/capture mechanics/unrelated bandit rewrites while chasing playtest coverage.
 
 Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.
