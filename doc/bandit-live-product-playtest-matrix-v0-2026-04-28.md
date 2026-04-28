@@ -69,12 +69,12 @@ Required proof:
 
 Claim: tiny, medium, and large camps size action from current living/ready/home roster, reserve, wounds/unready state, active outside groups, risk/reward, and target confidence rather than fixed folklore.
 
-Status: **partial green feature-path evidence** for roster-size dispatch sizing across 2/5/10-member variants: tiny run `.userdata/dev-harness/harness_runs/20260428_193433/` via `bandit.variable_roster_tiny_dispatch_sizing_live`, medium run `.userdata/dev-harness/harness_runs/20260428_192059/` via `bandit.variable_roster_dispatch_sizing_live`, and large/cooled run `.userdata/dev-harness/harness_runs/20260428_193621/` via `bandit.variable_roster_large_cooled_dispatch_sizing_live`. Together these prove fixture-shaped roster footing, roster/reserve/dispatchable reporting, selected scout/stalk member count, and saved ready/active roster split for tiny, medium, and large/cooled cases. This still does **not** close the full row: live high-threat/low-reward and active-outside dogpile guardrails still need named evidence.
+Status: **partial green feature-path evidence** for roster-size dispatch sizing across 2/5/10-member variants: tiny run `.userdata/dev-harness/harness_runs/20260428_193433/` via `bandit.variable_roster_tiny_dispatch_sizing_live`, medium run `.userdata/dev-harness/harness_runs/20260428_192059/` via `bandit.variable_roster_dispatch_sizing_live`, and large/cooled run `.userdata/dev-harness/harness_runs/20260428_193621/` via `bandit.variable_roster_large_cooled_dispatch_sizing_live`. Together these prove fixture-shaped roster footing, roster/reserve/dispatchable reporting, selected scout/stalk member count, and saved ready/active roster split for tiny, medium, and large/cooled cases. High-threat/low-reward hold is also green in `.userdata/dev-harness/harness_runs/20260428_200600/` via `bandit.high_threat_low_reward_holds`: clean `6206131b31` runtime, green 30-minute wait, same-run hold rejection with exact `selected=hold / chill`, and saved no-active-outside/no-dispatch state. This still does **not** close the full row: active-outside dogpile still needs named evidence.
 
 Required proof:
 - fixture/precondition proves roster shape for at least 2-, 4/5-, and 7/10-member cases over bounded runs or variants;
 - report names living roster, ready-at-home, wounded/unready, active outside, hard reserve, dispatchable count, selected intent, and selected member count;
-- high-threat/low-reward case holds/re-scouts instead of escalating just because threat is high;
+- ~~high-threat/low-reward case holds/re-scouts instead of escalating just because threat is high;~~
 - active outside same-target group blocks dogpile;
 - reserve is preserved or downgrade is explained.
 

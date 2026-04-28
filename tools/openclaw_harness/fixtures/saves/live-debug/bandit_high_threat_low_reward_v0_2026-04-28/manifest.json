@@ -1,0 +1,30 @@
+{
+  "name": "bandit_high_threat_low_reward_v0_2026-04-28",
+  "source_fixture": "bandit_camp_map_remembered_stalk_v0_2026-04-28",
+  "source_profile": "live-debug",
+  "description": "Fixture-backed camp-map risk/reward footing: reuse the remembered-lead camp, then shape the owning camp to five ready at-home members and overwrite the remembered lead as low-bounty/high-threat so the real 30-minute cadence must hold rather than escalate.",
+  "save_transforms": [
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "target_omt": [140, 39, 0],
+      "target_id": "player@140,39,0",
+      "source_key": "fixture_high_threat_low_reward",
+      "source_summary": "fixture high threat / low reward remembered lead should hold rather than escalate",
+      "status": "scout_confirmed",
+      "bounty": 1,
+      "threat": 5,
+      "confidence": 3,
+      "last_outcome": "high_threat_low_reward_guardrail"
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0
+    }
+  ]
+}

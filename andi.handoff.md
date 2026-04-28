@@ -27,24 +27,28 @@ Green feature-path evidence now exists for these named guardrails:
 - `bandit.variable_roster_tiny_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_193433/`: two-member camp keeps reserve one and dispatches one scout, with saved one-active/one-ready split.
 - `bandit.variable_roster_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_192059/`: five-member camp keeps reserve two and dispatches a two-member stalk, with saved two-active/three-ready split.
 - `bandit.variable_roster_large_cooled_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_193621/`: ten-member camp with prior bandit losses keeps reserve five and dispatches a cooled two-member stalk, with saved two-active/eight-ready split.
+- `bandit.stalk_pressure_waits_for_opening` in `.userdata/dev-harness/harness_runs/20260428_195617/`: active stalk-pressure lead waits through a green 30-minute cadence and no-opening rejection, creates no outside group, and saves stale/decayed lead state.
+- `bandit.high_threat_low_reward_holds` in `.userdata/dev-harness/harness_runs/20260428_200600/`: clean current runtime `6206131b31`, green 30-minute wait, same-run high-threat hold rejection with `opening_state=opening_present_or_not_required`, `opening_available=yes`, exact `selected=hold / chill`, and saved no-active-outside/no-member-dispatch state.
 
 Current validation:
 
+- `./cataclysm-tiles --version` -> `6206131b31`
 - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
-- `python3 -m json.tool` on the relevant variable-roster scenario/fixture files
+- `python3 -m json.tool` on the relevant scenario/fixture files
 - `python3 tools/openclaw_harness/proof_classification_unit_test.py`
 - `git diff --check`
-- `make -j4 tests LINTJSON=0 ASTYLE=0`
+- `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0`
+- `./tests/cata_test "[bandit_live_world]"`
 - `./tests/cata_test "[bandit][live_world][camp_map]" --success`
-- the three variable-roster harness probes named above
+- the named harness probes above, including `bandit.high_threat_low_reward_holds`
 
-These close their named guardrail slices only. Do **not** inflate them into broader product closure: stalk/no-opening return still needs live proof, and the variable-roster matrix row still needs live high-threat/low-reward plus active-outside dogpile guardrails if Schani wants that row fully closed.
+These close their named guardrail slices only. Do **not** inflate them into broader product closure: the variable-roster matrix row still needs live active-outside dogpile proof if Schani wants that row fully closed.
 
 ## Next implementation/proof target
 
-Continue the camp-map ecology contract by proving stalk/pressure wait-for-opening and no-opening return through the real path before attempting product closure.
+Continue the camp-map ecology contract by proving the active-outside dogpile guardrail through the real path before attempting product closure.
 
-Do **not** rerun the green medium/five-member case. Do **not** rerun sight-avoid, vanished-signal, tiny-roster, or large/cooled-roster proofs unless Schani/Josef/Frau explicitly reopen them. Follow `Plan.md` / `TODO.md` / `TESTING.md` toward stalk/no-opening return next, while keeping remaining variable-roster guardrails explicit.
+Do **not** rerun the green medium/five-member, no-opening, or high-threat proofs unless Schani/Josef/Frau explicitly reopen them. Follow `Plan.md` / `TODO.md` / `TESTING.md` toward active-outside dogpile proof next.
 
 ## Queued after this lane
 
