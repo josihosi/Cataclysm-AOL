@@ -90,6 +90,8 @@ Required proof:
 
 Claim: a scout/stalker exposed to player or basecamp NPC vision reacts with normal movement/pathing, hold, or abort by at most two visible local turns; no teleporting is credited.
 
+Status: **green feature-path evidence** in `.userdata/dev-harness/harness_runs/20260428_173626/` via `bandit.scout_stalker_sight_avoid_live`: saved active scout/member footing, saved turn delta >= 2, same-run local-gate proof, and claim-scoped `sight_avoid: exposed -> repositioned ... distance=1` all matched. This closes this guardrail only; it is not the full remembered-lead/redispatch chain.
+
 Required proof:
 - before screenshot/metadata proves exposure state and approximate position;
 - one- and two-turn observation steps are ledgered;

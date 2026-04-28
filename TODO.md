@@ -22,8 +22,10 @@ Known footing:
 
 Next narrow work queue:
 
-1. Prove the remaining behavior through named live/product scenarios: vanished-signal redispatch from remembered leads, stalk/pressure wait-for-opening and no-opening return through the real path, and sight-avoid reposition/abort within at most two visible local turns without teleporting.
+1. Prove the remaining behavior through named live/product scenarios: vanished-signal redispatch from remembered leads and stalk/pressure wait-for-opening/no-opening return through the real path.
 2. Keep product proof downstream: no live/harness closure until named matrix scenarios observe the live dispatch/writeback bridge and report/log fields.
+
+Latest sight-avoid boundary: `bandit.scout_stalker_sight_avoid_live` is now green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_173626/`: saved active scout/member footing, saved turn delta >= 2, same-run `local_gate ... live_existing_active_group=yes`, and claim-scoped `sight_avoid: exposed -> repositioned ... distance=1` all matched. This closes that matrix guardrail only; vanished-signal and stalk/no-opening scenarios remain open.
 
 Proof discipline:
 
