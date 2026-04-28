@@ -40,16 +40,20 @@ This is **not** real-fire proof and not bandit product proof. It is deploy proof
 
 ## Recommended next evidence target
 
-The first debug-spawn item path, scoped talker-selector recipe, and scoped follower-rules menu recipe are already green as primitives:
+The scoped primitive set below is already green and should not be re-spent as proof budget:
 
 - `.userdata/dev-harness/harness_runs/20260428_011205/`: debug item spawn -> save/writeback -> same-run saved-player `toothbrush_electric=1` metadata.
+- `.userdata/dev-harness/harness_runs/20260428_021800/`: debug monster spawn -> one-tile-east target -> save/writeback -> same-run saved-player `active_monsters` with `mon_squirrel` at offset `[1,0,0]`.
+- `.userdata/dev-harness/harness_runs/20260428_032724/`: saved-overmap NPC baseline -> debug follower spawn -> save/writeback -> saved-overmap `npcs` delta `+1` with a new nearby `your_followers` NPC at attitude `3`.
+- `.userdata/dev-harness/harness_runs/20260428_024606/`: debug force temperature -> save/writeback -> saved-dimension weather metadata with effective/forced `123F`.
+- `.userdata/dev-harness/harness_runs/20260428_034421/`: debug map-editor field/furniture paint one tile east -> save/writeback -> saved-map offset `[1,0,0]` with `f_chair` plus `fd_smoke`.
 - `.userdata/dev-harness/harness_runs/20260428_014348/`: nearby interaction menu -> `Talk to whom` -> highlighted-row `enter` -> NPC dialogue response surface (`Your response`).
 - `.userdata/dev-harness/harness_runs/20260428_014825/`: visible `[rules] ... work together` response -> `Rules for your follower`.
 
 Do **not** steer back into those already-credited primitives. The current unblocked next target is one of:
 
-1. broader debug-spawn family target-state gates, e.g. field/furniture/NPC/weather same-run metadata proof shaped like the item primitive;
-2. follower rules toggle proof after the already-proven rules UI opens;
+1. follower rules toggle proof after the already-proven rules UI opens;
+2. terrain/trap/radiation map-editor target-state proof with the same save/writeback + same-run metadata discipline;
 3. another explicit Schani/Josef-named harness seam.
 
 Keep the same proof burden: scenario contract names the exact claim, step ledger guards the GUI/key path, and same-run metadata or claim-scoped artifacts prove the target state. Scoped navigation/process proof remains scoped; do not inflate it into package product behavior.
