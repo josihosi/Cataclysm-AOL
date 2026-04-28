@@ -1582,12 +1582,17 @@ int camp_map_home_reserve_for_lead( const bandit_live_world::site_record &site,
 {
     int reserve = required_home_reserve( site );
     const int living_roster = site.count_live_members();
-    if( effective_profile( site ) == hostile_site_profile::camp_style &&
+    const bool scout_confirmed_buddy_camp = effective_profile( site ) == hostile_site_profile::camp_style &&
+            living_roster == 2 && lead.status == bandit_live_world::camp_lead_status::scout_confirmed;
+    if( scout_confirmed_buddy_camp ) {
+        reserve = 0;
+    }
+    if( effective_profile( site ) == hostile_site_profile::camp_style && !scout_confirmed_buddy_camp &&
         ( lead.prior_bandit_losses > 0 || lead.target_alert || lead.scout_seen ) ) {
         reserve += 1;
     }
     if( stockpile_pressure >= 3 ) {
-        const int minimum_reserve = living_roster >= 5 ? 2 : 1;
+        const int minimum_reserve = scout_confirmed_buddy_camp ? 0 : living_roster >= 5 ? 2 : 1;
         reserve = std::max( minimum_reserve, reserve - 1 );
     }
     return std::clamp( reserve, 0, living_roster );
@@ -1597,6 +1602,9 @@ int stalk_pressure_member_count( const int living_roster, const int dispatchable
 {
     if( dispatchable < 2 ) {
         return 0;
+    }
+    if( living_roster == 2 ) {
+        return 2;
     }
     const int upper_bound = std::min( dispatchable, ceil_percent( living_roster, 35 ) );
     if( upper_bound < 2 ) {
@@ -1647,6 +1655,11 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
                               " dispatchable=" + std::to_string( decision.dispatchable ) );
     if( pressure.stockpile_pressure >= 3 ) {
         decision.notes.push_back( "stockpile pressure may loosen reserve by one but cannot cross hard minimum" );
+    }
+    if( effective_profile( site ) == hostile_site_profile::camp_style && decision.living_roster == 2 &&
+        lead.status == camp_lead_status::scout_confirmed && decision.hard_home_reserve == 0 ) {
+        decision.notes.push_back(
+            "two-bandit camp: scout-confirmed pressure commits the buddy pair instead of preserving reserve" );
     }
     decision.notes.push_back( "camp-map opening_state=" + pressure.opening_state +
                               " opening_available=" + std::string( pressure.opening_available ? "yes" : "no" ) );

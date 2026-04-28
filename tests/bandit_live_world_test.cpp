@@ -747,6 +747,58 @@ TEST_CASE( "bandit_live_world_bandit_camp_reserve_scales_with_living_roster",
     }
 }
 
+TEST_CASE( "bandit_live_world_two_bandit_camp_commits_buddy_pair_after_scout_confirmation",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 2; ++i ) {
+        add_bandit_camp_member( world, i, 11950 );
+    }
+
+    bandit_live_world::site_record &site = world.sites.front();
+    CHECK( site.dispatchable_member_capacity() == 1 );
+
+    bandit_live_world::camp_map_lead uncertain;
+    uncertain.status = bandit_live_world::camp_lead_status::stale;
+    uncertain.bounty = 8;
+    uncertain.threat = 1;
+    uncertain.confidence = 1;
+    const bandit_live_world::camp_map_dispatch_decision uncertain_decision =
+        bandit_live_world::choose_camp_map_dispatch( site, uncertain );
+    CHECK( uncertain_decision.intent == bandit_dry_run::job_template::scout );
+    CHECK( uncertain_decision.hard_home_reserve == 1 );
+    CHECK( uncertain_decision.dispatchable == 1 );
+    CHECK( uncertain_decision.selected_member_count == 1 );
+
+    bandit_live_world::camp_map_lead confirmed;
+    confirmed.lead_id = "confirmed_basecamp@18,20,0";
+    confirmed.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    confirmed.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    confirmed.target_id = "player@18,20,0";
+    confirmed.omt = tripoint_abs_omt( 18, 20, 0 );
+    confirmed.bounty = 8;
+    confirmed.threat = 1;
+    confirmed.confidence = 3;
+
+    const bandit_live_world::camp_map_dispatch_decision confirmed_decision =
+        bandit_live_world::choose_camp_map_dispatch( site, confirmed );
+    CHECK( confirmed_decision.intent == bandit_dry_run::job_template::stalk );
+    CHECK( confirmed_decision.hard_home_reserve == 0 );
+    CHECK( confirmed_decision.dispatchable == 2 );
+    CHECK( confirmed_decision.selected_member_count == 2 );
+
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, confirmed );
+    REQUIRE( plan.valid );
+    CHECK( plan.entry.job_type == bandit_dry_run::job_template::stalk );
+    CHECK( plan.member_ids.size() == 2 );
+
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    CHECK( site.active_job_type == "stalk" );
+    CHECK( site.active_member_ids.size() == 2 );
+    CHECK( site.count_members_in_state( bandit_live_world::member_state::at_home ) == 0 );
+}
+
 TEST_CASE( "bandit_live_world_active_outside_group_blocks_parallel_dispatch",
            "[bandit][live_world][camp_map]" )
 {
