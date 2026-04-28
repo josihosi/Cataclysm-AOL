@@ -1985,3 +1985,104 @@ TEST_CASE( "bandit_live_world_resolves_bounded_live_aftermath_observations", "[b
         CHECK( site.headcount == 1 );
     }
 }
+
+TEST_CASE( "bandit_live_world_plans_live_dispatch_from_remembered_camp_map_lead",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 7; ++i ) {
+        add_bandit_camp_member( world, i, 12400 );
+    }
+
+    bandit_live_world::site_record &site = world.sites.front();
+    bandit_live_world::camp_map_lead lead;
+    lead.lead_id = "remembered_basecamp@18,20,0";
+    lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    lead.target_id = "player@18,20,0";
+    lead.omt = tripoint_abs_omt( 18, 20, 0 );
+    lead.radius_omt = 2;
+    lead.bounty = 7;
+    lead.threat = 1;
+    lead.confidence = 3;
+    site.intelligence_map.leads.push_back( lead );
+
+    const bandit_live_world::camp_map_lead *matched_lead =
+        bandit_live_world::find_camp_map_dispatch_lead_for_target( site,
+                tripoint_abs_omt( 19, 20, 0 ), "" );
+    REQUIRE( matched_lead != nullptr );
+    CHECK( matched_lead->lead_id == lead.lead_id );
+
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *matched_lead );
+    REQUIRE( plan.valid );
+    CHECK( plan.entry.job_type == bandit_dry_run::job_template::stalk );
+    CHECK( plan.member_ids.size() == 2 );
+    CHECK( plan.target_omt == lead.omt );
+    REQUIRE_FALSE( plan.notes.empty() );
+    CHECK( plan.notes.back().find( "profile camp_style" ) != std::string::npos );
+
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    CHECK( site.active_job_type == "stalk" );
+    CHECK( site.active_target_id == lead.target_id );
+    CHECK( site.active_target_omt == lead.omt );
+    CHECK( site.remembered_bounty_estimate == lead.bounty );
+    CHECK( site.active_member_ids.size() == 2 );
+}
+
+TEST_CASE( "bandit_live_world_remembered_camp_map_lead_can_hold_when_no_opening",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 5; ++i ) {
+        add_bandit_camp_member( world, i, 12500 );
+    }
+
+    const bandit_live_world::site_record &site = world.sites.front();
+    bandit_live_world::camp_map_lead lead;
+    lead.lead_id = "active_basecamp@18,20,0";
+    lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    lead.status = bandit_live_world::camp_lead_status::active;
+    lead.target_id = "player@18,20,0";
+    lead.omt = tripoint_abs_omt( 18, 20, 0 );
+    lead.bounty = 8;
+    lead.threat = 1;
+    lead.confidence = 3;
+
+    bandit_live_world::camp_map_dispatch_pressure pressure;
+    pressure.opening_available = false;
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, lead, pressure );
+    CHECK_FALSE( plan.valid );
+    REQUIRE_FALSE( plan.notes.empty() );
+    CHECK( plan.notes.back().find( "held pressure" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_live_world_live_signal_marks_write_camp_map_signal_leads",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 12600 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    bandit_live_world::live_signal_mark smoke;
+    smoke.mark_id = "live_smoke@18,20,0";
+    smoke.kind = "smoke";
+    smoke.source_omt = tripoint_abs_omt( 18, 20, 0 );
+    smoke.range_cap_omt = 15;
+    smoke.bounty_add = 2;
+    smoke.threat_add = 1;
+    smoke.confidence = 2;
+
+    CHECK( bandit_live_world::record_live_signal_mark( site, smoke ) );
+    REQUIRE( site.intelligence_map.leads.size() == 1 );
+    const bandit_live_world::camp_map_lead &lead = site.intelligence_map.leads.front();
+    CHECK( lead.kind == bandit_live_world::camp_lead_kind::smoke_signal );
+    CHECK( lead.status == bandit_live_world::camp_lead_status::suspected );
+    CHECK( lead.target_id == smoke.mark_id );
+    CHECK( lead.omt == smoke.source_omt );
+    CHECK( lead.radius_omt == smoke.range_cap_omt );
+    CHECK( lead.bounty == smoke.bounty_add );
+    CHECK( lead.threat == smoke.threat_add );
+    CHECK( lead.confidence == smoke.confidence );
+}
