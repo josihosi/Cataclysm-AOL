@@ -102,6 +102,7 @@ struct member_record {
     std::string npc_template_id;
     tripoint_abs_ms home_spawn_tile;
     member_state state = member_state::at_home;
+    bool wounded_or_unready = false;
     std::string last_writeback_summary;
 
     void serialize( JsonOut &json ) const;
@@ -253,6 +254,27 @@ struct dispatch_plan {
     std::vector<std::string> notes;
 };
 
+struct camp_map_dispatch_pressure {
+    int stockpile_pressure = 0;
+    bool opening_available = true;
+};
+
+struct camp_map_dispatch_decision {
+    bool valid = false;
+    bandit_dry_run::job_template intent = bandit_dry_run::job_template::hold_chill;
+    int selected_member_count = 0;
+    int living_roster = 0;
+    int ready_at_home = 0;
+    int wounded_or_unready = 0;
+    int active_outside = 0;
+    int hard_home_reserve = 0;
+    int dispatchable = 0;
+    int reward_score = 0;
+    int risk_score = 0;
+    int margin = 0;
+    std::vector<std::string> notes;
+};
+
 struct local_gate_input {
     int local_threat = 0;
     int local_opportunity = 0;
@@ -365,6 +387,9 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
                           const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id );
+camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
+        const camp_map_lead &lead,
+        const camp_map_dispatch_pressure &pressure = camp_map_dispatch_pressure() );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );

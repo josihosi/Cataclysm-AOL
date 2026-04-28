@@ -757,7 +757,20 @@ TEST_CASE( "bandit_live_world_active_outside_group_blocks_parallel_dispatch",
 
     bandit_live_world::site_record &site = world.sites.front();
     REQUIRE( site.dispatchable_member_capacity() == 3 );
+    REQUIRE( bandit_live_world::update_member_state( site, character_id( 12000 ),
+             bandit_live_world::member_state::outbound, "already outside" ) );
+    site.active_member_ids = { character_id( 12000 ) };
     site.active_group_id = site.site_id + "#already_outside";
+
+    bandit_live_world::camp_map_lead lead;
+    lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    lead.bounty = 8;
+    lead.threat = 1;
+    lead.confidence = 3;
+    const bandit_live_world::camp_map_dispatch_decision decision =
+        bandit_live_world::choose_camp_map_dispatch( site, lead );
+    CHECK( decision.intent == bandit_dry_run::job_template::hold_chill );
+    CHECK( decision.active_outside == 1 );
 
     const bandit_live_world::dispatch_plan blocked_plan =
         bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ),
@@ -765,6 +778,132 @@ TEST_CASE( "bandit_live_world_active_outside_group_blocks_parallel_dispatch",
     CHECK_FALSE( blocked_plan.valid );
     REQUIRE_FALSE( blocked_plan.notes.empty() );
     CHECK( blocked_plan.notes.front().find( "active outside" ) != std::string::npos );
+}
+
+TEST_CASE( "bandit_live_world_wounded_and_killed_members_shrink_camp_map_dispatch",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 7; ++i ) {
+        add_bandit_camp_member( world, i, 12100 );
+    }
+
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( site.dispatchable_member_capacity() == 5 );
+    REQUIRE( site.find_member( character_id( 12101 ) ) != nullptr );
+    site.find_member( character_id( 12101 ) )->wounded_or_unready = true;
+    REQUIRE( bandit_live_world::update_member_state( site, character_id( 12102 ),
+             bandit_live_world::member_state::dead, "killed before the next pressure beat" ) );
+
+    CHECK( site.count_live_members() == 6 );
+    CHECK( site.dispatchable_member_capacity() == 3 );
+
+    bandit_live_world::camp_map_lead lead;
+    lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    lead.bounty = 6;
+    lead.threat = 2;
+    lead.confidence = 3;
+
+    const bandit_live_world::camp_map_dispatch_decision decision =
+        bandit_live_world::choose_camp_map_dispatch( site, lead );
+    CHECK( decision.ready_at_home == 5 );
+    CHECK( decision.wounded_or_unready == 1 );
+    CHECK( decision.hard_home_reserve == 2 );
+    CHECK( decision.dispatchable == 3 );
+    CHECK( decision.intent == bandit_dry_run::job_template::stalk );
+    CHECK( decision.selected_member_count == 2 );
+}
+
+TEST_CASE( "bandit_live_world_camp_map_risk_reward_handles_pressure_and_cooling",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 5; ++i ) {
+        add_bandit_camp_member( world, i, 12200 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+
+    bandit_live_world::camp_map_lead dangerous;
+    dangerous.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    dangerous.bounty = 1;
+    dangerous.threat = 6;
+    dangerous.confidence = 2;
+    const bandit_live_world::camp_map_dispatch_decision dangerous_decision =
+        bandit_live_world::choose_camp_map_dispatch( site, dangerous );
+    CHECK( dangerous_decision.intent == bandit_dry_run::job_template::hold_chill );
+    CHECK( dangerous_decision.selected_member_count == 0 );
+
+    bandit_live_world::camp_map_lead hungry;
+    hungry.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    hungry.bounty = 2;
+    hungry.threat = 2;
+    hungry.confidence = 2;
+    bandit_live_world::camp_map_dispatch_pressure hungry_pressure;
+    hungry_pressure.stockpile_pressure = 3;
+    const bandit_live_world::camp_map_dispatch_decision hungry_decision =
+        bandit_live_world::choose_camp_map_dispatch( site, hungry, hungry_pressure );
+    CHECK( hungry_decision.intent == bandit_dry_run::job_template::stalk );
+    CHECK( hungry_decision.hard_home_reserve == 2 );
+    CHECK( hungry_decision.dispatchable == 3 );
+    CHECK( hungry_decision.selected_member_count == 2 );
+
+    bandit_live_world::camp_map_lead defender_loss;
+    defender_loss.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    defender_loss.bounty = 1;
+    defender_loss.threat = 4;
+    defender_loss.confidence = 2;
+    const bandit_live_world::camp_map_dispatch_decision before_defender_loss =
+        bandit_live_world::choose_camp_map_dispatch( site, defender_loss );
+    defender_loss.prior_defender_losses = 2;
+    const bandit_live_world::camp_map_dispatch_decision after_defender_loss =
+        bandit_live_world::choose_camp_map_dispatch( site, defender_loss );
+    CHECK( before_defender_loss.intent == bandit_dry_run::job_template::hold_chill );
+    CHECK( after_defender_loss.intent == bandit_dry_run::job_template::stalk );
+    CHECK( after_defender_loss.selected_member_count == 2 );
+
+    bandit_live_world::camp_map_lead no_opening;
+    no_opening.status = bandit_live_world::camp_lead_status::active;
+    no_opening.bounty = 7;
+    no_opening.threat = 1;
+    no_opening.confidence = 3;
+    bandit_live_world::camp_map_dispatch_pressure no_opening_pressure;
+    no_opening_pressure.opening_available = false;
+    const bandit_live_world::camp_map_dispatch_decision no_opening_decision =
+        bandit_live_world::choose_camp_map_dispatch( site, no_opening, no_opening_pressure );
+    CHECK( no_opening_decision.intent == bandit_dry_run::job_template::hold_chill );
+    CHECK( no_opening_decision.selected_member_count == 0 );
+}
+
+TEST_CASE( "bandit_live_world_prior_bandit_losses_cool_large_camp_pressure",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 10; ++i ) {
+        add_bandit_camp_member( world, i, 12300 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+
+    bandit_live_world::camp_map_lead lead;
+    lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    lead.bounty = 8;
+    lead.threat = 2;
+    lead.confidence = 3;
+    const bandit_live_world::camp_map_dispatch_decision clean_pressure =
+        bandit_live_world::choose_camp_map_dispatch( site, lead );
+
+    lead.prior_bandit_losses = 2;
+    const bandit_live_world::camp_map_dispatch_decision cooled_pressure =
+        bandit_live_world::choose_camp_map_dispatch( site, lead );
+
+    CHECK( clean_pressure.intent == bandit_dry_run::job_template::stalk );
+    CHECK( clean_pressure.hard_home_reserve == 4 );
+    CHECK( clean_pressure.dispatchable == 6 );
+    CHECK( clean_pressure.selected_member_count == 3 );
+    CHECK( cooled_pressure.intent == bandit_dry_run::job_template::stalk );
+    CHECK( cooled_pressure.hard_home_reserve == 5 );
+    CHECK( cooled_pressure.dispatchable == 5 );
+    CHECK( cooled_pressure.selected_member_count == 2 );
+    CHECK( cooled_pressure.risk_score > clean_pressure.risk_score );
 }
 
 TEST_CASE( "bandit_live_world_dispatch_rules_are_driven_by_hostile_site_profile", "[bandit][live_world][profile]" )
