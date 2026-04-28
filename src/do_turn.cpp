@@ -195,7 +195,10 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
                                   live_bandit_seen_by_nearby_ally( here, u, member_pos );
         const int distance = rl_dist( member_npc->pos_abs_omt(), u.pos_abs_omt() );
         closest_member_distance = std::min( closest_member_distance, distance );
-        input.local_contact_established |= distance <= 1;
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        const bool saved_local_contact = member != nullptr &&
+                                         member->state == bandit_live_world::member_state::local_contact;
+        input.local_contact_established |= distance <= 1 || saved_local_contact;
     }
     input.standoff_distance = closest_member_distance;
     if( input.local_contact_established && !input.rolling_travel_scene ) {
@@ -647,6 +650,7 @@ bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
                                    << " profile=" << bandit_live_world::to_string( site.profile )
                                    << " posture=" << bandit_live_world::to_string( gate_decision.posture )
                                    << " npc=" << member_npc.getID().get_value() << " reason=" << decision.reason
+                                   << " blocked_no_cover=" << ( current_exposure || gate_input.recent_exposure ? "yes" : "no" )
                                    << " current_exposure=" << ( current_exposure ? "yes" : "no" )
                                    << " player_exposure=" << ( current_player_exposure ? "yes" : "no" )
                                    << " camp_exposure=" << ( current_camp_exposure ? "yes" : "no" )
@@ -677,6 +681,57 @@ bool live_bandit_try_sight_avoid_reposition( npc &member_npc,
                                << " shakedown=" << ( gate_decision.opens_shakedown_surface ? "yes" : "no" )
                                << " combat_forward=" << ( gate_decision.combat_forward ? "yes" : "no" ) << '\n';
     return true;
+}
+
+bool note_live_bandit_local_turn_sight_avoid()
+{
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    bool changed = false;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        if( site.retired_empty_site || site.active_group_id.empty() || site.active_member_ids.empty() ) {
+            continue;
+        }
+
+        bool has_loaded_local_contact_member = false;
+        for( const character_id &member_id : site.active_member_ids ) {
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
+                continue;
+            }
+            npc *member_npc = g->find_npc( member_id );
+            if( member_npc != nullptr && !member_npc->is_dead() ) {
+                has_loaded_local_contact_member = true;
+                break;
+            }
+        }
+        if( !has_loaded_local_contact_member ) {
+            continue;
+        }
+
+        bandit_live_world::local_gate_input gate_input = live_bandit_make_gate_input( site,
+                get_avatar() );
+        gate_input.local_contact_established = true;
+        const bandit_live_world::local_gate_decision gate_decision =
+            bandit_live_world::choose_local_gate_posture( site, gate_input );
+        DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_local_gate_report( site, gate_input,
+                                   gate_decision )
+                                   << "- live_existing_active_group=yes\n";
+        if( gate_decision.posture != bandit_live_world::local_gate_posture::stalk &&
+            gate_decision.posture != bandit_live_world::local_gate_posture::hold_off ) {
+            continue;
+        }
+        for( const character_id &member_id : site.active_member_ids ) {
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
+                continue;
+            }
+            if( npc *member_npc = g->find_npc( member_id ) ) {
+                changed |= live_bandit_try_sight_avoid_reposition( *member_npc, site, gate_input,
+                           gate_decision );
+            }
+        }
+    }
+    return changed;
 }
 
 bool note_live_bandit_aftermath()
@@ -862,6 +917,9 @@ bool note_live_bandit_aftermath()
         } );
         const bandit_live_world::local_gate_decision gate_decision =
             bandit_live_world::choose_local_gate_posture( site, gate_input );
+        DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_local_gate_report( site, gate_input,
+                                   gate_decision )
+                                   << "- live_existing_active_group=yes\n";
         if( gate_decision.posture == bandit_live_world::local_gate_posture::stalk ||
             gate_decision.posture == bandit_live_world::local_gate_posture::hold_off ) {
             for( const character_id &member_id : site.active_member_ids ) {
@@ -2235,6 +2293,7 @@ bool do_turn()
     // consider a stripped down cache just for monsters.
     m.build_map_cache( levz, true );
     monmove();
+    note_live_bandit_local_turn_sight_avoid();
     if( calendar::once_every( time_between_npc_OM_moves ) ) {
         overmap_npc_move();
     }

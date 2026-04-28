@@ -1,0 +1,15 @@
+{
+  "name": "bandit_local_sight_avoid_exposed_scout_v0_2026-04-28",
+  "source_fixture": "bandit_local_sight_avoid_exposed_v0_2026-04-27",
+  "source_profile": "live-debug",
+  "description": "Alias for the bandit exposed scout/stalker live proof: inherit the exposed sightline fixture, preserve its player-near-bandit-camp setup, and repair the saved active sortie metadata so the same-run local gate/sight-avoid log can be claim-scoped as an active scout path instead of an unknown legacy active job.",
+  "save_transforms": [
+    {
+      "kind": "bandit_active_sortie_clock",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "active_job_type": "scout",
+      "active_sortie_started_minutes": 0,
+      "active_sortie_local_contact_minutes": 0
+    }
+  ]
+}

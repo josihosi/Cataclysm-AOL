@@ -2015,7 +2015,8 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         return decision;
     }
 
-    if( input.basecamp_or_camp_scene && ( input.recent_exposure || decision.pressure_margin <= 0 ) ) {
+    if( input.basecamp_or_camp_scene &&
+        ( input.current_exposure || input.recent_exposure || decision.pressure_margin <= 0 ) ) {
         decision.posture = local_gate_posture::hold_off;
         decision.notes.push_back( "camp-adjacent pressure holds off instead of collapsing onto the player tile" );
         return decision;

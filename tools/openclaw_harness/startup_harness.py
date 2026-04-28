@@ -940,10 +940,15 @@ def audit_log_contains(
     artifact_baseline: int,
     patterns: List[str],
     required_line_patterns: Optional[List[List[str]]] = None,
+    required_any_line_patterns: Optional[List[List[str]]] = None,
     filter_debug_noise: bool = False,
 ) -> Dict[str, Any]:
     line_pattern_groups = required_line_patterns or []
+    any_line_pattern_groups = required_any_line_patterns or []
+    any_group_label = " OR ".join(" && ".join(group) for group in any_line_pattern_groups)
     required_items = patterns + [" && ".join(group) for group in line_pattern_groups]
+    if any_line_pattern_groups:
+        required_items.append(any_group_label)
     if artifact_log is None:
         return {
             "status": "failed",
@@ -970,6 +975,21 @@ def audit_log_contains(
         matches_by_pattern.append({"pattern": group_label, "line_patterns": group, "lines": lines})
         if not lines:
             missing.append(group_label)
+    if any_line_pattern_groups:
+        any_lines: List[str] = []
+        any_matches: List[Dict[str, Any]] = []
+        for group in any_line_pattern_groups:
+            group_label = " && ".join(group)
+            lines = [line for line in log_lines if all(pattern in line for pattern in group)]
+            any_matches.append({"pattern": group_label, "line_patterns": group, "lines": lines})
+            any_lines.extend(lines)
+        matches_by_pattern.append({
+            "pattern": any_group_label,
+            "any_line_patterns": any_matches,
+            "lines": any_lines,
+        })
+        if not any_lines:
+            missing.append(any_group_label)
     return {
         "status": "required_state_present" if required_items and not missing else ("required_state_missing" if required_items else "scanned"),
         "source_log": str(artifact_log),
@@ -1932,6 +1952,95 @@ def audit_saved_active_monsters(
     }
 
 
+def load_saved_player_payload(world_dir: Path, player_save: str = "") -> Tuple[str, Path, Dict[str, Any], os.stat_result]:
+    selected_player_save = player_save.strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise RuntimeError(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+
+    player_save_path = world_dir / selected_player_save
+    if not player_save_path.exists():
+        raise FileNotFoundError(f"Player save not found: {player_save_path}")
+    if player_save_path.suffix != ".zzip":
+        raise RuntimeError(f"Player payload audit expects .zzip save path: {player_save_path}")
+
+    stat = player_save_path.stat()
+    extracted_save = player_save_path.with_suffix("")
+    run_zzip(player_save_path)
+    if not extracted_save.exists():
+        raise RuntimeError(f"Player payload audit did not extract save: {extracted_save}")
+    try:
+        payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    finally:
+        if extracted_save.exists():
+            extracted_save.unlink()
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Extracted player save is not a JSON object: {extracted_save}")
+    return selected_player_save, player_save_path, payload, stat
+
+
+def audit_saved_game_turn(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    record_baseline: bool = False,
+    baseline_metadata: Optional[Dict[str, Any]] = None,
+    required_min_delta_turns: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Read-only saved-player turn audit for proving real local turn advancement."""
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+
+    selected_player_save, player_save_path, payload, stat = load_saved_player_payload(world_dir, player_save)
+    turn = int(payload.get("turn", 0) or 0)
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise RuntimeError(f"Extracted player save is missing player object: {player_save_path}")
+    location_raw = player.get("location", [])
+    player_location: List[int] = []
+    player_abs_omt: List[int] = []
+    if isinstance(location_raw, list) and len(location_raw) >= 3:
+        player_location = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
+        player_abs_omt = [player_location[0] // 24, player_location[1] // 24, player_location[2]]
+
+    baseline_turn: Optional[int] = None
+    observed_delta_turns: Optional[int] = None
+    missing_required_min_delta_turns = False
+    if baseline_metadata is not None:
+        baseline_turn = int(baseline_metadata.get("turn", 0) or 0)
+        observed_delta_turns = turn - baseline_turn
+        if required_min_delta_turns is not None:
+            missing_required_min_delta_turns = observed_delta_turns < int(required_min_delta_turns)
+
+    if record_baseline:
+        status = "baseline_recorded"
+    elif baseline_metadata is not None and required_min_delta_turns is not None and not missing_required_min_delta_turns:
+        status = "required_state_present"
+    elif baseline_metadata is not None and required_min_delta_turns is not None:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "player_save_path": str(player_save_path),
+        "player_save_mtime_ns": int(stat.st_mtime_ns),
+        "player_save_mtime_iso": datetime.fromtimestamp(float(stat.st_mtime)).isoformat(timespec="microseconds"),
+        "turn": turn,
+        "baseline_turn": baseline_turn,
+        "observed_delta_turns": observed_delta_turns,
+        "required_min_delta_turns": required_min_delta_turns,
+        "missing_required_min_delta_turns": missing_required_min_delta_turns,
+        "player_location_ms": player_location,
+        "player_abs_omt": player_abs_omt,
+        "status": status,
+    }
+
+
 def audit_saved_overmap_npcs(
     world_dir: Path,
     *,
@@ -2366,6 +2475,9 @@ def audit_saved_bandit_live_world_state(
     required_active_target_id_prefix: str = "",
     required_active_job_type: str = "",
     required_min_active_member_ids: Optional[int] = None,
+    required_active_members_found: bool = False,
+    required_active_member_max_abs_offset_ms: Optional[List[int]] = None,
+    player_save: str = "",
     required_remembered_target_or_mark_prefix: str = "",
     required_min_leads: Optional[int] = None,
     required_lead_source_contains: str = "",
@@ -2397,6 +2509,116 @@ def audit_saved_bandit_live_world_state(
 
     observed_sites = [summarize_bandit_live_world_site(site) for site in raw_sites if isinstance(site, dict)]
 
+    selected_player_save = str(player_save or "").strip()
+    player_location_ms: List[int] = []
+    player_abs_omt: List[int] = []
+    active_member_scan_error = ""
+    active_member_npcs_by_id: Dict[str, Dict[str, Any]] = {}
+    should_scan_active_members = bool(required_active_members_found or required_active_member_max_abs_offset_ms is not None)
+    if should_scan_active_members:
+        try:
+            selected_player_save, _player_save_path, player_payload, _player_stat = load_saved_player_payload(world_dir, selected_player_save)
+            player = player_payload.get("player")
+            if not isinstance(player, dict):
+                raise RuntimeError("Extracted player save is missing player object")
+            location_raw = player.get("location", [])
+            if not isinstance(location_raw, list) or len(location_raw) < 3:
+                raise RuntimeError("Extracted player save is missing player location")
+            player_location_ms = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
+            player_abs_omt = [player_location_ms[0] // 24, player_location_ms[1] // 24, player_location_ms[2]]
+            overmaps_dir = world_dir / "overmaps"
+            if not overmaps_dir.exists():
+                raise RuntimeError(f"Overmaps dir not found: {overmaps_dir}")
+            for overmap_path in sorted(overmaps_dir.glob("o.*.*.zzip")):
+                plain_path: Optional[Path] = None
+                created_plain = False
+                try:
+                    plain_path, _version_line, overmap_payload = extract_overmap_payload(overmap_path)
+                    created_plain = bool(overmap_payload.get("_created_plain"))
+                    raw_npcs = overmap_payload.get("npcs", [])
+                    if not isinstance(raw_npcs, list):
+                        continue
+                    for index, npc_payload in enumerate(raw_npcs):
+                        if not isinstance(npc_payload, dict):
+                            continue
+                        npc_id = npc_payload.get("id")
+                        if npc_id is None:
+                            continue
+                        location_raw = npc_payload.get("location", [])
+                        location_ms: List[int] = []
+                        offset_ms: List[int] = []
+                        if isinstance(location_raw, list) and len(location_raw) >= 3:
+                            location_ms = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
+                            offset_ms = [
+                                location_ms[0] - player_location_ms[0],
+                                location_ms[1] - player_location_ms[1],
+                                location_ms[2] - player_location_ms[2],
+                            ]
+                        active_member_npcs_by_id[str(npc_id)] = {
+                            "id": npc_id,
+                            "overmap": str(overmap_path.relative_to(world_dir)),
+                            "index": index,
+                            "name": str(npc_payload.get("name", "") or ""),
+                            "location_ms": location_ms,
+                            "offset_ms": offset_ms,
+                            "attitude": npc_payload.get("attitude"),
+                            "mission": npc_payload.get("mission"),
+                            "my_fac": npc_payload.get("my_fac"),
+                            "dead": npc_payload.get("dead"),
+                        }
+                finally:
+                    if plain_path is not None and created_plain:
+                        cleanup_extracted_overmap(plain_path, keep=False)
+        except Exception as exc:
+            active_member_scan_error = str(exc)
+            if required_active_members_found or required_active_member_max_abs_offset_ms is not None:
+                raise
+
+    normalized_max_abs_offset: Optional[List[int]] = None
+    if required_active_member_max_abs_offset_ms is not None:
+        if len(required_active_member_max_abs_offset_ms) < 3:
+            raise RuntimeError("required_active_member_max_abs_offset_ms needs [x,y,z]")
+        normalized_max_abs_offset = [
+            int(required_active_member_max_abs_offset_ms[0]),
+            int(required_active_member_max_abs_offset_ms[1]),
+            int(required_active_member_max_abs_offset_ms[2]),
+        ]
+
+    for site in observed_sites:
+        lookups: List[Dict[str, Any]] = []
+        active_ids = site.get("active_member_ids", [])
+        if not isinstance(active_ids, list):
+            active_ids = []
+        for member_id in active_ids:
+            found = active_member_npcs_by_id.get(str(member_id))
+            if found is None:
+                lookups.append({"id": member_id, "found_in_saved_overmap": False})
+                continue
+            row = dict(found)
+            row["found_in_saved_overmap"] = True
+            if normalized_max_abs_offset is not None:
+                offset = row.get("offset_ms", [])
+                row["within_required_max_abs_offset_ms"] = (
+                    isinstance(offset, list)
+                    and len(offset) >= 3
+                    and all(abs(int(offset[i])) <= normalized_max_abs_offset[i] for i in range(3))
+                )
+            lookups.append(row)
+        site["active_member_saved_lookup"] = lookups
+        site["active_members_all_found_in_saved_overmap"] = bool(active_ids) and all(
+            bool(row.get("found_in_saved_overmap")) for row in lookups
+        )
+        if normalized_max_abs_offset is not None:
+            site["active_members_within_required_max_abs_offset_ms"] = bool(active_ids) and all(
+                bool(row.get("within_required_max_abs_offset_ms")) for row in lookups
+            )
+        site["position_exposure_footing"] = {
+            "player_location_ms": player_location_ms,
+            "player_abs_omt": player_abs_omt,
+            "active_member_offsets_ms": [row.get("offset_ms", []) for row in lookups if row.get("found_in_saved_overmap")],
+            "named_footing": "saved active members are cross-referenced against overmap NPC records near the loaded player position before visible-turn sight-avoid proof",
+        }
+
     required_profile = str(required_profile or "").strip()
     required_site_id_contains = str(required_site_id_contains or "").strip()
     required_active_group_id_contains = str(required_active_group_id_contains or "").strip()
@@ -2418,6 +2640,10 @@ def audit_saved_bandit_live_world_state(
         if required_active_job_type and site.get("active_job_type") != required_active_job_type:
             return False
         if required_min_active_member_ids is not None and int(site.get("active_member_count", 0) or 0) < required_min_active_member_ids:
+            return False
+        if required_active_members_found and not bool(site.get("active_members_all_found_in_saved_overmap")):
+            return False
+        if normalized_max_abs_offset is not None and not bool(site.get("active_members_within_required_max_abs_offset_ms")):
             return False
         if required_remembered_target_or_mark_prefix and not str(site.get("remembered_target_or_mark", "")).startswith(required_remembered_target_or_mark_prefix):
             return False
@@ -2447,6 +2673,8 @@ def audit_saved_bandit_live_world_state(
         "required_active_target_id_prefix": required_active_target_id_prefix,
         "required_active_job_type": required_active_job_type,
         "required_min_active_member_ids": required_min_active_member_ids,
+        "required_active_members_found": required_active_members_found,
+        "required_active_member_max_abs_offset_ms": normalized_max_abs_offset,
         "required_remembered_target_or_mark_prefix": required_remembered_target_or_mark_prefix,
         "required_min_leads": required_min_leads,
         "required_lead_source_contains": required_lead_source_contains,
@@ -2473,6 +2701,10 @@ def audit_saved_bandit_live_world_state(
         "dimension_mtime_iso": datetime.fromtimestamp(float(stat.st_mtime)).isoformat(timespec="microseconds"),
         "version_line": version_line,
         "required_fields": required_fields,
+        "player_save": selected_player_save,
+        "player_location_ms": player_location_ms,
+        "player_abs_omt": player_abs_omt,
+        "active_member_scan_error": active_member_scan_error,
         "observed_site_count": len(observed_sites),
         "observed_matching_site_count": len(matching_sites),
         "matching_sites": matching_sites,
@@ -3590,6 +3822,13 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_npc_count_delta")
         if metadata.get("missing_required_weather"):
             issues.append("missing_required_weather")
+        if metadata.get("missing_required_min_delta_turns"):
+            issues.append("missing_required_min_delta_turns")
+        missing_fields = metadata.get("missing_required_fields")
+        if isinstance(missing_fields, list):
+            for missing_field in missing_fields:
+                if str(missing_field) not in issues:
+                    issues.append(str(missing_field))
         return "red_step_metadata_required_state_missing", issues or [status]
     if status == "failed":
         return "blocked_step_metadata_probe_failed", ["metadata_probe_failed"]
@@ -3800,6 +4039,11 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 "missing_required_weather": metadata_summary.get("missing_required_weather", []),
                 "required_weather_id": metadata_summary.get("required_weather_id", ""),
                 "required_temperature_f": metadata_summary.get("required_temperature_f"),
+                "required_bandit_fields": metadata_summary.get("required_fields", {}),
+                "required_min_delta_turns": metadata_summary.get("required_min_delta_turns"),
+                "observed_delta_turns": metadata_summary.get("observed_delta_turns"),
+                "missing_required_min_delta_turns": metadata_summary.get("missing_required_min_delta_turns", False),
+                "active_member_scan_error": metadata_summary.get("active_member_scan_error", ""),
             } if metadata_summary else {},
             "proof_deferred_to_label": str(report.get("proof_deferred_to_label", "")),
             "failure_rule": str(report.get("failure_rule", "missing/wrong screen, failed OCR guard, stale runtime, or absent state metadata makes this non-green")),
@@ -5439,8 +5683,10 @@ def execute_probe_steps(
             )
             raw_line_groups = step.get("required_line_patterns", []) or []
             line_groups = [normalize_screen_text_patterns(group) for group in raw_line_groups]
-            if not patterns and not line_groups:
-                raise SystemExit(f"Scenario step '{label}' needs required_patterns/patterns/required_line_patterns")
+            raw_any_line_groups = step.get("required_any_line_patterns", []) or []
+            any_line_groups = [normalize_screen_text_patterns(group) for group in raw_any_line_groups]
+            if not patterns and not line_groups and not any_line_groups:
+                raise SystemExit(f"Scenario step '{label}' needs required_patterns/patterns/required_line_patterns/required_any_line_patterns")
             metadata = audit_log_contains(
                 run_dir,
                 label,
@@ -5448,6 +5694,7 @@ def execute_probe_steps(
                 artifact_baseline=artifact_baseline,
                 patterns=patterns,
                 required_line_patterns=line_groups,
+                required_any_line_patterns=any_line_groups,
                 filter_debug_noise=filter_debug_noise,
             )
             metadata["artifact_path"] = str(run_dir / f"{label}.metadata.json")
@@ -5801,6 +6048,14 @@ def execute_probe_steps(
                 required_min_leads = None
             else:
                 required_min_leads = int(raw_required_min_leads)
+            raw_required_max_offset = step.get("required_active_member_max_abs_offset_ms")
+            required_max_offset: Optional[List[int]] = None
+            if isinstance(raw_required_max_offset, list) and len(raw_required_max_offset) >= 3:
+                required_max_offset = [
+                    int(raw_required_max_offset[0]),
+                    int(raw_required_max_offset[1]),
+                    int(raw_required_max_offset[2]),
+                ]
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
             try:
@@ -5812,6 +6067,9 @@ def execute_probe_steps(
                     required_active_target_id_prefix=str(step.get("required_active_target_id_prefix", "") or "").strip(),
                     required_active_job_type=str(step.get("required_active_job_type", "") or "").strip(),
                     required_min_active_member_ids=required_min_active_member_ids,
+                    required_active_members_found=bool(step.get("required_active_members_found", False)),
+                    required_active_member_max_abs_offset_ms=required_max_offset,
+                    player_save=str(step.get("player_save", "") or "").strip(),
                     required_remembered_target_or_mark_prefix=str(
                         step.get("required_remembered_target_or_mark_prefix", "") or ""
                     ).strip(),
@@ -5833,6 +6091,9 @@ def execute_probe_steps(
                     "required_active_target_id_prefix": str(step.get("required_active_target_id_prefix", "") or "").strip(),
                     "required_active_job_type": str(step.get("required_active_job_type", "") or "").strip(),
                     "required_min_active_member_ids": required_min_active_member_ids,
+                    "required_active_members_found": bool(step.get("required_active_members_found", False)),
+                    "required_active_member_max_abs_offset_ms": required_max_offset,
+                    "player_save": str(step.get("player_save", "") or "").strip(),
                     "required_min_leads": required_min_leads,
                     "required_known_recent_mark_contains": str(
                         step.get("required_known_recent_mark_contains", "") or ""
@@ -5865,6 +6126,63 @@ def execute_probe_steps(
                                 "required saved bandit_live_world metadata was missing or unreadable",
                             )
                         ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
+        elif kind == "audit_saved_game_turn":
+            player_save = str(step.get("player_save", "") or "").strip()
+            record_baseline = bool(step.get("record_baseline", False))
+            baseline_label = str(step.get("baseline_label", "") or "").strip()
+            baseline_metadata = None
+            if baseline_label:
+                for prior_report in reports:
+                    if str(prior_report.get("label", "") or "").strip() == baseline_label:
+                        if isinstance(prior_report.get("metadata"), dict):
+                            baseline_metadata = prior_report["metadata"]
+                        break
+                if baseline_metadata is None:
+                    raise SystemExit(f"Scenario step '{label}' baseline_label not found or has no metadata: {baseline_label}")
+            raw_min_delta = step.get("required_min_delta_turns")
+            required_min_delta = int(raw_min_delta) if raw_min_delta is not None and str(raw_min_delta).strip() != "" else None
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_game_turn(
+                    world_dir,
+                    player_save=player_save,
+                    record_baseline=record_baseline,
+                    baseline_metadata=baseline_metadata,
+                    required_min_delta_turns=required_min_delta,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "player_save": player_save,
+                    "baseline_label": baseline_label,
+                    "required_min_delta_turns": required_min_delta,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "metadata": metadata,
+                "action_description": "read saved player turn counter and require a post-action turn delta from the recorded baseline",
+                "expected_immediate_state": "saved player turn counter baseline/delta proves the actual game turn path advanced, not just that turn keys were pressed",
+                "failure_rule": "missing saved turn counter, missing baseline, or insufficient turn delta makes this local-turn proof red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(step.get("abort_verdict", "blocked_untrusted_saved_game_turn_delta")),
+                        "reason": str(step.get("abort_reason", "required saved game-turn delta was missing or too small")),
                         "issues": metadata_issues,
                     }
                     reports.append(report)
