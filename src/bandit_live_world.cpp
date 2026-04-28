@@ -580,7 +580,7 @@ std::vector<character_id> select_dispatch_members( const bandit_live_world::site
     std::vector<character_id> member_ids;
     member_ids.reserve( std::max( count, 0 ) );
     for( const bandit_live_world::member_record &member : site.members ) {
-        if( member.state != member_state::at_home ) {
+        if( member.state != member_state::at_home || member.wounded_or_unready ) {
             continue;
         }
         member_ids.push_back( member.npc_id );
@@ -795,6 +795,7 @@ void member_record::serialize( JsonOut &json ) const
     json.member( "npc_template_id", npc_template_id );
     json.member( "home_spawn_tile", home_spawn_tile );
     json.member( "state", to_string( state ) );
+    json.member( "wounded_or_unready", wounded_or_unready );
     json.member( "last_writeback_summary", last_writeback_summary );
     json.end_object();
 }
@@ -809,6 +810,7 @@ void member_record::deserialize( const JsonObject &jo )
     std::string state_string = "at_home";
     jo.read( "state", state_string );
     state = member_state_from_string( state_string ).value_or( member_state::at_home );
+    jo.read( "wounded_or_unready", wounded_or_unready );
     jo.read( "last_writeback_summary", last_writeback_summary );
 }
 
@@ -1122,8 +1124,11 @@ int site_record::dispatchable_member_capacity() const
     if( retired_empty_site ) {
         return 0;
     }
-    const int at_home_members = count_members_in_state( member_state::at_home );
-    return std::max( 0, at_home_members - required_home_reserve( *this ) );
+    const int ready_at_home_members = static_cast<int>( std::count_if( members.begin(), members.end(),
+    []( const member_record & member ) {
+        return member.state == member_state::at_home && !member.wounded_or_unready;
+    } ) );
+    return std::max( 0, ready_at_home_members - required_home_reserve( *this ) );
 }
 
 bool site_record::has_active_outside_pressure() const
@@ -1456,6 +1461,175 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
     }
     spawn_tile_record_ptr->headcount++;
     return true;
+}
+
+
+int ready_at_home_member_count( const bandit_live_world::site_record &site )
+{
+    return static_cast<int>( std::count_if( site.members.begin(), site.members.end(),
+    []( const bandit_live_world::member_record & member ) {
+        return member.state == member_state::at_home && !member.wounded_or_unready;
+    } ) );
+}
+
+int wounded_or_unready_member_count( const bandit_live_world::site_record &site )
+{
+    return static_cast<int>( std::count_if( site.members.begin(), site.members.end(),
+    []( const bandit_live_world::member_record & member ) {
+        return counts_toward_live_headcount( member.state ) && member.wounded_or_unready;
+    } ) );
+}
+
+int active_outside_member_count( const bandit_live_world::site_record &site )
+{
+    std::vector<character_id> outside_members;
+    outside_members.reserve( site.active_member_ids.size() );
+    for( const character_id &member_id : site.active_member_ids ) {
+        if( std::find( outside_members.begin(), outside_members.end(), member_id ) == outside_members.end() ) {
+            outside_members.push_back( member_id );
+        }
+    }
+    for( const bandit_live_world::member_record &member : site.members ) {
+        if( member.state != member_state::outbound && member.state != member_state::local_contact ) {
+            continue;
+        }
+        if( std::find( outside_members.begin(), outside_members.end(), member.npc_id ) == outside_members.end() ) {
+            outside_members.push_back( member.npc_id );
+        }
+    }
+    return static_cast<int>( outside_members.size() );
+}
+
+int ceil_percent( const int value, const int percent )
+{
+    if( value <= 0 || percent <= 0 ) {
+        return 0;
+    }
+    return ( value * percent + 99 ) / 100;
+}
+
+int camp_map_home_reserve_for_lead( const bandit_live_world::site_record &site,
+                                    const bandit_live_world::camp_map_lead &lead,
+                                    const int stockpile_pressure )
+{
+    int reserve = required_home_reserve( site );
+    const int living_roster = site.count_live_members();
+    if( effective_profile( site ) == hostile_site_profile::camp_style &&
+        ( lead.prior_bandit_losses > 0 || lead.target_alert || lead.scout_seen ) ) {
+        reserve += 1;
+    }
+    if( stockpile_pressure >= 3 ) {
+        const int minimum_reserve = living_roster >= 5 ? 2 : 1;
+        reserve = std::max( minimum_reserve, reserve - 1 );
+    }
+    return std::clamp( reserve, 0, living_roster );
+}
+
+int stalk_pressure_member_count( const int living_roster, const int dispatchable )
+{
+    if( dispatchable < 2 ) {
+        return 0;
+    }
+    const int upper_bound = std::min( dispatchable, ceil_percent( living_roster, 35 ) );
+    if( upper_bound < 2 ) {
+        return 0;
+    }
+    return std::clamp( ceil_percent( dispatchable, 40 ), 2, upper_bound );
+}
+
+camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
+        const camp_map_lead &lead, const camp_map_dispatch_pressure &pressure )
+{
+    camp_map_dispatch_decision decision;
+    decision.valid = true;
+    decision.living_roster = site.count_live_members();
+    decision.ready_at_home = ready_at_home_member_count( site );
+    decision.wounded_or_unready = wounded_or_unready_member_count( site );
+    decision.active_outside = active_outside_member_count( site );
+    decision.hard_home_reserve = camp_map_home_reserve_for_lead( site, lead,
+                                 pressure.stockpile_pressure );
+    decision.dispatchable = std::max( 0, decision.ready_at_home - decision.hard_home_reserve );
+
+    decision.reward_score = std::max( 0, lead.bounty ) + std::max( 0, lead.confidence ) +
+                            std::clamp( pressure.stockpile_pressure, 0, 3 ) +
+                            std::min( 2, std::max( 0, lead.prior_defender_losses ) );
+    if( pressure.opening_available ) {
+        decision.reward_score += 1;
+    }
+
+    decision.risk_score = std::max( 0, lead.threat ) + std::max( 0, 2 - lead.confidence ) +
+                          std::min( 4, std::max( 0, lead.prior_bandit_losses ) * 2 );
+    if( lead.target_alert ) {
+        decision.risk_score += 2;
+    }
+    if( lead.scout_seen ) {
+        decision.risk_score += 1;
+    }
+    if( !pressure.opening_available ) {
+        decision.risk_score += 2;
+    }
+    decision.margin = decision.reward_score - decision.risk_score;
+
+    decision.notes.push_back( "camp-map decision uses ready roster, wounded/unready, reserve, and lead pressure" );
+    if( pressure.stockpile_pressure >= 3 ) {
+        decision.notes.push_back( "stockpile pressure may loosen reserve by one but cannot cross hard minimum" );
+    }
+    if( lead.prior_bandit_losses > 0 || lead.target_alert || lead.scout_seen ) {
+        decision.notes.push_back( "losses/alert add caution before greed can size the outing" );
+    }
+
+    if( site.retired_empty_site ) {
+        decision.intent = bandit_dry_run::job_template::hold_chill;
+        decision.notes.push_back( "hold: retired empty site" );
+        return decision;
+    }
+    if( site.has_active_outside_pressure() ) {
+        decision.intent = bandit_dry_run::job_template::hold_chill;
+        decision.notes.push_back( "hold: unresolved active outside group/contact blocks dogpile" );
+        return decision;
+    }
+    if( decision.dispatchable <= 0 ) {
+        decision.intent = bandit_dry_run::job_template::hold_chill;
+        decision.notes.push_back( "hold: no ready members remain after reserve" );
+        return decision;
+    }
+
+    if( !pressure.opening_available && lead.status == camp_lead_status::active ) {
+        decision.intent = bandit_dry_run::job_template::hold_chill;
+        decision.notes.push_back( "hold: active stalk pressure found no opening and should return/decay" );
+        return decision;
+    }
+
+    if( lead.confidence <= 1 || lead.status == camp_lead_status::stale ) {
+        decision.intent = bandit_dry_run::job_template::scout;
+        decision.selected_member_count = 1;
+        decision.notes.push_back( "scout: low-confidence or stale memory needs eyes before pressure" );
+        return decision;
+    }
+
+    if( decision.margin <= -2 || ( lead.threat >= lead.bounty + 2 && decision.margin <= 1 ) ) {
+        decision.intent = bandit_dry_run::job_template::hold_chill;
+        decision.notes.push_back( "hold: high threat or poor reward does not escalate by itself" );
+        return decision;
+    }
+
+    if( decision.margin >= 2 ) {
+        const int stalkers = stalk_pressure_member_count( decision.living_roster, decision.dispatchable );
+        if( stalkers >= 2 ) {
+            decision.intent = bandit_dry_run::job_template::stalk;
+            decision.selected_member_count = stalkers;
+            decision.notes.push_back( "stalk: remembered high-value lead permits larger-than-scout pressure" );
+            return decision;
+        }
+        decision.intent = bandit_dry_run::job_template::scout;
+        decision.selected_member_count = 1;
+        decision.notes.push_back( "scout: pressure margin is good but reserve leaves no stalk pair" );
+        return decision;
+    }
+
+    decision.intent = bandit_dry_run::job_template::hold_chill;
+    decision.notes.push_back( "hold: marginal remembered lead waits for better evidence" );
+    return decision;
 }
 
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
