@@ -73,7 +73,7 @@ Notes:
 
 ## Cannibal camp night-raid behavior packet v0
 
-Status: ACTIVE / DETERMINISTIC SUBSTRATE LANDED / LIVE MATRIX MOSTLY GREEN
+Status: ACTIVE / DETERMINISTIC SUBSTRATE LANDED / LIVE MATRIX GREEN EXCEPT OPTIONAL CONTROL
 
 Success state:
 - [x] Deterministic coverage proves cannibal planned attacks/raids require a meaningful pack size under ordinary conditions, while scout/probe behavior may remain smaller only when explicitly classified that way.
@@ -88,7 +88,7 @@ Success state:
 - [x] Live matrix scenario proves day smoke/light or repeated routine creates scout/stalk/dispatch pressure, not instant combat (`20260428_124902`, feature-path, `posture=hold_off`, `active_job=stalk`, smoke lead, no shakedown/combat-forward).
 - [x] Live matrix scenario proves night/darkness/concealment can turn confirmed multi-member pack contact into attack through the real dispatch/local-contact path (`20260428_124947`, feature-path, `local_contact=yes`, `darkness_or_concealment=yes`, `posture=attack_now`, `pack_size=2`).
 - [x] Live matrix scenario proves exposed stalking/scouting cannibals hold, reposition normally, or abort within a bounded window instead of visibly beelining or teleporting (`20260428_125138`, feature-path, bounded 20-turn window, cannibal `posture=hold_off`, `sight_exposure=recent`, no shakedown/combat-forward).
-- [ ] Live matrix scenario proves daylight/no-cover and high-threat negatives still hold/probe/abort. Day smoke/no-cover hold-off is green as support; an explicit high-threat/comparable negative remains open if required for closure.
+- [x] Live matrix scenario proves daylight/no-cover and high-threat negatives still hold/probe/abort (`20260428_135323`, feature-path, current runtime `48abd82de9`, `threat=3`, `opportunity=2`, `darkness_or_concealment=no`, `posture=hold_off`, no shakedown/combat-forward).
 - [x] Live matrix scenario proves cannibal contact never opens bandit shakedown/pay/fight surfaces, with any bandit control run labeled separately (`20260428_124947` reaches local contact/attack report path with `shakedown=no`; no bandit control run credited).
 - [x] Live matrix scenario proves saved-state persistence for active cannibal group/profile/target/live-signal state when a real active group is created (`20260428_130948`, feature-path, guarded save/writeback mtime, active members `[4,5]`, player target, `known_recent_marks` with `live_smoke@...`; no-fixture reload support `20260428_131031`; `intelligence_map.leads=[]` is out of scope, not credited).
 - [x] Repeatability or fixture-bias check is run after the first passing product scenario (`repeatability --count 2 cannibal.live_world_day_smoke_pressure_mcw`, stable pass, runs `20260428_125319` and `20260428_125342`).
@@ -101,7 +101,7 @@ Notes:
 - Code audit lives at `doc/cannibal-camp-night-raid-code-audit-2026-04-28.md`.
 - Canonical contract lives at `doc/cannibal-camp-night-raid-behavior-packet-v0-2026-04-28.md`.
 - Live playtest matrix lives at `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md`.
-- Live feature-path evidence: day smoke pressure `.userdata/dev-harness/harness_runs/20260428_124902/`; night pack local-contact attack `.userdata/dev-harness/harness_runs/20260428_124947/`; exposed/recent-sight hold-off `.userdata/dev-harness/harness_runs/20260428_125138/`; repeatability day smoke `.userdata/dev-harness/harness_runs/20260428_125319/` and `.userdata/dev-harness/harness_runs/20260428_125342/`.
+- Live feature-path evidence: day smoke pressure `.userdata/dev-harness/harness_runs/20260428_124902/`; night pack local-contact attack `.userdata/dev-harness/harness_runs/20260428_124947/`; exposed/recent-sight hold-off `.userdata/dev-harness/harness_runs/20260428_125138/`; daylight/high-threat negative `.userdata/dev-harness/harness_runs/20260428_135323/`; repeatability day smoke `.userdata/dev-harness/harness_runs/20260428_125319/` and `.userdata/dev-harness/harness_runs/20260428_125342/`.
 
 ---
 

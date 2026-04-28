@@ -10,21 +10,21 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active target: `Cannibal camp night-raid behavior packet v0` live/harness product-proof slice.
 
-Current state: deterministic/code substrate is green, and the first live matrix slice has real feature-path evidence under proof-freeze rules. Green runs:
+Current state: deterministic/code substrate is green, and the live matrix has real feature-path evidence under proof-freeze rules for the named cannibal scenarios; only optional labeled bandit-control contrast remains if product review wants it. Green runs:
 
 - Day smoke/light pressure: `.userdata/dev-harness/harness_runs/20260428_124902/` — smoke lead, cannibal `active_job=stalk`, `posture=hold_off`, no shakedown/combat-forward.
 - Night local-contact attack window: `.userdata/dev-harness/harness_runs/20260428_124947/` — direct/local contact, `darkness_or_concealment=yes`, `pack_size=2`, `posture=attack_now`, `combat_forward=yes`, `shakedown=no`.
 - Exposed/recent-sight hold-off: `.userdata/dev-harness/harness_runs/20260428_125138/` — bounded 20-turn live window, cannibal `sight_exposure=recent`, `posture=hold_off`, no shakedown/combat-forward.
+- Daylight/high-threat negative: `.userdata/dev-harness/harness_runs/20260428_135323/` — current runtime `48abd82de9`, daylight smoke/light scan, cannibal `threat=3`, `opportunity=2`, `darkness_or_concealment=no`, `posture=hold_off`, no shakedown/combat-forward.
 - Fixture-bias smoke: `repeatability --count 2 cannibal.live_world_day_smoke_pressure_mcw`, stable pass in `.userdata/dev-harness/harness_runs/20260428_125319/` and `.userdata/dev-harness/harness_runs/20260428_125342/`.
 - Save/writeback persistence: `.userdata/dev-harness/harness_runs/20260428_130948/` — day-smoke creates active cannibal `stalk` group, guarded save advances player-save mtime, saved `dimension_data.gsav` contains `profile=cannibal_camp`, active group/target, `active_member_ids=[4,5]`, and `known_recent_marks` with `live_smoke@...`; `intelligence_map.leads=[]` is explicitly out of scope, not credited.
 - No-fixture reload support: `.userdata/dev-harness/harness_runs/20260428_131031/` — fresh startup without fixture reinstall plus metadata audit still sees the active cannibal group/profile/target/member state and `known_recent_marks` smoke signal.
 
 Playtest matrix: `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md`.
 
-Next audited scenarios:
+Next audited scenario, only if product review wants extra contrast:
 
-1. Explicit daylight/no-cover + high-threat negative if Schani wants this separated from the day-smoke hold-off proof.
-2. Optional bandit-control contrast for shakedown/pay/fight, if product review wants a labeled control beyond the cannibal `shakedown=no` contact proof.
+1. Optional bandit-control contrast for shakedown/pay/fight beyond the green cannibal `shakedown=no` contact proof.
 
 Proof discipline:
 
@@ -34,7 +34,7 @@ Proof discipline:
 
 Remaining boundary:
 
-- Do not claim full live night-raid closure until the remaining optional negative/control proof is either green or explicitly scoped out; scenarios already marked green have feature-path evidence, and scenario 6 is saved-state persistence with reload saved-file support, not magical in-memory proof.
+- The separated daylight/high-threat negative is now green; do not claim a labeled bandit-control contrast unless it is either run or explicitly scoped out by product review. Scenarios already marked green have feature-path evidence, and scenario 6 is saved-state persistence with reload saved-file support, not magical in-memory proof.
 - Do not widen into cannibal lore/capture mechanics/unrelated bandit rewrites while chasing playtest coverage.
 
 Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.

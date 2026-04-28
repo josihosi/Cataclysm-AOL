@@ -33,10 +33,11 @@ Green feature-path runs so far:
 - Scenario 1 day smoke/light lead: `.userdata/dev-harness/harness_runs/20260428_124902/`, `feature_proof=true`, `2/2` green step rows, smoke signal matched, cannibal `active_job=stalk`, `posture=hold_off`, `darkness_or_concealment=no`, `shakedown=no`, `combat_forward=no`.
 - Scenario 2 night/local-contact pack attack: `.userdata/dev-harness/harness_runs/20260428_124947/`, `feature_proof=true`, `2/2` green step rows, direct player range/local contact matched, `profile=cannibal_camp`, `posture=attack_now`, `pack_size=2`, `darkness_or_concealment=yes`, `local_contact=yes`, `combat_forward=yes`, `shakedown=no`.
 - Scenario 3 exposed/recent-sight hold-off: `.userdata/dev-harness/harness_runs/20260428_125138/`, `feature_proof=true`, `5/5` green step rows, bounded 20-turn exposed window, cannibal `posture=hold_off`, `current_exposure=no`, `recent_exposure=yes`, `sight_exposure=recent`, `shakedown=no`, `combat_forward=no`. The inherited `bandit_camp` reposition artifact in this fixture is control/source-fixture noise and must not be credited as cannibal behavior.
+- Scenario 4 daylight/high-threat negative: `.userdata/dev-harness/harness_runs/20260428_135323/`, `feature_proof=true`, `2/2` green step rows on current runtime `48abd82de9`, daylight smoke/light scan, cannibal `posture=hold_off`, `threat=3`, `opportunity=2`, `darkness_or_concealment=no`, `recent_exposure=yes`, `sight_exposure=recent`, `shakedown=no`, `combat_forward=no`.
 - Scenario 7 repeatability smoke: `repeatability --count 2 cannibal.live_world_day_smoke_pressure_mcw`, stable pass, runs `.userdata/dev-harness/harness_runs/20260428_125319/` and `.userdata/dev-harness/harness_runs/20260428_125342/`.
 - Scenario 6 saved-state persistence: `.userdata/dev-harness/harness_runs/20260428_130948/`, `feature_proof=true`, `7/7` green step rows, day-smoke active cannibal `stalk` group created and saved through guarded mtime writeback; saved `dimension_data.gsav` reports `profile=cannibal_camp`, active group/target, `active_member_ids=[4,5]`, and `known_recent_marks` containing `live_smoke@...`; `intelligence_map.leads=[]` is out of scope, not camp-map proof. No-fixture reload support: `.userdata/dev-harness/harness_runs/20260428_131031/`, `2/2` green step rows after fresh startup without fixture reinstall, same saved active cannibal state still present; top-level classifier yellow/no-new-artifacts, so this is reload support, not a separate behavior artifact.
 
-Still open only if product review wants extra separation: an explicit high-threat/comparable daylight negative beyond scenario 1, and optional labeled bandit-control contrast for shakedown/pay/fight.
+Still open only if product review wants extra separation: optional labeled bandit-control contrast for shakedown/pay/fight beyond the green cannibal `shakedown=no` local-contact proof.
 
 ## Scenario matrix
 
@@ -92,6 +93,8 @@ Required proof:
 - no visible combat-forward behavior is credited;
 - the result is contrasted against the night/concealment run where possible.
 
+Current verdict: GREEN for separated daylight/high-threat negative via `.userdata/dev-harness/harness_runs/20260428_135323/`. The scenario `cannibal.live_world_daylight_high_threat_negative_mcw` ran after rebuilding the tiles binary to current runtime `48abd82de9`; startup was clean, `step_ledger_summary=2/2` green, and matched artifacts include daylight `signal_packet=yes`, cannibal local gate `active_job=stalk profile=cannibal_camp posture=hold_off pack_size=2 threat=3 opportunity=2 darkness_or_concealment=no recent_exposure=yes sight_exposure=recent shakedown=no combat_forward=no`. This is separated negative proof, not a new smoke-source breadth claim.
+
 ### 5. Cannibals never open bandit shakedown/extortion UI
 
 Claim: cannibal contact does not expose pay/fight/shakedown negotiation surfaces, while ordinary bandit control behavior remains separate.
@@ -132,8 +135,8 @@ Current verdict: GREEN smoke repeatability for scenario 1. `python3 tools/opencl
 3. Run scenario 1 day smoke/light lead.
 4. Run scenario 2 night/darkness attack window.
 5. Run scenario 3 exposure hold/reposition/abort.
-6. Run scenario 4 daylight/high-threat negative.
-7. Run scenario 5 no-shakedown surface plus optional bandit control.
+6. Scenario 4 daylight/high-threat negative is now covered by `20260428_135323`; rerun only if the negative-proof contract changes.
+7. Scenario 5 cannibal no-shakedown surface is supported by the green local-contact attack report (`20260428_124947`, `shakedown=no`); run an optional bandit control only if product review wants a labeled pay/fight contrast.
 8. Scenario 6 saved-state persistence is now covered by `20260428_130948`; no-fixture reload/saved-file support is `20260428_131031`; rerun only if the persistence proof contract changes.
 9. Run scenario 7 repeatability only after a passing scenario exists.
 

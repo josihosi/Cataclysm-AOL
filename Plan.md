@@ -84,7 +84,7 @@ Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`
 
 ## Active lane - Cannibal camp night-raid behavior packet v0
 
-**Status:** ACTIVE / GREENLIT FEATURE BEHAVIOR / LIVE PLAYTEST SLICE PARTIAL GREEN
+**Status:** ACTIVE / GREENLIT FEATURE BEHAVIOR / LIVE PLAYTEST SLICE GREEN EXCEPT OPTIONAL CONTROL
 
 Josef requested a new cannibal-camp vision/audit run on 2026-04-28: cannibal camps should remain broadly bandit-camp-shaped hostile sites, but feel more vicious, more trigger-happy, more night-oriented, and should prefer larger raid groups over lone suicide attackers. Smoke/light and repeated human routine should become scout/stalk/dispatch pressure first, with the pack avoiding detection until night/darkness makes the attack window favorable. The prior harness trust-audit/proof-freeze lane has reached a clean checkpoint/closure boundary, so this packet is the active feature lane again. Josef explicitly promoted the live/harness playtest slice on 2026-04-28.
 
@@ -92,7 +92,7 @@ Imagination source of truth lives at `doc/cannibal-camp-night-raid-imagination-s
 Code audit lives at `doc/cannibal-camp-night-raid-code-audit-2026-04-28.md`.
 Canonical contract lives at `doc/cannibal-camp-night-raid-behavior-packet-v0-2026-04-28.md`.
 
-Current checkpoint: `Cannibal camp pack-size + darkness/sight-avoid local-gate substrate v0` has deterministic/code substrate landed. The live playtest matrix now has green feature-path proof for scenario 1 day smoke/light scout-stalk pressure (`20260428_124902`), scenario 2 night/local-contact pack attack window (`20260428_124947`), scenario 3 exposed/recent-sight hold-off (`20260428_125138`), a two-run day-smoke repeatability smoke (`20260428_125319`, `20260428_125342`), and scenario 6 saved-state persistence for a real active cannibal smoke/stalk group (`20260428_130948`) with no-fixture reload saved-file support (`20260428_131031`, not fresh in-memory local-gate proof). Live matrix scenarios still open only if product review wants them separated: explicit daylight/high-threat negative beyond the day-smoke hold-off, and optional bandit-control contrast.
+Current checkpoint: `Cannibal camp pack-size + darkness/sight-avoid local-gate substrate v0` has deterministic/code substrate landed. The live playtest matrix now has green feature-path proof for scenario 1 day smoke/light scout-stalk pressure (`20260428_124902`), scenario 2 night/local-contact pack attack window (`20260428_124947`), scenario 3 exposed/recent-sight hold-off (`20260428_125138`), scenario 4 daylight/high-threat negative behavior (`20260428_135323`), a two-run day-smoke repeatability smoke (`20260428_125319`, `20260428_125342`), and scenario 6 saved-state persistence for a real active cannibal smoke/stalk group (`20260428_130948`) with no-fixture reload saved-file support (`20260428_131031`, not fresh in-memory local-gate proof). The only live matrix seam still open is optional: a labeled bandit-control contrast if product review wants pay/fight comparison beyond the green cannibal `shakedown=no` contact proof.
 Live playtest matrix lives at `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md` and remains the active proof slice.
 
 Scope:
