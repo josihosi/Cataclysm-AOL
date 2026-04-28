@@ -8,13 +8,16 @@ The current scout-return loop is too disposable if it requires a fresh live sign
 
 Audit boundary from the pre-lane implementation: existing scout-return evidence only proves return-home cleanup / pressure refresh and member writeback. It does not prove this camp-map lead contract. Do not treat `scout_report: returned -> pressure refreshed`, `active_*` field reset, or `remembered_bounty_estimate`/`remembered_threat_estimate` integers alone as closure for persistent scout-confirmed target memory.
 
+Save/persistence boundary: current `bandit_live_world` site serialization proves a saved per-site ledger substrate, not the required per-camp intelligence map. The lane must implement or explicitly name the camp-owned map structure and prove it survives the normal game save/load path with multiple camps keeping independent leads.
+
 The second missing piece is dispatch sizing. A camp with five bandits, two bandits, or twelve bandits cannot use the same magic response size. Dispatch must come from the current live roster: who is alive, home, ready, wounded, already outside, recently lost, and needed for home reserve. High threat alone must not mean “send more bandits.” The camp should weigh risk and reward, then pick an intent and a member count.
 
 The third missing piece is behavior texture. A scout should not sit five overmap tiles away like a nervous weather balloon. For ordinary camp/basecamp observation, the first scout should aim for a two-OMT stand-off from the target OMT, meaning one full OMT remains between scout and camp. The scout watches for about half an in-game day, then returns home and writes the lead. If the camp does not attack immediately, the next pressure beat can be a bigger stalk/pressure dispatch that waits for an opening rather than collapsing straight into a fight.
 
 ## Scope
 
-1. Add a persistent bandit-side camp-map lead for scout-confirmed targets:
+1. Add an explicit independent bandit-side intelligence map owned by each camp and persisted with the game save.
+2. Add a persistent camp-map lead for scout-confirmed targets:
    - target id / approximate overmap position;
    - bounty estimate;
    - threat estimate;
@@ -22,12 +25,12 @@ The third missing piece is behavior texture. A scout should not sit five overmap
    - last seen / age / source scout outcome;
    - scout-seen / target-alert flags;
    - optional stale / confirmed / invalidated / exploited status.
-2. Make scout return write this remembered lead even when the original live signal is gone.
-3. Let the real live dispatch cadence re-plan from remembered scout leads, not only from currently visible live signal packets. This must be wired through the actual game path that currently evaluates owned hostile sites, not left as an isolated evaluator helper.
-4. Replace the default ordinary five-OMT scout hold-off with a two-OMT scout-watch envelope for camp/basecamp observation, with a named constant or report field for the selected stand-off distance.
-5. Give ordinary scout watches a bounded half-day sortie clock, nominally `720` in-game minutes, then return home and write memory unless a higher-priority contact/attack/abort condition honestly interrupts it.
-6. Tighten local sight-avoidance for scouts/stalkers: if the player or camp NPCs see the bandit, the bandit must attempt a non-teleport reposition immediately or within at most two local turns, with blocked/no-cover cases reported explicitly.
-7. Add a bounded risk/reward dispatch-sizing rule using:
+3. Make scout return write this remembered lead even when the original live signal is gone.
+4. Let the real live dispatch cadence re-plan from remembered scout leads, not only from currently visible live signal packets. This must be wired through the actual game path that currently evaluates owned hostile sites, not left as an isolated evaluator helper.
+5. Replace the default ordinary five-OMT scout hold-off with a two-OMT scout-watch envelope for camp/basecamp observation, with a named constant or report field for the selected stand-off distance.
+6. Give ordinary scout watches a bounded half-day sortie clock, nominally `720` in-game minutes, then return home and write memory unless a higher-priority contact/attack/abort condition honestly interrupts it.
+7. Tighten local sight-avoidance for scouts/stalkers: if the player or camp NPCs see the bandit, the bandit must attempt a non-teleport reposition immediately or within at most two local turns, with blocked/no-cover cases reported explicitly.
+8. Add a bounded risk/reward dispatch-sizing rule using:
    - live roster / living roster;
    - at-home ready members;
    - wounded/unready members;
@@ -37,10 +40,10 @@ The third missing piece is behavior texture. A scout should not sit five overmap
    - target bounty, threat, confidence, distance, and age;
    - scout-seen / target-alert state;
    - recent defender losses, bandit losses, failed extraction, or successful toll.
-8. Choose intent before member count: hold, scout, re-scout, stalk/pressure, toll/shakedown, raid, return/stale.
-9. After a returned scout confirms a target but the camp does not attack, allow the risk/reward cadence to choose a larger stalk/pressure dispatch that waits for an opening, while still preserving reserve, anti-dogpile, and high-threat restraint.
-10. Make reviewer-readable reports show all decision inputs and the chosen job/member count.
-11. Add the code integration points needed for the live game loop: serialization/deserialization of remembered leads, scout-return writeback, dispatch-cadence consumption, selected-member writeback, sight-avoidance state, and report/log output.
+9. Choose intent before member count: hold, scout, re-scout, stalk/pressure, toll/shakedown, raid, return/stale.
+10. After a returned scout confirms a target but the camp does not attack, allow the risk/reward cadence to choose a larger stalk/pressure dispatch that waits for an opening, while still preserving reserve, anti-dogpile, and high-threat restraint.
+11. Make reviewer-readable reports show all decision inputs and the chosen job/member count.
+12. Add the code integration points needed for the live game loop: serialization/deserialization of remembered leads, scout-return writeback, dispatch-cadence consumption, selected-member writeback, sight-avoidance state, and report/log output.
 
 ## Non-goals
 
@@ -167,9 +170,11 @@ For ordinary camp/basecamp observation:
 
 ## Success state
 
+- [ ] Every bandit camp owns an independent bandit-side intelligence map, not merely loose shared/global remembered fields or a single current mark.
+- [ ] The camp map is serialized/deserialized with the normal game save path, and deterministic save/load coverage proves multiple camps keep distinct map leads across round trip.
 - [ ] Scout-return writeback stores a remembered target lead on the source camp map with bounty, threat, confidence, age/last-seen, source/outcome, and target-alert/scout-seen state.
 - [ ] A vanished live signal does not erase a scout-confirmed camp/basecamp target; later dispatch cadence can plan from remembered scout knowledge.
-- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted site state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, sight-avoidance state, and reviewer-readable reports/logs.
+- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted per-camp map state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, sight-avoidance state, and reviewer-readable reports/logs.
 - [ ] Ordinary camp/basecamp scout stand-off uses a two-OMT observation envelope, not the old five-OMT default, with fallback distances reported when terrain/pathing forces them.
 - [ ] Scout-watch duration is bounded to about half an in-game day, then the scout returns home and writes memory unless explicitly interrupted.
 - [ ] Dispatch sizing uses current living/ready/home roster, home reserve, wounds/unready state, and active outside groups; the same logic handles tiny, medium, and large camps instead of fixed-size folklore.
@@ -187,6 +192,7 @@ For ordinary camp/basecamp observation:
 
 ### Deterministic tests
 
+- Independent per-camp intelligence maps survive normal save/load, with multiple camps keeping distinct leads and no cross-camp bleed.
 - Roster/reserve table: 2, 4, 5, 7, and 10 living-member camps produce expected reserve, dispatchable count, and allowed intents.
 - Killed or wounded bandits reduce future dispatch capacity and can increase caution/reserve.
 - Active same-target outside/contact/stalk/returning group blocks parallel same-target dispatch.
@@ -206,7 +212,7 @@ For ordinary camp/basecamp observation:
 Before the harness/product proof can close, show the code bridge explicitly:
 
 - deterministic evaluator coverage proves roster/reserve/risk/reward choice;
-- serialization coverage proves remembered leads and target-alert/scout-seen state survive save/load;
+- serialization coverage proves independent per-camp maps, remembered leads, and target-alert/scout-seen state survive save/load;
 - unit or focused integration coverage proves scout-return writes the remembered lead into the site record;
 - source/live-path evidence names the actual dispatch-cadence hook that consumes remembered leads;
 - source/live-path evidence names the local sight-avoidance hook that consumes visibility/exposure state;

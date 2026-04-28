@@ -114,6 +114,8 @@ Compact reference:
 Status: GREENLIT / READY FOR ANDI PROMOTION
 
 Success state:
+- [ ] Every bandit camp owns an independent bandit-side intelligence map, not merely loose shared/global remembered fields or a single current mark.
+- [ ] The camp map is serialized/deserialized with the normal game save path, and deterministic save/load coverage proves multiple camps keep distinct map leads across round trip.
 - [ ] Scout-return writeback stores a remembered target lead on the source camp map with bounty, threat, confidence, age/last-seen, source/outcome, and target-alert/scout-seen state.
 - [ ] A vanished live signal does not erase a scout-confirmed camp/basecamp target; later dispatch cadence can plan from remembered scout knowledge.
 - [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted site state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, sight-avoidance state, and reviewer-readable reports/logs.

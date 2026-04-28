@@ -14,7 +14,7 @@ Implement the bandit camp-map risk/reward dispatch packet through the real game 
 
 The feature is not “make raids bigger.” The feature is: scouts create persistent camp knowledge, camps size follow-up action from current live roster/risk/reward, bandits scout/stalk like living threats, and the running game proves it.
 
-Important audit boundary: the older scout-return proof only established return-home cleanup / pressure refresh (`scout_report: returned -> pressure refreshed`) and member writeback. Treat that as insufficient substrate, not as this feature being already tested. This lane must add and prove the actual camp-map lead contract: bounty, threat, confidence, age/last-seen, source/outcome, target-alert/scout-seen state, vanished-signal redispatch, and risk/reward sizing from remembered scout knowledge.
+Important audit boundary: the older scout-return proof only established return-home cleanup / pressure refresh (`scout_report: returned -> pressure refreshed`) and member writeback. Treat that as insufficient substrate, not as this feature being already tested. Current saved `bandit_live_world` site serialization is also only substrate: it is not the full per-camp intelligence map. This lane must add and prove the actual saved camp-map lead contract: bounty, threat, confidence, age/last-seen, source/outcome, target-alert/scout-seen state, vanished-signal redispatch, and risk/reward sizing from remembered scout knowledge.
 
 ## Implementation scope
 
@@ -25,7 +25,8 @@ Important audit boundary: the older scout-return proof only established return-h
    - local sight-avoidance;
    - serialization;
    - debug/report/log output.
-2. Add persisted camp-map remembered leads:
+2. Add an explicit independent camp-owned intelligence map persisted with the normal game save/load path.
+3. Add persisted camp-map remembered leads:
    - target position/id;
    - bounty;
    - threat;
@@ -34,7 +35,7 @@ Important audit boundary: the older scout-return proof only established return-h
    - scout outcome/source;
    - scout-seen / target-alert flags;
    - status such as active/stale/invalidated/exploited if useful.
-3. Add deterministic roster/reserve/risk/reward helper(s):
+4. Add deterministic roster/reserve/risk/reward helper(s):
    - living roster;
    - ready-at-home count;
    - wounded/unready count;
@@ -45,20 +46,20 @@ Important audit boundary: the older scout-return proof only established return-h
    - risk score;
    - selected intent;
    - selected member count.
-4. Change ordinary camp/basecamp scout observation:
+5. Change ordinary camp/basecamp scout observation:
    - stand-off target is two OMT from target OMT, not five;
    - reports fallback distance/reason if exact placement fails;
    - ordinary scout watch lasts about half an in-game day / named `720` minute clock;
    - scout returns home and writes memory unless explicitly interrupted.
-5. Tighten sight-avoidance:
+6. Tighten sight-avoidance:
    - exposed scout/stalker tries non-teleport reposition immediately if possible;
    - by at most two visible local turns, the bandit must have moved, be aborting/returning, or report blocked/no-cover;
    - repeated exposure raises target-alert/caution.
-6. Wire remembered-lead consumption into the real dispatch cadence:
+7. Wire remembered-lead consumption into the real dispatch cadence:
    - vanished live signal must not erase scout-confirmed target memory;
    - later cadence can choose hold, re-scout, stalk/pressure, toll/shakedown, raid, or stale/return;
    - selected members transition through real member states.
-7. Add reviewer-readable reports/logs for every decision input and outcome.
+8. Add reviewer-readable reports/logs for every decision input and outcome.
 
 ## Roster and sizing defaults
 
@@ -106,6 +107,7 @@ Decision shape:
 
 At minimum:
 
+- independent per-camp intelligence maps survive normal save/load, with multiple camps keeping distinct leads and no cross-camp bleed;
 - roster/reserve table for 2, 4, 5, 7, and 10 living-member camps;
 - killed/wounded members reduce future dispatch and can increase caution;
 - active same-target outside/contact/stalk/returning group blocks dogpile;
