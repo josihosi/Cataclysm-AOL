@@ -18,7 +18,7 @@ The second missing piece is dispatch sizing. A five-bandit camp should not alway
    - last seen / age / source scout outcome;
    - optional stale/confirmed/invalidated/exploited status.
 2. Make scout return write this remembered lead even when the original live signal is gone.
-3. Let later dispatch cadence re-plan from remembered scout leads, not only from currently visible live signal packets.
+3. Let the real live dispatch cadence re-plan from remembered scout leads, not only from currently visible live signal packets. This must be wired through the actual game path that currently evaluates owned hostile sites, not left as an isolated evaluator helper.
 4. Add a bounded risk/reward dispatch-sizing rule using:
    - at-home members and active outside groups;
    - required home reserve;
@@ -27,6 +27,7 @@ The second missing piece is dispatch sizing. A five-bandit camp should not alway
    - recent outcomes such as defender losses, bandit losses, failed extraction, or successful toll.
 5. Keep high threat from becoming dumb escalation. High threat can cause hold, more scouting, cautious stalk, or smaller/safer pressure; bigger attack only happens when reward, confidence, available force, and camp pressure justify it.
 6. Make reviewer-readable reports show the decision inputs and chosen job/member count.
+7. Add the code integration points needed for the live game loop: serialization/deserialization of remembered leads, scout-return writeback, dispatch-cadence consumption, selected-member writeback, and report/log output.
 
 ## Non-goals
 
@@ -34,7 +35,7 @@ The second missing piece is dispatch sizing. A five-bandit camp should not alway
 - Do not make every vanished signal remain actionable forever.
 - Do not let high threat alone mean “send more bandits.”
 - Do not allow parallel dogpile dispatch from the same camp while an existing active outside group/contact is unresolved.
-- Do not close this from deterministic evaluator tests alone if the claim says the live bandit camp re-dispatches from remembered scout knowledge.
+- Do not close this from deterministic evaluator tests alone if the claim says the live bandit camp re-dispatches from remembered scout knowledge. The live game path must consume the new memory and produce an in-game/harness-observable result.
 - Do not route this as an informal Andi nudge; it is a canon plan item with tests.
 
 ## Proposed risk/reward sketch
@@ -56,6 +57,7 @@ For a five-bandit camp:
 
 - [ ] Scout-return writeback stores a remembered target lead on the source camp map with bounty, threat, confidence, age/last-seen, and source/outcome fields.
 - [ ] A vanished live signal does not erase a scout-confirmed camp/basecamp target; later dispatch cadence can plan from remembered scout knowledge.
+- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted site state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, and reviewer-readable reports/logs.
 - [ ] Dispatch sizing uses available at-home members minus home reserve and active outside groups, so a five-bandit camp can choose one scout, a two-bandit toll/stalk group, a larger raid where allowed, or hold.
 - [ ] Camp pressure / stockpile need affects willingness without overriding home reserve or risk gates. If detailed stockpile state is not available yet, the implementation names the placeholder and keeps it bounded.
 - [ ] Bounty, threat, confidence, distance, lead age, prior defender losses, and prior bandit losses all have reviewer-readable effects on the chosen job/member count.
@@ -74,6 +76,16 @@ For a five-bandit camp:
 - Low stockpile / high need increases willingness but cannot violate home reserve or hard risk gates.
 - Prior defender losses can raise the next bounded pressure/demand; prior bandit losses cool or shrink the next dispatch.
 - Remembered camp-map lead survives vanished live signal and remains eligible until stale/invalidated/exploited.
+
+### Live wiring proof
+
+Before the harness/product proof can close, show the code bridge explicitly:
+
+- deterministic evaluator coverage proves the risk/reward choice;
+- serialization coverage proves remembered leads survive save/load;
+- unit or focused integration coverage proves scout-return writes the remembered lead into the site record;
+- source/live-path evidence names the actual dispatch-cadence hook that consumes remembered leads;
+- report/log fields expose the selected job/member count and whether memory, not a fresh signal, drove the decision.
 
 ### Harness/product proof
 
