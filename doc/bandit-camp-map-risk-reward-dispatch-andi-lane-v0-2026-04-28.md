@@ -1,5 +1,7 @@
 # Andi lane: bandit camp-map risk/reward dispatch v0 (2026-04-28)
 
+Status: CLOSED / SCOPED LIVE PRODUCT CHECKPOINT GREEN
+
 Status: ACTIVE / UNLEASHED
 
 ## Canon anchors

@@ -1,11 +1,15 @@
 # Bandit live product playtest matrix v0 (2026-04-28)
 
-Status: GREENLIT / BANDIT PRODUCT-PROOF MATRIX
+Status: GREENLIT / BANDIT PRODUCT-PROOF MATRIX (scoped checkpoint accepted)
 
 Product source of truth: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`
 Risk/reward contract: `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`
 Actual playtest stack: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`
 Proof-freeze matrix: `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`
+
+## Checkpoint review note
+
+Frau product review accepted the current scoped matrix as enough for the bandit camp-map checkpoint. A second-fixture bias variant is not required before closure. Scenario 1 player-created fire/smoke/light remains blocked behind the fuel/writeback gate and is not credited by this checkpoint. Same-fixture repeatability stays labeled as same-fixture confidence, not broad anti-bias proof.
 
 ## Purpose
 

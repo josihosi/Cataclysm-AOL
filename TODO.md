@@ -1,3 +1,4 @@
+
 # TODO
 
 Short execution queue only.
@@ -8,36 +9,25 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Bandit camp-map risk/reward dispatch planning packet v0`.
+Active target: `Generic clean-code boundary review packet v0`.
 
-Current state: the cannibal night-raid live slice is checkpointed green for the named scenarios; the optional bandit-control contrast is non-blocking unless product review explicitly reopens it. The bandit camp-map lane is active; the deterministic ecology slice is implemented and the named live guardrails listed below now include shakedown/toll-control feature-path proof and a same-fixture high-threat repeatability pass.
+Current state: `Bandit camp-map risk/reward dispatch planning packet v0` is closed as a scoped live/product checkpoint green. Frau product review accepted the current narrow matrix as enough; no second-fixture bias variant is required before closure. Scenario 1 real player-created fire/smoke/light remains blocked behind the fuel/writeback gate and is not credited.
 
-Known footing:
+Canonical anchors for the active target:
 
-- Product source: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`.
-- Contract: `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
-- Andi lane: `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
-- Live matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
-- Existing deterministic/code support covers a camp-owned `camp_intelligence_map`, serialization/deserialization, active target OMT persistence, scout-return writeback into the source camp map, live signal marks writing camp-map signal leads, legacy scalar migration fallback, remembered camp-map lead selection through the real live dispatch cadence/report path, two-OMT ordinary scout stand-off, half-day ordinary scout return clock in the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, active-outside dogpile blocking, wounded/unready and killed-member dispatch shrinkage, bounded stockpile-pressure willingness, high-threat/poor-reward non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing when risk/reward justifies it, no-opening hold/return in the camp-map decision seam, and green named feature-path proof for no-opening stalk-pressure, high-threat/low-reward hold, active-outside dogpile-block, shakedown/toll-control first-demand fight/pay plus reopened-demand guardrails, optional empty-camp retirement sanity, and same-fixture high-threat repeatability; it is not full product closure or second-fixture bias proof.
+- Contract: `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
+- Imagination source: `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
+- Review inputs: `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `andi.handoff.md`, current git status/diff, and the recent bandit checkpoint docs.
 
 Next narrow work queue:
 
-1. Ask product review whether the current narrow live matrix is enough for this checkpoint or whether a second-fixture bias variant is required before broader closure.
-2. Keep repeatability honest: `bandit.high_threat_low_reward_holds` has a stable same-fixture repeatability pass, and `bandit.empty_camp_retirement_live` is green for one fixture-derived positive/negative matrix, but no second-fixture bias variant was run.
-3. Keep product proof downstream: remaining live/harness closure still needs product-review acceptance or explicit second-fixture bias review before broad product closure.
-
-Latest active-outside boundary: `bandit.active_outside_dogpile_block_live` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_200434/`. It proves current-runtime `./cataclysm-tiles --version = 6206131b31`, clean startup/runtime gate, saved preflight existing active outside stalk pressure (`active_outside=2`, three ready at home), green 30-minute wait ledger, same-run `bandit_live_world dispatch rejected:` with `candidate_reason=remembered_camp_map_lead`, `opening_state=opening_present_or_not_required`, `opening_available=yes`, roster line `living=5 ready_at_home=3 wounded_or_unready=0 active_outside=2 reserve=2 dispatchable=1`, `hold: unresolved active outside group/contact blocks dogpile`, and saved unchanged two-active/three-ready state.
-
-Latest high-threat boundary: `bandit.high_threat_low_reward_holds` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_200600/`. It proves current-runtime `./cataclysm-tiles --version = 6206131b31`, clean startup/runtime gate, green 30-minute wait ledger, same-run `bandit_live_world dispatch rejected:` with `candidate_reason=remembered_camp_map_lead`, `opening_state=opening_present_or_not_required`, `opening_available=yes`, `hold: high threat or poor reward does not escalate by itself`, exact rendered `selected=hold / chill`, and saved no-active-outside/no-member-dispatch state (`active_outside=0`, five ready at home). Same-fixture repeatability is now green via `python3 tools/openclaw_harness/startup_harness.py repeatability --count 2 bandit.high_threat_low_reward_holds`: runs `.userdata/dev-harness/harness_runs/20260428_211105/` and `.userdata/dev-harness/harness_runs/20260428_211153/` both produced 7/7 green step-ledger rows, feature-path `artifacts_matched`, same high-threat hold report fields, and repeatability `overall_verdict=stable_repeatability_pass`.
-
-Latest no-opening boundary: `bandit.stalk_pressure_waits_for_opening` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_195617/`. It proves only active remembered pressure -> no-opening rejection -> stale/decayed lead: saved preflight active stalk-pressure lead footing, a green 30-minute cadence wait, same-run `bandit_live_world dispatch rejected:` with `candidate_reason=remembered_camp_map_lead`, `signal_packet=none`, `opening_state=no_opening_after_bounded_stalk_window`, `opening_available=no`, held-pressure notes, no active outside group, and saved stale/decayed lead state (`last_outcome=no_opening_return_hold_decay`, confidence `2`). It is not opening-present escalation or broad product closure.
-
-Latest variable-roster boundary: tiny, medium, and large/cooled sizing variants are green feature-path evidence: `bandit.variable_roster_tiny_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_202044/` proves a scout-confirmed two-member camp commits the buddy pair as two-member stalk pressure with reserve zero; `bandit.variable_roster_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_192059/` proves a five-member camp preserves reserve two and dispatches a two-member stalk; `bandit.variable_roster_large_cooled_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_193621/` proves a ten-member camp with prior bandit losses keeps reserve five and dispatches a cooled two-member stalk. Latest vanished-signal boundary: `bandit.camp_map_vanished_signal_redispatch` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_185947/`. Latest sight-avoid boundary: `bandit.scout_stalker_sight_avoid_live` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_173626/`. These close only their named guardrail slices; the tiny buddy-pair update supersedes old `20260428_193433` scout/reserve-one evidence for current tiny expectations, and no-opening remains no-opening decision/decay proof only, not opening-present escalation or broad product closure.
-
-Latest empty-camp retirement boundary: `bandit.empty_camp_retirement_live` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_214542/`. It proves current-runtime `./cataclysm-tiles --version = d70b8ce014`, clean startup/runtime gate, fixture-derived saved preflight for a fully empty positive camp, a home-side-populated negative, and a home-empty active-outside negative, a green 30-minute wait ledger, same-run `bandit_live_world retired_empty_site:` artifact for the positive site with `headcount=0 at_home=0 spawn_tile_headcount=0 active_group=no active_member_ids=0 home_side_signals=0 active_outside=no`, saved `retired_empty_site=true` for the positive, saved home-side negative not retired with blocker `home_side_present`, and saved active-outside negative not retired with blocker `active_outside_present`. This closes only the optional empty-camp live sanity slice, not broad product closure or second-fixture bias.
+1. Produce one compact boundary-review report only. Suggested artifact: `doc/generic-clean-code-boundary-review-report-v0-2026-04-28.md`.
+2. Check concrete canon contradictions, stale TODO/testing drift, obvious build/test/lint hazards, and bounded cleanup risks.
+3. Classify every finding as `fix now`, `queue`, or `ignore/watch`, with exact file/path/test anchors.
+4. Do not apply cleanup fixes, reopen feature lanes, or reorder priorities unless Schani/Josef explicitly promotes a follow-up patch.
 
 Proof discipline:
 
-- Code changes need `git diff --check`, the narrow touched-object build, and focused `[bandit][live_world]` / `[bandit][live_world][camp_map]` tests before checkpoint.
-- Deterministic evidence can close deterministic sub-slices only; live game claims need named harness/product scenarios from the matrix.
-- Do not reopen fuel, Smart Zone, or cannibal optional-control seams unless canon or Josef/Schani explicitly does so.
+- Report-only/doc artifact -> no compile required unless the report claims a build/test/lint risk that needs a fresh gate.
+- If no gate is run, say why in the report.
+- Keep closed bandit evidence scoped: no player-fire credit, no second-fixture anti-bias claim, and no opening-present escalation claim.

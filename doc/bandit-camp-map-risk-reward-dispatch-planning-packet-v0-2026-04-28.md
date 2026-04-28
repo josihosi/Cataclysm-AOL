@@ -1,10 +1,14 @@
 # Bandit camp-map risk/reward dispatch planning packet v0 (2026-04-28)
 
-Status: ACTIVE / GREENLIT IMPLEMENTATION + LIVE PRODUCT MATRIX
+Status: CLOSED / SCOPED LIVE PRODUCT CHECKPOINT GREEN
 
 Source-of-truth framing: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`.
 Code-only implementation map: `doc/bandit-camp-map-ecology-implementation-map-2026-04-28.md`.
 Bandit live product playtest matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
+
+## Closure note
+
+Frau product review accepted the current scoped live/product matrix as enough for this checkpoint. No second-fixture bias variant is required before closure. Player-created fire/smoke/light remains blocked behind the fuel/writeback gate and is not credited; same-fixture repeatability remains same-fixture confidence only.
 
 This packet is downstream of the camp-map ecology picture: dispatch/risk/reward are the hands; the saved per-camp map is the creature.
 
