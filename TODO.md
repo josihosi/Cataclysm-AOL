@@ -20,10 +20,9 @@ Canonical anchors for the active target:
 
 Next narrow work queue:
 
-1. Checkpoint the Smart Zone boundary plus generic review/handoff alignment in a clean commit.
-2. Send the compact internal handoff to Schani review; do not apply queued cleanup beyond the report unless promoted.
-3. Keep Smart Zone Manager live proof in Josef package; do not rerun it unless a materially repaired UI-entry/key-delivery primitive or Josef manual evidence reopens it.
-4. After Schani review or no-nudge, move to the next greenlit stack item from `Plan.md`.
+1. Schani/Frau review the generic boundary report and handoff alignment; do not apply queued cleanup beyond the report unless promoted.
+2. Keep Smart Zone Manager live proof in Josef package; do not rerun it unless a materially repaired UI-entry/key-delivery primitive or Josef manual evidence reopens it.
+3. After Schani/Frau review or no-nudge, move to the next greenlit stack item from `Plan.md`.
 
 Proof discipline:
 

@@ -29,8 +29,8 @@ Manual/Josef package entry lives in `/Users/josefhorvath/.openclaw/workspace/run
 
 ## Next work
 
-1. Review the generic boundary report and decide whether to promote any `fix now` / `queue` follow-up.
-2. If checkpointing immediately, keep the Smart Zone boundary split reviewable: docs/canon demotion, gated dispatch trace instrumentation, and the minimal UI-entry guard scenario.
+1. Schani/Frau review the generic boundary report and decide whether to promote any `fix now` / `queue` follow-up.
+2. Treat the Smart Zone/report checkpoint as already committed and pushed in `7a6e8abfda`; do not redo that boundary archaeology.
 3. If no follow-up is promoted, move to the next greenlit stack item from `Plan.md`.
 
 ## Non-goals/cautions
