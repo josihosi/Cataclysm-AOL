@@ -3,6 +3,8 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "cata_catch.h"
 #include "json.h"
@@ -29,6 +31,12 @@ std::optional<std::string> special_lookup( const tripoint_abs_omt &omt )
     }
 
     return std::nullopt;
+}
+void add_bandit_camp_member( bandit_live_world::world_state &world, int index, int id_base = 11000 )
+{
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( id_base + index ),
+             tripoint_abs_ms( 240 + index, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
 }
 } // namespace
 
@@ -468,7 +476,7 @@ TEST_CASE( "bandit_live_world_applies_a_dispatch_plan_by_marking_the_selected_me
         bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ), "player_basecamp_nearby" );
     CHECK_FALSE( second_plan.valid );
     REQUIRE_FALSE( second_plan.notes.empty() );
-    CHECK( second_plan.notes.back().find( "active outbound/contact group" ) != std::string::npos );
+    CHECK( second_plan.notes.back().find( "active outside group/contact" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_live_world_persists_independent_camp_intelligence_maps",
@@ -696,9 +704,7 @@ TEST_CASE( "bandit_live_world_migrates_legacy_scalar_memory_only_as_fallback",
 TEST_CASE( "bandit_live_world_keeps_a_home_reserve_for_site_backed_camps", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
-    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 601 ),
-             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
-             special_lookup ) );
+    add_bandit_camp_member( world, 0, 601 );
 
     bandit_live_world::site_record &camp = world.sites.front();
     CHECK( camp.count_live_members() == 1 );
@@ -716,6 +722,49 @@ TEST_CASE( "bandit_live_world_keeps_a_home_reserve_for_site_backed_camps", "[ban
              special_lookup ) );
     const bandit_live_world::site_record &roadside_site = roadside_world.sites.front();
     CHECK( roadside_site.dispatchable_member_capacity() == 1 );
+}
+
+TEST_CASE( "bandit_live_world_bandit_camp_reserve_scales_with_living_roster",
+           "[bandit][live_world][camp_map]" )
+{
+    const std::vector<std::pair<int, int>> expected_dispatchable = {
+        { 2, 1 },
+        { 4, 3 },
+        { 5, 3 },
+        { 7, 5 },
+        { 10, 6 },
+    };
+
+    for( const std::pair<int, int> &row : expected_dispatchable ) {
+        bandit_live_world::world_state world;
+        for( int i = 0; i < row.first; ++i ) {
+            add_bandit_camp_member( world, i, 11000 + row.first * 100 );
+        }
+        REQUIRE( world.sites.size() == 1 );
+        const bandit_live_world::site_record &site = world.sites.front();
+        CHECK( site.count_live_members() == row.first );
+        CHECK( site.dispatchable_member_capacity() == row.second );
+    }
+}
+
+TEST_CASE( "bandit_live_world_active_outside_group_blocks_parallel_dispatch",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    for( int i = 0; i < 5; ++i ) {
+        add_bandit_camp_member( world, i, 12000 );
+    }
+
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( site.dispatchable_member_capacity() == 3 );
+    site.active_group_id = site.site_id + "#already_outside";
+
+    const bandit_live_world::dispatch_plan blocked_plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ),
+                                               "player_basecamp_nearby" );
+    CHECK_FALSE( blocked_plan.valid );
+    REQUIRE_FALSE( blocked_plan.notes.empty() );
+    CHECK( blocked_plan.notes.front().find( "active outside" ) != std::string::npos );
 }
 
 TEST_CASE( "bandit_live_world_dispatch_rules_are_driven_by_hostile_site_profile", "[bandit][live_world][profile]" )
@@ -1113,12 +1162,14 @@ TEST_CASE( "bandit_live_world_hold_off_goal_keeps_visible_standoff",
     const tripoint_abs_omt goal = bandit_live_world::choose_hold_off_standoff_goal(
                                       camp_anchor, player, 2 );
 
+    CHECK( bandit_live_world::ordinary_scout_watch_standoff_omt() == 2 );
+    CHECK( bandit_live_world::minimum_hold_off_standoff_omt() == 2 );
     CHECK( rl_dist( goal, player ) >= bandit_live_world::minimum_hold_off_standoff_omt() );
-    CHECK( goal == tripoint_abs_omt( 140, 46, 0 ) );
+    CHECK( goal == tripoint_abs_omt( 140, 43, 0 ) );
 
     const tripoint_abs_omt diagonal_goal = bandit_live_world::choose_hold_off_standoff_goal(
             tripoint_abs_omt( 150, 51, 0 ), player, 2 );
-    CHECK( diagonal_goal == tripoint_abs_omt( 145, 46, 0 ) );
+    CHECK( diagonal_goal == tripoint_abs_omt( 142, 43, 0 ) );
 
     CHECK( bandit_live_world::choose_hold_off_standoff_goal( player, player, 2 ) == player );
 }
@@ -1180,10 +1231,16 @@ TEST_CASE( "bandit_live_world_scout_sortie_has_finite_return_home_clock",
 
     REQUIRE( bandit_live_world::note_active_sortie_started( site, 100 ) );
     CHECK_FALSE( bandit_live_world::note_active_sortie_started( site, 105 ) );
-    CHECK( bandit_live_world::scout_sortie_should_return_home( site, 280, 180 ) );
+    CHECK( bandit_live_world::ordinary_scout_sortie_limit_minutes() == 720 );
+    CHECK_FALSE( bandit_live_world::scout_sortie_should_return_home( site, 819,
+                 bandit_live_world::ordinary_scout_sortie_limit_minutes() ) );
+    CHECK( bandit_live_world::scout_sortie_should_return_home( site, 820,
+            bandit_live_world::ordinary_scout_sortie_limit_minutes() ) );
     REQUIRE( bandit_live_world::note_active_sortie_local_contact( site, 130 ) );
-    CHECK_FALSE( bandit_live_world::scout_sortie_should_return_home( site, 299, 180 ) );
-    CHECK( bandit_live_world::scout_sortie_should_return_home( site, 310, 180 ) );
+    CHECK_FALSE( bandit_live_world::scout_sortie_should_return_home( site, 849,
+                 bandit_live_world::ordinary_scout_sortie_limit_minutes() ) );
+    CHECK( bandit_live_world::scout_sortie_should_return_home( site, 850,
+            bandit_live_world::ordinary_scout_sortie_limit_minutes() ) );
 
     std::ostringstream out;
     JsonOut jsout( out, true );

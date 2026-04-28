@@ -368,9 +368,11 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );
+int ordinary_scout_watch_standoff_omt();
 int minimum_hold_off_standoff_omt();
 tripoint_abs_omt choose_hold_off_standoff_goal( const tripoint_abs_omt &site_anchor,
         const tripoint_abs_omt &player_omt, int requested_distance );
+int ordinary_scout_sortie_limit_minutes();
 sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &current_tile,
         bool current_exposure, bool recent_exposure,
         const std::vector<sight_avoid_candidate> &candidates );

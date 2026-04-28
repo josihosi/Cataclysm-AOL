@@ -684,7 +684,7 @@ bool note_live_bandit_aftermath()
     avatar &u = get_avatar();
     bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     const int current_minutes = live_bandit_current_minutes();
-    static constexpr int scout_sortie_limit_minutes = 180;
+    const int scout_sortie_limit_minutes = bandit_live_world::ordinary_scout_sortie_limit_minutes();
     bool changed = false;
 
     for( bandit_live_world::site_record &site : state.sites ) {

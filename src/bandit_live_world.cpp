@@ -457,7 +457,25 @@ hostile_site_profile_rules rules_for_profile( hostile_site_profile profile )
 
 int required_home_reserve( const bandit_live_world::site_record &site )
 {
-    return rules_for_profile( effective_profile( site ) ).home_reserve;
+    const hostile_site_profile profile = effective_profile( site );
+    if( profile != hostile_site_profile::camp_style ) {
+        return rules_for_profile( profile ).home_reserve;
+    }
+
+    const int living_roster = site.count_live_members();
+    if( living_roster <= 1 ) {
+        return living_roster;
+    }
+    if( living_roster == 2 ) {
+        return 1;
+    }
+    if( living_roster <= 4 ) {
+        return 1;
+    }
+    if( living_roster <= 7 ) {
+        return 2;
+    }
+    return std::max( 3, ( living_roster * 35 + 99 ) / 100 );
 }
 
 bool cannibal_job_requires_attack_pack( bandit_dry_run::job_template job )
@@ -1460,9 +1478,8 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
         return plan;
     }
 
-    if( site.count_members_in_state( member_state::outbound ) > 0 ||
-        site.count_members_in_state( member_state::local_contact ) > 0 ) {
-        plan.notes.push_back( "dispatch blocked: site already has an active outbound/contact group" );
+    if( site.has_active_outside_pressure() ) {
+        plan.notes.push_back( "dispatch blocked: site already has an active outside group/contact" );
         return plan;
     }
 
@@ -1509,7 +1526,8 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
     }
 
     plan.valid = true;
-    plan.notes.push_back( "profile " + rules.id + ": reserve " + std::to_string( rules.home_reserve ) +
+    plan.notes.push_back( "profile " + rules.id + ": reserve " +
+                          std::to_string( required_home_reserve( site ) ) +
                           ", retreat_floor " + std::to_string( rules.retreat_bias_floor ) +
                           ", return_clock_floor " + std::to_string( rules.return_clock_floor ) );
     plan.notes.push_back( "profile writeback: " + rules.writeback_expectation );
@@ -1675,9 +1693,14 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
     return decision;
 }
 
+int ordinary_scout_watch_standoff_omt()
+{
+    return 2;
+}
+
 int minimum_hold_off_standoff_omt()
 {
-    return 5;
+    return ordinary_scout_watch_standoff_omt();
 }
 
 tripoint_abs_omt choose_hold_off_standoff_goal( const tripoint_abs_omt &site_anchor,
@@ -1807,6 +1830,11 @@ bool note_active_sortie_local_contact( site_record &site, const int current_minu
     }
     site.active_sortie_local_contact_minutes = current_minutes;
     return true;
+}
+
+int ordinary_scout_sortie_limit_minutes()
+{
+    return 720;
 }
 
 bool scout_sortie_should_return_home( const site_record &site, const int current_minutes,
