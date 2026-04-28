@@ -79,16 +79,13 @@ Success state:
 - [x] A full harness-surface inventory exists and names each current primitive/scenario, its proof artifact, and its known blind spots: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
 - [x] One canonical disposable audit save/profile is selected for the majority of checks, with explicit provenance and justified exceptions for any other fixture: provisional anchor `dev-harness` / `McWilliams` using `mcwilliams_live_debug_2026-04-07`, with transformed bandit and legacy dev fixtures called out as exceptions in the inventory doc.
 - [ ] Each audited primitive has a step ledger with precondition, action/keystroke, expected state, screenshot or metadata proof, failure rule, artifact path, and pass/yellow/red/blocked verdict.
-- [ ] The blocked inventory/deploy UI seam has better information extraction before retry:
-  - selector/menu trace and/or checked GUI text/menu state proves selected item, prompt, and key-consumption context;
-  - saved-item metadata backs the recipe;
-  - terminal ASCII scrape, if used, is labeled exploratory/terminal-path only.
-- [ ] After that observation primitive lands, the current harness audit is rerun key by key; normal player-action brazier deployment only goes green when the menu/selector state is proven and saved east-tile `f_brazier` is present.
+- [x] The blocked inventory/deploy UI seam has better information extraction before retry: selector/menu trace and checked GUI/OCR guards now prove the selected `brazier`, `Deploy where?`, right/east key consumption, and guarded save prompt; saved-item metadata backs `deploy_furn -> f_brazier`; no terminal ASCII scrape was used as SDL GUI closure proof.
+- [x] After that observation primitive landed, the current harness audit was rerun key by key; normal player-action brazier deployment only went green at `.userdata/dev-harness/harness_runs/20260427_222635/` after menu/selector state, uppercase-`Y` save/writeback, and saved east-tile `f_brazier` were all proven.
 - [ ] The audit covers launch/load readiness, focus/keystrokes, screenshot capture, debug spawn paths, target-tile metadata checks, save/zzip transforms, Smart Zone UI/layout inspection, fire/smoke setup, wait/time passage, NPC/bandit positioning, and report writing.
 - [ ] False-pass behavior is guarded against: wrong screen, failed spawn, missing target field, missing save metadata, stale binary/profile, and load-only runs all produce explicit non-green verdicts. Current report-classifier selftest covers load-only, stale-startup artifact-match, non-green step-ledger, and blocked-wait false-pass cases; remaining scenario-specific primitives still need their own guards.
-- [ ] The frozen workflow states that load-and-close is startup proof only, and no feature package may close from it.
-- [ ] The relevant harness skill/docs are updated so another agent can run and audit the workflow without chat archaeology.
-- [ ] Frau Knackal or an equivalent review pass checks the proof matrix for contradictions, hidden fixture bias, and claims that outrun their evidence.
+- [x] The frozen workflow states that load-and-close is startup proof only, and no feature package may close from it: see `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md` and the C-AOL harness skill proof-freeze rules.
+- [x] The relevant harness skill/docs are updated so another agent can run and audit the workflow without chat archaeology: the proof-freeze matrix is the repo reference and the C-AOL harness skill now names the step-ledger, claim-scoped artifact, metadata-only, save/writeback, debug target-state, map-editor, Smart Zone, and current boundary rules.
+- [x] Frau Knackal or an equivalent review pass checks the proof matrix for contradictions, hidden fixture bias, and claims that outrun their evidence: Frau's process-altitude review found no major false-pass route after claim-scoped artifact, metadata-only, deferred-proof, and anti-fixture-bias tightenings were folded in.
 
 Compact reference:
 - Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
