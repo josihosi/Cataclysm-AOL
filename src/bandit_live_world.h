@@ -387,9 +387,15 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
                           const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &special_lookup );
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id );
+dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
+        const camp_map_lead &lead,
+        const camp_map_dispatch_pressure &pressure = camp_map_dispatch_pressure() );
 camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
         const camp_map_lead &lead,
         const camp_map_dispatch_pressure &pressure = camp_map_dispatch_pressure() );
+const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &site,
+        const tripoint_abs_omt &target_omt,
+        const std::string &target_id );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );

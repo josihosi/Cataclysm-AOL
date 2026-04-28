@@ -234,6 +234,74 @@ std::string camp_lead_id_for( const std::string &site_id, const camp_lead_kind k
     return out.str();
 }
 
+camp_lead_kind signal_kind_to_camp_lead_kind( const std::string &kind )
+{
+    if( kind == "smoke" ) {
+        return camp_lead_kind::smoke_signal;
+    }
+    if( kind == "light" ) {
+        return camp_lead_kind::light_signal;
+    }
+    if( kind == "sound" ) {
+        return camp_lead_kind::sound_signal;
+    }
+    return camp_lead_kind::human_activity;
+}
+
+bandit_dry_run::lead_family family_for_camp_map_lead( const camp_map_lead &lead )
+{
+    switch( lead.kind ) {
+        case camp_lead_kind::moving_actor:
+            return bandit_dry_run::lead_family::moving_carrier;
+        case camp_lead_kind::route_activity:
+        case camp_lead_kind::smoke_signal:
+        case camp_lead_kind::light_signal:
+        case camp_lead_kind::sound_signal:
+            return bandit_dry_run::lead_family::corridor;
+        case camp_lead_kind::structural_bounty:
+        case camp_lead_kind::harvested_site:
+        case camp_lead_kind::human_activity:
+        case camp_lead_kind::basecamp_activity:
+        case camp_lead_kind::threat_memory:
+        case camp_lead_kind::loss_site:
+        case camp_lead_kind::false_lead:
+        case camp_lead_kind::frontier_probe:
+            return bandit_dry_run::lead_family::site;
+    }
+
+    return bandit_dry_run::lead_family::site;
+}
+
+bandit_dry_run::candidate_debug make_camp_map_dispatch_candidate( const camp_map_lead &lead,
+        const bandit_live_world::camp_map_dispatch_decision &decision )
+{
+    bandit_dry_run::candidate_debug candidate;
+    candidate.job = decision.intent;
+    candidate.lead_id = lead.lead_id.empty() ? lead.target_id : lead.lead_id;
+    candidate.envelope_id = lead.target_id.empty() ? candidate.lead_id : lead.target_id;
+    candidate.family = family_for_camp_map_lead( lead );
+    candidate.generated = true;
+    candidate.valid = decision.intent == bandit_dry_run::job_template::scout ||
+                      decision.intent == bandit_dry_run::job_template::stalk;
+    candidate.winner = candidate.valid;
+    candidate.score.lead_bounty_value = lead.bounty;
+    candidate.score.lead_confidence_bonus = lead.confidence;
+    candidate.score.threat_penalty = lead.threat;
+    candidate.score.threat_gate_result = lead.threat_confirmed ?
+                                         bandit_dry_run::threat_gate::soft_veto :
+                                         bandit_dry_run::threat_gate::discount_only;
+    candidate.score.reward_profile_match = decision.reward_score;
+    candidate.score.effective_threat_penalty = decision.risk_score;
+    candidate.score.final_job_score = decision.margin;
+    candidate.notes = decision.notes;
+    candidate.notes.push_back( "camp-map remembered lead " + candidate.lead_id +
+                               " selected " + bandit_dry_run::to_string( decision.intent ) +
+                               " reward=" + std::to_string( decision.reward_score ) +
+                               " risk=" + std::to_string( decision.risk_score ) +
+                               " margin=" + std::to_string( decision.margin ) );
+    return candidate;
+}
+
 void upsert_camp_map_lead( bandit_live_world::camp_intelligence_map &intelligence_map,
                            const camp_map_lead &lead )
 {
@@ -1632,6 +1700,111 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
     return decision;
 }
 
+const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &site,
+        const tripoint_abs_omt &target_omt,
+        const std::string &target_id )
+{
+    const camp_map_lead *best_lead = nullptr;
+    int best_distance = 0;
+    int best_score = 0;
+    for( const camp_map_lead &lead : site.intelligence_map.leads ) {
+        if( lead.target_id.empty() && lead.lead_id.empty() ) {
+            continue;
+        }
+        if( lead.status == camp_lead_status::invalidated ||
+            lead.status == camp_lead_status::harvested ||
+            lead.status == camp_lead_status::dangerous ) {
+            continue;
+        }
+
+        const bool target_matches = !target_id.empty() &&
+                                    ( lead.target_id == target_id || lead.lead_id == target_id );
+        const int radius = std::max( 2, lead.radius_omt );
+        const bool omt_matches = lead.omt.z() == target_omt.z() && rl_dist( lead.omt, target_omt ) <= radius;
+        if( !target_matches && !omt_matches ) {
+            continue;
+        }
+
+        const int distance = rl_dist( site.anchor, lead.omt );
+        const int score = std::max( 0, lead.confidence ) + std::max( 0, lead.bounty ) -
+                          std::max( 0, lead.threat );
+        if( best_lead == nullptr || distance < best_distance ||
+            ( distance == best_distance && score > best_score ) ) {
+            best_lead = &lead;
+            best_distance = distance;
+            best_score = score;
+        }
+    }
+    return best_lead;
+}
+
+dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
+        const camp_map_lead &lead,
+        const camp_map_dispatch_pressure &pressure )
+{
+    const hostile_site_profile_rules rules = rules_for_profile( effective_profile( site ) );
+    dispatch_plan plan;
+    plan.site_id = site.site_id;
+    plan.profile = rules.profile;
+    plan.target_id = lead.target_id.empty() ? lead.lead_id : lead.target_id;
+    plan.target_omt = lead.omt;
+
+    if( plan.target_id.empty() ) {
+        plan.notes.push_back( "camp-map dispatch blocked: missing remembered target id" );
+        return plan;
+    }
+
+    const camp_map_dispatch_decision decision = choose_camp_map_dispatch( site, lead, pressure );
+    plan.notes = decision.notes;
+    plan.notes.push_back( "camp-map dispatch lead=" + ( lead.lead_id.empty() ? plan.target_id : lead.lead_id ) +
+                          " status=" + to_string( lead.status ) +
+                          " bounty=" + std::to_string( lead.bounty ) +
+                          " threat=" + std::to_string( lead.threat ) +
+                          " confidence=" + std::to_string( lead.confidence ) +
+                          " selected=" + bandit_dry_run::to_string( decision.intent ) );
+    if( decision.intent == bandit_dry_run::job_template::hold_chill ||
+        decision.selected_member_count <= 0 ) {
+        plan.notes.push_back( "camp-map dispatch blocked: remembered risk/reward decision held pressure" );
+        return plan;
+    }
+
+    plan.member_ids = select_dispatch_members( site, decision.selected_member_count );
+    if( static_cast<int>( plan.member_ids.size() ) != decision.selected_member_count ) {
+        plan.notes.push_back( "camp-map dispatch blocked: not enough at-home members survived selection" );
+        return plan;
+    }
+
+    bandit_dry_run::candidate_debug winner = make_camp_map_dispatch_candidate( lead, decision );
+    if( !bandit_pursuit_handoff::supports_pursuit_handoff( winner ) ) {
+        plan.notes.push_back( "camp-map dispatch blocked: remembered decision stayed outside bounded scout/stalk handoff" );
+        return plan;
+    }
+
+    plan.group = make_dispatch_group( site, plan.member_ids, plan.target_id );
+    plan.group.current_threat_estimate = std::max( 0, lead.threat );
+    plan.group.current_bounty_estimate = std::max( 0, lead.bounty );
+    plan.group.confidence = std::max( plan.group.confidence, lead.confidence );
+    bandit_pursuit_handoff::entry_context context;
+    context.contact = rl_dist( site.anchor, plan.target_omt ) <= 4 ?
+                      bandit_pursuit_handoff::contact_certainty::localized :
+                      bandit_pursuit_handoff::contact_certainty::broad;
+    plan.entry = bandit_pursuit_handoff::build_entry_payload( plan.group, winner, context );
+    plan.notes = plan.entry.notes;
+    if( !plan.entry.valid ) {
+        plan.notes.push_back( "camp-map dispatch blocked: entry payload stayed outside the bounded handoff contract" );
+        return plan;
+    }
+
+    plan.valid = true;
+    plan.notes.push_back( "camp-map dispatch ready: " + bandit_dry_run::to_string( decision.intent ) +
+                          " toward " + plan.target_id +
+                          " members=" + std::to_string( plan.member_ids.size() ) +
+                          " reserve=" + std::to_string( decision.hard_home_reserve ) +
+                          " dispatchable=" + std::to_string( decision.dispatchable ) );
+    plan.notes.push_back( "profile " + rules.id + ": " + rules.writeback_expectation );
+    return plan;
+}
+
 dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_omt &target_omt,
                                   const std::string &target_id )
 {
@@ -2231,6 +2404,28 @@ bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
         site.known_recent_marks.push_back( mark.mark_id );
         changed = true;
     }
+
+    camp_map_lead lead;
+    lead.kind = signal_kind_to_camp_lead_kind( mark.kind );
+    lead.status = camp_lead_status::suspected;
+    lead.target_id = mark.mark_id;
+    lead.omt = mark.source_omt;
+    lead.radius_omt = mark.range_cap_omt;
+    lead.source_key = mark.mark_id;
+    lead.source_summary = "live " + mark.kind + " signal mark";
+    lead.last_seen_minutes = -1;
+    lead.bounty = std::max( 0, mark.bounty_add );
+    lead.threat = std::max( 0, mark.threat_add );
+    lead.confidence = std::max( 1, mark.confidence );
+    lead.threat_confirmed = lead.threat > 0;
+    lead.generated_by_this_camp_routine = true;
+    lead.last_outcome = "live_signal";
+    lead.lead_id = camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt );
+    const camp_map_lead *old_lead = site.intelligence_map.find_lead( lead.lead_id );
+    changed |= old_lead == nullptr || old_lead->bounty != lead.bounty ||
+               old_lead->threat != lead.threat || old_lead->confidence != lead.confidence ||
+               old_lead->radius_omt != lead.radius_omt;
+    upsert_camp_map_lead( site.intelligence_map, lead );
 
     return changed;
 }

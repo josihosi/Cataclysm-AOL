@@ -920,6 +920,7 @@ struct live_bandit_dispatch_candidate {
     int distance = 0;
     size_t site_index = 0;
     const live_bandit_signal_observation *signal = nullptr;
+    std::string remembered_lead_id;
     std::string reason;
     int signal_distance = 0;
     int cap = 0;
@@ -1471,6 +1472,16 @@ bool steer_live_bandit_dispatch_toward_player(
             candidate.signal_distance = best_signal_distance;
             candidate.cap = best_signal->range_cap_omt;
             candidate_sites.push_back( candidate );
+        } else if( const bandit_live_world::camp_map_lead *remembered_lead =
+                   bandit_live_world::find_camp_map_dispatch_lead_for_target( site, u.pos_abs_omt(),
+                           live_bandit_player_target_id( u.pos_abs_omt() ) ) ) {
+            live_bandit_dispatch_candidate candidate;
+            candidate.distance = rl_dist( site.anchor, remembered_lead->omt );
+            candidate.site_index = i;
+            candidate.remembered_lead_id = remembered_lead->lead_id;
+            candidate.reason = "remembered_camp_map_lead";
+            candidate.cap = std::max( 2, remembered_lead->radius_omt );
+            candidate_sites.push_back( candidate );
         } else if( signals.empty() ) {
             rejected_no_signal++;
         } else {
@@ -1521,8 +1532,11 @@ bool steer_live_bandit_dispatch_toward_player(
             continue;
         }
         live_bandit_materialize_abstract_members_for_dispatch( state, site );
-        const bandit_live_world::dispatch_plan plan =
-            bandit_live_world::plan_site_dispatch( site, u.pos_abs_omt(), target_id );
+        const bandit_live_world::camp_map_lead *remembered_lead = candidate_site.remembered_lead_id.empty() ?
+                nullptr : site.intelligence_map.find_lead( candidate_site.remembered_lead_id );
+        const bandit_live_world::dispatch_plan plan = remembered_lead != nullptr ?
+                bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *remembered_lead ) :
+                bandit_live_world::plan_site_dispatch( site, u.pos_abs_omt(), target_id );
         if( !plan.valid ) {
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
                                        << " distance=" << candidate_site.distance
@@ -1609,6 +1623,8 @@ bool steer_live_bandit_dispatch_toward_player(
                                    << " cap=" << candidate_site.cap
                                    << " signal_packet=" << ( candidate_site.signal != nullptr ?
                                            candidate_site.signal->mark.mark_id : "none" )
+                                   << " remembered_lead=" << ( candidate_site.remembered_lead_id.empty() ?
+                                           "none" : candidate_site.remembered_lead_id )
                                    << " signal_distance=" << candidate_site.signal_distance
                                    << '\n';
 
