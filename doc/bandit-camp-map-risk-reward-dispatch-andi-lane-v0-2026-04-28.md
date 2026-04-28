@@ -135,7 +135,7 @@ Use named scenarios from the full contract and the bandit live product matrix:
 4. `bandit.stalk_pressure_waits_for_opening`
 5. `bandit.scout_stalker_sight_avoid_live` — green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_173626/` for the sight-avoid guardrail only.
 
-Every scenario needs proof-freeze discipline: precondition, action, expected state, screenshot or exact metadata/log proof, failure rule, artifact path, and pass/yellow/red/blocked verdict. Also implement the broader matrix coverage for player-created fire/smoke/light once its fuel/writeback gate is green, shakedown/toll control, empty-camp live sanity if still desired, and repeatability/fixture-bias checks.
+Every scenario needs proof-freeze discipline: precondition, action, expected state, screenshot or exact metadata/log proof, failure rule, artifact path, and pass/yellow/red/blocked verdict. Broader matrix coverage now has scoped green empty-camp live sanity via `bandit.empty_camp_retirement_live` run `.userdata/dev-harness/harness_runs/20260428_214542/`; still preserve player-created fire/smoke/light behind its fuel/writeback gate, shakedown/toll control evidence, and repeatability/fixture-bias limits honestly.
 
 ## Completion bar
 

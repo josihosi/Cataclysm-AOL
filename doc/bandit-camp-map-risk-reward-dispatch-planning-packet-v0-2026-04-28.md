@@ -234,7 +234,7 @@ Use named scenarios, not loose manual suggestions. The detailed product matrix l
 4. `bandit.stalk_pressure_waits_for_opening`: follow-up stalk/pressure group is larger than scout where justified, waits for opening, and returns/holds if none appears.
 5. `bandit.scout_stalker_sight_avoid_live`: exposed scout/stalker repositions or aborts within at most two visible local turns without teleporting.
 
-The broader bandit matrix also covers player-created fire/smoke/light lead proof, shakedown/toll control, empty-camp live sanity, and repeatability/fixture-bias checks.
+The broader bandit matrix also covers player-created fire/smoke/light lead proof, shakedown/toll control, empty-camp live sanity, and repeatability/fixture-bias checks. Empty-camp live sanity is now green for `bandit.empty_camp_retirement_live` run `.userdata/dev-harness/harness_runs/20260428_214542/`; keep that claim scoped to the configured fixture matrix.
 
 Every harness step needs the proof-freeze discipline: precondition, action, expected state, screenshot or exact metadata/log proof, failure rule, artifact path, and pass/yellow/red/blocked verdict.
 

@@ -1,0 +1,56 @@
+{
+  "name": "bandit_empty_retirement_matrix_v0_2026-04-28",
+  "source_fixture": "bandit_camp_map_remembered_stalk_v0_2026-04-28",
+  "source_profile": "live-debug",
+  "description": "Fixture-backed empty-camp retirement sanity footing: reuse the remembered-lead camp, clone two review-visible negative sites, then shape the original source camp into a fully empty eligible site, a home-populated no-active site, and a home-empty active-outside site for one same-run retirement audit.",
+  "save_transforms": [
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:bandit_camp@140,51,0#fixture_home_side_negative",
+      "clear_intelligence_map": true,
+      "clear_remembered_pressure": true
+    },
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:bandit_camp@140,51,0#fixture_active_outside_negative",
+      "clear_intelligence_map": true,
+      "clear_remembered_pressure": true
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 0,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 0,
+      "clear_spawn_tile_headcount": true
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0#fixture_home_side_negative",
+      "living_member_count": 1,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 1,
+      "clear_spawn_tile_headcount": true
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0#fixture_active_outside_negative",
+      "living_member_count": 1,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 1,
+      "active_job_type": "stalk",
+      "active_target_id": "player@140,39,0",
+      "headcount_override": 0,
+      "clear_spawn_tile_headcount": true
+    }
+  ]
+}

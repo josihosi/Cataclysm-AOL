@@ -127,6 +127,8 @@ Required proof:
 - report/log names `retired_empty_site` or equivalent predicate and the blocking reason for negative cases;
 - deterministic empty-camp tests remain support, not live proof.
 
+Status: **green as scoped optional empty-camp retirement live sanity, not broad product closure**. `bandit.empty_camp_retirement_live` in `.userdata/dev-harness/harness_runs/20260428_214542/` used current runtime `d70b8ce014`, clean startup, fixture-derived preflight saved-state audits for a fully empty positive camp plus home-side and active-outside negatives, a green 30-minute wait ledger, same-run `bandit_live_world retired_empty_site:` artifact with `headcount=0 at_home=0 spawn_tile_headcount=0 active_group=no active_member_ids=0 home_side_signals=0 active_outside=no`, saved positive `retired_empty_site=true`, saved home-side negative not retired with blocker `home_side_present`, and saved active-outside negative not retired with blocker `active_outside_present`. This proves only the empty-retirement guardrail for the configured fixture matrix; it is not second-fixture bias proof.
+
 ### 9. Repeatability / fixture-bias check
 
 Claim: at least one passing bandit product scenario is not a one-fixture miracle.
@@ -145,7 +147,7 @@ Required proof:
 3. Preserve scenario 4 variable-roster/high-threat/active-outside guardrail evidence, including the current tiny buddy-pair update, without inflating it into broad product closure.
 4. Preserve scenario 5 no-opening evidence narrowly; add opening-present escalation only if product review needs that branch now.
 5. Preserve scenario 7 shakedown/toll-control guardrails as green from `20260428_204454`, `20260428_204630`, and `20260428_204813`; do not rerun it as the next unrun target unless Schani/Josef/Frau explicitly reopen it.
-6. Run scenario 8 empty-camp live sanity only if the seam is still desired beyond deterministic proof.
+6. Preserve scenario 8 empty-camp live sanity as green for `bandit.empty_camp_retirement_live`; do not rerun it unless product review asks for stronger anti-fixture coverage.
 7. Run scenario 1 player-created fire/smoke/light only after fuel/writeback is green; otherwise keep its blocked verdict explicit.
 8. Preserve scenario 9 same-fixture repeatability as green for `bandit.high_threat_low_reward_holds`; run a second-fixture bias variant only if product review asks for stronger anti-fixture coverage.
 

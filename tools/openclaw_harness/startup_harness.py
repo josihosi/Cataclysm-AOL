@@ -2502,6 +2502,15 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
     active_member_ids = site.get("active_member_ids", [])
     if not isinstance(active_member_ids, list):
         active_member_ids = []
+    retired_empty_site = bool(site.get("retired_empty_site", False))
+    spawn_tiles = site.get("spawn_tiles", [])
+    if not isinstance(spawn_tiles, list):
+        spawn_tiles = []
+    spawn_tile_headcount = 0
+    for spawn_tile in spawn_tiles:
+        if not isinstance(spawn_tile, dict):
+            continue
+        spawn_tile_headcount += max(0, int(spawn_tile.get("headcount", 0) or 0))
     members = site.get("members", [])
     if not isinstance(members, list):
         members = []
@@ -2522,6 +2531,16 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         if state in {"outbound", "local_contact"}:
             active_outside_ids.add(str(member.get("npc_id", "")))
     active_outside_ids.discard("")
+    home_side_signals = ready_at_home + wounded_or_unready + max(0, int(site.get("headcount", 0) or 0)) + spawn_tile_headcount
+    empty_retirement_blockers: List[str] = []
+    if retired_empty_site:
+        empty_retirement_blockers.append("already_retired")
+    if str(site.get("site_kind", "")) in {"", "none"}:
+        empty_retirement_blockers.append("no_hostile_site_kind")
+    if home_side_signals != 0:
+        empty_retirement_blockers.append("home_side_present")
+    if active_outside_ids:
+        empty_retirement_blockers.append("active_outside_present")
     known_recent_marks = site.get("known_recent_marks", [])
     if not isinstance(known_recent_marks, list):
         known_recent_marks = []
@@ -2532,6 +2551,12 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "hostile_profile": site.get("hostile_profile", site.get("profile", "")),
         "anchor": site.get("anchor", []),
         "headcount": site.get("headcount", 0),
+        "spawn_tile_headcount": spawn_tile_headcount,
+        "home_side_signal_count": home_side_signals,
+        "retired_empty_site": retired_empty_site,
+        "retirement_summary": site.get("retirement_summary", ""),
+        "empty_site_retirement_eligible": not retired_empty_site and not empty_retirement_blockers,
+        "empty_site_retirement_blockers": empty_retirement_blockers,
         "member_count": len(members),
         "ready_at_home_count": ready_at_home,
         "wounded_or_unready_count": wounded_or_unready,
@@ -2577,6 +2602,10 @@ def audit_saved_bandit_live_world_state(
     required_lead_last_outcome: str = "",
     required_lead_confidence: Optional[int] = None,
     required_known_recent_mark_contains: str = "",
+    required_home_side_signal_count: Optional[int] = None,
+    required_retired_empty_site: Optional[bool] = None,
+    required_retirement_summary_contains: str = "",
+    required_empty_retirement_blocker_contains: str = "",
 ) -> Dict[str, Any]:
     """Read-only saved dimension-data audit for persisted bandit_live_world state."""
     if not world_dir.exists():
@@ -2724,6 +2753,8 @@ def audit_saved_bandit_live_world_state(
     required_lead_status = str(required_lead_status or "").strip()
     required_lead_last_outcome = str(required_lead_last_outcome or "").strip()
     required_known_recent_mark_contains = str(required_known_recent_mark_contains or "").strip()
+    required_retirement_summary_contains = str(required_retirement_summary_contains or "").strip()
+    required_empty_retirement_blocker_contains = str(required_empty_retirement_blocker_contains or "").strip()
 
     def site_matches(site: Dict[str, Any]) -> bool:
         if required_profile and site.get("hostile_profile") != required_profile:
@@ -2744,6 +2775,16 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_active_outside_count is not None and int(site.get("active_outside_count", 0) or 0) != required_active_outside_count:
             return False
+        if required_home_side_signal_count is not None and int(site.get("home_side_signal_count", 0) or 0) != required_home_side_signal_count:
+            return False
+        if required_retired_empty_site is not None and bool(site.get("retired_empty_site", False)) != required_retired_empty_site:
+            return False
+        if required_retirement_summary_contains and required_retirement_summary_contains not in str(site.get("retirement_summary", "")):
+            return False
+        if required_empty_retirement_blocker_contains:
+            blockers = site.get("empty_site_retirement_blockers", [])
+            if not isinstance(blockers, list) or required_empty_retirement_blocker_contains not in [str(blocker) for blocker in blockers]:
+                return False
         if required_min_active_member_ids is not None and int(site.get("active_member_count", 0) or 0) < required_min_active_member_ids:
             return False
         if required_active_members_found and not bool(site.get("active_members_all_found_in_saved_overmap")):
@@ -2810,6 +2851,10 @@ def audit_saved_bandit_live_world_state(
         "required_lead_last_outcome": required_lead_last_outcome,
         "required_lead_confidence": required_lead_confidence,
         "required_known_recent_mark_contains": required_known_recent_mark_contains,
+        "required_home_side_signal_count": required_home_side_signal_count,
+        "required_retired_empty_site": required_retired_empty_site,
+        "required_retirement_summary_contains": required_retirement_summary_contains,
+        "required_empty_retirement_blocker_contains": required_empty_retirement_blocker_contains,
     }
     has_requirement = any(value not in (None, "", []) for value in required_fields.values())
     matching_sites = [site for site in observed_sites if site_matches(site)]
@@ -4694,6 +4739,23 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "bandit_clone_site":
+            source_site_id = str(raw.get("source_site_id", raw.get("site_id", "")) or "").strip()
+            new_site_id = str(raw.get("new_site_id", "") or "").strip()
+            if not source_site_id or not new_site_id:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_clone_site needs source_site_id and new_site_id in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "source_site_id": source_site_id,
+                "new_site_id": new_site_id,
+                "clear_intelligence_map": bool(raw.get("clear_intelligence_map", True)),
+                "clear_remembered_pressure": bool(raw.get("clear_remembered_pressure", True)),
+            })
+            continue
+
         if kind == "bandit_site_roster_shape":
             try:
                 living_member_count = int(raw.get("living_member_count"))
@@ -4721,6 +4783,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "active_outside_member_count": active_outside_member_count,
                 "active_job_type": str(raw.get("active_job_type", "stalk") or "stalk").strip(),
                 "active_target_id": str(raw.get("active_target_id", "") or "").strip(),
+                "headcount_override": raw.get("headcount_override"),
+                "clear_spawn_tile_headcount": bool(raw.get("clear_spawn_tile_headcount", False)),
             })
             continue
 
@@ -5798,6 +5862,73 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
     }
 
 
+def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture bandit clone-site transform target not found: {dimension_path}")
+
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Fixture dimension data is not a JSON object: {dimension_path}")
+    overmapbuffer = payload.get("overmapbuffer", {})
+    if not isinstance(overmapbuffer, dict):
+        raise SystemExit(f"Fixture dimension data lacks overmapbuffer object: {dimension_path}")
+    live_world = overmapbuffer.get("bandit_live_world", {})
+    if not isinstance(live_world, dict):
+        raise SystemExit(f"Fixture dimension data lacks bandit_live_world object: {dimension_path}")
+    sites = live_world.get("sites", [])
+    if not isinstance(sites, list):
+        raise SystemExit(f"Fixture bandit_live_world.sites is not a list: {dimension_path}")
+
+    source_site_id = str(transform.get("source_site_id", "") or "").strip()
+    new_site_id = str(transform.get("new_site_id", "") or "").strip()
+    source_site: Optional[Dict[str, Any]] = None
+    for site in sites:
+        if isinstance(site, dict) and str(site.get("site_id", "")) == source_site_id:
+            source_site = site
+            break
+    if source_site is None:
+        raise SystemExit(f"Fixture bandit clone-site transform found no source site matching {source_site_id}")
+    if any(isinstance(site, dict) and str(site.get("site_id", "")) == new_site_id for site in sites):
+        raise SystemExit(f"Fixture bandit clone-site transform target site already exists: {new_site_id}")
+
+    cloned_site = json.loads(json.dumps(source_site))
+    cloned_site["site_id"] = new_site_id
+    cloned_site["active_group_id"] = ""
+    cloned_site["active_member_ids"] = []
+    cloned_site["active_target_id"] = ""
+    cloned_site["active_target_omt"] = [0, 0, 0]
+    cloned_site["active_job_type"] = ""
+    cloned_site["active_sortie_started_minutes"] = -1
+    cloned_site["active_sortie_local_contact_minutes"] = -1
+    cloned_site["retired_empty_site"] = False
+    cloned_site["retirement_summary"] = ""
+    if bool(transform.get("clear_intelligence_map", True)):
+        cloned_site["intelligence_map"] = {"leads": []}
+    if bool(transform.get("clear_remembered_pressure", True)):
+        cloned_site["remembered_target_or_mark"] = ""
+        cloned_site["remembered_pressure"] = ""
+        cloned_site["known_recent_marks"] = []
+
+    sites.append(cloned_site)
+    dimension_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return {
+        "kind": "bandit_clone_site",
+        "world": world_dir.name,
+        "source_site_id": source_site_id,
+        "new_site_id": new_site_id,
+        "clear_intelligence_map": bool(transform.get("clear_intelligence_map", True)),
+        "clear_remembered_pressure": bool(transform.get("clear_remembered_pressure", True)),
+    }
+
+
 def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     dimension_path = world_dir / "dimension_data.gsav"
     if not dimension_path.exists():
@@ -5866,7 +5997,17 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         member["last_writeback_summary"] = "fixture roster shape: wounded/unready member"
 
     selected_site["members"] = shaped_members
-    selected_site["headcount"] = living_member_count
+    headcount_override = transform.get("headcount_override")
+    if headcount_override is None or str(headcount_override).strip() == "":
+        selected_site["headcount"] = living_member_count
+    else:
+        selected_site["headcount"] = max(0, int(headcount_override))
+    if bool(transform.get("clear_spawn_tile_headcount", False)):
+        spawn_tiles = selected_site.get("spawn_tiles", [])
+        if isinstance(spawn_tiles, list):
+            for spawn_tile in spawn_tiles:
+                if isinstance(spawn_tile, dict):
+                    spawn_tile["headcount"] = 0
     selected_site["active_member_ids"] = active_member_ids
     if active_member_ids:
         site_id = str(selected_site.get("site_id", ""))
@@ -5892,6 +6033,8 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         "world": world_dir.name,
         "site_id": str(selected_site.get("site_id", "")),
         "living_member_count": living_member_count,
+        "headcount": int(selected_site.get("headcount", 0) or 0),
+        "clear_spawn_tile_headcount": bool(transform.get("clear_spawn_tile_headcount", False)),
         "ready_at_home_count": max(0, living_member_count - active_outside_member_count - wounded_or_unready_count),
         "wounded_or_unready_count": wounded_or_unready_count,
         "active_outside_member_count": active_outside_member_count,
@@ -5926,6 +6069,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "bandit_camp_map_lead":
             reports.append(apply_bandit_camp_map_lead_transform(world_dir, transform))
+            continue
+        if kind == "bandit_clone_site":
+            reports.append(apply_bandit_clone_site_transform(world_dir, transform))
             continue
         if kind == "bandit_site_roster_shape":
             reports.append(apply_bandit_site_roster_shape_transform(world_dir, transform))
@@ -6502,6 +6648,15 @@ def execute_probe_steps(
             required_ready_at_home_count = optional_step_int("required_ready_at_home_count")
             required_wounded_or_unready_count = optional_step_int("required_wounded_or_unready_count")
             required_active_outside_count = optional_step_int("required_active_outside_count")
+            required_home_side_signal_count = optional_step_int("required_home_side_signal_count")
+            raw_required_retired_empty_site = step.get("required_retired_empty_site")
+            required_retired_empty_site: Optional[bool]
+            if raw_required_retired_empty_site is None or str(raw_required_retired_empty_site).strip() == "":
+                required_retired_empty_site = None
+            elif isinstance(raw_required_retired_empty_site, bool):
+                required_retired_empty_site = raw_required_retired_empty_site
+            else:
+                required_retired_empty_site = str(raw_required_retired_empty_site).strip().lower() in {"1", "true", "yes", "y"}
             raw_required_min_active_member_ids = step.get("required_min_active_member_ids", step.get("required_active_member_count_min"))
             required_min_active_member_ids: Optional[int]
             if raw_required_min_active_member_ids is None or str(raw_required_min_active_member_ids).strip() == "":
@@ -6542,6 +6697,14 @@ def execute_probe_steps(
                     required_ready_at_home_count=required_ready_at_home_count,
                     required_wounded_or_unready_count=required_wounded_or_unready_count,
                     required_active_outside_count=required_active_outside_count,
+                    required_home_side_signal_count=required_home_side_signal_count,
+                    required_retired_empty_site=required_retired_empty_site,
+                    required_retirement_summary_contains=str(
+                        step.get("required_retirement_summary_contains", "") or ""
+                    ).strip(),
+                    required_empty_retirement_blocker_contains=str(
+                        step.get("required_empty_retirement_blocker_contains", "") or ""
+                    ).strip(),
                     required_min_active_member_ids=required_min_active_member_ids,
                     required_active_members_found=bool(step.get("required_active_members_found", False)),
                     required_active_member_max_abs_offset_ms=required_max_offset,
@@ -6573,6 +6736,14 @@ def execute_probe_steps(
                     "required_ready_at_home_count": required_ready_at_home_count,
                     "required_wounded_or_unready_count": required_wounded_or_unready_count,
                     "required_active_outside_count": required_active_outside_count,
+                    "required_home_side_signal_count": required_home_side_signal_count,
+                    "required_retired_empty_site": required_retired_empty_site,
+                    "required_retirement_summary_contains": str(
+                        step.get("required_retirement_summary_contains", "") or ""
+                    ).strip(),
+                    "required_empty_retirement_blocker_contains": str(
+                        step.get("required_empty_retirement_blocker_contains", "") or ""
+                    ).strip(),
                     "required_min_active_member_ids": required_min_active_member_ids,
                     "required_active_members_found": bool(step.get("required_active_members_found", False)),
                     "required_active_member_max_abs_offset_ms": required_max_offset,
