@@ -120,7 +120,8 @@ Active validation order:
 Greenlit follow-up validation stack after the actual-playtest non-green boundaries:
 
 1. `Player-lit fire and bandit signal verification packet v0`: still blocked; only after the fuel writeback/current-tile gate is green, prove real player-action ignition, actual `fd_fire`/smoke, bounded wait/time passage, and bandit signal response.
-2. Otherwise remain on harness trust-audit/proof-freeze consolidation or ask Schani/Josef for a fresh target rather than reopening packaged Smart Zone proof.
+2. `Roof-fire horde detection proof packet v0`: greenlit but blocked behind real player-lit fire; debug may stage horde/distance, but fire/elevated-position proof must be real player-action evidence.
+3. Otherwise remain on harness trust-audit/proof-freeze consolidation or ask Schani/Josef for a fresh target rather than reopening packaged Smart Zone proof.
 
 Every primitive/keystroke/setup step needs a precondition, action, expected state, screenshot or exact metadata proof, failure rule, artifact path, and pass/yellow/red/blocked verdict. Any non-canonical fixture must be justified with provenance before it can support closure. A load-and-close run remains startup/load proof only. Failed spawns, wrong screens, missing target fields, stale binaries/profiles, and missing save metadata must produce explicit non-green results rather than feature-proof claims. For `wait_action`, `artifacts_matched` must not override a yellow/blocked wait ledger: every long-wait step needs `<label>.wait_menu`, before/after clock-or-turn evidence plus expected elapsed duration, and either a finish signal or classified interruption.
 
