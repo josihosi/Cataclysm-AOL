@@ -2326,6 +2326,92 @@ def debug_force_temperature(
     )
 
 
+def debug_map_editor_place_furniture(
+    pid: int,
+    *,
+    furniture_query: str,
+    target_keys: Optional[List[str]] = None,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.45,
+    prompt_settle_seconds: float = 0.25,
+    exit_editor: bool = True,
+) -> None:
+    query = str(furniture_query or "").strip()
+    if not query:
+        raise SystemExit("Map-editor furniture placement needs furniture_query")
+    run_debug_menu_shortcut_path(
+        pid,
+        ["m", "M"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+    if target_keys:
+        peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["r"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    apply_uilist_filter(
+        pid,
+        query,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        settle_seconds=prompt_settle_seconds,
+    )
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    if exit_editor:
+        peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+
+
+def debug_map_editor_place_field(
+    pid: int,
+    *,
+    field_query: str,
+    target_keys: Optional[List[str]] = None,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.45,
+    prompt_settle_seconds: float = 0.25,
+    exit_editor: bool = True,
+) -> None:
+    query = str(field_query or "").strip()
+    if not query:
+        raise SystemExit("Map-editor field placement needs field_query")
+    run_debug_menu_shortcut_path(
+        pid,
+        ["m", "M"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+    if target_keys:
+        peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["e"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    apply_uilist_filter(
+        pid,
+        query,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        settle_seconds=prompt_settle_seconds,
+    )
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    # Field selection opens an intensity menu; accept the default highlighted
+    # intensity before applying the brush to the target tile.
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    if exit_editor:
+        peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+
+
 def assign_nearby_npc_to_camp_dialog(
     pid: int,
     *,
@@ -5040,6 +5126,86 @@ def execute_probe_steps(
                 "prompt_settle_seconds": prompt_settle_seconds,
                 "debug_menu_path": ["}", "m", "T"],
                 "selection_path": ["down", "enter"],
+            })
+        elif kind == "debug_map_editor_place_furniture":
+            furniture_query = str(
+                step.get("furniture_query")
+                or step.get("furniture")
+                or step.get("query")
+                or ""
+            ).strip()
+            if not furniture_query:
+                raise SystemExit(f"Scenario step '{label}' needs furniture_query/furniture")
+            raw_target_keys = step.get("target_keys", [])
+            if isinstance(raw_target_keys, str):
+                target_keys = [raw_target_keys] if raw_target_keys.strip() else []
+            elif isinstance(raw_target_keys, list):
+                target_keys = [str(key) for key in raw_target_keys if str(key).strip()]
+            else:
+                target_keys = []
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            debug_map_editor_place_furniture(
+                pid,
+                furniture_query=furniture_query,
+                target_keys=target_keys,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "furniture_query": furniture_query,
+                "target_keys": target_keys,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "debug_menu_path": ["}", "m", "M"],
+                "selection_path": target_keys + ["r", "/", furniture_query, "enter", "enter"],
+                "spawn_target": "map_editor_target_tile",
+            })
+        elif kind == "debug_map_editor_place_field":
+            field_query = str(
+                step.get("field_query")
+                or step.get("field")
+                or step.get("query")
+                or ""
+            ).strip()
+            if not field_query:
+                raise SystemExit(f"Scenario step '{label}' needs field_query/field")
+            raw_target_keys = step.get("target_keys", [])
+            if isinstance(raw_target_keys, str):
+                target_keys = [raw_target_keys] if raw_target_keys.strip() else []
+            elif isinstance(raw_target_keys, list):
+                target_keys = [str(key) for key in raw_target_keys if str(key).strip()]
+            else:
+                target_keys = []
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            debug_map_editor_place_field(
+                pid,
+                field_query=field_query,
+                target_keys=target_keys,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "field_query": field_query,
+                "target_keys": target_keys,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "debug_menu_path": ["}", "m", "M"],
+                "selection_path": target_keys + ["e", "/", field_query, "enter", "enter", "enter"],
+                "spawn_target": "map_editor_target_tile",
             })
         elif kind == "audit_saved_weather_state":
             required_weather_id = str(step.get("required_weather_id", step.get("weather_id", "")) or "").strip()
