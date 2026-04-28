@@ -639,6 +639,24 @@ TEST_CASE( "bandit_live_world_migrates_legacy_scalar_memory_only_as_fallback",
     }
 
     {
+        const std::string explicit_empty_map_json = R"({
+            "site_id": "empty_modern_camp",
+            "remembered_target_or_mark": "legacy-mark",
+            "remembered_threat_estimate": 9,
+            "remembered_bounty_estimate": 9,
+            "intelligence_map": {
+                "schema_version": 1,
+                "leads": []
+            }
+        })";
+        JsonValue explicit_empty_map_value = json_loader::from_string( explicit_empty_map_json );
+        bandit_live_world::site_record explicit_empty_map_site;
+        explicit_empty_map_site.deserialize( explicit_empty_map_value.get_object() );
+
+        CHECK( explicit_empty_map_site.intelligence_map.leads.empty() );
+    }
+
+    {
         const std::string modern_json = R"({
             "site_id": "modern_camp",
             "remembered_target_or_mark": "legacy-mark",
