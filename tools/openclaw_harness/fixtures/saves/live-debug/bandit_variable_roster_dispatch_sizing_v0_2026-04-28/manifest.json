@@ -1,0 +1,16 @@
+{
+  "name": "bandit_variable_roster_dispatch_sizing_v0_2026-04-28",
+  "source_fixture": "bandit_camp_map_remembered_stalk_v0_2026-04-28",
+  "source_profile": "live-debug",
+  "description": "Fixture-backed variable-roster camp-map dispatch footing: reuse the vanished-signal remembered-lead camp, then shape the owning camp to five living ready at-home members so the real 30-minute dispatch cadence must prove reserve/dispatch sizing from live roster state rather than the larger source fixture.",
+  "save_transforms": [
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0
+    }
+  ]
+}
