@@ -85,7 +85,7 @@ Success state:
   - terminal ASCII scrape, if used, is labeled exploratory/terminal-path only.
 - [ ] After that observation primitive lands, the current harness audit is rerun key by key; normal player-action brazier deployment only goes green when the menu/selector state is proven and saved east-tile `f_brazier` is present.
 - [ ] The audit covers launch/load readiness, focus/keystrokes, screenshot capture, debug spawn paths, target-tile metadata checks, save/zzip transforms, Smart Zone UI/layout inspection, fire/smoke setup, wait/time passage, NPC/bandit positioning, and report writing.
-- [ ] False-pass behavior is guarded against: wrong screen, failed spawn, missing target field, missing save metadata, stale binary/profile, and load-only runs all produce explicit non-green verdicts.
+- [ ] False-pass behavior is guarded against: wrong screen, failed spawn, missing target field, missing save metadata, stale binary/profile, and load-only runs all produce explicit non-green verdicts. Current report-classifier selftest covers load-only, stale-startup artifact-match, non-green step-ledger, and blocked-wait false-pass cases; remaining scenario-specific primitives still need their own guards.
 - [ ] The frozen workflow states that load-and-close is startup proof only, and no feature package may close from it.
 - [ ] The relevant harness skill/docs are updated so another agent can run and audit the workflow without chat archaeology.
 - [ ] Frau Knackal or an equivalent review pass checks the proof matrix for contradictions, hidden fixture bias, and claims that outrun their evidence.
