@@ -1689,6 +1689,141 @@ def audit_saved_player_items(
     }
 
 
+def audit_saved_active_monsters(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    required_monsters: Optional[List[Dict[str, Any]]] = None,
+    required_typeids: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Read-only saved-player audit for active monster type/location state.
+
+    Debug-spawned monsters are saved in the player save's ``active_monsters``
+    array, not in the submap spawn-point list. Keep this as a same-save
+    metadata gate so a completed debug menu macro cannot be credited unless
+    the saved game contains the exact monster state the scenario claimed.
+    """
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    selected_player_save = player_save.strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise RuntimeError(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+
+    player_save_path = world_dir / selected_player_save
+    if not player_save_path.exists():
+        raise FileNotFoundError(f"Player save not found: {player_save_path}")
+    if player_save_path.suffix != ".zzip":
+        raise RuntimeError(f"Active monster audit expects .zzip save path: {player_save_path}")
+
+    extracted_save = player_save_path.with_suffix("")
+    run_zzip(player_save_path)
+    if not extracted_save.exists():
+        raise RuntimeError(f"Active monster audit did not extract save: {extracted_save}")
+
+    try:
+        payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    finally:
+        if extracted_save.exists():
+            extracted_save.unlink()
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise RuntimeError(f"Extracted player save is missing player object: {extracted_save}")
+    player_location_raw = player.get("location", [])
+    if not isinstance(player_location_raw, list) or len(player_location_raw) < 3:
+        raise RuntimeError(f"Extracted player save is missing player location: {extracted_save}")
+    player_location = [int(player_location_raw[0]), int(player_location_raw[1]), int(player_location_raw[2])]
+
+    active_raw = payload.get("active_monsters", [])
+    if not isinstance(active_raw, list):
+        raise RuntimeError(f"Extracted player save has non-list active_monsters: {extracted_save}")
+
+    monsters: List[Dict[str, Any]] = []
+    counts: Dict[str, int] = {}
+    for index, monster in enumerate(active_raw):
+        if not isinstance(monster, dict):
+            continue
+        typeid = str(monster.get("typeid", "")).strip()
+        location_raw = monster.get("location", [])
+        location: List[int] = []
+        offset: List[int] = []
+        if isinstance(location_raw, list) and len(location_raw) >= 3:
+            location = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
+            offset = [
+                location[0] - player_location[0],
+                location[1] - player_location[1],
+                location[2] - player_location[2],
+            ]
+        if typeid:
+            counts[typeid] = counts.get(typeid, 0) + 1
+        monsters.append({
+            "index": index,
+            "typeid": typeid,
+            "location_ms": location,
+            "offset_ms": offset,
+            "friendly": monster.get("friendly"),
+            "hallucination": monster.get("hallucination"),
+            "dead": monster.get("dead"),
+            "hp": monster.get("hp"),
+            "faction": monster.get("faction"),
+            "unique_name": monster.get("unique_name", ""),
+            "nickname": monster.get("nickname", ""),
+        })
+
+    required: List[Dict[str, Any]] = []
+    for typeid in required_typeids or []:
+        normalized = str(typeid).strip()
+        if normalized:
+            required.append({"typeid": normalized})
+    for raw in required_monsters or []:
+        if not isinstance(raw, dict):
+            continue
+        typeid = str(raw.get("typeid", raw.get("monster", ""))).strip()
+        if not typeid:
+            continue
+        requirement: Dict[str, Any] = {"typeid": typeid}
+        offset_raw = raw.get("offset_ms")
+        if isinstance(offset_raw, list) and len(offset_raw) >= 3:
+            requirement["offset_ms"] = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+        required.append(requirement)
+
+    def matches_requirement(monster: Dict[str, Any], requirement: Dict[str, Any]) -> bool:
+        if monster.get("typeid") != requirement.get("typeid"):
+            return False
+        if "offset_ms" in requirement and monster.get("offset_ms") != requirement.get("offset_ms"):
+            return False
+        return True
+
+    missing_required_monsters = [
+        requirement
+        for requirement in required
+        if not any(matches_requirement(monster, requirement) for monster in monsters)
+    ]
+    if required and not missing_required_monsters:
+        status = "required_state_present"
+    elif required:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "player_location_ms": player_location,
+        "required_monsters": required,
+        "observed_monster_typeids": sorted(counts),
+        "active_monster_counts": dict(sorted(counts.items())),
+        "active_monsters": monsters,
+        "missing_required_monsters": missing_required_monsters,
+        "status": status,
+    }
+
+
 def debug_selection_key_moves_highlight(selection_key: str) -> bool:
     normalized = str(selection_key or "").strip().lower()
     return normalized in {
@@ -2565,6 +2700,8 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_items")
         if metadata.get("missing_required_furniture"):
             issues.append("missing_required_furniture")
+        if metadata.get("missing_required_monsters"):
+            issues.append("missing_required_monsters")
         return "red_step_metadata_required_state_missing", issues or [status]
     if status == "failed":
         return "blocked_step_metadata_probe_failed", ["metadata_probe_failed"]
@@ -2754,9 +2891,11 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 "required_fields": metadata_summary.get("required_fields", []),
                 "required_items": metadata_summary.get("required_items", []),
                 "required_furniture": metadata_summary.get("required_furniture", []),
+                "required_monsters": metadata_summary.get("required_monsters", []),
                 "missing_required_fields": metadata_summary.get("missing_required_fields", []),
                 "missing_required_items": metadata_summary.get("missing_required_items", []),
                 "missing_required_furniture": metadata_summary.get("missing_required_furniture", []),
+                "missing_required_monsters": metadata_summary.get("missing_required_monsters", []),
             } if metadata_summary else {},
             "proof_deferred_to_label": str(report.get("proof_deferred_to_label", "")),
             "failure_rule": str(report.get("failure_rule", "missing/wrong screen, failed OCR guard, stale runtime, or absent state metadata makes this non-green")),
@@ -4741,6 +4880,64 @@ def execute_probe_steps(
                             step.get(
                                 "abort_reason",
                                 "required saved-player metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
+        elif kind == "audit_saved_active_monsters":
+            player_save = str(step.get("player_save", "") or "").strip()
+            required_typeids = [
+                str(monster).strip()
+                for monster in step.get("required_typeids", step.get("required_monster_typeids", []))
+                if str(monster).strip()
+            ]
+            required_monsters_raw = step.get("required_monsters", [])
+            if not isinstance(required_monsters_raw, list):
+                raise SystemExit(f"Scenario step '{label}' required_monsters must be a list")
+            required_monsters = [
+                monster for monster in required_monsters_raw if isinstance(monster, dict)
+            ]
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_active_monsters(
+                    world_dir,
+                    player_save=player_save,
+                    required_monsters=required_monsters,
+                    required_typeids=required_typeids,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_monsters": required_monsters,
+                    "required_typeids": required_typeids,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "metadata": metadata,
+                "action_description": "read saved player active_monsters and require exact monster type/location metadata",
+                "expected_immediate_state": "saved player active_monsters contains the required debug-spawned monster metadata before spawn proof may continue",
+                "failure_rule": "missing required saved active-monster metadata or unreadable save metadata makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": metadata_verdict,
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved active-monster metadata was missing or unreadable",
                             )
                         ),
                         "issues": metadata_issues,

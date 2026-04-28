@@ -1,0 +1,97 @@
+{
+  "name": "harness.debug_spawn_monster_target_state_audit_mcw",
+  "description": "Audit one debug-spawn monster primitive end-to-end under the proof-freeze rules: spawn a harmless squirrel one tile east through the debug monster path, prove the case-sensitive save/writeback gate, then require same-run saved-player active_monsters metadata for mon_squirrel at offset [1,0,0]. This is harness primitive/process evidence, not product-feature proof.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "debug_spawn_monster",
+      "label": "debug_spawn_squirrel_east",
+      "monster_query": "squirrel",
+      "target_keys": [
+        "right"
+      ],
+      "friendly": true,
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_active_monsters_after_debug_spawn",
+      "preconditions": "canonical dev-harness/McWilliams fixture is loaded and focused; debug spawn monster primitive starts from the main map screen",
+      "expected_visible_fact": "debug spawn monster helper returns to the live map after selecting squirrel and confirming the target tile one square east",
+      "expected_immediate_state": "one mon_squirrel should exist as an active monster one tile east of the player, but this row is credited only through the later same-run saved active_monsters metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing same-run saved active_monsters mon_squirrel metadata after save makes this debug-spawn row non-green",
+      "next_step_gate": "do not credit the debug-spawn monster primitive unless audit_saved_active_monsters_after_debug_spawn is green"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_debug_spawn_monster_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after debug spawn monster and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_debug_spawn_monster",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_spawn_monster_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the debug-spawn monster save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the debug-spawn monster step; confirmation must not be sent before this prompt is proven"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_debug_spawn_monster",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_debug_spawn_monster_save",
+      "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "next_step_gate": "saved active-monster metadata may be credited only when audit_player_save_mtime_after_debug_spawn_monster_save is green",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_debug_spawn_monster_save",
+      "changed_since_label": "audit_player_save_mtime_before_debug_spawn_monster_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_spawn_monster_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the debug-spawn monster save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed debug-spawn monster save, proving the following active_monsters audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_active_monsters_after_debug_spawn",
+      "required_monsters": [
+        {
+          "typeid": "mon_squirrel",
+          "offset_ms": [
+            1,
+            0,
+            0
+          ]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_spawn_monster_target_state",
+      "abort_reason": "saved active_monsters metadata did not contain mon_squirrel at player-relative offset [1,0,0] after same-run debug-spawn save/writeback",
+      "expected_visible_fact": "same-run saved active_monsters metadata contains mon_squirrel one tile east of the player after the debug-spawn monster primitive"
+    }
+  ]
+}
