@@ -10,7 +10,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active target: `Bandit camp-map risk/reward dispatch planning packet v0`.
 
-Current state: the cannibal night-raid live slice is checkpointed green for the named scenarios; the optional bandit-control contrast is non-blocking unless product review explicitly reopens it. The bandit camp-map lane is active; the latest deterministic ecology slice is implemented and validated as code evidence only.
+Current state: the cannibal night-raid live slice is checkpointed green for the named scenarios; the optional bandit-control contrast is non-blocking unless product review explicitly reopens it. The bandit camp-map lane is active; the deterministic ecology slice is implemented and the named live guardrails listed below now include shakedown/toll-control feature-path proof.
 
 Known footing:
 
@@ -18,13 +18,13 @@ Known footing:
 - Contract: `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
 - Andi lane: `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
 - Live matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
-- Existing deterministic/code support covers a camp-owned `camp_intelligence_map`, serialization/deserialization, active target OMT persistence, scout-return writeback into the source camp map, live signal marks writing camp-map signal leads, legacy scalar migration fallback, remembered camp-map lead selection through the real live dispatch cadence/report path, two-OMT ordinary scout stand-off, half-day ordinary scout return clock in the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, active-outside dogpile blocking, wounded/unready and killed-member dispatch shrinkage, bounded stockpile-pressure willingness, high-threat/poor-reward non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing when risk/reward justifies it, no-opening hold/return in the camp-map decision seam, and green named feature-path proof for no-opening stalk-pressure, high-threat/low-reward hold, and active-outside dogpile-block guardrails; it is not full product closure.
+- Existing deterministic/code support covers a camp-owned `camp_intelligence_map`, serialization/deserialization, active target OMT persistence, scout-return writeback into the source camp map, live signal marks writing camp-map signal leads, legacy scalar migration fallback, remembered camp-map lead selection through the real live dispatch cadence/report path, two-OMT ordinary scout stand-off, half-day ordinary scout return clock in the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, active-outside dogpile blocking, wounded/unready and killed-member dispatch shrinkage, bounded stockpile-pressure willingness, high-threat/poor-reward non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing when risk/reward justifies it, no-opening hold/return in the camp-map decision seam, and green named feature-path proof for no-opening stalk-pressure, high-threat/low-reward hold, active-outside dogpile-block, and shakedown/toll-control first-demand fight/pay plus reopened-demand guardrails; it is not full product closure.
 
 Next narrow work queue:
 
-1. Move to the next named downstream bandit matrix proof, likely shakedown/toll control regression or repeatability/fixture-bias review before broader product closure.
+1. Move to the next named downstream bandit matrix proof, likely repeatability/fixture-bias review or optional empty-camp live sanity before broader product closure.
 2. Keep variable-roster product closure honest: 2/5/10 sizing variants, no-opening stalk-pressure, high-threat/low-reward hold, and active-outside dogpile-block are green for their guardrails, but not full product closure.
-3. Keep product proof downstream: no live/harness closure until named matrix scenarios observe the live dispatch/writeback bridge and report/log fields.
+3. Keep product proof downstream: remaining live/harness closure still needs named matrix repeatability/fixture-bias and optional empty-camp sanity before broad product closure.
 
 Latest active-outside boundary: `bandit.active_outside_dogpile_block_live` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_200434/`. It proves current-runtime `./cataclysm-tiles --version = 6206131b31`, clean startup/runtime gate, saved preflight existing active outside stalk pressure (`active_outside=2`, three ready at home), green 30-minute wait ledger, same-run `bandit_live_world dispatch rejected:` with `candidate_reason=remembered_camp_map_lead`, `opening_state=opening_present_or_not_required`, `opening_available=yes`, roster line `living=5 ready_at_home=3 wounded_or_unready=0 active_outside=2 reserve=2 dispatchable=1`, `hold: unresolved active outside group/contact blocks dogpile`, and saved unchanged two-active/three-ready state.
 
