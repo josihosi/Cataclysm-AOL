@@ -22,10 +22,11 @@ Known footing:
 
 Next narrow work queue:
 
-1. Prove the remaining behavior through named live/product scenarios: stalk/pressure wait-for-opening/no-opening return and variable-roster sizing through the real path.
-2. Keep product proof downstream: no live/harness closure until named matrix scenarios observe the live dispatch/writeback bridge and report/log fields.
+1. Extend variable-roster live proof beyond the green five-member/medium case to tiny and large/large-cooled variants, keeping fixture footing and saved post-dispatch roster state explicit.
+2. Prove stalk/pressure wait-for-opening/no-opening return through a named live/product scenario.
+3. Keep product proof downstream: no live/harness closure until named matrix scenarios observe the live dispatch/writeback bridge and report/log fields.
 
-Latest vanished-signal boundary: `bandit.camp_map_vanished_signal_redispatch` is now green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_185947/`: saved preflight proves a persisted scout-confirmed remembered lead, the long-wait ledger is green for bounded 30-minute menu/cadence action plus claim-scoped post-wait artifact delta, same-run logs show `candidate_reason=remembered_camp_map_lead`, `signal_packet=none`, `reward=13`, `risk=1`, `margin=12`, `members=4`, `reserve=5`, `dispatchable=8`, and saved state persists an active `stalk` dispatch with four concrete active members. Latest sight-avoid boundary: `bandit.scout_stalker_sight_avoid_live` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_173626/`. These close those matrix guardrails only; stalk/no-opening and variable-roster live scenarios remain open.
+Latest variable-roster boundary: `bandit.variable_roster_dispatch_sizing_live` is green medium-roster feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_192059/`: saved preflight proves a fixture-shaped five-member camp with a persisted scout-confirmed remembered lead, the long-wait ledger is green for a bounded 30-minute cadence action, same-run logs show `candidate_reason=remembered_camp_map_lead`, `signal_packet=none`, `living=5`, `ready_at_home=5`, `wounded_or_unready=0`, `active_outside=0`, `reserve=2`, `dispatchable=3`, and `members=2`, and saved state persists an active `stalk` dispatch with two concrete active members plus three ready at home. Latest vanished-signal boundary: `bandit.camp_map_vanished_signal_redispatch` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_185947/`. Latest sight-avoid boundary: `bandit.scout_stalker_sight_avoid_live` is green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_173626/`. These close only their named guardrail slices; tiny/large variable-roster variants and stalk/no-opening live proof remain open.
 
 Proof discipline:
 
