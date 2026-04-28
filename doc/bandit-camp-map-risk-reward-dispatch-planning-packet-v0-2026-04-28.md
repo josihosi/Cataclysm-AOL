@@ -60,7 +60,7 @@ The third missing piece is behavior texture. A scout should not sit five overmap
 - Do not keep the previous five-OMT ordinary scout stand-off as the default for camp/basecamp observation; it remains historical proof of the old correction, not the new target behavior.
 - Do not make stalk escalation automatic revenge. It is a risk/reward choice after scout memory, with high-threat/low-reward cases still allowed to hold or re-scout.
 - Do not let large camps empty themselves just because a target looks valuable.
-- Do not let tiny camps perform serious raids unless a later explicit desperation/personality system justifies it and still names the risk.
+- Do not let tiny camps perform serious raids; the scout-confirmed buddy-pair exception is stalk pressure, not a raid, and must remain named so the risk is visible.
 - Do not close this from deterministic evaluator tests alone if the claim says the live bandit camp re-dispatches from remembered scout knowledge. The live game path must consume the new memory and produce an in-game/harness-observable result.
 - Do not route this as an informal Andi nudge; it is a canon plan item with tests.
 
@@ -146,7 +146,7 @@ Sizing is derived from current live roster, not fixed camp folklore:
 
 ### Examples
 
-- 2 living / 2 ready: reserve 1, dispatchable 1 -> scout only.
+- 2 living / 2 ready: uncertain leads keep reserve 1 and scout/avoid; scout-confirmed high-value pressure may commit the buddy pair as a two-member stalk, leaving reserve 0.
 - 4 living / 4 ready: reserve 1, dispatchable 3 -> scout 1; stalk/toll 2 if risk/reward permits; raid usually blocked unless very favorable.
 - 5 living / 5 ready: reserve 2, dispatchable 3 -> scout 1; stalk/toll 2; raid 2-3 if very favorable.
 - 7 living / 6 ready / 1 wounded: reserve 2, dispatchable 4 -> scout 1; stalk 2; shakedown 2-3; raid up to 4 if very favorable.
