@@ -169,13 +169,14 @@ Notes:
 
 ## Smart Zone Manager harness-audit retry packet v0
 
-Status: GREENLIT / QUEUED BOUNDED HARNESS-AUDIT RETRY
+Status: ACTIVE / GREENLIT BOUNDED HARNESS-AUDIT RETRY
 
 Success state:
 - [ ] A current-runtime loadable Smart Zone fixture/profile reaches gameplay; if `smart-zone-safe-clean-20260427` remains non-loadable, the replacement fixture/provenance is explicit.
 - [ ] The live UI path proves Zone Manager opened and Smart Zone generation was invoked; screenshots/OCR are used only where no stronger structured artifact exists.
-- [ ] Generated/reopened zone metadata proves exact zone types, names/options where relevant, and coordinates after the live generation action.
-- [ ] Zones that must remain separated/reserved are proven not to collapse onto one fake mega-tile; deterministic geometry/separation tests are support, not closure alone.
+- [ ] The generated Zone Manager list is inspected after live generation, and visible relative coordinate labels beside zones (`2E`-style offsets) are captured/read.
+- [ ] Generated/reopened zone metadata proves exact zone types, names/options where relevant, and coordinates after the live generation action where available.
+- [ ] Zones that must remain separated/reserved are proven not to collapse onto one fake mega-tile; same-coordinate UI labels count as direct lumping evidence, distinct expected coordinate labels count as direct separation evidence, and deterministic geometry/separation tests are support only.
 - [ ] The packet uses step-local proof-freeze rows for every meaningful step: precondition, action, expected state, failure rule, artifact path, and green/yellow/red/blocked verdict.
 - [ ] A Knackal-style imagination review checks whether the proof demonstrates the human product picture rather than laundering startup/load, deterministic geometry, or metadata-only fixture state into live closure.
 - [ ] Final result is classified as green feature-path, blocked with a named primitive/fixture gap, or returned to Josef playtest package with a precise manual recipe.
@@ -184,7 +185,7 @@ Notes:
 - Imagination source lives at `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`.
 - Preserved non-green boundary: `smart_zone.live_probe_safe_clean` on profile `smart-zone-audit-live-20260428a`, run `20260428_151053`, is `feature_proof=false` because the captured runtime was `48abd82de9` and all 25 step-ledger rows were yellow; saved-zone evidence only showed one `ZONE_START_POINT` in `#SGVucmlldHRlIEZseW5u.zoneszmgr-temp.json`, not generated separated Smart Zone layout metadata.
-- Next evidence target is a current-runtime relink/rebuild plus exact generated-zone metadata after live generation and save/reopen, or an explicit blocked/non-green packet.
+- Next evidence target is a current-runtime relink/rebuild plus live Zone Manager generation and coordinate-label inspection; saved zone metadata after generation/save/reopen should be added where available, or the packet must stay explicit blocked/non-green.
 - This reopens only the proof path; it does not redesign Smart Zone Manager behavior or authorize the old contaminated McWilliams macro.
 
 ---

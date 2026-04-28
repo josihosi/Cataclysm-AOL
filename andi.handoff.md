@@ -1,9 +1,8 @@
-
-# Andi handoff: Generic clean-code boundary review packet v0
+# Andi handoff: Smart Zone Manager harness-audit retry packet v0
 
 ## Active target
 
-`Generic clean-code boundary review packet v0` is active after the bandit camp-map lane reached a real checkpoint.
+`Smart Zone Manager harness-audit retry packet v0` is active.
 
 Canonical anchors:
 
@@ -11,33 +10,36 @@ Canonical anchors:
 - `TODO.md`
 - `TESTING.md`
 - `SUCCESS.md`
-- `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`
-- `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`
+- `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`
+- `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`
 
-## Current evidence boundary
+## New proof primitive
 
-`Bandit camp-map risk/reward dispatch planning packet v0` is closed as a scoped live/product checkpoint green. Frau product review accepted the current narrow matrix as enough and did not require a second-fixture bias variant before closure.
+Josef found the cheap live observable: Zone Manager shows relative coordinate labels beside each zone, e.g. `2E` for two tiles east of the player.
 
-Bandit caveats to preserve:
+Use that directly. Run the live Zone Manager generation path, inspect the generated zone list, and read/capture the coordinate labels. If zones are lumped onto one tile, they will show the same coordinate label. If the generated layout is separated correctly, the relevant zones should show distinct expected offsets.
 
-- Player-created fire/smoke/light scenario 1 remains blocked behind the fuel/writeback gate and is not credited.
-- High-threat repeatability is same-fixture confidence only, not second-fixture anti-bias proof.
-- `bandit.stalk_pressure_waits_for_opening` proves no-opening decision/decay only, not opening-present escalation.
+## Preserved non-green boundary
+
+Do not launder the old Smart Zone evidence into closure:
+
+- `smart_zone.live_probe_safe_clean` on `smart-zone-audit-live-20260428a`, run `.userdata/smart-zone-audit-live-20260428a/harness_runs/20260428_151053/`, is `feature_proof=false`.
+- That run had runtime mismatch, 25/25 yellow step-ledger rows, and only a temporary `ZONE_START_POINT`, not generated separated Smart Zone layout proof.
+- The older clean-profile route also had loadability trouble; repair or replace the fixture honestly if needed.
 
 ## Next work
 
-Produce one compact report-only clean-code boundary review. Suggested artifact: `doc/generic-clean-code-boundary-review-report-v0-2026-04-28.md`.
+1. Rebuild/relink to current runtime and repair/stage a loadable Smart Zone fixture/profile if needed.
+2. Open Zone Manager through the live UI.
+3. Invoke Smart Zone generation through the live UI.
+4. Inspect the generated zone list and capture/read visible relative coordinate labels beside each generated zone.
+5. Compare coordinates: same labels prove lumping; distinct expected labels prove separated placement. Pair with saved zone metadata and save/reopen evidence where possible.
+6. Classify the result as green feature-path, blocked with a named missing primitive/fixture, or non-green with exact evidence.
 
-Review inputs: current canon (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, this handoff), current git status/diff, and the recent bandit checkpoint docs.
+## Non-goals/cautions
 
-The report should:
-
-1. name the repo state it inspected;
-2. check for concrete canon contradictions, stale TODO/testing drift, obvious build/test/lint hazards, and bounded cleanup risks;
-3. classify each finding as `fix now`, `queue`, or `ignore/watch` with exact file/path/test anchors;
-4. explain any gate not run;
-5. avoid applying cleanup fixes, reopening feature lanes, or reordering priorities without Schani/Josef review.
-
-## Queued after this boundary review
-
-Follow `Plan.md` greenlit order. The next major queued lane is the bounded Smart Zone Manager harness-audit retry; cannibal confidence uplift, real player-lit fire, roof-fire horde detection, and live AI performance audit remain queued/blocked as documented.
+- Do not redesign Smart Zone behavior.
+- Do not use deterministic `clzones` tests as feature closure; they are support only.
+- Do not rerun the contaminated old McWilliams macro or the non-loadable clean profile as closure without material repair.
+- Do not treat startup/load or a menu screenshot without coordinate labels as layout proof.
+- Keep `Generic clean-code boundary review packet v0` queued after this Smart Zone checkpoint.

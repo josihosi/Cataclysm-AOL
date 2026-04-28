@@ -53,13 +53,13 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - Generic clean-code boundary review packet v0
+### Active validation target - Smart Zone Manager harness-audit retry packet v0
 
-`Generic clean-code boundary review packet v0` is now active because the bandit camp-map lane reached a real checkpoint. Contract: `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`; imagination source: `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
+`Smart Zone Manager harness-audit retry packet v0` is now active because Josef identified a direct live UI observable: the Zone Manager shows relative coordinates next to each zone (`2E`, etc.). Contract: `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`; imagination source: `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`.
 
-Evidence burden: report-only boundary review. The report should inspect `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `andi.handoff.md`, current git status/diff, and recent checkpoint docs; name concrete contradictions/stale drift/build-test-lint hazards/cleanup risks; classify every finding as `fix now`, `queue`, or `ignore/watch`; and avoid applying fixes or reordering priorities.
+Evidence burden: run the real Zone Manager generation path on a current-runtime loadable fixture, then inspect/capture the generated zone list coordinates. Same-coordinate labels are direct evidence that zones collapsed onto one tile; distinct expected relative offsets are direct evidence for separated placement. Pair the coordinate read with saved zone metadata and save/reopen state where possible. The old `20260428_151053` run remains non-green and cannot be laundered into closure.
 
-Validation policy for this target: no compile is required for a report-only doc artifact unless the report makes or resolves a build/test/lint claim that needs fresh evidence. If no gate is run, the report must say why.
+Validation policy for this target: `git diff --check`; narrow compile/test only if harness/runtime/Smart Zone code changes; relevant deterministic `clzones` tests only as support if Smart Zone code changes; one named harness probe/handoff with step-local ledger and coordinate-label evidence. If the UI coordinate read is blocked, record the exact missing primitive or fixture problem instead of substituting load-only proof.
 
 ### Recently completed validation target - Bandit camp-map risk/reward dispatch planning packet v0
 
@@ -86,11 +86,11 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active validation target: **Generic clean-code boundary review packet v0**. Produce the report-only boundary review before promoting another major lane. Do not run feature probes as part of the review unless a concrete report finding requires a narrow verification gate.
+Active validation target: **Smart Zone Manager harness-audit retry packet v0**. Use the Zone Manager's visible relative coordinate labels as the primary live proof for separated-vs-lumped generated zones. Do not substitute deterministic geometry, startup/load, or old non-green Smart Zone runs for this coordinate-read proof.
 
-Queued after the boundary review, per `Plan.md` / greenlit stack:
+Queued after this Smart Zone checkpoint, per `Plan.md` / greenlit stack:
 
-1. `Smart Zone Manager harness-audit retry packet v0`: bounded retry only under `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`; repair/stage loadable fixture if needed and prove generated/reopened Smart Zone layout with structured metadata.
+1. `Generic clean-code boundary review packet v0`: report-only boundary review, now queued after the active Smart Zone retry.
 2. `Cannibal camp confidence-push live playtest packet v0`: confidence uplift for already-closed cannibal behavior, not a redesign or failure reopen.
 3. `Player-lit fire and bandit signal verification packet v0`: still blocked behind the fuel/writeback gate.
 4. `Roof-fire horde detection proof packet v0`: still blocked behind real player-lit fire.

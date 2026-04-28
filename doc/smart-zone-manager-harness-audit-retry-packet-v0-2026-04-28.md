@@ -1,6 +1,6 @@
 # Smart Zone Manager harness-audit retry packet v0 - 2026-04-28
 
-Status: GREENLIT / QUEUED BOUNDED HARNESS-AUDIT RETRY
+Status: ACTIVE / GREENLIT BOUNDED HARNESS-AUDIT RETRY
 
 Imagination source: `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`
 
@@ -9,6 +9,8 @@ Imagination source: `doc/smart-zone-manager-harness-audit-retry-imagination-sour
 Josef reopened the Smart Zone Manager live proof only as a better-shaped harness-audit retry. This is not permission to repeat the old blind UI macro. The retry exists because the previous agent-side boundary was honest but unsatisfying: deterministic geometry/separation proof was green, yet the clean live/UI path failed at startup/load (`Dunn has no characters to load`) and did not prove the player-visible generated layout.
 
 The desired proof is clever and token-efficient: prove basically every step with the strongest cheap evidence available, avoiding screenshots/OCR where structured metadata or exact game-state artifacts prove more.
+
+New Josef-discovered proof primitive: the Zone Manager itself shows relative coordinate labels beside zones, e.g. `2E` for two tiles east of the player. Andi can run the real Zone Manager generation path and read/capture those coordinates. If generated zones are lumped onto the same tile, their labels will match; if the layout is separated correctly, the labels should show distinct expected offsets.
 
 ## Preserved non-green boundary
 
@@ -21,7 +23,7 @@ The latest known retry evidence remains non-green and must not be laundered into
 - Saved-zone evidence: `.userdata/smart-zone-audit-live-20260428a/save/Delta/#SGVucmlldHRlIEZseW5u.zoneszmgr-temp.json` contains exactly one `ZONE_START_POINT` row at `[995, 1086, 0]` -> `[997, 1096, 0]`; `.userdata/smart-zone-audit-live-20260428a/save/Delta/zoneszmgr-temp.json` contains `[]`.
 - Verdict: this proves neither Smart Zone generation nor separated generated layout metadata. It is at most a wrong-runtime/yellow UI attempt plus a temporary Zone Manager start-point artifact.
 
-Next evidence target: relink/rebuild to the current runtime and capture exact generated-zone metadata after live Zone Manager generation plus save/reopen, or leave the packet explicitly blocked/non-green. Do not close Smart Zone from screenshots, OCR, deterministic `clzones` tests, or the temp `ZONE_START_POINT` row.
+Next evidence target: relink/rebuild to the current runtime, run live Zone Manager generation, and capture/read the visible relative coordinate labels beside generated zones. Pair this with exact generated-zone metadata after save/reopen where available, or leave the packet explicitly blocked/non-green. Do not close Smart Zone from load-only screenshots, deterministic `clzones` tests, or the temp `ZONE_START_POINT` row.
 
 ## Product picture
 
@@ -39,6 +41,7 @@ A human player opens Zone Manager, invokes Smart Zone generation, then reopens o
    - green/yellow/red/blocked verdict.
 3. Prefer structured proof over screenshots when it is stronger:
    - saved zone metadata after generation and after reopen;
+   - visible Zone Manager coordinate labels beside each generated zone (`2E`-style relative offsets);
    - exact generated zone types, names, options, and coordinates;
    - reserved/separated tile positions for zones that must not collapse onto one tile;
    - save/writeback or reopened-state evidence where persistence is part of the claim;
@@ -63,8 +66,9 @@ A green retry must prove all of these in the same shaped packet, or explicitly e
 - Zone Manager is opened through the live UI path;
 - the Smart Zone generation action is invoked through the live UI path;
 - generated zones are inspected after generation or after reopen;
-- exact zone metadata shows the intended zone types/options/coordinates;
-- zones that must be separated/reserved are not collapsed onto one fake mega-tile;
+- the visible Zone Manager list coordinate labels are captured/read for the relevant generated zones;
+- exact zone metadata shows the intended zone types/options/coordinates where available;
+- zones that must be separated/reserved are not collapsed onto one fake mega-tile; same-coordinate labels are treated as direct lumping evidence and distinct expected labels as direct separation evidence;
 - the artifact packet is small and reviewable, with paths plus decisive fields rather than walls of OCR;
 - deterministic geometry/separation tests are run only as support for the live claim.
 
@@ -73,8 +77,8 @@ A green retry must prove all of these in the same shaped packet, or explicitly e
 - The run only proves startup/load.
 - The fixture already contains the target zones before the generation action.
 - Metadata proves zones exist but not that the live UI action generated/reopened them.
-- Screenshots show a menu but not the resulting layout/coordinates.
-- OCR is used where saved zone metadata would be exact.
+- Screenshots show a menu but not the resulting layout/coordinate labels.
+- OCR is too blurry or incomplete to prove the zone-list coordinate labels, and no stronger UI text/widget trace or saved metadata fills the gap.
 - Old contaminated McWilliams state is used as closure.
 - A non-loadable clean profile is retried without repair.
 - Deterministic `clzones` tests are presented as player-visible layout proof.
