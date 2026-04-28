@@ -470,6 +470,7 @@ void live_bandit_send_group_home_after_payment( bandit_live_world::site_record &
     const std::string summary = string_format( "shakedown_surface paid toll=%d demanded=%d reachable=%d",
                                 surrendered_value, surface.demanded_value,
                                 surface.reachable_goods_value );
+    DebugLog( D_INFO, DC_ALL ) << summary << '\n';
     for( const character_id &member_id : member_ids ) {
         bandit_live_world::update_member_state( site, member_id,
                                                 bandit_live_world::member_state::at_home, summary );
@@ -505,6 +506,7 @@ void live_bandit_choose_fight( bandit_live_world::site_record &site,
 
     const std::string summary = string_format( "shakedown_surface fight demanded=%d reachable=%d",
                                 surface.demanded_value, surface.reachable_goods_value );
+    DebugLog( D_INFO, DC_ALL ) << summary << '\n';
     for( const character_id &member_id : site.active_member_ids ) {
         bandit_live_world::update_member_state( site, member_id,
                                                 bandit_live_world::member_state::local_contact, summary );

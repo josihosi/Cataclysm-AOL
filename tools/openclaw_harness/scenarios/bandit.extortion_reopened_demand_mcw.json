@@ -1,6 +1,6 @@
 {
   "name": "bandit.extortion_reopened_demand_mcw",
-  "description": "Bandit extortion audit v0: resume the McWilliams/Basecamp local-contact fixture with defender-loss reopen fields set, then capture the higher second demand with pay/fight still available.",
+  "description": "Bandit shakedown/toll-control regression: resume the McWilliams/Basecamp local-contact fixture with defender-loss reopen fields set, then prove the higher reopened demand still shows bounded pay/fight options for the bandit camp profile.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
@@ -11,12 +11,76 @@
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "shakedown_surface",
+    "profile=camp_style",
+    "posture=open_shakedown",
     "demanded_toll=22116",
+    "renegotiation reopen: previous defender loss raises this one bounded demand",
     "pay_option=yes fight_option=yes"
   ],
   "steps": [
-    {"kind": "wait", "label": "post_load_settle", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24},
-    {"kind": "advance_turns", "label": "advance_299_turns_to_gate_edge", "count": 299, "settle_seconds": 0.5, "capture_after": false},
-    {"kind": "advance_turns", "label": "advance_final_turn_to_reopened_shakedown", "count": 1, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 28}
-  ]
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "expected_visible_fact": "post-load gameplay screen for the reopened McWilliams bandit shakedown fixture; this is startup/load footing only",
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_299_turns_to_gate_edge",
+      "count": 299,
+      "settle_seconds": 0.5,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_reopened_demand_surface_artifact",
+      "expected_immediate_state": "bounded turn advance reaches the reopened shakedown gate edge; proof is deferred to the same-run reopened demand artifact after the final turn"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_final_turn_to_reopened_shakedown",
+      "count": 1,
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "reopened Bandit shakedown menu is visible with player-facing pay/fight choice after the final local-contact turn",
+      "capture_after": true
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_reopened_demand_surface_artifact",
+      "required_line_patterns": [
+        [
+          "local_gate site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "basecamp_or_camp=yes",
+          "local_contact=yes",
+          "shakedown=yes",
+          "combat_forward=no"
+        ],
+        [
+          "shakedown_surface site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "valid=yes",
+          "pay_option=yes",
+          "fight_option=yes",
+          "reachable_goods=45134",
+          "demanded_toll=22116",
+          "basecamp_inventory=yes",
+          "vehicle_inventory=no"
+        ],
+        [
+          "renegotiation reopen: previous defender loss raises this one bounded demand"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reopened_bandit_demand_surface_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove the reopened bandit camp-style demand surface, bounded higher toll, and pay/fight options",
+      "expected_immediate_state": "same-run debug log names camp_style profile, open_shakedown posture, reopened higher demanded toll, and both pay/fight options"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_reopened_demand_mcw",
+  "evidence_contract": {
+    "claim": "a prior defender-loss reopen produces one bounded higher bandit shakedown demand while keeping the player-visible pay/fight surface",
+    "load_only_verdict": "load proof only / inconclusive for reopened shakedown behavior",
+    "failure_rule": "No reopened-demand credit unless startup/load, visible demand surface, same-run camp_style/open_shakedown artifact, bounded higher demanded toll, and reopen note are all green/matched."
+  }
 }

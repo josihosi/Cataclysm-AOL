@@ -1,6 +1,6 @@
 {
   "name": "bandit.extortion_first_demand_pay_mcw",
-  "description": "Bandit extortion audit v0: resume the McWilliams/Basecamp local-contact fixture, capture the first pay/fight demand, choose pay, and save/copy the world for writeback inspection.",
+  "description": "Bandit shakedown/toll-control regression: resume the McWilliams/Basecamp local-contact fixture, prove the bandit-only pay/fight demand surface, choose pay, and require same-run branch logging plus saved no-active-group writeback.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
@@ -11,16 +11,127 @@
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "shakedown_surface",
-    "paid toll=",
-    "demanded=15797"
+    "profile=camp_style",
+    "posture=open_shakedown",
+    "demanded_toll=15797",
+    "pay_option=yes fight_option=yes",
+    "shakedown_surface paid toll="
   ],
   "capture_world_after": true,
   "steps": [
-    {"kind": "wait", "label": "post_load_settle", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true},
-    {"kind": "advance_turns", "label": "advance_299_turns_to_gate_edge", "count": 299, "settle_seconds": 0.5},
-    {"kind": "advance_turns", "label": "advance_final_turn_to_first_shakedown", "count": 1, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24},
-    {"kind": "press", "label": "choose_pay", "keys": ["p"], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "extract_text_tail_lines": 24},
-    {"kind": "press", "label": "open_save_quit_prompt", "keys": ["S"], "settle_seconds": 1.0, "capture_after": true},
-    {"kind": "press", "label": "confirm_save_quit", "keys": ["Y"], "settle_seconds": 4.0, "capture_after": true}
-  ]
+    {
+      "kind": "wait",
+      "label": "post_load_settle",
+      "seconds": 2.0,
+      "expected_visible_fact": "post-load gameplay screen for the McWilliams bandit local-contact fixture before toll-control proof begins; this is startup/load footing only",
+      "capture_after": true
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_299_turns_to_gate_edge",
+      "count": 299,
+      "settle_seconds": 0.5,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_first_demand_surface_artifact",
+      "expected_immediate_state": "bounded turn advance reaches the shakedown gate edge; proof is deferred to the same-run demand-surface artifact after the final turn"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_final_turn_to_first_shakedown",
+      "count": 1,
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "Bandit shakedown menu is visible with player-facing pay/fight choice after the final local-contact turn",
+      "capture_after": true
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_first_demand_surface_artifact",
+      "required_line_patterns": [
+        [
+          "local_gate site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "basecamp_or_camp=yes",
+          "local_contact=yes",
+          "shakedown=yes",
+          "combat_forward=no"
+        ],
+        [
+          "shakedown_surface site=overmap_special:bandit_camp@140,51,0",
+          "profile=camp_style",
+          "posture=open_shakedown",
+          "valid=yes",
+          "pay_option=yes",
+          "fight_option=yes",
+          "reachable_goods=45134",
+          "demanded_toll=15797",
+          "basecamp_inventory=yes",
+          "vehicle_inventory=no"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_first_bandit_demand_surface_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove the bandit camp-style local gate and pay/fight shakedown surface with reachable goods and demanded toll",
+      "expected_immediate_state": "same-run debug log names camp_style profile, open_shakedown posture, reachable goods, demanded toll, and both pay/fight options"
+    },
+    {
+      "kind": "press",
+      "label": "choose_pay",
+      "keys": ["p"],
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "pay branch was selected from the visible bandit shakedown menu; immediate screen should return to gameplay rather than hostile-forward fight selection",
+      "capture_after": true
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_pay_branch_artifact",
+      "required_line_patterns": [
+        [
+          "shakedown_surface paid toll=",
+          "demanded=15797",
+          "reachable=45134"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_first_bandit_pay_branch_artifact_missing",
+      "abort_reason": "same-run debug artifact did not prove the selected pay branch for the first bandit shakedown",
+      "expected_immediate_state": "same-run debug log names the pay branch and preserves surrendered/demanded/reachable values (surrendered value may round up to whole surrendered items)"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "save/quit prompt is visible after choosing the shakedown pay branch",
+      "capture_after": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_saved_pay_writeback",
+      "expected_immediate_state": "uppercase-Y save confirmation should write the paid shakedown state; proof is deferred to saved bandit_live_world audit"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_pay_writeback",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 14,
+      "required_ready_at_home_count": 14,
+      "required_wounded_or_unready_count": 0,
+      "required_active_outside_count": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_first_bandit_pay_saved_writeback_missing",
+      "abort_reason": "saved bandit_live_world state did not show all bandits home and no active outside/contact group after paying the toll",
+      "expected_immediate_state": "after pay/save, saved bandit_live_world has all 14 members ready at home and no active outside group"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.extortion_first_demand_pay_mcw",
+  "evidence_contract": {
+    "claim": "ordinary bandit local contact reaches a player-visible pay/fight shakedown surface and the pay branch is recorded as a distinct same-run outcome with saved no-active-group writeback",
+    "load_only_verdict": "load proof only / inconclusive for shakedown behavior",
+    "failure_rule": "No shakedown/toll-control pay credit unless startup/load, visible demand surface, same-run camp_style/open_shakedown artifact, same-run pay branch artifact, save/writeback, and saved no-active-group state are all green/matched."
+  }
 }
