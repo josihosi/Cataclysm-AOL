@@ -10,7 +10,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active target: `Bandit camp-map risk/reward dispatch planning packet v0`.
 
-Current state: the cannibal night-raid live slice is checkpointed green for the named scenarios; the optional bandit-control contrast is non-blocking unless product review explicitly reopens it. The bandit camp-map lane is active, with another deterministic ecology slice implemented and ready for review.
+Current state: the cannibal night-raid live slice is checkpointed green for the named scenarios; the optional bandit-control contrast is non-blocking unless product review explicitly reopens it. The bandit camp-map lane is active; the latest deterministic ecology slice is implemented and validated as code evidence only.
 
 Known footing:
 
@@ -18,13 +18,13 @@ Known footing:
 - Contract: `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
 - Andi lane: `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
 - Live matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
-- Existing deterministic/code support covers a camp-owned `camp_intelligence_map`, serialization/deserialization, active target OMT persistence, scout-return writeback into the source camp map, legacy scalar migration fallback, two-OMT ordinary scout stand-off, half-day ordinary scout return clock in the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, and active-outside dogpile blocking; it is not live product proof.
+- Existing deterministic/code support covers a camp-owned `camp_intelligence_map`, serialization/deserialization, active target OMT persistence, scout-return writeback into the source camp map, legacy scalar migration fallback, two-OMT ordinary scout stand-off, half-day ordinary scout return clock in the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, active-outside dogpile blocking, wounded/unready and killed-member dispatch shrinkage, bounded stockpile-pressure willingness, high-threat/poor-reward non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing when risk/reward justifies it, and no-opening hold/return in the camp-map decision seam; it is not live product proof.
 
 Next narrow work queue:
 
-1. Extend deterministic proof for the next remaining camp-map ecology slice: wounded/killed-member shrinkage, high-threat non-escalation, prior outcome pressure/cooling, and stockpile/need pressure without breaking reserve/risk gates.
-2. Add deterministic coverage for larger stalk/pressure follow-up, no-opening return/hold behavior, and sight-avoid reposition/abort within at most two visible local turns without teleporting.
-3. Keep product proof downstream: no live/harness closure until the deterministic seams and live dispatch/writeback bridge are explicit.
+1. Wire the camp-map risk/reward decision seam further through the real live dispatch cadence and reviewer-readable reports/logs without bypassing reserve, active-outside, or high-threat gates.
+2. Prove the remaining behavior that is not closed by the deterministic helper seam: vanished-signal redispatch from remembered leads, stalk/pressure wait-for-opening and no-opening return through the real path, and sight-avoid reposition/abort within at most two visible local turns without teleporting.
+3. Keep product proof downstream: no live/harness closure until the live dispatch/writeback bridge is explicit and named matrix scenarios can observe it.
 
 Proof discipline:
 
