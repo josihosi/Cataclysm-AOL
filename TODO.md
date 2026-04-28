@@ -11,7 +11,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active target: `Smart Zone Manager harness-audit retry packet v0`.
 
-Current state: Josef reopened the Smart Zone proof with a concrete live-readable coordinate primitive. The Zone Manager shows relative coordinates beside each zone, e.g. `2E` for two tiles east of the player. Andi should use that UI list as the cheap primary observable: generated zones that are lumped onto one tile will show matching coordinates; intended-separated zones should show distinct expected offsets.
+Current state: Josef reopened the Smart Zone proof with a concrete live-readable coordinate primitive. The Zone Manager shows relative coordinates beside each zone, e.g. `2E` for two tiles east of the player. The latest guarded retry now stops honestly before generation: run `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_002148/` aborts at `blocked_zone_manager_ui_entry_guard_failed` because OCR from `open_zones_manager.after.screen_text.json` lacks `Zones manager` and still shows ordinary gameplay/actions UI. The earlier `20260429_001633` screenshots must be read the same way: `expected_visible_fact` rows alone are not green Zone Manager proof.
 
 Canonical anchors for the active target:
 
@@ -21,9 +21,9 @@ Canonical anchors for the active target:
 
 Next narrow work queue:
 
-1. Repair or replace the loadable Smart Zone fixture/profile if needed, and rebuild/relink to current runtime.
-2. Open Zone Manager through the live UI and invoke Smart Zone generation.
-3. Inspect the generated zone list and capture/read the visible relative coordinate labels beside each generated zone.
+1. Repair the UI-entry/keybinding primitive so a guarded `open_zones_manager` step actually OCR-proves `Zones manager` before any F2/filter/generation input is credited.
+2. Once Zone Manager entry is proven, require `select zone type` OCR/structured proof before the add-zone/type-picker step can go green.
+3. Only after those UI guards pass, invoke Smart Zone generation and inspect the generated zone list/capture visible relative coordinate labels beside each generated zone.
 4. Compare coordinate labels: same-coordinate labels prove lumping; distinct expected offsets prove separated placement. Pair with saved zone metadata and save/reopen evidence where possible.
 5. Classify the result as green feature-path, blocked with a named UI/fixture primitive gap, or non-green with exact evidence.
 

@@ -59,6 +59,8 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 Evidence burden: run the real Zone Manager generation path on a current-runtime loadable fixture, then inspect/capture the generated zone list coordinates. Same-coordinate labels are direct evidence that zones collapsed onto one tile; distinct expected relative offsets are direct evidence for separated placement. Pair the coordinate read with saved zone metadata and save/reopen state where possible. The old `20260428_151053` run remains non-green and cannot be laundered into closure.
 
+Current boundary: `smart_zone.live_probe_harness_audit_retry_no_setup` now includes screen-text guards so `expected_visible_fact` screenshots cannot alone credit Zone Manager/type-picker entry. Guarded run `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_002148/` aborts red at `blocked_zone_manager_ui_entry_guard_failed`: startup/load is clean, but `open_zones_manager.after.screen_text.json` is missing `Zones manager` and OCR shows ordinary gameplay/actions UI. Treat prior run `.userdata/smart-zone-audit-live-20260429d/harness_runs/20260429_001633/` as the same keybinding/UI-entry blocked class; its green-looking screen checkpoints were false-positive `expected_visible_fact` rows, not Zone Manager proof.
+
 Validation policy for this target: `git diff --check`; narrow compile/test only if harness/runtime/Smart Zone code changes; relevant deterministic `clzones` tests only as support if Smart Zone code changes; one named harness probe/handoff with step-local ledger and coordinate-label evidence. If the UI coordinate read is blocked, record the exact missing primitive or fixture problem instead of substituting load-only proof.
 
 ### Recently completed validation target - Bandit camp-map risk/reward dispatch planning packet v0
@@ -86,7 +88,7 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active validation target: **Smart Zone Manager harness-audit retry packet v0**. Use the Zone Manager's visible relative coordinate labels as the primary live proof for separated-vs-lumped generated zones. Do not substitute deterministic geometry, startup/load, or old non-green Smart Zone runs for this coordinate-read proof.
+Active validation target: **Smart Zone Manager harness-audit retry packet v0**. Use the Zone Manager's visible relative coordinate labels as the primary live proof for separated-vs-lumped generated zones. Do not substitute deterministic geometry, startup/load, unguarded `expected_visible_fact` screenshots, or old non-green Smart Zone runs for this coordinate-read proof. Current missing primitive is UI entry/key delivery: prove `Zones manager` by OCR/structured state before crediting F1, then prove `select zone type` before crediting F2/filter/generation.
 
 Queued after this Smart Zone checkpoint, per `Plan.md` / greenlit stack:
 
