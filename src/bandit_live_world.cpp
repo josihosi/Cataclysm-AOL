@@ -2292,6 +2292,8 @@ std::string render_shakedown_surface_report( const site_record &site,
     std::ostringstream out;
     out << "shakedown_surface site=" << site.site_id
         << " active_group=" << site.active_group_id
+        << " profile=" << to_string( effective_profile( site ) )
+        << " posture=open_shakedown"
         << " valid=" << ( surface.valid ? "yes" : "no" )
         << " pay_option=" << ( surface.pay_available ? "yes" : "no" )
         << " fight_option=" << ( surface.fight_available ? "yes" : "no" )
