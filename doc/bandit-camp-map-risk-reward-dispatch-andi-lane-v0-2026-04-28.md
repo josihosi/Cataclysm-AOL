@@ -8,6 +8,7 @@ Status: READY / NOT YET UNLEASHED
 - Product source of truth: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`
 - Code-only implementation map: `doc/bandit-camp-map-ecology-implementation-map-2026-04-28.md`
 - Full contract: `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`
+- Bandit live product playtest matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`
 - Ledgers: `Plan.md`, `SUCCESS.md`, `TESTING.md`
 
 ## Active instruction when promoted
@@ -126,7 +127,7 @@ At minimum:
 
 ## Harness/product proof required
 
-Use named scenarios from the full contract:
+Use named scenarios from the full contract and the bandit live product matrix:
 
 1. `bandit.camp_map_scout_memory_two_omt_watch`
 2. `bandit.camp_map_vanished_signal_redispatch`
@@ -134,7 +135,7 @@ Use named scenarios from the full contract:
 4. `bandit.stalk_pressure_waits_for_opening`
 5. `bandit.scout_stalker_sight_avoid_live`
 
-Every scenario needs proof-freeze discipline: precondition, action, expected state, screenshot or exact metadata/log proof, failure rule, artifact path, and pass/yellow/red/blocked verdict.
+Every scenario needs proof-freeze discipline: precondition, action, expected state, screenshot or exact metadata/log proof, failure rule, artifact path, and pass/yellow/red/blocked verdict. Also implement the broader matrix coverage for player-created fire/smoke/light once its fuel/writeback gate is green, shakedown/toll control, empty-camp live sanity if still desired, and repeatability/fixture-bias checks.
 
 ## Completion bar
 

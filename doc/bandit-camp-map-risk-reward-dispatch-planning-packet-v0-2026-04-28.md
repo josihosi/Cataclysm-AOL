@@ -4,6 +4,7 @@ Status: GREENLIT / READY FOR ANDI PROMOTION AFTER SCHANI-JOSEF CONFIRMATION
 
 Source-of-truth framing: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`.
 Code-only implementation map: `doc/bandit-camp-map-ecology-implementation-map-2026-04-28.md`.
+Bandit live product playtest matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
 
 This packet is downstream of the camp-map ecology picture: dispatch/risk/reward are the hands; the saved per-camp map is the creature.
 
@@ -225,13 +226,15 @@ Before the harness/product proof can close, show the code bridge explicitly:
 
 ### Harness/product proof
 
-Use named scenarios, not loose manual suggestions:
+Use named scenarios, not loose manual suggestions. The detailed product matrix lives at `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`; the core risk/reward scenarios are:
 
 1. `bandit.camp_map_scout_memory_two_omt_watch`: known camp, scout reaches two-OMT observation stand-off, watches half-day, returns, writes memory.
 2. `bandit.camp_map_vanished_signal_redispatch`: original live signal disappears or is absent; later cadence plans from remembered scout knowledge.
 3. `bandit.variable_roster_dispatch_sizing_live`: fixture-backed variable roster proves reserve/dispatch size through live dispatch path.
 4. `bandit.stalk_pressure_waits_for_opening`: follow-up stalk/pressure group is larger than scout where justified, waits for opening, and returns/holds if none appears.
 5. `bandit.scout_stalker_sight_avoid_live`: exposed scout/stalker repositions or aborts within at most two visible local turns without teleporting.
+
+The broader bandit matrix also covers player-created fire/smoke/light lead proof, shakedown/toll control, empty-camp live sanity, and repeatability/fixture-bias checks.
 
 Every harness step needs the proof-freeze discipline: precondition, action, expected state, screenshot or exact metadata/log proof, failure rule, artifact path, and pass/yellow/red/blocked verdict.
 
