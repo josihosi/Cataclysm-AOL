@@ -10,7 +10,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active target: `C-AOL actual playtest verification stack v0` / `Cannibal camp confidence-push live playtest packet v0`.
 
-Current state: the generic clean-code boundary review is checkpointed. Its report exists at `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`, the completed Smart Zone checkpoint TODO drift was retired in `0bbe92a368`, and no report follow-up is promoted. Smart Zone remains implemented-but-unproven / Josef playtest package; do not rerun it without a materially repaired UI-entry/key-delivery primitive or Josef manual evidence.
+Current state: the generic clean-code boundary review is checkpointed. The active cannibal confidence-push matrix now exists at `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`. The stale runtime/window blocker from the first bandit contrast attempt is cleared: after commit `7ca870f6be`, `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=` rebuilt the current tiles binary, no leftover game process remained, and `.userdata/dev-harness/harness_runs/20260429_012915/` captured window/runtime `7ca870f6be` with `version_matches_repo_head=true`. The bandit contrast control is green; cannibal day/night/reload/different-footing rows remain open.
 
 Canonical anchors for the active target:
 
@@ -18,12 +18,13 @@ Canonical anchors for the active target:
 - Cannibal confidence contract: `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`.
 - Cannibal confidence imagination source: `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`.
 - Existing matrix support: `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md`.
+- Active confidence matrix: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
 
 Next narrow work queue:
 
-1. Clear current-runtime/window freshness before crediting more live probes. The first bandit contrast attempt after rebuild (`.userdata/dev-harness/harness_runs/20260429_012154/`) matched the shakedown/pay/fight artifacts but remained non-green because the captured window still reported `5f17cc7901-dirty` while repo head was `0bbe92a368`.
-2. Then run one bounded cannibal confidence-push proof shape from the existing scenarios/matrix, preferably the smallest shape that advances wandering day pressure, night contact, reload brain, different-footing repeat, or bandit contrast without new behavior design.
-3. Update the compact matrix/verdict only from all-green step-ledger + claim-scoped artifact evidence; startup/load or version-mismatch runs stay non-green support.
+1. Run one bounded cannibal-specific confidence-push proof from the existing packaged scenarios, preferably `cannibal.live_world_day_smoke_pressure_mcw` (day pressure) or `cannibal.live_world_night_local_contact_pack_mcw` (night contact).
+2. Then continue reload-brain proof with the paired persistence/reload scenarios, or select a different-footing repeat if a suitable packaged footing exists.
+3. Update the confidence matrix/verdict only from all-green step-ledger + claim-scoped artifact evidence; startup/load or version-mismatch runs stay non-green support.
 
 Proof discipline:
 

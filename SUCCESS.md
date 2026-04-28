@@ -149,10 +149,10 @@ Compact reference:
 
 ## Cannibal camp confidence-push live playtest packet v0
 
-Status: ACTIVE / CONFIDENCE-PUSH PLAYTEST
+Status: ACTIVE / PARTIAL CONFIDENCE-PUSH PLAYTEST
 
 Success state:
-- [ ] A compact live/harness matrix records the five proposed shapes or names which could not be honestly staged: wandering day pressure, night mistake/contact, reload brain, different-seed repeat, and bandit contrast control.
+- [x] A compact live/harness matrix now records the five proposed shapes and their current status: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
 - [ ] At least one broader wandering/day pressure run reaches the real live dispatch/signal path and supports the closed cannibal behavior claim without instant daytime suicide.
 - [ ] At least one night/contact run reaches real local-contact behavior and supports pack-forward danger under darkness/concealment.
 - [ ] Save/reload continuation proves active cannibal group/profile/target/job state stays coherent after reload.

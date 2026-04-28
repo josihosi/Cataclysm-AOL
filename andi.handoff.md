@@ -14,6 +14,7 @@ Canonical anchors:
 - `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`
 - `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`
 - `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md`
+- `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`
 
 ## Boundary just reached
 
@@ -23,8 +24,8 @@ Smart Zone Manager remains implemented-but-unproven / Josef playtest package. Th
 
 ## Next work
 
-1. Clear the live runtime/window freshness issue before crediting more harness probes. A first bandit contrast attempt after rebuild (`.userdata/dev-harness/harness_runs/20260429_012154/`) matched shakedown/pay/fight artifacts but is non-green because the captured window still reported `5f17cc7901-dirty` against repo head `0bbe92a368`.
-2. Continue the cannibal confidence-push family using existing scenarios/matrix where possible: wandering day pressure, night contact, reload brain, different-footing repeat, and bandit contrast control.
+1. Continue the cannibal confidence-push family using existing scenarios/matrix where possible. The stale-window blocker is cleared and the bandit contrast control is green at `.userdata/dev-harness/harness_runs/20260429_012915/` on runtime `7ca870f6be` with 6/6 green step ledger and `feature_proof=true`.
+2. Next smallest open rows are cannibal wandering day pressure (`cannibal.live_world_day_smoke_pressure_mcw`) and night contact (`cannibal.live_world_night_local_contact_pack_mcw`), followed by reload brain and different-footing repeat.
 3. Record only all-green step-ledger + claim-scoped artifact runs as confidence uplift; startup/load or version-mismatch runs stay support/inconclusive.
 
 ## Non-goals/cautions

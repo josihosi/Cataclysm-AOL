@@ -59,7 +59,7 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 Evidence burden: compact live/harness matrix evidence for wandering day pressure, night mistake/contact, reload brain, different-seed/different-footing repeat, and bandit contrast control. Credited feature-path claims require current-runtime freshness, green startup gate, all-green step ledgers, and claim-scoped artifact/log matches. Deterministic tests and startup/load evidence are support only.
 
-Current freshness caveat: a first bandit contrast attempt after `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0` (`.userdata/dev-harness/harness_runs/20260429_012154/`) matched `shakedown_surface`, `profile=camp_style`, `posture=open_shakedown`, `demanded_toll=15797`, `pay_option=yes fight_option=yes`, and `shakedown_surface fight demanded=15797 reachable=45134`, but proof classification stayed yellow/inconclusive because the captured window still reported `5f17cc7901-dirty` while repo head was `0bbe92a368`. Do not credit that run as feature proof; clear the stale runtime/window mismatch before relying on more live probes.
+Current credited evidence: the stale runtime/window blocker is cleared for the bandit contrast control. After docs checkpoint `7ca870f6be`, `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=` rebuilt `cataclysm-tiles`, `./cataclysm-tiles --version` reported `7ca870f6be`, and no leftover game process was present before probing. Run `.userdata/dev-harness/harness_runs/20260429_012915/` (`bandit.extortion_first_demand_fight_mcw`) captured window `Cataclysm: Dark Days Ahead - 7ca870f6be`, `captured_dirty=false`, `version_matches_repo_head=true`, 6/6 green step ledger, proof classification `feature-path` / `green` / `feature_proof=true`, and matched the shakedown/pay/fight artifacts including `demanded_toll=15797` and `shakedown_surface fight demanded=15797 reachable=45134`. Matrix: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
 
 Validation policy for this target: docs-only ledger promotion uses `git diff --check`. Live probe credit requires a fresh/current tiles runtime and the named scenario's proof ledger. If code changes, run the narrowest focused deterministic tests for the touched bandit/cannibal live-world path before live proof.
 
@@ -90,8 +90,8 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 Active validation target: **C-AOL actual playtest verification stack v0 / Cannibal confidence-push live playtest packet v0**.
 
-1. Fix/clear stale runtime-window freshness before crediting more live probes. The current non-green symptom is `runtime_version_mismatch` on run `.userdata/dev-harness/harness_runs/20260429_012154/` despite matched contrast artifacts.
-2. Run the next bounded cannibal confidence-push scenario from existing packaged surfaces where possible: wandering/day pressure, night/contact, reload continuation, different-footing repeat, or bandit contrast control.
+1. Run the next bounded cannibal-specific confidence-push scenario from existing packaged surfaces where possible: wandering/day pressure (`cannibal.live_world_day_smoke_pressure_mcw`) or night/contact (`cannibal.live_world_night_local_contact_pack_mcw`) are the smallest open rows.
+2. Continue reload continuation with the paired persistence/reload scenarios, or identify a different-footing repeat candidate if available.
 3. Update the compact confidence matrix/verdict only when the run has current runtime, all-green step ledger rows, and claim-scoped artifact/log proof.
 
 Still blocked/later in the actual playtest stack:
