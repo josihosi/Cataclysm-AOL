@@ -131,6 +131,8 @@ Required proof:
 
 Claim: at least one passing bandit product scenario is not a one-fixture miracle.
 
+Status: **green for same-fixture repeatability only** via `python3 tools/openclaw_harness/startup_harness.py repeatability --count 2 bandit.high_threat_low_reward_holds`: runs `.userdata/dev-harness/harness_runs/20260428_211105/` and `.userdata/dev-harness/harness_runs/20260428_211153/` both reached feature-path `artifacts_matched` with 7/7 green step-ledger rows, the same high-threat/low-reward hold report fields, saved no-dispatch state, and `overall_verdict=stable_repeatability_pass`. This proves stability for the bounded high-threat fixture; it is not a second-fixture bias variant and not broad product closure.
+
 Required proof:
 - rerun the smallest equivalent scenario or a second bounded fixture variant;
 - record what changed and what stayed equivalent;
@@ -145,7 +147,7 @@ Required proof:
 5. Preserve scenario 7 shakedown/toll-control guardrails as green from `20260428_204454`, `20260428_204630`, and `20260428_204813`; do not rerun it as the next unrun target unless Schani/Josef/Frau explicitly reopen it.
 6. Run scenario 8 empty-camp live sanity only if the seam is still desired beyond deterministic proof.
 7. Run scenario 1 player-created fire/smoke/light only after fuel/writeback is green; otherwise keep its blocked verdict explicit.
-8. Run scenario 9 repeatability / fixture-bias as the next broad-product confidence check after the currently green guardrails.
+8. Preserve scenario 9 same-fixture repeatability as green for `bandit.high_threat_low_reward_holds`; run a second-fixture bias variant only if product review asks for stronger anti-fixture coverage.
 
 ## Stop conditions
 
