@@ -189,6 +189,25 @@ Notes:
 
 ---
 
+## Generic clean-code boundary review packet v0
+
+Status: GREENLIT / QUEUED BOUNDARY REVIEW
+
+Success state:
+- [ ] One compact boundary-review report exists and names the repo state it inspected.
+- [ ] The report checks canon consistency across `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `andi.handoff.md`.
+- [ ] The report checks build/test/lint risk at the appropriate level for the current boundary, or explains why a gate was not run.
+- [ ] Findings are concrete, anchored, and classified as `fix now`, `queue`, or `ignore/watch`.
+- [ ] No feature lane is reopened, promoted, or deprioritized without explicit Schani/Josef review.
+- [ ] Any proposed edits are bounded follow-up items, not silent cleanup drift.
+
+Notes:
+- Imagination source lives at `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
+- Canonical contract lives at `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
+- This is report-only first pass after a checkpoint boundary, not a license for mid-lane cleanup or feature work.
+
+---
+
 ## C-AOL live AI performance audit packet v0
 
 Status: GREENLIT / BOTTOM-OF-STACK PERFORMANCE AUDIT
