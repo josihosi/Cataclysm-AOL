@@ -157,7 +157,7 @@ Success state:
 - [ ] At least one night/contact run reaches real local-contact behavior and supports pack-forward danger under darkness/concealment.
 - [ ] Save/reload continuation proves active cannibal group/profile/target/job state stays coherent after reload.
 - [ ] A different-seed/different-footing run reduces fixture-bias risk.
-- [ ] A bandit contrast control preserves the shakedown/pay/fight distinction while cannibal contact remains no-shakedown.
+- [x] A bandit contrast control preserves the shakedown/pay/fight distinction while the credited cannibal day-pressure row remains no-shakedown/no-combat-forward: bandit run `.userdata/dev-harness/harness_runs/20260429_012915/` proves `pay_option=yes fight_option=yes` plus `shakedown_surface fight demanded=15797 reachable=45134`; cannibal day-pressure run `.userdata/dev-harness/harness_runs/20260429_013310/` proves `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, and `combat_forward=no`. Night/contact no-shakedown remains covered by the separate open night/contact checkbox above.
 - [ ] The final verdict updates confidence honestly: higher confidence, green with watchlist, blocked by harness/fixture gap, or red with a specific bug/tuning gap.
 
 Notes:
