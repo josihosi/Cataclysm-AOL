@@ -1263,6 +1263,8 @@ TEST_CASE( "bandit_live_world_makes_cannibal_camp_attack_instead_of_extort", "[b
     CHECK( favorable_report.find( "posture=attack_now" ) != std::string::npos );
     CHECK( favorable_report.find( "pack_size=2" ) != std::string::npos );
     CHECK( favorable_report.find( "darkness_or_concealment=no" ) != std::string::npos );
+    CHECK( favorable_report.find( "current_exposure=no" ) != std::string::npos );
+    CHECK( favorable_report.find( "sight_exposure=none" ) != std::string::npos );
     CHECK( favorable_report.find( "shakedown=no" ) != std::string::npos );
     CHECK( favorable_report.find( "attack-to-kill" ) != std::string::npos );
 
@@ -1292,13 +1294,30 @@ TEST_CASE( "bandit_live_world_makes_cannibal_camp_attack_instead_of_extort", "[b
     bandit_live_world::local_gate_input exposed_input = favorable_input;
     exposed_input.local_threat = 3;
     exposed_input.local_opportunity = 2;
-    exposed_input.recent_exposure = true;
+    exposed_input.darkness_or_concealment = true;
+    exposed_input.current_exposure = true;
     const bandit_live_world::local_gate_decision exposed_decision =
         bandit_live_world::choose_local_gate_posture( site, exposed_input );
     CHECK( exposed_decision.valid );
     CHECK( exposed_decision.posture == bandit_live_world::local_gate_posture::hold_off );
     CHECK_FALSE( exposed_decision.opens_shakedown_surface );
     CHECK_FALSE( exposed_decision.combat_forward );
+    const std::string exposed_report =
+        bandit_live_world::render_local_gate_report( site, exposed_input, exposed_decision );
+    CHECK( exposed_report.find( "current_exposure=yes" ) != std::string::npos );
+    CHECK( exposed_report.find( "sight_exposure=current" ) != std::string::npos );
+    CHECK( exposed_report.find( "visible beeline" ) != std::string::npos );
+
+    const tripoint_abs_ms current_tile( 100, 100, 0 );
+    const std::vector<bandit_live_world::sight_avoid_candidate> exposed_candidates = {
+        { tripoint_abs_ms( 101, 100, 0 ), true, true, true, 0 },
+        { tripoint_abs_ms( 99, 100, 0 ), true, false, true, 2 },
+    };
+    const bandit_live_world::sight_avoid_decision reposition =
+        bandit_live_world::choose_sight_avoid_reposition( current_tile, true, false,
+                exposed_candidates );
+    REQUIRE( reposition.repositions );
+    CHECK( rl_dist( reposition.destination, current_tile ) == 1 );
 
     bandit_live_world::local_gate_input hopeless_input;
     hopeless_input.local_threat = 8;

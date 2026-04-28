@@ -1615,9 +1615,9 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         if( input.darkness_or_concealment ) {
             decision.notes.push_back( "darkness/concealment improves the cannibal killing window without overriding pack or threat gates" );
         }
-        if( input.basecamp_or_camp_scene && input.recent_exposure ) {
+        if( input.basecamp_or_camp_scene && ( input.current_exposure || input.recent_exposure ) ) {
             decision.posture = local_gate_posture::hold_off;
-            decision.notes.push_back( "recent exposure makes the cannibal camp hold off instead of rushing a watched camp edge" );
+            decision.notes.push_back( "sight/exposure makes the cannibal camp hold off instead of continuing a visible beeline" );
             return decision;
         }
         if( input.local_contact_established &&
@@ -1713,7 +1713,10 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
         << " darkness_or_concealment=" << ( input.darkness_or_concealment ? "yes" : "no" )
         << " standoff_distance=" << input.standoff_distance
         << " basecamp_or_camp=" << ( input.basecamp_or_camp_scene ? "yes" : "no" )
+        << " current_exposure=" << ( input.current_exposure ? "yes" : "no" )
         << " recent_exposure=" << ( input.recent_exposure ? "yes" : "no" )
+        << " sight_exposure=" << ( input.current_exposure ? "current" :
+                                      ( input.recent_exposure ? "recent" : "none" ) )
         << " local_contact=" << ( input.local_contact_established ? "yes" : "no" )
         << " rolling_travel=" << ( input.rolling_travel_scene ? "yes" : "no" )
         << " shakedown=" << ( decision.opens_shakedown_surface ? "yes" : "no" )
