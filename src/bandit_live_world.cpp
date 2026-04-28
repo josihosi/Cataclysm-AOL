@@ -247,9 +247,10 @@ void upsert_camp_map_lead( bandit_live_world::camp_intelligence_map &intelligenc
     intelligence_map.leads.push_back( lead );
 }
 
-void migrate_scalar_memory_to_intelligence_map( bandit_live_world::site_record &site )
+void migrate_scalar_memory_to_intelligence_map( bandit_live_world::site_record &site,
+        const bool intelligence_map_was_present )
 {
-    if( !site.intelligence_map.leads.empty() ||
+    if( intelligence_map_was_present || !site.intelligence_map.leads.empty() ||
         ( site.remembered_target_or_mark.empty() && site.remembered_bounty_estimate <= 0 &&
           site.remembered_threat_estimate <= 0 ) ) {
         return;
@@ -955,10 +956,11 @@ void site_record::deserialize( const JsonObject &jo )
     remembered_pressure = remaining_return_pressure_state_from_string( remembered_pressure_string ).value_or(
                               bandit_pursuit_handoff::remaining_return_pressure_state::ample );
     jo.read( "known_recent_marks", known_recent_marks );
-    if( jo.has_member( "intelligence_map" ) ) {
+    const bool intelligence_map_was_present = jo.has_member( "intelligence_map" );
+    if( intelligence_map_was_present ) {
         jo.read( "intelligence_map", intelligence_map );
     }
-    migrate_scalar_memory_to_intelligence_map( *this );
+    migrate_scalar_memory_to_intelligence_map( *this, intelligence_map_was_present );
     jo.read( "last_shakedown_outcome", last_shakedown_outcome );
     jo.read( "shakedown_last_demanded_value", shakedown_last_demanded_value );
     jo.read( "shakedown_last_surrendered_value", shakedown_last_surrendered_value );
