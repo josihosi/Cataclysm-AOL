@@ -1,6 +1,6 @@
 {
   "name": "harness.debug_spawn_follower_npc_target_state_audit_mcw",
-  "description": "Audit one debug-spawn follower NPC primitive end-to-end under the proof-freeze rules: spawn one random follower NPC through the debug follower path, prove the case-sensitive save/writeback gate, then require same-run saved-overmap NPC metadata for a nearby follower. This is harness primitive/process evidence, not product-feature proof.",
+  "description": "Audit one debug-spawn follower NPC primitive end-to-end under the proof-freeze rules: record the saved-overmap NPC baseline, spawn one random follower NPC through the debug follower path, prove the case-sensitive save/writeback gate, then require same-run saved-overmap NPC metadata with a +1 NPC count delta and a new nearby follower. This is harness primitive/process evidence, not product-feature proof.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
@@ -10,6 +10,12 @@
   "replace_existing_worlds": true,
   "steps": [
     {
+      "kind": "audit_saved_overmap_npcs",
+      "label": "audit_saved_overmap_npcs_before_debug_spawn",
+      "record_baseline": true,
+      "expected_visible_fact": "saved-overmap NPC baseline is recorded before debug-spawn follower NPC runs so post-spawn proof cannot pass from fixture-resident followers"
+    },
+    {
       "kind": "debug_spawn_follower_npc",
       "label": "debug_spawn_one_follower_npc",
       "count": 1,
@@ -17,10 +23,10 @@
       "settle_seconds": 0.75,
       "capture_after": true,
       "proof_deferred_to_label": "audit_saved_overmap_npcs_after_debug_spawn",
-      "preconditions": "canonical dev-harness/McWilliams fixture is loaded and focused; debug spawn follower NPC primitive starts from the main map screen",
+      "preconditions": "canonical dev-harness/McWilliams fixture is loaded and focused; saved-overmap NPC baseline was recorded before debug spawn; debug spawn follower NPC primitive starts from the main map screen",
       "expected_visible_fact": "debug spawn follower helper returns to the live map after creating one random follower NPC",
-      "expected_immediate_state": "one nearby overmap NPC should be persisted as a follower, but this row is credited only through the later same-run saved-overmap NPC metadata gate",
-      "failure_rule": "debug menu wrong-screen, stale runtime, or missing same-run saved-overmap follower metadata after save makes this debug-spawn row non-green",
+      "expected_immediate_state": "one nearby overmap NPC should be newly persisted as a follower, but this row is credited only through the later same-run saved-overmap NPC delta metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, missing same-run saved-overmap follower metadata, or missing +1/new-NPC delta after save makes this debug-spawn row non-green",
       "next_step_gate": "do not credit the debug-spawn follower NPC primitive unless audit_saved_overmap_npcs_after_debug_spawn is green"
     },
     {
@@ -59,7 +65,7 @@
       "capture_after": false,
       "proof_deferred_to_label": "audit_player_save_mtime_after_debug_spawn_npc_save",
       "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
-      "next_step_gate": "saved overmap NPC metadata may be credited only when audit_player_save_mtime_after_debug_spawn_npc_save is green",
+      "next_step_gate": "saved overmap NPC delta metadata may be credited only when audit_player_save_mtime_after_debug_spawn_npc_save is green",
       "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
     },
     {
@@ -74,7 +80,9 @@
     {
       "kind": "audit_saved_overmap_npcs",
       "label": "audit_saved_overmap_npcs_after_debug_spawn",
-      "required_npcs": [
+      "baseline_label": "audit_saved_overmap_npcs_before_debug_spawn",
+      "required_observed_npc_count_delta": 1,
+      "required_new_npcs": [
         {
           "attitude": 3,
           "my_fac": "your_followers",
@@ -87,8 +95,8 @@
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_untrusted_debug_spawn_npc_target_state",
-      "abort_reason": "saved overmap NPC metadata did not contain a nearby follower NPC after same-run debug-spawn save/writeback",
-      "expected_visible_fact": "same-run saved overmap NPC metadata contains a nearby follower NPC after the debug-spawn follower primitive"
+      "abort_reason": "saved overmap NPC metadata did not contain exactly one new nearby follower NPC after same-run debug-spawn save/writeback",
+      "expected_visible_fact": "same-run saved overmap NPC metadata contains a +1 NPC count delta and the new NPC is a nearby follower"
     }
   ]
 }

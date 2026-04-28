@@ -552,4 +552,4 @@ Upstream portability note:
 
 ## Harness saved-state audit notes
 
-- Debug-spawned follower NPCs persist in saved overmap `npcs` records, not in the player save's `unique_npcs` bucket. For proof-freeze harness evidence, the honest target-state path is: prove the case-sensitive save/writeback gate first, then read the same-run overmap `npcs` metadata with follower/faction/attitude/location requirements. This is scoped harness primitive/process proof only; follower commands, rule toggles, camp assignment, and product-feature behavior remain separate proof burdens.
+- Debug-spawned follower NPCs persist in saved overmap `npcs` records, not in the player save's `unique_npcs` bucket. For proof-freeze harness evidence, the honest target-state path is: record a pre-spawn overmap `npcs` baseline, prove the case-sensitive save/writeback gate, then read same-run overmap `npcs` metadata with count/new-NPC delta plus follower/faction/attitude/location requirements. This is scoped harness primitive/process proof only; follower commands, rule toggles, camp assignment, and product-feature behavior remain separate proof burdens.

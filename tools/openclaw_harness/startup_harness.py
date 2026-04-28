@@ -1830,6 +1830,10 @@ def audit_saved_overmap_npcs(
     player_save: str = "",
     required_npcs: Optional[List[Dict[str, Any]]] = None,
     scan_all_overmaps: bool = False,
+    record_baseline: bool = False,
+    baseline_metadata: Optional[Dict[str, Any]] = None,
+    required_observed_npc_count_delta: Optional[int] = None,
+    required_new_npcs: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Read-only saved-overmap audit for NPC/follower target state.
 
@@ -1940,6 +1944,14 @@ def audit_saved_overmap_npcs(
         if requirement:
             required.append(requirement)
 
+    required_new: List[Dict[str, Any]] = []
+    for raw in required_new_npcs or []:
+        if not isinstance(raw, dict):
+            continue
+        requirement = normalize_requirement(raw)
+        if requirement:
+            required_new.append(requirement)
+
     def matches_requirement(npc_row: Dict[str, Any], requirement: Dict[str, Any]) -> bool:
         if "name" in requirement and npc_row.get("name") != requirement.get("name"):
             return False
@@ -1967,9 +1979,62 @@ def audit_saved_overmap_npcs(
         for requirement in required
         if not any(matches_requirement(npc_row, requirement) for npc_row in npcs)
     ]
-    if required and not missing_required_npcs:
+
+    baseline_observed_npc_count: Optional[int] = None
+    observed_npc_count_delta: Optional[int] = None
+    new_npcs: List[Dict[str, Any]] = []
+    missing_required_new_npcs: List[Dict[str, Any]] = []
+    missing_required_npc_count_delta = False
+    if baseline_metadata is not None:
+        baseline_observed_npc_count = int(baseline_metadata.get("observed_npc_count", 0) or 0)
+        observed_npc_count_delta = len(npcs) - baseline_observed_npc_count
+        baseline_ids = {
+            str(npc.get("id"))
+            for npc in baseline_metadata.get("observed_npcs", [])
+            if isinstance(npc, dict) and npc.get("id") is not None
+        }
+        baseline_fallback = {
+            json.dumps({
+                "name": npc.get("name", ""),
+                "location_ms": npc.get("location_ms", []),
+                "my_fac": npc.get("my_fac"),
+                "attitude": npc.get("attitude"),
+            }, sort_keys=True)
+            for npc in baseline_metadata.get("observed_npcs", [])
+            if isinstance(npc, dict) and npc.get("id") is None
+        }
+        for npc in npcs:
+            npc_id = npc.get("id")
+            if npc_id is not None:
+                if str(npc_id) not in baseline_ids:
+                    new_npcs.append(npc)
+                continue
+            fallback = json.dumps({
+                "name": npc.get("name", ""),
+                "location_ms": npc.get("location_ms", []),
+                "my_fac": npc.get("my_fac"),
+                "attitude": npc.get("attitude"),
+            }, sort_keys=True)
+            if fallback not in baseline_fallback:
+                new_npcs.append(npc)
+        if required_observed_npc_count_delta is not None:
+            missing_required_npc_count_delta = observed_npc_count_delta != int(required_observed_npc_count_delta)
+        missing_required_new_npcs = [
+            requirement
+            for requirement in required_new
+            if not any(matches_requirement(npc_row, requirement) for npc_row in new_npcs)
+        ]
+
+    if record_baseline:
+        status = "baseline_recorded"
+    elif (
+        (not required or not missing_required_npcs)
+        and (required_observed_npc_count_delta is None or not missing_required_npc_count_delta)
+        and (not required_new or not missing_required_new_npcs)
+        and (required or required_observed_npc_count_delta is not None or required_new)
+    ):
         status = "required_state_present"
-    elif required:
+    elif required or required_observed_npc_count_delta is not None or required_new:
         status = "required_state_missing"
     else:
         status = "scanned"
@@ -1984,7 +2049,14 @@ def audit_saved_overmap_npcs(
         "scanned_overmaps": scanned_overmaps,
         "required_npcs": required,
         "observed_npc_count": len(npcs),
+        "baseline_observed_npc_count": baseline_observed_npc_count,
+        "observed_npc_count_delta": observed_npc_count_delta,
+        "required_observed_npc_count_delta": required_observed_npc_count_delta,
+        "missing_required_npc_count_delta": missing_required_npc_count_delta,
         "observed_npcs": npcs,
+        "new_npcs": new_npcs,
+        "required_new_npcs": required_new,
+        "missing_required_new_npcs": missing_required_new_npcs,
         "missing_required_npcs": missing_required_npcs,
         "status": status,
     }
@@ -2971,6 +3043,10 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_monsters")
         if metadata.get("missing_required_npcs"):
             issues.append("missing_required_npcs")
+        if metadata.get("missing_required_new_npcs"):
+            issues.append("missing_required_new_npcs")
+        if metadata.get("missing_required_npc_count_delta"):
+            issues.append("missing_required_npc_count_delta")
         if metadata.get("missing_required_weather"):
             issues.append("missing_required_weather")
         return "red_step_metadata_required_state_missing", issues or [status]
@@ -3164,11 +3240,16 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 "required_furniture": metadata_summary.get("required_furniture", []),
                 "required_monsters": metadata_summary.get("required_monsters", []),
                 "required_npcs": metadata_summary.get("required_npcs", []),
+                "required_new_npcs": metadata_summary.get("required_new_npcs", []),
+                "required_observed_npc_count_delta": metadata_summary.get("required_observed_npc_count_delta"),
+                "observed_npc_count_delta": metadata_summary.get("observed_npc_count_delta"),
                 "missing_required_fields": metadata_summary.get("missing_required_fields", []),
                 "missing_required_items": metadata_summary.get("missing_required_items", []),
                 "missing_required_furniture": metadata_summary.get("missing_required_furniture", []),
                 "missing_required_monsters": metadata_summary.get("missing_required_monsters", []),
                 "missing_required_npcs": metadata_summary.get("missing_required_npcs", []),
+                "missing_required_new_npcs": metadata_summary.get("missing_required_new_npcs", []),
+                "missing_required_npc_count_delta": metadata_summary.get("missing_required_npc_count_delta", False),
                 "missing_required_weather": metadata_summary.get("missing_required_weather", []),
                 "required_weather_id": metadata_summary.get("required_weather_id", ""),
                 "required_temperature_f": metadata_summary.get("required_temperature_f"),
@@ -5288,6 +5369,23 @@ def execute_probe_steps(
             if not isinstance(required_npcs_raw, list):
                 raise SystemExit(f"Scenario step '{label}' required_npcs must be a list")
             required_npcs = [npc for npc in required_npcs_raw if isinstance(npc, dict)]
+            required_new_npcs_raw = step.get("required_new_npcs", [])
+            if not isinstance(required_new_npcs_raw, list):
+                raise SystemExit(f"Scenario step '{label}' required_new_npcs must be a list")
+            required_new_npcs = [npc for npc in required_new_npcs_raw if isinstance(npc, dict)]
+            record_baseline = bool(step.get("record_baseline", False))
+            baseline_label = str(step.get("baseline_label", "") or "").strip()
+            baseline_metadata = None
+            if baseline_label:
+                for prior_report in reports:
+                    if str(prior_report.get("label", "") or "").strip() == baseline_label:
+                        if isinstance(prior_report.get("metadata"), dict):
+                            baseline_metadata = prior_report["metadata"]
+                        break
+                if baseline_metadata is None:
+                    raise SystemExit(f"Scenario step '{label}' baseline_label not found or has no metadata: {baseline_label}")
+            required_delta_raw = step.get("required_observed_npc_count_delta")
+            required_delta = int(required_delta_raw) if required_delta_raw is not None else None
             scan_all_overmaps = bool(step.get("scan_all_overmaps", False))
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
@@ -5297,6 +5395,10 @@ def execute_probe_steps(
                     player_save=player_save,
                     required_npcs=required_npcs,
                     scan_all_overmaps=scan_all_overmaps,
+                    record_baseline=record_baseline,
+                    baseline_metadata=baseline_metadata,
+                    required_observed_npc_count_delta=required_delta,
+                    required_new_npcs=required_new_npcs,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -5305,6 +5407,9 @@ def execute_probe_steps(
                     "world": world,
                     "world_dir": str(world_dir),
                     "required_npcs": required_npcs,
+                    "required_new_npcs": required_new_npcs,
+                    "baseline_label": baseline_label,
+                    "required_observed_npc_count_delta": required_delta,
                     "scan_all_overmaps": scan_all_overmaps,
                 }
             metadata["artifact_path"] = str(metadata_artifact)
@@ -5314,8 +5419,8 @@ def execute_probe_steps(
                 "player_save": player_save,
                 "metadata": metadata,
                 "action_description": "read saved overmap npcs and require exact NPC/follower metadata",
-                "expected_immediate_state": "saved overmap npcs contains the required debug-spawned NPC/follower metadata before spawn proof may continue",
-                "failure_rule": "missing required saved overmap NPC metadata or unreadable save metadata makes this step red/blocked",
+                "expected_immediate_state": "saved overmap npcs contains the required debug-spawned NPC/follower metadata and any required baseline delta before spawn proof may continue",
+                "failure_rule": "missing required saved overmap NPC metadata, missing baseline delta, or unreadable save metadata makes this step red/blocked",
             })
             if bool(step.get("abort_on_metadata_failure", False)):
                 metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
