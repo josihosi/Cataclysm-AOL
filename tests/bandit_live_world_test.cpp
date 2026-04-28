@@ -1264,6 +1264,107 @@ TEST_CASE( "bandit_live_world_applies_a_return_packet_onto_the_active_owned_outi
     CHECK( site.active_member_ids.empty() );
 }
 
+TEST_CASE( "bandit_live_world_empty_site_retirement_requires_both_home_and_active_sides_empty",
+           "[bandit][live_world][retirement]" )
+{
+    SECTION( "home members remain without dispatch keeps the site active" ) {
+        bandit_live_world::world_state world;
+        REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 10001 ),
+                 tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+                 special_lookup ) );
+
+        std::vector<std::string> reports;
+        CHECK( bandit_live_world::retire_empty_hostile_sites( world, &reports ) == 0 );
+        REQUIRE( world.sites.size() == 1 );
+        CHECK_FALSE( world.sites.front().retired_empty_site );
+        CHECK( reports.empty() );
+        CHECK( world.sites.front().count_members_in_state( bandit_live_world::member_state::at_home ) == 1 );
+        CHECK( world.sites.front().count_home_side_signals() > 0 );
+    }
+
+    SECTION( "active dispatch without at-home members keeps the site active" ) {
+        bandit_live_world::world_state world;
+        REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 10002 ),
+                 tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+                 special_lookup ) );
+
+        bandit_live_world::site_record &site = world.sites.front();
+        site.active_group_id = site.site_id + "#dispatch";
+        site.active_target_id = "player_basecamp_nearby";
+        site.active_member_ids = { character_id( 10002 ) };
+        REQUIRE( bandit_live_world::update_member_state( site, character_id( 10002 ),
+                 bandit_live_world::member_state::outbound, "test outbound dispatch" ) );
+
+        std::vector<std::string> reports;
+        CHECK( bandit_live_world::retire_empty_hostile_sites( world, &reports ) == 0 );
+        CHECK_FALSE( site.retired_empty_site );
+        CHECK( reports.empty() );
+        CHECK( site.count_members_in_state( bandit_live_world::member_state::at_home ) == 0 );
+        CHECK( site.has_active_outside_pressure() );
+    }
+
+    SECTION( "unresolved returning-home active aftermath keeps the site active until resolved" ) {
+        bandit_live_world::world_state world;
+        REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 10003 ),
+                 tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+                 special_lookup ) );
+
+        bandit_live_world::site_record &site = world.sites.front();
+        site.active_group_id = site.site_id + "#dispatch";
+        site.active_target_id = "player_basecamp_nearby";
+        site.active_member_ids = { character_id( 10003 ) };
+        REQUIRE( bandit_live_world::update_member_state( site, character_id( 10003 ),
+                 bandit_live_world::member_state::local_contact, "test unresolved contact" ) );
+
+        const std::vector<bandit_live_world::active_member_observation> returning_home = {
+            { character_id( 10003 ), bandit_live_world::active_member_observation_state::returning_home,
+              "still returning home" }
+        };
+        CHECK_FALSE( bandit_live_world::resolve_active_group_aftermath( site, returning_home ).has_value() );
+
+        std::vector<std::string> reports;
+        CHECK( bandit_live_world::retire_empty_hostile_sites( world, &reports ) == 0 );
+        CHECK_FALSE( site.retired_empty_site );
+        CHECK( reports.empty() );
+        CHECK( site.has_active_outside_pressure() );
+    }
+
+    SECTION( "no live home side and no active outside pressure retires the site from AI surfaces" ) {
+        bandit_live_world::world_state world;
+        REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 10004 ),
+                 tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+                 special_lookup ) );
+
+        bandit_live_world::site_record &site = world.sites.front();
+        REQUIRE( bandit_live_world::update_member_state( site, character_id( 10004 ),
+                 bandit_live_world::member_state::dead, "test camp cleared" ) );
+        REQUIRE( site.count_home_side_signals() == 0 );
+        REQUIRE_FALSE( site.has_active_outside_pressure() );
+
+        std::vector<std::string> reports;
+        CHECK( bandit_live_world::retire_empty_hostile_sites( world, &reports ) == 1 );
+        CHECK( site.retired_empty_site );
+        REQUIRE( reports.size() == 1 );
+        CHECK( reports.front().find( "retired_empty_site" ) != std::string::npos );
+        CHECK( reports.front().find( "home_side_signals=0" ) != std::string::npos );
+        CHECK( reports.front().find( "active_outside=no" ) != std::string::npos );
+
+        const bandit_live_world::dispatch_plan retired_plan =
+            bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 18, 20, 0 ),
+                    "player_basecamp_nearby" );
+        CHECK_FALSE( retired_plan.valid );
+        REQUIRE_FALSE( retired_plan.notes.empty() );
+        CHECK( retired_plan.notes.front().find( "retired_empty_site" ) != std::string::npos );
+
+        bandit_live_world::live_signal_mark smoke_mark;
+        smoke_mark.mark_id = "live_smoke@18,20,0";
+        smoke_mark.kind = "smoke";
+        smoke_mark.source_omt = tripoint_abs_omt( 18, 20, 0 );
+        smoke_mark.range_cap_omt = 15;
+        CHECK_FALSE( bandit_live_world::record_live_signal_mark( site, smoke_mark ) );
+    }
+}
+
 TEST_CASE( "bandit_live_world_resolves_bounded_live_aftermath_observations", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;

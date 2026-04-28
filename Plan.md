@@ -24,6 +24,7 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 - Josef being unavailable for playtesting is **not** a blocker by itself.
 - When a target is waiting on Josef, move to the next best unblocked target.
 - If no good unblocked target remains, send Josef a short parked-options note so he can greenlight the next lane; do not just keep revalidating the old packet.
+- During the current debug-proof finish stack, failed agent-side proof does **not** close or park implemented code. After the attempt budget, move implemented-but-unproven items to Josef's playtest package and continue the next greenlit debug note.
 - Prefer batching human-only asks where practical. One useful packet with two real product questions beats two tiny pings.
 - Keep these files lean. Remove finished fluff from `TODO.md` and `TESTING.md` instead of piling up crossed-off archaeology.
 - Each real roadmap item needs an explicit success state in `SUCCESS.md` (or an equally explicit inline auxiliary) so completion is visible instead of guessed.
@@ -39,229 +40,135 @@ If these files disagree, **Plan.md wins** and the other files should be repaired
 
 ## Current status
 
-There is currently no active greenlit game-feature lane after the **Cannibal camp attack-not-extort correction v0** checkpoint.  Do not execute the standalone GitHub migration from this game-feature lane; it remains queued repo-ops work that needs explicit clearance and a reviewably clean tree.
+Repo policy remains unchanged: `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev` is the normal worktree and `josihosi/Cataclysm-AOL` is the real project/release repo. `josihosi/C-AOL-mirror` is green-dot-only.
 
-Current honest state:
-- an earlier closed lane is `Bandit approach / stand-off / attack-gate packet v0` at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`
-- the earlier closed lane is now `Cannibal camp first hostile-profile adopter packet v0` at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`
-- that lane now closes honestly as substrate/content proof: `src/bandit_live_world.{h,cpp}` carries explicit `cannibal_camp` site/profile ownership, cannibal NPC templates can claim the live-world substrate, dedicated cannibal-camp overmap/mapgen/faction/NPC data gives the profile a real rare anchor, and `tests/bandit_live_world_test.cpp` proves a cannibal camp and bandit camp coexist through dispatch/writeback serialization without shared-state mush
-- latest closed correction is `Cannibal camp attack-not-extort correction v0` at `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`; cannibal camps now bypass the bandit `open_shakedown` / pay-demand surface and favorable cannibal contact becomes attack-to-kill pressure while bad conditions can still hold off, stalk, probe, or abort
-- the earlier closed lane is now `Hostile site profile layer packet v0` at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`
-- that lane closes honestly on current build: `src/bandit_live_world.{h,cpp}` carries explicit `hostile_site_profile` state/rules, camp-style and small-hostile-site profiles now diverge in reserve capacity, threat/posture bias, return-clock lean, and writeback pressure, and `tests/bandit_live_world_test.cpp` proves a camp and roadblock can dispatch side-by-side on the same substrate without regressing `[bandit][live_world]`
-- the earlier closed lane is `Multi-site hostile owner scheduler packet v0` at `doc/multi-site-hostile-owner-scheduler-packet-v0-2026-04-22.md`
-- that lane now closes honestly on current build: live probe `.userdata/dev-harness/harness_runs/20260424_003005/` starts from two claimed nearby hostile owners, advances across the `30_minutes` scheduler cadence, and saves two independent active player-pressure records at once: `overmap_special:bandit_camp@140,51,0` with member `4` outbound, and `overmap_special:bandit_camp@140,44,0` with member `18` in `local_contact`, both targeting `player@140,43,0` while keeping separate anchors, rosters, headcounts, remembered marks, and home presence
-- the earlier closed lane remains `Bandit live-world control + playtest restage packet v0` at `doc/bandit-live-world-control-playtest-restage-packet-v0-2026-04-22.md`
-- that lane closes honestly on current build: dirty disturbance probe `.userdata/dev-harness/harness_runs/20260423_194416/` resumes from raw local contact, kills the exact scout, and saves the nearby owned site with `headcount = 13`, member `4` as `state = missing`, home spawn-tile `[3371,1230,0]` at `headcount = 0`, and `active_member_ids = [5]` instead of stale-roster reset
-- the live-world packet therefore has owned-site bootstrap, real dispatch, live contact, exact-member writeback, calm same-site re-dispatch, dirty loss/missing follow-through, manual handoff support, and the reviewer-clean perf packet on the honest nearby footing
-- the earlier latest closed lane remains `Bandit + Basecamp playtest kit packet v1` at `doc/bandit-basecamp-playtest-kit-packet-v1-2026-04-22.md`
-- the earlier `Bandit + Basecamp playtest kit packet v0` remains checkpointed at `doc/bandit-basecamp-playtest-kit-packet-v0-2026-04-22.md`
-- the useful harness/helper work from `Bandit + Basecamp playtest kit packet v2` was **not** wasted; it now sits behind the closed live-world lane as bounded support instead of masquerading as the product
-- the latest closed lane is now `Bandit aftermath / renegotiation writeback packet v0` at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`
-- that lane closes honestly on current build: shakedown aftermath state now persists paid/fought outcomes, loot, anger, caution, defender-loss reopen, and bandit-loss cooling; deterministic proof covers the raised one-use reopen and `pay`/`fight` reconsideration surface, artificial live continuation `.userdata/dev-harness/harness_runs/20260424_142054/` proves the defender-observer/reopen state can persist, and isolated exact-member copied-save proof `.userdata/dev-harness/harness_runs/20260424_143107/` saves member `4` missing with `last_shakedown_outcome=fight_bandit_loss`, `shakedown_bandit_losses=1`, `shakedown_caution=1`, and collapsed pressure
-- the earlier closed lane is now `Bandit shakedown pay-or-fight surface packet v0` at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`
-- that lane closes honestly on current build: the `open_shakedown` branch now opens a blunt player-present robbery demand with explicit `pay` / `fight`, Basecamp-side live fight and pay/writeback proof, and off-base live reach proof `.userdata/dev-harness/harness_runs/20260424_070845/` showing `basecamp_inventory=no`, `vehicle_inventory=yes`, and only carried/current-vehicle goods outside Basecamp/camp footing
-- `Locker Zone V3` stays checkpointed closed at `doc/locker-zone-v3-reopen-packet-v0-2026-04-21.md`; this hostile-site stack should reuse current camp footing, not reopen zoning mechanics by drift
-- the current bandit playtesting-readiness train stays checkpointed closed for now, including the handoff interaction packet, elevated-light / z-level visibility packet, benchmark suite, weather refinement, pressure rewrite, long-range directional light, bounded scout/explore, scoring refinement, moving-bounty memory, repeated-site revisit follow-through, and the now-closed live-world control lane
-- `Bandit z-level visibility proof packet v0` does not come back as a vague side branch; the bounded home for that work was `doc/bandit-elevated-light-and-z-level-visibility-packet-v0-2026-04-21.md`, and that packet stays closed unless new evidence says it lied
-
-The extortion-at-camp restage/handoff packet is done-for-now: `bandit.extortion_at_camp_standoff_mcw` provides the named probe/handoff path, attracts the real controlled site `overmap_special:bandit_camp@140,51,0` through live dispatch/local-gate, and handoff run `.userdata/dev-harness/harness_runs/20260424_153309/` leaves the game alive with `cleanup.status = deferred_handoff` at camp-adjacent `hold_off` pressure.
-
-The latest closed lane is now `Bandit extortion playthrough audit + harness-skill packet v0` at `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md`: named scenario surfaces cover the stand-off setup, first Basecamp demand pay/fight fork, fight-forward message, pay/writeback path, and a controlled defender-loss reopen tier with raised second demand (`22116`) plus `pay` / `fight` still available.  The natural redispatch-from-no-active-group probe stayed artifact-silent after 6000 turns on current runtime, so that natural trigger is not claimed closed; the audit packet closes as a tiered teachable harness path rather than a fake one-button combat opera.
+Detailed contracts, closure evidence, and older checkpoint history belong in `doc/*.md`, `SUCCESS.md`, and git history. Keep this file short enough that the active stack is visible without archaeology.
 
 ---
 
-## Recently closed lane - Hostile site profile layer packet v0
+## Closed lane - Basecamp locker armor ranking + blocker removal packet v0
 
 **Status:** CLOSED / CHECKPOINTED
 
-Once multiple hostile owners can coexist, generalize that scheduler into one bounded hostile-site substrate with explicit profiles so camp-style and non-camp hostile sites can share the machinery without becoming the same creature in a fake moustache.
+Generic protective/full-body armor ranking and blocker clearing are landed for the camp locker path without special-casing `RM13 combat armor`. Deterministic proof covers superior full-body candidates displacing worse blockers, damaged candidates being rejected without repeated requeue/equip churn, stronger ballistic armor being preserved while a compatible full-body suit is added, and `[camp][locker]` readiness regression coverage.
 
-What this item should do:
-- define one shared hostile owner/cadence/persistence substrate with explicit per-profile rules
-- support at minimum a camp-style profile and a smaller hostile-site profile without hardcoding everything to current bandit-camp assumptions
-- keep dispatch, threat posture, return-clock, and writeback differences profile-driven and reviewer-readable
-- preserve the same bounded live-world/writeback contract instead of reopening broad hostile-human architecture arguments
-
-Non-goals:
-- a giant generic faction-AI framework
-- writhing-stalker singleton behavior in this same packet
-- broad diplomacy/social-horror systems
-- magical stealth or sight-avoidance perfection
-
-Canonical contract lives at `doc/hostile-site-profile-layer-packet-v0-2026-04-22.md`.
+Canonical contract lives at `doc/basecamp-locker-armor-ranking-blocker-removal-packet-v0-2026-04-26.md`.
 
 ---
 
-## Recently closed lane - Cannibal camp first hostile-profile adopter packet v0
+## Closed lane - Basecamp job spam debounce + locker/patrol exceptions packet v0
 
 **Status:** CLOSED / CHECKPOINTED
 
-This is the next greenlit hostile-site stack after the now-closed `Hostile site profile layer packet v0`.
-Keep the order explicit and do **not** silently merge this packet with later stalker or social-threat work just because they smell related.
+Stable-cause camp job chatter debounce landed for camp activity completion, camp request blocked/missing-tool barks, and no-progress request barks. Locker and patrol paths now use typed `[camp][locker]` / `[camp][patrol]` reports with repeated-state compression, preserving first occurrence and changed state visibility without a global message-log rewrite.
 
-Use cannibal camp as the first non-bandit adopter of the shared hostile-site profile layer so the new substrate proves itself on a second hostile family **without** jumping straight into singleton stalker weirdness.
-
-What this item should do:
-- land one honest cannibal-camp hostile profile on top of the shared hostile-site substrate
-- keep its cadence, roster, pressure, dispatch, and writeback rules explicit rather than smuggled through bandit names
-- coexist with bandit-owned sites without coalition nonsense or silent bandit-specific assumptions
-- if the current tree lacks a real cannibal-camp site family, first add one **rare dedicated cannibal-camp mapgen/spawn anchor** instead of pretending the profile can attach to vapor
-- the intended first anchor may derive from current bandit-camp footing, but it should read as a bloodier cannibal variant with explicit names/loadouts/theme dressing rather than a runtime random bandit-camp mutation
-
-Non-goals:
-- writhing-stalker singleton behavior in the same packet
-- broad hidden-psychopath / social-camouflage systems
-- faction politics or giant cannibal lore expansion
-- widening the packet into every hostile-human family at once
-- silent default runtime conversion of ordinary bandit camps into cannibal camps
-
-Canonical contract lives at `doc/cannibal-camp-first-hostile-profile-adopter-packet-v0-2026-04-22.md`.
-
-`Writhing stalker` stays parked one step longer.
-If this stack needs future work, keep it as a new explicit packet instead of silently reopening v0.
+Canonical contract lives at `doc/basecamp-job-spam-debounce-exceptions-packet-v0-2026-04-26.md`.
 
 ---
 
-## Latest closed correction - Cannibal camp attack-not-extort correction v0
+## Completed lane - C-AOL debug-proof finish stack v0
 
 **Status:** CLOSED / CHECKPOINTED
 
-Josef clarified the intended cannibal behavior: cannibals do **not** extort; they attack to kill.  The closed cannibal adopter packet proves the profile/content substrate, but the local encounter surface must now diverge from bandit robbery instead of allowing cannibal outings to reuse the `open_shakedown` / pay-demand surface.
+Josef explicitly reopened the current C-AOL debug-proof notes on 2026-04-27. The stack has now reached an honest agent-side boundary without leaving failed proof in parked/review-only posture.
 
-What this item should do:
-- make `cannibal_camp` local pressure bypass the bandit shakedown/extortion surface
-- bias favorable cannibal local contact toward attack-to-kill / lethal ambush behavior rather than pay-or-fight robbery
-- still allow hold-off, stalk, probe, or abort when the local gate says conditions are bad
-- prove bandit camps can still extort while cannibal camps do not
+- Bandit live signal/site-bootstrap product-proof work reached its honest agent-side boundary: synthetic loaded-map fire/light reaches the running live path and the real player-lit fire bridge is listed in Josef's playtest package as implemented-but-unproven; do not loop on it again without a fresh reopen/material blocker change.
+- Smart Zone Manager live layout separation correction reached its honest agent-side boundary: the planner now keeps intended-separate generated zones on separate reserved tiles with deterministic geometry/separation coverage, the failed clean live/UI macro is packaged for Josef as implemented-but-unproven, and the 2026-04-28 current-runtime rerun only added startup/load red evidence (`Dunn has no characters to load`) rather than a fresh product-proof reopen.
+- Bandit local standoff / scout return live correction is now fixed/proven on the current live product path: deterministic coverage asserts the pre-local-contact scout timeout, rebuilt current-runtime run `.userdata/dev-harness/harness_runs/20260427_154309/` used the real `wait_action` path, logged `local_gate ... posture=hold_off ... standoff_distance=5 ... live_dispatch_goal=140,46,0`, then logged `scout_sortie: linger limit reached -> return_home`, `scout_sortie: home footprint observed ... pos=(140,51,0)`, and `scout_report: returned -> pressure refreshed`.
+- Attempt rule for this stack was observed: attempt 3 happened only after Frau Knackal consultation and a material code-path/instrumentation change.
+- **GitHub normal-download release packet v0** should stay held until Schani/Josef decide whether the greenlit harness trust audit/proof-freeze package or release posture is next.
 
-Non-goals:
-- broad cannibal lore, diplomacy, capture, or cooking-the-player systems
-- rewriting bandit shakedown behavior
-- reopening the already-closed cannibal-camp anchor/profile proof
-
-Canonical contract lives at `doc/cannibal-camp-attack-not-extort-correction-v0-2026-04-24.md`.
-
-Current tree closes this correction honestly: `choose_local_gate_posture(...)` now routes `cannibal_camp` favorable contact to `attack_now` / `combat_forward` instead of `open_shakedown`, the local-gate report names `profile=cannibal_camp`, and `build_shakedown_surface(...)` has a cannibal-profile guard against accidental robbery-surface reuse.  Deterministic proof in `tests/bandit_live_world_test.cpp` covers cannibal no-extort / attack, cautious probe, exposed hold-off, overwhelming abort, and unchanged bandit shakedown/pay/fight behavior.
+Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`.
 
 ---
 
-## Recently closed lane - Bandit approach / stand-off / attack-gate packet v0
+## Active lane - C-AOL harness trust audit + proof-freeze v0
 
-**Status:** CLOSED / CHECKPOINTED
+**Status:** ACTIVE / GREENLIT PROCESS AUDIT
 
-Before bandits can rob the player or Basecamp honestly, they need one explicit local pressure law that decides whether a real dispatched group stalks, holds off, probes, opens a shakedown, attacks directly, or aborts.
-The point is to stop the robbery chain from feeling psychic, abrupt, or decorative.
+Josef requested this on 2026-04-27 after watching harness runs load the game, close it, and still risk being treated as feature proof. This is a large audit of the C-AOL harness skill/procedures, preferably Andi execution with Frau Knackal review: inventory every harness primitive, prove every keystroke/setup step with screenshots or exact game metadata, enforce same-save/provenance discipline where possible, and freeze the workflow so false passes become red states instead of polite nonsense.
 
-What this item should do:
-- land one bounded local approach / stand-off / attack-gate layer on top of the live bandit control seam
-- make the local posture explicit and reviewer-readable, using a small set such as `stalk`, `hold_off`, `probe`, `open_shakedown`, `attack_now`, or `abort`
-- base that gate primarily on dispatch strength versus local threat/opportunity rather than folklore aggression
-- preserve readable stand-off pressure around Basecamp/player scenes without magical omniscience or instant tile collapse
-- allow convoy / vehicle / rolling-travel contexts to skip the polite shakedown posture when they honestly read as moving ambush opportunities
+Josef has now explicitly promoted actual product playtests under this proof standard: load-and-close is startup/load proof only, and harness-based feature proof must show step-by-step evidence for the actual feature path.
 
-Non-goals:
-- the pay-or-fight trading window itself
-- loot valuation or exact surrender-pool law
-- giant stealth doctrine / magical perfect sight avoidance
-- radio warfare, stalker pressure, or broader social-horror systems
-- full local combat AI rewrite
+Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
 
-Canonical contract lives at `doc/bandit-approach-stand-off-attack-gate-packet-v0-2026-04-22.md`.
+Current checkpoint:
 
-## Recently closed lane - Bandit shakedown pay-or-fight surface packet v0
+- Harness surface inventory and provisional same-save policy live at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
+- Compact proof-freeze matrix lives at `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`; Frau reviewed the draft at process altitude and the matrix now includes her tighter locks for claim-scoped artifacts, metadata-only limits, deferred guards, anti-fixture bias, deterministic report-classifier false-pass selftests, green debug-spawn item/monster/follower-NPC/weather plus debug map-editor field/furniture and terrain/trap/radiation target-state proof patterns, scoped green talker-selector plus follower-rules dialogue recipes, and a scoped follower-rule toggle/writeback metadata proof.
+- `startup_harness.py start` now emits a startup step ledger and explicit proof classification: load/readiness remains `startup/load`, `feature_proof=false`.
+- Probe classification requires a clean startup gate, all-green step-local ledger, no yellow/blocked wait ledger, and claim-scoped artifact match before `artifacts_matched` can become feature proof; `python3 tools/openclaw_harness/proof_classification_unit_test.py` now freezes the load-only/stale-startup/non-green-step/blocked-wait false-pass cases so they cannot be hidden by later log matches.
+- `audit_saved_map_tile_near_player` reports explicit empty target-tile metadata for requested offsets and now audits required terrain/fields/items/furniture/traps/radiation, including the flat saved-radiation strength/count RLE; `audit_saved_player_items` now distinguishes live-selector-accessible carried/worn/contained items from legacy top-level `player.inv` rows before GUI macros run; `audit_saved_active_monsters` reads same-save `active_monsters` type/location metadata for debug-spawn monster proofs; `audit_saved_overmap_npcs` reads same-save overmap `npcs` metadata and can require baseline-to-post-save NPC count/new-NPC deltas plus exact saved follower-rule values for debug-spawn follower/NPC and rule-toggle proofs; `audit_saved_weather_state` reads same-save `dimension_data.gsav` weather metadata including forced/effective temperature for weather proofs; `abort_on_metadata_failure` prevents later steps from being credited after missing required terrain/fields/items/furniture/traps/radiation/monsters/NPCs/weather.
 
-**Status:** CLOSED / CHECKPOINTED
+Current false-pass evidence:
 
-Once the approach law can honestly decide that a scene is a shakedown instead of a hot ambush, make the actual player-present robbery surface real: bandits try to rob you, you can pay, or you can fight.
-Keep it hard, readable, and bounded.
+- `.userdata/dev-harness/harness_runs/20260427_175051/` proves source-backed `t` opens `Talk to whom`, then blocks/red-classifies the alpha talker-selection step.
+- `.userdata/dev-harness/harness_runs/20260427_184319/` keeps the real-fire chain red because the saved target tile lacks `fd_fire` while the preceding GUI steps remain yellow/untrusted.
+- `.userdata/dev-harness/harness_runs/20260427_191725/` stops at the first deploy gate because the saved tile east of the player lacks `f_brazier`.
+- `.userdata/dev-harness/harness_runs/20260427_200100/` proves exact fixture inventory first (`brazier=1`, `2x4=20`, `lighter=1`), then still stops red at the missing east-tile `f_brazier` deploy state.
+- `.userdata/dev-harness/harness_runs/20260427_200919/` tried checked GUI text for Josef's GUI-as-text idea and aborted at `open_apply_inventory_for_brazier_text_guard` because source-backed `Use item` menu text was not proven.
+- `.userdata/dev-harness/harness_runs/20260427_202434/` uses harness-gated inventory/direction trace plus richer saved-item metadata. It proves `Use item` opens and the saved brazier definition is `deploy_furn -> f_brazier`, but after filtering `brazier` the selector still does **not** prove a highlighted `brazier` row (`highlight_after_redraw selected_item=no`). The abort fires before `CONFIRM`, so `Deploy where?`, `RIGHT`, save, and east-tile `f_brazier` remain unproven.
+- `.userdata/dev-harness/harness_runs/20260427_203847/` plus a direct updated-audit check sharpened the gap: the exact fire items existed only in legacy top-level `player.inv` (`legacy_top_level_inv_counts={"2x4":20,"brazier":1,"lighter":1}`), while live-selector-accessible carried/worn contents contained no `brazier`, `2x4`, or `lighter`; this matched the live `Use item` selector showing only `smart_phone` before filtering and zero visible entries after filter `brazier`.
+- `.userdata/dev-harness/harness_runs/20260427_214207/` first proved the guarded deploy gate but still had non-decisive yellow OCR/baseline/confirmation rows. Follow-up run `.userdata/dev-harness/harness_runs/20260427_222635/` cleans those step-local mechanics: 16/16 green, `step_ledger_summary.status=green_step_local_proof`, `evidence_class=feature-path`, `feature_proof=true` for the scoped normal player-action deploy primitive only. It proves selected `brazier`, `Deploy where?`, right/east direction consumption, case-sensitive save prompt before uppercase `Y`, saved-player mtime advance from `1777321610298746508` to `1777321628903849060`, and saved east tile `[3368,994,0]` with `furniture=["f_brazier"]`.
+- `.userdata/dev-harness/harness_runs/20260428_011205/` is the first green debug-spawn item target-state primitive proof. The scenario `harness.debug_spawn_item_inventory_target_state_audit_mcw` rebuilds/runs against current runtime `32c36dd9bc`, spawns `electric toothbrush` through the debug item path, proves the case-sensitive save/writeback gate, and then reads same-run saved-player metadata with `live_accessible_counts.toothbrush_electric=1`; all six step-ledger rows are green. `.userdata/dev-harness/harness_runs/20260428_021800/` is the first green debug-spawn monster target-state primitive proof: `harness.debug_spawn_monster_target_state_audit_mcw` spawns `mon_squirrel` one tile east, proves the same save/writeback gate, and reads saved-player `active_monsters` with `mon_squirrel` at player-relative offset `[1,0,0]`; all six step-ledger rows are green. `.userdata/dev-harness/harness_runs/20260428_032724/` is the tightened green debug-spawn follower NPC target-state primitive proof: `harness.debug_spawn_follower_npc_target_state_audit_mcw` records a saved-overmap NPC baseline, spawns one random follower, proves the same save/writeback gate, and reads saved overmap `npcs` with count delta `+1` plus a new nearby `your_followers` NPC at attitude `3`; all seven step-ledger rows are green. `.userdata/dev-harness/harness_runs/20260428_024606/` is the first green debug weather/temperature target-state primitive proof: `harness.debug_force_temperature_target_state_audit_mcw` forces 123F, proves the same save/writeback gate, and reads saved dimension weather metadata with `forced_temperature=123.000031` and effective `123.000031F`; all six step-ledger rows are green. `.userdata/dev-harness/harness_runs/20260428_034421/` is the first green debug map-editor field/furniture target-state primitive proof: `harness.debug_map_editor_field_furniture_target_state_audit_mcw` paints `f_chair` and `fd_smoke` one tile east via the debug map editor, proves the same save/writeback gate, and reads same-run saved-map metadata with `observed_furniture=["f_chair"]` and `observed_field_ids=["fd_smoke"]` at offset `[1,0,0]`; all seven step-ledger rows are green. `.userdata/dev-harness/harness_runs/20260428_041845/` is the first green debug map-editor terrain/trap/radiation target-state primitive proof: `harness.debug_map_editor_terrain_trap_radiation_target_state_audit_mcw` paints `t_grass_dead`, `tr_bubblewrap`, and radiation `37` one tile east via the debug map editor, proves the same save/writeback gate, and reads same-run saved-map metadata with `observed_terrain=["t_grass_dead"]`, `observed_traps=["tr_bubblewrap"]`, and `observed_radiation=[37]` at offset `[1,0,0]`; all eight step-ledger rows are green. These are scoped harness primitive/process proof only (`feature_proof=false`, metadata/no claim-scoped product artifact match), not product-feature closure.
+- `.userdata/dev-harness/harness_runs/20260428_014348/` is the first green scoped talker-selector primitive proof. The focused scenario `basecamp.talker_selector_metadata_probe_mcw` runs on current runtime `ef22838b71`, proves `C` opens `What do you want to do`, `t` opens `Talk to whom`, and `enter` confirms the highlighted talker into Katharina Leach's dialogue response surface (`Your response`) with 4/4 green step-local rows. This is scoped navigation/process proof only (`feature_proof=false`, no claim-scoped artifact match).
+- `.userdata/dev-harness/harness_runs/20260428_014825/` is the first green scoped follower-rules dialogue proof. Updated `basecamp.package2_dialog_rules_probe_mcw` now uses the proven talker-selector recipe, then requires the visible `[rules] ... work together` response list before pressing the source-backed first dialogue alpha hotkey again; all 6 step-local rows are green and the final screenshot/OCR proves `Rules for your follower`. Top-level classification remains process/navigation evidence (`feature_proof=false`, no claim-scoped artifact match), not a product-feature closure.
+- `.userdata/dev-harness/harness_runs/20260428_044855/` is the first green scoped follower-rule toggle/writeback proof. New `basecamp.follower_rules_toggle_probe_mcw` starts from saved-overmap `Katharina Leach` follower metadata with `rule_follow_distance_2=false`, proves the current McWilliams selector/dialogue/rules UI path, presses the visible rules-UI hotkey `b`, OCR-proves the row changed from about four paces to about two paces, exits back to gameplay, proves the case-sensitive save prompt before uppercase `Y`, advances saved-player mtime, and reads same-run saved-overmap NPC metadata with `rule_follow_distance_2=true` plus `override_enable_follow_distance_2=true` / `override_follow_distance_2=true`; all 14 step-local rows are green. Top-level classification remains process/metadata evidence (`feature_proof=false`, no claim-scoped product artifact match), not downstream package behavior closure.
+- Fuel continuation remains non-green after bounded post-deploy retries: `.userdata/dev-harness/harness_runs/20260427_215006/` proves the post-deploy saved tile still has `f_brazier` but live-accessible inventory is missing `2x4`; exact-items reruns `.userdata/dev-harness/harness_runs/20260427_215154/`, `.userdata/dev-harness/harness_runs/20260427_215445/`, and `.userdata/dev-harness/harness_runs/20260427_215757/` prove live-accessible `brazier`/`2x4`/`lighter` before the chain, but stop before fuel proof because the post-fuel save/writeback gate never advances saved-player mtime. Follow-up artifact inspection of `20260427_215757/request_save_after_fuel_drop.after.screen_text.json` shows the post-fuel save request was not a proven `Save and quit?` prompt. Changed actual-playtest attempt `.userdata/dev-harness/harness_runs/20260427_224113/` uses source-backed multidrop `MARK_WITH_COUNT` and still aborts at `blocked_untrusted_post_fuel_save_prompt`. Post-drop guard runs `.userdata/dev-harness/harness_runs/20260427_225552/`, `20260427_225730/`, and `20260427_225909/` add/use a harness UI-trace gate before any save request and stop before exact-20 Multidrop return proof. Instrumented diagnostic run `.userdata/dev-harness/harness_runs/20260427_231210/` adds Multidrop entry/location tracing and shows the sharper boundary: after filter `plank`, the redraw has `visible_item_count=0` in every column, `CONFIRM` blocks with `selected_stacks=0 total_selected_qty=0`, and no save/mtime/current-tile `2x4`/lighter/`fd_fire` credit is allowed. Follow-up row-specific diagnostic `.userdata/dev-harness/harness_runs/20260427_232220/` stops earlier and more honestly at `blocked_untrusted_drop_filter_or_inventory_visibility` because the filtered Multidrop trace has no `typeid="2x4"` row for fuel selection. No fuel/lighter/`fd_fire` feature proof is credited from these runs.
 
-What this item should do:
-- land one honest bootstrap from the approach/gate layer into a player-present shakedown scene
-- start the encounter with a short readable stick-up bark/intent surface instead of a generic hostile aggro flip
-- expose one deliberately blunt first fork: `pay` or `fight`, and keep that combat option available whenever this shakedown surface is invoked
-- use a trading-style surrender surface with a painful demand drawn from the honest reachable goods pool
-- let Basecamp-side scenes expose player + relevant nearby NPC + reachable Basecamp inventory, while off-base scenes expose only currently carried / vehicle-carried goods
-- allow surrendered goods to collapse into abstract bandit bounty/writeback rather than requiring perfect long-tail cargo theater
+Current boundary: the normal player-action brazier deploy gate is green only as a scoped deploy primitive; debug-spawn item, monster, follower-NPC, weather/temperature, and debug map-editor field/furniture plus terrain/trap/radiation target-state proofs are green as scoped harness primitive/process evidence (`20260428_011205`, saved-player `toothbrush_electric=1`; `20260428_021800`, saved-player `active_monsters` has `mon_squirrel` at offset `[1,0,0]`; `20260428_032724`, saved overmap `npcs` has count delta `+1` and a new nearby `your_followers` NPC at attitude `3`; `20260428_024606`, saved dimension weather effective/forced temperature `123F`; `20260428_034421`, saved-map offset `[1,0,0]` has `f_chair` plus `fd_smoke`; `20260428_041845`, saved-map offset `[1,0,0]` has `t_grass_dead`, `tr_bubblewrap`, and radiation `37`); the focused talker-selector recipe is green as scoped navigation/process evidence (`20260428_014348`, `C` -> `t` -> highlighted-row `enter` -> `Your response`); the follower-rules response/menu recipe is green as scoped dialogue navigation/process evidence (`20260428_014825`, visible `[rules] ... work together` -> `Rules for your follower`); and the follower-rule toggle/writeback recipe is green as scoped UI+metadata/process evidence (`20260428_044855`, `rule_follow_distance_2=false` -> visible two-pace toggle -> guarded save/writeback -> saved-overmap `rule_follow_distance_2=true`). The player-action fuel continuation reached an honest non-green boundary at `blocked_untrusted_drop_filter_or_inventory_visibility`: filtered Multidrop has no visible/selectable `2x4`/plank row, so count selection, confirm-return, save/writeback, lighter, and `fd_fire` proof remain uncredited. Smart Zone Manager live layout verification is also implemented-but-unproven/Josef-package now: after the earlier four-attempt budget, the current-runtime rerun `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` only proved the named clean profile cannot load a character (`Dunn has no characters to load`), so no Smart Zone feature steps ran and no layout proof is credited. The Schani/Josef-named audit seam `Bandit empty-camp retirement audit-mode packet v0` is now deterministically green: the active-site retirement predicate requires both no home/inside members or spawn-tile headcount **and** no active dispatch/outbound/local-contact pressure; negative cases keep either half populated active. Rule-toggle proof is frozen, but downstream package behavior remains a separate burden.
 
-Non-goals:
-- branching diplomacy theater or a fake debt economy
-- magical remote inventory access outside the honest current scene
-- convoy contexts that should honestly just open with violence
-- radio warfare, stalker pressure, hostage simulation, or reputation opera
+Known source/control footing: `brazier` uses `deploy_furn` -> `f_brazier`; activation should enter `Deploy where?`; `right` is valid only in that direction prompt. Source inspection confirms `game_menus::inv::use()` walks wielded/worn/contained/nearby selector sources rather than legacy top-level `player.inv`; `query_yn` with `FORCE_CAPITAL_YN` requires uppercase `Y` for the case-sensitive save prompt.
 
-Canonical contract lives at `doc/bandit-shakedown-pay-or-fight-surface-packet-v0-2026-04-22.md`.
+Active sub-order:
 
-## Recently closed lane - Bandit aftermath / renegotiation writeback packet v0
+1. Preserve run `20260427_222635` as the all-green scoped deploy primitive gate evidence; do not inflate it into bandit real-fire/product proof.
+2. Keep the fuel-continuation scenario (`bandit.live_world_nearby_camp_real_fire_exact_items_fuel_tile_audit_mcw`) as a red audit/probe artifact for `blocked_untrusted_drop_filter_or_inventory_visibility` before any count/confirm/post-fuel save/writeback credit, not as closure proof.
+3. Preserve Smart Zone Manager live layout verification as implemented-but-unproven in Josef's playtest package. Do not attempt another clean live/UI macro unless Schani/Josef explicitly reopen it after a materially repaired loadable-profile/UI primitive; current-runtime run `20260428_001347` is startup/load red only (`blocked_clean_profile_no_loadable_character`).
+4. Preserve debug-spawn item target-state proof `20260428_011205`, debug-spawn monster target-state proof `20260428_021800`, debug-spawn follower-NPC target-state proof `20260428_032724`, debug force-temperature target-state proof `20260428_024606`, debug map-editor field/furniture target-state proof `20260428_034421`, and debug map-editor terrain/trap/radiation target-state proof `20260428_041845` as green primitive patterns: they prove only debug item/monster/follower-NPC/weather/map-editor helper -> save/writeback -> same-run saved-player, saved-overmap, saved-dimension, or saved-map metadata, not product feature behavior.
+5. Preserve talker-selector proof `20260428_014348` as the scoped current McWilliams selector recipe: it proves only nearby interaction menu -> Talk to whom -> highlighted talker Enter -> NPC dialogue response surface.
+6. Preserve follower-rules proof `20260428_014825` as the scoped current McWilliams response/menu recipe: it proves the visible rules/work-together response list and resulting `Rules for your follower` UI. Preserve follower-rule toggle/writeback proof `20260428_044855` as the scoped current McWilliams rules-UI metadata recipe: it proves `rule_follow_distance_2=false` -> visible two-pace toggle with hotkey `b` -> guarded save/writeback -> saved-overmap `rule_follow_distance_2=true`, but still not downstream package product behavior. The next named audit primitive is another Schani/Josef-named harness seam. Do not continue to lighter/final `fd_fire` until a post-fuel save/writeback gate advances mtime and saved-map metadata proves current-tile `f_brazier` plus `2x4` in the same run.
+7. Greenlight `doc/bandit-empty-camp-retirement-audit-mode-packet-v0-2026-04-28.md` as the next named harness-audit seam: retire/prune a camp from active AI calculations only after audit-mode proof shows both no home/inside members and no active dispatch/outbound/local-contact members; preserve negative cases for each half of the predicate.
 
-**Status:** CLOSED / CHECKPOINTED
 
-A robbery scene is fake if the world forgets it immediately.
-This packet makes the outcome stick: losses, wounds, taken goods, anger, caution, and the specific wanted beat where a killed Basecamp defender can let bandits reopen from a stronger position with a higher demand.
+---
 
-What this item should do:
-- land one honest aftermath/writeback layer for player-present bandit shakedown scenes
-- write back losses, wounds, loot, failed extraction, anger, and caution into later bandit and target state
-- let partial or interrupted fights rewrite the next pressure pass instead of forcing every scene to resolve as one terminal event
-- allow one bounded renegotiation reopen when defender strength materially drops, especially if a Basecamp NPC dies and the bandits now read the scene as richer/safer prey
-- make that reopened demand explicitly harsher rather than replaying the same toll as if nothing changed
-- give the player one real reconsideration fork under the raised demand: pay the higher price or fight again; combat should remain an option both times
-- preserve both directions of truth: bandit losses or panic should also cool later pressure instead of only ratcheting cruelty upward
+## Greenlit lane - C-AOL actual playtest verification stack v0
 
-Non-goals:
-- infinite renegotiation loops or endless haggling AI
-- broad diplomacy/reputation/morale opera
-- multi-camp retaliatory coalition logic
-- radio warfare, stalker pressure, or broader social-horror systems
+**Status:** GREENLIT / ACTUAL PLAYTEST STACK
 
-Canonical contract lives at `doc/bandit-aftermath-renegotiation-writeback-packet-v0-2026-04-22.md`.
+Josef explicitly greenlit actual playtests now, using the same step-by-step metadata/screenshot validation that the harness trust audit is establishing. This is not a release lane and not a license to wander around a save; it is a small ordered verification stack for live product claims that deterministic tests or load-only harness runs could not honestly close.
 
-## Recently closed lane - Bandit extortion-at-camp restage + handoff packet v0
+Canonical contract lives at `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
 
-**Status:** CLOSED / CHECKPOINTED
+Greenlit order:
 
-Once the robbery chain is real, the harness should be able to attract a real controlled bandit group toward Basecamp and leave the scene alive at the interesting point instead of making Andi rediscover a one-off ritual every time.
-This packet is the bounded setup seam for that.
+1. **Fuel continuation behind the green brazier deploy gate — honest boundary reached.** Keep this inside the active harness audit as red/non-green evidence: `blocked_untrusted_drop_filter_or_inventory_visibility` means no count selection, confirm-return, save/writeback, lighter, or `fd_fire` proof is credited.
+2. **Smart Zone Manager live layout verification packet v0 — honest boundary reached.** Keep this implemented-but-unproven in Josef's playtest package. Deterministic geometry proof remains support only; the bounded live/UI budget failed to capture generated layout, and current-runtime run `20260428_001347` is startup/load red because the clean profile has no loadable character.
+3. **Player-lit fire and bandit signal verification packet v0 — still blocked behind fuel.** Only after fuel placement/writeback is green, prove the real lighter/action path, actual `fd_fire`/smoke state, bounded wait/time passage, and bandit signal response. Do not jump here while the fuel gate is red.
+4. **Roof-fire horde detection proof packet v0 — greenlit but blocked behind real player-lit fire.** Josef/Schani greenlit this later item: debug may stage the horde/distance, but not the fire. Only after real player-lit fire is green, prove roof/elevated player position, real player-created roof fire/light/smoke, bounded time passage, and horde before/after detection or response metadata; a proven no-detect/no-response outcome is acceptable.
+5. **Bandit empty-camp retirement audit-mode packet v0 — deterministic proof green.** The active-site retirement rule now requires the conjunction: no home/inside live members or spawn-tile home headcount and no active dispatch/outbound/local-contact pressure. Tests keep a site active when either side remains populated and retire only the fully empty site; canonical contract lives at `doc/bandit-empty-camp-retirement-audit-mode-packet-v0-2026-04-28.md`.
 
-What this item should do:
-- land one named restage/handoff packet for the Basecamp extortion chain
-- let the harness intentionally attract a **real controlled bandit group** toward current Basecamp/player footing through the live owner/dispatch path
-- provide one reviewer probe/capture command and one manual handoff command for that same path
-- leave the handoff session alive at a useful extortion-at-camp moment such as approach, stand-off, or opening shakedown state
-- keep the setup tied to honest current world footing rather than moved-player/basecamp hacks that break `game::validate_camps()`
-- keep the reports explicit enough that review can tell which setup mode ran and what scene state was reached
+Non-goals: no Lacapult, no release publishing, no broad debug-note reopening, no further Smart Zone live-probe loop without explicit fresh reopen/material primitive repair, no contaminated old McWilliams Smart Zone macro as closure proof, and no feature closure from load-and-close or deterministic tests alone.
 
-Non-goals:
-- generic scenario/world-authoring empire
-- fake debug-spawn shortcuts that bypass the real controlled-bandit path
-- helper polish masquerading as the robbery chain itself
-- radio warfare, stalker pressure, or broader social-horror feature work
+---
 
-Canonical contract lives at `doc/bandit-extortion-at-camp-restage-handoff-packet-v0-2026-04-22.md`.
+## Recently closed correction checkpoints
 
-## Recently closed lane - Bandit extortion playthrough audit + harness-skill packet v0
+**Status:** CHECKPOINTED / CLOSED
 
-**Status:** CLOSED / CHECKPOINTED
+Do not reopen these by drift:
+- **Bandit live-wiring audit + visible-light horde bridge correction v0** — loaded-map visible fire/light -> horde signal bridge proof, not player-lit fire proof.
+- **Bandit local sight-avoid + scout return cadence packet v0** — reclosed for the 2026-04-27 product gap: current-runtime live proof now covers five-OMT hold-off standoff plus scout timeout, home-footprint observation, and returned pressure-refresh writeback on the McWilliams/Basecamp product path.
+- **Smart Zone Manager v1 Josef playtest corrections** — implemented-but-unproven live: deterministic geometry/separation proof is green and the clean live/UI macro failure is in Josef's playtest package; do not loop on it again without a fresh reopen or materially repaired harness primitive.
+- **Basecamp medical consumable readiness v0** — deterministic camp/locker proof for bounded bandage-family readiness, including carried-stock cap behavior.
+- **Basecamp locker armor ranking + blocker removal packet v0** — generic protective/full-body armor comparison and blocker clearing proof; no RM13 special case.
 
-Even with a real extortion scene and a real restage point, the job stays half-baked if only one operator remembers the magic sequence.
-This packet packages the full playthrough surface and teaches the harness/skill about it so Andi can deliberately run the whole chain.
-
-What this item should do:
-- land one named audit/playthrough packet for the full Basecamp extortion chain
-- cover at minimum: first demand, `pay`/`fight`, one fight-forward branch, one defender-loss reopen with higher demand, and the second `pay`/`fight` reconsideration fork
-- keep screen proof, deterministic proof, and artifact/report proof clearly separated instead of flattening them into one soup verdict
-- update the usable harness-facing docs/skill so later agents can discover and run the path without archaeological guessing
-- keep the packet focused on making the extortion chain playable/testable/teachable, not on reopening earlier feature-design arguments
-
-Non-goals:
-- inventing new robbery mechanics by stealth while packaging the audit
-- giant fully scripted automation that fakes every combat outcome
-- operator-only secret macro lore
-- radio warfare, stalker pressure, or broader social-horror packaging
-
-Canonical contract lives at `doc/bandit-extortion-playthrough-audit-harness-skill-packet-v0-2026-04-22.md`.
 ---
 
 ## Checkpointed packet index
+
+**Status:** CHECKPOINTED / INDEX
 
 Use the auxiliary docs below when a later discussion needs the canonical contract or the honest closed verdict, not as permission to reopen the lane automatically.
 
@@ -324,6 +231,8 @@ If this chain is revisited later, the next discussion should be about one new bo
 ---
 
 ## Future feature lanes - parked far back
+
+**Status:** PARKED / FAR BACK
 
 These lanes are **not part of the current camp-handling or bandit queue**.
 Keep them visibly separate so adjacent tooling or observability work does not get mistaken for partial feature delivery.
