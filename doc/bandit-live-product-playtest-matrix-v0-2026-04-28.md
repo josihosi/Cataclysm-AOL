@@ -69,20 +69,20 @@ Required proof:
 
 Claim: tiny, medium, and large camps size action from current living/ready/home roster, reserve, wounds/unready state, active outside groups, risk/reward, and target confidence rather than fixed folklore.
 
-Status: **partial green feature-path evidence** for roster-size dispatch sizing across 2/5/10-member variants: tiny run `.userdata/dev-harness/harness_runs/20260428_193433/` via `bandit.variable_roster_tiny_dispatch_sizing_live`, medium run `.userdata/dev-harness/harness_runs/20260428_192059/` via `bandit.variable_roster_dispatch_sizing_live`, and large/cooled run `.userdata/dev-harness/harness_runs/20260428_193621/` via `bandit.variable_roster_large_cooled_dispatch_sizing_live`. Together these prove fixture-shaped roster footing, roster/reserve/dispatchable reporting, selected scout/stalk member count, and saved ready/active roster split for tiny, medium, and large/cooled cases. High-threat/low-reward hold is also green in `.userdata/dev-harness/harness_runs/20260428_200600/` via `bandit.high_threat_low_reward_holds`: clean `6206131b31` runtime, green 30-minute wait, same-run hold rejection with exact `selected=hold / chill`, and saved no-active-outside/no-dispatch state. This still does **not** close the full row: active-outside dogpile still needs named evidence.
+Status: **partial green feature-path evidence** for roster-size dispatch sizing across 2/5/10-member variants: tiny run `.userdata/dev-harness/harness_runs/20260428_193433/` via `bandit.variable_roster_tiny_dispatch_sizing_live`, medium run `.userdata/dev-harness/harness_runs/20260428_192059/` via `bandit.variable_roster_dispatch_sizing_live`, and large/cooled run `.userdata/dev-harness/harness_runs/20260428_193621/` via `bandit.variable_roster_large_cooled_dispatch_sizing_live`. Together these prove fixture-shaped roster footing, roster/reserve/dispatchable reporting, selected scout/stalk member count, and saved ready/active roster split for tiny, medium, and large/cooled cases. High-threat/low-reward hold is also green in `.userdata/dev-harness/harness_runs/20260428_200600/` via `bandit.high_threat_low_reward_holds`: clean `6206131b31` runtime, green 30-minute wait, same-run hold rejection with exact `selected=hold / chill`, and saved no-active-outside/no-dispatch state. Active-outside dogpile is also green in `.userdata/dev-harness/harness_runs/20260428_200434/` via `bandit.active_outside_dogpile_block_live`: clean `6206131b31` runtime, saved preflight `active_outside=2` footing, green 30-minute wait, same-run dogpile-block rejection, and saved unchanged two-active/three-ready state. This closes these named guardrails only, not broad product closure.
 
 Required proof:
 - fixture/precondition proves roster shape for at least 2-, 4/5-, and 7/10-member cases over bounded runs or variants;
 - report names living roster, ready-at-home, wounded/unready, active outside, hard reserve, dispatchable count, selected intent, and selected member count;
 - ~~high-threat/low-reward case holds/re-scouts instead of escalating just because threat is high;~~
-- active outside same-target group blocks dogpile;
+- ~~active outside same-target group blocks dogpile;~~
 - reserve is preserved or downgrade is explained.
 
 ### 5. Stalk/pressure waits for opening, then returns/holds if none appears
 
 Claim: a follow-up stalk/pressure group can be larger than the scout where justified, waits for an opening rather than instantly fighting, and returns/holds/decays if no opening appears within the bounded window.
 
-Status: **green feature-path evidence for the no-opening branch** in `.userdata/dev-harness/harness_runs/20260428_195617/` via `bandit.stalk_pressure_waits_for_opening`: saved active lead footing, green 30-minute cadence wait, same-run no-opening rejection with `opening_state=no_opening_after_bounded_stalk_window` / `opening_available=no`, held-pressure notes, no spawned outside group, and saved stale/decayed lead state. This closes the no-opening guardrail only; opening-present escalation remains separate.
+Status: **green feature-path evidence for the no-opening decision/decay branch only** in `.userdata/dev-harness/harness_runs/20260428_195617/` via `bandit.stalk_pressure_waits_for_opening`: saved active remembered pressure footing, green 30-minute cadence wait, same-run no-opening rejection with `opening_state=no_opening_after_bounded_stalk_window` / `opening_available=no`, held-pressure notes, no spawned outside group, and saved stale/decayed lead state. This closes active remembered pressure -> no-opening rejection -> stale/decayed lead only; opening-present escalation remains separate.
 
 Required proof:
 - remembered high-value/manageable-risk lead exists;
@@ -138,8 +138,8 @@ Required proof:
 
 1. Preserve/repair any still-red prerequisite gates before dependent proof: especially real player fuel/fire if testing player-created fire/smoke/light.
 2. Run scenario 2 scout memory two-OMT watch.
-3. Preserve scenario 4 variable-roster dispatch sizing evidence and add separate high-threat/active-outside guardrail scenarios before row closure.
-4. Preserve scenario 5 no-opening evidence; add opening-present escalation only if product review needs that branch now.
+3. Preserve scenario 4 variable-roster/high-threat/active-outside guardrail evidence without inflating it into broad product closure.
+4. Preserve scenario 5 no-opening evidence narrowly; add opening-present escalation only if product review needs that branch now.
 5. Run scenario 7 shakedown/toll control regression.
 6. Run scenario 8 empty-camp live sanity only if the seam is still desired beyond deterministic proof.
 7. Run scenario 1 player-created fire/smoke/light only after fuel/writeback is green; otherwise keep its blocked verdict explicit.
