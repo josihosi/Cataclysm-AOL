@@ -1,6 +1,6 @@
 # Cannibal camp night-raid code audit (2026-04-28)
 
-Status: SCHANI AUDIT / DETERMINISTIC SUBSTRATE LANDED
+Status: SCHANI AUDIT / DETERMINISTIC SUBSTRATE LANDED / LIVE SLICE PARTIAL GREEN
 
 Imagination source: `doc/cannibal-camp-night-raid-imagination-source-of-truth-2026-04-28.md`
 
@@ -8,9 +8,9 @@ Audited against the intended scene: cannibal camps remain camp-shaped hostile si
 
 ## Current checkpoint after first implementation packet
 
-The first deterministic/code packet has landed. It adds profile-specific cannibal pack sizing, a smoke/light nearby-lead distinction between scout/probe pressure and pack attack pressure, `local_gate_input::darkness_or_concealment`, cannibal exposure hold-off, high-threat abort preservation, no-extort/no-shakedown reporting, and multi-member active-group save/load proof.
+The first deterministic/code packet has landed. It adds profile-specific cannibal pack sizing, a smoke/light nearby-lead distinction between scout/probe pressure and pack attack pressure, `local_gate_input::darkness_or_concealment`, live `current_exposure` feeding into the local gate, current/recent exposure hold-off, bounded sight-avoid reposition helper proof, high-threat abort preservation, no-extort/no-shakedown reporting, and multi-member active-group save/load proof.
 
-Remaining gap: real time/light/visibility still is not wired into the live encounter caller, and no harness/product artifact proves an actual night raid through dispatch/local-contact. Treat the detailed gap analysis below as the original pre-implementation map plus the remaining live-wiring/product-proof burden.
+Live product proof is now partial green under the proof-freeze rules: day smoke/light pressure (`20260428_124902`) reaches cannibal stalk/hold-off rather than instant combat; night local contact (`20260428_124947`) reaches `posture=attack_now` with `pack_size=2`, `darkness_or_concealment=yes`, and `shakedown=no`; exposed/recent-sight footing (`20260428_125138`) holds off instead of crediting a visible beeline; day-smoke repeatability passes (`20260428_125319`, `20260428_125342`). Saved-state persistence plus no-fixture reload support are green for a real active cannibal group/profile/target/live-signal mark (`20260428_130948`, `20260428_131031`), with `intelligence_map.leads=[]` out of scope; the remaining live gap is only an explicit high-threat/comparable daylight negative if Schani wants it separated. Treat the detailed gap analysis below as the original pre-implementation map plus the remaining optional negative/control proof burden.
 
 
 ## Original implemented footing before this packet
@@ -199,7 +199,7 @@ Current status:
 
 Promoted first Andi implementation target:
 
-`Cannibal camp pack-size + smoke-light/darkness/sight-avoid substrate v0`
+`Cannibal camp pack-size + darkness/sight-avoid local-gate substrate v0`
 
 Do not ask Andi to “make cannibals cooler.” Ask for exact seams:
 
@@ -215,6 +215,6 @@ Do not ask Andi to “make cannibals cooler.” Ask for exact seams:
 
 Foundation green; deterministic night-raid substrate now landed.
 
-The pre-implementation audit found four missing seams: lone cannibal dispatch was still allowed, smoke/light leads did not have a cannibal-specific scout/stalk/dispatch chain, darkness/night was not represented in local-gate input, and stalking exposure behavior was not part of the cannibal promise. The first implementation packet now adds deterministic/code support for pack-size dispatch, smoke/light nearby-lead classification, explicit darkness/concealment local-gate input, exposure hold-off, no-extort reporting, high-threat abort, and multi-member active-group save/load proof.
+The pre-implementation audit found four missing seams: lone cannibal dispatch was still allowed, smoke/light leads did not have a cannibal-specific scout/stalk/dispatch chain, darkness/night was not represented in local-gate input, and stalking exposure behavior was not part of the cannibal promise. The first implementation packet now adds deterministic/code support for pack-size dispatch, smoke/light nearby-lead classification, explicit darkness/concealment local-gate input, live current-exposure feeding into that gate, current/recent exposure hold-off, bounded sight-avoid reposition helper proof, no-extort reporting, high-threat abort, and multi-member active-group save/load proof.
 
 Remaining honest gap: this is still deterministic substrate, not live night-raid product proof. A later promoted slice must wire real time/light/visibility into the live path and prove the named behavior through actual dispatch/local-contact under proof-freeze rules.

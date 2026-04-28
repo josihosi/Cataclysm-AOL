@@ -1,9 +1,10 @@
 # Cannibal camp night-raid behavior packet v0 (2026-04-28)
 
-Status: ACTIVE / DETERMINISTIC SUBSTRATE LANDED
+Status: ACTIVE / LIVE PLAYTEST SLICE PARTIAL GREEN
 
 Imagination source: `doc/cannibal-camp-night-raid-imagination-source-of-truth-2026-04-28.md`
 Code audit: `doc/cannibal-camp-night-raid-code-audit-2026-04-28.md`
+Live playtest matrix: `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md`
 
 ## Why this exists
 
@@ -15,7 +16,7 @@ Josef clarified the next cannibal-camp identity target after the earlier adopter
 - they should prefer bigger raid groups and pounce when it is dark or otherwise favorable;
 - smoke/light/human routine should create scout/stalk/dispatch pressure, not instant combat.
 
-The implementation already had a real cannibal profile and no-extort local surface. The first deterministic substrate packet now adds pack-size gates, smoke/light nearby-lead classification, avoid-detection stalking response, and darkness/concealment local-gate input; live night-raid product proof is still a later slice. This packet keeps that product difference bounded without reopening the already-closed cannibal adopter/no-extort packets.
+The implementation already had a real cannibal profile and no-extort local surface. The first deterministic substrate packet now adds pack-size gates, smoke/light nearby-lead classification, avoid-detection stalking response, and darkness/concealment local-gate input. The first live matrix slice is now partially green for day smoke/stalk pressure, night local-contact pack attack, exposed/recent-sight hold-off, and day-smoke repeatability; saved-state persistence plus no-fixture reload support are now green, and any explicit high-threat negative remains an optional open proof seam. This packet keeps that product difference bounded without reopening the already-closed cannibal adopter/no-extort packets.
 
 ## Scope
 
@@ -66,7 +67,7 @@ First deterministic slice:
 - no-regression coverage for `bandit_live_world_makes_cannibal_camp_attack_instead_of_extort` and bandit shakedown tests;
 - save/load test for multi-member cannibal active groups.
 
-Later live/harness slice, only after deterministic seams are landed and proof-freeze rules can support it:
+Live/harness product-proof slice, now explicitly greenlit by Josef after deterministic seams landed:
 
 - named scenario with a cannibal camp, enough living at-home members, smoke/light or repeated human routine creating a target lead, and equivalent day/night conditions;
 - scout/stalk/dispatch must be visible in artifacts before attack credit: raw smoke/light may not become instant combat;
@@ -79,7 +80,7 @@ Later live/harness slice, only after deterministic seams are landed and proof-fr
 
 Current Andi target:
 
-`Cannibal camp pack-size + smoke-light/darkness/sight-avoid substrate v0`
+`Cannibal camp pack-size + darkness/sight-avoid local-gate substrate v0`
 
 Bounded instruction:
 
@@ -90,10 +91,10 @@ Bounded instruction:
 
 ## Current classification
 
-Active / deterministic substrate landed.
+Active / deterministic substrate landed / live playtest slice partial green.
 
-The first implementation packet landed deterministic/code support for cannibal pack-size dispatch, smoke/light nearby-lead classification, explicit darkness/concealment local-gate input, exposure hold-off, high-threat abort, no-extort/no-shakedown reporting, and multi-member active-group save/load proof.
+The first implementation packet landed deterministic/code support for cannibal pack-size dispatch, smoke/light nearby-lead classification, explicit darkness/concealment local-gate input, live current-exposure feeding into that gate, current/recent exposure hold-off, bounded sight-avoid reposition helper proof, high-threat abort, no-extort/no-shakedown reporting, and multi-member active-group save/load proof.
 
-This is not live/harness night-raid product proof. A later promoted product slice must still wire real time/light/visibility into the live path and prove a named cannibal night-raid scenario through dispatch/local-contact under proof-freeze rules.
+Live matrix feature-path evidence is green for: day smoke/light pressure (`20260428_124902`), night local-contact pack attack (`20260428_124947`), exposed/recent-sight hold-off (`20260428_125138`), and day-smoke repeatability (`20260428_125319`, `20260428_125342`). Saved-state persistence is now green for a real active cannibal group/profile/target/live-signal mark (`20260428_130948`) with no-fixture reload support (`20260428_131031`); full live slice closure only still needs an explicit high-threat/comparable daylight negative if product review requires it beyond the day-smoke hold-off proof.
 
 Josef requested this as the next cannibal vision/audit packet on 2026-04-28. The prior harness trust-audit/proof-freeze lane is checkpointed/held rather than deleted, and the bandit camp-map stack remains greenlit behind this unless Schani/Josef promote it separately.

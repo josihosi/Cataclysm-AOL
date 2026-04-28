@@ -8,34 +8,33 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Cannibal camp night-raid behavior packet v0`.
+Active target: `Cannibal camp night-raid behavior packet v0` live/harness product-proof slice.
 
-Current state: deterministic/code substrate for `Cannibal camp pack-size + smoke-light/darkness/sight-avoid substrate v0` has landed. This is deterministic support only, not live night-raid product proof.
+Current state: deterministic/code substrate is green, and the first live matrix slice has real feature-path evidence under proof-freeze rules. Green runs:
 
-Landed substrate:
+- Day smoke/light pressure: `.userdata/dev-harness/harness_runs/20260428_124902/` — smoke lead, cannibal `active_job=stalk`, `posture=hold_off`, no shakedown/combat-forward.
+- Night local-contact attack window: `.userdata/dev-harness/harness_runs/20260428_124947/` — direct/local contact, `darkness_or_concealment=yes`, `pack_size=2`, `posture=attack_now`, `combat_forward=yes`, `shakedown=no`.
+- Exposed/recent-sight hold-off: `.userdata/dev-harness/harness_runs/20260428_125138/` — bounded 20-turn live window, cannibal `sight_exposure=recent`, `posture=hold_off`, no shakedown/combat-forward.
+- Fixture-bias smoke: `repeatability --count 2 cannibal.live_world_day_smoke_pressure_mcw`, stable pass in `.userdata/dev-harness/harness_runs/20260428_125319/` and `.userdata/dev-harness/harness_runs/20260428_125342/`.
+- Save/writeback persistence: `.userdata/dev-harness/harness_runs/20260428_130948/` — day-smoke creates active cannibal `stalk` group, guarded save advances player-save mtime, saved `dimension_data.gsav` contains `profile=cannibal_camp`, active group/target, `active_member_ids=[4,5]`, and `known_recent_marks` with `live_smoke@...`; `intelligence_map.leads=[]` is explicitly out of scope, not credited.
+- No-fixture reload support: `.userdata/dev-harness/harness_runs/20260428_131031/` — fresh startup without fixture reinstall plus metadata audit still sees the active cannibal group/profile/target/member state and `known_recent_marks` smoke signal.
 
-- Cannibal stalk/attack-style pressure now requires pack pressure under the shared hostile-site/bandit-live-world substrate instead of sending a lone ordinary attacker.
-- One-dispatchable-member cannibal camps stay on scout/probe pressure and do not become full attack pressure; explicitly manual/lone scout pressure still degrades to `probe` instead of `attack_now`.
-- Smoke/light or nearby human-routine leads classify as scout/probe or pack-dispatch pressure rather than instant combat.
-- `local_gate_input` has `darkness_or_concealment`, and cannibal local gates can shift from daylight/no-cover `hold_off` to dark/concealed `attack_now` only when pack size and pressure gates pass.
-- Recent exposure around a camp/basecamp edge makes cannibals hold off instead of continuing a visible rush; high threat still aborts even in darkness.
-- Cannibals remain blocked from shakedown/extortion; bandit shakedown/pay-fight local-gate coverage remains green.
-- Reports expose `profile=cannibal_camp`, `pack_size`, `darkness_or_concealment`, `recent_exposure`, posture, shakedown state, and attack/no-extort notes.
-- Save/load proof now preserves a multi-member cannibal active group.
+Playtest matrix: `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md`.
 
-Validated evidence:
+Next audited scenarios:
 
-- `git diff --check`
-- `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`
-- `make -j4 tests LINTJSON=0 ASTYLE=0`
-- `./tests/cata_test "[bandit][live_world][cannibal]" --success`
-- `./tests/cata_test "[bandit][live_world][approach_gate]" --success`
-- `./tests/cata_test "[bandit][live_world]"`
+1. Explicit daylight/no-cover + high-threat negative if Schani wants this separated from the day-smoke hold-off proof.
+2. Optional bandit-control contrast for shakedown/pay/fight, if product review wants a labeled control beyond the cannibal `shakedown=no` contact proof.
 
-Remaining:
+Proof discipline:
 
-- Do not claim live night-raid product behavior from this deterministic slice.
-- If Schani/Josef promote the later live/harness slice, wire the real time/light/visibility path into the local-gate input and prove a named cannibal night-raid scenario through the real dispatch/local-contact path under proof-freeze rules.
-- Otherwise move to the next explicit Schani/Josef priority behind this lane.
+- Every setup/action/wait/input needs a step-ledger row, screenshot/OCR or exact metadata/log proof, failure rule, and artifact path.
+- Load-and-close is startup proof only; deterministic evaluator output is support only; no product closure from hidden setup or red prerequisites.
+- Stop after two same-blocker attempts and consult Frau Knackal before attempt three; after four unresolved attempts, package the implemented-but-unproven result for Josef instead of looping.
+
+Remaining boundary:
+
+- Do not claim full live night-raid closure until the remaining optional negative/control proof is either green or explicitly scoped out; scenarios already marked green have feature-path evidence, and scenario 6 is saved-state persistence plus reload support, not magical in-memory proof.
+- Do not widen into cannibal lore/capture mechanics/unrelated bandit rewrites while chasing playtest coverage.
 
 Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.
