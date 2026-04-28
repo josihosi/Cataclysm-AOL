@@ -8,34 +8,26 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Cannibal camp night-raid behavior packet v0`.
+Active target: `Bandit camp-map risk/reward dispatch planning packet v0`.
 
-Current state: deterministic/code substrate for `Cannibal camp pack-size + smoke-light/darkness/sight-avoid substrate v0` has landed. This is deterministic support only, not live night-raid product proof.
+Current state: the cannibal night-raid live slice is checkpointed green for the named scenarios; the optional bandit-control contrast is non-blocking unless product review explicitly reopens it. The bandit camp-map lane is active, with another deterministic ecology slice implemented and ready for review.
 
-Landed substrate:
+Known footing:
 
-- Cannibal stalk/attack-style pressure now requires pack pressure under the shared hostile-site/bandit-live-world substrate instead of sending a lone ordinary attacker.
-- One-dispatchable-member cannibal camps stay on scout/probe pressure and do not become full attack pressure; explicitly manual/lone scout pressure still degrades to `probe` instead of `attack_now`.
-- Smoke/light or nearby human-routine leads classify as scout/probe or pack-dispatch pressure rather than instant combat.
-- `local_gate_input` has `darkness_or_concealment`, and cannibal local gates can shift from daylight/no-cover `hold_off` to dark/concealed `attack_now` only when pack size and pressure gates pass.
-- Recent exposure around a camp/basecamp edge makes cannibals hold off instead of continuing a visible rush; high threat still aborts even in darkness.
-- Cannibals remain blocked from shakedown/extortion; bandit shakedown/pay-fight local-gate coverage remains green.
-- Reports expose `profile=cannibal_camp`, `pack_size`, `darkness_or_concealment`, `recent_exposure`, posture, shakedown state, and attack/no-extort notes.
-- Save/load proof now preserves a multi-member cannibal active group.
+- Product source: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`.
+- Contract: `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
+- Andi lane: `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
+- Live matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
+- Existing deterministic/code support covers a camp-owned `camp_intelligence_map`, serialization/deserialization, active target OMT persistence, scout-return writeback into the source camp map, legacy scalar migration fallback, two-OMT ordinary scout stand-off, half-day ordinary scout return clock in the live aftermath seam, roster/reserve dispatch capacity for 2/4/5/7/10 living-member camps, and active-outside dogpile blocking; it is not live product proof.
 
-Validated evidence:
+Next narrow work queue:
 
-- `git diff --check`
-- `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`
-- `make -j4 tests LINTJSON=0 ASTYLE=0`
-- `./tests/cata_test "[bandit][live_world][cannibal]" --success`
-- `./tests/cata_test "[bandit][live_world][approach_gate]" --success`
-- `./tests/cata_test "[bandit][live_world]"`
+1. Extend deterministic proof for the next remaining camp-map ecology slice: wounded/killed-member shrinkage, high-threat non-escalation, prior outcome pressure/cooling, and stockpile/need pressure without breaking reserve/risk gates.
+2. Add deterministic coverage for larger stalk/pressure follow-up, no-opening return/hold behavior, and sight-avoid reposition/abort within at most two visible local turns without teleporting.
+3. Keep product proof downstream: no live/harness closure until the deterministic seams and live dispatch/writeback bridge are explicit.
 
-Remaining:
+Proof discipline:
 
-- Do not claim live night-raid product behavior from this deterministic slice.
-- If Schani/Josef promote the later live/harness slice, wire the real time/light/visibility path into the local-gate input and prove a named cannibal night-raid scenario through the real dispatch/local-contact path under proof-freeze rules.
-- Otherwise move to the next explicit Schani/Josef priority behind this lane.
-
-Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.
+- Code changes need `git diff --check`, the narrow touched-object build, and focused `[bandit][live_world]` / `[bandit][live_world][camp_map]` tests before checkpoint.
+- Deterministic evidence can close deterministic sub-slices only; live game claims need named harness/product scenarios from the matrix.
+- Do not reopen fuel, Smart Zone, or cannibal optional-control seams unless canon or Josef/Schani explicitly does so.

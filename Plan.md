@@ -82,17 +82,18 @@ Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`
 
 ---
 
-## Active lane - Cannibal camp night-raid behavior packet v0
+## Closed lane - Cannibal camp night-raid behavior packet v0
 
-**Status:** ACTIVE / GREENLIT FEATURE BEHAVIOR / DETERMINISTIC SUBSTRATE LANDED
+**Status:** CLOSED / CHECKPOINTED
 
-Josef requested a new cannibal-camp vision/audit run on 2026-04-28: cannibal camps should remain broadly bandit-camp-shaped hostile sites, but feel more vicious, more trigger-happy, more night-oriented, and should prefer larger raid groups over lone suicide attackers. Smoke/light and repeated human routine should become scout/stalk/dispatch pressure first, with the pack avoiding detection until night/darkness makes the attack window favorable. The prior harness trust-audit/proof-freeze lane has reached a checkpoint/held boundary, so this packet is the active feature lane.
+Josef requested a new cannibal-camp vision/audit run on 2026-04-28: cannibal camps should remain broadly bandit-camp-shaped hostile sites, but feel more vicious, more trigger-happy, more night-oriented, and should prefer larger raid groups over lone suicide attackers. Smoke/light and repeated human routine should become scout/stalk/dispatch pressure first, with the pack avoiding detection until night/darkness makes the attack window favorable. The prior harness trust-audit/proof-freeze lane had reached a clean checkpoint/closure boundary, so this packet became the active feature lane. Josef explicitly promoted the live/harness playtest slice on 2026-04-28; that slice is now checkpointed.
 
 Imagination source of truth lives at `doc/cannibal-camp-night-raid-imagination-source-of-truth-2026-04-28.md`.
 Code audit lives at `doc/cannibal-camp-night-raid-code-audit-2026-04-28.md`.
 Canonical contract lives at `doc/cannibal-camp-night-raid-behavior-packet-v0-2026-04-28.md`.
 
-Current checkpoint: `Cannibal camp pack-size + smoke-light/darkness/sight-avoid substrate v0` has deterministic/code substrate landed. It is not live/harness night-raid product proof.
+Final checkpoint: `Cannibal camp pack-size + darkness/sight-avoid local-gate substrate v0` has deterministic/code substrate landed. The live playtest matrix has green feature-path proof for scenario 1 day smoke/light scout-stalk pressure (`20260428_124902`), scenario 2 night/local-contact pack attack window (`20260428_124947`), scenario 3 exposed/recent-sight hold-off (`20260428_125138`), scenario 4 daylight/high-threat negative behavior (`20260428_135323`), a two-run day-smoke repeatability smoke (`20260428_125319`, `20260428_125342`), and scenario 6 saved-state persistence for a real active cannibal smoke/stalk group (`20260428_130948`) with no-fixture reload saved-file support (`20260428_131031`, not fresh in-memory local-gate proof). The optional labeled bandit-control contrast is not required for checkpoint closure; product review can reopen it later if pay/fight comparison beyond the green cannibal `shakedown=no` contact proof is desired.
+Live playtest matrix lives at `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md` and preserves the checkpointed proof slice.
 
 Scope:
 
@@ -106,15 +107,33 @@ Scope:
 8. Keep reports reviewer-readable: lead source, profile, pack size/strength, darkness/concealment input, sight/exposure state, posture, and reason must be visible in deterministic output and later live artifacts.
 9. Keep save/load and member-state behavior honest: dead/wounded/outbound/home-reserve members must affect whether a pack attack is possible.
 
-First proof target is deterministic/code proof only and is now landed for pack-size dispatch, smoke/light nearby-lead classification, darkness/concealment local-gate input, exposure hold-off, high-threat abort, no-extort/no-shakedown reporting, and multi-member save/load proof. Live/harness night-raid product proof is a later slice after Schani/Josef explicitly promote it under the harness proof-freeze rules.
+First proof target was deterministic/code proof and is landed for pack-size dispatch, smoke/light nearby-lead classification, darkness/concealment local-gate input, current/recent exposure hold-off plus bounded sight-avoid reposition helper proof, high-threat abort, no-extort/no-shakedown reporting, and multi-member save/load proof. The later live/harness product-proof slice is also green for the required matrix scenarios under proof-freeze rules.
 
 Non-goals: no broad cannibal society/lore expansion, no player capture/cooking mechanics, no perfect stealth AI, no teleporting attackers, no ordinary bandit shakedown rewrite, no singleton writhing-stalker work, no always-attack suicide doctrine, and no evaluator-only closure for live behavior.
 
 ---
 
+## Active lane - Bandit camp-map risk/reward dispatch planning packet v0
+
+**Status:** ACTIVE / GREENLIT IMPLEMENTATION + LIVE PRODUCT MATRIX
+
+The cannibal live slice is checkpointed, and the next sensible unblocked target is the Schani/Josef-greenlit bandit camp-map ecology implementation lane. This lane should make the per-camp map the creature and dispatch/risk/reward the hands: independent saved camp intelligence maps, scout-return writeback into remembered leads, vanished-signal redispatch, roster/reserve-based sizing, two-OMT half-day scouting, and bounded non-teleport sight avoidance.
+
+Product source of truth lives at `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`.
+Code-only implementation map lives at `doc/bandit-camp-map-ecology-implementation-map-2026-04-28.md`.
+Canonical contract lives at `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
+Andi lane instructions live at `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
+Bandit live product playtest matrix lives at `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
+
+Current checkpoint: deterministic/code support now covers a camp-owned `camp_intelligence_map`, normal serialize/deserialize support, active target OMT persistence, scout-return writeback into the source camp map, legacy scalar remembered-memory migration only as fallback, two-OMT ordinary scout stand-off through the live hold-off goal seam, half-day ordinary scout return clock through the live aftermath seam, variable camp reserve/dispatch capacity for 2/4/5/7/10 living-member camps, and active-outside group/contact dogpile blocking via `site.has_active_outside_pressure()`. Verified by `git diff --check`, `./tests/cata_test --list-tests | rg "reserve_scales|active_outside|hold_off_goal|scout_sortie"`, `make -j4 obj/bandit_live_world.o obj/do_turn.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`, `./tests/cata_test "[bandit][live_world][camp_map]" --success`, and `./tests/cata_test "[bandit][live_world]"`. This is deterministic/code evidence only, not harness product proof.
+
+Next implementation/proof target: extend deterministic coverage and live-path wiring for the remaining camp-map ecology contract: wounded/killed-member shrinkage, stockpile/need pressure, high-threat non-escalation, prior outcome pressure/cooling, larger stalk/pressure follow-up when justified, no-opening return/hold behavior, and sight-avoid reposition/abort within at most two visible local turns without teleporting. Product proof remains downstream and must use named scenarios from the live product matrix.
+
+---
+
 ## Held lane - C-AOL harness trust audit + proof-freeze v0
 
-**Status:** HELD / CHECKPOINTED PROCESS AUDIT
+**Status:** HELD / CHECKPOINTED PROCESS FREEZE
 
 Josef requested this on 2026-04-27 after watching harness runs load the game, close it, and still risk being treated as feature proof. This is a large audit of the C-AOL harness skill/procedures, preferably Andi execution with Frau Knackal review: inventory every harness primitive, prove every keystroke/setup step with screenshots or exact game metadata, enforce same-save/provenance discipline where possible, and freeze the workflow so false passes become red states instead of polite nonsense.
 
@@ -124,12 +143,12 @@ Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-pack
 
 Current checkpoint:
 
-Current boundary: checkpointed/held until Schani/Josef name the next harness primitive; remaining product-playtest blockers live in the actual playtest stack rather than keeping this process lane active.
+Current boundary: checkpointed/held after the closure review found the open SUCCESS criteria satisfied by the proof-freeze matrix, inventory, TESTING ledger, and classifier selftest. Remaining red/blocked items are product/playtest seams, not harness-process closure blockers.
 
 - Harness surface inventory and provisional same-save policy live at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
 - Compact proof-freeze matrix lives at `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`; Frau reviewed the draft at process altitude and the matrix now includes her tighter locks for claim-scoped artifacts, metadata-only limits, deferred guards, anti-fixture bias, deterministic report-classifier false-pass selftests, green debug-spawn item/monster/follower-NPC/weather plus debug map-editor field/furniture and terrain/trap/radiation target-state proof patterns, scoped green talker-selector plus follower-rules dialogue recipes, and a scoped follower-rule toggle/writeback metadata proof.
 - `startup_harness.py start` now emits a startup step ledger and explicit proof classification: load/readiness remains `startup/load`, `feature_proof=false`.
-- Probe classification requires a clean startup gate, all-green step-local ledger, no yellow/blocked wait ledger, and claim-scoped artifact match before `artifacts_matched` can become feature proof; `python3 tools/openclaw_harness/proof_classification_unit_test.py` now freezes the load-only/stale-startup/non-green-step/blocked-wait false-pass cases so they cannot be hidden by later log matches.
+- Probe classification requires a clean startup gate, all-green step-local ledger, no yellow/blocked wait ledger, and claim-scoped artifact match before `artifacts_matched` can become feature proof; `python3 tools/openclaw_harness/proof_classification_unit_test.py` now freezes the load-only/stale-startup/non-green-step/yellow-wait/blocked-wait false-pass cases so they cannot be hidden by later log matches.
 - `audit_saved_map_tile_near_player` reports explicit empty target-tile metadata for requested offsets and now audits required terrain/fields/items/furniture/traps/radiation, including the flat saved-radiation strength/count RLE; `audit_saved_player_items` now distinguishes live-selector-accessible carried/worn/contained items from legacy top-level `player.inv` rows before GUI macros run; `audit_saved_active_monsters` reads same-save `active_monsters` type/location metadata for debug-spawn monster proofs; `audit_saved_overmap_npcs` reads same-save overmap `npcs` metadata and can require baseline-to-post-save NPC count/new-NPC deltas plus exact saved follower-rule values for debug-spawn follower/NPC and rule-toggle proofs; `audit_saved_weather_state` reads same-save `dimension_data.gsav` weather metadata including forced/effective temperature for weather proofs; `abort_on_metadata_failure` prevents later steps from being credited after missing required terrain/fields/items/furniture/traps/radiation/monsters/NPCs/weather.
 
 Current false-pass evidence:
@@ -159,8 +178,8 @@ Active sub-order:
 3. Preserve Smart Zone Manager live layout verification as implemented-but-unproven in Josef's playtest package. Do not attempt another clean live/UI macro unless Schani/Josef explicitly reopen it after a materially repaired loadable-profile/UI primitive; current-runtime run `20260428_001347` is startup/load red only (`blocked_clean_profile_no_loadable_character`).
 4. Preserve debug-spawn item target-state proof `20260428_011205`, debug-spawn monster target-state proof `20260428_021800`, debug-spawn follower-NPC target-state proof `20260428_032724`, debug force-temperature target-state proof `20260428_024606`, debug map-editor field/furniture target-state proof `20260428_034421`, and debug map-editor terrain/trap/radiation target-state proof `20260428_041845` as green primitive patterns: they prove only debug item/monster/follower-NPC/weather/map-editor helper -> save/writeback -> same-run saved-player, saved-overmap, saved-dimension, or saved-map metadata, not product feature behavior.
 5. Preserve talker-selector proof `20260428_014348` as the scoped current McWilliams selector recipe: it proves only nearby interaction menu -> Talk to whom -> highlighted talker Enter -> NPC dialogue response surface.
-6. Preserve follower-rules proof `20260428_014825` as the scoped current McWilliams response/menu recipe: it proves the visible rules/work-together response list and resulting `Rules for your follower` UI. Preserve follower-rule toggle/writeback proof `20260428_044855` as the scoped current McWilliams rules-UI metadata recipe: it proves `rule_follow_distance_2=false` -> visible two-pace toggle with hotkey `b` -> guarded save/writeback -> saved-overmap `rule_follow_distance_2=true`, but still not downstream package product behavior. The next named audit primitive is another Schani/Josef-named harness seam. Do not continue to lighter/final `fd_fire` until a post-fuel save/writeback gate advances mtime and saved-map metadata proves current-tile `f_brazier` plus `2x4` in the same run.
-7. Greenlight `doc/bandit-empty-camp-retirement-audit-mode-packet-v0-2026-04-28.md` as the next named harness-audit seam: retire/prune a camp from active AI calculations only after audit-mode proof shows both no home/inside members and no active dispatch/outbound/local-contact members; preserve negative cases for each half of the predicate.
+6. Preserve follower-rules proof `20260428_014825` as the scoped current McWilliams response/menu recipe: it proves the visible rules/work-together response list and resulting `Rules for your follower` UI. Preserve follower-rule toggle/writeback proof `20260428_044855` as the scoped current McWilliams rules-UI metadata recipe: it proves `rule_follow_distance_2=false` -> visible two-pace toggle with hotkey `b` -> guarded save/writeback -> saved-overmap `rule_follow_distance_2=true`, but still not downstream package product behavior. No further harness-process primitive is required for this closure checkpoint unless Schani/Josef name one. Do not continue to lighter/final `fd_fire` until a post-fuel save/writeback gate advances mtime and saved-map metadata proves current-tile `f_brazier` plus `2x4` in the same run.
+7. Preserve `doc/bandit-empty-camp-retirement-audit-mode-packet-v0-2026-04-28.md` as deterministic-code-green support evidence, not a live debug-kill proof. The next move after this checkpoint is a priority decision/promotion, not an automatic blind harness retry.
 
 
 ---
@@ -172,16 +191,19 @@ Active sub-order:
 Josef explicitly greenlit actual playtests now, using the same step-by-step metadata/screenshot validation that the harness trust audit is establishing. This is not a release lane and not a license to wander around a save; it is a small ordered verification stack for live product claims that deterministic tests or load-only harness runs could not honestly close.
 
 Canonical contract lives at `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
+Bandit live product playtest matrix lives at `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
 
 Greenlit order:
 
 1. **Fuel continuation behind the green brazier deploy gate — honest boundary reached.** Keep this inside the active harness audit as red/non-green evidence: `blocked_untrusted_drop_filter_or_inventory_visibility` means no count selection, confirm-return, save/writeback, lighter, or `fd_fire` proof is credited.
 2. **Smart Zone Manager live layout verification packet v0 — honest boundary reached.** Keep this implemented-but-unproven in Josef's playtest package. Deterministic geometry proof remains support only; the bounded live/UI budget failed to capture generated layout, and current-runtime run `20260428_001347` is startup/load red because the clean profile has no loadable character.
-3. **Player-lit fire and bandit signal verification packet v0 — still blocked behind fuel.** Only after fuel placement/writeback is green, prove the real lighter/action path, actual `fd_fire`/smoke state, bounded wait/time passage, and bandit signal response. Do not jump here while the fuel gate is red.
+3. **Player-lit fire and bandit signal verification packet v0 — still blocked behind fuel, now captured in the bandit live matrix.** Only after fuel placement/writeback is green, prove the real lighter/action path, actual `fd_fire`/smoke/light state, bounded wait/time passage, and bandit signal response. Do not jump here while the fuel gate is red.
 4. **Roof-fire horde detection proof packet v0 — greenlit but blocked behind real player-lit fire.** Josef/Schani greenlit this later item: debug may stage the horde/distance, but not the fire. Only after real player-lit fire is green, prove roof/elevated player position, real player-created roof fire/light/smoke, bounded time passage, and horde before/after detection or response metadata; a proven no-detect/no-response outcome is acceptable.
 5. **Bandit empty-camp retirement audit-mode packet v0 — deterministic proof green.** The active-site retirement rule now requires the conjunction: no home/inside live members or spawn-tile home headcount and no active dispatch/outbound/local-contact pressure. Tests keep a site active when either side remains populated and retire only the fully empty site; canonical contract lives at `doc/bandit-empty-camp-retirement-audit-mode-packet-v0-2026-04-28.md`.
+6. **Bandit camp-map risk/reward dispatch planning packet v0 — promoted to the active lane above.** Continue from the active lane section, not as an optional side quest.
+7. **C-AOL live AI performance audit packet v0 — greenlit / bottom-of-stack performance audit.** Measure whether the game remains playable when two, three, and four hostile overmap AIs are active through the real live game path. The packet should compare a baseline with 2/3/4 active bandit/cannibal site mixes, record in-game elapsed time, wall-clock timing, active site/job counts, signal/dispatch/local-gate/sight-avoid counters where available, and run a code-level audit for scaling risks in `src/do_turn.cpp`, `src/bandit_live_world.cpp`, save/serialization, signal matching, sight/exposure checks, and report emission. It may add lightweight instrumentation or a deterministic benchmark helper only if needed to separate game cost from harness overhead. Imagination source lives at `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`; canonical contract lives at `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`.
 
-Non-goals: no Lacapult, no release publishing, no broad debug-note reopening, no further Smart Zone live-probe loop without explicit fresh reopen/material primitive repair, no contaminated old McWilliams Smart Zone macro as closure proof, and no feature closure from load-and-close or deterministic tests alone.
+Non-goals: no Lacapult, no release publishing, no broad debug-note reopening, no further Smart Zone live-probe loop without explicit fresh reopen/material primitive repair, no contaminated old McWilliams Smart Zone macro as closure proof, no informal Andi-only nudges as substitutes for canon plan items, and no feature closure from load-and-close or deterministic tests alone.
 
 ---
 
