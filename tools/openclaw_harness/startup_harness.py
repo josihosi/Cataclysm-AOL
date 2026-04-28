@@ -1824,6 +1824,107 @@ def audit_saved_active_monsters(
     }
 
 
+def audit_saved_weather_state(
+    world_dir: Path,
+    *,
+    required_weather_id: str = "",
+    required_temperature_f: Optional[float] = None,
+    temperature_tolerance_f: float = 0.75,
+) -> Dict[str, Any]:
+    """Read-only saved-world audit for current weather/temperature metadata.
+
+    Weather is saved in ``dimension_data.gsav`` rather than the player save.
+    Keep this as an explicit same-save target-state gate so debug weather or
+    temperature macros are not credited from keystroke completion alone.
+    """
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise FileNotFoundError(f"World dimension data not found: {dimension_path}")
+
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise RuntimeError(f"Dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Dimension data is not a JSON object: {dimension_path}")
+    weather = payload.get("weather")
+    if not isinstance(weather, dict):
+        raise RuntimeError(f"Dimension data lacks weather object: {dimension_path}")
+
+    observed_weather_id = str(weather.get("weather_id", "")).strip()
+    observed_temperature_raw = weather.get("temperature")
+    observed_forced_temperature_raw = weather.get("forced_temperature")
+    observed_temperature_f: Optional[float]
+    observed_forced_temperature_f: Optional[float]
+    try:
+        observed_temperature_f = float(observed_temperature_raw)
+    except (TypeError, ValueError):
+        observed_temperature_f = None
+    try:
+        observed_forced_temperature_f = float(observed_forced_temperature_raw)
+    except (TypeError, ValueError):
+        observed_forced_temperature_f = None
+    observed_effective_temperature_f = (
+        observed_forced_temperature_f
+        if observed_forced_temperature_f is not None
+        else observed_temperature_f
+    )
+
+    required_weather = str(required_weather_id or "").strip()
+    required_temperature: Optional[float] = None
+    if required_temperature_f is not None:
+        required_temperature = float(required_temperature_f)
+    tolerance = max(0.0, float(temperature_tolerance_f))
+
+    missing_required_weather: List[str] = []
+    if required_weather and observed_weather_id != required_weather:
+        missing_required_weather.append(f"weather_id={required_weather}")
+    if required_temperature is not None:
+        if observed_effective_temperature_f is None:
+            missing_required_weather.append(f"effective_temperature_f={required_temperature:g}")
+        elif abs(observed_effective_temperature_f - required_temperature) > tolerance:
+            missing_required_weather.append(f"effective_temperature_f={required_temperature:g}")
+
+    required_count = int(bool(required_weather)) + int(required_temperature is not None)
+    if required_count and not missing_required_weather:
+        status = "required_state_present"
+    elif required_count:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+
+    stat = dimension_path.stat()
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "dimension_path": str(dimension_path),
+        "dimension_mtime_ns": int(stat.st_mtime_ns),
+        "dimension_mtime_iso": datetime.fromtimestamp(float(stat.st_mtime)).isoformat(timespec="microseconds"),
+        "version_line": version_line,
+        "required_weather_id": required_weather,
+        "required_temperature_f": required_temperature,
+        "temperature_tolerance_f": tolerance,
+        "observed_weather_id": observed_weather_id,
+        "observed_temperature_f": observed_temperature_f,
+        "observed_forced_temperature_f": observed_forced_temperature_f,
+        "observed_effective_temperature_f": observed_effective_temperature_f,
+        "observed_weather": {
+            "weather_id": observed_weather_id,
+            "next_weather": weather.get("next_weather"),
+            "temperature": observed_temperature_raw,
+            "forced_temperature": observed_forced_temperature_raw,
+            "winddirection": weather.get("winddirection"),
+            "windspeed": weather.get("windspeed"),
+            "lightning": weather.get("lightning"),
+        },
+        "missing_required_weather": missing_required_weather,
+        "status": status,
+    }
+
+
 def debug_selection_key_moves_highlight(selection_key: str) -> bool:
     normalized = str(selection_key or "").strip().lower()
     return normalized in {
@@ -2702,6 +2803,8 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_furniture")
         if metadata.get("missing_required_monsters"):
             issues.append("missing_required_monsters")
+        if metadata.get("missing_required_weather"):
+            issues.append("missing_required_weather")
         return "red_step_metadata_required_state_missing", issues or [status]
     if status == "failed":
         return "blocked_step_metadata_probe_failed", ["metadata_probe_failed"]
@@ -2896,6 +2999,9 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 "missing_required_items": metadata_summary.get("missing_required_items", []),
                 "missing_required_furniture": metadata_summary.get("missing_required_furniture", []),
                 "missing_required_monsters": metadata_summary.get("missing_required_monsters", []),
+                "missing_required_weather": metadata_summary.get("missing_required_weather", []),
+                "required_weather_id": metadata_summary.get("required_weather_id", ""),
+                "required_temperature_f": metadata_summary.get("required_temperature_f"),
             } if metadata_summary else {},
             "proof_deferred_to_label": str(report.get("proof_deferred_to_label", "")),
             "failure_rule": str(report.get("failure_rule", "missing/wrong screen, failed OCR guard, stale runtime, or absent state metadata makes this non-green")),
@@ -4684,6 +4790,68 @@ def execute_probe_steps(
                 "debug_menu_path": ["}", "m", "T"],
                 "selection_path": ["down", "enter"],
             })
+        elif kind == "audit_saved_weather_state":
+            required_weather_id = str(step.get("required_weather_id", step.get("weather_id", "")) or "").strip()
+            raw_required_temperature = step.get("required_temperature_f", step.get("temperature_f"))
+            required_temperature_f: Optional[float]
+            if raw_required_temperature is None or str(raw_required_temperature).strip() == "":
+                required_temperature_f = None
+            else:
+                try:
+                    required_temperature_f = float(raw_required_temperature)
+                except (TypeError, ValueError):
+                    raise SystemExit(f"Scenario step '{label}' required_temperature_f/temperature_f must be numeric")
+            temperature_tolerance_f = float(step.get("temperature_tolerance_f", 0.75) or 0.75)
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_weather_state(
+                    world_dir,
+                    required_weather_id=required_weather_id,
+                    required_temperature_f=required_temperature_f,
+                    temperature_tolerance_f=temperature_tolerance_f,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_weather_id": required_weather_id,
+                    "required_temperature_f": required_temperature_f,
+                    "temperature_tolerance_f": temperature_tolerance_f,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "metadata": metadata,
+                "action_description": "read saved dimension weather metadata and require exact weather/temperature target state",
+                "expected_immediate_state": "saved dimension weather metadata contains the required weather/temperature state before weather primitive proof may continue",
+                "failure_rule": "missing required saved weather/temperature metadata or unreadable dimension data makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(
+                            step.get(
+                                "abort_verdict",
+                                "blocked_untrusted_saved_weather_target_state",
+                            )
+                        ),
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved weather/temperature metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
         elif kind == "assign_nearby_npc_to_camp_dialog":
             npc_selector = str(step.get("npc_selector") or step.get("selector") or "").strip()
             if not npc_selector:

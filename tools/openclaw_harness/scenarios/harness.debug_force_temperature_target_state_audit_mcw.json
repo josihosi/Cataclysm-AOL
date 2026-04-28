@@ -1,0 +1,85 @@
+{
+  "name": "harness.debug_force_temperature_target_state_audit_mcw",
+  "description": "Audit one debug weather/temperature primitive end-to-end under the proof-freeze rules: force a distinctive temperature through the debug menu, prove the case-sensitive save/writeback gate, then require same-run saved dimension weather metadata for that temperature. This is harness primitive/process evidence, not product-feature proof.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "debug_force_temperature",
+      "label": "debug_force_temperature_123f",
+      "temperature_f": 123,
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_weather_after_debug_force_temperature",
+      "preconditions": "canonical dev-harness/McWilliams fixture is loaded and focused; debug force-temperature primitive starts from the main map screen",
+      "expected_visible_fact": "debug force-temperature helper returns to the live map after selecting Force temperature -> Set and submitting 123 Fahrenheit",
+      "expected_immediate_state": "the live weather manager should hold a forced 123F temperature, but this row is credited only through the later same-run saved dimension weather metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing same-run saved dimension temperature metadata after save makes this debug-temperature row non-green",
+      "next_step_gate": "do not credit the debug force-temperature primitive unless audit_saved_weather_after_debug_force_temperature is green"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_debug_force_temperature_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after forcing temperature and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_debug_force_temperature",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_force_temperature_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the debug force-temperature save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the debug force-temperature step; confirmation must not be sent before this prompt is proven"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_debug_force_temperature",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_debug_force_temperature_save",
+      "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "next_step_gate": "saved weather metadata may be credited only when audit_player_save_mtime_after_debug_force_temperature_save is green",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_debug_force_temperature_save",
+      "changed_since_label": "audit_player_save_mtime_before_debug_force_temperature_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_force_temperature_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the debug force-temperature save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed debug force-temperature save, proving the following weather audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_weather_state",
+      "label": "audit_saved_weather_after_debug_force_temperature",
+      "required_temperature_f": 123,
+      "temperature_tolerance_f": 0.75,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_force_temperature_target_state",
+      "abort_reason": "saved dimension weather metadata did not contain 123F after same-run debug force-temperature save/writeback",
+      "expected_visible_fact": "same-run saved dimension weather metadata contains temperature 123F after the debug force-temperature primitive"
+    }
+  ]
+}
