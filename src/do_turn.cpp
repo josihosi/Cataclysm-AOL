@@ -1606,6 +1606,18 @@ bool steer_live_bandit_dispatch_toward_player(
             continue;
         }
 
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch plan: site=" << site.site_id
+                                   << " target=" << plan.target_id
+                                   << " candidate_reason=" << candidate_site.reason
+                                   << " job=" << bandit_dry_run::to_string( plan.entry.job_type )
+                                   << " selected_members=" << plan.member_ids.size()
+                                   << " signal_packet=" << ( candidate_site.signal != nullptr ?
+                                           candidate_site.signal->mark.mark_id : "none" )
+                                   << " remembered_lead=" << ( candidate_site.remembered_lead_id.empty() ?
+                                           "none" : candidate_site.remembered_lead_id )
+                                   << " opening_available=yes"
+                                   << " notes=" << join_live_bandit_notes( plan.notes ) << '\n';
+
         std::vector<shared_ptr_fast<npc>> dispatched_npcs;
         dispatched_npcs.reserve( plan.member_ids.size() );
         bool missing_member = false;

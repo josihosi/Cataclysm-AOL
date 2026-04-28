@@ -16,7 +16,11 @@ from typing import Any, Dict, List
 HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS_DIR))
 
-from startup_harness import probe_proof_classification, summarize_probe_step_ledger  # noqa: E402
+from startup_harness import (  # noqa: E402
+    classify_wait_step_ledger,
+    probe_proof_classification,
+    summarize_probe_step_ledger,
+)
 
 
 def startup(*, clean: bool = True, status: str = "green") -> Dict[str, Any]:
@@ -126,6 +130,59 @@ class ProbeProofClassificationTest(unittest.TestCase):
         self.assertEqual(result["status"], "green")
         self.assertEqual(result["evidence_class"], "feature-path")
         self.assertTrue(result["feature_proof"])
+
+    def test_wait_ledger_accepts_claim_scoped_artifact_delta_after_bounded_wait(self) -> None:
+        result = classify_wait_step_ledger(
+            label="long_wait",
+            choice_key="4",
+            expected_duration="30m",
+            before_text={"text": ""},
+            menu_text={"text": "Wait how long? 30 minutes"},
+            after_text={"text": ""},
+            wait_classification={"status": "unknown_after_wait"},
+            artifact_after_wait={
+                "patterns": ["dispatch plan", "active_job=stalk"],
+                "matches_by_pattern": [
+                    {"pattern": "dispatch plan", "lines": ["dispatch plan"]},
+                    {"pattern": "active_job=stalk", "lines": ["active_job=stalk"]},
+                ],
+            },
+        )
+
+        self.assertEqual(result["verdict"], "green_wait_step_proven")
+        self.assertEqual(result["elapsed"]["status"], "artifact_delta_after_bounded_wait")
+        self.assertEqual(result["finish_or_interrupt_status"], "completed_by_artifact_delta")
+        self.assertEqual(result["issues"], [])
+
+    def test_wait_ledger_does_not_accept_partial_artifact_delta(self) -> None:
+        for matches_by_pattern in (
+            [
+                {"pattern": "dispatch plan", "lines": ["dispatch plan"]},
+                {"pattern": "active_job=stalk", "lines": []},
+            ],
+            [
+                {"pattern": "dispatch plan", "lines": ["dispatch plan"]},
+            ],
+        ):
+            with self.subTest(matches_by_pattern=matches_by_pattern):
+                result = classify_wait_step_ledger(
+                    label="long_wait",
+                    choice_key="4",
+                    expected_duration="30m",
+                    before_text={"text": ""},
+                    menu_text={"text": "Wait how long? 30 minutes"},
+                    after_text={"text": ""},
+                    wait_classification={"status": "unknown_after_wait"},
+                    artifact_after_wait={
+                        "patterns": ["dispatch plan", "active_job=stalk"],
+                        "matches_by_pattern": matches_by_pattern,
+                    },
+                )
+
+                self.assertEqual(result["verdict"], "yellow_wait_finish_or_interrupt_not_classified")
+                self.assertIn("before_after_clock_or_turn_not_parsed", result["issues"])
+                self.assertIn("missing_finish_or_interruption_signal", result["issues"])
+                self.assertIn("active_job=stalk", result["artifact_elapsed_evidence"]["missing_patterns"])
 
 
 if __name__ == "__main__":
