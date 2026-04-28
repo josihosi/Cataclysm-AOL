@@ -153,7 +153,7 @@ Status: ACTIVE / PARTIAL CONFIDENCE-PUSH PLAYTEST
 
 Success state:
 - [x] A compact live/harness matrix now records the five proposed shapes and their current status: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
-- [ ] At least one broader wandering/day pressure run reaches the real live dispatch/signal path and supports the closed cannibal behavior claim without instant daytime suicide.
+- [x] At least one broader wandering/day pressure run reaches the real live dispatch/signal path and supports the closed cannibal behavior claim without instant daytime suicide: `.userdata/dev-harness/harness_runs/20260429_013310/`, scenario `cannibal.live_world_day_smoke_pressure_mcw`, current window/runtime `782d8edabd`, 2/2 green step ledger, `feature_proof=true`, matched live smoke/signal path, `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, `combat_forward=no`, and `signal_packet=live_smoke@`.
 - [ ] At least one night/contact run reaches real local-contact behavior and supports pack-forward danger under darkness/concealment.
 - [ ] Save/reload continuation proves active cannibal group/profile/target/job state stays coherent after reload.
 - [ ] A different-seed/different-footing run reduces fixture-bias risk.

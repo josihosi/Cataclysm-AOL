@@ -15,7 +15,7 @@ Imagination source: `doc/cannibal-camp-confidence-push-live-playtest-imagination
 
 | Shape | Status | Run / scenario | Decisive evidence | Verdict |
 | --- | --- | --- | --- | --- |
-| Wandering day pressure near cannibal camp | queued | Existing candidate: `cannibal.live_world_day_smoke_pressure_mcw` | Needs current-runtime live dispatch/signal path with `profile=cannibal_camp`, day stalk/probe/hold pressure, no instant combat unless genuinely escalated, and no shakedown/pay/fight surface. | Not yet attempted in this confidence-push pass. |
+| Wandering day pressure near cannibal camp | green | `.userdata/dev-harness/harness_runs/20260429_013310/`, scenario `cannibal.live_world_day_smoke_pressure_mcw` | Fresh startup/window captured `Cataclysm: Dark Days Ahead - 782d8edabd`, `captured_dirty=false`, `version_matches_repo_head=true`; probe ledger `green_step_local_proof` 2/2; proof classification `feature-path`, `green`, `feature_proof=true`; artifacts matched live smoke/signal path, `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, `combat_forward=no`, and `signal_packet=live_smoke@`. | Day smoke/pressure reaches real live dispatch/signal path and holds/stalks without bandit shakedown or instant combat-forward behavior. |
 | Night mistake / contact | queued | Existing candidate: `cannibal.live_world_night_local_contact_pack_mcw` | Needs current-runtime live local-contact path with darkness/concealment, multi-member pack-forward pressure, and no bandit toll/shakedown surface. | Not yet attempted in this confidence-push pass. |
 | Reload brain | queued | Existing candidates: `cannibal.live_world_day_smoke_persistence_mcw` + `cannibal.live_world_day_smoke_persistence_reload_audit_mcw` | Needs active cannibal group/profile/member/target/job state persisted through save/reload without target/profile lobotomy. | Not yet attempted in this confidence-push pass. |
 | Different-seed / different-footing repeat | queued | No packaged second footing selected yet | Needs explicit fixture provenance and same broad behavior class outside the original blessed McWilliams geometry. | Open confidence-bias gap. |
@@ -23,4 +23,4 @@ Imagination source: `doc/cannibal-camp-confidence-push-live-playtest-imagination
 
 ## Current verdict
 
-Partial confidence uplift: the stale-window blocker from the first contrast attempt is cleared, and the bandit contrast control is green on current runtime `7ca870f6be`. Cannibal-specific broader day, night, reload, and different-footing rows remain open.
+Partial confidence uplift: the stale-window blocker from the first contrast attempt is cleared; the bandit contrast control is green on runtime `7ca870f6be`; and cannibal wandering day pressure is green on runtime `782d8edabd`. Cannibal night/contact, reload brain, and different-footing rows remain open.

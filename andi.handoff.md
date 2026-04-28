@@ -24,8 +24,8 @@ Smart Zone Manager remains implemented-but-unproven / Josef playtest package. Th
 
 ## Next work
 
-1. Continue the cannibal confidence-push family using existing scenarios/matrix where possible. The stale-window blocker is cleared and the bandit contrast control is green at `.userdata/dev-harness/harness_runs/20260429_012915/` on runtime `7ca870f6be` with 6/6 green step ledger and `feature_proof=true`.
-2. Next smallest open rows are cannibal wandering day pressure (`cannibal.live_world_day_smoke_pressure_mcw`) and night contact (`cannibal.live_world_night_local_contact_pack_mcw`), followed by reload brain and different-footing repeat.
+1. Continue the cannibal confidence-push family using existing scenarios/matrix where possible. The stale-window blocker is cleared, the bandit contrast control is green at `.userdata/dev-harness/harness_runs/20260429_012915/` on runtime `7ca870f6be` with 6/6 green step ledger and `feature_proof=true`, and cannibal day smoke/pressure is green at `.userdata/dev-harness/harness_runs/20260429_013310/` on runtime `782d8edabd` with 2/2 green step ledger and `feature_proof=true`.
+2. Next smallest open row is night contact (`cannibal.live_world_night_local_contact_pack_mcw`), followed by reload brain and different-footing repeat.
 3. Record only all-green step-ledger + claim-scoped artifact runs as confidence uplift; startup/load or version-mismatch runs stay support/inconclusive.
 
 ## Non-goals/cautions
