@@ -111,26 +111,29 @@ Compact reference:
 
 ## Bandit camp-map risk/reward dispatch planning packet v0
 
-Status: GREENLIT / BOTTOM-OF-STACK
+Status: GREENLIT / READY FOR ANDI PROMOTION
 
 Success state:
-- [ ] Scout-return writeback stores a remembered target lead on the source camp map with bounty, threat, confidence, age/last-seen, and source/outcome fields.
+- [ ] Scout-return writeback stores a remembered target lead on the source camp map with bounty, threat, confidence, age/last-seen, source/outcome, and target-alert/scout-seen state.
 - [ ] A vanished live signal does not erase a scout-confirmed camp/basecamp target; later dispatch cadence can plan from remembered scout knowledge.
-- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted site state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, and reviewer-readable reports/logs.
+- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted site state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, sight-avoidance state, and reviewer-readable reports/logs.
 - [ ] Ordinary camp/basecamp scout stand-off uses a two-OMT observation envelope, not the old five-OMT default, with fallback distances reported when terrain/pathing forces them.
 - [ ] Scout-watch duration is bounded to about half an in-game day, then the scout returns home and writes memory unless explicitly interrupted.
-- [ ] Dispatch sizing uses available at-home members minus home reserve and active outside groups, so a five-bandit camp can choose one scout, a two-bandit stalk/toll/pressure group, a larger raid where allowed, or hold.
-- [ ] If the camp does not attack after scout return, remembered high-value/manageable-risk leads can produce a larger stalk/pressure dispatch that waits for an opening instead of dogpiling or forgetting.
+- [ ] Dispatch sizing uses current living/ready/home roster, home reserve, wounds/unready state, and active outside groups; the same logic handles tiny, medium, and large camps instead of fixed-size folklore.
+- [ ] Reserve defaults are deterministic and reported: tiny camps keep one home member, five-to-seven member camps normally reserve two, large camps reserve roughly 35%+, recent bandit losses/target-alert increase caution, and stockpile desperation cannot violate hard reserve.
+- [ ] Job intent is chosen before count, and size is derived from that intent plus risk/reward: scout, re-scout, stalk/pressure, toll/shakedown, raid, hold/stale.
+- [ ] If the camp does not attack after scout return, remembered high-value/manageable-risk leads can produce a larger-than-scout stalk/pressure dispatch that waits for an opening instead of dogpiling or forgetting.
 - [ ] Scout/stalker sight-avoidance reacts when seen: deterministic and in-game proof show non-teleport reposition or abort immediately or within at most two local turns, with blocked/no-cover cases reported.
-- [ ] Camp pressure / stockpile need affects willingness without overriding home reserve or risk gates; if detailed stockpile state is not available yet, the implementation names the placeholder and keeps it bounded.
-- [ ] Bounty, threat, confidence, distance, lead age, prior defender losses, and prior bandit losses all have reviewer-readable effects on the chosen job/member count.
+- [ ] Camp pressure / stockpile need affects willingness without overriding hard reserve or risk gates. If detailed stockpile state is not available yet, the implementation names the placeholder and keeps it bounded.
+- [ ] Bounty, threat, confidence, distance, lead age, target-alert/scout-seen, prior defender losses, and prior bandit losses all have reviewer-readable effects on the chosen intent/member count.
 - [ ] High threat alone does not force escalation; deterministic coverage proves high-threat/low-reward cases hold or scout instead of sending a larger attack.
-- [ ] Active outbound/local-contact groups block parallel same-camp dogpile dispatch until resolved.
-- [ ] Reports/logs show remembered-lead source, reward/risk inputs, selected job, selected member count, home reserve left behind, scout/stalk posture, sight-exposure turn count, and whether a live signal or remembered camp-map lead drove the decision.
-- [ ] Harness/product proof covers a real or fixture-backed five-bandit camp through the live game path: scout observes a camp from two OMT, watches for the half-day window, avoids sight by moving/aborting within at most two visible turns if exposed, returns home, writes memory, the live signal disappears or is absent, and a later cadence re-dispatches/plans from the remembered camp-map lead with expected member count.
+- [ ] Active outbound/local-contact/stalk/returning groups block parallel same-camp same-target dogpile dispatch until resolved.
+- [ ] Reports/logs show remembered-lead source, reward/risk inputs, selected intent/job, selected member count, home reserve left behind, scout/stalk posture, sight-exposure turn count, opening state, and whether a live signal or remembered camp-map lead drove the decision.
+- [ ] Harness/product proof covers a real or fixture-backed variable-roster camp through the live game path: scout observes a camp from two OMT, watches for the half-day window, avoids sight by moving/aborting within at most two visible turns if exposed, returns home, writes memory, the live signal disappears or is absent, and a later cadence re-dispatches/plans from remembered camp-map knowledge with expected intent/member count.
 
 Notes:
 - Canonical contract lives at `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
+- Andi lane draft lives at `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
 - This is a proper canon plan item, not an informal Andi nudge. It should not become active until explicitly promoted or until the current active/greenlit stack naturally reaches it.
 
 ---
