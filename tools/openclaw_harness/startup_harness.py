@@ -1292,6 +1292,59 @@ def summarize_map_items(payload: Any) -> List[str]:
     return [typeid for typeid in (map_item_typeid(item) for item in payload) if typeid]
 
 
+def decode_submap_rle(raw: Any, *, context: str) -> List[Any]:
+    """Decode submap terrain/radiation RLE into 144 row-major values."""
+    if not isinstance(raw, list):
+        return []
+    flat: List[Any] = []
+    for entry in raw:
+        if isinstance(entry, list) and len(entry) >= 2:
+            try:
+                count = int(entry[1])
+            except (TypeError, ValueError):
+                raise RuntimeError(f"Submap RLE count is invalid in {context}: {entry!r}")
+            if count <= 0:
+                raise RuntimeError(f"Submap RLE count must be positive in {context}: {entry!r}")
+            flat.extend([entry[0]] * count)
+        else:
+            flat.append(entry)
+    return flat
+
+
+def submap_rle_value_at(raw: Any, local: Tuple[int, int, int], *, context: str) -> Any:
+    flat = decode_submap_rle(raw, context=context)
+    index = int(local[1]) * 12 + int(local[0])
+    if index < 0 or index >= len(flat):
+        return None
+    return flat[index]
+
+
+def submap_radiation_value_at(raw: Any, local: Tuple[int, int, int], *, context: str) -> Any:
+    """Decode saved submap radiation RLE, which is flat strength/count pairs."""
+    if not isinstance(raw, list):
+        return None
+    target_index = int(local[1]) * 12 + int(local[0])
+    if target_index < 0:
+        return None
+    cell_index = 0
+    iterator = iter(raw)
+    for strength in iterator:
+        try:
+            count_raw = next(iterator)
+        except StopIteration as exc:
+            raise RuntimeError(f"Submap radiation RLE has dangling strength in {context}: {raw!r}") from exc
+        try:
+            count = int(count_raw)
+        except (TypeError, ValueError):
+            raise RuntimeError(f"Submap radiation RLE count is invalid in {context}: {count_raw!r}")
+        if count <= 0:
+            raise RuntimeError(f"Submap radiation RLE count must be positive in {context}: {count_raw!r}")
+        if cell_index <= target_index < cell_index + count:
+            return strength
+        cell_index += count
+    return None
+
+
 def parse_map_tile_offsets(raw_offsets: Sequence[Any]) -> List[Tuple[int, int, int]]:
     if not raw_offsets:
         return []
@@ -1309,11 +1362,14 @@ def audit_map_tiles_near_player(
     player_save: str = "",
     radius: int = 2,
     offsets: Optional[List[Tuple[int, int, int]]] = None,
+    required_terrain: Optional[List[str]] = None,
     required_fields: Optional[List[str]] = None,
     required_items: Optional[List[str]] = None,
     required_furniture: Optional[List[str]] = None,
+    required_traps: Optional[List[str]] = None,
+    required_radiation: Optional[List[int]] = None,
 ) -> Dict[str, Any]:
-    """Read-only saved-map audit for fields/items/furniture near the saved player."""
+    """Read-only saved-map audit for terrain/fields/items/furniture/traps/radiation near the saved player."""
     if not world_dir.exists():
         raise FileNotFoundError(f"World dir not found: {world_dir}")
     selected_player_save = player_save.strip()
@@ -1364,22 +1420,42 @@ def audit_map_tiles_near_player(
             )
             if not isinstance(submap, dict):
                 continue
+            terrain_raw = submap_rle_value_at(
+                submap.get("terrain"),
+                local,
+                context=f"{map_path}:{abs_sm}:{local}:terrain",
+            )
+            terrain = str(terrain_raw) if terrain_raw is not None else ""
+            radiation_raw = submap_radiation_value_at(
+                submap.get("radiation"),
+                local,
+                context=f"{map_path}:{abs_sm}:{local}:radiation",
+            )
+            radiation: Optional[int]
+            try:
+                radiation = int(radiation_raw) if radiation_raw is not None else None
+            except (TypeError, ValueError):
+                radiation = None
             fields = [summarize_map_field(payload) for x, y, payload in iter_map_triples(submap.get("fields")) if x == local[0] and y == local[1]]
             items: List[str] = []
             for x, y, payload in iter_map_triples(submap.get("items")):
                 if x == local[0] and y == local[1]:
                     items.extend(summarize_map_items(payload))
             furniture = [str(payload) for x, y, payload in iter_map_triples(submap.get("furniture")) if x == local[0] and y == local[1]]
-            if explicit_offsets or fields or items or furniture:
+            traps = [str(payload) for x, y, payload in iter_map_triples(submap.get("traps")) if x == local[0] and y == local[1]]
+            if explicit_offsets or terrain or fields or items or furniture or traps or radiation not in (None, 0):
                 tile_reports.append({
                     "offset_ms": [dx, dy, dz],
                     "target_location_ms": target,
                     "target_abs_omt": list(abs_omt),
                     "target_abs_sm": list(abs_sm),
                     "local_ms": [local[0], local[1], local[2]],
+                    "terrain": terrain,
                     "fields": fields,
                     "items": items,
                     "furniture": furniture,
+                    "traps": traps,
+                    "radiation": radiation,
                 })
     finally:
         for stem in sorted(extracted_packs):
@@ -1388,17 +1464,40 @@ def audit_map_tiles_near_player(
                 if pack_dir.exists():
                     shutil.rmtree(pack_dir)
 
+    required_terrain = [terrain for terrain in (required_terrain or []) if terrain]
     required_fields = [field for field in (required_fields or []) if field]
     required_items = [item for item in (required_items or []) if item]
     required_furniture = [furn for furn in (required_furniture or []) if furn]
+    required_traps = [trap for trap in (required_traps or []) if trap]
+    required_radiation = [int(rad) for rad in (required_radiation or [])]
+    observed_terrain = [str(tile.get("terrain")) for tile in tile_reports if str(tile.get("terrain", ""))]
     observed_field_ids = [str(field.get("field_id")) for tile in tile_reports for field in tile.get("fields", []) if isinstance(field, dict)]
     observed_items = [str(item) for tile in tile_reports for item in tile.get("items", [])]
     observed_furniture = [str(furn) for tile in tile_reports for furn in tile.get("furniture", [])]
+    observed_traps = [str(trap) for tile in tile_reports for trap in tile.get("traps", [])]
+    observed_radiation = [int(rad) for rad in (tile.get("radiation") for tile in tile_reports) if rad is not None]
+    missing_required_terrain = [terrain for terrain in required_terrain if terrain not in observed_terrain]
     missing_required_fields = [field for field in required_fields if field not in observed_field_ids]
     missing_required_items = [item for item in required_items if item not in observed_items]
     missing_required_furniture = [furn for furn in required_furniture if furn not in observed_furniture]
-    required_count = len(required_fields) + len(required_items) + len(required_furniture)
-    missing_count = len(missing_required_fields) + len(missing_required_items) + len(missing_required_furniture)
+    missing_required_traps = [trap for trap in required_traps if trap not in observed_traps]
+    missing_required_radiation = [rad for rad in required_radiation if rad not in observed_radiation]
+    required_count = (
+        len(required_terrain)
+        + len(required_fields)
+        + len(required_items)
+        + len(required_furniture)
+        + len(required_traps)
+        + len(required_radiation)
+    )
+    missing_count = (
+        len(missing_required_terrain)
+        + len(missing_required_fields)
+        + len(missing_required_items)
+        + len(missing_required_furniture)
+        + len(missing_required_traps)
+        + len(missing_required_radiation)
+    )
     if required_count and missing_count == 0:
         status = "required_state_present"
     elif required_count:
@@ -1412,15 +1511,24 @@ def audit_map_tiles_near_player(
         "player_location_ms": player_location,
         "player_abs_omt": list(player_abs_omt),
         "scanned_offsets": len(offsets),
+        "required_terrain": required_terrain,
         "required_fields": required_fields,
         "required_items": required_items,
         "required_furniture": required_furniture,
+        "required_traps": required_traps,
+        "required_radiation": required_radiation,
+        "observed_terrain": observed_terrain,
         "observed_field_ids": observed_field_ids,
         "observed_items": observed_items,
         "observed_furniture": observed_furniture,
+        "observed_traps": observed_traps,
+        "observed_radiation": observed_radiation,
+        "missing_required_terrain": missing_required_terrain,
         "missing_required_fields": missing_required_fields,
         "missing_required_items": missing_required_items,
         "missing_required_furniture": missing_required_furniture,
+        "missing_required_traps": missing_required_traps,
+        "missing_required_radiation": missing_required_radiation,
         "tiles": tile_reports,
         "status": status,
     }
@@ -2412,6 +2520,132 @@ def debug_map_editor_place_field(
         time.sleep(prompt_settle_seconds)
 
 
+def debug_map_editor_select_feature_and_apply(
+    pid: int,
+    *,
+    selector_key: str,
+    query: str,
+    target_keys: Optional[List[str]] = None,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.45,
+    prompt_settle_seconds: float = 0.25,
+    exit_editor: bool = True,
+) -> None:
+    selected_query = str(query or "").strip()
+    if not selected_query:
+        raise SystemExit("Map-editor feature placement needs query")
+    run_debug_menu_shortcut_path(
+        pid,
+        ["m", "M"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+    if target_keys:
+        peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, [selector_key], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    apply_uilist_filter(
+        pid,
+        selected_query,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        settle_seconds=prompt_settle_seconds,
+    )
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    if exit_editor:
+        peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+
+
+def debug_map_editor_place_terrain(
+    pid: int,
+    *,
+    terrain_query: str,
+    target_keys: Optional[List[str]] = None,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.45,
+    prompt_settle_seconds: float = 0.25,
+    exit_editor: bool = True,
+) -> None:
+    debug_map_editor_select_feature_and_apply(
+        pid,
+        selector_key="t",
+        query=terrain_query,
+        target_keys=target_keys,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+        prompt_settle_seconds=prompt_settle_seconds,
+        exit_editor=exit_editor,
+    )
+
+
+def debug_map_editor_place_trap(
+    pid: int,
+    *,
+    trap_query: str,
+    target_keys: Optional[List[str]] = None,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.45,
+    prompt_settle_seconds: float = 0.25,
+    exit_editor: bool = True,
+) -> None:
+    debug_map_editor_select_feature_and_apply(
+        pid,
+        selector_key="w",
+        query=trap_query,
+        target_keys=target_keys,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+        prompt_settle_seconds=prompt_settle_seconds,
+        exit_editor=exit_editor,
+    )
+
+
+def debug_map_editor_place_radiation(
+    pid: int,
+    *,
+    radiation: int,
+    target_keys: Optional[List[str]] = None,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.45,
+    prompt_settle_seconds: float = 0.25,
+    exit_editor: bool = True,
+) -> None:
+    run_debug_menu_shortcut_path(
+        pid,
+        ["m", "M"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+    if target_keys:
+        peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+    peekaboo_press_sequence(pid, ["q"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    fill_numeric_prompt(
+        pid,
+        int(radiation),
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        settle_seconds=prompt_settle_seconds,
+    )
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(prompt_settle_seconds)
+    if exit_editor:
+        peekaboo_press_sequence(pid, ["esc"], delay_ms=delay_ms)
+        time.sleep(prompt_settle_seconds)
+
+
 def assign_nearby_npc_to_camp_dialog(
     pid: int,
     *,
@@ -3117,14 +3351,23 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
         "required_fields_missing",
         "required_items_missing",
         "required_furniture_missing",
+        "required_terrain_missing",
+        "required_traps_missing",
+        "required_radiation_missing",
     }:
         issues = []
+        if metadata.get("missing_required_terrain"):
+            issues.append("missing_required_terrain")
         if metadata.get("missing_required_fields"):
             issues.append("missing_required_fields")
         if metadata.get("missing_required_items"):
             issues.append("missing_required_items")
         if metadata.get("missing_required_furniture"):
             issues.append("missing_required_furniture")
+        if metadata.get("missing_required_traps"):
+            issues.append("missing_required_traps")
+        if metadata.get("missing_required_radiation"):
+            issues.append("missing_required_radiation")
         if metadata.get("missing_required_monsters"):
             issues.append("missing_required_monsters")
         if metadata.get("missing_required_npcs"):
@@ -3321,17 +3564,23 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
             "expected_visible_fact": expected_visible_fact,
             "screen_text_expectation": text_expectation or {},
             "metadata_expectation": {
+                "required_terrain": metadata_summary.get("required_terrain", []),
                 "required_fields": metadata_summary.get("required_fields", []),
                 "required_items": metadata_summary.get("required_items", []),
                 "required_furniture": metadata_summary.get("required_furniture", []),
+                "required_traps": metadata_summary.get("required_traps", []),
+                "required_radiation": metadata_summary.get("required_radiation", []),
                 "required_monsters": metadata_summary.get("required_monsters", []),
                 "required_npcs": metadata_summary.get("required_npcs", []),
                 "required_new_npcs": metadata_summary.get("required_new_npcs", []),
                 "required_observed_npc_count_delta": metadata_summary.get("required_observed_npc_count_delta"),
                 "observed_npc_count_delta": metadata_summary.get("observed_npc_count_delta"),
+                "missing_required_terrain": metadata_summary.get("missing_required_terrain", []),
                 "missing_required_fields": metadata_summary.get("missing_required_fields", []),
                 "missing_required_items": metadata_summary.get("missing_required_items", []),
                 "missing_required_furniture": metadata_summary.get("missing_required_furniture", []),
+                "missing_required_traps": metadata_summary.get("missing_required_traps", []),
+                "missing_required_radiation": metadata_summary.get("missing_required_radiation", []),
                 "missing_required_monsters": metadata_summary.get("missing_required_monsters", []),
                 "missing_required_npcs": metadata_summary.get("missing_required_npcs", []),
                 "missing_required_new_npcs": metadata_summary.get("missing_required_new_npcs", []),
@@ -5207,6 +5456,122 @@ def execute_probe_steps(
                 "selection_path": target_keys + ["e", "/", field_query, "enter", "enter", "enter"],
                 "spawn_target": "map_editor_target_tile",
             })
+        elif kind == "debug_map_editor_place_terrain":
+            terrain_query = str(
+                step.get("terrain_query")
+                or step.get("terrain")
+                or step.get("query")
+                or ""
+            ).strip()
+            if not terrain_query:
+                raise SystemExit(f"Scenario step '{label}' needs terrain_query/terrain")
+            raw_target_keys = step.get("target_keys", [])
+            if isinstance(raw_target_keys, str):
+                target_keys = [raw_target_keys] if raw_target_keys.strip() else []
+            elif isinstance(raw_target_keys, list):
+                target_keys = [str(key) for key in raw_target_keys if str(key).strip()]
+            else:
+                target_keys = []
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            debug_map_editor_place_terrain(
+                pid,
+                terrain_query=terrain_query,
+                target_keys=target_keys,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "terrain_query": terrain_query,
+                "target_keys": target_keys,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "debug_menu_path": ["}", "m", "M"],
+                "selection_path": target_keys + ["t", "/", terrain_query, "enter", "enter"],
+                "spawn_target": "map_editor_target_tile",
+            })
+        elif kind == "debug_map_editor_place_trap":
+            trap_query = str(
+                step.get("trap_query")
+                or step.get("trap")
+                or step.get("query")
+                or ""
+            ).strip()
+            if not trap_query:
+                raise SystemExit(f"Scenario step '{label}' needs trap_query/trap")
+            raw_target_keys = step.get("target_keys", [])
+            if isinstance(raw_target_keys, str):
+                target_keys = [raw_target_keys] if raw_target_keys.strip() else []
+            elif isinstance(raw_target_keys, list):
+                target_keys = [str(key) for key in raw_target_keys if str(key).strip()]
+            else:
+                target_keys = []
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            debug_map_editor_place_trap(
+                pid,
+                trap_query=trap_query,
+                target_keys=target_keys,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "trap_query": trap_query,
+                "target_keys": target_keys,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "debug_menu_path": ["}", "m", "M"],
+                "selection_path": target_keys + ["w", "/", trap_query, "enter", "enter"],
+                "spawn_target": "map_editor_target_tile",
+            })
+        elif kind == "debug_map_editor_place_radiation":
+            raw_radiation = step.get("radiation", step.get("radiation_value", step.get("value")))
+            if raw_radiation is None or str(raw_radiation).strip() == "":
+                raise SystemExit(f"Scenario step '{label}' needs radiation/radiation_value")
+            radiation = int(raw_radiation)
+            raw_target_keys = step.get("target_keys", [])
+            if isinstance(raw_target_keys, str):
+                target_keys = [raw_target_keys] if raw_target_keys.strip() else []
+            elif isinstance(raw_target_keys, list):
+                target_keys = [str(key) for key in raw_target_keys if str(key).strip()]
+            else:
+                target_keys = []
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
+            prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
+            debug_map_editor_place_radiation(
+                pid,
+                radiation=radiation,
+                target_keys=target_keys,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+                prompt_settle_seconds=prompt_settle_seconds,
+            )
+            report.update({
+                "radiation": radiation,
+                "target_keys": target_keys,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "prompt_settle_seconds": prompt_settle_seconds,
+                "debug_menu_path": ["}", "m", "M"],
+                "selection_path": target_keys + ["q", str(radiation), "enter", "enter"],
+                "spawn_target": "map_editor_target_tile",
+            })
         elif kind == "audit_saved_weather_state":
             required_weather_id = str(step.get("required_weather_id", step.get("weather_id", "")) or "").strip()
             raw_required_temperature = step.get("required_temperature_f", step.get("temperature_f"))
@@ -5625,9 +5990,12 @@ def execute_probe_steps(
                 raise SystemExit(f"Scenario step '{label}' offsets must be a list")
             radius = int(step.get("radius", 2) or 2)
             player_save = str(step.get("player_save", "") or "").strip()
+            required_terrain = [str(terrain).strip() for terrain in step.get("required_terrain", step.get("required_terrain_ids", [])) if str(terrain).strip()]
             required_fields = [str(field).strip() for field in step.get("required_fields", step.get("required_field_ids", [])) if str(field).strip()]
             required_items = [str(item).strip() for item in step.get("required_items", step.get("required_item_ids", [])) if str(item).strip()]
             required_furniture = [str(furn).strip() for furn in step.get("required_furniture", step.get("required_furniture_ids", [])) if str(furn).strip()]
+            required_traps = [str(trap).strip() for trap in step.get("required_traps", step.get("required_trap_ids", [])) if str(trap).strip()]
+            required_radiation = [int(rad) for rad in step.get("required_radiation", step.get("required_radiation_values", []))]
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
             try:
@@ -5636,9 +6004,12 @@ def execute_probe_steps(
                     player_save=player_save,
                     radius=radius,
                     offsets=offsets,
+                    required_terrain=required_terrain,
                     required_fields=required_fields,
                     required_items=required_items,
                     required_furniture=required_furniture,
+                    required_traps=required_traps,
+                    required_radiation=required_radiation,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -5646,9 +6017,12 @@ def execute_probe_steps(
                     "error": str(exc),
                     "world": world,
                     "world_dir": str(world_dir),
+                    "required_terrain": required_terrain,
                     "required_fields": required_fields,
                     "required_items": required_items,
                     "required_furniture": required_furniture,
+                    "required_traps": required_traps,
+                    "required_radiation": required_radiation,
                 }
             metadata["artifact_path"] = str(metadata_artifact)
             metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -5658,9 +6032,9 @@ def execute_probe_steps(
                 "offsets": [list(offset) for offset in offsets] if offsets is not None else [],
                 "radius": radius,
                 "metadata": metadata,
-                "action_description": "read saved map tiles near player and require exact field/item/furniture metadata",
+                "action_description": "read saved map tiles near player and require exact terrain/field/item/furniture/trap/radiation metadata",
                 "expected_immediate_state": "saved map contains the required target-tile metadata before feature proof may continue",
-                "failure_rule": "missing required saved-map field/item/furniture or unreadable save metadata makes this step red/blocked",
+                "failure_rule": "missing required saved-map terrain/field/item/furniture/trap/radiation or unreadable save metadata makes this step red/blocked",
             })
             if bool(step.get("abort_on_metadata_failure", False)):
                 metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)

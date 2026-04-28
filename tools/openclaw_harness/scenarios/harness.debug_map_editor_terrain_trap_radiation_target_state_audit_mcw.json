@@ -1,0 +1,136 @@
+{
+  "name": "harness.debug_map_editor_terrain_trap_radiation_target_state_audit_mcw",
+  "description": "Audit debug map-editor terrain/trap/radiation primitives end-to-end under the proof-freeze rules: paint a distinctive terrain/trap/radiation tuple onto the target tile through the debug map editor, prove the case-sensitive save/writeback gate, then require same-run saved-map metadata for the exact terrain, trap, and radiation value. This is harness primitive/process evidence, not product-feature proof.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_2026-04-07",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "debug_map_editor_place_terrain",
+      "label": "debug_map_editor_place_dead_grass_east",
+      "terrain_query": "t_grass_dead",
+      "target_keys": [
+        "right"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_map_tile_after_debug_map_editor_terrain_trap_radiation",
+      "preconditions": "canonical dev-harness/McWilliams fixture is loaded and focused; debug map-editor primitive starts from the main map screen",
+      "expected_visible_fact": "debug map editor returns to the live map after selecting t_grass_dead and applying it to the target tile one square east",
+      "expected_immediate_state": "t_grass_dead should exist on the saved target tile one square east, but this row is credited only through the later same-run saved-map metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing same-run saved-map t_grass_dead metadata after save makes this debug map-editor row non-green",
+      "next_step_gate": "do not credit the debug map-editor terrain primitive unless audit_saved_map_tile_after_debug_map_editor_terrain_trap_radiation is green"
+    },
+    {
+      "kind": "debug_map_editor_place_trap",
+      "label": "debug_map_editor_place_bubblewrap_trap_east",
+      "trap_query": "tr_bubblewrap",
+      "target_keys": [
+        "right"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_map_tile_after_debug_map_editor_terrain_trap_radiation",
+      "preconditions": "canonical dev-harness/McWilliams fixture remains loaded and focused; debug map-editor trap primitive starts from the main map screen after the terrain paint helper exits",
+      "expected_visible_fact": "debug map editor returns to the live map after selecting tr_bubblewrap and applying it to the target tile one square east",
+      "expected_immediate_state": "tr_bubblewrap should exist on the saved target tile one square east along with t_grass_dead, but this row is credited only through the later same-run saved-map metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing same-run saved-map tr_bubblewrap metadata after save makes this debug map-editor row non-green",
+      "next_step_gate": "do not credit the debug map-editor trap primitive unless audit_saved_map_tile_after_debug_map_editor_terrain_trap_radiation is green"
+    },
+    {
+      "kind": "debug_map_editor_place_radiation",
+      "label": "debug_map_editor_place_radiation_37_east",
+      "radiation": 37,
+      "target_keys": [
+        "right"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_saved_map_tile_after_debug_map_editor_terrain_trap_radiation",
+      "preconditions": "canonical dev-harness/McWilliams fixture remains loaded and focused; debug map-editor radiation primitive starts from the main map screen after the trap paint helper exits",
+      "expected_visible_fact": "debug map editor returns to the live map after selecting radiation value 37 and applying it to the target tile one square east",
+      "expected_immediate_state": "radiation value 37 should exist on the saved target tile one square east along with t_grass_dead and tr_bubblewrap, but this row is credited only through the later same-run saved-map metadata gate",
+      "failure_rule": "debug menu wrong-screen, stale runtime, or missing same-run saved-map radiation metadata after save makes this debug map-editor row non-green",
+      "next_step_gate": "do not credit the debug map-editor radiation primitive unless audit_saved_map_tile_after_debug_map_editor_terrain_trap_radiation is green"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_debug_map_editor_terrain_trap_radiation_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after debug map-editor terrain/trap/radiation placement and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_debug_map_editor_terrain_trap_radiation",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_map_editor_terrain_trap_radiation_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the debug map-editor terrain/trap/radiation save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the debug map-editor terrain/trap/radiation steps; confirmation must not be sent before this prompt is proven"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_debug_map_editor_terrain_trap_radiation",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_debug_map_editor_terrain_trap_radiation_save",
+      "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "next_step_gate": "saved-map terrain/trap/radiation metadata may be credited only when audit_player_save_mtime_after_debug_map_editor_terrain_trap_radiation_save is green",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_debug_map_editor_terrain_trap_radiation_save",
+      "changed_since_label": "audit_player_save_mtime_before_debug_map_editor_terrain_trap_radiation_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_map_editor_terrain_trap_radiation_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the debug map-editor terrain/trap/radiation save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed debug map-editor terrain/trap/radiation save, proving the following saved-map audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_map_tile_after_debug_map_editor_terrain_trap_radiation",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_grass_dead"
+      ],
+      "required_traps": [
+        "tr_bubblewrap"
+      ],
+      "required_radiation": [
+        37
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_debug_map_editor_terrain_trap_radiation_target_state",
+      "abort_reason": "saved-map metadata did not contain t_grass_dead, tr_bubblewrap, and radiation 37 at player-relative offset [1,0,0] after same-run debug map-editor save/writeback",
+      "expected_visible_fact": "same-run saved-map metadata contains t_grass_dead, tr_bubblewrap, and radiation 37 one tile east of the player after the debug map-editor primitive"
+    }
+  ]
+}
