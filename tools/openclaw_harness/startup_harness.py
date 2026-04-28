@@ -2299,6 +2299,190 @@ def audit_saved_weather_state(
     }
 
 
+def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
+    intelligence_map = site.get("intelligence_map")
+    leads = []
+    if isinstance(intelligence_map, dict):
+        raw_leads = intelligence_map.get("leads", [])
+        if isinstance(raw_leads, list):
+            for lead in raw_leads:
+                if not isinstance(lead, dict):
+                    continue
+                leads.append({
+                    "lead_id": lead.get("lead_id", ""),
+                    "kind": lead.get("kind", ""),
+                    "status": lead.get("status", ""),
+                    "target_id": lead.get("target_id", ""),
+                    "omt": lead.get("omt", []),
+                    "source_key": lead.get("source_key", ""),
+                    "source_summary": lead.get("source_summary", ""),
+                    "bounty": lead.get("bounty", 0),
+                    "threat": lead.get("threat", 0),
+                    "confidence": lead.get("confidence", 0),
+                    "target_alert": lead.get("target_alert", False),
+                    "scout_seen": lead.get("scout_seen", False),
+                    "last_outcome": lead.get("last_outcome", ""),
+                })
+    active_member_ids = site.get("active_member_ids", [])
+    if not isinstance(active_member_ids, list):
+        active_member_ids = []
+    members = site.get("members", [])
+    if not isinstance(members, list):
+        members = []
+    known_recent_marks = site.get("known_recent_marks", [])
+    if not isinstance(known_recent_marks, list):
+        known_recent_marks = []
+    return {
+        "site_id": site.get("site_id", ""),
+        "source_kind": site.get("source_kind", ""),
+        "site_kind": site.get("site_kind", ""),
+        "hostile_profile": site.get("hostile_profile", site.get("profile", "")),
+        "anchor": site.get("anchor", []),
+        "headcount": site.get("headcount", 0),
+        "member_count": len(members),
+        "active_group_id": site.get("active_group_id", ""),
+        "active_target_id": site.get("active_target_id", ""),
+        "active_target_omt": site.get("active_target_omt", []),
+        "active_job_type": site.get("active_job_type", ""),
+        "active_sortie_started_minutes": site.get("active_sortie_started_minutes", -1),
+        "active_sortie_local_contact_minutes": site.get("active_sortie_local_contact_minutes", -1),
+        "active_member_ids": active_member_ids,
+        "active_member_count": len(active_member_ids),
+        "remembered_target_or_mark": site.get("remembered_target_or_mark", ""),
+        "remembered_pressure": site.get("remembered_pressure", ""),
+        "known_recent_marks": known_recent_marks,
+        "known_recent_mark_count": len(known_recent_marks),
+        "lead_count": len(leads),
+        "leads": leads,
+    }
+
+
+def audit_saved_bandit_live_world_state(
+    world_dir: Path,
+    *,
+    required_profile: str = "",
+    required_site_id_contains: str = "",
+    required_active_group_id_contains: str = "",
+    required_active_target_id_prefix: str = "",
+    required_active_job_type: str = "",
+    required_min_active_member_ids: Optional[int] = None,
+    required_remembered_target_or_mark_prefix: str = "",
+    required_min_leads: Optional[int] = None,
+    required_lead_source_contains: str = "",
+    required_known_recent_mark_contains: str = "",
+) -> Dict[str, Any]:
+    """Read-only saved dimension-data audit for persisted bandit_live_world state."""
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise FileNotFoundError(f"World dimension data not found: {dimension_path}")
+
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise RuntimeError(f"Dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Dimension data is not a JSON object: {dimension_path}")
+    overmapbuffer = payload.get("overmapbuffer")
+    if not isinstance(overmapbuffer, dict):
+        raise RuntimeError(f"Dimension data lacks overmapbuffer object: {dimension_path}")
+    bandit_world = overmapbuffer.get("bandit_live_world")
+    if not isinstance(bandit_world, dict):
+        raise RuntimeError(f"Dimension data lacks overmapbuffer.bandit_live_world object: {dimension_path}")
+    raw_sites = bandit_world.get("sites", [])
+    if not isinstance(raw_sites, list):
+        raise RuntimeError(f"bandit_live_world.sites is not a list: {dimension_path}")
+
+    observed_sites = [summarize_bandit_live_world_site(site) for site in raw_sites if isinstance(site, dict)]
+
+    required_profile = str(required_profile or "").strip()
+    required_site_id_contains = str(required_site_id_contains or "").strip()
+    required_active_group_id_contains = str(required_active_group_id_contains or "").strip()
+    required_active_target_id_prefix = str(required_active_target_id_prefix or "").strip()
+    required_active_job_type = str(required_active_job_type or "").strip()
+    required_remembered_target_or_mark_prefix = str(required_remembered_target_or_mark_prefix or "").strip()
+    required_lead_source_contains = str(required_lead_source_contains or "").strip()
+    required_known_recent_mark_contains = str(required_known_recent_mark_contains or "").strip()
+
+    def site_matches(site: Dict[str, Any]) -> bool:
+        if required_profile and site.get("hostile_profile") != required_profile:
+            return False
+        if required_site_id_contains and required_site_id_contains not in str(site.get("site_id", "")):
+            return False
+        if required_active_group_id_contains and required_active_group_id_contains not in str(site.get("active_group_id", "")):
+            return False
+        if required_active_target_id_prefix and not str(site.get("active_target_id", "")).startswith(required_active_target_id_prefix):
+            return False
+        if required_active_job_type and site.get("active_job_type") != required_active_job_type:
+            return False
+        if required_min_active_member_ids is not None and int(site.get("active_member_count", 0) or 0) < required_min_active_member_ids:
+            return False
+        if required_remembered_target_or_mark_prefix and not str(site.get("remembered_target_or_mark", "")).startswith(required_remembered_target_or_mark_prefix):
+            return False
+        if required_min_leads is not None and int(site.get("lead_count", 0) or 0) < required_min_leads:
+            return False
+        if required_lead_source_contains:
+            leads = site.get("leads", [])
+            if not isinstance(leads, list) or not any(
+                required_lead_source_contains in str(lead.get("source_key", ""))
+                or required_lead_source_contains in str(lead.get("source_summary", ""))
+                or required_lead_source_contains in str(lead.get("lead_id", ""))
+                for lead in leads if isinstance(lead, dict)
+            ):
+                return False
+        if required_known_recent_mark_contains:
+            marks = site.get("known_recent_marks", [])
+            if not isinstance(marks, list) or not any(
+                required_known_recent_mark_contains in str(mark) for mark in marks
+            ):
+                return False
+        return True
+
+    required_fields = {
+        "required_profile": required_profile,
+        "required_site_id_contains": required_site_id_contains,
+        "required_active_group_id_contains": required_active_group_id_contains,
+        "required_active_target_id_prefix": required_active_target_id_prefix,
+        "required_active_job_type": required_active_job_type,
+        "required_min_active_member_ids": required_min_active_member_ids,
+        "required_remembered_target_or_mark_prefix": required_remembered_target_or_mark_prefix,
+        "required_min_leads": required_min_leads,
+        "required_lead_source_contains": required_lead_source_contains,
+        "required_known_recent_mark_contains": required_known_recent_mark_contains,
+    }
+    has_requirement = any(value not in (None, "", []) for value in required_fields.values())
+    matching_sites = [site for site in observed_sites if site_matches(site)]
+    missing_required_fields = [] if matching_sites or not has_requirement else [
+        key for key, value in required_fields.items() if value not in (None, "", [])
+    ]
+    if has_requirement and matching_sites:
+        status = "required_state_present"
+    elif has_requirement:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+
+    stat = dimension_path.stat()
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "dimension_path": str(dimension_path),
+        "dimension_mtime_ns": int(stat.st_mtime_ns),
+        "dimension_mtime_iso": datetime.fromtimestamp(float(stat.st_mtime)).isoformat(timespec="microseconds"),
+        "version_line": version_line,
+        "required_fields": required_fields,
+        "observed_site_count": len(observed_sites),
+        "observed_matching_site_count": len(matching_sites),
+        "matching_sites": matching_sites,
+        "observed_sites": observed_sites,
+        "missing_required_fields": missing_required_fields,
+        "status": status,
+    }
+
+
+
 def debug_selection_key_moves_highlight(selection_key: str) -> bool:
     normalized = str(selection_key or "").strip().lower()
     return normalized in {
@@ -4014,6 +4198,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
         if kind == "seed_overmap_special_near_player":
             special_id = str(raw.get("special_id", "")).strip()
+            source_special_id = str(raw.get("source_special_id", special_id)).strip() or special_id
             if not special_id:
                 raise SystemExit(f"Fixture save_transforms[{index}] needs special_id in {manifest_path}")
             try:
@@ -4037,6 +4222,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "kind": kind,
                 "player_save": player_save,
                 "special_id": special_id,
+                "source_special_id": source_special_id,
                 "site_index": site_index,
                 "offset_omt": offset_omt,
             })
@@ -4556,6 +4742,7 @@ def upsert_special_placement(
 def apply_seed_overmap_special_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     special_id = str(transform.get("special_id", "")).strip()
+    source_special_id = str(transform.get("source_special_id", special_id)).strip() or special_id
     try:
         requested_site_index = int(transform.get("site_index", 1) or 1)
     except (TypeError, ValueError):
@@ -4581,12 +4768,12 @@ def apply_seed_overmap_special_near_player_transform(world_dir: Path, transform:
     if not target_overmap_path.exists():
         raise SystemExit(f"Target overmap file not found for nearby seeded special: {target_overmap_path}")
 
-    placements = load_bandit_special_placements(repo_root(), world_dir, {special_id})
-    matching = [placement for placement in placements if placement.special_id == special_id]
+    placements = load_bandit_special_placements(repo_root(), world_dir, {source_special_id})
+    matching = [placement for placement in placements if placement.special_id == source_special_id]
     if requested_site_index > len(matching):
         raise SystemExit(
-            f"Fixture seed-overmap-special-near-player requested {special_id} site_index={requested_site_index}, "
-            f"but only found {len(matching)} matching placements in {world_dir}"
+            f"Fixture seed-overmap-special-near-player requested source {source_special_id} site_index={requested_site_index} "
+            f"for target {special_id}, but only found {len(matching)} matching placements in {world_dir}"
         )
     source_placement = matching[requested_site_index - 1]
     source_points = list(source_placement.points)
@@ -4676,6 +4863,7 @@ def apply_seed_overmap_special_near_player_transform(world_dir: Path, transform:
         "world": world_dir.name,
         "player_save": player_save_name,
         "special_id": special_id,
+        "source_special_id": source_special_id,
         "site_index": requested_site_index,
         "source_overmap_file": source_placement.overmap_file,
         "source_anchor_omt": list(source_anchor),
@@ -5600,6 +5788,87 @@ def execute_probe_steps(
                 "selection_path": target_keys + ["q", str(radiation), "enter", "enter"],
                 "spawn_target": "map_editor_target_tile",
             })
+        elif kind == "audit_saved_bandit_live_world_state":
+            raw_required_min_active_member_ids = step.get("required_min_active_member_ids", step.get("required_active_member_count_min"))
+            required_min_active_member_ids: Optional[int]
+            if raw_required_min_active_member_ids is None or str(raw_required_min_active_member_ids).strip() == "":
+                required_min_active_member_ids = None
+            else:
+                required_min_active_member_ids = int(raw_required_min_active_member_ids)
+            raw_required_min_leads = step.get("required_min_leads", step.get("required_lead_count_min"))
+            required_min_leads: Optional[int]
+            if raw_required_min_leads is None or str(raw_required_min_leads).strip() == "":
+                required_min_leads = None
+            else:
+                required_min_leads = int(raw_required_min_leads)
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_bandit_live_world_state(
+                    world_dir,
+                    required_profile=str(step.get("required_profile", "") or "").strip(),
+                    required_site_id_contains=str(step.get("required_site_id_contains", "") or "").strip(),
+                    required_active_group_id_contains=str(step.get("required_active_group_id_contains", "") or "").strip(),
+                    required_active_target_id_prefix=str(step.get("required_active_target_id_prefix", "") or "").strip(),
+                    required_active_job_type=str(step.get("required_active_job_type", "") or "").strip(),
+                    required_min_active_member_ids=required_min_active_member_ids,
+                    required_remembered_target_or_mark_prefix=str(
+                        step.get("required_remembered_target_or_mark_prefix", "") or ""
+                    ).strip(),
+                    required_min_leads=required_min_leads,
+                    required_lead_source_contains=str(step.get("required_lead_source_contains", "") or "").strip(),
+                    required_known_recent_mark_contains=str(
+                        step.get("required_known_recent_mark_contains", "") or ""
+                    ).strip(),
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_profile": str(step.get("required_profile", "") or "").strip(),
+                    "required_site_id_contains": str(step.get("required_site_id_contains", "") or "").strip(),
+                    "required_active_group_id_contains": str(step.get("required_active_group_id_contains", "") or "").strip(),
+                    "required_active_target_id_prefix": str(step.get("required_active_target_id_prefix", "") or "").strip(),
+                    "required_active_job_type": str(step.get("required_active_job_type", "") or "").strip(),
+                    "required_min_active_member_ids": required_min_active_member_ids,
+                    "required_min_leads": required_min_leads,
+                    "required_known_recent_mark_contains": str(
+                        step.get("required_known_recent_mark_contains", "") or ""
+                    ).strip(),
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "metadata": metadata,
+                "action_description": "read saved dimension-data bandit_live_world metadata and require active site/profile/target/signal-state persistence",
+                "expected_immediate_state": "saved bandit_live_world metadata contains the required active group/profile/target/signal state before persistence proof may continue",
+                "failure_rule": "missing required saved bandit_live_world metadata or unreadable dimension data makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(
+                            step.get(
+                                "abort_verdict",
+                                "blocked_untrusted_saved_bandit_live_world_state",
+                            )
+                        ),
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved bandit_live_world metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
         elif kind == "audit_saved_weather_state":
             required_weather_id = str(step.get("required_weather_id", step.get("weather_id", "")) or "").strip()
             raw_required_temperature = step.get("required_temperature_f", step.get("temperature_f"))
@@ -6566,7 +6835,7 @@ def probe_proof_classification(
     step_ledger_summary: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     step_count = len(step_reports)
-    matched_artifacts = any(entry.get("lines") for entry in matches_by_pattern)
+    matched_artifacts = bool(matches_by_pattern) and all(entry.get("lines") for entry in matches_by_pattern)
     startup_status = str(startup_classification.get("status", "unclassified"))
     startup_verdict = str(startup_classification.get("verdict", "unclassified"))
     startup_feature_gate = str(startup_classification.get("feature_gate", startup_verdict))
@@ -7537,8 +7806,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         verdict = "blocked_step_local_proof"
     elif step_ledger_summary["status"] == "yellow_step_local_proof_incomplete":
         verdict = "yellow_step_local_proof_incomplete"
-    elif any(entry["lines"] for entry in matches_by_pattern):
+    elif matches_by_pattern and all(entry["lines"] for entry in matches_by_pattern):
         verdict = "artifacts_matched"
+    elif any(entry["lines"] for entry in matches_by_pattern):
+        verdict = "inconclusive_partial_artifact_match"
     elif not artifact_text.strip():
         verdict = "inconclusive_no_new_artifacts"
 

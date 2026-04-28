@@ -1,0 +1,25 @@
+{
+  "name": "cannibal_live_world_night_local_contact_pack_v0_2026-04-28",
+  "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Cannibal live-world night local-contact footing for audited product-proof scenario 2: reuse the McWilliams/Basecamp playtest-kit save, set game time to a night 30-minute dispatch cadence boundary, and copy an existing camp-shaped hostile-site footprint as a nearby cannibal_camp. The site is deliberately direct/local-contact range so one proven player action can exercise real dispatch plus the local gate's darkness/pack/contact attack path without waiting through overmap travel.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5266800
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

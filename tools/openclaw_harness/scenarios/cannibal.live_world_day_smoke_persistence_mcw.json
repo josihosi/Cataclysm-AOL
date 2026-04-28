@@ -1,0 +1,109 @@
+{
+  "name": "cannibal.live_world_day_smoke_persistence_mcw",
+  "description": "Scenario 6 save/writeback half for cannibal camp night-raid live matrix: create a real daylight smoke cannibal stalk/dispatch active group through the live signal/local-gate path, then prove a guarded save writes the active cannibal group/profile/target/lead state into dimension_data.gsav. Attempt-2 proof deliberately gates the save on saved-file mtime rather than OCR because the ASCIITiles save-prompt capture was visually captured but OCR-garbled in attempt 1. Frau attempt-3 guidance: live smoke lead-state for this packet is persisted `known_recent_marks`, not `intelligence_map.leads`.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "cannibal_live_world_day_smoke_v0_2026-04-28",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world signal scan: signal_packet=yes",
+    "smoke_packets=1",
+    "matched_sites=1 refreshed_sites=1",
+    "local_gate site=overmap_special:cannibal_camp@",
+    "active_job=stalk",
+    "profile=cannibal_camp",
+    "posture=hold_off",
+    "pack_size=2",
+    "darkness_or_concealment=no",
+    "shakedown=no",
+    "combat_forward=no",
+    "signal_packet=live_smoke@"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_day_smoke_persistence_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for McWilliams cannibal day-smoke persistence fixture; this is startup/load plus before-action screen proof, not persistence closure by itself",
+      "failure_rule": "If the gameplay screen is not visible after load, later smoke/dispatch/save artifacts cannot be credited."
+    },
+    {
+      "kind": "press",
+      "label": "pass_one_turn_to_create_active_cannibal_smoke_group",
+      "keys": [
+        "."
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "one player pass-turn input has completed on the daylight smoke fixture; feature credit depends on same-run debug artifact showing cannibal_camp active_job=stalk, pack_size=2, signal_packet=live_smoke, shakedown=no, and combat_forward=no",
+      "failure_rule": "If the pass-turn input is unproven or the same-run artifact lacks the cannibal smoke local-gate line, persistence save proof cannot be credited."
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_cannibal_persistence_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after active cannibal group creation and before the guarded save/writeback"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_active_cannibal_smoke_group",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "a save-and-quit prompt request is issued after the active cannibal smoke group is created; the prompt screenshot is recorded, and trust is deferred to the following uppercase-Y save/writeback mtime gate because OCR is unreliable on this tiny ASCIITiles prompt",
+      "failure_rule": "If the subsequent uppercase-Y confirmation does not advance the saved-player mtime, this prompt/request row cannot be credited."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_active_cannibal_smoke_group",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_cannibal_persistence_save",
+      "failure_rule": "uppercase-Y confirmation is trusted only if audit_player_save_mtime_after_cannibal_persistence_save proves same-run writeback; otherwise this row is red by dependency",
+      "next_step_gate": "saved bandit_live_world metadata may be credited only when audit_player_save_mtime_after_cannibal_persistence_save is green",
+      "expected_visible_fact": "uppercase Y follows the recorded save prompt/request so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_cannibal_persistence_save",
+      "changed_since_label": "audit_player_save_mtime_before_cannibal_persistence_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_cannibal_persistence_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the cannibal persistence save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed cannibal persistence save, proving the following saved dimension-data audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_bandit_live_world_after_cannibal_persistence_save",
+      "required_profile": "cannibal_camp",
+      "required_site_id_contains": "cannibal_camp@",
+      "required_active_group_id_contains": "cannibal_camp@",
+      "required_active_target_id_prefix": "player@",
+      "required_active_job_type": "stalk",
+      "required_min_active_member_ids": 2,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_saved_cannibal_active_group_state",
+      "abort_reason": "saved dimension-data bandit_live_world metadata did not contain the active cannibal smoke group/profile/target/member plus known_recent_marks signal state after same-run save/writeback",
+      "expected_visible_fact": "same-run saved dimension-data metadata contains a cannibal_camp active stalk group with at least two active members, player target, and persisted known_recent_marks live_smoke signal state; intelligence_map.leads are not claimed for this packet",
+      "required_known_recent_mark_contains": "live_smoke@"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe cannibal.live_world_day_smoke_persistence_mcw",
+  "evidence_contract": {
+    "claim": "a real live cannibal smoke/stalk active group saves active profile/member/target state plus known_recent_marks live-smoke signal state through the normal guarded save/writeback path",
+    "load_only_verdict": "load proof only / inconclusive for cannibal persistence",
+    "failure_rule": "No persistence credit if startup/load, active smoke group artifact, save request/confirmation ledger, uppercase-Y writeback mtime, or saved bandit_live_world active-state metadata with known_recent_marks live_smoke signal state is missing or non-green. Prompt OCR is not used as the guard for this scenario because the ASCIITiles prompt screenshot can OCR-garble; writeback mtime is the trust gate. intelligence_map.leads=[] is out of scope for this cannibal packet and must not be credited as camp-map lead proof. Post-load runtime continuation remains a separate reload proof if not paired with a follow-up no-fixture load."
+  }
+}
