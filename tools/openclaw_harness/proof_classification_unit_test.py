@@ -95,6 +95,20 @@ class ProbeProofClassificationTest(unittest.TestCase):
         self.assertEqual(result["status"], "red")
         self.assertFalse(result["feature_proof"])
 
+    def test_yellow_wait_ledger_keeps_artifact_match_non_feature_proof(self) -> None:
+        result = probe_proof_classification(
+            verdict="artifacts_matched",
+            startup_classification=startup(clean=True),
+            step_reports=[{"label": "long_wait"}],
+            artifact_patterns=["claim scoped line"],
+            matches_by_pattern=matches(),
+            wait_step_summary={"status": "yellow_wait_step_unverified"},
+            step_ledger_summary={"status": "green_step_local_proof"},
+        )
+
+        self.assertEqual(result["status"], "yellow")
+        self.assertFalse(result["feature_proof"])
+
     def test_feature_proof_requires_clean_startup_green_steps_and_matched_artifact(self) -> None:
         green_ledger = summarize_probe_step_ledger([
             {"primitive_step": "guarded_step", "verdict": "green_step_expected_fact_present"}
