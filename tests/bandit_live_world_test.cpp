@@ -786,6 +786,9 @@ TEST_CASE( "bandit_live_world_keeps_cannibal_camp_separate_from_bandit_camp_owne
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_camp_leader", character_id( 762 ),
              tripoint_abs_ms( 1704, 1944, 0 ), std::string( "cannibal_camp" ), std::nullopt,
              special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter", character_id( 763 ),
+             tripoint_abs_ms( 1705, 1944, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
 
     REQUIRE( world.sites.size() == 2 );
     bandit_live_world::site_record &bandit_camp =
@@ -798,7 +801,7 @@ TEST_CASE( "bandit_live_world_keeps_cannibal_camp_separate_from_bandit_camp_owne
     CHECK( cannibal_camp.site_kind == bandit_live_world::owned_site_kind::cannibal_camp );
     CHECK( cannibal_camp.profile == bandit_live_world::hostile_site_profile::cannibal_camp );
     CHECK( bandit_camp.dispatchable_member_capacity() == 1 );
-    CHECK( cannibal_camp.dispatchable_member_capacity() == 1 );
+    CHECK( cannibal_camp.dispatchable_member_capacity() == 2 );
     REQUIRE( cannibal_camp.footprint.size() == 4 );
     CHECK( cannibal_camp.footprint.front() == tripoint_abs_omt( 70, 80, 0 ) );
     CHECK( cannibal_camp.footprint.back() == tripoint_abs_omt( 71, 81, 0 ) );
@@ -814,13 +817,18 @@ TEST_CASE( "bandit_live_world_keeps_cannibal_camp_separate_from_bandit_camp_owne
                                                "player@72,80,0" );
     REQUIRE( cannibal_plan.valid );
     CHECK( cannibal_plan.profile == bandit_live_world::hostile_site_profile::cannibal_camp );
+    CHECK( cannibal_plan.entry.job_type == bandit_dry_run::job_template::stalk );
     CHECK( cannibal_plan.group.retreat_bias == 3 );
     CHECK( cannibal_plan.group.return_clock == 3 );
     CHECK( cannibal_plan.group.remaining_pressure ==
            bandit_pursuit_handoff::remaining_return_pressure_state::tight );
-    REQUIRE( cannibal_plan.notes.size() >= 2 );
-    CHECK( cannibal_plan.notes[cannibal_plan.notes.size() - 2].find( "hungry camp pressure" ) !=
-           std::string::npos );
+    REQUIRE( cannibal_plan.notes.size() >= 3 );
+    std::string cannibal_plan_notes;
+    for( const std::string &note : cannibal_plan.notes ) {
+        cannibal_plan_notes += note + "\n";
+    }
+    CHECK( cannibal_plan_notes.find( "hungry camp pressure" ) != std::string::npos );
+    CHECK( cannibal_plan_notes.find( "pack_size 2" ) != std::string::npos );
     REQUIRE( bandit_live_world::apply_dispatch_plan( cannibal_camp, cannibal_plan ) );
 
     std::ostringstream out;
@@ -849,11 +857,116 @@ TEST_CASE( "bandit_live_world_keeps_cannibal_camp_separate_from_bandit_camp_owne
     CHECK( loaded_cannibal->profile == bandit_live_world::hostile_site_profile::cannibal_camp );
     CHECK( loaded_cannibal->active_group_id == "overmap_special:cannibal_camp@70,80,0#dispatch" );
     CHECK( loaded_cannibal->active_target_id == "player@72,80,0" );
-    REQUIRE( loaded_cannibal->active_member_ids == std::vector<character_id>( { character_id( 760 ) } ) );
-    CHECK( loaded_cannibal->find_member( character_id( 761 ) )->state ==
-           bandit_live_world::member_state::at_home );
+    REQUIRE( loaded_cannibal->active_member_ids == std::vector<character_id>( { character_id( 760 ),
+             character_id( 761 ) } ) );
     CHECK( loaded_cannibal->find_member( character_id( 762 ) )->state ==
            bandit_live_world::member_state::at_home );
+    CHECK( loaded_cannibal->find_member( character_id( 763 ) )->state ==
+           bandit_live_world::member_state::at_home );
+}
+
+TEST_CASE( "bandit_live_world_blocks_lone_cannibal_pack_pressure", "[bandit][live_world][profile][cannibal]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter", character_id( 770 ),
+             tripoint_abs_ms( 1680, 1920, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_butcher", character_id( 771 ),
+             tripoint_abs_ms( 1681, 1920, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_camp_leader", character_id( 772 ),
+             tripoint_abs_ms( 1704, 1944, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    REQUIRE( site.profile == bandit_live_world::hostile_site_profile::cannibal_camp );
+    CHECK( site.dispatchable_member_capacity() == 1 );
+
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 72, 80, 0 ),
+                "player@72,80,0" );
+    REQUIRE( plan.valid );
+    CHECK( plan.entry.job_type == bandit_dry_run::job_template::scout );
+    REQUIRE( plan.member_ids == std::vector<character_id>( { character_id( 770 ) } ) );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    CHECK( site.active_job_type == "scout" );
+
+    bandit_live_world::local_gate_input input;
+    input.local_threat = 1;
+    input.local_opportunity = 3;
+    input.local_contact_established = true;
+    input.darkness_or_concealment = true;
+    const bandit_live_world::local_gate_decision decision =
+        bandit_live_world::choose_local_gate_posture( site, input );
+    CHECK( decision.valid );
+    CHECK( decision.posture == bandit_live_world::local_gate_posture::probe );
+    CHECK_FALSE( decision.combat_forward );
+
+    site.active_job_type = "raid";
+    const bandit_live_world::local_gate_decision disguised_attack_decision =
+        bandit_live_world::choose_local_gate_posture( site, input );
+    CHECK( disguised_attack_decision.valid );
+    CHECK( disguised_attack_decision.posture == bandit_live_world::local_gate_posture::probe );
+    CHECK_FALSE( disguised_attack_decision.combat_forward );
+}
+
+TEST_CASE( "bandit_live_world_darkness_can_turn_cannibal_pack_contact_into_attack", "[bandit][live_world][profile][cannibal]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter", character_id( 780 ),
+             tripoint_abs_ms( 1680, 1920, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_butcher", character_id( 781 ),
+             tripoint_abs_ms( 1681, 1920, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_camp_leader", character_id( 782 ),
+             tripoint_abs_ms( 1704, 1944, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter", character_id( 783 ),
+             tripoint_abs_ms( 1705, 1944, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 72, 80, 0 ),
+                "player@72,80,0" );
+    REQUIRE( plan.valid );
+    CHECK( plan.entry.job_type == bandit_dry_run::job_template::stalk );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    REQUIRE( site.active_member_ids.size() == 2 );
+
+    bandit_live_world::local_gate_input daylight;
+    daylight.local_threat = 3;
+    daylight.local_opportunity = 1;
+    daylight.local_contact_established = true;
+    daylight.basecamp_or_camp_scene = true;
+    const bandit_live_world::local_gate_decision daylight_decision =
+        bandit_live_world::choose_local_gate_posture( site, daylight );
+    CHECK( daylight_decision.valid );
+    CHECK( daylight_decision.posture == bandit_live_world::local_gate_posture::hold_off );
+    CHECK_FALSE( daylight_decision.combat_forward );
+
+    bandit_live_world::local_gate_input dark = daylight;
+    dark.darkness_or_concealment = true;
+    const bandit_live_world::local_gate_decision dark_decision =
+        bandit_live_world::choose_local_gate_posture( site, dark );
+    CHECK( dark_decision.valid );
+    CHECK( dark_decision.posture == bandit_live_world::local_gate_posture::attack_now );
+    CHECK( dark_decision.combat_forward );
+    const std::string dark_report = bandit_live_world::render_local_gate_report( site, dark,
+                                    dark_decision );
+    CHECK( dark_report.find( "profile=cannibal_camp" ) != std::string::npos );
+    CHECK( dark_report.find( "pack_size=2" ) != std::string::npos );
+    CHECK( dark_report.find( "darkness_or_concealment=yes" ) != std::string::npos );
+    CHECK( dark_report.find( "posture=attack_now" ) != std::string::npos );
+
+    bandit_live_world::local_gate_input high_threat = dark;
+    high_threat.local_threat = 8;
+    high_threat.local_opportunity = 0;
+    const bandit_live_world::local_gate_decision high_threat_decision =
+        bandit_live_world::choose_local_gate_posture( site, high_threat );
+    CHECK_FALSE( high_threat_decision.valid );
+    CHECK( high_threat_decision.posture == bandit_live_world::local_gate_posture::abort );
 }
 
 TEST_CASE( "bandit_live_world_writeback_shrinks_headcount_and_future_dispatch_capacity", "[bandit][live_world]" )
@@ -1120,6 +1233,9 @@ TEST_CASE( "bandit_live_world_makes_cannibal_camp_attack_instead_of_extort", "[b
     REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_camp_leader", character_id( 913 ),
              tripoint_abs_ms( 1704, 1944, 0 ), std::string( "cannibal_camp" ), std::nullopt,
              special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "cannibal_hunter", character_id( 914 ),
+             tripoint_abs_ms( 1705, 1944, 0 ), std::string( "cannibal_camp" ), std::nullopt,
+             special_lookup ) );
 
     bandit_live_world::site_record &site = world.sites.front();
     REQUIRE( site.profile == bandit_live_world::hostile_site_profile::cannibal_camp );
@@ -1127,6 +1243,7 @@ TEST_CASE( "bandit_live_world_makes_cannibal_camp_attack_instead_of_extort", "[b
         bandit_live_world::plan_site_dispatch( site, tripoint_abs_omt( 72, 80, 0 ),
                 "player@72,80,0" );
     REQUIRE( plan.valid );
+    CHECK( plan.entry.job_type == bandit_dry_run::job_template::stalk );
     REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
 
     bandit_live_world::local_gate_input favorable_input;
@@ -1144,6 +1261,8 @@ TEST_CASE( "bandit_live_world_makes_cannibal_camp_attack_instead_of_extort", "[b
         bandit_live_world::render_local_gate_report( site, favorable_input, favorable_decision );
     CHECK( favorable_report.find( "profile=cannibal_camp" ) != std::string::npos );
     CHECK( favorable_report.find( "posture=attack_now" ) != std::string::npos );
+    CHECK( favorable_report.find( "pack_size=2" ) != std::string::npos );
+    CHECK( favorable_report.find( "darkness_or_concealment=no" ) != std::string::npos );
     CHECK( favorable_report.find( "shakedown=no" ) != std::string::npos );
     CHECK( favorable_report.find( "attack-to-kill" ) != std::string::npos );
 

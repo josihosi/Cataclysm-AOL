@@ -71,9 +71,34 @@ Notes:
 
 ---
 
+## Cannibal camp night-raid behavior packet v0
+
+Status: ACTIVE / DETERMINISTIC SUBSTRATE LANDED
+
+Success state:
+- [x] Deterministic coverage proves cannibal planned attacks/raids require a meaningful pack size under ordinary conditions, while scout/probe behavior may remain smaller only when explicitly classified that way.
+- [x] Deterministic coverage proves a one-dispatchable-member cannibal camp does not perform an ordinary full attack/raid against a defended target.
+- [x] Deterministic/code coverage proves smoke/light/human-routine nearby leads are interpreted as scout/probe or pack-dispatch pressure rather than instant combat where that substrate is available.
+- [x] Deterministic coverage proves darkness/concealment can change a cannibal local-gate outcome from stalk/probe/hold to attack when the rest of the scene is favorable.
+- [x] Deterministic coverage proves daylight/no-cover and high-threat cases still delay, hold, probe, stalk, or abort instead of making cannibals suicidal.
+- [x] Deterministic coverage proves cannibal stalk/approach sight-avoidance reacts to exposure with bounded hold-off/abort rather than visible beeline pressure.
+- [x] Bandit shakedown/pay/fight behavior still works unchanged and cannibal shakedown remains blocked.
+- [x] Reports name lead source/notes where available, `profile=cannibal_camp`, pack size/strength, darkness/concealment input, sight/exposure state, posture, and no-shakedown/attack reason.
+- [x] Save/load proof preserves cannibal roster, active member IDs, target state, and profile after a multi-member dispatch.
+- [ ] Any later harness/product proof reaches the real dispatch/local-contact path and does not close from evaluator-only tests.
+
+Notes:
+- Deterministic/code substrate landed in `src/bandit_live_world.cpp`, `src/bandit_live_world.h`, and `tests/bandit_live_world_test.cpp`: pack-size dispatch, smoke/light nearby-lead classification, darkness/concealment local-gate input, exposure hold-off, no-extort/no-shakedown reporting, high-threat abort, and multi-member save/load proof.
+- Evidence: `git diff --check`; `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][cannibal]" --success`; `./tests/cata_test "[bandit][live_world][approach_gate]" --success`; `./tests/cata_test "[bandit][live_world]"`.
+- Imagination source lives at `doc/cannibal-camp-night-raid-imagination-source-of-truth-2026-04-28.md`.
+- Code audit lives at `doc/cannibal-camp-night-raid-code-audit-2026-04-28.md`.
+- Canonical contract lives at `doc/cannibal-camp-night-raid-behavior-packet-v0-2026-04-28.md`.
+
+---
+
 ## C-AOL harness trust audit + proof-freeze packet v0
 
-Status: ACTIVE / GREENLIT PROCESS AUDIT
+Status: HELD / CHECKPOINTED PROCESS AUDIT
 
 Success state:
 - [x] A full harness-surface inventory exists and names each current primitive/scenario, its proof artifact, and its known blind spots: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.

@@ -1,4 +1,4 @@
-# Andi handoff: C-AOL harness trust audit + proof-freeze v0
+# Andi handoff: Cannibal camp night-raid behavior packet v0
 
 ## Canon anchors
 
@@ -6,98 +6,37 @@
 - active queue: `TODO.md`
 - validation ledger: `TESTING.md`
 - success ledger: `SUCCESS.md`
-- active contract: `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`
-- actual-playtest stack: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`
-- inventory checkpoint: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`
-- Frau-reviewed proof-freeze matrix: `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`
-- current harness entry point: `tools/openclaw_harness/startup_harness.py`
+- imagination source: `doc/cannibal-camp-night-raid-imagination-source-of-truth-2026-04-28.md`
+- code audit / gap map: `doc/cannibal-camp-night-raid-code-audit-2026-04-28.md`
+- canonical contract: `doc/cannibal-camp-night-raid-behavior-packet-v0-2026-04-28.md`
 
-## Current active lane
+## Current state
 
-Active lane remains `C-AOL harness trust audit + proof-freeze v0`.
+`Cannibal camp pack-size + smoke-light/darkness/sight-avoid substrate v0` is landed as deterministic/code substrate only. It is not live/harness night-raid product proof.
 
-Do **not** steer back into the older `C-AOL debug-proof finish stack v0`; that stack reached its honest Schani-review/implemented-but-unproven boundaries where needed. Current work is a primitive trust audit and actual-playtest proof discipline: the harness must not turn load-and-close, wrong-screen key macros, stale runtime, missing metadata, or stale save state into feature proof.
+The prior `C-AOL harness trust audit + proof-freeze v0` lane is checkpointed/held: its proof-freeze matrix and primitive evidence are preserved, and remaining product-playtest blockers live in the actual-playtest stack rather than keeping that process lane active.
 
-## Current state boundary
+## What changed
 
-The old blockers `blocked_untrusted_brazier_deploy_selector`, `blocked_untrusted_post_action_save_writeback`, and the generic fuel save/writeback loop are obsolete as next targets. Do **not** restart from `20260427_203847`, `20260427_214207`, or the post-fuel save prompt variants just to rediscover them.
+- `src/bandit_live_world.cpp` now applies profile-specific cannibal pack pressure: stalk/attack-style pressure requires a multi-member cannibal group after reserve, one-dispatchable-member pressure stays scout/probe instead of full attack, smoke/light nearby leads classify as scout/stalk/dispatch pressure rather than instant combat, and reports `pack_size` / `available_after_reserve`.
+- `src/bandit_live_world.h` adds `local_gate_input::darkness_or_concealment`.
+- Cannibal local-gate decisions now use darkness/concealment as a bounded attack-window modifier, require pack contact for `attack_now`, degrade lone contact to `probe`, hold off after recent camp-edge exposure, preserve daylight/no-cover hold-off, and still abort under overwhelming threat.
+- Reports now include lead source/notes where available, `pack_size`, and `darkness_or_concealment` alongside existing profile, exposure, posture, shakedown, and note text.
+- `tests/bandit_live_world_test.cpp` now covers multi-member cannibal dispatch/save-load, lone cannibal pack-pressure block, manual lone scout/probe non-attack, daylight versus darkness local-gate split, high-threat abort, cannibal no-extort, and bandit approach-gate regression.
 
-Run `.userdata/dev-harness/harness_runs/20260427_222635/` is the preserved all-green scoped deploy primitive proof:
+## Evidence
 
-- selected `brazier` is proven;
-- `Deploy where?` is proven;
-- right/east direction consumption is proven;
-- case-sensitive save prompt is proven before uppercase `Y`;
-- saved-player mtime advances from `1777321610298746508` to `1777321628903849060`;
-- saved east tile `[3368,994,0]` contains `furniture=["f_brazier"]`;
-- step ledger is 16/16 green with `step_ledger_summary.status=green_step_local_proof`, `evidence_class=feature-path`, `feature_proof=true` for this scoped deploy primitive only.
+- `git diff --check`
+- `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`
+- `make -j4 tests LINTJSON=0 ASTYLE=0`
+- `./tests/cata_test "[bandit][live_world][cannibal]"` — 110 assertions / 4 test cases
+- `./tests/cata_test "[bandit][live_world][approach_gate]"` — 36 assertions / 1 test case
+- `./tests/cata_test "[bandit][live_world]"` — 672 assertions / 29 test cases
 
-Fuel continuation reached its current honest boundary at `.userdata/dev-harness/harness_runs/20260427_232220/`: `blocked_untrusted_drop_filter_or_inventory_visibility`.
+## Remaining boundary
 
-That means filtered Multidrop has no visible/selectable `typeid="2x4"` / plank fuel row before selection keys run. Therefore no exact count selection, confirm-return, post-fuel save request, post-fuel mtime/writeback, current-tile `2x4`, lighter, or final `fd_fire` proof is credited. Keep the fuel scenario as red/non-green audit evidence unless the fixture/live fuel availability primitive materially changes or Josef returns manual evidence.
+Do not claim live night-raid product behavior yet. A later promoted slice still needs real time/light/visibility wiring and a proof-freeze harness/product scenario that reaches actual dispatch/local-contact with a multi-member cannibal night attack and no shakedown surface.
 
-This is **not** real-fire proof and not bandit product proof. It is deploy proof plus a named fuel blocker. Do not loop fuel/lighter/fire macros from here.
+## Recommended next action
 
-## Recommended next evidence target
-
-The scoped primitive set below is already green and should not be re-spent as proof budget:
-
-- `.userdata/dev-harness/harness_runs/20260428_011205/`: debug item spawn -> save/writeback -> same-run saved-player `toothbrush_electric=1` metadata.
-- `.userdata/dev-harness/harness_runs/20260428_021800/`: debug monster spawn -> one-tile-east target -> save/writeback -> same-run saved-player `active_monsters` with `mon_squirrel` at offset `[1,0,0]`.
-- `.userdata/dev-harness/harness_runs/20260428_032724/`: saved-overmap NPC baseline -> debug follower spawn -> save/writeback -> saved-overmap `npcs` delta `+1` with a new nearby `your_followers` NPC at attitude `3`.
-- `.userdata/dev-harness/harness_runs/20260428_024606/`: debug force temperature -> save/writeback -> saved-dimension weather metadata with effective/forced `123F`.
-- `.userdata/dev-harness/harness_runs/20260428_034421/`: debug map-editor field/furniture paint one tile east -> save/writeback -> saved-map offset `[1,0,0]` with `f_chair` plus `fd_smoke`.
-- `.userdata/dev-harness/harness_runs/20260428_041845/`: debug map-editor terrain/trap/radiation paint one tile east -> save/writeback -> saved-map offset `[1,0,0]` with `t_grass_dead`, `tr_bubblewrap`, and radiation `37`.
-- `.userdata/dev-harness/harness_runs/20260428_014348/`: nearby interaction menu -> `Talk to whom` -> highlighted-row `enter` -> NPC dialogue response surface (`Your response`).
-- `.userdata/dev-harness/harness_runs/20260428_014825/`: visible `[rules] ... work together` response -> `Rules for your follower`.
-- `.userdata/dev-harness/harness_runs/20260428_044855/`: follower-rules UI hotkey `b` toggles the current McWilliams follow-distance row from about four paces to about two paces, then guarded uppercase-`Y` save/writeback advances mtime and same-run saved-overmap NPC metadata records `rule_follow_distance_2=true` plus matching override bits.
-
-Do **not** steer back into those already-credited primitives. Follower rules toggle proof is already frozen as scoped UI+metadata/process evidence, not downstream package product behavior.
-
-Since this handoff was written, `Bandit empty-camp retirement audit-mode packet v0` has also reached deterministic-code-green support evidence at commit `6e3988c5f6`: the retirement predicate requires both an empty home/spawn side and no active dispatch/outside pressure, with negative tests for each half. Do not reopen it as a live debug-kill proof.
-
-There is no current unblocked next target in this handoff. Next work must wait for one explicit Schani/Josef-named seam or decision, for example:
-
-1. a new harness proof-freeze primitive/seam to audit;
-2. an explicit fuel fixture/live-availability repair attempt greenlight;
-3. an explicit switch to the next release/posture lane.
-
-Keep the same proof burden when a new target is named: scenario contract names the exact claim, step ledger guards the GUI/key path, and same-run metadata or claim-scoped artifacts prove the target state. Scoped navigation/process proof remains scoped; do not inflate it into package product behavior.
-
-Smart Zone Manager live layout verification is no longer the next target. It is implemented-but-unproven in Josef's playtest package:
-
-- the prior bounded attempts exhausted the Smart Zone live/UI budget without generated-layout proof;
-- the current-runtime follow-up `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` is startup/load red only;
-- OCR on `failure_timeout.png` says `Dunn has no characters to load`;
-- no Smart Zone feature steps ran and no product layout proof is credited.
-
-Do **not** run another Smart Zone clean-profile probe unless Schani/Josef explicitly reopen it after a materially repaired loadable-profile/UI primitive. Do not reuse the contaminated old McWilliams Smart Zone macro as closure proof.
-
-Fire/player-lit bandit signal work stays blocked behind fuel. Do not continue to lighter/final `fd_fire` until a post-fuel same-run save/writeback advances mtime and saved-map metadata proves current-tile `f_brazier` plus exact `2x4`.
-
-## Proof rules to keep in view
-
-- Load/readiness/close is `startup/load`, with `feature_proof=false`.
-- `artifacts_matched` is not feature proof unless startup is clean, every step-local ledger row is green, wait ledgers are not yellow/blocked, and the matched artifact is **claim-scoped**: named in the scenario contract as evidence for that exact claim, not just some generic debug line.
-- The current classifier is not a metadata-only feature-proof mode. All-green metadata rows without a claim-scoped artifact match remain process/metadata evidence unless a later harness change adds an explicit metadata-only proof classification.
-- Green ledger rows are necessary, not magical. Raw `press`/`type` steps only go green with immediate screen/metadata proof or a named causal deferred guard; baseline-only rows are setup, not closure.
-- `proof_deferred_to_label` may only credit a step when the deferred guard actually covers that step's expected effect. One final state must not launder several unrelated blind keypresses.
-- Screenshot/OCR steps need named expected visible facts; missing guards stay yellow/red/blocked instead of becoming green by silence.
-- Exact saved-map state belongs inside the probe via `kind: "audit_saved_map_tile_near_player"`, with `required_fields` / `required_items` / `required_furniture`; the step writes `<label>.metadata.json` and feeds `metadata_expectation` into `probe.step_ledger.json`.
-- Exact save/writeback state belongs inside the probe via `kind: "audit_player_save_mtime"`; do not read saved-map proof after a live action unless the same-run writeback gate is green.
-- Same-save/provenance is an anti-fixture-bias gate: a transform may not create the exact state being claimed as product behavior. If it does, the run is setup/synthetic proof only. Copied saves need post-copy live-accessible preflight; do not trust inherited inventory by vibes, because apparently that is how the soup gets haunted.
-- A green deploy primitive is scoped primitive proof, not product proof. A green deploy primitive is not a green fire chain. A red fuel visibility blocker is not permission for another blind key variant. Keep evidence classes explicit, ja, otherwise we are back to serving yesterday's soup as fresh.
-
-## Attempt rule
-
-For the same `TODO.md` item or phase-blocker:
-
-1. Attempts 1-2 may be Andi solo retries.
-2. Multiple focused harness attempts in one cron run are allowed when each attempt changes setup, instrumentation, or evidence class and output stays small.
-3. Consult Frau Knackal before attempt 3.
-4. Attempts 3-4 are the final changed retries after consultation.
-5. After attempt 4, do **not** close or park implemented code just because proof still fails. Write a concise implemented-but-unproven packet to `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`, preserve the caveat in canon, and move to the next greenlit target.
-
-## Schani handoff shape
-
-Keep the final handoff concise: active item, what changed/validated, exact evidence artifacts, remaining state/blocker, and recommended next review/action. Routine progress stays agent-visible only unless genuinely parked/blocked/decision-needed.
+Schani plans-aux / review should decide whether the next lane is the later cannibal live-wiring/product proof, the held harness trust-audit/proof-freeze lane, or the greenlit bandit camp-map stack. Frau no-nudge needed unless review finds a proof/scope contradiction.

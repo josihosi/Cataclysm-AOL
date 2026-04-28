@@ -1,6 +1,6 @@
 # C-AOL harness trust audit + proof-freeze packet v0 (2026-04-27)
 
-Status: ACTIVE / GREENLIT PROCESS AUDIT.
+Status: HELD / CHECKPOINTED PROCESS AUDIT.
 
 ## Why this exists
 
@@ -12,10 +12,10 @@ This is deliberately a large packet. It should be executed by Andi with Frau Kna
 
 ## Classification and placement
 
-- Classification: active / greenlit process package.
-- It became the next active lane after `C-AOL debug-proof finish stack v0` reached its completed Schani-review boundary.
-- It does block future confidence in harness-based closure claims: a run that only proves startup/load must be labeled startup/load proof only.
-- When this packet becomes active, it should be treated as infrastructure repair, not as a side errand tucked under a feature fix.
+- Classification: held / checkpointed process package.
+- It became the next active lane after `C-AOL debug-proof finish stack v0` reached its completed Schani-review boundary; its proof-freeze rules and key primitive boundaries are now checkpointed in `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md` and the C-AOL harness skill.
+- It still blocks overconfident harness-based closure claims: a run that only proves startup/load must be labeled startup/load proof only.
+- If this packet is resumed, treat it as infrastructure repair, not as a side errand tucked under a feature fix.
 
 ## Scope
 
@@ -149,7 +149,7 @@ The final report should contain:
 
 ## Handoff packet for Andi
 
-When activated, Andi should start with the audit, not with another feature retry. Recommended order:
+If resumed, Andi should continue the audit from the checkpointed proof-freeze matrix, not restart the whole packet or launder it into another feature retry. Recommended order:
 
 1. inventory skill/docs/scripts/scenarios;
 2. choose canonical disposable same-save/profile policy;
