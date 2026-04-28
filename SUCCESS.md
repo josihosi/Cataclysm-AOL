@@ -132,7 +132,7 @@ Compact reference:
 
 ## C-AOL actual playtest verification stack v0
 
-Status: GREENLIT / ACTUAL PLAYTEST STACK
+Status: ACTIVE / GREENLIT ACTUAL PLAYTEST STACK
 
 Success state:
 - [x] Fuel continuation behind the green brazier deploy gate has an honest outcome: instrumented run `.userdata/dev-harness/harness_runs/20260427_231210/` keeps the chain non-green after the Multidrop `plank` filter redraw shows zero visible rows and `CONFIRM` blocks with `selected_stacks=0 total_selected_qty=0`; follow-up row-specific diagnostic `.userdata/dev-harness/harness_runs/20260427_232220/` names the current blocker as `blocked_untrusted_drop_filter_or_inventory_visibility` because filtered Multidrop has no selectable `typeid="2x4"` fuel row. No count selection, confirm-return, save request, post-fuel mtime/current-tile `2x4`/lighter/`fd_fire` proof is credited.
@@ -149,7 +149,7 @@ Compact reference:
 
 ## Cannibal camp confidence-push live playtest packet v0
 
-Status: GREENLIT / QUEUED CONFIDENCE-PUSH PLAYTEST
+Status: ACTIVE / CONFIDENCE-PUSH PLAYTEST
 
 Success state:
 - [ ] A compact live/harness matrix records the five proposed shapes or names which could not be honestly staged: wandering day pressure, night mistake/contact, reload brain, different-seed repeat, and bandit contrast control.
@@ -191,7 +191,7 @@ Notes:
 
 ## Generic clean-code boundary review packet v0
 
-Status: ACTIVE / GREENLIT REPORT-ONLY BOUNDARY REVIEW
+Status: CLOSED / CHECKPOINTED REPORT-ONLY BOUNDARY REVIEW
 
 Success state:
 - [x] One compact boundary-review report exists and names the repo state it inspected (`doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`).
@@ -204,7 +204,7 @@ Success state:
 Notes:
 - Imagination source lives at `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
-- This is the active report-only first pass after the Smart Zone checkpoint boundary, not a license for mid-lane cleanup or feature work.
+- Report-only boundary is complete. The only unpromoted queue/watch item is whether to later remove the gated `src/handle_action.cpp` dispatch trace hook; do not reopen Smart Zone live proof without a repaired UI-entry/key-delivery primitive or Josef manual evidence.
 
 ---
 

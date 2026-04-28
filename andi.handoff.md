@@ -1,8 +1,8 @@
-# Andi handoff: Generic clean-code boundary review packet v0
+# Andi handoff: C-AOL actual playtest verification stack v0
 
 ## Active target
 
-`Generic clean-code boundary review packet v0` is active as a report-only boundary review.
+`C-AOL actual playtest verification stack v0` is active, with the next unblocked slice being `Cannibal camp confidence-push live playtest packet v0`.
 
 Canonical anchors:
 
@@ -10,31 +10,26 @@ Canonical anchors:
 - `TODO.md`
 - `TESTING.md`
 - `SUCCESS.md`
-- `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`
-- `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`
-- `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`
+- `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`
+- `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`
+- `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`
+- `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md`
 
-## Smart Zone checkpoint just reached
+## Boundary just reached
 
-`Smart Zone Manager harness-audit retry packet v0` is no longer active. It is an implemented-but-unproven / Josef playtest package boundary.
+`Generic clean-code boundary review packet v0` is checkpointed/closed as a report-only boundary. The report exists at `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`; the completed Smart Zone checkpoint TODO drift was retired in `0bbe92a368`; no report follow-up is currently promoted.
 
-Final agent-side evidence:
-
-- Current runtime rebuilt and matched `5f17cc7901-dirty`.
-- Guarded UI-entry probes never OCR-proved `Zones manager`.
-- Final run `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/` logged `raw_action="action_menu" action_id="action_menu"` after default `Y`, emitted no `invoke_zone_manager` trace, and still showed ordinary gameplay/actions UI.
-- No add-zone, filter, Smart Zone generation, coordinate-label, or generated-zone metadata proof is credited.
-
-Manual/Josef package entry lives in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`.
+Smart Zone Manager remains implemented-but-unproven / Josef playtest package. The final agent-side evidence remains `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/`: delivered default `Y` dispatched as `raw_action="action_menu" action_id="action_menu"`, no `invoke_zone_manager`, OCR missing `Zones manager`, and no add-zone/filter/generation/coordinate-label proof credited.
 
 ## Next work
 
-1. Schani/Frau review the generic boundary report and decide whether to promote any `fix now` / `queue` follow-up.
-2. Treat the Smart Zone/report checkpoint as already committed and pushed in `7a6e8abfda`; do not redo that boundary archaeology.
-3. If no follow-up is promoted, move to the next greenlit stack item from `Plan.md`.
+1. Clear the live runtime/window freshness issue before crediting more harness probes. A first bandit contrast attempt after rebuild (`.userdata/dev-harness/harness_runs/20260429_012154/`) matched shakedown/pay/fight artifacts but is non-green because the captured window still reported `5f17cc7901-dirty` against repo head `0bbe92a368`.
+2. Continue the cannibal confidence-push family using existing scenarios/matrix where possible: wandering day pressure, night contact, reload brain, different-footing repeat, and bandit contrast control.
+3. Record only all-green step-ledger + claim-scoped artifact runs as confidence uplift; startup/load or version-mismatch runs stay support/inconclusive.
 
 ## Non-goals/cautions
 
 - Do not reopen Smart Zone Manager live proof unless Josef/Schani explicitly provides or approves a materially repaired UI-entry/key-delivery primitive or Josef manual evidence.
-- Do not treat deterministic `clzones` geometry as live feature closure.
-- Do not turn the generic clean-code review into unsolicited feature work or a broad refactor.
+- Do not treat deterministic `clzones` geometry or stale-window harness artifacts as live feature closure.
+- Do not turn the cannibal confidence push into new behavior/tuning unless a concrete bug or tuning gap appears.
+- Do not jump to player-lit fire or roof-horde proof while the fuel/writeback gate remains blocked.

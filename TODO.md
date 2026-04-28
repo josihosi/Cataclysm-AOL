@@ -8,24 +8,25 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Generic clean-code boundary review packet v0`.
+Active target: `C-AOL actual playtest verification stack v0` / `Cannibal camp confidence-push live playtest packet v0`.
 
-Current state: the Smart Zone Manager harness-audit retry reached its honest state boundary as implemented-but-unproven / Josef playtest package, and the generic boundary review report now exists at `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`. Current-runtime guarded UI-entry probes rebuilt `cataclysm-tiles` and matched repo/runtime hash `5f17cc7901-dirty`, but never OCR-proved `Zones manager`. The final dispatch-instrumented run `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/` showed the delivered default `Y` input dispatching as `raw_action="action_menu" action_id="action_menu"`, with no `invoke_zone_manager` trace and ordinary gameplay/actions UI on screen. No add-zone/filter/generation/coordinate-label proof is credited.
+Current state: the generic clean-code boundary review is checkpointed. Its report exists at `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`, the completed Smart Zone checkpoint TODO drift was retired in `0bbe92a368`, and no report follow-up is promoted. Smart Zone remains implemented-but-unproven / Josef playtest package; do not rerun it without a materially repaired UI-entry/key-delivery primitive or Josef manual evidence.
 
 Canonical anchors for the active target:
 
-- Contract: `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
-- Imagination source: `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
-- Smart Zone retry checkpoint: `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md` plus `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`.
+- Stack contract: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
+- Cannibal confidence contract: `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`.
+- Cannibal confidence imagination source: `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`.
+- Existing matrix support: `doc/cannibal-camp-night-raid-live-playtest-matrix-v0-2026-04-28.md`.
 
 Next narrow work queue:
 
-1. Schani/Frau review the generic boundary report and handoff alignment; do not apply queued cleanup beyond the report unless promoted.
-2. Keep Smart Zone Manager live proof in Josef package; do not rerun it unless a materially repaired UI-entry/key-delivery primitive or Josef manual evidence reopens it.
-3. After Schani/Frau review or no-nudge, move to the next greenlit stack item from `Plan.md`.
+1. Clear current-runtime/window freshness before crediting more live probes. The first bandit contrast attempt after rebuild (`.userdata/dev-harness/harness_runs/20260429_012154/`) matched the shakedown/pay/fight artifacts but remained non-green because the captured window still reported `5f17cc7901-dirty` while repo head was `0bbe92a368`.
+2. Then run one bounded cannibal confidence-push proof shape from the existing scenarios/matrix, preferably the smallest shape that advances wandering day pressure, night contact, reload brain, different-footing repeat, or bandit contrast without new behavior design.
+3. Update the compact matrix/verdict only from all-green step-ledger + claim-scoped artifact evidence; startup/load or version-mismatch runs stay non-green support.
 
 Proof discipline:
 
-- This active target is a review/report boundary, not a feature-proof lane.
-- The Smart Zone retry remains red/non-green for live feature proof; deterministic geometry is support only.
-- For any future Smart Zone reopen, `Zones manager` must be OCR/trace-proven before add-zone/filter/generation input is credited.
+- This is confidence uplift for already-closed cannibal behavior, not a redesign lane.
+- Preserve evidence class boundaries: live feature proof, deterministic support, startup/load, artifacts/logs, and Josef/manual evidence are separate.
+- Do not promote player-lit fire or roof-horde work while the fuel/writeback gate remains blocked.

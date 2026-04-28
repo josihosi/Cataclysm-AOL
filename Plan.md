@@ -162,11 +162,11 @@ Verdict: deterministic Smart Zone geometry remains support only; the live/UI coo
 
 ---
 
-## Active lane - Generic clean-code boundary review packet v0
+## Completed lane - Generic clean-code boundary review packet v0
 
-**Status:** ACTIVE / GREENLIT REPORT-ONLY BOUNDARY REVIEW
+**Status:** CLOSED / CHECKPOINTED REPORT-ONLY BOUNDARY REVIEW
 
-The report-only clean-code boundary review is now active after the Smart Zone retry reached its implemented-but-unproven checkpoint. It should inspect current canon, dirty tree/recent boundary, obvious build/test/lint hazards, and stale TODO/canon drift; classify findings as `fix now`, `queue`, or `ignore/watch`; and make no edits unless Schani/Josef explicitly promotes a follow-up patch.
+The report-only clean-code boundary review reached its boundary: `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md` exists, the completed Smart Zone checkpoint TODO drift was retired in `0bbe92a368`, and no queued follow-up is currently promoted. Keep the gated `OPENCLAW_HARNESS_UI_TRACE` dispatch hook as queued/watchlist cleanup unless Schani/Josef explicitly asks to remove it. Do not reopen Smart Zone live proof without a materially repaired UI-entry/key-delivery primitive or Josef manual evidence.
 
 Imagination source lives at `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
 Canonical contract lives at `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
@@ -226,9 +226,9 @@ Active sub-order:
 
 ---
 
-## Greenlit lane - C-AOL actual playtest verification stack v0
+## Active lane - C-AOL actual playtest verification stack v0
 
-**Status:** GREENLIT / ACTUAL PLAYTEST STACK
+**Status:** ACTIVE / GREENLIT ACTUAL PLAYTEST STACK
 
 Josef explicitly greenlit actual playtests now, using the same step-by-step metadata/screenshot validation that the harness trust audit is establishing. This is not a release lane and not a license to wander around a save; it is a small ordered verification stack for live product claims that deterministic tests or load-only harness runs could not honestly close.
 
@@ -239,12 +239,12 @@ Greenlit order:
 
 1. **Fuel continuation behind the green brazier deploy gate — honest boundary reached.** Keep this inside the active harness audit as red/non-green evidence: `blocked_untrusted_drop_filter_or_inventory_visibility` means no count selection, confirm-return, save/writeback, lighter, or `fd_fire` proof is credited.
 2. **Smart Zone Manager harness-audit retry packet v0 — implemented-but-unproven/Josef package.** The bounded current-runtime retry exhausted its agent-side attempt budget at a UI-entry/key-delivery blocker: dispatch trace after default `Y` records `action_menu`, not `zones`, and no `Zones manager` OCR/trace proof exists. Do not rerun unless a materially repaired UI-entry primitive or Josef manual evidence reopens it.
-3. **Cannibal camp confidence-push live playtest packet v0 — greenlit / queued confidence uplift.** After the relevant Andi/Frau harness-review boundary, broaden the closed cannibal night-raid proof with harder live playtests: wandering day pressure, night mistake/contact, reload brain, a different-seed repeat, and a bandit contrast control. This is not new behavior design and not a reason to reopen the closed cannibal packet as failed; it is confidence uplift for already-finished behavior. Imagination source lives at `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`; canonical contract lives at `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`.
+3. **Cannibal camp confidence-push live playtest packet v0 — active confidence uplift.** Broaden the closed cannibal night-raid proof with harder live playtests: wandering day pressure, night mistake/contact, reload brain, a different-seed repeat, and a bandit contrast control. This is not new behavior design and not a reason to reopen the closed cannibal packet as failed; it is confidence uplift for already-finished behavior. Imagination source lives at `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`; canonical contract lives at `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`.
 4. **Player-lit fire and bandit signal verification packet v0 — still blocked behind fuel, now captured in the bandit live matrix.** Only after fuel placement/writeback is green, prove the real lighter/action path, actual `fd_fire`/smoke/light state, bounded wait/time passage, and bandit signal response. Do not jump here while the fuel gate is red.
 5. **Roof-fire horde detection proof packet v0 — greenlit but blocked behind real player-lit fire.** Josef/Schani greenlit this later item: debug may stage the horde/distance, but not the fire. Only after real player-lit fire is green, prove roof/elevated player position, real player-created roof fire/light/smoke, bounded time passage, and horde before/after detection or response metadata; a proven no-detect/no-response outcome is acceptable.
 6. **Bandit empty-camp retirement audit-mode packet v0 — deterministic proof green.** The active-site retirement rule now requires the conjunction: no home/inside live members or spawn-tile home headcount and no active dispatch/outbound/local-contact pressure. Tests keep a site active when either side remains populated and retire only the fully empty site; canonical contract lives at `doc/bandit-empty-camp-retirement-audit-mode-packet-v0-2026-04-28.md`.
 7. **Bandit camp-map risk/reward dispatch planning packet v0 — promoted to the active lane above.** Continue from the active lane section, not as an optional side quest.
-8. **Generic clean-code boundary review packet v0 — active / report-only boundary review.** This report-only pass is active after the Smart Zone retry checkpoint. It should inspect current canon, dirty tree/recent boundary, obvious build/test/lint hazards, and stale TODO/canon drift; classify findings as fix now / queue / ignore-watch; and make no edits unless Schani/Josef explicitly promotes a follow-up patch. Imagination source lives at `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`; canonical contract lives at `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
+8. **Generic clean-code boundary review packet v0 — completed report-only boundary.** Report exists, completed-checkpoint TODO drift was retired, and no queued follow-up is promoted; keep only the dispatch trace hook removal as queue/watchlist cleanup unless Schani/Josef promotes it.
 9. **C-AOL live AI performance audit packet v0 — greenlit / bottom-of-stack performance audit.** Measure whether the game remains playable when two, three, and four hostile overmap AIs are active through the real live game path. The packet should compare a baseline with 2/3/4 active bandit/cannibal site mixes, record in-game elapsed time, wall-clock timing, active site/job counts, signal/dispatch/local-gate/sight-avoid counters where available, and run a code-level audit for scaling risks in `src/do_turn.cpp`, `src/bandit_live_world.cpp`, save/serialization, signal matching, sight/exposure checks, and report emission. It may add lightweight instrumentation or a deterministic benchmark helper only if needed to separate game cost from harness overhead. Imagination source lives at `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`; canonical contract lives at `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`.
 
 Non-goals: no Lacapult, no release publishing, no broad debug-note reopening, no blind Smart Zone live-probe loop outside `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`, no contaminated old McWilliams Smart Zone macro as closure proof, no informal Andi-only nudges as substitutes for canon plan items, and no feature closure from load-and-close or deterministic tests alone.

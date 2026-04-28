@@ -53,15 +53,15 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - Generic clean-code boundary review packet v0
+### Active validation target - C-AOL actual playtest verification stack v0 / Cannibal confidence-push live playtest packet v0
 
-`Generic clean-code boundary review packet v0` is now active after the Smart Zone Manager retry reached an implemented-but-unproven/Josef-package boundary. Contract: `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`; imagination source: `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
+`C-AOL actual playtest verification stack v0` is active. The next unblocked slice is `Cannibal camp confidence-push live playtest packet v0`: confidence uplift for the closed cannibal night-raid behavior, not a redesign lane. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md` and `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`; imagination source: `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`.
 
-Evidence burden: compact report-only boundary review now exists at `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`, covering current canon, dirty tree/recent boundary, build/test/lint posture, and stale handoff drift. Findings must be anchored and classified as `fix now`, `queue`, or `ignore/watch`. This target does not authorize opportunistic feature edits or cleanup patches unless Schani/Josef explicitly promotes a follow-up.
+Evidence burden: compact live/harness matrix evidence for wandering day pressure, night mistake/contact, reload brain, different-seed/different-footing repeat, and bandit contrast control. Credited feature-path claims require current-runtime freshness, green startup gate, all-green step ledgers, and claim-scoped artifact/log matches. Deterministic tests and startup/load evidence are support only.
 
-Current Smart Zone checkpoint retained for context: current-runtime guarded probes reached clean startup/load but not Zone Manager entry. Final dispatch-instrumented run `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/` has repo/runtime window `5f17cc7901-dirty`, artifact trace `raw_action="action_menu" action_id="action_menu"`, no `invoke_zone_manager`, and OCR missing `Zones manager`. Earlier guarded runs `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_002148/`, `.userdata/smart-zone-audit-live-20260429f/harness_runs/20260429_004203/`, and `.userdata/smart-zone-ui-entry-current-runtime-20260429b/harness_runs/20260429_005059/` remain the same UI-entry/key-delivery blocker class. No Smart Zone add-zone/filter/generation/coordinate-label proof is credited.
+Current freshness caveat: a first bandit contrast attempt after `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0` (`.userdata/dev-harness/harness_runs/20260429_012154/`) matched `shakedown_surface`, `profile=camp_style`, `posture=open_shakedown`, `demanded_toll=15797`, `pay_option=yes fight_option=yes`, and `shakedown_surface fight demanded=15797 reachable=45134`, but proof classification stayed yellow/inconclusive because the captured window still reported `5f17cc7901-dirty` while repo head was `0bbe92a368`. Do not credit that run as feature proof; clear the stale runtime/window mismatch before relying on more live probes.
 
-Validation policy for this target: docs/report-only review normally needs no compile. If the review itself changes docs, run `git diff --check`; if it proposes or lands code/harness changes later, use the narrowest relevant compile/test for that promoted follow-up.
+Validation policy for this target: docs-only ledger promotion uses `git diff --check`. Live probe credit requires a fresh/current tiles runtime and the named scenario's proof ledger. If code changes, run the narrowest focused deterministic tests for the touched bandit/cannibal live-world path before live proof.
 
 ### Recently completed validation target - Bandit camp-map risk/reward dispatch planning packet v0
 
@@ -88,14 +88,17 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active validation target: **Generic clean-code boundary review packet v0**. Report exists at `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`; next step is Schani review / no-nudge plus checkpoint hygiene, not feature cleanup. Do not reopen Smart Zone Manager live proof as a probe unless a materially repaired UI-entry/key-delivery primitive or Josef manual evidence appears.
+Active validation target: **C-AOL actual playtest verification stack v0 / Cannibal confidence-push live playtest packet v0**.
 
-Queued after this boundary review, per `Plan.md` / greenlit stack:
+1. Fix/clear stale runtime-window freshness before crediting more live probes. The current non-green symptom is `runtime_version_mismatch` on run `.userdata/dev-harness/harness_runs/20260429_012154/` despite matched contrast artifacts.
+2. Run the next bounded cannibal confidence-push scenario from existing packaged surfaces where possible: wandering/day pressure, night/contact, reload continuation, different-footing repeat, or bandit contrast control.
+3. Update the compact confidence matrix/verdict only when the run has current runtime, all-green step ledger rows, and claim-scoped artifact/log proof.
 
-1. `C-AOL actual playtest verification stack v0` / cannibal confidence-push playtests as promoted by Schani/Josef planning.
-2. `Player-lit fire and bandit signal verification packet v0`: still blocked behind the fuel/writeback gate.
-3. `Roof-fire horde detection proof packet v0`: still blocked behind real player-lit fire.
-4. `C-AOL live AI performance audit packet v0`: bottom-of-stack measured performance audit.
+Still blocked/later in the actual playtest stack:
+
+- `Player-lit fire and bandit signal verification packet v0`: blocked behind the fuel/writeback gate.
+- `Roof-fire horde detection proof packet v0`: blocked behind real player-lit fire.
+- `C-AOL live AI performance audit packet v0`: bottom-of-stack measured performance audit.
 
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters;
