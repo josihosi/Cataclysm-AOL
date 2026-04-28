@@ -460,6 +460,46 @@ int required_home_reserve( const bandit_live_world::site_record &site )
     return rules_for_profile( effective_profile( site ) ).home_reserve;
 }
 
+bool cannibal_job_requires_attack_pack( bandit_dry_run::job_template job )
+{
+    switch( job ) {
+        case bandit_dry_run::job_template::toll:
+        case bandit_dry_run::job_template::stalk:
+        case bandit_dry_run::job_template::steal:
+        case bandit_dry_run::job_template::raid:
+        case bandit_dry_run::job_template::reinforce:
+            return true;
+        case bandit_dry_run::job_template::hold_chill:
+        case bandit_dry_run::job_template::scout:
+        case bandit_dry_run::job_template::scavenge:
+            return false;
+    }
+
+    return false;
+}
+
+int required_dispatch_members_for_profile( const bandit_live_world::site_record &site,
+        bandit_dry_run::job_template job )
+{
+    const int generic_required = required_dispatch_members( job );
+    if( generic_required <= 0 ) {
+        return generic_required;
+    }
+
+    if( effective_profile( site ) != hostile_site_profile::cannibal_camp ||
+        !cannibal_job_requires_attack_pack( job ) ) {
+        return generic_required;
+    }
+
+    // Cannibal attack pressure is a pack choice.  Explicit scouts may remain small, but a stalk/raid
+    // handoff must not turn one disposable hunter into the whole fight.
+    const int available = site.dispatchable_member_capacity();
+    if( available < 2 ) {
+        return 2;
+    }
+    return std::clamp( available, 2, 3 );
+}
+
 bandit_dry_run::camp_input make_dispatch_camp_input( const bandit_live_world::site_record &site )
 {
     const hostile_site_profile_rules rules = rules_for_profile( effective_profile( site ) );
@@ -493,11 +533,27 @@ bandit_dry_run::lead_input make_nearby_target_lead( const bandit_live_world::sit
     lead.hard_blocked_jobs = {
         bandit_dry_run::job_template::scavenge,
         bandit_dry_run::job_template::steal,
-        bandit_dry_run::job_template::raid,
     };
+    if( rules.profile == hostile_site_profile::cannibal_camp ) {
+        if( site.dispatchable_member_capacity() >= 2 ) {
+            lead.family = bandit_dry_run::lead_family::corridor;
+            lead.hard_blocked_jobs.push_back( bandit_dry_run::job_template::scout );
+            lead.hard_blocked_jobs.push_back( bandit_dry_run::job_template::toll );
+            lead.validity_notes.push_back(
+                "cannibal_camp pack pressure: nearby target promotes stalk pressure only after reserve leaves a pack" );
+        } else {
+            lead.hard_blocked_jobs.push_back( bandit_dry_run::job_template::raid );
+            lead.validity_notes.push_back(
+                "cannibal_camp scout/probe pressure: lone available member may scout but cannot become the whole attack pack" );
+        }
+    } else {
+        lead.hard_blocked_jobs.push_back( bandit_dry_run::job_template::raid );
+    }
     lead.validity_notes.push_back( "live-world nearby target envelope from owned site " + site.site_id );
     lead.validity_notes.push_back( "hostile profile " + rules.id + ": " + rules.writeback_expectation );
-    lead.validity_notes.push_back( "bounded v0 dispatch only promotes scout pursuit from real owned members" );
+    lead.validity_notes.push_back( rules.profile == hostile_site_profile::cannibal_camp ?
+                                   "bounded v0 dispatch separates cannibal scout/probe pressure from pack attack pressure" :
+                                   "bounded v0 dispatch only promotes scout pursuit from real owned members" );
     return lead;
 }
 
@@ -1424,9 +1480,13 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
         return plan;
     }
 
-    const int required_members = required_dispatch_members( winner.job );
+    const int required_members = required_dispatch_members_for_profile( site, winner.job );
     if( required_members <= 0 ) {
         plan.notes.push_back( "dispatch blocked: winning job needs no live member handoff" );
+        return plan;
+    }
+    if( rules.profile == hostile_site_profile::cannibal_camp && required_members > camp.available_manpower ) {
+        plan.notes.push_back( "dispatch blocked: cannibal_camp pack pressure requires at least 2 at-home members after reserve" );
         return plan;
     }
 
@@ -1453,6 +1513,11 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
                           ", retreat_floor " + std::to_string( rules.retreat_bias_floor ) +
                           ", return_clock_floor " + std::to_string( rules.return_clock_floor ) );
     plan.notes.push_back( "profile writeback: " + rules.writeback_expectation );
+    if( rules.profile == hostile_site_profile::cannibal_camp ) {
+        plan.notes.push_back( "cannibal_camp pack pressure: pack_size " +
+                              std::to_string( plan.member_ids.size() ) +
+                              ", available_after_reserve " + std::to_string( camp.available_manpower ) );
+    }
     plan.notes.push_back( "dispatch ready: " + bandit_dry_run::to_string( winner.job ) + " toward " + target_id );
     return plan;
 }
@@ -1513,8 +1578,19 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
                               ", threat " + std::to_string( input.local_threat ) +
                               ", opportunity " + std::to_string( input.local_opportunity ) +
                               ", margin " + std::to_string( decision.pressure_margin ) );
+    const std::optional<bandit_dry_run::job_template> active_job =
+        job_template_from_string( site.active_job_type );
+    const bool cannibal_attack_intent = profile == hostile_site_profile::cannibal_camp &&
+                                        active_job.has_value() &&
+                                        cannibal_job_requires_attack_pack( *active_job );
 
     if( input.rolling_travel_scene ) {
+        if( profile == hostile_site_profile::cannibal_camp &&
+            ( !cannibal_attack_intent || decision.dispatch_strength < 2 ) ) {
+            decision.posture = local_gate_posture::probe;
+            decision.notes.push_back( "rolling travel cannibal scout/probe contact stays below attack until a pack attack intent exists" );
+            return decision;
+        }
         if( decision.pressure_margin >= 0 ) {
             decision.posture = local_gate_posture::attack_now;
             decision.combat_forward = true;
@@ -1533,26 +1609,50 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
         return decision;
     }
 
-    if( input.basecamp_or_camp_scene && ( input.recent_exposure || decision.pressure_margin <= 0 ) ) {
-        decision.posture = local_gate_posture::hold_off;
-        decision.notes.push_back( "camp-adjacent pressure holds off instead of collapsing onto the player tile" );
-        return decision;
-    }
-
     if( profile == hostile_site_profile::cannibal_camp ) {
-        if( input.local_contact_established && decision.pressure_margin >= 2 ) {
-            decision.posture = local_gate_posture::attack_now;
-            decision.combat_forward = true;
-            decision.notes.push_back( "cannibal camp pressure does not negotiate; favorable contact becomes attack-to-kill pressure" );
+        const int cannibal_pressure_margin = decision.pressure_margin +
+                                             ( input.darkness_or_concealment ? 1 : 0 );
+        if( input.darkness_or_concealment ) {
+            decision.notes.push_back( "darkness/concealment improves the cannibal killing window without overriding pack or threat gates" );
+        }
+        if( input.basecamp_or_camp_scene && input.recent_exposure ) {
+            decision.posture = local_gate_posture::hold_off;
+            decision.notes.push_back( "recent exposure makes the cannibal camp hold off instead of rushing a watched camp edge" );
             return decision;
         }
-        if( input.local_opportunity > 0 && decision.pressure_margin >= 0 ) {
+        if( input.local_contact_established &&
+            ( !cannibal_attack_intent || decision.dispatch_strength < 2 ) ) {
+            decision.posture = local_gate_posture::probe;
+            decision.notes.push_back(
+                "cannibal camp refuses to turn scout/probe contact or a lone hunter into the whole attack pack" );
+            return decision;
+        }
+        if( input.local_contact_established && cannibal_attack_intent && decision.dispatch_strength >= 2 &&
+            cannibal_pressure_margin >= 1 ) {
+            decision.posture = local_gate_posture::attack_now;
+            decision.combat_forward = true;
+            decision.notes.push_back( "cannibal camp pressure does not negotiate; favorable pack contact becomes attack-to-kill pressure" );
+            return decision;
+        }
+        if( input.basecamp_or_camp_scene && !input.darkness_or_concealment &&
+            decision.pressure_margin <= 0 ) {
+            decision.posture = local_gate_posture::hold_off;
+            decision.notes.push_back( "daylight/no-cover camp pressure holds off instead of becoming a suicide rush" );
+            return decision;
+        }
+        if( input.local_opportunity > 0 && cannibal_pressure_margin >= 0 ) {
             decision.posture = local_gate_posture::probe;
             decision.notes.push_back( "cannibal camp probes for a killing window instead of opening a shakedown" );
             return decision;
         }
         decision.posture = local_gate_posture::stalk;
         decision.notes.push_back( "cannibal camp pressure stalks until the kill window improves" );
+        return decision;
+    }
+
+    if( input.basecamp_or_camp_scene && ( input.recent_exposure || decision.pressure_margin <= 0 ) ) {
+        decision.posture = local_gate_posture::hold_off;
+        decision.notes.push_back( "camp-adjacent pressure holds off instead of collapsing onto the player tile" );
         return decision;
     }
 
@@ -1606,9 +1706,11 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
         << " profile=" << to_string( effective_profile( site ) )
         << " posture=" << to_string( decision.posture )
         << " strength=" << decision.dispatch_strength
+        << " pack_size=" << decision.dispatch_strength
         << " threat=" << input.local_threat
         << " opportunity=" << input.local_opportunity
         << " margin=" << decision.pressure_margin
+        << " darkness_or_concealment=" << ( input.darkness_or_concealment ? "yes" : "no" )
         << " standoff_distance=" << input.standoff_distance
         << " basecamp_or_camp=" << ( input.basecamp_or_camp_scene ? "yes" : "no" )
         << " recent_exposure=" << ( input.recent_exposure ? "yes" : "no" )

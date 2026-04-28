@@ -8,21 +8,34 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `C-AOL harness trust audit + proof-freeze packet v0` is now the next unblocked active lane after the completed debug-proof finish stack.
+Active target: `Cannibal camp night-raid behavior packet v0`.
 
-- Work from `/Users/josefhorvath/Schanigarten/Cataclysm-AOL` on `dev`; `josihosi/Cataclysm-AOL` is project/release truth and `josihosi/C-AOL-mirror` is green-dot-only.
-- Completed debug-proof finish stack note: `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`.
-- Active harness audit contract: `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
-- Inventory checkpoint: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md` now names the harness primitives, scenario surface, fixture/provenance gaps, and provisional canonical `dev-harness` / `McWilliams` anchor; it is not feature-proof closure.
-- Basecamp job spam debounce + locker/patrol exceptions packet v0 is closed/checkpointed; do not reopen it unless new evidence says the landed debounce lied.
-- Bandit live signal/site-bootstrap product-proof work reached its honest agent-side boundary: synthetic loaded-map `fd_fire` light-source proof reaches the running live bandit path with `matched_light_sites=1`, deterministic `fire_start_activity_exact_brazier_wood_lighter_creates_fd_fire` proves only the exact activity seam, and the full player-lit fire bridge is in `runtime/josef-playtest-package.md` as `bandit-live-signal-real-fire-product-proof` implemented-but-unproven.
-- Smart Zone Manager layout correction reached its honest agent-side boundary under the new proof discipline: deterministic geometry is support only, the bounded clean live/UI attempts are packaged for Josef as implemented-but-unproven, and the current-runtime `20260428_001347` rerun is startup/load red only (`Dunn has no characters to load`). Do not use the contaminated old McWilliams macro or another blind clean-profile probe as closure.
-- Bandit local standoff / scout return live correction is reclosed on current runtime: deterministic timeout coverage is green, copied-save inspection answered the stale timer state, and live run `.userdata/dev-harness/harness_runs/20260427_154309/` proves real wait-action standoff (`standoff_distance=5`, `live_dispatch_goal=140,46,0`), timeout, home-footprint observation, and returned pressure refresh.
-- Current execution target: C-AOL harness trust-audit / proof-freeze consolidation after the actual-playtest subitems reached honest non-green boundaries. Do not run another Smart Zone live/UI probe unless Schani/Josef explicitly reopen it after a materially repaired loadable-profile/UI primitive. Bandit camp-map risk/reward dispatch is now partially promoted only for the camp-owned intelligence-map persistence/scout-return writeback deterministic slice; it is not harness/product proof.
-  - Proof-freeze matrix: `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md` now compactly freezes current primitive verdicts, evidence artifacts, claim rules, and untrusted seams; Frau reviewed it and the tightened claim-scoped-artifact / metadata-only / deferred-guard / anti-fixture-bias rules are folded in. Report-classifier false-pass guards now have deterministic selftest coverage at `tools/openclaw_harness/proof_classification_unit_test.py` for load-only, stale-startup artifact match, non-green step-ledger, yellow-wait, blocked-wait, and all-green feature-path classification. Debug-spawn item target-state primitive proof is green at `.userdata/dev-harness/harness_runs/20260428_011205/` for `debug_spawn_item` -> save/writeback -> same-run saved-player `toothbrush_electric=1`; debug-spawn monster target-state primitive proof is green at `.userdata/dev-harness/harness_runs/20260428_021800/` for `debug_spawn_monster` -> one-tile-east `mon_squirrel` -> save/writeback -> saved-player `active_monsters` offset `[1,0,0]`; debug force-temperature target-state primitive proof is green at `.userdata/dev-harness/harness_runs/20260428_024606/` for `debug_force_temperature` -> save/writeback -> saved dimension weather `forced_temperature/effective_temperature=123F`; debug-spawn follower-NPC target-state primitive proof is green at `.userdata/dev-harness/harness_runs/20260428_032724/` for saved-overmap NPC baseline -> `debug_spawn_follower_npc` -> save/writeback -> saved overmap `npcs` count delta `+1` with a new nearby `your_followers` NPC at attitude `3`; debug map-editor field/furniture target-state primitive proof is green at `.userdata/dev-harness/harness_runs/20260428_034421/` for map-editor `f_chair` + `fd_smoke` paint one tile east -> save/writeback -> same-run saved-map field/furniture metadata; debug map-editor terrain/trap/radiation target-state primitive proof is green at `.userdata/dev-harness/harness_runs/20260428_041845/` for map-editor `t_grass_dead` + `tr_bubblewrap` + radiation `37` one tile east -> save/writeback -> same-run saved-map terrain/trap/radiation metadata; focused talker-selector proof is green at `.userdata/dev-harness/harness_runs/20260428_014348/` for `C` -> `t` -> highlighted-row `enter` -> NPC dialogue response surface; follower-rules response/menu proof is green at `.userdata/dev-harness/harness_runs/20260428_014825/` for visible `[rules] ... work together` -> `Rules for your follower`; follower-rule toggle/writeback proof is green at `.userdata/dev-harness/harness_runs/20260428_044855/` for saved-overmap `rule_follow_distance_2=false` -> visible `b` hotkey toggle to about two paces -> guarded save/writeback -> saved-overmap `rule_follow_distance_2=true`. Next audit primitive: another Schani/Josef-named harness seam.
-  - Fuel boundary preserved: deploy primitive `.userdata/dev-harness/harness_runs/20260427_222635/` remains green only for scoped normal-player brazier deploy/save/writeback to east-tile `f_brazier`. Fuel continuation remains red/non-green at `.userdata/dev-harness/harness_runs/20260427_232220/` with `blocked_untrusted_drop_filter_or_inventory_visibility`; filtered Multidrop has no visible/selectable `typeid="2x4"` row, so no count selection, confirm-return, post-fuel save/writeback, lighter, or `fd_fire` proof is credited.
-  - Smart Zone boundary preserved: after the prior four-attempt package in `runtime/josef-playtest-package.md`, current-runtime run `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` is startup/load red only (`blocked_clean_profile_no_loadable_character`; OCR: `Dunn has no characters to load`). No Smart Zone feature steps ran and no layout proof is credited.
-  - Fire proof stays blocked behind fuel: do not continue to lighter/final `fd_fire` until a post-fuel same-run save/writeback advances mtime and saved-map metadata proves current-tile `f_brazier` plus exact `2x4`.
-- No Lacapult work, no repo-role surgery, no user-data mutation outside disposable proof paths, no further Smart Zone live-probe loop without explicit fresh reopen/material primitive repair, no broad camp-message rewrite, and no global message-log suppression.
+Current state: deterministic/code substrate for `Cannibal camp pack-size + smoke-light/darkness/sight-avoid substrate v0` has landed. This is deterministic support only, not live night-raid product proof.
+
+Landed substrate:
+
+- Cannibal stalk/attack-style pressure now requires pack pressure under the shared hostile-site/bandit-live-world substrate instead of sending a lone ordinary attacker.
+- One-dispatchable-member cannibal camps stay on scout/probe pressure and do not become full attack pressure; explicitly manual/lone scout pressure still degrades to `probe` instead of `attack_now`.
+- Smoke/light or nearby human-routine leads classify as scout/probe or pack-dispatch pressure rather than instant combat.
+- `local_gate_input` has `darkness_or_concealment`, and cannibal local gates can shift from daylight/no-cover `hold_off` to dark/concealed `attack_now` only when pack size and pressure gates pass.
+- Recent exposure around a camp/basecamp edge makes cannibals hold off instead of continuing a visible rush; high threat still aborts even in darkness.
+- Cannibals remain blocked from shakedown/extortion; bandit shakedown/pay-fight local-gate coverage remains green.
+- Reports expose `profile=cannibal_camp`, `pack_size`, `darkness_or_concealment`, `recent_exposure`, posture, shakedown state, and attack/no-extort notes.
+- Save/load proof now preserves a multi-member cannibal active group.
+
+Validated evidence:
+
+- `git diff --check`
+- `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o LINTJSON=0 ASTYLE=0`
+- `make -j4 tests LINTJSON=0 ASTYLE=0`
+- `./tests/cata_test "[bandit][live_world][cannibal]" --success`
+- `./tests/cata_test "[bandit][live_world][approach_gate]" --success`
+- `./tests/cata_test "[bandit][live_world]"`
+
+Remaining:
+
+- Do not claim live night-raid product behavior from this deterministic slice.
+- If Schani/Josef promote the later live/harness slice, wire the real time/light/visibility path into the local-gate input and prove a named cannibal night-raid scenario through the real dispatch/local-contact path under proof-freeze rules.
+- Otherwise move to the next explicit Schani/Josef priority behind this lane.
 
 Keep this file focused on the active lane only, ja, otherwise it turns into a junk drawer with headings.

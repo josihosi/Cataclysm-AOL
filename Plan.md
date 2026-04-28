@@ -82,9 +82,39 @@ Canonical contract lives at `doc/caol-debug-proof-finish-stack-v0-2026-04-27.md`
 
 ---
 
-## Active lane - C-AOL harness trust audit + proof-freeze v0
+## Active lane - Cannibal camp night-raid behavior packet v0
 
-**Status:** ACTIVE / GREENLIT PROCESS AUDIT
+**Status:** ACTIVE / GREENLIT FEATURE BEHAVIOR / DETERMINISTIC SUBSTRATE LANDED
+
+Josef requested a new cannibal-camp vision/audit run on 2026-04-28: cannibal camps should remain broadly bandit-camp-shaped hostile sites, but feel more vicious, more trigger-happy, more night-oriented, and should prefer larger raid groups over lone suicide attackers. Smoke/light and repeated human routine should become scout/stalk/dispatch pressure first, with the pack avoiding detection until night/darkness makes the attack window favorable. The prior harness trust-audit/proof-freeze lane has reached a checkpoint/held boundary, so this packet is the active feature lane.
+
+Imagination source of truth lives at `doc/cannibal-camp-night-raid-imagination-source-of-truth-2026-04-28.md`.
+Code audit lives at `doc/cannibal-camp-night-raid-code-audit-2026-04-28.md`.
+Canonical contract lives at `doc/cannibal-camp-night-raid-behavior-packet-v0-2026-04-28.md`.
+
+Current checkpoint: `Cannibal camp pack-size + smoke-light/darkness/sight-avoid substrate v0` has deterministic/code substrate landed. It is not live/harness night-raid product proof.
+
+Scope:
+
+1. Preserve the shared hostile-site/bandit-live-world substrate; cannibal camps stay camp-shaped rather than becoming a new unrelated monster/faction system.
+2. Add profile-specific cannibal pack-size logic so ordinary planned attack/raid pressure does not dispatch a lone cannibal as the whole fight.
+3. Interpret smoke/light/human-routine leads as scout/stalk/dispatch pressure where the shared camp-map/live-signal substrate is available, not instant combat.
+4. Add an explicit darkness/concealment/night-window input seam for cannibal local-gate decisions.
+5. Make darkness/concealment shift cannibal behavior toward `attack_now` when roster/pressure/target weakness are favorable, while daylight/no-cover or high threat still produces stalk/probe/hold/abort as appropriate.
+6. Ensure cannibal stalking/approach avoids vision honestly: exposure should cause bounded reposition, hold-off, or abort behavior rather than continued visible approach.
+7. Keep cannibals blocked from bandit shakedown/extortion surfaces.
+8. Keep reports reviewer-readable: lead source, profile, pack size/strength, darkness/concealment input, sight/exposure state, posture, and reason must be visible in deterministic output and later live artifacts.
+9. Keep save/load and member-state behavior honest: dead/wounded/outbound/home-reserve members must affect whether a pack attack is possible.
+
+First proof target is deterministic/code proof only and is now landed for pack-size dispatch, smoke/light nearby-lead classification, darkness/concealment local-gate input, exposure hold-off, high-threat abort, no-extort/no-shakedown reporting, and multi-member save/load proof. Live/harness night-raid product proof is a later slice after Schani/Josef explicitly promote it under the harness proof-freeze rules.
+
+Non-goals: no broad cannibal society/lore expansion, no player capture/cooking mechanics, no perfect stealth AI, no teleporting attackers, no ordinary bandit shakedown rewrite, no singleton writhing-stalker work, no always-attack suicide doctrine, and no evaluator-only closure for live behavior.
+
+---
+
+## Held lane - C-AOL harness trust audit + proof-freeze v0
+
+**Status:** HELD / CHECKPOINTED PROCESS AUDIT
 
 Josef requested this on 2026-04-27 after watching harness runs load the game, close it, and still risk being treated as feature proof. This is a large audit of the C-AOL harness skill/procedures, preferably Andi execution with Frau Knackal review: inventory every harness primitive, prove every keystroke/setup step with screenshots or exact game metadata, enforce same-save/provenance discipline where possible, and freeze the workflow so false passes become red states instead of polite nonsense.
 
@@ -93,6 +123,8 @@ Josef has now explicitly promoted actual product playtests under this proof stan
 Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
 
 Current checkpoint:
+
+Current boundary: checkpointed/held until Schani/Josef name the next harness primitive; remaining product-playtest blockers live in the actual playtest stack rather than keeping this process lane active.
 
 - Harness surface inventory and provisional same-save policy live at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
 - Compact proof-freeze matrix lives at `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`; Frau reviewed the draft at process altitude and the matrix now includes her tighter locks for claim-scoped artifacts, metadata-only limits, deferred guards, anti-fixture bias, deterministic report-classifier false-pass selftests, green debug-spawn item/monster/follower-NPC/weather plus debug map-editor field/furniture and terrain/trap/radiation target-state proof patterns, scoped green talker-selector plus follower-rules dialogue recipes, and a scoped follower-rule toggle/writeback metadata proof.

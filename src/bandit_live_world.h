@@ -257,6 +257,7 @@ struct local_gate_input {
     int local_threat = 0;
     int local_opportunity = 0;
     int standoff_distance = 0;
+    bool darkness_or_concealment = false;
     bool basecamp_or_camp_scene = false;
     bool rolling_travel_scene = false;
     bool recent_exposure = false;
