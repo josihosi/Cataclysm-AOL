@@ -2,6 +2,11 @@
 
 Status: GREENLIT / READY FOR ANDI PROMOTION AFTER SCHANI-JOSEF CONFIRMATION
 
+Source-of-truth framing: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`.
+Code-only implementation map: `doc/bandit-camp-map-ecology-implementation-map-2026-04-28.md`.
+
+This packet is downstream of the camp-map ecology picture: dispatch/risk/reward are the hands; the saved per-camp map is the creature.
+
 ## Why this exists
 
 The current scout-return loop is too disposable if it requires a fresh live signal before the camp can care again. That does not read like bandits. If a scout finds a player/basecamp site, the source camp should remember it on a bandit-side camp map as a lead with bounty, threat, confidence, age, source, and scout outcome. The original smoke/light/noise signal can vanish; the scouted target should remain actionable until later evidence decays, confirms, exploits, or invalidates it.

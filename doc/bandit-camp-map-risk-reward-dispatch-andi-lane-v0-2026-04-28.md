@@ -5,6 +5,8 @@ Status: READY / NOT YET UNLEASHED
 ## Canon anchors
 
 - Plan item: `Bandit camp-map risk/reward dispatch planning packet v0`
+- Product source of truth: `doc/bandit-camp-map-ecology-source-of-truth-2026-04-28.md`
+- Code-only implementation map: `doc/bandit-camp-map-ecology-implementation-map-2026-04-28.md`
 - Full contract: `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`
 - Ledgers: `Plan.md`, `SUCCESS.md`, `TESTING.md`
 
