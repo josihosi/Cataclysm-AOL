@@ -14,6 +14,8 @@ Implement the bandit camp-map risk/reward dispatch packet through the real game 
 
 The feature is not “make raids bigger.” The feature is: scouts create persistent camp knowledge, camps size follow-up action from current live roster/risk/reward, bandits scout/stalk like living threats, and the running game proves it.
 
+Important audit boundary: the older scout-return proof only established return-home cleanup / pressure refresh (`scout_report: returned -> pressure refreshed`) and member writeback. Treat that as insufficient substrate, not as this feature being already tested. This lane must add and prove the actual camp-map lead contract: bounty, threat, confidence, age/last-seen, source/outcome, target-alert/scout-seen state, vanished-signal redispatch, and risk/reward sizing from remembered scout knowledge.
+
 ## Implementation scope
 
 1. Inspect and name the existing live hooks before coding:
