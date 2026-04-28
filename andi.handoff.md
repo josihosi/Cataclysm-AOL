@@ -50,13 +50,17 @@ The scoped primitive set below is already green and should not be re-spent as pr
 - `.userdata/dev-harness/harness_runs/20260428_041845/`: debug map-editor terrain/trap/radiation paint one tile east -> save/writeback -> saved-map offset `[1,0,0]` with `t_grass_dead`, `tr_bubblewrap`, and radiation `37`.
 - `.userdata/dev-harness/harness_runs/20260428_014348/`: nearby interaction menu -> `Talk to whom` -> highlighted-row `enter` -> NPC dialogue response surface (`Your response`).
 - `.userdata/dev-harness/harness_runs/20260428_014825/`: visible `[rules] ... work together` response -> `Rules for your follower`.
+- `.userdata/dev-harness/harness_runs/20260428_044855/`: follower-rules UI hotkey `b` toggles the current McWilliams follow-distance row from about four paces to about two paces, then guarded uppercase-`Y` save/writeback advances mtime and same-run saved-overmap NPC metadata records `rule_follow_distance_2=true` plus matching override bits.
 
-Do **not** steer back into those already-credited primitives. The current unblocked next target is one of:
+Do **not** steer back into those already-credited primitives. Follower rules toggle proof is already frozen as scoped UI+metadata/process evidence, not downstream package product behavior. There is no current unblocked next target in this handoff.
 
-1. follower rules toggle proof after the already-proven rules UI opens;
-2. another explicit Schani/Josef-named harness seam.
+Next work must wait for one explicit Schani/Josef-named seam or decision, for example:
 
-Keep the same proof burden: scenario contract names the exact claim, step ledger guards the GUI/key path, and same-run metadata or claim-scoped artifacts prove the target state. Scoped navigation/process proof remains scoped; do not inflate it into package product behavior.
+1. a new harness proof-freeze primitive/seam to audit;
+2. an explicit fuel fixture/live-availability repair attempt greenlight;
+3. an explicit switch to the next release/posture lane.
+
+Keep the same proof burden when a new target is named: scenario contract names the exact claim, step ledger guards the GUI/key path, and same-run metadata or claim-scoped artifacts prove the target state. Scoped navigation/process proof remains scoped; do not inflate it into package product behavior.
 
 Smart Zone Manager live layout verification is no longer the next target. It is implemented-but-unproven in Josef's playtest package:
 
