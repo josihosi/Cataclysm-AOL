@@ -2032,6 +2032,27 @@ def audit_saved_overmap_npcs(
         for key in ("attitude", "mission"):
             if raw.get(key) is not None and str(raw.get(key)).strip() != "":
                 requirement[key] = int(raw.get(key))
+        rules_raw = raw.get("rules", raw.get("required_rules", {}))
+        if isinstance(rules_raw, dict):
+            rules: Dict[str, Any] = {}
+            for rule_key, expected in rules_raw.items():
+                rule_name = str(rule_key or "").strip()
+                if not rule_name:
+                    continue
+                if isinstance(expected, bool):
+                    rules[rule_name] = expected
+                elif isinstance(expected, (int, float)):
+                    rules[rule_name] = expected
+                elif expected is not None:
+                    text = str(expected).strip().lower()
+                    if text in {"true", "yes", "1", "on"}:
+                        rules[rule_name] = True
+                    elif text in {"false", "no", "0", "off"}:
+                        rules[rule_name] = False
+                    else:
+                        rules[rule_name] = str(expected)
+            if rules:
+                requirement["rules"] = rules
         offset_raw = raw.get("offset_ms")
         if isinstance(offset_raw, list) and len(offset_raw) >= 3:
             requirement["offset_ms"] = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
@@ -2071,6 +2092,13 @@ def audit_saved_overmap_npcs(
             return False
         if "mission" in requirement and npc_row.get("mission") != requirement.get("mission"):
             return False
+        if "rules" in requirement:
+            observed_rules = npc_row.get("rules")
+            if not isinstance(observed_rules, dict):
+                return False
+            for rule_name, expected_value in requirement["rules"].items():
+                if observed_rules.get(rule_name) != expected_value:
+                    return False
         if "offset_ms" in requirement and npc_row.get("offset_ms") != requirement.get("offset_ms"):
             return False
         if "max_abs_offset_ms" in requirement:
