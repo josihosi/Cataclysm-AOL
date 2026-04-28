@@ -12,6 +12,9 @@
 namespace
 {
 using bandit_live_world::anchor_source_kind;
+using bandit_live_world::camp_lead_kind;
+using bandit_live_world::camp_lead_status;
+using bandit_live_world::camp_map_lead;
 using bandit_live_world::hostile_site_profile;
 using bandit_live_world::member_state;
 using bandit_live_world::owned_site_kind;
@@ -93,6 +96,76 @@ std::optional<member_state> member_state_from_string( const std::string &value )
     return std::nullopt;
 }
 
+std::optional<camp_lead_kind> camp_lead_kind_from_string( const std::string &value )
+{
+    if( value == "structural_bounty" ) {
+        return camp_lead_kind::structural_bounty;
+    }
+    if( value == "harvested_site" ) {
+        return camp_lead_kind::harvested_site;
+    }
+    if( value == "human_activity" ) {
+        return camp_lead_kind::human_activity;
+    }
+    if( value == "basecamp_activity" ) {
+        return camp_lead_kind::basecamp_activity;
+    }
+    if( value == "moving_actor" ) {
+        return camp_lead_kind::moving_actor;
+    }
+    if( value == "route_activity" ) {
+        return camp_lead_kind::route_activity;
+    }
+    if( value == "smoke_signal" ) {
+        return camp_lead_kind::smoke_signal;
+    }
+    if( value == "light_signal" ) {
+        return camp_lead_kind::light_signal;
+    }
+    if( value == "sound_signal" ) {
+        return camp_lead_kind::sound_signal;
+    }
+    if( value == "threat_memory" ) {
+        return camp_lead_kind::threat_memory;
+    }
+    if( value == "loss_site" ) {
+        return camp_lead_kind::loss_site;
+    }
+    if( value == "false_lead" ) {
+        return camp_lead_kind::false_lead;
+    }
+    if( value == "frontier_probe" ) {
+        return camp_lead_kind::frontier_probe;
+    }
+    return std::nullopt;
+}
+
+std::optional<camp_lead_status> camp_lead_status_from_string( const std::string &value )
+{
+    if( value == "suspected" ) {
+        return camp_lead_status::suspected;
+    }
+    if( value == "scout_confirmed" ) {
+        return camp_lead_status::scout_confirmed;
+    }
+    if( value == "active" ) {
+        return camp_lead_status::active;
+    }
+    if( value == "harvested" ) {
+        return camp_lead_status::harvested;
+    }
+    if( value == "stale" ) {
+        return camp_lead_status::stale;
+    }
+    if( value == "invalidated" ) {
+        return camp_lead_status::invalidated;
+    }
+    if( value == "dangerous" ) {
+        return camp_lead_status::dangerous;
+    }
+    return std::nullopt;
+}
+
 std::optional<bandit_pursuit_handoff::remaining_return_pressure_state>
 remaining_return_pressure_state_from_string( const std::string &value )
 {
@@ -150,6 +223,84 @@ void push_unique_mark( std::vector<std::string> &marks, const std::string &mark 
     if( std::find( marks.begin(), marks.end(), mark ) == marks.end() ) {
         marks.push_back( mark );
     }
+}
+
+std::string camp_lead_id_for( const std::string &site_id, const camp_lead_kind kind,
+                              const std::string &target_id, const tripoint_abs_omt &omt )
+{
+    std::ostringstream out;
+    out << site_id << "#lead:" << bandit_live_world::to_string( kind ) << ':'
+        << target_id << '@' << omt.x() << ',' << omt.y() << ',' << omt.z();
+    return out.str();
+}
+
+void upsert_camp_map_lead( bandit_live_world::camp_intelligence_map &intelligence_map,
+                           const camp_map_lead &lead )
+{
+    if( lead.lead_id.empty() ) {
+        return;
+    }
+    if( camp_map_lead *existing = intelligence_map.find_lead( lead.lead_id ) ) {
+        *existing = lead;
+        return;
+    }
+    intelligence_map.leads.push_back( lead );
+}
+
+void migrate_scalar_memory_to_intelligence_map( bandit_live_world::site_record &site )
+{
+    if( !site.intelligence_map.leads.empty() ||
+        ( site.remembered_target_or_mark.empty() && site.remembered_bounty_estimate <= 0 &&
+          site.remembered_threat_estimate <= 0 ) ) {
+        return;
+    }
+
+    camp_map_lead lead;
+    lead.kind = camp_lead_kind::human_activity;
+    lead.status = camp_lead_status::suspected;
+    lead.target_id = site.remembered_target_or_mark.empty() ? site.active_target_id :
+                     site.remembered_target_or_mark;
+    lead.omt = site.active_target_omt;
+    lead.source_key = lead.target_id;
+    lead.source_summary = "migrated from legacy remembered_* site memory";
+    lead.bounty = std::max( 0, site.remembered_bounty_estimate );
+    lead.threat = std::max( 0, site.remembered_threat_estimate );
+    lead.confidence = lead.target_id.empty() ? 1 : 2;
+    lead.threat_confirmed = lead.threat > 0;
+    lead.last_outcome = "legacy_memory";
+    lead.lead_id = camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt );
+    upsert_camp_map_lead( site.intelligence_map, lead );
+}
+
+void record_scout_return_lead( bandit_live_world::site_record &site,
+                               const bandit_pursuit_handoff::return_packet &packet,
+                               const int bandit_losses )
+{
+    if( packet.job_type != bandit_dry_run::job_template::scout ||
+        packet.current_target_or_mark.empty() || packet.survivors_remaining <= 0 ) {
+        return;
+    }
+
+    camp_map_lead lead;
+    lead.kind = camp_lead_kind::basecamp_activity;
+    lead.status = camp_lead_status::scout_confirmed;
+    lead.target_id = packet.current_target_or_mark;
+    lead.omt = site.active_target_omt;
+    lead.source_key = packet.group_id;
+    lead.source_summary = "scout-return writeback from active owned outing";
+    lead.last_scouted_minutes = site.active_sortie_started_minutes;
+    lead.last_checked_minutes = site.active_sortie_local_contact_minutes;
+    lead.bounty = std::max( 1, site.remembered_bounty_estimate );
+    lead.threat = std::max( 0, site.remembered_threat_estimate );
+    lead.confidence = std::max( 2, packet.survivors_remaining + 1 );
+    lead.threat_confirmed = lead.threat > 0 || packet.resolution == bandit_pursuit_handoff::lead_resolution::still_valid;
+    lead.target_alert = packet.resolution == bandit_pursuit_handoff::lead_resolution::target_lost ||
+                        packet.posture == bandit_pursuit_handoff::return_posture::broken_flee;
+    lead.scout_seen = lead.target_alert;
+    lead.prior_bandit_losses = bandit_losses;
+    lead.last_outcome = bandit_pursuit_handoff::to_string( packet.result );
+    lead.lead_id = camp_lead_id_for( site.site_id, lead.kind, lead.target_id, lead.omt );
+    upsert_camp_map_lead( site.intelligence_map, lead );
 }
 
 bandit_pursuit_handoff::abstract_group_state make_site_memory_group(
@@ -506,6 +657,62 @@ std::string to_string( local_gate_posture posture )
     return "abort";
 }
 
+std::string to_string( camp_lead_kind kind )
+{
+    switch( kind ) {
+        case camp_lead_kind::structural_bounty:
+            return "structural_bounty";
+        case camp_lead_kind::harvested_site:
+            return "harvested_site";
+        case camp_lead_kind::human_activity:
+            return "human_activity";
+        case camp_lead_kind::basecamp_activity:
+            return "basecamp_activity";
+        case camp_lead_kind::moving_actor:
+            return "moving_actor";
+        case camp_lead_kind::route_activity:
+            return "route_activity";
+        case camp_lead_kind::smoke_signal:
+            return "smoke_signal";
+        case camp_lead_kind::light_signal:
+            return "light_signal";
+        case camp_lead_kind::sound_signal:
+            return "sound_signal";
+        case camp_lead_kind::threat_memory:
+            return "threat_memory";
+        case camp_lead_kind::loss_site:
+            return "loss_site";
+        case camp_lead_kind::false_lead:
+            return "false_lead";
+        case camp_lead_kind::frontier_probe:
+            return "frontier_probe";
+    }
+
+    return "human_activity";
+}
+
+std::string to_string( camp_lead_status status )
+{
+    switch( status ) {
+        case camp_lead_status::suspected:
+            return "suspected";
+        case camp_lead_status::scout_confirmed:
+            return "scout_confirmed";
+        case camp_lead_status::active:
+            return "active";
+        case camp_lead_status::harvested:
+            return "harvested";
+        case camp_lead_status::stale:
+            return "stale";
+        case camp_lead_status::invalidated:
+            return "invalidated";
+        case camp_lead_status::dangerous:
+            return "dangerous";
+    }
+
+    return "suspected";
+}
+
 void member_record::serialize( JsonOut &json ) const
 {
     json.start_object();
@@ -544,6 +751,112 @@ void spawn_tile_record::deserialize( const JsonObject &jo )
     jo.read( "headcount", headcount );
 }
 
+void camp_map_lead::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "lead_id", lead_id );
+    json.member( "kind", to_string( kind ) );
+    json.member( "status", to_string( status ) );
+    json.member( "target_id", target_id );
+    json.member( "omt", omt );
+    json.member( "radius_omt", radius_omt );
+    json.member( "source_key", source_key );
+    json.member( "source_summary", source_summary );
+    json.member( "first_seen_minutes", first_seen_minutes );
+    json.member( "last_seen_minutes", last_seen_minutes );
+    json.member( "last_checked_minutes", last_checked_minutes );
+    json.member( "last_scouted_minutes", last_scouted_minutes );
+    json.member( "bounty", bounty );
+    json.member( "threat", threat );
+    json.member( "confidence", confidence );
+    json.member( "threat_confirmed", threat_confirmed );
+    json.member( "target_alert", target_alert );
+    json.member( "scout_seen", scout_seen );
+    json.member( "generated_by_this_camp_routine", generated_by_this_camp_routine );
+    json.member( "prior_bandit_losses", prior_bandit_losses );
+    json.member( "prior_defender_losses", prior_defender_losses );
+    json.member( "times_checked_empty", times_checked_empty );
+    json.member( "times_harvested", times_harvested );
+    json.member( "last_outcome", last_outcome );
+    json.end_object();
+}
+
+void camp_map_lead::deserialize( const JsonObject &jo )
+{
+    jo.read( "lead_id", lead_id );
+    std::string kind_string = "human_activity";
+    jo.read( "kind", kind_string );
+    kind = camp_lead_kind_from_string( kind_string ).value_or( camp_lead_kind::human_activity );
+    std::string status_string = "suspected";
+    jo.read( "status", status_string );
+    status = camp_lead_status_from_string( status_string ).value_or( camp_lead_status::suspected );
+    jo.read( "target_id", target_id );
+    jo.read( "omt", omt );
+    jo.read( "radius_omt", radius_omt );
+    jo.read( "source_key", source_key );
+    jo.read( "source_summary", source_summary );
+    jo.read( "first_seen_minutes", first_seen_minutes );
+    jo.read( "last_seen_minutes", last_seen_minutes );
+    jo.read( "last_checked_minutes", last_checked_minutes );
+    jo.read( "last_scouted_minutes", last_scouted_minutes );
+    jo.read( "bounty", bounty );
+    jo.read( "threat", threat );
+    jo.read( "confidence", confidence );
+    jo.read( "threat_confirmed", threat_confirmed );
+    jo.read( "target_alert", target_alert );
+    jo.read( "scout_seen", scout_seen );
+    jo.read( "generated_by_this_camp_routine", generated_by_this_camp_routine );
+    jo.read( "prior_bandit_losses", prior_bandit_losses );
+    jo.read( "prior_defender_losses", prior_defender_losses );
+    jo.read( "times_checked_empty", times_checked_empty );
+    jo.read( "times_harvested", times_harvested );
+    jo.read( "last_outcome", last_outcome );
+}
+
+void camp_intelligence_map::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "schema_version", schema_version );
+    json.member( "last_daily_cleanup_minutes", last_daily_cleanup_minutes );
+    json.member( "next_near_tick_minutes", next_near_tick_minutes );
+    json.member( "next_mid_tick_minutes", next_mid_tick_minutes );
+    json.member( "next_far_tick_minutes", next_far_tick_minutes );
+    json.member( "next_frontier_tick_minutes", next_frontier_tick_minutes );
+    json.member( "known_radius_omt", known_radius_omt );
+    json.member( "frontier_radius_omt", frontier_radius_omt );
+    json.member( "leads", leads );
+    json.end_object();
+}
+
+void camp_intelligence_map::deserialize( const JsonObject &jo )
+{
+    jo.read( "schema_version", schema_version );
+    jo.read( "last_daily_cleanup_minutes", last_daily_cleanup_minutes );
+    jo.read( "next_near_tick_minutes", next_near_tick_minutes );
+    jo.read( "next_mid_tick_minutes", next_mid_tick_minutes );
+    jo.read( "next_far_tick_minutes", next_far_tick_minutes );
+    jo.read( "next_frontier_tick_minutes", next_frontier_tick_minutes );
+    jo.read( "known_radius_omt", known_radius_omt );
+    jo.read( "frontier_radius_omt", frontier_radius_omt );
+    jo.read( "leads", leads );
+}
+
+camp_map_lead *camp_intelligence_map::find_lead( const std::string &lead_id )
+{
+    auto iter = std::find_if( leads.begin(), leads.end(), [&lead_id]( const camp_map_lead & lead ) {
+        return lead.lead_id == lead_id;
+    } );
+    return iter != leads.end() ? &*iter : nullptr;
+}
+
+const camp_map_lead *camp_intelligence_map::find_lead( const std::string &lead_id ) const
+{
+    auto iter = std::find_if( leads.begin(), leads.end(), [&lead_id]( const camp_map_lead & lead ) {
+        return lead.lead_id == lead_id;
+    } );
+    return iter != leads.end() ? &*iter : nullptr;
+}
+
 void site_record::serialize( JsonOut &json ) const
 {
     json.start_object();
@@ -559,6 +872,7 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "spawn_tiles", spawn_tiles );
     json.member( "active_group_id", active_group_id );
     json.member( "active_target_id", active_target_id );
+    json.member( "active_target_omt", active_target_omt );
     json.member( "active_job_type", active_job_type );
     json.member( "active_sortie_started_minutes", active_sortie_started_minutes );
     json.member( "active_sortie_local_contact_minutes", active_sortie_local_contact_minutes );
@@ -575,6 +889,7 @@ void site_record::serialize( JsonOut &json ) const
     json.member( "remembered_return_clock", remembered_return_clock );
     json.member( "remembered_pressure", bandit_pursuit_handoff::to_string( remembered_pressure ) );
     json.member( "known_recent_marks", known_recent_marks );
+    json.member( "intelligence_map", intelligence_map );
     json.member( "last_shakedown_outcome", last_shakedown_outcome );
     json.member( "shakedown_last_demanded_value", shakedown_last_demanded_value );
     json.member( "shakedown_last_surrendered_value", shakedown_last_surrendered_value );
@@ -617,6 +932,7 @@ void site_record::deserialize( const JsonObject &jo )
     jo.read( "spawn_tiles", spawn_tiles );
     jo.read( "active_group_id", active_group_id );
     jo.read( "active_target_id", active_target_id );
+    jo.read( "active_target_omt", active_target_omt );
     jo.read( "active_job_type", active_job_type );
     jo.read( "active_sortie_started_minutes", active_sortie_started_minutes );
     jo.read( "active_sortie_local_contact_minutes", active_sortie_local_contact_minutes );
@@ -639,6 +955,10 @@ void site_record::deserialize( const JsonObject &jo )
     remembered_pressure = remaining_return_pressure_state_from_string( remembered_pressure_string ).value_or(
                               bandit_pursuit_handoff::remaining_return_pressure_state::ample );
     jo.read( "known_recent_marks", known_recent_marks );
+    if( jo.has_member( "intelligence_map" ) ) {
+        jo.read( "intelligence_map", intelligence_map );
+    }
+    migrate_scalar_memory_to_intelligence_map( *this );
     jo.read( "last_shakedown_outcome", last_shakedown_outcome );
     jo.read( "shakedown_last_demanded_value", shakedown_last_demanded_value );
     jo.read( "shakedown_last_surrendered_value", shakedown_last_surrendered_value );
@@ -1156,6 +1476,7 @@ bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan )
     }
     site.active_group_id = plan.entry.group_id;
     site.active_target_id = plan.target_id;
+    site.active_target_omt = plan.target_omt;
     site.active_job_type = bandit_dry_run::to_string( plan.entry.job_type );
     site.active_member_ids = plan.member_ids;
     site.active_sortie_started_minutes = -1;
@@ -1697,24 +2018,24 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
         return false;
     }
 
-    if( shakedown_fight_outing && !packet.anchored_identity_updates.empty() ) {
-        int bandit_losses = 0;
-        for( const bandit_pursuit_handoff::anchored_identity_state &update :
-             packet.anchored_identity_updates ) {
-            if( update.status == "dead" || update.status == "missing" ) {
-                bandit_losses++;
-            }
-        }
-        if( bandit_losses > 0 ) {
-            shakedown_outcome outcome;
-            outcome.fought = true;
-            outcome.extraction_failed = true;
-            outcome.demanded_value = std::max( 1, site.shakedown_last_demanded_value );
-            outcome.reachable_goods_value = site.shakedown_last_reachable_value;
-            outcome.bandit_losses = bandit_losses;
-            apply_shakedown_outcome( site, outcome );
+    int bandit_losses = 0;
+    for( const bandit_pursuit_handoff::anchored_identity_state &update :
+         packet.anchored_identity_updates ) {
+        if( update.status == "dead" || update.status == "missing" ) {
+            bandit_losses++;
         }
     }
+    if( shakedown_fight_outing && bandit_losses > 0 ) {
+        shakedown_outcome outcome;
+        outcome.fought = true;
+        outcome.extraction_failed = true;
+        outcome.demanded_value = std::max( 1, site.shakedown_last_demanded_value );
+        outcome.reachable_goods_value = site.shakedown_last_reachable_value;
+        outcome.bandit_losses = bandit_losses;
+        apply_shakedown_outcome( site, outcome );
+    }
+
+    record_scout_return_lead( site, packet, bandit_losses );
 
     bandit_pursuit_handoff::abstract_group_state remembered_group = make_site_memory_group( site );
     bandit_pursuit_handoff::apply_return_packet( remembered_group, packet );
@@ -1722,6 +2043,7 @@ bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::retur
 
     site.active_group_id.clear();
     site.active_target_id.clear();
+    site.active_target_omt = tripoint_abs_omt();
     site.active_job_type.clear();
     site.active_member_ids.clear();
     site.active_sortie_started_minutes = -1;

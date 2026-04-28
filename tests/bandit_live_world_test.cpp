@@ -471,6 +471,210 @@ TEST_CASE( "bandit_live_world_applies_a_dispatch_plan_by_marking_the_selected_me
     CHECK( second_plan.notes.back().find( "active outbound/contact group" ) != std::string::npos );
 }
 
+TEST_CASE( "bandit_live_world_persists_independent_camp_intelligence_maps",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state original;
+    REQUIRE( bandit_live_world::register_abstract_site( original,
+             bandit_live_world::anchor_source_kind::overmap_special, "bandit_camp",
+             tripoint_abs_omt( 11, 21, 0 ), special_lookup,
+             bandit_live_world::abstract_roster_seed_for_site_kind(
+                 bandit_live_world::owned_site_kind::bandit_camp ) ) );
+    REQUIRE( bandit_live_world::register_abstract_site( original,
+             bandit_live_world::anchor_source_kind::overmap_special, "bandit_work_camp",
+             tripoint_abs_omt( 41, 51, 0 ), special_lookup,
+             bandit_live_world::abstract_roster_seed_for_site_kind(
+                 bandit_live_world::owned_site_kind::bandit_work_camp ) ) );
+
+    bandit_live_world::site_record &camp =
+        *original.find_site( "overmap_special:bandit_camp@10,20,0" );
+    bandit_live_world::camp_map_lead camp_lead;
+    camp_lead.lead_id = camp.site_id + "#lead:basecamp_activity:west";
+    camp_lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    camp_lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    camp_lead.target_id = "player@18,20,0";
+    camp_lead.omt = tripoint_abs_omt( 18, 20, 0 );
+    camp_lead.source_key = "scout-west";
+    camp_lead.source_summary = "scout confirmed west target";
+    camp_lead.bounty = 9;
+    camp_lead.threat = 2;
+    camp_lead.confidence = 4;
+    camp_lead.target_alert = true;
+    camp.intelligence_map.leads.push_back( camp_lead );
+
+    bandit_live_world::site_record &work_camp =
+        *original.find_site( "overmap_special:bandit_work_camp@40,50,0" );
+    bandit_live_world::camp_map_lead work_lead;
+    work_lead.lead_id = work_camp.site_id + "#lead:human_activity:east";
+    work_lead.kind = bandit_live_world::camp_lead_kind::human_activity;
+    work_lead.status = bandit_live_world::camp_lead_status::suspected;
+    work_lead.target_id = "traveler@48,50,0";
+    work_lead.omt = tripoint_abs_omt( 48, 50, 0 );
+    work_lead.source_key = "smoke-east";
+    work_lead.source_summary = "smoke mark suspected east target";
+    work_lead.bounty = 3;
+    work_lead.threat = 6;
+    work_lead.confidence = 1;
+    work_lead.scout_seen = false;
+    work_camp.intelligence_map.leads.push_back( work_lead );
+
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    original.serialize( jsout );
+
+    JsonValue jsin = json_loader::from_string( out.str() );
+    bandit_live_world::world_state loaded;
+    loaded.deserialize( jsin.get_object() );
+
+    const bandit_live_world::site_record &loaded_camp =
+        *loaded.find_site( "overmap_special:bandit_camp@10,20,0" );
+    const bandit_live_world::site_record &loaded_work_camp =
+        *loaded.find_site( "overmap_special:bandit_work_camp@40,50,0" );
+
+    REQUIRE( loaded_camp.intelligence_map.leads.size() == 1 );
+    const bandit_live_world::camp_map_lead &loaded_camp_lead =
+        loaded_camp.intelligence_map.leads.front();
+    CHECK( loaded_camp_lead.lead_id == camp_lead.lead_id );
+    CHECK( loaded_camp_lead.kind == bandit_live_world::camp_lead_kind::basecamp_activity );
+    CHECK( loaded_camp_lead.status == bandit_live_world::camp_lead_status::scout_confirmed );
+    CHECK( loaded_camp_lead.target_id == "player@18,20,0" );
+    CHECK( loaded_camp_lead.omt == tripoint_abs_omt( 18, 20, 0 ) );
+    CHECK( loaded_camp_lead.bounty == 9 );
+    CHECK( loaded_camp_lead.threat == 2 );
+    CHECK( loaded_camp_lead.confidence == 4 );
+    CHECK( loaded_camp_lead.target_alert );
+
+    REQUIRE( loaded_work_camp.intelligence_map.leads.size() == 1 );
+    const bandit_live_world::camp_map_lead &loaded_work_lead =
+        loaded_work_camp.intelligence_map.leads.front();
+    CHECK( loaded_work_lead.lead_id == work_lead.lead_id );
+    CHECK( loaded_work_lead.kind == bandit_live_world::camp_lead_kind::human_activity );
+    CHECK( loaded_work_lead.status == bandit_live_world::camp_lead_status::suspected );
+    CHECK( loaded_work_lead.target_id == "traveler@48,50,0" );
+    CHECK( loaded_work_lead.omt == tripoint_abs_omt( 48, 50, 0 ) );
+    CHECK( loaded_work_lead.bounty == 3 );
+    CHECK( loaded_work_lead.threat == 6 );
+    CHECK( loaded_work_lead.confidence == 1 );
+    CHECK_FALSE( loaded_work_lead.scout_seen );
+}
+
+TEST_CASE( "bandit_live_world_scout_return_writes_a_persistent_camp_map_lead",
+           "[bandit][live_world][camp_map]" )
+{
+    bandit_live_world::world_state world;
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "bandit", character_id( 551 ),
+             tripoint_abs_ms( 240, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+    REQUIRE( bandit_live_world::claim_tracked_spawn( world, "thug", character_id( 552 ),
+             tripoint_abs_ms( 241, 480, 0 ), std::string( "bandit_camp" ), std::nullopt,
+             special_lookup ) );
+
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt target_omt( 18, 20, 0 );
+    const bandit_live_world::dispatch_plan plan =
+        bandit_live_world::plan_site_dispatch( site, target_omt, "player_basecamp_nearby" );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_dispatch_plan( site, plan ) );
+    site.active_sortie_started_minutes = 120;
+    site.active_sortie_local_contact_minutes = 180;
+
+    bandit_pursuit_handoff::local_outcome outcome;
+    outcome.survivors_remaining = 1;
+    outcome.result = bandit_pursuit_handoff::mission_result::scouted;
+    outcome.resolution = bandit_pursuit_handoff::lead_resolution::still_valid;
+    outcome.posture = bandit_pursuit_handoff::return_posture::escape_home;
+    outcome.remaining_pressure = bandit_pursuit_handoff::remaining_return_pressure_state::ample;
+    const bandit_pursuit_handoff::return_packet packet =
+        bandit_pursuit_handoff::build_return_packet( plan.entry, outcome );
+
+    REQUIRE( bandit_live_world::apply_return_packet( site, packet ) );
+
+    REQUIRE( site.intelligence_map.leads.size() == 1 );
+    const bandit_live_world::camp_map_lead &lead = site.intelligence_map.leads.front();
+    CHECK( lead.kind == bandit_live_world::camp_lead_kind::basecamp_activity );
+    CHECK( lead.status == bandit_live_world::camp_lead_status::scout_confirmed );
+    CHECK( lead.target_id == "player_basecamp_nearby" );
+    CHECK( lead.omt == target_omt );
+    CHECK( lead.source_key == plan.entry.group_id );
+    CHECK( lead.bounty >= 2 );
+    CHECK( lead.threat >= 1 );
+    CHECK( lead.confidence >= 2 );
+    CHECK( lead.threat_confirmed );
+    CHECK_FALSE( lead.target_alert );
+    CHECK_FALSE( lead.scout_seen );
+    CHECK( lead.last_scouted_minutes == 120 );
+    CHECK( lead.last_checked_minutes == 180 );
+    CHECK( lead.last_outcome == "scouted" );
+    CHECK( site.active_group_id.empty() );
+}
+
+TEST_CASE( "bandit_live_world_migrates_legacy_scalar_memory_only_as_fallback",
+           "[bandit][live_world][camp_map]" )
+{
+    {
+        const std::string legacy_json = R"({
+            "site_id": "legacy_camp",
+            "active_target_id": "legacy-active",
+            "remembered_target_or_mark": "legacy-mark",
+            "remembered_threat_estimate": 5,
+            "remembered_bounty_estimate": 7
+        })";
+        JsonValue legacy_value = json_loader::from_string( legacy_json );
+        bandit_live_world::site_record legacy_site;
+        legacy_site.deserialize( legacy_value.get_object() );
+
+        REQUIRE( legacy_site.intelligence_map.leads.size() == 1 );
+        const bandit_live_world::camp_map_lead &lead = legacy_site.intelligence_map.leads.front();
+        CHECK( lead.kind == bandit_live_world::camp_lead_kind::human_activity );
+        CHECK( lead.status == bandit_live_world::camp_lead_status::suspected );
+        CHECK( lead.target_id == "legacy-mark" );
+        CHECK( lead.bounty == 7 );
+        CHECK( lead.threat == 5 );
+        CHECK( lead.confidence == 2 );
+        CHECK( lead.threat_confirmed );
+        CHECK_FALSE( lead.scout_seen );
+        CHECK_FALSE( lead.target_alert );
+        CHECK( lead.last_outcome == "legacy_memory" );
+        CHECK( lead.source_summary == "migrated from legacy remembered_* site memory" );
+    }
+
+    {
+        const std::string modern_json = R"({
+            "site_id": "modern_camp",
+            "remembered_target_or_mark": "legacy-mark",
+            "remembered_threat_estimate": 9,
+            "remembered_bounty_estimate": 9,
+            "intelligence_map": {
+                "schema_version": 1,
+                "leads": [ {
+                    "lead_id": "modern_camp#lead:basecamp_activity:confirmed",
+                    "kind": "basecamp_activity",
+                    "status": "scout_confirmed",
+                    "target_id": "confirmed-mark",
+                    "bounty": 4,
+                    "threat": 1,
+                    "confidence": 3,
+                    "source_summary": "existing camp map proof"
+                } ]
+            }
+        })";
+        JsonValue modern_value = json_loader::from_string( modern_json );
+        bandit_live_world::site_record modern_site;
+        modern_site.deserialize( modern_value.get_object() );
+
+        REQUIRE( modern_site.intelligence_map.leads.size() == 1 );
+        const bandit_live_world::camp_map_lead &lead = modern_site.intelligence_map.leads.front();
+        CHECK( lead.lead_id == "modern_camp#lead:basecamp_activity:confirmed" );
+        CHECK( lead.kind == bandit_live_world::camp_lead_kind::basecamp_activity );
+        CHECK( lead.status == bandit_live_world::camp_lead_status::scout_confirmed );
+        CHECK( lead.target_id == "confirmed-mark" );
+        CHECK( lead.bounty == 4 );
+        CHECK( lead.threat == 1 );
+        CHECK( lead.confidence == 3 );
+        CHECK( lead.source_summary == "existing camp map proof" );
+    }
+}
+
 TEST_CASE( "bandit_live_world_keeps_a_home_reserve_for_site_backed_camps", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;

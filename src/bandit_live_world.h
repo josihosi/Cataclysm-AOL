@@ -65,6 +65,32 @@ enum class local_gate_posture {
     abort,
 };
 
+enum class camp_lead_kind {
+    structural_bounty,
+    harvested_site,
+    human_activity,
+    basecamp_activity,
+    moving_actor,
+    route_activity,
+    smoke_signal,
+    light_signal,
+    sound_signal,
+    threat_memory,
+    loss_site,
+    false_lead,
+    frontier_probe,
+};
+
+enum class camp_lead_status {
+    suspected,
+    scout_confirmed,
+    active,
+    harvested,
+    stale,
+    invalidated,
+    dangerous,
+};
+
 struct active_member_observation {
     character_id npc_id;
     active_member_observation_state state = active_member_observation_state::unresolved;
@@ -90,6 +116,54 @@ struct spawn_tile_record {
     void deserialize( const JsonObject &jo );
 };
 
+struct camp_map_lead {
+    std::string lead_id;
+    camp_lead_kind kind = camp_lead_kind::human_activity;
+    camp_lead_status status = camp_lead_status::suspected;
+    std::string target_id;
+    tripoint_abs_omt omt;
+    int radius_omt = 0;
+    std::string source_key;
+    std::string source_summary;
+    int first_seen_minutes = -1;
+    int last_seen_minutes = -1;
+    int last_checked_minutes = -1;
+    int last_scouted_minutes = -1;
+    int bounty = 0;
+    int threat = 0;
+    int confidence = 0;
+    bool threat_confirmed = false;
+    bool target_alert = false;
+    bool scout_seen = false;
+    bool generated_by_this_camp_routine = false;
+    int prior_bandit_losses = 0;
+    int prior_defender_losses = 0;
+    int times_checked_empty = 0;
+    int times_harvested = 0;
+    std::string last_outcome;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+struct camp_intelligence_map {
+    int schema_version = 1;
+    int last_daily_cleanup_minutes = -1;
+    int next_near_tick_minutes = -1;
+    int next_mid_tick_minutes = -1;
+    int next_far_tick_minutes = -1;
+    int next_frontier_tick_minutes = -1;
+    int known_radius_omt = 0;
+    int frontier_radius_omt = 0;
+    std::vector<camp_map_lead> leads;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+
+    camp_map_lead *find_lead( const std::string &lead_id );
+    const camp_map_lead *find_lead( const std::string &lead_id ) const;
+};
+
 struct site_record {
     std::string site_id;
     anchor_source_kind source_kind = anchor_source_kind::none;
@@ -103,6 +177,7 @@ struct site_record {
     std::vector<spawn_tile_record> spawn_tiles;
     std::string active_group_id;
     std::string active_target_id;
+    tripoint_abs_omt active_target_omt;
     std::string active_job_type;
     std::vector<character_id> active_member_ids;
     int active_sortie_started_minutes = -1;
@@ -115,6 +190,7 @@ struct site_record {
     bandit_pursuit_handoff::remaining_return_pressure_state remembered_pressure =
         bandit_pursuit_handoff::remaining_return_pressure_state::ample;
     std::vector<std::string> known_recent_marks;
+    camp_intelligence_map intelligence_map;
     std::string last_shakedown_outcome;
     int shakedown_last_demanded_value = 0;
     int shakedown_last_surrendered_value = 0;
@@ -323,6 +399,8 @@ std::string to_string( hostile_site_profile profile );
 std::string to_string( member_state state );
 std::string to_string( active_member_observation_state state );
 std::string to_string( local_gate_posture posture );
+std::string to_string( camp_lead_kind kind );
+std::string to_string( camp_lead_status status );
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
                                       const local_gate_decision &decision );
 std::string render_shakedown_surface_report( const site_record &site,
