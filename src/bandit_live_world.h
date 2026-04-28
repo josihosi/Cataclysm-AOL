@@ -128,6 +128,8 @@ struct site_record {
     bool shakedown_basecamp_defender_observation_pending = false;
     bool shakedown_reopen_available = false;
     bool shakedown_reopen_used = false;
+    bool retired_empty_site = false;
+    std::string retirement_summary;
 
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
@@ -139,7 +141,10 @@ struct site_record {
     const spawn_tile_record *find_spawn_tile( const tripoint_abs_ms &tile ) const;
     int count_members_in_state( member_state state ) const;
     int count_live_members() const;
+    int count_home_side_signals() const;
     int dispatchable_member_capacity() const;
+    bool has_active_outside_pressure() const;
+    bool eligible_for_empty_site_retirement() const;
 };
 
 struct world_state {
@@ -304,6 +309,8 @@ shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_r
         int live_defenders );
 bool mark_shakedown_reopen_used( site_record &site );
 bool record_live_signal_mark( site_record &site, const live_signal_mark &mark );
+std::string render_empty_site_retirement_report( const site_record &site );
+int retire_empty_hostile_sites( world_state &state, std::vector<std::string> *reports = nullptr );
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet );
 std::optional<bandit_pursuit_handoff::return_packet> resolve_active_group_aftermath(
     const site_record &site, const std::vector<active_member_observation> &observations );

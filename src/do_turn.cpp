@@ -659,7 +659,7 @@ bool note_live_bandit_aftermath()
     bool changed = false;
 
     for( bandit_live_world::site_record &site : state.sites ) {
-        if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+        if( site.retired_empty_site || site.active_group_id.empty() || site.active_member_ids.empty() ) {
             continue;
         }
 
@@ -1300,7 +1300,12 @@ int refresh_live_bandit_signal_marks(
     int matched_light_sites = 0;
     int rejected_by_system_range = 0;
     int rejected_by_signal_range = 0;
+    int rejected_retired_empty_site = 0;
     for( bandit_live_world::site_record &site : state.sites ) {
+        if( site.retired_empty_site ) {
+            rejected_retired_empty_site++;
+            continue;
+        }
         if( rl_dist( site.anchor, u.pos_abs_omt() ) > live_bandit_system_envelope_omt ) {
             rejected_by_system_range++;
             continue;
@@ -1350,6 +1355,7 @@ int refresh_live_bandit_signal_marks(
                                << " matched_light_sites=" << matched_light_sites
                                << " rejected_by_system_range=" << rejected_by_system_range
                                << " rejected_by_signal_range=" << rejected_by_signal_range
+                               << " rejected_retired_empty_site=" << rejected_retired_empty_site
                                << " scan_radius_omt=" << live_bandit_system_envelope_omt << '\n';
     return refreshed_sites;
 }
@@ -1390,8 +1396,13 @@ bool steer_live_bandit_dispatch_toward_player(
     int active_player_pressure = 0;
     int rejected_by_range = 0;
     int rejected_no_signal = 0;
+    int rejected_retired_empty_site = 0;
     for( size_t i = 0; i < state.sites.size(); ++i ) {
         const bandit_live_world::site_record &site = state.sites[i];
+        if( site.retired_empty_site ) {
+            rejected_retired_empty_site++;
+            continue;
+        }
         if( has_active_player_pressure( site ) ) {
             active_player_pressure++;
         }
@@ -1444,6 +1455,7 @@ bool steer_live_bandit_dispatch_toward_player(
                                    << " signal_packet=" << ( signals.empty() ? "no" : "yes" )
                                    << " rejected_no_signal=" << rejected_no_signal
                                    << " rejected_by_range=" << rejected_by_range
+                                   << " rejected_retired_empty_site=" << rejected_retired_empty_site
                                    << " direct_cap=" << live_bandit_direct_player_range_omt
                                    << " player=" << u.pos_abs_omt().to_string() << '\n';
         return false;
@@ -1895,6 +1907,12 @@ void overmap_npc_move()
 {
     avatar &u = get_avatar();
     note_live_bandit_aftermath();
+    std::vector<std::string> empty_site_retirement_reports;
+    bandit_live_world::retire_empty_hostile_sites( overmap_buffer.global_state.bandit_live_world,
+            &empty_site_retirement_reports );
+    for( const std::string &report : empty_site_retirement_reports ) {
+        DebugLog( D_INFO, DC_ALL ) << report << '\n';
+    }
     const bool dispatch_cadence_due = calendar::once_every( 30_minutes );
     const bool signal_cadence_due = dispatch_cadence_due || calendar::once_every( 5_minutes );
     std::vector<live_bandit_signal_observation> live_signals;

@@ -589,6 +589,8 @@ void site_record::serialize( JsonOut &json ) const
                  shakedown_basecamp_defender_observation_pending );
     json.member( "shakedown_reopen_available", shakedown_reopen_available );
     json.member( "shakedown_reopen_used", shakedown_reopen_used );
+    json.member( "retired_empty_site", retired_empty_site );
+    json.member( "retirement_summary", retirement_summary );
     json.end_object();
 }
 
@@ -651,6 +653,8 @@ void site_record::deserialize( const JsonObject &jo )
              shakedown_basecamp_defender_observation_pending );
     jo.read( "shakedown_reopen_available", shakedown_reopen_available );
     jo.read( "shakedown_reopen_used", shakedown_reopen_used );
+    jo.read( "retired_empty_site", retired_empty_site );
+    jo.read( "retirement_summary", retirement_summary );
 }
 
 bool site_record::has_member( character_id target_npc_id ) const
@@ -707,10 +711,37 @@ int site_record::count_live_members() const
     } ) );
 }
 
+int site_record::count_home_side_signals() const
+{
+    int home_side_signals = count_members_in_state( member_state::at_home );
+    home_side_signals += std::max( 0, headcount );
+    for( const spawn_tile_record &spawn_tile : spawn_tiles ) {
+        home_side_signals += std::max( 0, spawn_tile.headcount );
+    }
+    return home_side_signals;
+}
+
 int site_record::dispatchable_member_capacity() const
 {
+    if( retired_empty_site ) {
+        return 0;
+    }
     const int at_home_members = count_members_in_state( member_state::at_home );
     return std::max( 0, at_home_members - required_home_reserve( *this ) );
+}
+
+bool site_record::has_active_outside_pressure() const
+{
+    return !active_group_id.empty() || !active_member_ids.empty() ||
+           count_members_in_state( member_state::outbound ) > 0 ||
+           count_members_in_state( member_state::local_contact ) > 0;
+}
+
+bool site_record::eligible_for_empty_site_retirement() const
+{
+    return !retired_empty_site && site_kind != owned_site_kind::none &&
+           profile_for_site_kind( site_kind ) != hostile_site_profile::none &&
+           count_home_side_signals() == 0 && !has_active_outside_pressure();
 }
 
 void world_state::clear()
@@ -917,6 +948,10 @@ bool register_abstract_site( world_state &state, anchor_source_kind source_kind,
         return true;
     }
 
+    if( site->retired_empty_site ) {
+        return false;
+    }
+
     if( site->footprint.size() < footprint.footprint.size() ) {
         site->footprint = footprint.footprint;
         site->anchor = footprint.anchor;
@@ -1000,6 +1035,10 @@ bool claim_tracked_spawn( world_state &state, const std::string &npc_template_id
     if( site->profile == hostile_site_profile::none ) {
         site->profile = profile_for_site_kind( site->site_kind );
     }
+    if( site->retired_empty_site ) {
+        site->retired_empty_site = false;
+        site->retirement_summary = "reactivated by tracked hostile spawn " + std::to_string( npc_id.get_value() );
+    }
 
     if( site->has_member( npc_id ) ) {
         return true;
@@ -1035,6 +1074,11 @@ dispatch_plan plan_site_dispatch( const site_record &site, const tripoint_abs_om
 
     if( target_id.empty() ) {
         plan.notes.push_back( "dispatch blocked: missing target id" );
+        return plan;
+    }
+
+    if( site.retired_empty_site ) {
+        plan.notes.push_back( "dispatch blocked: retired_empty_site" );
         return plan;
     }
 
@@ -1535,7 +1579,7 @@ bool mark_shakedown_reopen_used( site_record &site )
 
 bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
 {
-    if( mark.mark_id.empty() || mark.range_cap_omt <= 0 ) {
+    if( site.retired_empty_site || mark.mark_id.empty() || mark.range_cap_omt <= 0 ) {
         return false;
     }
 
@@ -1559,6 +1603,45 @@ bool record_live_signal_mark( site_record &site, const live_signal_mark &mark )
     }
 
     return changed;
+}
+
+std::string render_empty_site_retirement_report( const site_record &site )
+{
+    int spawn_tile_headcount = 0;
+    for( const spawn_tile_record &spawn_tile : site.spawn_tiles ) {
+        spawn_tile_headcount += std::max( 0, spawn_tile.headcount );
+    }
+
+    std::ostringstream out;
+    out << "bandit_live_world retired_empty_site: site=" << site.site_id
+        << " site_kind=" << to_string( site.site_kind )
+        << " headcount=" << site.headcount
+        << " at_home=" << site.count_members_in_state( member_state::at_home )
+        << " spawn_tile_headcount=" << spawn_tile_headcount
+        << " active_group=" << ( site.active_group_id.empty() ? "no" : site.active_group_id )
+        << " active_member_ids=" << site.active_member_ids.size()
+        << " outbound=" << site.count_members_in_state( member_state::outbound )
+        << " local_contact=" << site.count_members_in_state( member_state::local_contact )
+        << " home_side_signals=" << site.count_home_side_signals()
+        << " active_outside=" << ( site.has_active_outside_pressure() ? "yes" : "no" );
+    return out.str();
+}
+
+int retire_empty_hostile_sites( world_state &state, std::vector<std::string> *reports )
+{
+    int retired_count = 0;
+    for( site_record &site : state.sites ) {
+        if( !site.eligible_for_empty_site_retirement() ) {
+            continue;
+        }
+        site.retired_empty_site = true;
+        site.retirement_summary = render_empty_site_retirement_report( site );
+        if( reports != nullptr ) {
+            reports->push_back( site.retirement_summary );
+        }
+        retired_count++;
+    }
+    return retired_count;
 }
 
 bool apply_return_packet( site_record &site, const bandit_pursuit_handoff::return_packet &packet )

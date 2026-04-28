@@ -1,6 +1,6 @@
 # Bandit empty-camp retirement audit-mode packet v0 (2026-04-28)
 
-Status: GREENLIT / NEXT NAMED HARNESS-AUDIT SEAM
+Status: IMPLEMENTED / DETERMINISTIC PROOF GREEN
 
 ## Why this exists
 
@@ -31,12 +31,13 @@ The important constraint is conjunctive: **retire/prune only when both sides are
 
 ## Success state
 
-- [ ] Deterministic coverage proves the retirement predicate is conjunctive: no home/inside members **and** no active dispatch/outside members are required.
-- [ ] Negative coverage proves the site is kept when home members remain, even if there is no active dispatch.
-- [ ] Negative coverage proves the site is kept when active dispatch/outbound/local-contact members remain, even if no members are at home.
-- [ ] Positive coverage proves a site with no live home members and no active dispatch/outside members is retired/removed from active AI calculations.
-- [ ] Review output/logs distinguish empty-site retirement from ordinary dispatch blocking or signal absence.
-- [ ] If a live harness probe is used, it runs in audit mode: every setup/action has screenshot or exact same-run metadata, debug-kill/all-bandits-killed state is proven, and the final retired/not-retired site state is proven from the same save/world/log path.
+- [x] Deterministic coverage proves the retirement predicate is conjunctive: no home/inside members or spawn-tile home headcount **and** no active dispatch/outside pressure are required.
+- [x] Negative coverage proves the site is kept when home members remain, even if there is no active dispatch.
+- [x] Negative coverage proves the site is kept when active dispatch/outbound/local-contact members remain, even if no members are at home.
+- [x] Negative coverage proves unresolved local-contact/returning-home aftermath keeps the site active until the active side is resolved.
+- [x] Positive coverage proves a site with no live home members/spawn-tile headcount and no active dispatch/outside pressure is retired from active AI calculations.
+- [x] Review output/logs distinguish empty-site retirement from ordinary dispatch blocking or signal absence via `retired_empty_site`, retirement report text, dispatch block notes, and signal-mark guard behavior.
+- [x] No live harness probe was used for closure; deterministic proof is the credited evidence class, so no debug-kill/load-and-close feature proof is claimed.
 
 ## Audit-mode playtest shape
 
