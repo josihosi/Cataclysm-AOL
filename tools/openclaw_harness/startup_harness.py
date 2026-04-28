@@ -2505,6 +2505,23 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
     members = site.get("members", [])
     if not isinstance(members, list):
         members = []
+    ready_at_home = 0
+    wounded_or_unready = 0
+    active_outside_ids = {str(value) for value in active_member_ids}
+    member_state_counts: Dict[str, int] = {}
+    for member in members:
+        if not isinstance(member, dict):
+            continue
+        state = str(member.get("state", ""))
+        member_state_counts[state] = member_state_counts.get(state, 0) + 1
+        is_wounded_or_unready = bool(member.get("wounded_or_unready", False))
+        if state == "at_home" and not is_wounded_or_unready:
+            ready_at_home += 1
+        if state in {"at_home", "outbound", "local_contact"} and is_wounded_or_unready:
+            wounded_or_unready += 1
+        if state in {"outbound", "local_contact"}:
+            active_outside_ids.add(str(member.get("npc_id", "")))
+    active_outside_ids.discard("")
     known_recent_marks = site.get("known_recent_marks", [])
     if not isinstance(known_recent_marks, list):
         known_recent_marks = []
@@ -2516,6 +2533,10 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "anchor": site.get("anchor", []),
         "headcount": site.get("headcount", 0),
         "member_count": len(members),
+        "ready_at_home_count": ready_at_home,
+        "wounded_or_unready_count": wounded_or_unready,
+        "active_outside_count": len(active_outside_ids),
+        "member_state_counts": member_state_counts,
         "active_group_id": site.get("active_group_id", ""),
         "active_target_id": site.get("active_target_id", ""),
         "active_target_omt": site.get("active_target_omt", []),
@@ -2541,6 +2562,10 @@ def audit_saved_bandit_live_world_state(
     required_active_group_id_contains: str = "",
     required_active_target_id_prefix: str = "",
     required_active_job_type: str = "",
+    required_member_count: Optional[int] = None,
+    required_ready_at_home_count: Optional[int] = None,
+    required_wounded_or_unready_count: Optional[int] = None,
+    required_active_outside_count: Optional[int] = None,
     required_min_active_member_ids: Optional[int] = None,
     required_active_members_found: bool = False,
     required_active_member_max_abs_offset_ms: Optional[List[int]] = None,
@@ -2706,6 +2731,14 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_active_job_type and site.get("active_job_type") != required_active_job_type:
             return False
+        if required_member_count is not None and int(site.get("member_count", 0) or 0) != required_member_count:
+            return False
+        if required_ready_at_home_count is not None and int(site.get("ready_at_home_count", 0) or 0) != required_ready_at_home_count:
+            return False
+        if required_wounded_or_unready_count is not None and int(site.get("wounded_or_unready_count", 0) or 0) != required_wounded_or_unready_count:
+            return False
+        if required_active_outside_count is not None and int(site.get("active_outside_count", 0) or 0) != required_active_outside_count:
+            return False
         if required_min_active_member_ids is not None and int(site.get("active_member_count", 0) or 0) < required_min_active_member_ids:
             return False
         if required_active_members_found and not bool(site.get("active_members_all_found_in_saved_overmap")):
@@ -2739,6 +2772,10 @@ def audit_saved_bandit_live_world_state(
         "required_active_group_id_contains": required_active_group_id_contains,
         "required_active_target_id_prefix": required_active_target_id_prefix,
         "required_active_job_type": required_active_job_type,
+        "required_member_count": required_member_count,
+        "required_ready_at_home_count": required_ready_at_home_count,
+        "required_wounded_or_unready_count": required_wounded_or_unready_count,
+        "required_active_outside_count": required_active_outside_count,
         "required_min_active_member_ids": required_min_active_member_ids,
         "required_active_members_found": required_active_members_found,
         "required_active_member_max_abs_offset_ms": normalized_max_abs_offset,
@@ -4630,11 +4667,41 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "bandit_site_roster_shape":
+            try:
+                living_member_count = int(raw.get("living_member_count"))
+                wounded_or_unready_count = int(raw.get("wounded_or_unready_count", 0) or 0)
+                active_outside_member_count = int(raw.get("active_outside_member_count", 0) or 0)
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_site_roster_shape needs integer "
+                    f"living_member_count/wounded_or_unready_count/active_outside_member_count in {manifest_path}"
+                )
+            if living_member_count < 0 or wounded_or_unready_count < 0 or active_outside_member_count < 0:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_site_roster_shape counts must be >= 0 in {manifest_path}"
+                )
+            if wounded_or_unready_count + active_outside_member_count > living_member_count:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_site_roster_shape wounded+active exceeds living count in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "site_id": str(raw.get("site_id", "") or "").strip(),
+                "living_member_count": living_member_count,
+                "wounded_or_unready_count": wounded_or_unready_count,
+                "active_outside_member_count": active_outside_member_count,
+                "active_job_type": str(raw.get("active_job_type", "stalk") or "stalk").strip(),
+                "active_target_id": str(raw.get("active_target_id", "") or "").strip(),
+            })
+            continue
+
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
             "supported kinds: player_mutations, player_items, player_near_overmap_special, "
             "seed_overmap_special_near_player, map_fields_near_player, game_turn, "
-            "bandit_active_sortie_clock, bandit_camp_map_lead"
+            "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_site_roster_shape"
         )
     return transforms
 
@@ -5703,6 +5770,108 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
         "clear_active_pressure": bool(transform.get("clear_active_pressure", True)),
     }
 
+
+def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture bandit roster-shape transform target not found: {dimension_path}")
+
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Fixture dimension data is not a JSON object: {dimension_path}")
+    overmapbuffer = payload.get("overmapbuffer", {})
+    if not isinstance(overmapbuffer, dict):
+        raise SystemExit(f"Fixture dimension data lacks overmapbuffer object: {dimension_path}")
+    live_world = overmapbuffer.get("bandit_live_world", {})
+    if not isinstance(live_world, dict):
+        raise SystemExit(f"Fixture dimension data lacks bandit_live_world object: {dimension_path}")
+    sites = live_world.get("sites", [])
+    if not isinstance(sites, list):
+        raise SystemExit(f"Fixture bandit_live_world.sites is not a list: {dimension_path}")
+
+    requested_site_id = str(transform.get("site_id", "") or "").strip()
+    selected_site: Optional[Dict[str, Any]] = None
+    for site in sites:
+        if not isinstance(site, dict):
+            continue
+        site_id = str(site.get("site_id", ""))
+        if requested_site_id and site_id != requested_site_id:
+            continue
+        selected_site = site
+        break
+    if selected_site is None:
+        raise SystemExit(
+            "Fixture bandit roster-shape transform found no owned site"
+            + (f" matching {requested_site_id}" if requested_site_id else "")
+        )
+
+    members = selected_site.get("members", [])
+    if not isinstance(members, list):
+        raise SystemExit("Fixture bandit roster-shape transform target site has no members list")
+    living_member_count = int(transform.get("living_member_count", 0) or 0)
+    wounded_or_unready_count = int(transform.get("wounded_or_unready_count", 0) or 0)
+    active_outside_member_count = int(transform.get("active_outside_member_count", 0) or 0)
+    if living_member_count > len(members):
+        raise SystemExit(
+            f"Fixture bandit roster-shape requested {living_member_count} members but only {len(members)} are available"
+        )
+
+    shaped_members = [dict(member) for member in members[:living_member_count] if isinstance(member, dict)]
+    for member in shaped_members:
+        member["state"] = "at_home"
+        member["wounded_or_unready"] = False
+        member["last_writeback_summary"] = "fixture roster shape: at-home ready member"
+
+    active_member_ids: List[Any] = []
+    for member in shaped_members[:active_outside_member_count]:
+        member["state"] = "outbound"
+        member["last_writeback_summary"] = "fixture roster shape: unresolved outside pressure"
+        active_member_ids.append(member.get("npc_id"))
+
+    wounded_start = active_outside_member_count
+    wounded_end = wounded_start + wounded_or_unready_count
+    for member in shaped_members[wounded_start:wounded_end]:
+        member["wounded_or_unready"] = True
+        member["last_writeback_summary"] = "fixture roster shape: wounded/unready member"
+
+    selected_site["members"] = shaped_members
+    selected_site["headcount"] = living_member_count
+    selected_site["active_member_ids"] = active_member_ids
+    if active_member_ids:
+        site_id = str(selected_site.get("site_id", ""))
+        selected_site["active_group_id"] = site_id + "#fixture_active_pressure"
+        selected_site["active_job_type"] = str(transform.get("active_job_type", "stalk") or "stalk").strip()
+        selected_site["active_target_id"] = str(transform.get("active_target_id", "") or "").strip()
+        selected_site["active_sortie_started_minutes"] = 0
+        selected_site["active_sortie_local_contact_minutes"] = 0
+    else:
+        selected_site["active_group_id"] = ""
+        selected_site["active_target_id"] = ""
+        selected_site["active_target_omt"] = [0, 0, 0]
+        selected_site["active_job_type"] = ""
+        selected_site["active_sortie_started_minutes"] = -1
+        selected_site["active_sortie_local_contact_minutes"] = -1
+
+    dimension_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return {
+        "kind": "bandit_site_roster_shape",
+        "world": world_dir.name,
+        "site_id": str(selected_site.get("site_id", "")),
+        "living_member_count": living_member_count,
+        "ready_at_home_count": max(0, living_member_count - active_outside_member_count - wounded_or_unready_count),
+        "wounded_or_unready_count": wounded_or_unready_count,
+        "active_outside_member_count": active_outside_member_count,
+        "active_member_ids": active_member_ids,
+    }
+
+
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for transform in transforms:
@@ -5730,6 +5899,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "bandit_camp_map_lead":
             reports.append(apply_bandit_camp_map_lead_transform(world_dir, transform))
+            continue
+        if kind == "bandit_site_roster_shape":
+            reports.append(apply_bandit_site_roster_shape_transform(world_dir, transform))
             continue
         raise SystemExit(f"Unsupported fixture save transform kind: {kind}")
     return reports
@@ -6291,6 +6463,18 @@ def execute_probe_steps(
                 "spawn_target": "map_editor_target_tile",
             })
         elif kind == "audit_saved_bandit_live_world_state":
+            def optional_step_int(*keys: str) -> Optional[int]:
+                for key in keys:
+                    raw_value = step.get(key)
+                    if raw_value is None or str(raw_value).strip() == "":
+                        continue
+                    return int(raw_value)
+                return None
+
+            required_member_count = optional_step_int("required_member_count")
+            required_ready_at_home_count = optional_step_int("required_ready_at_home_count")
+            required_wounded_or_unready_count = optional_step_int("required_wounded_or_unready_count")
+            required_active_outside_count = optional_step_int("required_active_outside_count")
             raw_required_min_active_member_ids = step.get("required_min_active_member_ids", step.get("required_active_member_count_min"))
             required_min_active_member_ids: Optional[int]
             if raw_required_min_active_member_ids is None or str(raw_required_min_active_member_ids).strip() == "":
@@ -6321,6 +6505,10 @@ def execute_probe_steps(
                     required_active_group_id_contains=str(step.get("required_active_group_id_contains", "") or "").strip(),
                     required_active_target_id_prefix=str(step.get("required_active_target_id_prefix", "") or "").strip(),
                     required_active_job_type=str(step.get("required_active_job_type", "") or "").strip(),
+                    required_member_count=required_member_count,
+                    required_ready_at_home_count=required_ready_at_home_count,
+                    required_wounded_or_unready_count=required_wounded_or_unready_count,
+                    required_active_outside_count=required_active_outside_count,
                     required_min_active_member_ids=required_min_active_member_ids,
                     required_active_members_found=bool(step.get("required_active_members_found", False)),
                     required_active_member_max_abs_offset_ms=required_max_offset,
@@ -6345,6 +6533,10 @@ def execute_probe_steps(
                     "required_active_group_id_contains": str(step.get("required_active_group_id_contains", "") or "").strip(),
                     "required_active_target_id_prefix": str(step.get("required_active_target_id_prefix", "") or "").strip(),
                     "required_active_job_type": str(step.get("required_active_job_type", "") or "").strip(),
+                    "required_member_count": required_member_count,
+                    "required_ready_at_home_count": required_ready_at_home_count,
+                    "required_wounded_or_unready_count": required_wounded_or_unready_count,
+                    "required_active_outside_count": required_active_outside_count,
                     "required_min_active_member_ids": required_min_active_member_ids,
                     "required_active_members_found": bool(step.get("required_active_members_found", False)),
                     "required_active_member_max_abs_offset_ms": required_max_offset,

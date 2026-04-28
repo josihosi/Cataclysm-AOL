@@ -1639,6 +1639,12 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
     decision.margin = decision.reward_score - decision.risk_score;
 
     decision.notes.push_back( "camp-map decision uses ready roster, wounded/unready, reserve, and lead pressure" );
+    decision.notes.push_back( "camp-map roster living=" + std::to_string( decision.living_roster ) +
+                              " ready_at_home=" + std::to_string( decision.ready_at_home ) +
+                              " wounded_or_unready=" + std::to_string( decision.wounded_or_unready ) +
+                              " active_outside=" + std::to_string( decision.active_outside ) +
+                              " reserve=" + std::to_string( decision.hard_home_reserve ) +
+                              " dispatchable=" + std::to_string( decision.dispatchable ) );
     if( pressure.stockpile_pressure >= 3 ) {
         decision.notes.push_back( "stockpile pressure may loosen reserve by one but cannot cross hard minimum" );
     }
