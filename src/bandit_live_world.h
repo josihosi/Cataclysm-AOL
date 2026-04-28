@@ -260,6 +260,7 @@ struct local_gate_input {
     bool darkness_or_concealment = false;
     bool basecamp_or_camp_scene = false;
     bool rolling_travel_scene = false;
+    bool current_exposure = false;
     bool recent_exposure = false;
     bool local_contact_established = false;
 };
