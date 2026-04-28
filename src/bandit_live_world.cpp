@@ -1648,6 +1648,8 @@ camp_map_dispatch_decision choose_camp_map_dispatch( const site_record &site,
     if( pressure.stockpile_pressure >= 3 ) {
         decision.notes.push_back( "stockpile pressure may loosen reserve by one but cannot cross hard minimum" );
     }
+    decision.notes.push_back( "camp-map opening_state=" + pressure.opening_state +
+                              " opening_available=" + std::string( pressure.opening_available ? "yes" : "no" ) );
     if( lead.prior_bandit_losses > 0 || lead.target_alert || lead.scout_seen ) {
         decision.notes.push_back( "losses/alert add caution before greed can size the outing" );
     }

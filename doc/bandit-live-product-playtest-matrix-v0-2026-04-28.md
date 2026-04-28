@@ -82,6 +82,8 @@ Required proof:
 
 Claim: a follow-up stalk/pressure group can be larger than the scout where justified, waits for an opening rather than instantly fighting, and returns/holds/decays if no opening appears within the bounded window.
 
+Status: **green feature-path evidence for the no-opening branch** in `.userdata/dev-harness/harness_runs/20260428_195617/` via `bandit.stalk_pressure_waits_for_opening`: saved active lead footing, green 30-minute cadence wait, same-run no-opening rejection with `opening_state=no_opening_after_bounded_stalk_window` / `opening_available=no`, held-pressure notes, no spawned outside group, and saved stale/decayed lead state. This closes the no-opening guardrail only; opening-present escalation remains separate.
+
 Required proof:
 - remembered high-value/manageable-risk lead exists;
 - selected stalk/pressure group has member count > scout where roster allows;
@@ -136,8 +138,8 @@ Required proof:
 
 1. Preserve/repair any still-red prerequisite gates before dependent proof: especially real player fuel/fire if testing player-created fire/smoke/light.
 2. Run scenario 2 scout memory two-OMT watch.
-3. Run scenario 4 variable-roster dispatch sizing.
-4. Run scenario 5 stalk/pressure wait-for-opening.
+3. Preserve scenario 4 variable-roster dispatch sizing evidence and add separate high-threat/active-outside guardrail scenarios before row closure.
+4. Preserve scenario 5 no-opening evidence; add opening-present escalation only if product review needs that branch now.
 5. Run scenario 7 shakedown/toll control regression.
 6. Run scenario 8 empty-camp live sanity only if the seam is still desired beyond deterministic proof.
 7. Run scenario 1 player-created fire/smoke/light only after fuel/writeback is green; otherwise keep its blocked verdict explicit.

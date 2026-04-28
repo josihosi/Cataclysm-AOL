@@ -1469,6 +1469,27 @@ int signal_live_hordes_from_light_observations(
     return signaled_sources;
 }
 
+bandit_live_world::camp_map_dispatch_pressure live_bandit_camp_map_dispatch_pressure(
+    const bandit_live_world::camp_map_lead &lead )
+{
+    bandit_live_world::camp_map_dispatch_pressure pressure;
+    pressure.opening_available = lead.status != bandit_live_world::camp_lead_status::active;
+    pressure.opening_state = pressure.opening_available ? "opening_present_or_not_required" :
+                             "no_opening_after_bounded_stalk_window";
+    return pressure;
+}
+
+void note_live_bandit_no_opening_result( bandit_live_world::camp_map_lead &lead )
+{
+    if( lead.status != bandit_live_world::camp_lead_status::active ) {
+        return;
+    }
+    lead.status = bandit_live_world::camp_lead_status::stale;
+    lead.confidence = std::max( 0, lead.confidence - 1 );
+    lead.last_checked_minutes = live_bandit_current_minutes();
+    lead.last_outcome = "no_opening_return_hold_decay";
+}
+
 bool steer_live_bandit_dispatch_toward_player(
     const std::vector<live_bandit_signal_observation> &signals )
 {
@@ -1590,17 +1611,28 @@ bool steer_live_bandit_dispatch_toward_player(
             continue;
         }
         live_bandit_materialize_abstract_members_for_dispatch( state, site );
-        const bandit_live_world::camp_map_lead *remembered_lead = candidate_site.remembered_lead_id.empty() ?
+        bandit_live_world::camp_map_lead *remembered_lead = candidate_site.remembered_lead_id.empty() ?
                 nullptr : site.intelligence_map.find_lead( candidate_site.remembered_lead_id );
+        const bandit_live_world::camp_map_dispatch_pressure camp_map_pressure = remembered_lead != nullptr ?
+                live_bandit_camp_map_dispatch_pressure( *remembered_lead ) :
+                bandit_live_world::camp_map_dispatch_pressure();
         const bandit_live_world::dispatch_plan plan = remembered_lead != nullptr ?
-                bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *remembered_lead ) :
+                bandit_live_world::plan_site_dispatch_from_camp_map_lead( site, *remembered_lead,
+                        camp_map_pressure ) :
                 bandit_live_world::plan_site_dispatch( site, u.pos_abs_omt(), target_id );
         if( !plan.valid ) {
+            if( remembered_lead != nullptr && !camp_map_pressure.opening_available ) {
+                note_live_bandit_no_opening_result( *remembered_lead );
+            }
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch rejected: site=" << site.site_id
                                        << " distance=" << candidate_site.distance
                                        << " candidate_reason=" << candidate_site.reason
                                        << " signal_packet=" << ( candidate_site.signal != nullptr ?
                                                candidate_site.signal->mark.mark_id : "none" )
+                                       << " remembered_lead=" << ( candidate_site.remembered_lead_id.empty() ?
+                                               "none" : candidate_site.remembered_lead_id )
+                                       << " opening_state=" << camp_map_pressure.opening_state
+                                       << " opening_available=" << ( camp_map_pressure.opening_available ? "yes" : "no" )
                                        << " cap=" << candidate_site.cap
                                        << " notes=" << join_live_bandit_notes( plan.notes ) << '\n';
             continue;
@@ -1615,7 +1647,8 @@ bool steer_live_bandit_dispatch_toward_player(
                                            candidate_site.signal->mark.mark_id : "none" )
                                    << " remembered_lead=" << ( candidate_site.remembered_lead_id.empty() ?
                                            "none" : candidate_site.remembered_lead_id )
-                                   << " opening_available=yes"
+                                   << " opening_state=" << camp_map_pressure.opening_state
+                                   << " opening_available=" << ( camp_map_pressure.opening_available ? "yes" : "no" )
                                    << " notes=" << join_live_bandit_notes( plan.notes ) << '\n';
 
         std::vector<shared_ptr_fast<npc>> dispatched_npcs;

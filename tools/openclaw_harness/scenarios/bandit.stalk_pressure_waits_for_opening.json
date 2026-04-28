@@ -1,0 +1,132 @@
+{
+    "name": "bandit.stalk_pressure_waits_for_opening",
+    "description": "Fixture-backed camp-map product proof: a scout-confirmed target has an active stalk/pressure lead waiting for a named opening. The real 30-minute live cadence must name the absent opening, reject a new dogpile dispatch, hold/return/decay the lead, and persist no active outside group.",
+    "profile": "dev-harness",
+    "world": "McWilliams",
+    "fixture": "bandit_stalk_pressure_no_opening_v0_2026-04-28",
+    "fixture_profile": "live-debug",
+    "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+    "profile_snapshot_profile": "live-debug",
+    "replace_existing_worlds": true,
+    "artifact_source": "debug.log",
+    "artifact_patterns": [
+        "bandit_live_world dispatch rejected:",
+        "candidate_reason=remembered_camp_map_lead",
+        "signal_packet=none",
+        "remembered_lead=overmap_special:bandit_camp@140,51,0#lead:basecamp_activity:player@140,39,0@140,39,0",
+        "opening_state=no_opening_after_bounded_stalk_window",
+        "opening_available=no",
+        "hold: active stalk pressure found no opening and should return/decay",
+        "camp-map dispatch blocked: remembered risk/reward decision held pressure"
+    ],
+    "capture_world_after": true,
+    "steps": [
+        {
+            "kind": "wait",
+            "label": "post_load_no_opening_fixture_settle",
+            "seconds": 2.0,
+            "capture_after": true,
+            "expected_visible_fact": "post-load gameplay screen for the active stalk-pressure no-opening fixture; this proves only startup/load and fixture footing before the cadence wait",
+            "failure_rule": "If the gameplay screen is not visible after load, later no-opening cadence evidence cannot be credited."
+        },
+        {
+            "kind": "audit_saved_bandit_live_world_state",
+            "label": "preflight_saved_active_stalk_pressure_lead",
+            "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+            "required_active_outside_count": 0,
+            "required_remembered_target_or_mark_prefix": "player@140,39,0",
+            "required_min_leads": 1,
+            "required_lead_source_contains": "fixture_active_stalk_pressure_no_opening",
+            "required_lead_status": "active",
+            "required_lead_last_outcome": "stalk_pressure_waiting_for_opening",
+            "required_lead_confidence": 3,
+            "abort_on_metadata_failure": true,
+            "abort_verdict": "blocked_untrusted_active_stalk_pressure_fixture",
+            "abort_reason": "preflight saved bandit_live_world site did not contain an active remembered stalk-pressure lead with no outside group before live cadence proof starts",
+            "expected_immediate_state": "saved bandit_live_world contains an active camp-map lead that represents a bounded stalk/pressure wait for an opening, with no active outside members before the live cadence attempts another pressure beat",
+            "failure_rule": "If the active lead footing is missing or malformed, a later no-opening rejection cannot be credited as stalk-pressure behavior."
+        },
+        {
+            "kind": "long_wait",
+            "label": "wait_30_minutes_for_no_opening_cadence",
+            "choice_key": "4",
+            "expected_duration": "30m",
+            "pre_menu_choice_key": "w",
+            "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the duration menu",
+            "completion_wait_seconds": 12.0,
+            "artifact_state_patterns": [
+                "bandit_live_world dispatch rejected:",
+                "candidate_reason=remembered_camp_map_lead",
+                "opening_state=no_opening_after_bounded_stalk_window",
+                "opening_available=no"
+            ],
+            "expected_visible_fact": "the player waited through the real 30-minute overmap NPC cadence window; feature credit depends on same-run debug artifact lines naming the absent opening and held pressure",
+            "failure_rule": "If the wait is interrupted or the artifact delta lacks the no-opening rejection, this scenario is inconclusive/red."
+        },
+        {
+            "kind": "press",
+            "label": "open_save_quit_prompt_after_no_opening_hold",
+            "keys": [
+                "S"
+            ],
+            "settle_seconds": 1.0,
+            "capture_after": true,
+            "expected_visible_fact": "save/quit prompt is visible after the no-opening hold probe",
+            "failure_rule": "If save/quit cannot be opened, preserve artifacts but do not count the run as a clean saved-state proof."
+        },
+        {
+            "kind": "press",
+            "label": "confirm_save_quit_after_no_opening_hold",
+            "keys": [
+                "Y"
+            ],
+            "settle_seconds": 4.0,
+            "capture_after": true,
+            "expected_visible_fact": "save/quit confirmation completed after the no-opening hold probe",
+            "failure_rule": "If save/quit confirmation is unproven, preserve artifacts but do not count the run as fully green without reviewing cleanup status."
+        },
+        {
+            "kind": "audit_saved_bandit_live_world_state",
+            "label": "audit_saved_no_opening_hold_decay",
+            "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+            "required_active_outside_count": 0,
+            "required_remembered_target_or_mark_prefix": "player@140,39,0",
+            "required_min_leads": 1,
+            "required_lead_source_contains": "fixture_active_stalk_pressure_no_opening",
+            "required_lead_status": "stale",
+            "required_lead_last_outcome": "no_opening_return_hold_decay",
+            "required_lead_confidence": 2,
+            "abort_on_metadata_failure": true,
+            "abort_verdict": "blocked_saved_no_opening_hold_decay_missing",
+            "abort_reason": "saved bandit_live_world did not persist the expected no-opening result: no active outside group plus stale/decayed remembered lead",
+            "expected_immediate_state": "after save/quit, saved bandit_live_world has no active stalk dispatch, and the remembered lead is stale with one confidence point decayed and a no-opening return/hold outcome",
+            "failure_rule": "If active outside state remains or lead status/confidence/outcome did not change, the no-opening hold/decay result cannot be credited."
+        },
+        {
+            "kind": "audit_log_contains",
+            "label": "audit_no_opening_hold_artifact",
+            "required_line_patterns": [
+                [
+                    "bandit_live_world dispatch rejected:",
+                    "candidate_reason=remembered_camp_map_lead",
+                    "signal_packet=none",
+                    "remembered_lead=overmap_special:bandit_camp@140,51,0#lead:basecamp_activity:player@140,39,0@140,39,0",
+                    "opening_state=no_opening_after_bounded_stalk_window",
+                    "opening_available=no",
+                    "hold: active stalk pressure found no opening and should return/decay",
+                    "camp-map dispatch blocked: remembered risk/reward decision held pressure"
+                ]
+            ],
+            "abort_on_metadata_failure": true,
+            "abort_verdict": "blocked_no_opening_hold_artifact_missing",
+            "abort_reason": "same-run debug artifact did not show remembered-lead source, named absent opening, no live signal, and held pressure instead of a new active dispatch",
+            "failure_rule": "No no-opening stalk-pressure credit if the artifact lacks the named opening state and held-pressure rejection line from the same run."
+        }
+    ],
+    "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.stalk_pressure_waits_for_opening",
+    "evidence_contract": {
+        "claim": "a remembered stalk/pressure lead waits for a named opening through the real live cadence and, when no opening appears, holds/returns/decays instead of spawning another active group or hovering forever",
+        "load_only_verdict": "load proof only / inconclusive for no-opening stalk-pressure behavior",
+        "failure_rule": "No feature-proof credit if startup/load, saved preflight active lead, real wait/cadence action, same-run no-opening rejection artifact, save/writeback, and saved no-active-group plus stale/decayed lead state are not all green/matched."
+    }
+}
