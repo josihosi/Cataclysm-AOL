@@ -52,9 +52,11 @@ The scoped primitive set below is already green and should not be re-spent as pr
 - `.userdata/dev-harness/harness_runs/20260428_014825/`: visible `[rules] ... work together` response -> `Rules for your follower`.
 - `.userdata/dev-harness/harness_runs/20260428_044855/`: follower-rules UI hotkey `b` toggles the current McWilliams follow-distance row from about four paces to about two paces, then guarded uppercase-`Y` save/writeback advances mtime and same-run saved-overmap NPC metadata records `rule_follow_distance_2=true` plus matching override bits.
 
-Do **not** steer back into those already-credited primitives. Follower rules toggle proof is already frozen as scoped UI+metadata/process evidence, not downstream package product behavior. There is no current unblocked next target in this handoff.
+Do **not** steer back into those already-credited primitives. Follower rules toggle proof is already frozen as scoped UI+metadata/process evidence, not downstream package product behavior.
 
-Next work must wait for one explicit Schani/Josef-named seam or decision, for example:
+Since this handoff was written, `Bandit empty-camp retirement audit-mode packet v0` has also reached deterministic-code-green support evidence at commit `6e3988c5f6`: the retirement predicate requires both an empty home/spawn side and no active dispatch/outside pressure, with negative tests for each half. Do not reopen it as a live debug-kill proof.
+
+There is no current unblocked next target in this handoff. Next work must wait for one explicit Schani/Josef-named seam or decision, for example:
 
 1. a new harness proof-freeze primitive/seam to audit;
 2. an explicit fuel fixture/live-availability repair attempt greenlight;
