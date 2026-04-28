@@ -147,6 +147,67 @@ Compact reference:
 
 ---
 
+## Cannibal camp confidence-push live playtest packet v0
+
+Status: GREENLIT / QUEUED CONFIDENCE-PUSH PLAYTEST
+
+Success state:
+- [ ] A compact live/harness matrix records the five proposed shapes or names which could not be honestly staged: wandering day pressure, night mistake/contact, reload brain, different-seed repeat, and bandit contrast control.
+- [ ] At least one broader wandering/day pressure run reaches the real live dispatch/signal path and supports the closed cannibal behavior claim without instant daytime suicide.
+- [ ] At least one night/contact run reaches real local-contact behavior and supports pack-forward danger under darkness/concealment.
+- [ ] Save/reload continuation proves active cannibal group/profile/target/job state stays coherent after reload.
+- [ ] A different-seed/different-footing run reduces fixture-bias risk.
+- [ ] A bandit contrast control preserves the shakedown/pay/fight distinction while cannibal contact remains no-shakedown.
+- [ ] The final verdict updates confidence honestly: higher confidence, green with watchlist, blocked by harness/fixture gap, or red with a specific bug/tuning gap.
+
+Notes:
+- Imagination source lives at `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`.
+- Canonical contract lives at `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`.
+- This is confidence uplift for the closed cannibal behavior, not a behavior redesign or proof that the old closure failed.
+
+---
+
+## Smart Zone Manager harness-audit retry packet v0
+
+Status: GREENLIT / QUEUED BOUNDED HARNESS-AUDIT RETRY
+
+Success state:
+- [ ] A current-runtime loadable Smart Zone fixture/profile reaches gameplay; if `smart-zone-safe-clean-20260427` remains non-loadable, the replacement fixture/provenance is explicit.
+- [ ] The live UI path proves Zone Manager opened and Smart Zone generation was invoked; screenshots/OCR are used only where no stronger structured artifact exists.
+- [ ] Generated/reopened zone metadata proves exact zone types, names/options where relevant, and coordinates after the live generation action.
+- [ ] Zones that must remain separated/reserved are proven not to collapse onto one fake mega-tile; deterministic geometry/separation tests are support, not closure alone.
+- [ ] The packet uses step-local proof-freeze rows for every meaningful step: precondition, action, expected state, failure rule, artifact path, and green/yellow/red/blocked verdict.
+- [ ] A Knackal-style imagination review checks whether the proof demonstrates the human product picture rather than laundering startup/load, deterministic geometry, or metadata-only fixture state into live closure.
+- [ ] Final result is classified as green feature-path, blocked with a named primitive/fixture gap, or returned to Josef playtest package with a precise manual recipe.
+
+Notes:
+- Imagination source lives at `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`.
+- Canonical contract lives at `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`.
+- Preserved non-green boundary: `smart_zone.live_probe_safe_clean` on profile `smart-zone-audit-live-20260428a`, run `20260428_151053`, is `feature_proof=false` because the captured runtime was `48abd82de9` and all 25 step-ledger rows were yellow; saved-zone evidence only showed one `ZONE_START_POINT` in `#SGVucmlldHRlIEZseW5u.zoneszmgr-temp.json`, not generated separated Smart Zone layout metadata.
+- Next evidence target is a current-runtime relink/rebuild plus exact generated-zone metadata after live generation and save/reopen, or an explicit blocked/non-green packet.
+- This reopens only the proof path; it does not redesign Smart Zone Manager behavior or authorize the old contaminated McWilliams macro.
+
+---
+
+## Generic clean-code boundary review packet v0
+
+Status: GREENLIT / QUEUED BOUNDARY REVIEW
+
+Success state:
+- [ ] One compact boundary-review report exists and names the repo state it inspected.
+- [ ] The report checks canon consistency across `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `andi.handoff.md`.
+- [ ] The report checks build/test/lint risk at the appropriate level for the current boundary, or explains why a gate was not run.
+- [ ] Findings are concrete, anchored, and classified as `fix now`, `queue`, or `ignore/watch`.
+- [ ] No feature lane is reopened, promoted, or deprioritized without explicit Schani/Josef review.
+- [ ] Any proposed edits are bounded follow-up items, not silent cleanup drift.
+
+Notes:
+- Imagination source lives at `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
+- Canonical contract lives at `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
+- This is report-only first pass after a checkpoint boundary, not a license for mid-lane cleanup or feature work.
+
+---
+
 ## C-AOL live AI performance audit packet v0
 
 Status: GREENLIT / BOTTOM-OF-STACK PERFORMANCE AUDIT
@@ -173,25 +234,25 @@ Success state:
 - [ ] Every bandit camp owns an independent bandit-side intelligence map, not merely loose shared/global remembered fields or a single current mark.
 - [ ] The camp map is serialized/deserialized with the normal game save path, and deterministic save/load coverage proves multiple camps keep distinct map leads across round trip.
 - [ ] Scout-return writeback stores a remembered target lead on the source camp map with bounty, threat, confidence, age/last-seen, source/outcome, and target-alert/scout-seen state.
-- [ ] A vanished live signal does not erase a scout-confirmed camp/basecamp target; later dispatch cadence can plan from remembered scout knowledge.
-- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted site state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, sight-avoidance state, and reviewer-readable reports/logs.
+- [x] A vanished live signal does not erase a scout-confirmed camp/basecamp target; later dispatch cadence can plan from remembered scout knowledge. _(Feature-path proof: `bandit.camp_map_vanished_signal_redispatch` run `.userdata/dev-harness/harness_runs/20260428_185947/` proved saved preflight camp-map lead state, bounded 30-minute cadence action, same-run no-signal remembered-lead dispatch plan, local-gate stalk pressure, and saved active stalk members.)_
+- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted site state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, sight-avoidance state, and reviewer-readable reports/logs. _(Partial feature-path proof now covers vanished-signal redispatch, sight-avoid, 2/5/10 variable-roster sizing, and no-opening stalk-pressure; high-threat/active-outside guardrails and broader product closure remain.)_
 - [ ] Ordinary camp/basecamp scout stand-off uses a two-OMT observation envelope, not the old five-OMT default, with fallback distances reported when terrain/pathing forces them. _(Partial deterministic/live-seam coverage: the ordinary scout standoff helper now returns 2 OMT and the hold-off goal seam uses it; product/pathing fallback proof remains downstream.)_
 - [ ] Scout-watch duration is bounded to about half an in-game day, then the scout returns home and writes memory unless explicitly interrupted. _(Partial deterministic/live-seam coverage: the ordinary scout limit is 720 minutes and `do_turn` live aftermath consumes that helper; live product watch/return/writeback proof remains downstream.)_
-- [ ] Dispatch sizing uses current living/ready/home roster, home reserve, wounds/unready state, and active outside groups; the same logic handles tiny, medium, and large camps instead of fixed-size folklore. _(Partial deterministic coverage: living-roster reserve/dispatch capacity is covered for 2/4/5/7/10 member camps; wounded/unready shrinkage remains.)_
-- [ ] Reserve defaults are deterministic and reported: tiny camps keep one home member, five-to-seven member camps normally reserve two, large camps reserve roughly 35%+, recent bandit losses/target-alert increase caution, and stockpile desperation cannot violate hard reserve.
+- [ ] Dispatch sizing uses current living/ready/home roster, home reserve, wounds/unready state, and active outside groups; the same logic handles tiny, medium, and large camps instead of fixed-size folklore. _(Partial deterministic coverage: living-roster reserve/dispatch capacity is covered for 2/4/5/7/10 member camps, plus wounded/unready and killed-member shrinkage; live product proof remains.)_
+- [ ] Reserve defaults are deterministic and reported: tiny camps keep one home member, five-to-seven member camps normally reserve two, large camps reserve roughly 35%+, recent bandit losses/target-alert increase caution, and stockpile desperation cannot violate hard reserve. _(Partial deterministic coverage: prior bandit losses/alert increase reserve/caution, and high stockpile pressure can loosen reserve by one without crossing the hard minimum.)_
 - [ ] Job intent is chosen before count, and size is derived from that intent plus risk/reward: scout, re-scout, stalk/pressure, toll/shakedown, raid, hold/stale.
-- [ ] If the camp does not attack after scout return, remembered high-value/manageable-risk leads can produce a larger-than-scout stalk/pressure dispatch that waits for an opening instead of dogpiling or forgetting.
-- [ ] Scout/stalker sight-avoidance reacts when seen: deterministic and in-game proof show non-teleport reposition or abort immediately or within at most two local turns, with blocked/no-cover cases reported.
-- [ ] Camp pressure / stockpile need affects willingness without overriding hard reserve or risk gates. If detailed stockpile state is not available yet, the implementation names the placeholder and keeps it bounded.
-- [ ] Bounty, threat, confidence, distance, lead age, target-alert/scout-seen, prior defender losses, and prior bandit losses all have reviewer-readable effects on the chosen intent/member count.
-- [ ] High threat alone does not force escalation; deterministic coverage proves high-threat/low-reward cases hold or scout instead of sending a larger attack.
+- [x] If the camp does not attack after scout return, remembered high-value/manageable-risk leads can produce a larger-than-scout stalk/pressure dispatch that waits for an opening instead of dogpiling or forgetting. _(Feature-path no-opening proof: `bandit.stalk_pressure_waits_for_opening` run `.userdata/dev-harness/harness_runs/20260428_195617/` proved active lead footing, named no-opening rejection, held pressure, no spawned outside group, and saved stale/decayed lead state.)_
+- [x] Scout/stalker sight-avoidance reacts when seen: deterministic and in-game proof show non-teleport reposition or abort immediately or within at most two local turns, with blocked/no-cover cases reported. _(Feature-path proof: `bandit.scout_stalker_sight_avoid_live` run `.userdata/dev-harness/harness_runs/20260428_173626/` matched saved active scout/member footing, saved turn delta >= 2, same-run local-gate proof, and `sight_avoid: exposed -> repositioned ... distance=1`.)_
+- [ ] Camp pressure / stockpile need affects willingness without overriding hard reserve or risk gates. If detailed stockpile state is not available yet, the implementation names the placeholder and keeps it bounded. _(Partial deterministic coverage: `camp_map_dispatch_pressure::stockpile_pressure` is the named bounded placeholder and cannot violate hard reserve.)_
+- [ ] Bounty, threat, confidence, distance, lead age, target-alert/scout-seen, prior defender losses, and prior bandit losses all have reviewer-readable effects on the chosen intent/member count. _(Partial deterministic coverage: bounty/threat/confidence/target-alert/scout-seen/prior defender losses/prior bandit losses affect the camp-map decision seam; distance/lead age and live report proof remain.)_
+- [ ] High threat alone does not force escalation; deterministic coverage proves high-threat/low-reward cases hold or scout instead of sending a larger attack. _(Deterministic camp-map decision coverage exists; live proof remains.)_
 - [ ] Active outbound/local-contact/stalk/returning groups block parallel same-camp same-target dogpile dispatch until resolved. _(Partial deterministic coverage: `plan_site_dispatch` now blocks through `site.has_active_outside_pressure()` and active-group state; full live same-target dogpile proof remains downstream.)_
 - [ ] Reports/logs show remembered-lead source, reward/risk inputs, selected intent/job, selected member count, home reserve left behind, scout/stalk posture, sight-exposure turn count, opening state, and whether a live signal or remembered camp-map lead drove the decision.
 - [ ] Harness/product proof covers a real or fixture-backed variable-roster camp through the live game path: scout observes a camp from two OMT, watches for the half-day window, avoids sight by moving/aborting within at most two visible turns if exposed, returns home, writes memory, the live signal disappears or is absent, and a later cadence re-dispatches/plans from remembered camp-map knowledge with expected intent/member count.
 - [ ] Bandit live product matrix `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md` is implemented/run with honest verdicts for player fire/smoke/light lead proof, scout memory, vanished-signal redispatch, variable roster sizing, stalk-pressure opening/no-opening behavior, sight avoidance, shakedown/toll control, optional empty-camp live sanity, and repeatability/fixture-bias.
 
 Notes:
-- 2026-04-28 deterministic slice adds two-OMT ordinary scout standoff, 720-minute ordinary scout return clock wired into `do_turn` aftermath, living-roster reserve sizing for 2/4/5/7/10 member camps, and active-outside group/contact dispatch blocking. Evidence remains deterministic/code only, not harness product proof.
+- 2026-04-28 deterministic slices add two-OMT ordinary scout standoff, 720-minute ordinary scout return clock wired into `do_turn` aftermath, living-roster reserve sizing for 2/4/5/7/10 member camps, active-outside group/contact dispatch blocking, wounded/unready and killed-member shrinkage, bounded stockpile pressure, high-threat non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing, and no-opening hold/return in the camp-map decision seam. Named feature-path evidence now covers sight-avoid, vanished-signal redispatch, 2/5/10 variable-roster sizing, and no-opening stalk-pressure guardrails; it is still not full product closure.
 - Canonical contract lives at `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
 - Andi lane draft lives at `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
 - This is a proper canon plan item, not an informal Andi nudge. It should not become active until explicitly promoted or until the current active/greenlit stack naturally reaches it.

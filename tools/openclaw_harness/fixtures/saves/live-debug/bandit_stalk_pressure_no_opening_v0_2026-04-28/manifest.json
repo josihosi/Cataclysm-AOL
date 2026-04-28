@@ -1,0 +1,36 @@
+{
+  "name": "bandit_stalk_pressure_no_opening_v0_2026-04-28",
+  "source_fixture": "bandit_camp_map_remembered_stalk_v0_2026-04-28",
+  "source_profile": "live-debug",
+  "description": "Fixture-backed stalk-pressure no-opening footing: reuse the vanished-signal remembered-lead camp and mark the lead active as if a bounded stalk/pressure observation window is already waiting for an opening. The live cadence must name the no-opening state, hold/return instead of dispatching another group, and decay the lead.",
+  "save_transforms": [
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "lead_kind": "basecamp_activity",
+      "status": "active",
+      "target_id": "player@140,39,0",
+      "target_omt": [140, 39, 0],
+      "radius_omt": 2,
+      "source_key": "fixture_active_stalk_pressure_no_opening",
+      "source_summary": "fixture-backed active stalk/pressure window with no named opening available yet",
+      "first_seen_minutes": 0,
+      "last_seen_minutes": 720,
+      "last_checked_minutes": 720,
+      "last_scouted_minutes": 720,
+      "bounty": 8,
+      "threat": 1,
+      "confidence": 3,
+      "threat_confirmed": true,
+      "target_alert": false,
+      "scout_seen": false,
+      "generated_by_this_camp_routine": true,
+      "prior_bandit_losses": 0,
+      "prior_defender_losses": 1,
+      "last_outcome": "stalk_pressure_waiting_for_opening",
+      "clear_active_pressure": true,
+      "mark_cleared_active_members_unready": true
+    }
+  ]
+}

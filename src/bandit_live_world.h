@@ -257,6 +257,7 @@ struct dispatch_plan {
 struct camp_map_dispatch_pressure {
     int stockpile_pressure = 0;
     bool opening_available = true;
+    std::string opening_state = "opening_present";
 };
 
 struct camp_map_dispatch_decision {

@@ -2573,6 +2573,9 @@ def audit_saved_bandit_live_world_state(
     required_remembered_target_or_mark_prefix: str = "",
     required_min_leads: Optional[int] = None,
     required_lead_source_contains: str = "",
+    required_lead_status: str = "",
+    required_lead_last_outcome: str = "",
+    required_lead_confidence: Optional[int] = None,
     required_known_recent_mark_contains: str = "",
 ) -> Dict[str, Any]:
     """Read-only saved dimension-data audit for persisted bandit_live_world state."""
@@ -2718,6 +2721,8 @@ def audit_saved_bandit_live_world_state(
     required_active_job_type = str(required_active_job_type or "").strip()
     required_remembered_target_or_mark_prefix = str(required_remembered_target_or_mark_prefix or "").strip()
     required_lead_source_contains = str(required_lead_source_contains or "").strip()
+    required_lead_status = str(required_lead_status or "").strip()
+    required_lead_last_outcome = str(required_lead_last_outcome or "").strip()
     required_known_recent_mark_contains = str(required_known_recent_mark_contains or "").strip()
 
     def site_matches(site: Dict[str, Any]) -> bool:
@@ -2749,13 +2754,32 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_min_leads is not None and int(site.get("lead_count", 0) or 0) < required_min_leads:
             return False
-        if required_lead_source_contains:
+        lead_requirements_present = any([
+            required_lead_source_contains,
+            required_lead_status,
+            required_lead_last_outcome,
+            required_lead_confidence is not None,
+        ])
+        if lead_requirements_present:
             leads = site.get("leads", [])
+
+            def lead_matches(lead: Dict[str, Any]) -> bool:
+                if required_lead_source_contains and not (
+                    required_lead_source_contains in str(lead.get("source_key", ""))
+                    or required_lead_source_contains in str(lead.get("source_summary", ""))
+                    or required_lead_source_contains in str(lead.get("lead_id", ""))
+                ):
+                    return False
+                if required_lead_status and str(lead.get("status", "")) != required_lead_status:
+                    return False
+                if required_lead_last_outcome and str(lead.get("last_outcome", "")) != required_lead_last_outcome:
+                    return False
+                if required_lead_confidence is not None and int(lead.get("confidence", 0) or 0) != required_lead_confidence:
+                    return False
+                return True
+
             if not isinstance(leads, list) or not any(
-                required_lead_source_contains in str(lead.get("source_key", ""))
-                or required_lead_source_contains in str(lead.get("source_summary", ""))
-                or required_lead_source_contains in str(lead.get("lead_id", ""))
-                for lead in leads if isinstance(lead, dict)
+                lead_matches(lead) for lead in leads if isinstance(lead, dict)
             ):
                 return False
         if required_known_recent_mark_contains:
@@ -2782,6 +2806,9 @@ def audit_saved_bandit_live_world_state(
         "required_remembered_target_or_mark_prefix": required_remembered_target_or_mark_prefix,
         "required_min_leads": required_min_leads,
         "required_lead_source_contains": required_lead_source_contains,
+        "required_lead_status": required_lead_status,
+        "required_lead_last_outcome": required_lead_last_outcome,
+        "required_lead_confidence": required_lead_confidence,
         "required_known_recent_mark_contains": required_known_recent_mark_contains,
     }
     has_requirement = any(value not in (None, "", []) for value in required_fields.values())
@@ -6487,6 +6514,12 @@ def execute_probe_steps(
                 required_min_leads = None
             else:
                 required_min_leads = int(raw_required_min_leads)
+            raw_required_lead_confidence = step.get("required_lead_confidence")
+            required_lead_confidence: Optional[int]
+            if raw_required_lead_confidence is None or str(raw_required_lead_confidence).strip() == "":
+                required_lead_confidence = None
+            else:
+                required_lead_confidence = int(raw_required_lead_confidence)
             raw_required_max_offset = step.get("required_active_member_max_abs_offset_ms")
             required_max_offset: Optional[List[int]] = None
             if isinstance(raw_required_max_offset, list) and len(raw_required_max_offset) >= 3:
@@ -6518,6 +6551,9 @@ def execute_probe_steps(
                     ).strip(),
                     required_min_leads=required_min_leads,
                     required_lead_source_contains=str(step.get("required_lead_source_contains", "") or "").strip(),
+                    required_lead_status=str(step.get("required_lead_status", "") or "").strip(),
+                    required_lead_last_outcome=str(step.get("required_lead_last_outcome", "") or "").strip(),
+                    required_lead_confidence=required_lead_confidence,
                     required_known_recent_mark_contains=str(
                         step.get("required_known_recent_mark_contains", "") or ""
                     ).strip(),
@@ -6542,6 +6578,9 @@ def execute_probe_steps(
                     "required_active_member_max_abs_offset_ms": required_max_offset,
                     "player_save": str(step.get("player_save", "") or "").strip(),
                     "required_min_leads": required_min_leads,
+                    "required_lead_status": str(step.get("required_lead_status", "") or "").strip(),
+                    "required_lead_last_outcome": str(step.get("required_lead_last_outcome", "") or "").strip(),
+                    "required_lead_confidence": required_lead_confidence,
                     "required_known_recent_mark_contains": str(
                         step.get("required_known_recent_mark_contains", "") or ""
                     ).strip(),
