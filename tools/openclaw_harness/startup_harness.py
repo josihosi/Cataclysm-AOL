@@ -1824,6 +1824,172 @@ def audit_saved_active_monsters(
     }
 
 
+def audit_saved_overmap_npcs(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    required_npcs: Optional[List[Dict[str, Any]]] = None,
+    scan_all_overmaps: bool = False,
+) -> Dict[str, Any]:
+    """Read-only saved-overmap audit for NPC/follower target state.
+
+    Debug-spawned follower NPCs are persisted in overmap ``npcs`` records,
+    not in the player save's ``unique_npcs`` bucket. Keep this audit as a
+    same-save metadata gate after a proven save/writeback so a debug NPC
+    primitive cannot be credited from menu navigation alone.
+    """
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    selected_player_save = player_save.strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise RuntimeError(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+
+    player_abs_omt, player_location = load_player_abs_omt(world_dir, selected_player_save)
+    overmaps_dir = world_dir / "overmaps"
+    if not overmaps_dir.exists():
+        raise FileNotFoundError(f"Overmaps dir not found: {overmaps_dir}")
+
+    if scan_all_overmaps:
+        overmap_paths = sorted(overmaps_dir.glob("o.*.*.zzip"))
+    else:
+        player_overmap_x = int(player_abs_omt[0]) // OMAPX
+        player_overmap_y = int(player_abs_omt[1]) // OMAPY
+        candidate = overmaps_dir / f"o.{player_overmap_x}.{player_overmap_y}.zzip"
+        overmap_paths = [candidate] if candidate.exists() else []
+    if not overmap_paths:
+        raise RuntimeError(f"No overmap .zzip files selected for NPC audit in {overmaps_dir}")
+
+    npcs: List[Dict[str, Any]] = []
+    scanned_overmaps: List[str] = []
+    for overmap_path in overmap_paths:
+        plain_path: Optional[Path] = None
+        created_plain = False
+        try:
+            plain_path, _version_line, payload = extract_overmap_payload(overmap_path)
+            created_plain = bool(payload.get("_created_plain"))
+            scanned_overmaps.append(str(overmap_path.relative_to(world_dir)))
+            raw_npcs = payload.get("npcs", [])
+            if not isinstance(raw_npcs, list):
+                raise RuntimeError(f"Overmap has non-list npcs array: {overmap_path}")
+            for index, npc_payload in enumerate(raw_npcs):
+                if not isinstance(npc_payload, dict):
+                    continue
+                location_raw = npc_payload.get("location", [])
+                location: List[int] = []
+                offset: List[int] = []
+                if isinstance(location_raw, list) and len(location_raw) >= 3:
+                    location = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
+                    offset = [
+                        location[0] - player_location[0],
+                        location[1] - player_location[1],
+                        location[2] - player_location[2],
+                    ]
+                npcs.append({
+                    "overmap": str(overmap_path.relative_to(world_dir)),
+                    "index": index,
+                    "id": npc_payload.get("id"),
+                    "name": str(npc_payload.get("name", "") or ""),
+                    "location_ms": location,
+                    "offset_ms": offset,
+                    "attitude": npc_payload.get("attitude"),
+                    "mission": npc_payload.get("mission"),
+                    "my_fac": npc_payload.get("my_fac"),
+                    "previous_attitude": npc_payload.get("previous_attitude"),
+                    "comp_mission_id": npc_payload.get("comp_mission_id"),
+                    "rules": npc_payload.get("rules") if isinstance(npc_payload.get("rules"), dict) else {},
+                    "op_of_u": npc_payload.get("op_of_u") if isinstance(npc_payload.get("op_of_u"), dict) else {},
+                    "chatbin_missions": (
+                        npc_payload.get("chatbin", {}).get("missions", [])
+                        if isinstance(npc_payload.get("chatbin"), dict)
+                        else []
+                    ),
+                })
+        finally:
+            if plain_path is not None and created_plain:
+                cleanup_extracted_overmap(plain_path, keep=False)
+
+    def normalize_requirement(raw: Dict[str, Any]) -> Dict[str, Any]:
+        requirement: Dict[str, Any] = {}
+        for key in ("name", "name_contains", "my_fac"):
+            value = str(raw.get(key, "") or "").strip()
+            if value:
+                requirement[key] = value
+        for key in ("attitude", "mission"):
+            if raw.get(key) is not None and str(raw.get(key)).strip() != "":
+                requirement[key] = int(raw.get(key))
+        offset_raw = raw.get("offset_ms")
+        if isinstance(offset_raw, list) and len(offset_raw) >= 3:
+            requirement["offset_ms"] = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+        max_abs_offset_raw = raw.get("max_abs_offset_ms")
+        if isinstance(max_abs_offset_raw, list) and len(max_abs_offset_raw) >= 3:
+            requirement["max_abs_offset_ms"] = [
+                int(max_abs_offset_raw[0]),
+                int(max_abs_offset_raw[1]),
+                int(max_abs_offset_raw[2]),
+            ]
+        return requirement
+
+    required: List[Dict[str, Any]] = []
+    for raw in required_npcs or []:
+        if not isinstance(raw, dict):
+            continue
+        requirement = normalize_requirement(raw)
+        if requirement:
+            required.append(requirement)
+
+    def matches_requirement(npc_row: Dict[str, Any], requirement: Dict[str, Any]) -> bool:
+        if "name" in requirement and npc_row.get("name") != requirement.get("name"):
+            return False
+        if "name_contains" in requirement and requirement["name_contains"] not in str(npc_row.get("name", "")):
+            return False
+        if "my_fac" in requirement and npc_row.get("my_fac") != requirement.get("my_fac"):
+            return False
+        if "attitude" in requirement and npc_row.get("attitude") != requirement.get("attitude"):
+            return False
+        if "mission" in requirement and npc_row.get("mission") != requirement.get("mission"):
+            return False
+        if "offset_ms" in requirement and npc_row.get("offset_ms") != requirement.get("offset_ms"):
+            return False
+        if "max_abs_offset_ms" in requirement:
+            offset = npc_row.get("offset_ms")
+            if not isinstance(offset, list) or len(offset) < 3:
+                return False
+            max_abs = requirement["max_abs_offset_ms"]
+            if any(abs(int(offset[i])) > int(max_abs[i]) for i in range(3)):
+                return False
+        return True
+
+    missing_required_npcs = [
+        requirement
+        for requirement in required
+        if not any(matches_requirement(npc_row, requirement) for npc_row in npcs)
+    ]
+    if required and not missing_required_npcs:
+        status = "required_state_present"
+    elif required:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "player_location_ms": player_location,
+        "player_abs_omt": list(player_abs_omt),
+        "scan_all_overmaps": scan_all_overmaps,
+        "scanned_overmaps": scanned_overmaps,
+        "required_npcs": required,
+        "observed_npc_count": len(npcs),
+        "observed_npcs": npcs,
+        "missing_required_npcs": missing_required_npcs,
+        "status": status,
+    }
+
+
 def audit_saved_weather_state(
     world_dir: Path,
     *,
@@ -2803,6 +2969,8 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_furniture")
         if metadata.get("missing_required_monsters"):
             issues.append("missing_required_monsters")
+        if metadata.get("missing_required_npcs"):
+            issues.append("missing_required_npcs")
         if metadata.get("missing_required_weather"):
             issues.append("missing_required_weather")
         return "red_step_metadata_required_state_missing", issues or [status]
@@ -2995,10 +3163,12 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 "required_items": metadata_summary.get("required_items", []),
                 "required_furniture": metadata_summary.get("required_furniture", []),
                 "required_monsters": metadata_summary.get("required_monsters", []),
+                "required_npcs": metadata_summary.get("required_npcs", []),
                 "missing_required_fields": metadata_summary.get("missing_required_fields", []),
                 "missing_required_items": metadata_summary.get("missing_required_items", []),
                 "missing_required_furniture": metadata_summary.get("missing_required_furniture", []),
                 "missing_required_monsters": metadata_summary.get("missing_required_monsters", []),
+                "missing_required_npcs": metadata_summary.get("missing_required_npcs", []),
                 "missing_required_weather": metadata_summary.get("missing_required_weather", []),
                 "required_weather_id": metadata_summary.get("required_weather_id", ""),
                 "required_temperature_f": metadata_summary.get("required_temperature_f"),
@@ -5106,6 +5276,63 @@ def execute_probe_steps(
                             step.get(
                                 "abort_reason",
                                 "required saved active-monster metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
+        elif kind == "audit_saved_overmap_npcs":
+            player_save = str(step.get("player_save", "") or "").strip()
+            required_npcs_raw = step.get("required_npcs", [])
+            if not isinstance(required_npcs_raw, list):
+                raise SystemExit(f"Scenario step '{label}' required_npcs must be a list")
+            required_npcs = [npc for npc in required_npcs_raw if isinstance(npc, dict)]
+            scan_all_overmaps = bool(step.get("scan_all_overmaps", False))
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_overmap_npcs(
+                    world_dir,
+                    player_save=player_save,
+                    required_npcs=required_npcs,
+                    scan_all_overmaps=scan_all_overmaps,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_npcs": required_npcs,
+                    "scan_all_overmaps": scan_all_overmaps,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "metadata": metadata,
+                "action_description": "read saved overmap npcs and require exact NPC/follower metadata",
+                "expected_immediate_state": "saved overmap npcs contains the required debug-spawned NPC/follower metadata before spawn proof may continue",
+                "failure_rule": "missing required saved overmap NPC metadata or unreadable save metadata makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(
+                            step.get(
+                                "abort_verdict",
+                                "blocked_untrusted_saved_overmap_npc_target_state",
+                            )
+                        ),
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved overmap NPC/follower metadata was missing or unreadable",
                             )
                         ),
                         "issues": metadata_issues,

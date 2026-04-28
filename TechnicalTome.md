@@ -549,3 +549,7 @@ Upstream portability note:
 - Lower-leg armor accessories like knee pads should also stay out of the pants slot. They are protective add-ons, not substitute pants, so hot-weather shorts cleanup must not strip them or dump them into locker stock as fake duplicate legwear.
 - Partial leg-mounted support storage like deep concealment holsters or small drop-leg bags should also stay out of both the underwear and pants slots. If a leg item only covers hips or upper thighs and mainly behaves like support storage / a holster, locker cleanup should keep it equipped while swapping real pants instead of treating it as fake clothing.
 - Combat-policy slot expansion now treats `gloves`, `mask`, `belt`, and `holster` as first-class locker slots. Classifier order matters here: hip holsters must claim the holster lane before generic leg-accessory rejection, while waist-worn belts with holster pockets still belong to the belt lane when their actual coverage is waist gear rather than hip gear.
+
+## Harness saved-state audit notes
+
+- Debug-spawned follower NPCs persist in saved overmap `npcs` records, not in the player save's `unique_npcs` bucket. For proof-freeze harness evidence, the honest target-state path is: prove the case-sensitive save/writeback gate first, then read the same-run overmap `npcs` metadata with follower/faction/attitude/location requirements. This is scoped harness primitive/process proof only; follower commands, rule toggles, camp assignment, and product-feature behavior remain separate proof burdens.
