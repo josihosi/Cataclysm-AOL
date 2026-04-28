@@ -1,0 +1,45 @@
+{
+  "name": "smart_zone.ui_entry_current_runtime_guard",
+  "description": "Minimal current-runtime Smart Zone UI-entry guard: load gameplay, press the default Zone Manager key, trace default-action dispatch, and stop after OCR proves or blocks the Zones manager title.",
+  "profile": "smart-zone-ui-entry-current-runtime-20260429c",
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "openclaw_harness_ui_trace: component=default_action_dispatch event=lookup",
+    "openclaw_harness_ui_trace: component=default_action_dispatch event=invoke_zone_manager"
+  ],
+  "recommended_probe_command": "python3 tools/openclaw_harness/startup_harness.py probe smart_zone.ui_entry_current_runtime_guard --profile smart-zone-ui-entry-current-runtime-20260429c",
+  "evidence_contract": {
+    "green_path": "current-runtime startup/load -> verified focus -> default Zone Manager key -> dispatch trace invokes ACTION_ZONES -> OCR/structured capture contains Zones manager",
+    "non_green_rule": "startup/load, stale runtime, dispatch trace without Zone Manager UI, or ordinary gameplay/actions UI after the key is not Zone Manager entry proof. No add-zone/filter/generation steps are credited in this probe."
+  },
+  "steps": [
+    {
+      "label": "gameplay_loaded_screen_gate",
+      "kind": "wait",
+      "seconds": 3.0,
+      "capture_after": true,
+      "expected_visible_fact": "normal gameplay is loaded before Zone Manager input"
+    },
+    {
+      "label": "open_zones_manager",
+      "kind": "press",
+      "keys": [
+        "Y"
+      ],
+      "capture_after": true,
+      "settle_seconds": 0.8,
+      "expected_visible_fact": "Zone Manager UI is visibly open through the default DEFAULTMODE zones binding",
+      "extract_text_after_capture": true,
+      "extract_text_after_capture_tail_lines": 32,
+      "expected_screen_text_after_contains": [
+        "Zones manager"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_zone_manager_ui_entry_guard_failed",
+      "abort_reason": "Zone Manager title text missing after default zones key; stop before any add-zone/filter/generation input."
+    }
+  ],
+  "harness_profile_precondition": {
+    "control_path": "Uses default printable DEFAULTMODE zones=Y plus OPENCLAW_HARNESS_UI_TRACE default-action dispatch logging; this probe intentionally stops after Zone Manager entry and does not credit Smart Zone generation."
+  }
+}

@@ -1,6 +1,6 @@
 # Smart Zone Manager harness-audit retry packet v0 - 2026-04-28
 
-Status: ACTIVE / GREENLIT BOUNDED HARNESS-AUDIT RETRY
+Status: JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN BOUNDARY REACHED
 
 Imagination source: `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`
 
@@ -11,6 +11,14 @@ Josef reopened the Smart Zone Manager live proof only as a better-shaped harness
 The desired proof is clever and token-efficient: prove basically every step with the strongest cheap evidence available, avoiding screenshots/OCR where structured metadata or exact game-state artifacts prove more.
 
 New Josef-discovered proof primitive: the Zone Manager itself shows relative coordinate labels beside zones, e.g. `2E` for two tiles east of the player. Andi can run the real Zone Manager generation path and read/capture those coordinates. If generated zones are lumped onto the same tile, their labels will match; if the layout is separated correctly, the labels should show distinct expected offsets.
+
+## Final 2026-04-29 boundary
+
+The bounded retry did not produce live Smart Zone feature proof. Current-runtime rebuild and guarded probes reached clean startup/load on `5f17cc7901-dirty`, but every UI-entry attempt stopped before credited add-zone/filter/generation input because `Zones manager` was not observed.
+
+Decisive final run: `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/`. Startup/runtime hygiene is green (`version_matches_repo_head=true`, `version_matches_runtime_paths=true`), but the action-dispatch trace records `raw_action="action_menu" action_id="action_menu"` after the default `Y` delivery, no `invoke_zone_manager` trace appears, and OCR still shows ordinary gameplay/actions UI rather than `Zones manager`. Earlier guarded attempts `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_002148/`, `.userdata/smart-zone-audit-live-20260429f/harness_runs/20260429_004203/`, and `.userdata/smart-zone-ui-entry-current-runtime-20260429b/harness_runs/20260429_005059/` remain the same UI-entry/key-delivery blocker class.
+
+Verdict: implemented-but-unproven / Josef playtest package. Deterministic Smart Zone geometry remains support only; no live Zone Manager entry, generation, generated coordinate-label, or saved generated-zone layout proof is credited. Do not rerun this packet unless Josef/Schani explicitly reopens it with a materially repaired UI-entry/key-delivery primitive or Josef manual evidence.
 
 ## Preserved non-green boundary
 

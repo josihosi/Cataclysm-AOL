@@ -53,15 +53,15 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - Smart Zone Manager harness-audit retry packet v0
+### Active validation target - Generic clean-code boundary review packet v0
 
-`Smart Zone Manager harness-audit retry packet v0` is now active because Josef identified a direct live UI observable: the Zone Manager shows relative coordinates next to each zone (`2E`, etc.). Contract: `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`; imagination source: `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`.
+`Generic clean-code boundary review packet v0` is now active after the Smart Zone Manager retry reached an implemented-but-unproven/Josef-package boundary. Contract: `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`; imagination source: `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
 
-Evidence burden: run the real Zone Manager generation path on a current-runtime loadable fixture, then inspect/capture the generated zone list coordinates. Same-coordinate labels are direct evidence that zones collapsed onto one tile; distinct expected relative offsets are direct evidence for separated placement. Pair the coordinate read with saved zone metadata and save/reopen state where possible. The old `20260428_151053` run remains non-green and cannot be laundered into closure.
+Evidence burden: compact report-only boundary review now exists at `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`, covering current canon, dirty tree/recent boundary, build/test/lint posture, and stale handoff drift. Findings must be anchored and classified as `fix now`, `queue`, or `ignore/watch`. This target does not authorize opportunistic feature edits or cleanup patches unless Schani/Josef explicitly promotes a follow-up.
 
-Current boundary: `smart_zone.live_probe_harness_audit_retry_no_setup` now includes screen-text guards so `expected_visible_fact` screenshots cannot alone credit Zone Manager/type-picker entry. Guarded run `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_002148/` aborts red at `blocked_zone_manager_ui_entry_guard_failed`: startup/load is clean, but `open_zones_manager.after.screen_text.json` is missing `Zones manager` and OCR shows ordinary gameplay/actions UI. Treat prior run `.userdata/smart-zone-audit-live-20260429d/harness_runs/20260429_001633/` as the same keybinding/UI-entry blocked class; its green-looking screen checkpoints were false-positive `expected_visible_fact` rows, not Zone Manager proof.
+Current Smart Zone checkpoint retained for context: current-runtime guarded probes reached clean startup/load but not Zone Manager entry. Final dispatch-instrumented run `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/` has repo/runtime window `5f17cc7901-dirty`, artifact trace `raw_action="action_menu" action_id="action_menu"`, no `invoke_zone_manager`, and OCR missing `Zones manager`. Earlier guarded runs `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_002148/`, `.userdata/smart-zone-audit-live-20260429f/harness_runs/20260429_004203/`, and `.userdata/smart-zone-ui-entry-current-runtime-20260429b/harness_runs/20260429_005059/` remain the same UI-entry/key-delivery blocker class. No Smart Zone add-zone/filter/generation/coordinate-label proof is credited.
 
-Validation policy for this target: `git diff --check`; narrow compile/test only if harness/runtime/Smart Zone code changes; relevant deterministic `clzones` tests only as support if Smart Zone code changes; one named harness probe/handoff with step-local ledger and coordinate-label evidence. If the UI coordinate read is blocked, record the exact missing primitive or fixture problem instead of substituting load-only proof.
+Validation policy for this target: docs/report-only review normally needs no compile. If the review itself changes docs, run `git diff --check`; if it proposes or lands code/harness changes later, use the narrowest relevant compile/test for that promoted follow-up.
 
 ### Recently completed validation target - Bandit camp-map risk/reward dispatch planning packet v0
 
@@ -88,21 +88,20 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active validation target: **Smart Zone Manager harness-audit retry packet v0**. Use the Zone Manager's visible relative coordinate labels as the primary live proof for separated-vs-lumped generated zones. Do not substitute deterministic geometry, startup/load, unguarded `expected_visible_fact` screenshots, or old non-green Smart Zone runs for this coordinate-read proof. Current missing primitive is UI entry/key delivery: prove `Zones manager` by OCR/structured state before crediting F1, then prove `select zone type` before crediting F2/filter/generation.
+Active validation target: **Generic clean-code boundary review packet v0**. Report exists at `doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`; next step is Schani review / no-nudge plus checkpoint hygiene, not feature cleanup. Do not reopen Smart Zone Manager live proof as a probe unless a materially repaired UI-entry/key-delivery primitive or Josef manual evidence appears.
 
-Queued after this Smart Zone checkpoint, per `Plan.md` / greenlit stack:
+Queued after this boundary review, per `Plan.md` / greenlit stack:
 
-1. `Generic clean-code boundary review packet v0`: report-only boundary review, now queued after the active Smart Zone retry.
-2. `Cannibal camp confidence-push live playtest packet v0`: confidence uplift for already-closed cannibal behavior, not a redesign or failure reopen.
-3. `Player-lit fire and bandit signal verification packet v0`: still blocked behind the fuel/writeback gate.
-4. `Roof-fire horde detection proof packet v0`: still blocked behind real player-lit fire.
-5. `C-AOL live AI performance audit packet v0`: bottom-of-stack measured performance audit.
+1. `C-AOL actual playtest verification stack v0` / cannibal confidence-push playtests as promoted by Schani/Josef planning.
+2. `Player-lit fire and bandit signal verification packet v0`: still blocked behind the fuel/writeback gate.
+3. `Roof-fire horde detection proof packet v0`: still blocked behind real player-lit fire.
+4. `C-AOL live AI performance audit packet v0`: bottom-of-stack measured performance audit.
 
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters;
 - use one named scenario/command path;
 - extract only decisive report/log fields into context;
-- after two same-blocker attempts, consult Frau Knackal before attempt 3; after four unresolved attempts, package implemented-but-unproven state for Josef and move on.
+- after two same-blocker attempts, consult Frau Knackal before attempt 3; after four unresolved attempts, package implemented-but-unproven state for Josef and move to the next greenlit unblocked target.
 
 ---
 

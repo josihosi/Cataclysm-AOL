@@ -169,43 +169,42 @@ Notes:
 
 ## Smart Zone Manager harness-audit retry packet v0
 
-Status: ACTIVE / GREENLIT BOUNDED HARNESS-AUDIT RETRY
+Status: CHECKPOINTED / JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN BOUNDARY REACHED
 
 Success state:
-- [ ] A current-runtime loadable Smart Zone fixture/profile reaches gameplay; if `smart-zone-safe-clean-20260427` remains non-loadable, the replacement fixture/provenance is explicit.
-- [ ] The live UI path proves Zone Manager opened and Smart Zone generation was invoked; screenshots/OCR are used only where no stronger structured artifact exists.
+- [x] The current-runtime retry used clean startup/load hygiene before UI-entry checks.
+- [x] Guarded screen-text rows prevented add-zone/filter/generation credit when `Zones manager` was not visible.
+- [x] Action-dispatch instrumentation identified the remaining agent-side primitive gap: delivered default `Y` reached `action_menu`, not `zones`, and no Zone Manager invocation trace fired.
+- [x] Final result is classified as implemented-but-unproven / Josef playtest package instead of green Smart Zone feature proof.
+- [ ] The live UI path proves Zone Manager opened and Smart Zone generation was invoked.
 - [ ] The generated Zone Manager list is inspected after live generation, and visible relative coordinate labels beside zones (`2E`-style offsets) are captured/read.
 - [ ] Generated/reopened zone metadata proves exact zone types, names/options where relevant, and coordinates after the live generation action where available.
-- [ ] Zones that must remain separated/reserved are proven not to collapse onto one fake mega-tile; same-coordinate UI labels count as direct lumping evidence, distinct expected coordinate labels count as direct separation evidence, and deterministic geometry/separation tests are support only.
-- [ ] The packet uses step-local proof-freeze rows for every meaningful step: precondition, action, expected state, failure rule, artifact path, and green/yellow/red/blocked verdict.
-- [ ] A Knackal-style imagination review checks whether the proof demonstrates the human product picture rather than laundering startup/load, deterministic geometry, or metadata-only fixture state into live closure.
-- [ ] Final result is classified as green feature-path, blocked with a named primitive/fixture gap, or returned to Josef playtest package with a precise manual recipe.
 
 Notes:
 - Imagination source lives at `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`.
-- Preserved non-green boundary: `smart_zone.live_probe_safe_clean` on profile `smart-zone-audit-live-20260428a`, run `20260428_151053`, is `feature_proof=false` because the captured runtime was `48abd82de9` and all 25 step-ledger rows were yellow; saved-zone evidence only showed one `ZONE_START_POINT` in `#SGVucmlldHRlIEZseW5u.zoneszmgr-temp.json`, not generated separated Smart Zone layout metadata.
-- Next evidence target is a current-runtime relink/rebuild plus live Zone Manager generation and coordinate-label inspection; saved zone metadata after generation/save/reopen should be added where available, or the packet must stay explicit blocked/non-green.
-- This reopens only the proof path; it does not redesign Smart Zone Manager behavior or authorize the old contaminated McWilliams macro.
+- Final agent-side run: `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/`, verdict `blocked_zone_manager_ui_entry_guard_failed`, startup green/current runtime `5f17cc7901-dirty`, trace `raw_action="action_menu" action_id="action_menu"`, no `invoke_zone_manager`, OCR missing `Zones manager`.
+- This remains non-green for feature proof. Deterministic geometry/separation checks are support only, and no add-zone/filter/generation/coordinate-label evidence is credited.
+- Do not rerun this lane unless Josef/Schani explicitly reopens it with a materially repaired UI-entry/key-delivery primitive or Josef manual evidence.
 
 ---
 
 ## Generic clean-code boundary review packet v0
 
-Status: GREENLIT / QUEUED BOUNDARY REVIEW
+Status: ACTIVE / GREENLIT REPORT-ONLY BOUNDARY REVIEW
 
 Success state:
-- [ ] One compact boundary-review report exists and names the repo state it inspected.
-- [ ] The report checks canon consistency across `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `andi.handoff.md`.
-- [ ] The report checks build/test/lint risk at the appropriate level for the current boundary, or explains why a gate was not run.
-- [ ] Findings are concrete, anchored, and classified as `fix now`, `queue`, or `ignore/watch`.
-- [ ] No feature lane is reopened, promoted, or deprioritized without explicit Schani/Josef review.
-- [ ] Any proposed edits are bounded follow-up items, not silent cleanup drift.
+- [x] One compact boundary-review report exists and names the repo state it inspected (`doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`).
+- [x] The report checks canon consistency across `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `andi.handoff.md`.
+- [x] The report checks build/test/lint risk at the appropriate level for the current boundary, or explains why a gate was not run.
+- [x] Findings are concrete, anchored, and classified as `fix now`, `queue`, or `ignore/watch`.
+- [x] No feature lane is reopened, promoted, or deprioritized without explicit Schani/Josef review.
+- [x] Any proposed edits are bounded follow-up items, not silent cleanup drift.
 
 Notes:
 - Imagination source lives at `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
-- This is report-only first pass after a checkpoint boundary, not a license for mid-lane cleanup or feature work.
+- This is the active report-only first pass after the Smart Zone checkpoint boundary, not a license for mid-lane cleanup or feature work.
 
 ---
 
