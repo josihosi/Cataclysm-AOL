@@ -30,10 +30,13 @@ Green feature-path evidence now exists for these named guardrails:
 - `bandit.stalk_pressure_waits_for_opening` in `.userdata/dev-harness/harness_runs/20260428_195617/`: **narrow no-opening decision/decay guardrail only** — active remembered pressure -> no-opening rejection -> stale/decayed lead. Concretely: saved active remembered stalk-pressure lead, green 30-minute cadence, same-run `opening_state=no_opening_after_bounded_stalk_window` / `opening_available=no` rejection, held-pressure notes, no spawned outside group, and saved stale/decayed lead (`last_outcome=no_opening_return_hold_decay`, confidence `2`). This is **not** opening-present escalation proof and not broad product closure.
 - `bandit.high_threat_low_reward_holds` in `.userdata/dev-harness/harness_runs/20260428_200600/`: clean current runtime `6206131b31`, green 30-minute wait, same-run high-threat hold rejection with `opening_state=opening_present_or_not_required`, `opening_available=yes`, exact `selected=hold / chill`, and saved no-active-outside/no-member-dispatch state.
 - `bandit.active_outside_dogpile_block_live` in `.userdata/dev-harness/harness_runs/20260428_200434/`: clean current runtime `6206131b31`, green 30-minute wait, saved preflight existing active outside stalk pressure (`active_outside=2`, three ready at home), same-run dogpile-block rejection with `hold: unresolved active outside group/contact blocks dogpile`, and saved unchanged two-active/three-ready state.
+- `bandit.extortion_first_demand_fight_mcw` in `.userdata/dev-harness/harness_runs/20260428_204454/`: shakedown/toll-control guardrail only — same-run `camp_style` / `open_shakedown` local-gate artifact, first-demand `demanded_toll=15797` pay/fight surface, and distinct fight branch logging.
+- `bandit.extortion_first_demand_pay_mcw` in `.userdata/dev-harness/harness_runs/20260428_204630/`: shakedown/toll-control guardrail only — same first-demand surface, pay branch logging, and saved no-active-group/all-14-home writeback.
+- `bandit.extortion_reopened_demand_mcw` in `.userdata/dev-harness/harness_runs/20260428_204813/`: shakedown/toll-control guardrail only — reopened defender-loss `demanded_toll=22116` bounded higher demand with pay/fight options.
 
 Current validation:
 
-- `./cataclysm-tiles --version` -> `6206131b31`
+- `./cataclysm-tiles --version` -> `d70b8ce014` after the shakedown/toll-control commit/rebuild; the three shakedown proof runs themselves were dirty-runtime-at-proof from source `72e67bdcb9`
 - `python3 -m py_compile tools/openclaw_harness/startup_harness.py`
 - `python3 -m json.tool` on the relevant scenario/fixture files
 - `python3 tools/openclaw_harness/proof_classification_unit_test.py`
@@ -41,15 +44,15 @@ Current validation:
 - `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0`
 - `./tests/cata_test "[bandit_live_world]"`
 - `./tests/cata_test "[bandit][live_world][camp_map]" --success`
-- the named harness probes above, including `bandit.high_threat_low_reward_holds` and `bandit.active_outside_dogpile_block_live`
+- the named harness probes above, including `bandit.high_threat_low_reward_holds`, `bandit.active_outside_dogpile_block_live`, `bandit.extortion_first_demand_fight_mcw`, `bandit.extortion_first_demand_pay_mcw`, and `bandit.extortion_reopened_demand_mcw`
 
-These close their named guardrail slices only. Do **not** inflate no-opening into opening-present escalation or inflate the roster/high-threat/active-outside guardrails into broad product closure.
+These close their named guardrail slices only. Shakedown/toll-control guardrails are green, dirty-runtime-at-proof is noted, and this is **not** broad product closure. Do **not** inflate no-opening into opening-present escalation or inflate the roster/high-threat/active-outside/shakedown guardrails into broad product closure.
 
 ## Next implementation/proof target
 
-Continue the camp-map ecology contract by moving to the next named downstream proof target from canon, likely shakedown/toll control regression or repeatability/fixture-bias review before broader product closure.
+Continue the camp-map ecology contract by moving to the next named downstream proof target from canon, likely repeatability/fixture-bias review or optional empty-camp live sanity before broader product closure. Do not treat shakedown/toll control as the next unrun target; it is green as scoped guardrail evidence from `20260428_204454`, `20260428_204630`, and `20260428_204813`.
 
-Do **not** rerun the green tiny, medium/five-member, no-opening, high-threat, or active-outside proofs unless Schani/Josef/Frau explicitly reopen them. Keep `bandit.stalk_pressure_waits_for_opening` labeled narrowly as no-opening decision/decay only.
+Do **not** rerun the green tiny, medium/five-member, no-opening, high-threat, active-outside, or shakedown/toll-control proofs unless Schani/Josef/Frau explicitly reopen them. Keep `bandit.stalk_pressure_waits_for_opening` labeled narrowly as no-opening decision/decay only.
 
 ## Queued after this lane
 

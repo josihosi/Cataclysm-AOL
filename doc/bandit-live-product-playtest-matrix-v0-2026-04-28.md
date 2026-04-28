@@ -115,6 +115,8 @@ Required proof:
 - pay and fight branches are separate runs or clearly separated steps;
 - no cannibal proof borrows this result.
 
+Current boundary: **green as scoped shakedown/toll-control guardrail evidence, not broad product closure**. The proof runs are `bandit.extortion_first_demand_fight_mcw` in `.userdata/dev-harness/harness_runs/20260428_204454/`, `bandit.extortion_first_demand_pay_mcw` in `.userdata/dev-harness/harness_runs/20260428_204630/`, and `bandit.extortion_reopened_demand_mcw` in `.userdata/dev-harness/harness_runs/20260428_204813/`. They prove same-run `camp_style` / `open_shakedown` local-gate artifacts, first-demand `demanded_toll=15797` pay/fight surface, distinct fight branch logging, pay branch logging plus saved no-active-group/all-14-home writeback, and reopened defender-loss `demanded_toll=22116` bounded higher demand. Runtime at proof was dirty current source `72e67bdcb9`; after commit/rebuild the local binary reports `d70b8ce014`.
+
 ### 8. Empty-camp retirement live sanity proof
 
 Claim: a camp retires from active AI calculations only when both home/inside presence and outside/active pressure are empty; one-side-empty cases stay active.
@@ -137,13 +139,13 @@ Required proof:
 ## Preferred execution order
 
 1. Preserve/repair any still-red prerequisite gates before dependent proof: especially real player fuel/fire if testing player-created fire/smoke/light.
-2. Run scenario 2 scout memory two-OMT watch.
+2. Preserve scenario 2 scout memory / vanished-signal remembered-lead evidence narrowly unless product review reopens it.
 3. Preserve scenario 4 variable-roster/high-threat/active-outside guardrail evidence, including the current tiny buddy-pair update, without inflating it into broad product closure.
 4. Preserve scenario 5 no-opening evidence narrowly; add opening-present escalation only if product review needs that branch now.
-5. Run scenario 7 shakedown/toll control regression.
+5. Preserve scenario 7 shakedown/toll-control guardrails as green from `20260428_204454`, `20260428_204630`, and `20260428_204813`; do not rerun it as the next unrun target unless Schani/Josef/Frau explicitly reopen it.
 6. Run scenario 8 empty-camp live sanity only if the seam is still desired beyond deterministic proof.
 7. Run scenario 1 player-created fire/smoke/light only after fuel/writeback is green; otherwise keep its blocked verdict explicit.
-8. Run scenario 9 repeatability after the first passing scenario.
+8. Run scenario 9 repeatability / fixture-bias as the next broad-product confidence check after the currently green guardrails.
 
 ## Stop conditions
 
