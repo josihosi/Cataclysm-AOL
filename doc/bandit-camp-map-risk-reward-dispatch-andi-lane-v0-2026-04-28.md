@@ -130,7 +130,7 @@ At minimum:
 Use named scenarios from the full contract and the bandit live product matrix:
 
 1. `bandit.camp_map_scout_memory_two_omt_watch`
-2. `bandit.camp_map_vanished_signal_redispatch`
+2. `bandit.camp_map_vanished_signal_redispatch` — green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_185947/` for the vanished-signal redispatch guardrail only.
 3. `bandit.variable_roster_dispatch_sizing_live`
 4. `bandit.stalk_pressure_waits_for_opening`
 5. `bandit.scout_stalker_sight_avoid_live` — green feature-path evidence in `.userdata/dev-harness/harness_runs/20260428_173626/` for the sight-avoid guardrail only.

@@ -56,6 +56,8 @@ Required proof:
 
 Claim: after the original live signal disappears or is absent, a later live dispatch cadence can still plan from the remembered scout lead instead of forgetting the target.
 
+Status: **green feature-path evidence** in `.userdata/dev-harness/harness_runs/20260428_185947/` via `bandit.camp_map_vanished_signal_redispatch`: saved preflight proved the remembered lead exists, the long-wait ledger proved bounded 30-minute menu/cadence action plus all configured post-wait cadence artifacts, same-run logs named `candidate_reason=remembered_camp_map_lead` with `signal_packet=none`, `job=stalk`, `selected_members=4`, `reward=13`, `risk=1`, `margin=12`, `reserve=5`, `dispatchable=8`, and saved state persisted an active stalk dispatch with four concrete active members. This closes this guardrail only; it is not full variable-roster/no-opening/repeatability closure.
+
 Required proof:
 - precondition proves the remembered lead exists and current live signal is gone/absent;
 - cadence/tick/wait step is proven, not assumed;
@@ -132,14 +134,12 @@ Required proof:
 
 1. Preserve/repair any still-red prerequisite gates before dependent proof: especially real player fuel/fire if testing player-created fire/smoke/light.
 2. Run scenario 2 scout memory two-OMT watch.
-3. Run scenario 3 vanished-signal redispatch from remembered lead.
-4. Run scenario 4 variable-roster dispatch sizing.
-5. Run scenario 5 stalk/pressure wait-for-opening.
-6. Run scenario 6 scout/stalker sight-avoidance.
-7. Run scenario 7 shakedown/toll control regression.
-8. Run scenario 8 empty-camp live sanity only if the seam is still desired beyond deterministic proof.
-9. Run scenario 1 player-created fire/smoke/light only after fuel/writeback is green; otherwise keep its blocked verdict explicit.
-10. Run scenario 9 repeatability after the first passing scenario.
+3. Run scenario 4 variable-roster dispatch sizing.
+4. Run scenario 5 stalk/pressure wait-for-opening.
+5. Run scenario 7 shakedown/toll control regression.
+6. Run scenario 8 empty-camp live sanity only if the seam is still desired beyond deterministic proof.
+7. Run scenario 1 player-created fire/smoke/light only after fuel/writeback is green; otherwise keep its blocked verdict explicit.
+8. Run scenario 9 repeatability after the first passing scenario.
 
 ## Stop conditions
 
