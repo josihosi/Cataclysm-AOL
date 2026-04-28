@@ -1,6 +1,6 @@
 {
   "name": "bandit.variable_roster_tiny_dispatch_sizing_live",
-  "description": "Fixture-backed camp-map product proof: a scout-confirmed remembered lead is evaluated through the real 30-minute live dispatch cadence after the camp roster is shaped to two living ready at-home members. The scenario requires same-run logs and saved state proving reserve/dispatch sizing comes from the current tiny roster: two living, two ready, reserve one, dispatchable one, selected scout instead of impossible stalk pair.",
+  "description": "Fixture-backed camp-map product proof: a scout-confirmed remembered lead is evaluated through the real 30-minute live dispatch cadence after the camp roster is shaped to two living ready at-home members. The scenario requires same-run logs and saved state proving reserve/dispatch sizing comes from the current tiny roster: two living, two ready, reserve zero, dispatchable two, selected two-member stalk pressure.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture_profile": "live-debug",
@@ -13,21 +13,21 @@
   "artifact_patterns": [
     "bandit_live_world dispatch plan:",
     "candidate_reason=remembered_camp_map_lead",
-    "job=scout",
-    "selected_members=1",
+    "job=stalk",
+    "selected_members=2",
     "signal_packet=none",
     "remembered_lead=overmap_special:bandit_camp@140,51,0#lead:basecamp_activity:player@140,39,0@140,39,0",
-    "camp-map roster living=2 ready_at_home=2 wounded_or_unready=0 active_outside=0 reserve=1 dispatchable=1",
+    "camp-map roster living=2 ready_at_home=2 wounded_or_unready=0 active_outside=0 reserve=0 dispatchable=2",
     "camp-map remembered lead",
     "reward=13",
     "risk=1",
     "margin=12",
-    "members=1",
-    "reserve=1",
-    "dispatchable=1",
+    "members=2",
+    "reserve=0",
+    "dispatchable=2",
     "local_gate site=overmap_special:bandit_camp@140,51,0",
-    "active_job=scout",
-    "strength=1",
+    "active_job=stalk",
+    "strength=2",
     "live_candidate reason=remembered_camp_map_lead"
   ],
   "steps": [
@@ -67,12 +67,12 @@
       "artifact_state_patterns": [
         "bandit_live_world dispatch plan:",
         "candidate_reason=remembered_camp_map_lead",
-        "job=scout",
-        "selected_members=1",
-        "camp-map roster living=2 ready_at_home=2 wounded_or_unready=0 active_outside=0 reserve=1 dispatchable=1"
+        "job=stalk",
+        "selected_members=2",
+        "camp-map roster living=2 ready_at_home=2 wounded_or_unready=0 active_outside=0 reserve=0 dispatchable=2"
       ],
       "expected_visible_fact": "the player waited through the real 30-minute overmap NPC cadence window; feature credit depends on same-run debug artifact lines proving 2-member roster sizing, not on the wait UI alone",
-      "failure_rule": "If the wait is interrupted or the artifact delta lacks the tiny variable-roster sizing line and selected scout count, this scenario is inconclusive/red."
+      "failure_rule": "If the wait is interrupted or the artifact delta lacks the tiny variable-roster sizing line and selected two-member stalk count, this scenario is inconclusive/red."
     },
     {
       "kind": "press",
@@ -98,24 +98,24 @@
     },
     {
       "kind": "audit_saved_bandit_live_world_state",
-      "label": "audit_saved_tiny_variable_roster_scout",
+      "label": "audit_saved_tiny_variable_roster_buddy_pair_stalk",
       "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
       "required_member_count": 2,
-      "required_ready_at_home_count": 1,
+      "required_ready_at_home_count": 0,
       "required_wounded_or_unready_count": 0,
-      "required_active_outside_count": 1,
+      "required_active_outside_count": 2,
       "required_active_group_id_contains": "overmap_special:bandit_camp@140,51,0#dispatch",
       "required_active_target_id_prefix": "player@140,39,0",
-      "required_active_job_type": "scout",
-      "required_min_active_member_ids": 1,
+      "required_active_job_type": "stalk",
+      "required_min_active_member_ids": 2,
       "required_active_members_found": true,
       "required_remembered_target_or_mark_prefix": "player@140,39,0",
       "required_min_leads": 1,
       "required_lead_source_contains": "fixture_scout_return_vanished_signal",
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_saved_tiny_variable_roster_dispatch_state_missing",
-      "abort_reason": "saved bandit_live_world did not persist the expected 2-member roster outcome: 1 still-ready at home and 1 active scout member(s)",
-      "expected_immediate_state": "after save/quit, saved bandit_live_world contains the same 2-member camp with an active scout dispatch: 1 active outside member(s) and 1 ready at home",
+      "abort_reason": "saved bandit_live_world did not persist the expected 2-member roster outcome: 0 still-ready at home and 2 active stalk members",
+      "expected_immediate_state": "after save/quit, saved bandit_live_world contains the same 2-member camp with an active stalk dispatch: 2 active outside members and 0 ready at home",
       "failure_rule": "If active dispatch state or the expected ready/active roster split is missing, same-run log sizing cannot close product proof by itself."
     },
     {
@@ -125,25 +125,25 @@
         [
           "bandit_live_world dispatch plan:",
           "candidate_reason=remembered_camp_map_lead",
-          "job=scout",
-          "selected_members=1",
+          "job=stalk",
+          "selected_members=2",
           "signal_packet=none",
-          "camp-map roster living=2 ready_at_home=2 wounded_or_unready=0 active_outside=0 reserve=1 dispatchable=1",
+          "camp-map roster living=2 ready_at_home=2 wounded_or_unready=0 active_outside=0 reserve=0 dispatchable=2",
           "camp-map remembered lead",
           "reward=13",
           "risk=1",
           "margin=12",
-          "members=1",
-          "reserve=1",
-          "dispatchable=1"
+          "members=2",
+          "reserve=0",
+          "dispatchable=2"
         ],
         [
           "local_gate site=overmap_special:bandit_camp@140,51,0",
           "active_group=overmap_special:bandit_camp@140,51,0#dispatch",
           "target=player@140,39,0",
-          "active_job=scout",
+          "active_job=stalk",
           "profile=camp_style",
-          "strength=1"
+          "strength=2"
         ],
         [
           "live_candidate reason=remembered_camp_map_lead",
@@ -153,14 +153,14 @@
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_tiny_variable_roster_dispatch_artifact_missing",
-      "abort_reason": "same-run debug artifact did not show 2-member roster inputs, reserve/dispatchable numbers, selected scout count, no live signal, and live local-gate dispatch",
+      "abort_reason": "same-run debug artifact did not show 2-member roster inputs, reserve/dispatchable numbers, selected two-member stalk count, no live signal, and live local-gate dispatch",
       "failure_rule": "No variable-roster product-proof credit if the artifact lacks the roster/reserve/dispatchable line and the live local-gate line from the same run."
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.variable_roster_tiny_dispatch_sizing_live",
   "evidence_contract": {
-    "claim": "Fixture-backed camp-map product proof: a scout-confirmed remembered lead is evaluated through the real 30-minute live dispatch cadence after the camp roster is shaped to two living ready at-home members. The scenario requires same-run logs and saved state proving reserve/dispatch sizing comes from the current tiny roster: two living, two ready, reserve one, dispatchable one, selected scout instead of impossible stalk pair.",
+    "claim": "Fixture-backed camp-map product proof: a scout-confirmed remembered lead is evaluated through the real 30-minute live dispatch cadence after the camp roster is shaped to two living ready at-home members. The scenario requires same-run logs and saved state proving reserve/dispatch sizing comes from the current tiny roster: two living, two ready, reserve zero, dispatchable two, selected two-member stalk pressure.",
     "load_only_verdict": "load proof only / inconclusive for tiny variable-roster dispatch sizing",
-    "failure_rule": "No feature-proof credit if startup/load, saved preflight roster shape, saved remembered lead, real wait/cadence action, same-run dispatch-plan artifact, roster/reserve/dispatchable/selected-member fields, local-gate dispatch line, save/writeback, and saved active roster split are not all green/matched."
+    "failure_rule": "No feature-proof credit if startup/load, saved preflight roster shape, saved remembered lead, real wait/cadence action, same-run dispatch-plan artifact, roster/reserve/dispatchable/selected two-member fields, local-gate dispatch line, save/writeback, and saved active roster split are not all green/matched."
   }
 }
