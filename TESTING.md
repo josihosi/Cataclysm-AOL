@@ -127,6 +127,8 @@ Still blocked/later in the actual playtest stack:
 - `Roof-fire horde detection proof packet v0`: blocked behind real player-lit fire.
 - Natural three/four-site player-pressure behavior and true zero-site idle baseline remain decision/watchlist items, not current requirements.
 
+Stale runs `.userdata/dev-harness/harness_runs/20260429_093118/`, `.userdata/dev-harness/harness_runs/20260429_093509/`, `.userdata/dev-harness/harness_runs/20260429_095021/`, `.userdata/dev-harness/harness_runs/20260429_122807/`, and `.userdata/dev-harness/harness_runs/20260429_122955/` are retained as postmortem evidence only, not fire proof surfaces.
+
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters;
 - use one named scenario/command path;

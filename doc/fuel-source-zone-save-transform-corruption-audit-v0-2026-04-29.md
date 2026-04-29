@@ -28,6 +28,17 @@ Broken run:
 - inspected map file after copying/extracting the pack: `140.41.0.map`, submap `[280, 82, 0]`
 - observed corrupt `furniture` shape: scalar-flattened list; first entries were `3, 6, "f_bench", 4, 6, "f_bench", ...`
 
+
+Retained stale-run evidence, postmortem-only:
+
+- `.userdata/dev-harness/harness_runs/20260429_093118/`: `fuel_writeback_source_zone_v0_2026-04-29`, same transform chain, non-proof. OCR after attempted target path showed raw `pocket_type` / `contents` item JSON fragments.
+- `.userdata/dev-harness/harness_runs/20260429_093509/`: `blocked_starting_ui_not_normal_map_after_escape`, same transform chain, non-proof. OCR after stale-view dismissal still showed raw `pocket_type` / `contents` item JSON fragments.
+- `.userdata/dev-harness/harness_runs/20260429_095021/`: `blocked_starting_ui_not_normal_map_after_escape`, same transform chain, non-proof. OCR after stale-view dismissal still showed raw `pocket_type` / `contents` item JSON fragments.
+- `.userdata/dev-harness/harness_runs/20260429_122807/`: `blocked_starting_ui_not_normal_map`, same transform chain, non-proof. Normal-map gate OCR showed raw `pocket_type` / `contents` item JSON fragments.
+- `.userdata/dev-harness/harness_runs/20260429_122955/`: `blocked_starting_ui_not_normal_map`, same transform chain, non-proof. Normal-map gate OCR showed raw `pocket_type` / `contents` item JSON fragments.
+
+Those runs all resolve the same source chain (`fuel_writeback_source_zone_v0_2026-04-29` -> `bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27` -> `bandit_basecamp_playtest_kit_v0_2026-04-22` -> `mcwilliams_live_debug_2026-04-07`) and apply the same relevant transform sequence, including `map_furniture_near_player`. They are evidence of the repeated symptom only; none is a fire proof surface.
+
 Known-good fixed run:
 
 - run: `.userdata/dev-harness/harness_runs/20260429_140645/`
