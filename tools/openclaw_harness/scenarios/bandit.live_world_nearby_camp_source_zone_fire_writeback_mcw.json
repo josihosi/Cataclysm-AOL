@@ -1,6 +1,6 @@
 {
   "name": "bandit.live_world_nearby_camp_source_zone_fire_writeback_mcw",
-  "description": "Fuel writeback repair proof-shape correction: saved-world f_brazier/log source plus SOURCE_FIREWOOD zone footing, pre-wielded charged lighter, explicit stale item-info/JSON view dismissal to normal map UI, normal player activation/targeting, post-target action-path message/OCR guard before any save/fd_fire audit, direct save-mtime proof, and guarded saved fd_fire/smoke/light-relevant writeback. No debug fd_fire, no synthetic map fields, no inventory/wield selector claim.",
+  "description": "Fuel writeback repair action-audit probe: saved f_brazier/log/SOURCE_FIREWOOD/lighter footing, explicit stale-view dismissal, then screenshots/OCR or metadata after each meaningful action boundary: activate -> Light where?, direction -> source-firewood prompt, confirmation -> activity/map result, post-advance ignition guard, save/mtime, and saved fd_fire/fd_smoke. No debug fd_fire, no synthetic map fields, no inventory/wield selector claim.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "fuel_writeback_source_zone_v0_2026-04-29",
@@ -112,22 +112,57 @@
       ],
       "settle_seconds": 0.8,
       "capture_after": true,
-      "expected_visible_fact": "The normal player Activate-wielded-item command is sent with lighter already wielded; this should open/enter the firestarter target flow."
+      "expected_visible_fact": "Activating the already-wielded lighter from normal map UI opens the normal firestarter targeting prompt (`Light where?`).",
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "Light where?"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_activation_did_not_open_firestarter_targeting",
+      "abort_reason": "after activating the pre-wielded lighter, OCR did not show the Light where? targeting prompt; stop before sending direction keys"
     },
     {
       "kind": "press",
-      "label": "target_source_zone_brazier_logs_with_lighter",
+      "label": "target_direction_east_to_brazier_logs",
       "keys": [
-        "right",
-        "y",
+        "right"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "Do you really want to burn your firewood source?"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_target_direction_did_not_hit_source_firewood_prompt",
+      "abort_reason": "after choosing east from Light where?, OCR did not show the expected source-firewood confirmation prompt; stop before pressing confirmation",
+      "expected_visible_fact": "The east direction from the firestarter targeting prompt reaches the brazier/log tile covered by SOURCE_FIREWOOD and opens the exact firewood-source confirmation prompt.",
+      "preconditions": "activate_pre_wielded_lighter showed Light where? before this direction key"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_burn_source_firewood_prompt",
+      "keys": [
         "y"
       ],
       "delay_ms": 250,
       "settle_seconds": 1.0,
       "capture_after": true,
-      "expected_visible_fact": "The normal firestarter target flow is aimed at the east brazier/log/source-zone tile and confirms source-firewood / adjacent-container safety prompts if they appear.",
-      "failure_rule": "if normal targeting does not lead to fd_fire metadata after save, activation/targeting remains unproven",
-      "next_step_gate": "the saved fd_fire audit is the required gate before claiming player-lit fire"
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "abort_if_text_contains": [
+        "Do you really want to burn your firewood source?",
+        "Are you sure you want to start fire here?  There's a much more appropriate spot adjacent.",
+        "There's a brazier there but you haven't set it up to contain the fire.  Continue?",
+        "Light where?"
+      ],
+      "abort_verdict": "blocked_unhandled_firestarter_prompt_after_source_confirmation",
+      "abort_reason": "after confirming the SOURCE_FIREWOOD prompt, OCR still showed a targeting/confirmation prompt; stop instead of pressing guessed extra confirmations",
+      "expected_visible_fact": "The single source-firewood confirmation is accepted; the screen should leave targeting/confirmation prompts and enter normal map/activity result state before turn advance.",
+      "preconditions": "target_direction_east_to_brazier_logs showed the source-firewood confirmation prompt"
     },
     {
       "kind": "advance_turns",
@@ -188,7 +223,9 @@
       "delay_ms": 250,
       "settle_seconds": 0.8,
       "capture_after": true,
-      "expected_visible_fact": "The Save command is requested after ignition; no OCR prompt proof is credited, only the following mtime gate."
+      "expected_visible_fact": "The Save command is requested after a proven ignition line; screenshot/OCR captures the save prompt/state before confirmation, but trust still comes from the mtime gate.",
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64
     },
     {
       "kind": "press",
@@ -198,11 +235,13 @@
       ],
       "delay_ms": 250,
       "settle_seconds": 5.0,
-      "capture_after": false,
+      "capture_after": true,
       "proof_deferred_to_label": "audit_player_save_mtime_after_source_zone_ignition_save",
       "failure_rule": "the uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
       "next_step_gate": "feature proof may proceed only when audit_player_save_mtime_after_source_zone_ignition_save is green",
-      "expected_visible_fact": "The direct save confirmation is sent; acceptance is proven by mtime advance, not OCR."
+      "expected_visible_fact": "The direct save confirmation is sent and captured; acceptance is proven by mtime advance, not OCR.",
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64
     },
     {
       "kind": "audit_player_save_mtime",
