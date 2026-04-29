@@ -46,6 +46,28 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
+## Active lane - Smart Zone Manager live coordinate-label proof v0
+
+**Status:** ACTIVE / GREENLIT AGENT-SIDE PROBE
+
+Josef reopened Smart Zone proof on 2026-04-29 with the simple product path: set up a Basecamp zone, invoke Smart Zone generation through the real Zone Manager prompt, press **Yes**, then inspect the Zone Manager list and screenshot/OCR the relative coordinate labels for each generated zone. If the zones still collapse onto one tile, the coordinate labels should expose it; if the layout is correct, the labels/metadata should show distinct expected positions.
+
+This is a materially repaired proof shape, not the old blind clean-profile macro. Andi should pick the smallest reliable route that reaches the real Zone Manager UI: use an existing loadable basecamp/profile/fixture if it works, or repair the UI-entry/keybinding primitive enough to open `Zones manager`. Once the UI is open, prove generation and layout with screenshot/OCR coordinate labels plus saved/reopened zone metadata where available.
+
+Success bar:
+- current-runtime loadable character/basecamp footing reaches gameplay;
+- real Zone Manager UI opens and the Smart Zone generation prompt is accepted with **Yes**;
+- generated zone list is inspected after generation or reopen;
+- screenshot/OCR captures visible coordinate labels beside generated zones;
+- structured metadata records zone names/types/options/coordinates where available;
+- same-coordinate labels are treated as direct lumping evidence, distinct expected labels as separation evidence.
+
+Non-goals: no redesign unless the probe proves the current implementation is wrong; no closure from deterministic `clzones` tests alone; no old contaminated McWilliams macro as proof; no load-only or `action_menu` trace laundering.
+
+Canonical contract remains `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`.
+
+---
+
 ## Closed lane - Basecamp locker armor ranking + blocker removal packet v0
 
 **Status:** CLOSED / CHECKPOINTED
@@ -150,7 +172,7 @@ Canonical references:
 - inventory: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`
 - proof-freeze matrix: `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`
 
-Current product-facing consequences: the normal player-action source-zone fire path is green through saved `fd_fire`; the follow-on bandit signal response is green from that real fire source; roof/elevated fire plus horde retarget/movement-budget response is green through the split-run proof; Smart Zone live layout remains implemented-but-unproven/Josef-package; natural three/four-site player-pressure behavior and a true zero-site idle baseline remain watchlist/decision items, not current requirements.
+Current product-facing consequences: the normal player-action source-zone fire path is green through saved `fd_fire`; the follow-on bandit signal response is green from that real fire source; roof/elevated fire plus horde retarget/movement-budget response is green through the split-run proof; Smart Zone live layout is now the active reopened coordinate-label probe; natural three/four-site player-pressure behavior and a true zero-site idle baseline remain watchlist/decision items, not current requirements.
 
 ---
 
@@ -158,7 +180,7 @@ Current product-facing consequences: the normal player-action source-zone fire p
 
 **Status:** CLOSED / CHECKPOINTED READY FOR SCHANI REVIEW
 
-Josef explicitly greenlit this actual-playtest stack, using the same step-by-step metadata/screenshot validation that the harness trust audit established. The stack has reached its honest state boundary: completed green feature-path proofs are preserved below, Smart Zone remains implemented-but-unproven/Josef-package, and remaining natural multi-site/idle-baseline questions are watchlist or future-promotion items rather than active requirements.
+Josef explicitly greenlit this actual-playtest stack, using the same step-by-step metadata/screenshot validation that the harness trust audit established. The stack has reached its honest state boundary: completed green feature-path proofs are preserved below, Smart Zone has been reopened separately as the active coordinate-label probe, and remaining natural multi-site/idle-baseline questions are watchlist or future-promotion items rather than active requirements.
 
 Canonical contract lives at `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
 Bandit live product playtest matrix lives at `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
@@ -177,7 +199,7 @@ Completed order and preserved boundaries:
 9. **Generic clean-code boundary review packet v0 — completed report-only boundary.** Report exists, completed-checkpoint TODO drift was retired, and no queued follow-up is promoted; keep only the dispatch trace hook removal as queue/watchlist cleanup unless Schani/Josef promotes it.
 10. **C-AOL live AI performance audit packet v0 — complete / green enough for current playtest scale.** The live performance matrix now has green one-site, two-site, pre-staged three-site, and pre-staged four-site rows through the real bounded-wait live path. Four-site current-runtime evidence: `.userdata/dev-harness/harness_runs/20260429_041936/` (`performance.four_site_prestaged_active_wait_30m`) reached feature-path classification with 7/7 green step ledger, green 30m wait ledger, preflight-proven distinct active non-player-target jobs, and same-run `sites=4 active_sites=4 active_job_mix=camp_style:stalk=1,cannibal_camp:stalk=3 signals=0` perf counters. Natural three/four-site player-pressure dispatch remains a cap/watchlist behavior question, not a performance-load failure. Imagination source lives at `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`; canonical contract lives at `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`; completed matrix lives at `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md`.
 
-State boundary: no greenlit agent-side execution item remains inside this stack. Next review/action is Schani plans-aux: accept this as a completed actual-playtest checkpoint, promote a future watchlist item explicitly, or ask Josef for a product decision if stricter proof is desired.
+State boundary: no greenlit agent-side execution item remains inside this stack. The next active work is the separately promoted Smart Zone Manager live coordinate-label proof above.
 
 Non-goals: no Lacapult, no release publishing, no broad debug-note reopening, no blind Smart Zone live-probe loop outside `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`, no contaminated old McWilliams Smart Zone macro as closure proof, no informal Andi-only nudges as substitutes for canon plan items, and no feature closure from load-and-close or deterministic tests alone.
 

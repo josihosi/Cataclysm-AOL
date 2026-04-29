@@ -139,10 +139,19 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-No active probe is pending. No active roof-fire horde retry is pending. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof.
+Active probe: `Smart Zone Manager live coordinate-label proof v0`.
 
-1. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof; do not rerun it as ritual.
-2. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
+Proof target:
+
+1. Current-runtime loadable character/basecamp footing reaches gameplay.
+2. Real `Zones manager` UI is opened; a trace or screenshot/OCR must prove this before generation keys are sent.
+3. Smart Zone generation is invoked through the live UI and accepted with **Yes**.
+4. Generated Zone Manager list is inspected after generation or reopen.
+5. Screenshot/OCR captures zone names plus visible coordinate labels for generated zones.
+6. Saved/reopened zone metadata is extracted where available for zone names/types/options/coordinates.
+7. Verdict is direct: same coordinate labels imply collapsed/lumped layout; distinct expected labels plus matching metadata imply live layout proof green.
+
+Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof. Do not rerun solved bandit/fire/roof rows as ritual.
 
 Future-only watchlist unless Schani/Josef explicitly promotes it:
 

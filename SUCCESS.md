@@ -173,7 +173,7 @@ Notes:
 
 ## Smart Zone Manager harness-audit retry packet v0
 
-Status: CHECKPOINTED / JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN BOUNDARY REACHED
+Status: REOPENED AS ACTIVE LIVE COORDINATE-LABEL PROBE / PRIOR BOUNDARY PRESERVED
 
 Success state:
 - [x] The current-runtime retry used clean startup/load hygiene before UI-entry checks.
@@ -188,8 +188,8 @@ Notes:
 - Imagination source lives at `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`.
 - Final agent-side run: `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/`, verdict `blocked_zone_manager_ui_entry_guard_failed`, startup green/current runtime `5f17cc7901-dirty`, trace `raw_action="action_menu" action_id="action_menu"`, no `invoke_zone_manager`, OCR missing `Zones manager`.
-- This remains non-green for feature proof. Deterministic geometry/separation checks are support only, and no add-zone/filter/generation/coordinate-label evidence is credited.
-- Do not rerun this lane unless Josef/Schani explicitly reopens it with a materially repaired UI-entry/key-delivery primitive or Josef manual evidence.
+- Prior boundary remains non-green for feature proof. Deterministic geometry/separation checks are support only, and no add-zone/filter/generation/coordinate-label evidence is credited from the old runs.
+- Josef explicitly reopened the lane on 2026-04-29 with a simpler proof route: set up/load a usable Basecamp zone, open the real Zone Manager, accept Smart Zone generation with **Yes**, then screenshot/OCR the generated zone list coordinate labels and pair them with saved/reopened zone metadata where available.
 
 ---
 

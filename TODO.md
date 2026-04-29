@@ -8,20 +8,17 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No active Andi execution target is currently promoted. `C-AOL actual playtest verification stack v0` reached its completed state boundary and is ready for Schani plans-aux review.
+Active target: `Smart Zone Manager live coordinate-label proof v0`.
 
-Preserve, do not rerun as ritual:
+Josef explicitly reopened the agent-side route: this should not be harder than the bandit probes. Set up/load a usable Basecamp zone, invoke Smart Zone generation through the real Zone Manager prompt, press **Yes**, then inspect the Zone Manager list and screenshot/OCR the coordinate label beside each generated zone.
 
-- source-zone player fire: `.userdata/dev-harness/harness_runs/20260429_153253/`, `bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw`; real normal Apply inventory/deploy/lighter path, saved `f_brazier` + `fd_fire`;
-- player-lit fire -> bandit signal: `.userdata/dev-harness/harness_runs/20260429_162100/`, `bandit.player_lit_fire_signal_wait_mcw`; bounded wait, live signal/dispatch, saved active scout response;
-- roof/elevated fire source: `.userdata/dev-harness/harness_runs/20260429_172847/`; normal player-created roof `t_tile_flat_roof` + `f_brazier` + `fd_fire`;
-- roof-fire horde split proof: `.userdata/dev-harness/harness_runs/20260429_180239/`, `bandit.roof_fire_horde_split_wait_from_player_fire_mcw`; live roof-fire horde signal plus saved horde retarget/movement-budget response;
-- Smart Zone Manager live layout remains implemented-but-unproven/Josef-package; do not rerun without a materially repaired UI-entry primitive or explicit reopen.
+Do now:
 
-Future-only watchlist unless Schani/Josef promotes it:
+1. Start from the smallest current-runtime loadable basecamp/profile/fixture that reaches gameplay and can open Zone Manager.
+2. Prove `Zones manager` is actually open before sending generation keys; `action_menu` is still a blocker, not progress.
+3. Invoke Smart Zone generation through the real UI and accept the prompt with **Yes**.
+4. Reopen/inspect the generated Zone Manager list; capture screenshot/OCR of zone names plus coordinate labels (`2E`-style offsets).
+5. Extract saved/reopened zone metadata where available: zone names/types/options/absolute coordinates.
+6. Classify directly: same coordinate labels = lumping bug still present; distinct expected labels + matching metadata = live layout proof green.
 
-- natural three/four-site player-pressure behavior;
-- true zero-site idle baseline;
-- stricter roof-horde positive `tracking_intensity` proof.
-
-Recommended next action: Schani plans-aux review/promote next lane. Josef decision is needed only if Schani wants stricter proof or a new product requirement.
+Preserve solved bandit/fire/roof proof runs as completed evidence, not rerun invitations. Natural three/four-site player-pressure, true zero-site idle baseline, and stricter roof-horde tracking-intensity remain future-only watchlist items unless promoted later.
