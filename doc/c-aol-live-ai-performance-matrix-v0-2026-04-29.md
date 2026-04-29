@@ -1,6 +1,6 @@
 # C-AOL live AI performance matrix v0 - 2026-04-29
 
-Status: IN PROGRESS / ONE-SITE ROW GREEN, MULTI-SITE ROWS OPEN
+Status: IN PROGRESS / ONE- AND TWO-SITE ROWS GREEN, THREE-/FOUR-SITE ROWS OPEN
 
 Contract: `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`
 Imagination source: `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`
@@ -35,13 +35,16 @@ This is intentionally top-level instrumentation, not a behavior redesign.
 | --- | --- | --- | --- | --- | --- | --- |
 | Baseline / zero hostile active sites | Not staged yet | missing | TBD | none | TBD | open |
 | One hostile overmap AI site | `performance.bandit_one_site_remembered_lead_wait_30m`, run `.userdata/dev-harness/harness_runs/20260429_025639/` | green feature-path performance row for one-site case; startup/fixture support remains separate | 30m bounded wait choice; 4/4 green step ledger; green wait ledger via artifact delta after bounded wait | `camp_style:stalk=1`; one remembered-lead bandit camp; `signals=0`; 4 travelling NPCs | 6 perf cadence rows in `measure_30_minutes_one_site_remembered_lead.after_wait.artifacts.log`; `total_us` min/median/max `506/528.0/1134`, sum `3751`; one dispatch-due row `dispatch_us=297`; harness wall-clock `/tmp/caol_perf_clean_20260429_025638.log` `real 38.58s`; runtime `ae0c974d47`, `captured_dirty=false`, `version_matches_repo_head=true`, `version_matches_runtime_paths=true` | green one-site row |
-| Two hostile overmap AI sites | Not staged yet | missing | TBD | TBD | TBD | open |
+| Two hostile overmap AI sites | `performance.two_site_bandit_cannibal_wait_30m`, run `.userdata/dev-harness/harness_runs/20260429_032427/` | green feature-path performance row for two-site mixed-profile case; startup/fixture support remains separate | 30m bounded wait choice; 4/4 green step ledger; green wait ledger via artifact delta after bounded wait | `camp_style:stalk=1,cannibal_camp:stalk=1`; one remembered-lead bandit camp plus one direct-range seeded cannibal camp; `signals=0`; 6 travelling NPCs | 6 perf cadence rows in `measure_30_minutes_two_site_bandit_cannibal.after_wait.artifacts.log`; `total_us` min/median/max `515/546.0/2889`, sum `5637`; one dispatch-due row `dispatch_us=1935`; harness wall-clock `/tmp/caol_perf_two_site_probe3_20260429_032426.log` `38.522s total`; runtime `5325f8fb4d`, `captured_dirty=false`, `version_matches_repo_head=true`, `version_matches_runtime_paths=true` | green two-site row |
 | Three hostile overmap AI sites | Not staged yet | missing | TBD | TBD | TBD | open |
 | Four hostile overmap AI sites | Not staged yet | missing | TBD | TBD | TBD | open |
 
 Dedicated first-row scenario: `tools/openclaw_harness/scenarios/performance.bandit_one_site_remembered_lead_wait_30m.json`.
+Dedicated second-row scenario/fixture: `tools/openclaw_harness/scenarios/performance.two_site_bandit_cannibal_wait_30m.json` and `tools/openclaw_harness/fixtures/saves/live-debug/performance_two_site_bandit_cannibal_v0_2026-04-29/manifest.json`.
 
 Earlier support-only instrumentation smokes: `bandit.camp_map_vanished_signal_redispatch`, run `.userdata/dev-harness/harness_runs/20260429_024952/`, emitted the same perf line shape but kept a yellow wait ledger and stale title/version metadata; first dedicated run `.userdata/dev-harness/harness_runs/20260429_025436/` was green but used the dirty pre-commit runtime. Both are retained only as probe support, not row credit.
+
+Earlier blocked two-site staging attempts are also support-only: `.userdata/dev-harness/harness_runs/20260429_031940/` proved a noisy smoke/fire footing could produce `sites=2 active_sites=2`, but it measured signal behavior plus a visible-hostile interruption and did not preserve the intended remembered-lead bandit mix; `/tmp/caol_perf_two_site_probe2_20260429_032213.log` failed at startup after moving the player into an unstaged map pack. Frau review approved the third changed retry as the cleaner `signals=0` mixed-profile performance row.
 
 ## Code audit notes
 
@@ -55,6 +58,6 @@ Current live-path risk points to watch as site count rises:
 
 ## Next row work
 
-1. Inspect/stage the smallest honest two-site fixture that mixes at least one bandit and one cannibal hostile-overmap-AI site, without reopening blocked player-lit fire work.
-2. Run the same 30m measured live window and compare `bandit_live_world perf:` cost against the one-site row.
-3. Extend only after that to three- and four-site fixtures, or name the staging blocker explicitly.
+1. Use the green two-site `signals=0` mixed-profile row as the comparable footing for the next scale step.
+2. Stage the smallest honest three-site fixture without reopening blocked player-lit fire work; prefer cloning/adding another hostile overmap site over changing behavior.
+3. Run the same 30m measured live window for three sites, then extend to four only if the three-site setup stays honest and comparable, or name the staging blocker explicitly.

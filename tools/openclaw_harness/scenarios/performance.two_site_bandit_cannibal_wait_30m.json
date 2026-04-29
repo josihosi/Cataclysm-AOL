@@ -1,0 +1,119 @@
+{
+  "name": "performance.two_site_bandit_cannibal_wait_30m",
+  "description": "Performance-audit row: two active hostile overmap AI sites. A bandit camp starts from a persisted remembered camp-map lead while a seeded cannibal_camp sits at the direct-player-range boundary without smoke/fire fields; the scenario waits through the same real 30-minute overmap AI cadence and captures compact live-path timing/counter lines from bandit_live_world perf instrumentation.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "performance_two_site_bandit_cannibal_v0_2026-04-29",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world perf:",
+    "sites=2",
+    "active_sites=2",
+    "active_job_mix=",
+    "camp_style:stalk=1",
+    "cannibal_camp:",
+    "signals=0",
+    "signal_cadence_due=yes",
+    "bandit_live_world dispatch plan:",
+    "candidate_reason=remembered_camp_map_lead",
+    "candidate_reason=direct_player_range",
+    "local_gate site=overmap_special:cannibal_camp@",
+    "profile=cannibal_camp"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_two_site_perf_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for the two-site performance fixture; this is startup/load plus fixture footing only"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_two_site_bandit_lead_perf_fixture",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_remembered_target_or_mark_prefix": "player@140,39,0",
+      "required_min_leads": 1,
+      "required_lead_source_contains": "fixture_scout_return_vanished_signal",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_two_site_bandit_lead_fixture",
+      "abort_reason": "preflight saved bandit_live_world site did not contain the persisted remembered camp-map lead needed for the bandit half of the two-site performance row",
+      "expected_immediate_state": "saved bandit_live_world contains the remembered-lead bandit camp with player target player@140,39,0 before the measured live cadence starts; the cannibal half is seeded as an overmap special without smoke/fire fields and must be proven by same-run bootstrap/dispatch/perf artifact lines",
+      "failure_rule": "If the remembered lead is missing or malformed, later timing cannot be credited to the intended two-site performance row."
+    },
+    {
+      "kind": "wait_action",
+      "label": "measure_30_minutes_two_site_bandit_cannibal",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the duration menu",
+      "completion_wait_seconds": 12.0,
+      "artifact_state_patterns": [
+        "bandit_live_world perf:",
+        "sites=2",
+        "active_sites=2",
+        "active_job_mix=",
+        "camp_style:stalk=1",
+        "cannibal_camp:",
+        "signals=0",
+        "signal_cadence_due=yes",
+        "bandit_live_world dispatch plan:",
+        "candidate_reason=remembered_camp_map_lead",
+        "candidate_reason=direct_player_range",
+        "local_gate site=overmap_special:cannibal_camp@",
+        "profile=cannibal_camp"
+      ],
+      "expected_visible_fact": "the player waited through a bounded 30-minute overmap AI cadence window with one remembered-lead bandit site and one direct-range cannibal site; performance credit depends on same-run perf/debug artifact lines with signals=0, not the wait UI alone",
+      "failure_rule": "If the wait is interrupted or the artifact delta lacks the two-site perf/cadence lines, this row is inconclusive."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_two_site_perf_artifact",
+      "required_line_patterns": [
+        [
+          "bandit_live_world perf:",
+          "sites=2",
+          "active_sites=2",
+          "active_job_mix=",
+          "camp_style:stalk=1",
+          "cannibal_camp:",
+          "signals=0",
+          "total_us="
+        ],
+        [
+          "bandit_live_world dispatch plan:",
+          "candidate_reason=remembered_camp_map_lead",
+          "job=stalk",
+          "selected_members=4",
+          "signal_packet=none"
+        ],
+        [
+          "bandit_live_world dispatch plan:",
+          "site=overmap_special:cannibal_camp@",
+          "candidate_reason=direct_player_range",
+          "profile cannibal_camp"
+        ],
+        [
+          "local_gate site=overmap_special:cannibal_camp@",
+          "profile=cannibal_camp",
+          "shakedown=no"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_two_site_perf_artifact_missing",
+      "abort_reason": "same-run debug artifact did not contain compact two-site perf counters and expected bandit remembered-lead plus cannibal direct-range artifact lines",
+      "failure_rule": "No two-site performance row credit if the same-run artifact lacks the perf counter line and job-identifying lines for both hostile site profiles."
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe performance.two_site_bandit_cannibal_wait_30m",
+  "evidence_contract": {
+    "claim": "two active hostile overmap AI sites -- one bandit remembered-lead stalk site and one direct-range cannibal site -- can advance through a real 30-minute live cadence with signals=0 while emitting compact timing/counter evidence",
+    "load_only_verdict": "load proof only / inconclusive for performance",
+    "failure_rule": "No performance-row credit if startup/load, fixture preflight, bounded wait/cadence action, same-run perf counter line, and job-identifying bandit/cannibal artifact lines are not all present and classified separately."
+  }
+}
