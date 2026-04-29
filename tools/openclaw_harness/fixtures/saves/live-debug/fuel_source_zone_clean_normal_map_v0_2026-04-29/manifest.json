@@ -1,0 +1,20 @@
+{
+  "profile": "live-debug",
+  "world": "McWilliams",
+  "name": "fuel_source_zone_clean_normal_map_v0_2026-04-29",
+  "captured_at": "2026-04-29T14:31:22+0200",
+  "source_run": ".userdata/dev-harness/harness_runs/20260429_140645/",
+  "source_world_snapshot": ".userdata/dev-harness/harness_runs/20260429_140645/saved_world/McWilliams",
+  "source_fixture": "fuel_writeback_source_zone_v0_2026-04-29",
+  "source_fixture_profile": "live-debug",
+  "description": "Clean source-zone fixture captured from the green normal-map entry run before any activation/targeting/fire/lighter action key. Replaces the broken transform-only proof surface for future entry/load validation; no save_transforms are applied by this fixture.",
+  "evidence": {
+    "normal_map_gate_run": ".userdata/dev-harness/harness_runs/20260429_140645/",
+    "normal_map_gate_screenshot": ".userdata/dev-harness/harness_runs/20260429_140645/normal_map_entry_gate_before_activation.png",
+    "normal_map_gate_ocr_facts": [
+      "Wield:",
+      "YOU"
+    ],
+    "no_fire_lighter_action_keys_sent": true
+  }
+}

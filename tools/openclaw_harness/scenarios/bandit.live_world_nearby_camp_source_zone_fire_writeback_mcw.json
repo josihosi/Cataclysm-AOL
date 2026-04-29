@@ -1,9 +1,9 @@
 {
   "name": "bandit.live_world_nearby_camp_source_zone_fire_writeback_mcw",
-  "description": "Fuel writeback repair action-audit probe: saved f_brazier/log/SOURCE_FIREWOOD/lighter footing, direct normal-map entry gate with no blind stale-view dismissal, then screenshots/OCR or metadata after each meaningful action boundary: apply-wielded firestarter action -> Light where?, direction -> source-firewood prompt, confirmation -> activity/map result, post-advance ignition guard, save/mtime, and saved fd_fire/fd_smoke. No debug fd_fire, no synthetic map fields, no inventory/wield selector claim.",
+  "description": "Fuel writeback repair action-audit probe: saved f_brazier/log/SOURCE_FIREWOOD/lighter footing, direct normal-map entry gate with no blind stale-view dismissal, then screenshots/OCR or metadata after each meaningful action boundary: apply-wielded firestarter action -> Light where?, direction -> source-firewood prompt, confirmation -> activity/map result, post-advance ignition guard, save/mtime, and saved fd_fire/fd_smoke. No debug fd_fire, no synthetic map fields, no inventory/wield selector claim. Uses the clean captured normal-map fixture; do not point this scenario back at the broken transform-only fuel_writeback_source_zone_v0_2026-04-29 proof surface.",
   "profile": "dev-harness",
   "world": "McWilliams",
-  "fixture": "fuel_writeback_source_zone_v0_2026-04-29",
+  "fixture": "fuel_source_zone_clean_normal_map_v0_2026-04-29",
   "fixture_profile": "live-debug",
   "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "profile_snapshot_profile": "live-debug",
@@ -295,5 +295,5 @@
       "abort_reason": "fd_smoke metadata missing after source-zone normal ignition route"
     }
   ],
-  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_source_zone_fire_writeback_mcw (normal apply-wielded firestarter action with pre-wielded charged lighter setup + post-target message/OCR ignition guard before save/mtime/fd_fire; no wield-selector proof claim)"
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_source_zone_fire_writeback_mcw (only after clean normal-map fixture gate; fire proof remains guarded)"
 }

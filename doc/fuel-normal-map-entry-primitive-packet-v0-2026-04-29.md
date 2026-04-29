@@ -77,3 +77,16 @@ Caveat: direct model image inspection was unavailable in this environment, so th
 Josef's 2026-04-29 diagnosis: the earlier raw item-info/JSON startup surface was a broken save/fixture or backend manipulation problem, not a fire-proof surface. Before treating the downstream fire path as healthy, Andi should compare the broken `fuel_writeback_source_zone_v0_2026-04-29` transform/save path against the green normal-map fixture path and identify what backend edit, transform, or harness resume step produced the poisoned UI state.
 
 Use the prior stale-screen runs as postmortem input only: `.userdata/dev-harness/harness_runs/20260429_093118/`, `.userdata/dev-harness/harness_runs/20260429_093509/`, `.userdata/dev-harness/harness_runs/20260429_095021/`, `.userdata/dev-harness/harness_runs/20260429_122807/`, and `.userdata/dev-harness/harness_runs/20260429_122955/`. If the exact culprit is no longer recoverable, say so explicitly and keep future proof on the green normal-map fixture path rather than reviving the broken surface.
+
+## Clean fixture follow-up — 2026-04-29
+
+Josef later diagnosed the old fuel/source-zone proof surface as a broken save/fixture. A clean replacement fixture was created from the green normal-map state instead of continuing to use the transform-only surface for proof.
+
+- fixture: `fuel_source_zone_clean_normal_map_v0_2026-04-29`
+- source save: `.userdata/dev-harness/harness_runs/20260429_140645/saved_world/McWilliams`
+- clean proof run: `.userdata/dev-harness/harness_runs/20260429_143149/`
+- scenario: `bandit.live_world_nearby_camp_source_zone_clean_normal_map_entry_mcw`
+- first screenshot: `.userdata/dev-harness/harness_runs/20260429_143149/normal_map_entry_gate_before_activation.png`
+- named visible fact: normal gameplay map UI; OCR fallback matched `Wield:` and `YOU`, and raw JSON/item-info guards did not fire.
+
+Do not use `fuel_writeback_source_zone_v0_2026-04-29` for further fire/lighter proof. If any clean fixture opens to raw JSON/item-info soup, classify harness/game-code load bug and stop for review before action keys.

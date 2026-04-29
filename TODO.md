@@ -8,9 +8,17 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No current unblocked agent-side probe remains in the `C-AOL actual playtest verification stack v0`.
+No current unblocked fire/lighter proof remains in the `C-AOL actual playtest verification stack v0` until review/reopen. Josef explicitly diagnosed the old fuel/source-zone proof surface as a broken save/fixture, so do **not** use `fuel_writeback_source_zone_v0_2026-04-29` as a fire/lighter proof surface.
 
-`Fuel writeback repair via wood source zone packet v0` is now **implemented-but-unproven / Josef playtest package**. The final post-Frau diagnostic fixed the fixture's lighter representation to include nested `butane` ammo, then current-runtime probe `.userdata/dev-harness/harness_runs/20260429_142257/` started from normal map UI and proved setup footing again: saved wielded `lighter` with nested `butane` `observed_weapon_ammo_remaining=100`, saved `f_brazier`, real saved `log`, saved `SOURCE_FIREWOOD`, and screenshot artifact `normal_map_entry_gate_before_activation.png` with OCR fallback. The action boundary still failed: after apply-wielded `A`, `open_start_fire_targeting_prompt.after.png` / OCR did not show `Light where?`, so the run aborted as `blocked_apply_wielded_firestarter_did_not_open_targeting`. No normal ignition, save mtime, `fd_fire`, smoke, or bandit signal proof is credited.
+Clean fixture replacement is now available and first-load green:
+
+- fixture: `fuel_source_zone_clean_normal_map_v0_2026-04-29`
+- source: captured from `.userdata/dev-harness/harness_runs/20260429_140645/saved_world/McWilliams` after the green normal-map entry run and before any activation/targeting/fire/lighter key
+- clean gate probe: `.userdata/dev-harness/harness_runs/20260429_143149/`, scenario `bandit.live_world_nearby_camp_source_zone_clean_normal_map_entry_mcw`
+- result: feature-path green, 5/5 green step-local ledger, load-finalized artifact match
+- first screenshot: `.userdata/dev-harness/harness_runs/20260429_143149/normal_map_entry_gate_before_activation.png`
+- named visible fact: normal gameplay map UI, OCR fallback matched `Wield:` and `YOU`; no raw `pocket_type` / `contents` / `specific energy` guard fired
+- setup footing rechecked: saved wielded `lighter` charge 100, saved `f_brazier`, real saved `log`, saved `SOURCE_FIREWOOD`
 
 Canonical anchors:
 
@@ -21,11 +29,11 @@ Canonical anchors:
 
 Next narrow work queue:
 
-1. Do **not** rerun the fuel packet agent-side unless Josef supplies manual evidence or Schani/Josef/Frau reopen a materially repaired firestarter/action primitive.
-2. Keep `Player-lit fire and bandit signal verification packet v0` blocked behind real player-lit fire proof/manual evidence.
-3. Keep `Roof-fire horde detection proof packet v0` blocked behind real player-created fire/light/smoke.
-4. If Josef returns manual fuel/fire evidence, verify it against the close condition: normal player action, visible normal-map/fire-or-no-fire screenshot facts, decisive lighting player message/OCR, same-run save mtime, and saved `fd_fire` plus `fd_smoke`/smoke-light-relevant state.
-5. Otherwise wait for Schani/Josef/Frau to promote a fresh bounded target; the remaining listed stack items are complete, packaged, or blocked.
+1. Do **not** rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`.
+2. If Schani/Josef/Frau reopen fuel fire proof, use only the clean fixture `fuel_source_zone_clean_normal_map_v0_2026-04-29` or a fresher clean fixture that first proves normal map UI.
+3. If a brand-new clean fixture ever opens to raw JSON/item-info soup, stop and classify it as harness/game-code load bug for review; do not poke through it with keys.
+4. Keep `Player-lit fire and bandit signal verification packet v0` blocked behind real player-lit fire proof/manual evidence.
+5. Keep `Roof-fire horde detection proof packet v0` blocked behind real player-created fire/light/smoke.
 
 Proof discipline:
 
