@@ -53,15 +53,30 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - C-AOL actual playtest verification stack v0 / Cannibal confidence-push live playtest packet v0
+### Active validation target - C-AOL actual playtest verification stack v0 / C-AOL live AI performance audit packet v0
 
-`C-AOL actual playtest verification stack v0` is active. The next unblocked slice is `Cannibal camp confidence-push live playtest packet v0`: confidence uplift for the closed cannibal night-raid behavior, not a redesign lane. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md` and `doc/cannibal-camp-confidence-push-live-playtest-packet-v0-2026-04-28.md`; imagination source: `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`.
+`C-AOL actual playtest verification stack v0` remains active. The next unblocked slice is `C-AOL live AI performance audit packet v0`: a measured performance/playability audit for multiple active hostile overmap AI sites. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md` and `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`; imagination source: `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`.
 
-Evidence burden: compact live/harness matrix evidence for wandering day pressure, night mistake/contact, reload brain, different-seed/different-footing repeat, and bandit contrast control. Credited feature-path claims require current-runtime freshness, green startup gate, all-green step ledgers, and claim-scoped artifact/log matches. Deterministic tests and startup/load evidence are support only.
+Evidence burden: a compact live/harness performance matrix for baseline/one, two, three, and four active hostile-overmap-AI cases where staging is honest. Each credited row needs current-runtime freshness, a green startup gate, a real live game-path measured window, in-game elapsed time, wall-clock timing, active site/job/profile counts, and relevant signal/dispatch/local-gate/sight-avoid counters or logs. Startup/load and deterministic-only results are support only; evaluator speed does not close live playability.
 
-Current credited evidence: the stale runtime/window blocker is cleared for the bandit contrast control. Run `.userdata/dev-harness/harness_runs/20260429_012915/` (`bandit.extortion_first_demand_fight_mcw`) captured window `Cataclysm: Dark Days Ahead - 7ca870f6be`, `captured_dirty=false`, `version_matches_repo_head=true`, 6/6 green step ledger, proof classification `feature-path` / `green` / `feature_proof=true`, and matched the shakedown/pay/fight artifacts including `demanded_toll=15797` and `shakedown_surface fight demanded=15797 reachable=45134`. Cannibal day pressure is also green: run `.userdata/dev-harness/harness_runs/20260429_013310/` (`cannibal.live_world_day_smoke_pressure_mcw`) captured window/runtime `782d8edabd`, 2/2 green step ledger, `feature_proof=true`, and matched live smoke/signal path plus `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, `combat_forward=no`, `signal_packet=live_smoke@`. Cannibal night/contact is green: run `.userdata/dev-harness/harness_runs/20260429_014900/` (`cannibal.live_world_night_local_contact_pack_mcw`) captured window `Cataclysm: Dark Days Ahead - acfe6fd0ce`, `captured_dirty=false`, `version_matches_repo_head=true`, 2/2 green step ledger, proof classification `feature-path` / `green` / `feature_proof=true`, and matched real local-contact pack-forward artifacts: `profile=cannibal_camp`, `active_job=stalk`, `posture=attack_now`, `pack_size=2`, `darkness_or_concealment=yes`, `local_contact=yes`, `shakedown=no`, `combat_forward=yes`, and `live_candidate reason=direct_player_range`. Matrix: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
+Current state: not yet measured in this packet. Existing bandit/cannibal harness scenarios may be reused as fixture/provenance support, but the performance audit still needs explicit timing/counter rows and a code-level hot-path audit before closure.
 
-Validation policy for this target: docs-only ledger promotion uses `git diff --check`. Live probe credit requires a fresh/current tiles runtime and the named scenario's proof ledger. If code changes, run the narrowest focused deterministic tests for the touched bandit/cannibal live-world path before live proof.
+Validation policy for this target: docs-only matrix setup uses `git diff --check`. If harness/runtime instrumentation or source code changes, run the narrowest compile/test for touched files plus any focused deterministic test/benchmark added. Before credited live timing, rebuild or verify current `cataclysm-tiles` freshness and run the named measured scenario/report path.
+
+### Recently completed validation target - Cannibal camp confidence-push live playtest packet v0
+
+`Cannibal camp confidence-push live playtest packet v0` is complete as **confidence uplift green**. Matrix: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
+
+Checkpoint evidence boundary:
+
+- bandit contrast control: `.userdata/dev-harness/harness_runs/20260429_012915/`, scenario `bandit.extortion_first_demand_fight_mcw`, current runtime `7ca870f6be`, 6/6 green step ledger, feature proof, shakedown/pay/fight surface preserved;
+- cannibal day smoke/pressure: `.userdata/dev-harness/harness_runs/20260429_013310/`, scenario `cannibal.live_world_day_smoke_pressure_mcw`, current runtime `782d8edabd`, 2/2 green step ledger, feature proof, live smoke/signal path with `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, `combat_forward=no`;
+- cannibal night/contact pack-forward: `.userdata/dev-harness/harness_runs/20260429_014900/`, scenario `cannibal.live_world_night_local_contact_pack_mcw`, current runtime `acfe6fd0ce`, 2/2 green step ledger, feature proof, local-contact `attack_now` pack with `pack_size=2`, `darkness_or_concealment=yes`, `shakedown=no`, `combat_forward=yes`;
+- reload brain create/save: `.userdata/dev-harness/harness_runs/20260429_021849/`, scenario `cannibal.live_world_day_smoke_persistence_mcw`, current runtime `e778902cac`, 7/7 green step ledger, feature proof, guarded save mtime writeback, saved active `cannibal_camp` stalk group with active members `[4,5]`, target `player@140,41,0`, and `known_recent_marks` including `live_smoke@140,41,0`;
+- paired no-fixture reload support: `.userdata/dev-harness/harness_runs/20260429_021929/`, scenario `cannibal.live_world_day_smoke_persistence_reload_audit_mcw`, current runtime `e778902cac`, 2/2 green step ledger and saved-state metadata still present after fresh startup; top-level classifier stays yellow/no-new-artifacts, so this is saved-file/startup support paired with the create/save feature proof, not independent new behavior proof;
+- different-footing exposed-sight repeat: `.userdata/dev-harness/harness_runs/20260429_022021/`, scenario `cannibal.live_world_exposed_sight_avoid_mcw`, current runtime `e778902cac`, 5/5 green step ledger, feature proof on fixture `cannibal_live_world_exposed_sight_avoid_v0_2026-04-28` from source footing `bandit_local_sight_avoid_exposed_v0_2026-04-27`, showing `profile=cannibal_camp`, `active_job=stalk`, `posture=hold_off`, `pack_size=2`, `recent_exposure=yes`, `sight_exposure=recent`, `shakedown=no`, `combat_forward=no`.
+
+Caveats retained: this is confidence uplift for already-finished cannibal behavior, not behavior redesign; reload support reads saved state rather than proving fresh post-load local-gate behavior; the different-footing repeat reduces but does not eliminate fixture-bias risk.
 
 ### Recently completed validation target - Bandit camp-map risk/reward dispatch planning packet v0
 
@@ -88,17 +103,17 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active validation target: **C-AOL actual playtest verification stack v0 / Cannibal confidence-push live playtest packet v0**.
+Active validation target: **C-AOL actual playtest verification stack v0 / C-AOL live AI performance audit packet v0**.
 
-1. Continue reload continuation with the paired persistence/reload scenarios: first `cannibal.live_world_day_smoke_persistence_mcw`, then `cannibal.live_world_day_smoke_persistence_reload_audit_mcw` if the first run creates the expected active group/save state.
-2. Identify a different-footing repeat candidate if available.
-3. Update the compact confidence matrix/verdict only when the run has current runtime, all-green step ledger rows, and claim-scoped artifact/log proof.
+1. Shape the compact performance matrix for baseline/one, two, three, and four active hostile-overmap-AI cases, including profile/job mix, measured in-game window, wall-clock timing, active site/job counts, and signal/dispatch/local-gate/sight-avoid counters.
+2. Inspect existing bandit/cannibal harness fixtures and report surfaces for the smallest honest multi-site measured case before adding instrumentation.
+3. Add lightweight timing/counter instrumentation or a deterministic benchmark helper only if the existing live report path cannot separate game cost from harness overhead.
+4. Run the first current-runtime measured live path and update the performance matrix from claim-scoped timing/counter evidence only.
 
 Still blocked/later in the actual playtest stack:
 
 - `Player-lit fire and bandit signal verification packet v0`: blocked behind the fuel/writeback gate.
 - `Roof-fire horde detection proof packet v0`: blocked behind real player-lit fire.
-- `C-AOL live AI performance audit packet v0`: bottom-of-stack measured performance audit.
 
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters;
