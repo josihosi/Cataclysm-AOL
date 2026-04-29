@@ -6171,8 +6171,8 @@ def apply_map_furniture_near_player_transform(world_dir: Path, transform: Dict[s
         for x, y, payload in iter_map_triples(triples):
             if x == local_ms[0] and y == local_ms[1]:
                 continue
-            kept.extend([x, y, payload])
-        kept.extend([local_ms[0], local_ms[1], furn_id])
+            kept.append([x, y, payload])
+        kept.append([local_ms[0], local_ms[1], furn_id])
         target_submap["furniture"] = kept
         modified_map_paths[str(map_path)] = (map_path, map_payload)
         placed_furniture.append({

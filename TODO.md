@@ -8,26 +8,25 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Fuel normal-map entry primitive packet v0` under `C-AOL actual playtest verification stack v0` is **ACTIVE / GREENLIT NORMAL-MAP ENTRY REPAIR**.
+Active target: `Fuel writeback repair via wood source zone packet v0` is **NEXT / UNBLOCKED FOR REOPENED FIRE PROOF, STILL UNPROVEN** now that `Fuel normal-map entry primitive packet v0` is green.
 
-Josef greenlit this on 2026-04-29 after the source-zone fire proof stopped correctly at the normal-map gate instead of typing through stale raw JSON. The task is to repair/prove the smallest reusable primitive that starts the fuel/source-zone fixture from actual normal gameplay map UI before any fire/lighter action key is sent.
+Normal-map entry evidence: `.userdata/dev-harness/harness_runs/20260429_140645/`, scenario `bandit.live_world_nearby_camp_source_zone_normal_map_entry_mcw`, 5/5 green step-local ledger, feature-path classification, load-finalized artifact match, saved charged wielded `lighter`, saved `f_brazier` + real `log` items, saved `SOURCE_FIREWOOD`, screenshot `normal_map_entry_gate_before_activation.png`, OCR fallback includes `Wield:` and standalone `YOU`. No activation/targeting/fire/lighter action key is sent by that primitive.
 
 Canonical anchors:
 
 - Stack contract: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
-- Active normal-map entry packet: `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`.
-- Active imagination source: `doc/fuel-normal-map-entry-primitive-imagination-source-of-truth-2026-04-29.md`.
-- Downstream fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`.
-- Downstream fuel imagination source: `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
+- Completed normal-map entry packet: `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`.
+- Completed normal-map imagination source: `doc/fuel-normal-map-entry-primitive-imagination-source-of-truth-2026-04-29.md`.
+- Active downstream fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`.
+- Active downstream fuel imagination source: `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
 
 Next narrow work queue:
 
-1. Prove setup footing or name the setup blocker: saved `f_brazier`, real logs, saved `SOURCE_FIREWOOD`, and charged wielded lighter.
-2. Add/repair a dedicated normal-map entry probe/step that captures the first live screen after load without blind `Escape`, `Return`, or other cleanup keys.
-3. Require a screenshot artifact path plus named visible fact proving actual normal gameplay map UI before any fire/lighter action key.
-4. Red-block raw JSON/item-info/stale/debug/internal screens as blocker evidence only; if seen, stop before action keys and report the screenshot path/OCR excerpt.
-5. If the fixture consistently opens into stale JSON/item-info, rebuild or resave the fixture from normal gameplay view and record the rebuilt fixture path/name.
-6. Only after the normal-map gate is green, resume the source-zone fire proof: `Light where?`, source-firewood confirmation, ignition message/OCR, save mtime, saved `fd_fire`/`fd_smoke`, then downstream bandit signal/no-response.
+1. Reopen the source-zone fire proof from the green normal-map entry gate; do not repeat stale raw-JSON/item-info cleanup tricks.
+2. Guard activation with a screenshot/OCR boundary for `Light where?`; abort if normal map is not visible first.
+3. Guard east targeting/source-firewood confirmation before any unsafe confirmation key.
+4. Require post-target ignition/no-ignition player-message/OCR before any save or `fd_fire` audit; red-block depleted-lighter/no-ignition text.
+5. Only after a real ignition line, prove save mtime plus saved `fd_fire`/`fd_smoke`; then proceed to downstream bandit signal/no-response.
 
 Proof discipline:
 
