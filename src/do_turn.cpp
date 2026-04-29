@@ -2055,11 +2055,14 @@ void monmove()
 
 void overmap_npc_move()
 {
+    const auto perf_started = std::chrono::steady_clock::now();
     avatar &u = get_avatar();
+    bandit_live_world::world_state &bandit_state = overmap_buffer.global_state.bandit_live_world;
     note_live_bandit_aftermath();
+    const auto aftermath_done = std::chrono::steady_clock::now();
     std::vector<std::string> empty_site_retirement_reports;
-    bandit_live_world::retire_empty_hostile_sites( overmap_buffer.global_state.bandit_live_world,
-            &empty_site_retirement_reports );
+    bandit_live_world::retire_empty_hostile_sites( bandit_state, &empty_site_retirement_reports );
+    const auto retirement_done = std::chrono::steady_clock::now();
     for( const std::string &report : empty_site_retirement_reports ) {
         DebugLog( D_INFO, DC_ALL ) << report << '\n';
     }
@@ -2072,15 +2075,17 @@ void overmap_npc_move()
         refresh_live_bandit_signal_marks( live_signals );
         signal_live_hordes_from_light_observations( live_signals );
     }
+    const auto signal_done = std::chrono::steady_clock::now();
     if( dispatch_cadence_due ) {
         steer_live_bandit_dispatch_toward_player( live_signals );
     } else if( signal_cadence_due ) {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world dispatch cadence_skip: reason=30_minute_throttle"
                                    << " signal_packet=" << ( live_signals.empty() ? "no" : "yes" )
-                                   << " sites=" << overmap_buffer.global_state.bandit_live_world.sites.size()
+                                   << " sites=" << bandit_state.sites.size()
                                    << " dispatch_interval=30_minutes"
                                    << " signal_interval=5_minutes\n";
     }
+    const auto dispatch_done = std::chrono::steady_clock::now();
     std::vector<npc *> travelling_npcs;
     static constexpr int move_search_radius = 600;
     for( auto &elem : overmap_buffer.get_npcs_near_player( move_search_radius ) ) {
@@ -2122,6 +2127,48 @@ void overmap_npc_move()
     }
     if( npcs_need_reload ) {
         g->reload_npcs();
+    }
+    const auto travel_done = std::chrono::steady_clock::now();
+
+    if( signal_cadence_due || dispatch_cadence_due || !empty_site_retirement_reports.empty() ) {
+        int active_sites = 0;
+        std::map<std::string, int> active_job_mix;
+        for( const bandit_live_world::site_record &site : bandit_state.sites ) {
+            if( site.active_group_id.empty() || site.active_member_ids.empty() ) {
+                continue;
+            }
+            active_sites++;
+            const std::string profile = bandit_live_world::to_string( site.profile );
+            const std::string job = site.active_job_type.empty() ? "unknown" : site.active_job_type;
+            active_job_mix[profile + ":" + job]++;
+        }
+        std::ostringstream active_jobs;
+        bool first_job = true;
+        for( const std::pair<const std::string, int> &entry : active_job_mix ) {
+            if( !first_job ) {
+                active_jobs << ',';
+            }
+            first_job = false;
+            active_jobs << entry.first << '=' << entry.second;
+        }
+        const auto elapsed_us = []( const auto &from, const auto &to ) {
+            return std::chrono::duration_cast<std::chrono::microseconds>( to - from ).count();
+        };
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world perf: sites=" << bandit_state.sites.size()
+                                   << " active_sites=" << active_sites
+                                   << " active_job_mix=" << ( active_job_mix.empty() ? "none" : active_jobs.str() )
+                                   << " signals=" << live_signals.size()
+                                   << " retired_reports=" << empty_site_retirement_reports.size()
+                                   << " travelling_npcs=" << travelling_npcs.size()
+                                   << " npcs_need_reload=" << ( npcs_need_reload ? "yes" : "no" )
+                                   << " signal_cadence_due=" << ( signal_cadence_due ? "yes" : "no" )
+                                   << " dispatch_cadence_due=" << ( dispatch_cadence_due ? "yes" : "no" )
+                                   << " aftermath_us=" << elapsed_us( perf_started, aftermath_done )
+                                   << " retirement_us=" << elapsed_us( aftermath_done, retirement_done )
+                                   << " signal_us=" << elapsed_us( retirement_done, signal_done )
+                                   << " dispatch_us=" << elapsed_us( signal_done, dispatch_done )
+                                   << " travel_us=" << elapsed_us( dispatch_done, travel_done )
+                                   << " total_us=" << elapsed_us( perf_started, travel_done ) << '\n';
     }
 }
 

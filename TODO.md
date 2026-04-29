@@ -10,21 +10,22 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active target: `C-AOL actual playtest verification stack v0` / `C-AOL live AI performance audit packet v0`.
 
-Current state: the cannibal confidence-push matrix is complete as confidence uplift green. Credited rows now cover bandit contrast (`20260429_012915`), cannibal day smoke/pressure (`20260429_013310`), cannibal night/contact pack-forward (`20260429_014900`), reload/create-save feature proof (`20260429_021849`) plus paired no-fixture reload saved-state support (`20260429_021929`), and different-footing exposed-sight repeat (`20260429_022021`). Player-lit fire and roof-horde proof remain blocked behind the fuel/writeback gate, so the next unblocked stack target is the live AI performance audit.
+Current state: the live AI performance audit has a compact matrix shell, top-level live-path timing/counter instrumentation, and a green one-site performance row. Dedicated run `.userdata/dev-harness/harness_runs/20260429_025436/` (`performance.bandit_one_site_remembered_lead_wait_30m`) reached feature-path classification with 4/4 green step ledger, green bounded-wait ledger, and compact `bandit_live_world perf:` counters for one remembered-lead bandit camp. Player-lit fire and roof-horde proof remain blocked behind the fuel/writeback gate.
 
 Canonical anchors for the active target:
 
 - Stack contract: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
 - Performance audit contract: `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`.
 - Performance imagination source: `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`.
+- Performance matrix: `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md`.
 - Completed cannibal confidence matrix: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
 
 Next narrow work queue:
 
-1. Draft or create the compact performance matrix shape: baseline/one, two, three, and four active hostile-overmap-AI cases, with profile/job mix, in-game elapsed window, wall-clock timing, and counters required for each row.
-2. Inspect existing harness fixture/scenario support for multi-site bandit/cannibal active groups before adding new instrumentation; prefer the smallest honest live `wait_action`-based measured window.
-3. If existing reports cannot separate game cost from harness overhead, add only the lightweight timing/counter instrumentation needed for the first measured case.
-4. Run the first measured baseline/current-runtime case and record only claim-scoped timing/counter evidence.
+1. Inspect/stage the smallest honest two-site bandit+cannibal hostile-overmap-AI fixture/scenario for the same 30m measured window.
+2. Run the two-site measured row and update the matrix from claim-scoped timing/counter evidence only.
+3. Extend to three- and four-site rows only after the two-site setup is honest and comparable, or name the staging blocker.
+4. Keep code changes to instrumentation or measured hot-spot fixes only; no behavior redesign.
 
 Proof discipline:
 
