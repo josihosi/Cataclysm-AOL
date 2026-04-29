@@ -51,6 +51,8 @@ Josef's repair direction is to bypass that brittle exact inventory/drop selector
 
 ## Clean fixture replacement — 2026-04-29
 
+Root-cause audit: `doc/fuel-source-zone-save-transform-corruption-audit-v0-2026-04-29.md` identifies the exact backend corruption as the old `apply_map_furniture_near_player_transform` flattening map `furniture` triples in `maps/4.1.0.zzip` / `140.41.0.map`; this was a save-transform serialization bug, not fire/lighter gameplay proof.
+
 Josef explicitly diagnosed the old fuel/source-zone proof surface as a broken save/fixture. Do not use `fuel_writeback_source_zone_v0_2026-04-29` for further fire/lighter proof.
 
 Replacement fixture: `fuel_source_zone_clean_normal_map_v0_2026-04-29`

@@ -16,6 +16,7 @@ Canonical anchors:
 - completed normal-map packet: `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`
 - completed normal-map imagination source: `doc/fuel-normal-map-entry-primitive-imagination-source-of-truth-2026-04-29.md`
 - active downstream fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`
+- save-transform corruption audit: `doc/fuel-source-zone-save-transform-corruption-audit-v0-2026-04-29.md`
 
 ## Current work
 

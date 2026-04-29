@@ -22,6 +22,7 @@ Clean fixture replacement is now available and first-load green:
 
 Canonical anchors:
 
+- Save-transform corruption audit: `doc/fuel-source-zone-save-transform-corruption-audit-v0-2026-04-29.md`.
 - Stack contract: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
 - Completed normal-map entry packet: `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`.
 - Packaged fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`.
