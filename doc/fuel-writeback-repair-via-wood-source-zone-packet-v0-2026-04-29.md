@@ -22,8 +22,9 @@ Josef's repair direction is to bypass that brittle exact inventory/drop selector
 2. Create an oversized in-world wood source near the brazier: target shape is thousands of logs or planks so fuel visibility is impossible to miss.
 3. Create/verify a broad source-firewood zone over the wood source using the most reliable current primitive. If the exact zone type/key name is uncertain, inspect live game metadata/zone JSON rather than guessing.
 4. Prove saved-world footing before ignition: `f_brazier`, real wood items in the expected nearby/source area, and source-firewood zone metadata or visible zone evidence.
-5. Run the normal player fire-start/lighter path, not a debug `fd_fire` placement shortcut.
-6. Prove guarded save/writeback after ignition with saved `fd_fire`/smoke/light state and then continue into the existing player-lit fire -> bandit signal matrix if green.
+5. Run the normal player fire-start/lighter path, not a debug `fd_fire` placement shortcut. Capture the narrow in-game message/log line for the lighting action if one is emitted; it is bridge evidence that the fire came from normal play, not a substitute for saved-state proof.
+6. If cheap to stage, winter/cold exposure plus character-warmth log lines may be used as secondary liveliness evidence that the fire is still active after time passes. Treat warmth messages as adjunct evidence only, because clothing, weather, shelter, distance, and elapsed-time interruptions can all confound them.
+7. Prove guarded save/writeback after ignition with saved `fd_fire`/smoke/light state and then continue into the existing player-lit fire -> bandit signal matrix if green.
 
 ### Out of scope
 
@@ -38,12 +39,13 @@ Josef's repair direction is to bypass that brittle exact inventory/drop selector
 - [ ] Deployed brazier footing is proven or reused with saved east/nearby `f_brazier` evidence.
 - [ ] Oversized firewood source is real in saved-world metadata, preferably logs first; fallback item choice is recorded if needed.
 - [ ] Broad source-firewood zone or equivalent real game fuel-source footing is proven by visible UI/zone metadata and saved state.
-- [ ] Normal player fire-start/lighter action reaches the brazier/fuel path without the old `blocked_untrusted_drop_filter_or_inventory_visibility` blocker.
+- [ ] Normal player fire-start/lighter action reaches the brazier/fuel path without the old `blocked_untrusted_drop_filter_or_inventory_visibility` blocker, with any decisive in-game message/log line captured as narrow action-path bridge evidence.
+- [ ] Optional winter/warmth adjunct, if cheap and clean, records character-warmth log lines after bounded time passage as secondary evidence that the fire is still live; this must not become a blocker or replace saved-state proof.
 - [ ] Guarded post-ignition save/writeback proves actual `fd_fire` plus smoke/light-relevant state on the expected tile/area.
 - [ ] If ignition is green, bounded wait evidence shows the relevant bandit live-signal response or a clearly classified no-response outcome.
 
 ## Validation notes
 
-Use the proof-freeze discipline from `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`: setup helpers are footing only. Feature proof needs clean startup, green step-local rows, claim-scoped artifacts, guarded save/writeback, and no yellow/blocked wait ledger for the claimed behavior.
+Use the proof-freeze discipline from `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`: setup helpers are footing only. Feature proof needs clean startup, green step-local rows, claim-scoped artifacts, guarded save/writeback, and no yellow/blocked wait ledger for the claimed behavior. In-game message/debug log lines are useful bridge evidence for the player action path; extract only the decisive line(s) and pair them with saved-state proof instead of dumping broad logs.
 
 After two materially different attempts hit the same blocker, consult Frau Knackal before attempt 3. After four unresolved attempts, package the manual recipe and evidence boundary for Josef instead of looping.

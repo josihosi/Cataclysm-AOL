@@ -109,7 +109,7 @@ Canonical references:
 - Andi lane: `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`
 - live matrix: `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`
 
-Preserved caveats: player-created fire/smoke/light remains blocked behind the fuel/writeback gate; same-fixture repeatability is not second-fixture anti-bias proof; no-opening proof is not opening-present escalation proof. Detailed run IDs and validation gates live in `SUCCESS.md`, `TESTING.md`, and the matrix doc.
+Preserved caveats: the old Multidrop fuel/writeback path remains non-credit evidence, but player-created fire/smoke/light is now reopened only through the active wood-source-zone fuel repair; same-fixture repeatability is not second-fixture anti-bias proof; no-opening proof is not opening-present escalation proof. Detailed run IDs and validation gates live in `SUCCESS.md`, `TESTING.md`, and the matrix doc.
 
 ---
 
@@ -150,7 +150,7 @@ Canonical references:
 - inventory: `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`
 - proof-freeze matrix: `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`
 
-Current product-facing consequences: the normal player-action brazier deploy primitive is green only as a scoped deploy gate; Josef reopened a repaired fuel/writeback path on 2026-04-29 using an oversized in-world wood source plus a broad source-firewood zone; Smart Zone live layout remains implemented-but-unproven/Josef-package; roof-fire proof remains blocked until real player-lit fire is green.
+Current product-facing consequences: the normal player-action brazier deploy primitive is green only as a scoped deploy gate; Josef reopened a repaired fuel/writeback path on 2026-04-29 using an oversized in-world wood source plus a broad source-firewood zone; Smart Zone live layout remains implemented-but-unproven/Josef-package; roof-fire proof is downstream of real player-lit fire rather than a separate decision latch.
 
 ---
 

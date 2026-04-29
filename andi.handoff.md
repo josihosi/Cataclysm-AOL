@@ -27,16 +27,17 @@ Build one named probe for the fuel repair slice:
 1. Reuse the already-green brazier deployment footing, or rerun only if fresh current-runtime evidence is needed; saved-state inspection must show the expected `f_brazier`.
 2. Create an oversized real wood source near the brazier: prefer logs first; fallback to planks/`2x4` only if logs fail the intended firewood path. Prove the items in saved-world metadata.
 3. Place/verify a broad source-firewood zone over/around the pile by visible UI or zone metadata. This is a practical fuel footing, not Smart Zone Manager closure.
-4. Run the normal player fire-start/lighter action. Do not use debug map-editor `fd_fire` or synthetic loaded-map fields as closure.
-5. Require guarded post-ignition save/writeback with actual `fd_fire` plus smoke/light-relevant state. If green, continue into bounded wait/time passage and bandit signal response or a clearly classified no-response outcome.
+4. Run the normal player fire-start/lighter action. Do not use debug map-editor `fd_fire` or synthetic loaded-map fields as closure. Capture any narrow in-game lighting message/log line as bridge evidence if it exists.
+5. Optional if cheap/clean: winter or cold exposure can add character-warmth log lines after bounded time passage as liveliness evidence, but this is adjunct only and must not replace saved-state proof.
+6. Require guarded post-ignition save/writeback with actual `fd_fire` plus smoke/light-relevant state. If green, continue into bounded wait/time passage and bandit signal response or a clearly classified no-response outcome.
 
-Prior completed/blocked stack state remains in force:
+Prior completed/downstream stack state remains in force:
 
 - Performance audit is complete as green enough for current playtest scale; do not rerun rows as ritual.
 - Cannibal confidence-push is complete as confidence uplift green; do not reopen it unless Josef/Schani explicitly reopens the packet.
 - Smart Zone Manager remains implemented-but-unproven / Josef playtest package. Final agent-side evidence remains `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/`: delivered default `Y` dispatched as `raw_action="action_menu" action_id="action_menu"`, no `invoke_zone_manager`, OCR missing `Zones manager`, and no add-zone/filter/generation/coordinate-label proof credited.
-- The old Multidrop fuel continuation remains red/non-green at `blocked_untrusted_drop_filter_or_inventory_visibility`; do not credit it without new proof.
-- Roof-fire horde proof remains blocked behind real player-lit fire.
+- The old Multidrop fuel continuation remains red/non-green at `blocked_untrusted_drop_filter_or_inventory_visibility`; do not credit that old path, but do not let it latch or block the new wood-source-zone repair route.
+- Roof-fire horde proof remains downstream behind real player-lit fire; do not treat it as a separate parked/decision latch while this repair slice is active.
 
 ## Non-goals/cautions
 
