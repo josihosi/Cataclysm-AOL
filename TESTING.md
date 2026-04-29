@@ -133,7 +133,7 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ### Recently completed validation target - C-AOL debug-proof finish stack
 
-`C-AOL debug-proof finish stack v0` is complete and ready for Schani review. Retain the old implemented-but-unproven boundary for Smart Zone Manager live layout; real source-zone player-lit fire has since been proven in the actual-playtest stack, while bandit signal response remains a separate active target.
+`C-AOL debug-proof finish stack v0` is complete and ready for Schani review. Retain the old implemented-but-unproven boundary for Smart Zone Manager live layout; real source-zone player-lit fire and the follow-on player-lit fire -> bandit signal response have since been proven green in the actual-playtest stack.
 
 ---
 
