@@ -37,7 +37,7 @@ Canonical anchors:
 
 Next narrow work queue:
 
-1. Start `Player-lit fire and bandit signal verification packet v0` from the green real-fire proof above or a fresher equivalent; add bounded wait/time passage and bandit signal response/metadata.
+1. Start `Player-lit fire and bandit signal verification packet v0` from the green real-fire proof above or a fresher equivalent; add survivable bounded wait/time passage and bandit signal response/metadata.
 2. Before long waiting, make the waiting setup survivable and non-noisy: spawn/provide mineral water and set up a Smart Zone / auto-drink zone around the player so thirst does not become the whole proof.
 3. For the long-wait path, verify before/after time/turns. If time does not pass, capture a screenshot of the blocking warning/prompt and classify that exact prompt; do not summarize it as “time did not pass” without the visible blocker.
 4. When wait-interruption prompts offer `I` or `N`, prefer `I` over `N`; be prepared to handle the same prompt class multiple times during one long wait, with screenshot evidence for each distinct prompt class before responding.
@@ -49,4 +49,4 @@ Proof discipline:
 
 - OCR/metadata are fallback evidence unless the image was directly inspected.
 - Do not launder setup metadata, stale screenshots, debug `fd_fire`, synthetic loaded-map fields, or item-info text into product proof.
-- For the next signal probe, require the real fire source plus bounded wait/time passage and claim-scoped bandit artifact/metadata; startup/load success alone is not signal proof.
+- For the next signal probe, require the real fire source plus survivable wait footing, before/after elapsed time or exact prompt-blocker screenshots/key handling, and claim-scoped bandit artifact/metadata; startup/load success alone is not signal proof.

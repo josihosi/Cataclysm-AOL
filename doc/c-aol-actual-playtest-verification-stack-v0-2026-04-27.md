@@ -29,7 +29,9 @@ This is not permission to wander around a live save and call vibes evidence. It 
 
 4. **Player-lit fire and bandit signal verification packet v0 — next unblocked target.**
    - Real player-action fire proof is now available from `.userdata/dev-harness/harness_runs/20260429_153253/` or a fresher equivalent.
-   - Next proof must add bounded wait/time passage and bandit signal response/metadata from the real player-created fire source.
+   - Next proof must first create survivable long-wait footing: mineral water near/for the player plus Smart Zone / auto-drink zone around the player.
+   - Then prove bounded wait/time passage and bandit signal response/metadata from the real player-created fire source, with before/after time or turns.
+   - If elapsed time fails, capture the exact warning/blocker prompt screenshot and response key before classifying it; prefer `I` over `N` when both are offered, handle repeated prompt classes explicitly, and do not blind-spam unknown prompts.
    - Do not credit debug map-editor fields, synthetic loaded-map fire, setup metadata, or clean first-load screenshots as player-lit fire.
 
 5. **Roof-fire horde detection proof packet v0 — greenlit but blocked behind real player-lit fire.**
@@ -57,7 +59,7 @@ This is not permission to wander around a live save and call vibes evidence. It 
 - [x] Fuel normal-map entry primitive is green at `.userdata/dev-harness/harness_runs/20260429_140645/`: the source-zone fuel path reaches normal map UI with setup footing, but no activation/targeting/fire/lighter action key is sent or credited.
 - [x] Fuel writeback repair via wood source zone is green at `.userdata/dev-harness/harness_runs/20260429_153253/`: old broken fixture retired, visible deploy path proved, charged lighter selected through normal Apply inventory, `Light where?` was proven by UI trace before targeting, OCR captured source-firewood prompt plus recognizable ignition, save mtime advanced, and saved target tile contains `f_brazier` + `fd_fire`.
 - [x] Smart Zone Manager live layout verification reached an honest agent-side boundary: deterministic geometry remains support only, the precise manual package is in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`, and current-runtime rerun `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` is startup/load red only (`Dunn has no characters to load`), with no feature/layout proof credited.
-- [ ] Player-lit fire/bandit signal verification adds bounded wait/time passage and bandit signal response on top of the green real player-action fire proof, with matching artifacts and no debug/synthetic fire shortcut.
+- [ ] Player-lit fire/bandit signal verification adds survivable long-wait footing, before/after elapsed time or exact prompt-blocker screenshots/key handling, and bandit signal response on top of the green real player-action fire proof, with matching artifacts and no debug/synthetic fire shortcut.
 - [ ] Roof-fire horde detection proof, if reached after real player-lit fire is green, proves the horde/distance setup, player roof/elevated position, real player-created roof fire/light/smoke, bounded time passage, and horde before/after detection or response metadata; otherwise it stays blocked behind the real-fire gate.
 - [ ] Andi reports each item with evidence class boundaries intact: what is live product proof, what is deterministic support, what is startup/load, and what remains unproven.
 
