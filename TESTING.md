@@ -53,6 +53,14 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
+### Active validation target - Fuel normal-map entry primitive packet v0
+
+`Fuel normal-map entry primitive packet v0` is **ACTIVE / GREENLIT NORMAL-MAP ENTRY REPAIR** under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`, and imagination source `doc/fuel-normal-map-entry-primitive-imagination-source-of-truth-2026-04-29.md`.
+
+Validation target: isolate and prove the upstream eye/keyboard gate before source-zone fire proof resumes. The run must prove exact setup footing or name the setup blocker, capture the first live post-load screen, and require a screenshot artifact path plus named visible fact for normal gameplay map UI before any fire/lighter action key. Raw JSON, item-info, stale windows, and internal/debug views are blocker evidence only and must stop the path before action keys.
+
+Closure for this primitive requires: setup footing metadata (`f_brazier`, real logs, `SOURCE_FIREWOOD`, charged wielded lighter) or a named setup blocker; a green normal-map entry gate with screenshot artifact path and named visible gameplay fact; no blind cleanup keys before the gate; and handoff compatibility with the existing source-zone fire proof guards. It does **not** close normal ignition, save mtime, `fd_fire`/`fd_smoke`, smoke/light, or bandit signal proof.
+
 ### Packaged validation boundary - Fuel writeback repair via wood source zone packet v0
 
 `Fuel writeback repair via wood source zone packet v0` is now **implemented-but-unproven / Josef playtest package** under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`, and imagination source `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`. Manual package entry: `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md#2026-04-29--fuel-writeback-source-zone-repair-v0`.
@@ -103,15 +111,15 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-No active fuel/source-zone/lighter harness rerun is pending. The fuel repair path is packaged as implemented-but-unproven after attempt 4, and must not be repeated as prettier key archaeology.
+Active pending probe: `Fuel normal-map entry primitive packet v0`.
 
-Reopen conditions for this lane:
-
-1. Josef supplies manual evidence from normal map UI, or Schani/Josef/Frau explicitly reopen a materially repaired primitive that starts from normal map UI rather than the stale item-info/raw-JSON screen.
-2. Closure still requires normal player ignition, a post-target/advance action-path guard with a real ignition line, a guarded same-run save mtime advance, saved `fd_fire` plus smoke/light-relevant state, and then bounded wait/time-passage with bandit signal response or a clearly classified no-response outcome.
-3. Do not credit debug map-editor `fd_fire`, synthetic loaded-map fields, raw setup rows, stale-window screenshots, depleted-lighter/no-ignition paths, or pre-wielded setup as player-lit fire proof.
-4. Preserve `.userdata/dev-harness/harness_runs/20260429_090634/` as blocked/not proof and `.userdata/dev-harness/harness_runs/20260429_093118/` / `.userdata/dev-harness/harness_runs/20260429_093509/` as the final post-Frau attempt evidence for this package.
-5. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
+1. Prove setup footing or name the setup blocker: saved `f_brazier`, real logs, saved `SOURCE_FIREWOOD`, and charged wielded lighter.
+2. Capture the first live post-load screen with no blind `Escape`, `Return`, or other cleanup key before the gate.
+3. Require screenshot artifact path plus named visible fact proving actual normal gameplay map UI; OCR/metadata are fallback only if image inspection is unavailable and must be labeled that way.
+4. Red-block raw JSON/item-info/stale/debug/internal screens before any activation/targeting/fire key; if this repeats, rebuild/resave the fixture from normal gameplay view and record the new fixture path/name.
+5. Once the normal-map gate is green, resume the source-zone fire proof guards: `Light where?`, source-firewood confirmation, post-target ignition message/OCR, save mtime, saved `fd_fire`/`fd_smoke`, then bounded bandit signal/no-response.
+6. Preserve `.userdata/dev-harness/harness_runs/20260429_090634/` as blocked/not proof and `.userdata/dev-harness/harness_runs/20260429_093118/` / `.userdata/dev-harness/harness_runs/20260429_093509/` / `.userdata/dev-harness/harness_runs/20260429_095021/` / `.userdata/dev-harness/harness_runs/20260429_122807/` / `.userdata/dev-harness/harness_runs/20260429_122955/` as prior stale-screen/normal-map-gate evidence.
+7. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
 Still blocked/later in the actual playtest stack:
 
