@@ -4888,6 +4888,42 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "map_furniture_near_player":
+            furniture_raw = raw.get("furniture", raw.get("furnitures", []))
+            if not isinstance(furniture_raw, list) or not furniture_raw:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs non-empty furniture list in {manifest_path}"
+                )
+            furniture: List[Dict[str, Any]] = []
+            for furn_index, furn_raw in enumerate(furniture_raw, start=1):
+                if not isinstance(furn_raw, dict):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].furniture[{furn_index}] must be an object in {manifest_path}"
+                    )
+                furn_id = str(furn_raw.get("id", furn_raw.get("furn_id", ""))).strip()
+                if not furn_id:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].furniture[{furn_index}] needs id/furn_id in {manifest_path}"
+                    )
+                offset_raw = furn_raw.get("offset_ms", [0, 0, 0])
+                if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].furniture[{furn_index}] needs offset_ms=[x,y,z] in {manifest_path}"
+                    )
+                try:
+                    offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].furniture[{furn_index}] has non-integer offset in {manifest_path}"
+                    )
+                furniture.append({"id": furn_id, "offset_ms": offset_ms})
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "furniture": furniture,
+            })
+            continue
+
         if kind == "map_items_near_player":
             items_raw = raw.get("items", [])
             if not isinstance(items_raw, list) or not items_raw:
@@ -5093,8 +5129,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
             "supported kinds: player_mutations, player_items, player_near_overmap_special, "
-            "seed_overmap_special_near_player, map_fields_near_player, map_items_near_player, "
-            "source_firewood_zone_near_player, game_turn, "
+            "seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
+            "map_items_near_player, source_firewood_zone_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_site_roster_shape"
         )
     return transforms
@@ -6071,6 +6107,112 @@ def zone_contains_abs_point(zone: Dict[str, Any], point: Sequence[int]) -> bool:
     return all(mins[i] <= target[i] <= maxs[i] for i in range(3))
 
 
+def map_submap_for_ms_location(world_dir: Path, target_location: Sequence[int]) -> Tuple[Path, Path, str, Path, List[Any], Dict[str, Any], Tuple[int, int, int], Tuple[int, int, int], Tuple[int, int, int], bool]:
+    maps_dir = world_dir / "maps"
+    if not maps_dir.exists():
+        raise SystemExit(f"Fixture map transform maps dir not found: {maps_dir}")
+    target_abs_sm = (int(target_location[0]) // 12, int(target_location[1]) // 12, int(target_location[2]))
+    target_abs_omt = (int(target_location[0]) // 24, int(target_location[1]) // 24, int(target_location[2]))
+    local_ms = (
+        int(target_location[0]) - target_abs_sm[0] * 12,
+        int(target_location[1]) - target_abs_sm[1] * 12,
+        int(target_location[2]),
+    )
+    pack_stem = f"{target_abs_omt[0] // 32}.{target_abs_omt[1] // 32}.{target_abs_omt[2]}"
+    pack_dir = maps_dir / pack_stem
+    pack_zzip = maps_dir / f"{pack_stem}.zzip"
+    extracted = False
+    if not pack_dir.exists():
+        if not pack_zzip.exists():
+            raise SystemExit(f"Fixture map transform target map pack not found: {pack_zzip}")
+        run_zzip(pack_zzip)
+        extracted = True
+    if not pack_dir.exists() or not pack_dir.is_dir():
+        raise SystemExit(f"Fixture map transform did not extract map pack: {pack_dir}")
+    map_path = pack_dir / f"{target_abs_omt[0]}.{target_abs_omt[1]}.{target_abs_omt[2]}.map"
+    if not map_path.exists():
+        raise SystemExit(f"Fixture map transform target map file not found: {map_path}")
+    map_payload = json.loads(map_path.read_text(encoding="utf-8"))
+    if not isinstance(map_payload, list):
+        raise SystemExit(f"Fixture map transform map payload is not a list: {map_path}")
+    target_coords = [target_abs_sm[0], target_abs_sm[1], target_abs_sm[2]]
+    target_submap = next(
+        (submap for submap in map_payload if isinstance(submap, dict) and submap.get("coordinates") == target_coords),
+        None,
+    )
+    if target_submap is None:
+        raise SystemExit(f"Fixture map transform submap {target_coords} not found in {map_path}")
+    return maps_dir, pack_dir, pack_stem, map_path, map_payload, target_submap, target_abs_omt, target_abs_sm, local_ms, extracted
+
+
+def apply_map_furniture_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    placed_furniture: List[Dict[str, Any]] = []
+    extracted_packs: set[str] = set()
+    modified_map_paths: Dict[str, Tuple[Path, List[Any]]] = {}
+
+    for furniture in transform.get("furniture", []):
+        furn_id = str(furniture.get("id", "")).strip()
+        offset_raw = furniture.get("offset_ms", [0, 0, 0])
+        offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+        target_location = [
+            int(player_location[0]) + offset_ms[0],
+            int(player_location[1]) + offset_ms[1],
+            int(player_location[2]) + offset_ms[2],
+        ]
+        maps_dir, pack_dir, pack_stem, map_path, map_payload, target_submap, target_abs_omt, target_abs_sm, local_ms, extracted = map_submap_for_ms_location(world_dir, target_location)
+        if extracted:
+            extracted_packs.add(pack_stem)
+        triples = target_submap.setdefault("furniture", [])
+        if not isinstance(triples, list):
+            raise SystemExit(f"Fixture furniture transform furniture is not a list in {map_path}")
+        kept: List[Any] = []
+        for x, y, payload in iter_map_triples(triples):
+            if x == local_ms[0] and y == local_ms[1]:
+                continue
+            kept.extend([x, y, payload])
+        kept.extend([local_ms[0], local_ms[1], furn_id])
+        target_submap["furniture"] = kept
+        modified_map_paths[str(map_path)] = (map_path, map_payload)
+        placed_furniture.append({
+            "id": furn_id,
+            "offset_ms": offset_ms,
+            "target_location_ms": target_location,
+            "target_abs_omt": list(target_abs_omt),
+            "target_abs_sm": list(target_abs_sm),
+            "local_ms": [local_ms[0], local_ms[1], local_ms[2]],
+            "map_pack": pack_stem,
+            "map_file": map_path.name,
+        })
+
+    recompressed_maps: List[str] = []
+    for map_path, map_payload in sorted(modified_map_paths.values(), key=lambda pair: str(pair[0])):
+        map_path.write_text(json.dumps(map_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        run_zzip(map_path)
+        recompressed_maps.append(str(map_path.relative_to(world_dir)))
+
+    removed_extracted_dirs: List[str] = []
+    maps_dir = world_dir / "maps"
+    for pack_stem in sorted(extracted_packs):
+        pack_dir = maps_dir / pack_stem
+        if pack_dir.exists():
+            shutil.rmtree(pack_dir)
+            removed_extracted_dirs.append(str(pack_dir.relative_to(world_dir)))
+
+    return {
+        "kind": "map_furniture_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_location": player_location,
+        "placed_furniture": placed_furniture,
+        "extracted_map_packs": sorted(extracted_packs),
+        "recompressed_maps": recompressed_maps,
+        "removed_extracted_map_dirs": removed_extracted_dirs,
+        "plain_map_dirs_left_for_game_load": False,
+    }
+
+
 def apply_source_firewood_zone_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
@@ -6694,6 +6836,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "map_fields_near_player":
             reports.append(apply_map_fields_near_player_transform(world_dir, transform))
+            continue
+        if kind == "map_furniture_near_player":
+            reports.append(apply_map_furniture_near_player_transform(world_dir, transform))
             continue
         if kind == "map_items_near_player":
             reports.append(apply_map_items_near_player_transform(world_dir, transform))

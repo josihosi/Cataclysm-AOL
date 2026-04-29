@@ -37,6 +37,20 @@
       ]
     },
     {
+      "kind": "map_furniture_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "furniture": [
+        {
+          "id": "f_brazier",
+          "offset_ms": [
+            1,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
       "kind": "map_items_near_player",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "items": [
