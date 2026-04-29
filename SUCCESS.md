@@ -132,7 +132,7 @@ Compact reference:
 
 ## C-AOL actual playtest verification stack v0
 
-Status: ACTIVE / GREENLIT ACTUAL PLAYTEST STACK
+Status: CLOSED / CHECKPOINTED READY FOR SCHANI REVIEW
 
 Success state:
 - [x] Fuel continuation behind the green brazier deploy gate has an honest old-path outcome: instrumented run `.userdata/dev-harness/harness_runs/20260427_231210/` keeps the chain non-green after the Multidrop `plank` filter redraw shows zero visible rows and `CONFIRM` blocks with `selected_stacks=0 total_selected_qty=0`; follow-up row-specific diagnostic `.userdata/dev-harness/harness_runs/20260427_232220/` names the current blocker as `blocked_untrusted_drop_filter_or_inventory_visibility` because filtered Multidrop has no selectable `typeid="2x4"` fuel row. No count selection, confirm-return, save request, post-fuel mtime/current-tile `2x4`/lighter/`fd_fire` proof is credited from that path.

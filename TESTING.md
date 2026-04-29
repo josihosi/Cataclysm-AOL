@@ -53,6 +53,8 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
+No active validation target is currently promoted. The sections below are retained as recent completed evidence snapshots for Schani review and future non-ritual reference.
+
 ### Recently completed validation target - Fuel normal-map entry primitive packet v0
 
 `Fuel normal-map entry primitive packet v0` is **COMPLETE / GREEN NORMAL-MAP ENTRY GATE** under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`, and imagination source `doc/fuel-normal-map-entry-primitive-imagination-source-of-truth-2026-04-29.md`.
@@ -137,14 +139,15 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-No active roof-fire horde retry is pending. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof.
+No active probe is pending. No active roof-fire horde retry is pending. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof.
 
 1. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof; do not rerun it as ritual.
 2. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
-Still blocked/later in the actual playtest stack:
+Future-only watchlist unless Schani/Josef explicitly promotes it:
 
 - Natural three/four-site player-pressure behavior and true zero-site idle baseline remain decision/watchlist items, not current requirements.
+- A stricter roof-horde positive `tracking_intensity` proof remains optional/future-only; current green roof proof is retarget/movement-budget metadata after live roof-fire horde signaling.
 
 Stale runs `.userdata/dev-harness/harness_runs/20260429_093118/`, `.userdata/dev-harness/harness_runs/20260429_093509/`, `.userdata/dev-harness/harness_runs/20260429_095021/`, `.userdata/dev-harness/harness_runs/20260429_122807/`, and `.userdata/dev-harness/harness_runs/20260429_122955/` are retained as postmortem evidence only, not fire proof surfaces.
 

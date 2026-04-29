@@ -1,12 +1,12 @@
 # C-AOL actual playtest verification stack v0 (2026-04-27)
 
-Status: GREENLIT / ACTUAL PLAYTEST STACK.
+Status: CLOSED / CHECKPOINTED READY FOR SCHANI REVIEW.
 
 ## Why this exists
 
 Josef explicitly greenlit moving beyond paper/audit closure into actual playtests, but with the same proof discipline that the harness trust audit just made useful: every feature claim needs step-by-step screenshots, menu/UI trace or checked text when relevant, exact metadata, save/writeback gates when persistence matters, and honest non-green states when the live path cannot be proven.
 
-This is not permission to wander around a live save and call vibes evidence. It is a small greenlit stack of actual product verification items for Andi to pull after the current active slice reaches its next honest boundary.
+This was not permission to wander around a live save and call vibes evidence. It was a small greenlit stack of actual product verification items with explicit proof boundaries; the current boundary is complete and ready for Schani review.
 
 ## Priority order
 
@@ -61,7 +61,9 @@ This is not permission to wander around a live save and call vibes evidence. It 
 - [x] Smart Zone Manager live layout verification reached an honest agent-side boundary: deterministic geometry remains support only, the precise manual package is in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`, and current-runtime rerun `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` is startup/load red only (`Dunn has no characters to load`), with no feature/layout proof credited.
 - [x] Player-lit fire/bandit signal verification is green at `.userdata/dev-harness/harness_runs/20260429_162100/`: survivable long-wait footing, bounded 30-minute elapsed-time proof, live signal/dispatch artifacts, guarded save/writeback, and saved bandit live-world signal/active-state metadata are all present without debug/synthetic fire shortcut.
 - [x] Roof-fire horde detection proof is green at `.userdata/dev-harness/harness_runs/20260429_180239/`: split-run from the saved player-created roof-fire world proves roof/elevated `t_tile_flat_roof` + `f_brazier` + `fd_fire`, bounded time passage (`observed_delta_turns=300`), same-run roof-fire horde light signal (`horde_signal_power=20`), and saved horde retarget/movement-budget response metadata without treating source-zone fire/signal proof as roof proof.
-- [ ] Andi reports each item with evidence class boundaries intact: what is live product proof, what is deterministic support, what is startup/load, and what remains unproven.
+- [x] Andi reports each item with evidence class boundaries intact: what is live product proof, what is deterministic support, what is startup/load, and what remains unproven.
+
+State boundary: no further greenlit agent-side item remains in this stack. Natural multi-site pressure, zero-site idle baseline, or stricter roof-horde tracking-intensity proof require explicit future promotion.
 
 ## Testing expectations
 
