@@ -19,14 +19,16 @@ Canonical anchors:
 
 ## Current work
 
-Resume the downstream source-zone fire proof from the green normal-map entry gate:
+Resume the downstream source-zone fire proof from the green normal-map entry gate, but first close the broken-save lesson:
 
-1. Start from the green normal-map entry primitive evidence; do not repeat stale raw-JSON/item-info cleanup tricks.
-2. Before activation, keep the screenshot/OCR normal-map gate honest; raw JSON/item-info/stale/debug/internal screens are blocker evidence and stop before action keys.
-3. Press activation only from normal map UI and require the visible/OCR boundary for `Light where?`.
-4. Target east/source only after the prompt is proven, and require the source-firewood confirmation prompt before any unsafe confirmation key.
-5. After target/advance, require a real ignition message/OCR and red-block depleted-lighter/no-ignition text before any save/`fd_fire` audit.
-6. Only after a real ignition line, prove guarded save mtime and saved `fd_fire` plus `fd_smoke`/smoke-light-relevant state; then continue into bounded bandit signal/no-response proof if green.
+1. Investigate the broken fixture/save incident that produced stale raw-JSON/item-info startup (`pocket_type`, `contents`, `specific energy`) in the prior fuel runs. Compare `fuel_writeback_source_zone_v0_2026-04-29` and its backend save manipulation/fixture transforms against the green normal-map fixture path; identify the edit/transform/resume step that broke UI state, or state clearly that the exact culprit is no longer recoverable.
+2. Preserve `20260429_093118`, `20260429_093509`, `20260429_095021`, `20260429_122807`, and `20260429_122955` as blocker/postmortem evidence only. Do not use those broken surfaces for fire proof.
+3. Start fire proof from the green normal-map entry primitive evidence; do not repeat stale raw-JSON/item-info cleanup tricks.
+4. Before activation, keep the screenshot/OCR normal-map gate honest; raw JSON/item-info/stale/debug/internal screens are blocker evidence and stop before action keys.
+5. Press activation only from normal map UI and require the visible/OCR boundary for `Light where?`.
+6. Target east/source only after the prompt is proven, and require the source-firewood confirmation prompt before any unsafe confirmation key.
+7. After target/advance, require a real ignition message/OCR and red-block depleted-lighter/no-ignition text before any save/`fd_fire` audit.
+8. Only after a real ignition line, prove guarded save mtime and saved `fd_fire` plus `fd_smoke`/smoke-light-relevant state; then continue into bounded bandit signal/no-response proof if green.
 
 ## Evidence expectations
 

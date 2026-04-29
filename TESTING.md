@@ -117,13 +117,14 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 Active pending probe: `Fuel writeback repair via wood source zone packet v0`.
 
-1. Start from the green normal-map gate established by `.userdata/dev-harness/harness_runs/20260429_140645/`; do not send blind cleanup keys through raw JSON/item-info/stale/debug screens.
-2. Guard activation with screenshot/OCR proof of `Light where?`; abort if the normal map gate is not green first.
-3. Guard east targeting/source-firewood confirmation before any unsafe confirmation key.
-4. Require post-target ignition/no-ignition player-message/OCR before save/`fd_fire` audit; red-block depleted-lighter/no-ignition text.
-5. Only after a real ignition line, prove save mtime plus saved `fd_fire`/`fd_smoke`, then bounded bandit signal/no-response.
-6. Preserve `.userdata/dev-harness/harness_runs/20260429_090634/` as blocked/not proof and `.userdata/dev-harness/harness_runs/20260429_093118/` / `.userdata/dev-harness/harness_runs/20260429_093509/` / `.userdata/dev-harness/harness_runs/20260429_095021/` / `.userdata/dev-harness/harness_runs/20260429_122807/` / `.userdata/dev-harness/harness_runs/20260429_122955/` as prior stale-screen/normal-map-gate blocker evidence.
-7. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
+1. Before fire proof continues, perform a bounded broken-save postmortem: compare the broken `fuel_writeback_source_zone_v0_2026-04-29` fixture/save manipulation against the green normal-map fixture path and identify the backend edit, transform, or harness resume step that produced raw item-info/JSON startup, or state that the exact culprit is no longer recoverable from retained artifacts.
+2. Start from the green normal-map gate established by `.userdata/dev-harness/harness_runs/20260429_140645/`; do not send blind cleanup keys through raw JSON/item-info/stale/debug screens.
+3. Guard activation with screenshot/OCR proof of `Light where?`; abort if the normal map gate is not green first.
+4. Guard east targeting/source-firewood confirmation before any unsafe confirmation key.
+5. Require post-target ignition/no-ignition player-message/OCR before save/`fd_fire` audit; red-block depleted-lighter/no-ignition text.
+6. Only after a real ignition line, prove save mtime plus saved `fd_fire`/`fd_smoke`, then bounded bandit signal/no-response.
+7. Preserve `.userdata/dev-harness/harness_runs/20260429_090634/` as blocked/not proof and `.userdata/dev-harness/harness_runs/20260429_093118/` / `.userdata/dev-harness/harness_runs/20260429_093509/` / `.userdata/dev-harness/harness_runs/20260429_095021/` / `.userdata/dev-harness/harness_runs/20260429_122807/` / `.userdata/dev-harness/harness_runs/20260429_122955/` as prior stale-screen/normal-map-gate blocker evidence and postmortem input only.
+8. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
 Still blocked/later in the actual playtest stack:
 

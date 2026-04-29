@@ -71,3 +71,9 @@ Screen gate:
 - OCR fallback: `.userdata/dev-harness/harness_runs/20260429_140645/normal_map_entry_gate_before_activation.screen_text.json` includes `Wield:` plus standalone `YOU` and ordinary gameplay/message text; no raw `pocket_type` / `contents` / `specific energy` guard fired.
 
 Caveat: direct model image inspection was unavailable in this environment, so the visible-fact claim is screenshot path plus OCR fallback, not independent image-model inspection. This primitive does not prove player-lit fire, save mtime, `fd_fire`, smoke, light, or bandit signal response.
+
+## Broken-save postmortem follow-up
+
+Josef's 2026-04-29 diagnosis: the earlier raw item-info/JSON startup surface was a broken save/fixture or backend manipulation problem, not a fire-proof surface. Before treating the downstream fire path as healthy, Andi should compare the broken `fuel_writeback_source_zone_v0_2026-04-29` transform/save path against the green normal-map fixture path and identify what backend edit, transform, or harness resume step produced the poisoned UI state.
+
+Use the prior stale-screen runs as postmortem input only: `.userdata/dev-harness/harness_runs/20260429_093118/`, `.userdata/dev-harness/harness_runs/20260429_093509/`, `.userdata/dev-harness/harness_runs/20260429_095021/`, `.userdata/dev-harness/harness_runs/20260429_122807/`, and `.userdata/dev-harness/harness_runs/20260429_122955/`. If the exact culprit is no longer recoverable, say so explicitly and keep future proof on the green normal-map fixture path rather than reviving the broken surface.
