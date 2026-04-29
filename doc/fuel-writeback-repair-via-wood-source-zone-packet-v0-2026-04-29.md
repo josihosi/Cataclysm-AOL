@@ -50,6 +50,10 @@ Josef's repair direction is to bypass that brittle exact inventory/drop selector
 - [ ] If ignition is green, bounded wait evidence shows the relevant bandit live-signal response or a clearly classified no-response outcome.
 
 
+## Visible deployed-brazier/source-zone gate — 2026-04-29
+
+`doc/fuel-visible-brazier-source-zone-gate-v0-2026-04-29.md` records the new required gate after Josef flagged that saved `observed_furniture=[f_brazier]` is metadata-only. Green run `.userdata/dev-harness/harness_runs/20260429_144805/` proves normal Apply inventory -> filtered `brazier` -> `Deploy where?` -> east/right, then player-facing look/inspect east with screenshot `look_east_at_deployed_brazier.after.png` and OCR fallback `hrazıer` + `burn things`; saved re-audit proves `f_brazier` + `log` and `SOURCE_FIREWOOD`. No lighter/fire key is sent. Future fire proof must cite this visible gate or a fresher equivalent before attempting apply-wielded lighter / `Light where?`.
+
 ## Clean fixture replacement — 2026-04-29
 
 Root-cause audit: `doc/fuel-source-zone-save-transform-corruption-audit-v0-2026-04-29.md` identifies the exact backend corruption as the old `apply_map_furniture_near_player_transform` flattening map `furniture` triples in `maps/4.1.0.zzip` / `140.41.0.map`; this was a save-transform serialization bug, not fire/lighter gameplay proof.
