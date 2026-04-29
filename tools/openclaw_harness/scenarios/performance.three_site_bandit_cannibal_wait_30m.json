@@ -1,0 +1,138 @@
+{
+  "name": "performance.three_site_bandit_cannibal_wait_30m",
+  "description": "Blocked direct-range performance-audit guardrail: intended to prove three active hostile overmap AI sites, with a persisted remembered-lead bandit camp plus two seeded direct-range cannibal_camps. Run 20260429_035001 proved this footing only reaches sites=3 active_sites=2 because the two direct-range cannibal sites consume the live player-pressure cap before the remembered-lead bandit camp dispatches. Retain this scenario as blocked/cap evidence; do not rerun it as the next green-row proof without a material footing or contract change.",
+  "status": "blocked_direct_range_cap_guardrail",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "performance_three_site_bandit_cannibal_v0_2026-04-29",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world perf:",
+    "sites=3",
+    "active_sites=3",
+    "bandit_live_world abstract_bootstrap created_sites=2",
+    "total_sites=3",
+    "active_job_mix=",
+    "camp_style:stalk=1",
+    "cannibal_camp:stalk=2",
+    "signals=0",
+    "signal_cadence_due=yes",
+    "bandit_live_world dispatch plan:",
+    "candidate_reason=remembered_camp_map_lead",
+    "candidate_reason=direct_player_range",
+    "local_gate site=overmap_special:cannibal_camp@",
+    "profile=cannibal_camp"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_three_site_perf_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for the three-site performance fixture; this is startup/load plus fixture footing only"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_three_site_bandit_lead_perf_fixture",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_remembered_target_or_mark_prefix": "player@140,39,0",
+      "required_min_leads": 1,
+      "required_lead_source_contains": "fixture_scout_return_vanished_signal",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_three_site_bandit_lead_fixture",
+      "abort_reason": "preflight saved bandit_live_world site did not contain the persisted remembered camp-map lead needed for the bandit half of the three-site performance row",
+      "expected_immediate_state": "saved bandit_live_world contains the remembered-lead bandit camp with player target player@140,39,0 before the measured live cadence starts; startup fixture_install applied_save_transforms must show the two cannibal seed offsets, and same-run abstract_bootstrap/dispatch/perf artifact lines must prove those cannibal profiles entered the live path",
+      "failure_rule": "If the remembered lead is missing or malformed, later timing cannot be credited to the intended three-site performance row."
+    },
+    {
+      "kind": "wait_action",
+      "label": "measure_30_minutes_three_site_bandit_cannibal",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the duration menu",
+      "completion_wait_seconds": 12.0,
+      "artifact_state_patterns": [
+        "bandit_live_world perf:",
+        "sites=3",
+        "active_sites=3",
+        "active_job_mix=",
+        "camp_style:stalk=1",
+        "cannibal_camp:stalk=2",
+        "signals=0",
+        "signal_cadence_due=yes",
+        "bandit_live_world dispatch plan:",
+        "candidate_reason=remembered_camp_map_lead",
+        "candidate_reason=direct_player_range",
+        "local_gate site=overmap_special:cannibal_camp@",
+        "profile=cannibal_camp"
+      ],
+      "expected_visible_fact": "the player waited through a bounded 30-minute overmap AI cadence window with one preflight-proven remembered-lead bandit site plus two seeded cannibal sites later proven by same-run abstract-bootstrap/dispatch/perf lines; performance credit depends on same-run debug artifacts with signals=0, not the wait UI alone",
+      "failure_rule": "If the wait is interrupted or the artifact delta lacks the three-site perf/cadence lines, this row is inconclusive."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_three_site_perf_artifact",
+      "required_line_patterns": [
+        [
+          "bandit_live_world abstract_bootstrap",
+          "created_sites=2",
+          "total_sites=3"
+        ],
+        [
+          "bandit_live_world perf:",
+          "sites=3",
+          "active_sites=3",
+          "active_job_mix=",
+          "camp_style:stalk=1",
+          "cannibal_camp:stalk=2",
+          "signals=0",
+          "total_us="
+        ],
+        [
+          "bandit_live_world dispatch plan:",
+          "candidate_reason=remembered_camp_map_lead",
+          "job=stalk",
+          "selected_members=4",
+          "signal_packet=none"
+        ],
+        [
+          "bandit_live_world dispatch plan:",
+          "site=overmap_special:cannibal_camp@150,39,0",
+          "candidate_reason=direct_player_range",
+          "profile cannibal_camp"
+        ],
+        [
+          "bandit_live_world dispatch plan:",
+          "site=overmap_special:cannibal_camp@130,39,0",
+          "candidate_reason=direct_player_range",
+          "profile cannibal_camp"
+        ],
+        [
+          "local_gate site=overmap_special:cannibal_camp@150,39,0",
+          "profile=cannibal_camp",
+          "shakedown=no"
+        ],
+        [
+          "local_gate site=overmap_special:cannibal_camp@130,39,0",
+          "profile=cannibal_camp",
+          "shakedown=no"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_three_site_perf_artifact_missing",
+      "abort_reason": "same-run debug artifact did not contain compact three-site perf counters and expected bandit remembered-lead plus two cannibal direct-range artifact lines",
+      "failure_rule": "No three-site performance row credit if the same-run artifact lacks the abstract-bootstrap line for the two added cannibal sites, the perf counter line, and job-identifying bandit/cannibal artifact lines for all three hostile site profiles."
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe performance.three_site_bandit_cannibal_wait_30m",
+  "evidence_contract": {
+    "claim": "three active hostile overmap AI sites -- one bandit remembered-lead stalk site and two direct-range cannibal stalk sites -- can advance through a real 30-minute live cadence with signals=0 while emitting compact timing/counter evidence",
+    "load_only_verdict": "load proof only / inconclusive for performance",
+    "failure_rule": "No performance-row credit if startup/load, startup fixture seed transform evidence for both added cannibal sites, bandit fixture preflight, same-run abstract-bootstrap proof for the two added cannibal sites, bounded wait/cadence action, same-run perf counter line, and job-identifying bandit/cannibal artifact lines are not all present and classified separately."
+  }
+}
