@@ -4746,11 +4746,37 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 raise SystemExit(
                     f"Fixture save_transforms[{index}] bandit_clone_site needs source_site_id and new_site_id in {manifest_path}"
                 )
+            raw_new_anchor = raw.get("new_anchor", raw.get("anchor"))
+            new_anchor: Optional[List[int]] = None
+            if raw_new_anchor is not None:
+                if not isinstance(raw_new_anchor, list) or len(raw_new_anchor) < 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] bandit_clone_site new_anchor needs [x,y,z] in {manifest_path}"
+                    )
+                new_anchor = [int(raw_new_anchor[0]), int(raw_new_anchor[1]), int(raw_new_anchor[2])]
+            raw_new_footprint = raw.get("new_footprint", raw.get("footprint"))
+            new_footprint: Optional[List[List[int]]] = None
+            if raw_new_footprint is not None:
+                if not isinstance(raw_new_footprint, list) or not raw_new_footprint:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] bandit_clone_site new_footprint needs non-empty [[x,y,z], ...] in {manifest_path}"
+                    )
+                new_footprint = []
+                for point_index, point in enumerate(raw_new_footprint):
+                    if not isinstance(point, list) or len(point) < 3:
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}] bandit_clone_site new_footprint[{point_index}] needs [x,y,z] in {manifest_path}"
+                        )
+                    new_footprint.append([int(point[0]), int(point[1]), int(point[2])])
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
                 "source_site_id": source_site_id,
                 "new_site_id": new_site_id,
+                "new_source_id": str(raw.get("new_source_id", raw.get("source_id", "")) or "").strip(),
+                "new_site_kind": str(raw.get("new_site_kind", raw.get("site_kind", "")) or "").strip(),
+                "new_anchor": new_anchor,
+                "new_footprint": new_footprint,
                 "clear_intelligence_map": bool(raw.get("clear_intelligence_map", True)),
                 "clear_remembered_pressure": bool(raw.get("clear_remembered_pressure", True)),
             })
@@ -4761,14 +4787,15 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 living_member_count = int(raw.get("living_member_count"))
                 wounded_or_unready_count = int(raw.get("wounded_or_unready_count", 0) or 0)
                 active_outside_member_count = int(raw.get("active_outside_member_count", 0) or 0)
+                member_start_index = int(raw.get("member_start_index", 0) or 0)
             except (TypeError, ValueError):
                 raise SystemExit(
                     f"Fixture save_transforms[{index}] bandit_site_roster_shape needs integer "
-                    f"living_member_count/wounded_or_unready_count/active_outside_member_count in {manifest_path}"
+                    f"living_member_count/wounded_or_unready_count/active_outside_member_count/member_start_index in {manifest_path}"
                 )
-            if living_member_count < 0 or wounded_or_unready_count < 0 or active_outside_member_count < 0:
+            if living_member_count < 0 or wounded_or_unready_count < 0 or active_outside_member_count < 0 or member_start_index < 0:
                 raise SystemExit(
-                    f"Fixture save_transforms[{index}] bandit_site_roster_shape counts must be >= 0 in {manifest_path}"
+                    f"Fixture save_transforms[{index}] bandit_site_roster_shape counts/member_start_index must be >= 0 in {manifest_path}"
                 )
             if wounded_or_unready_count + active_outside_member_count > living_member_count:
                 raise SystemExit(
@@ -4779,6 +4806,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "player_save": player_save,
                 "site_id": str(raw.get("site_id", "") or "").strip(),
                 "living_member_count": living_member_count,
+                "member_start_index": member_start_index,
                 "wounded_or_unready_count": wounded_or_unready_count,
                 "active_outside_member_count": active_outside_member_count,
                 "active_job_type": str(raw.get("active_job_type", "stalk") or "stalk").strip(),
@@ -5898,6 +5926,22 @@ def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]
 
     cloned_site = json.loads(json.dumps(source_site))
     cloned_site["site_id"] = new_site_id
+    new_source_id = str(transform.get("new_source_id", "") or "").strip()
+    if new_source_id:
+        cloned_site["source_id"] = new_source_id
+    new_site_kind = str(transform.get("new_site_kind", "") or "").strip()
+    if new_site_kind:
+        cloned_site["site_kind"] = new_site_kind
+    new_anchor = transform.get("new_anchor")
+    if isinstance(new_anchor, list) and len(new_anchor) >= 3:
+        cloned_site["anchor"] = [int(new_anchor[0]), int(new_anchor[1]), int(new_anchor[2])]
+    new_footprint = transform.get("new_footprint")
+    if isinstance(new_footprint, list) and new_footprint:
+        cloned_site["footprint"] = [
+            [int(point[0]), int(point[1]), int(point[2])]
+            for point in new_footprint
+            if isinstance(point, list) and len(point) >= 3
+        ]
     cloned_site["active_group_id"] = ""
     cloned_site["active_member_ids"] = []
     cloned_site["active_target_id"] = ""
@@ -5924,6 +5968,10 @@ def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]
         "world": world_dir.name,
         "source_site_id": source_site_id,
         "new_site_id": new_site_id,
+        "new_source_id": str(cloned_site.get("source_id", "")),
+        "new_site_kind": str(cloned_site.get("site_kind", "")),
+        "new_anchor": cloned_site.get("anchor", []),
+        "new_footprint": cloned_site.get("footprint", []),
         "clear_intelligence_map": bool(transform.get("clear_intelligence_map", True)),
         "clear_remembered_pressure": bool(transform.get("clear_remembered_pressure", True)),
     }
@@ -5971,14 +6019,16 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
     if not isinstance(members, list):
         raise SystemExit("Fixture bandit roster-shape transform target site has no members list")
     living_member_count = int(transform.get("living_member_count", 0) or 0)
+    member_start_index = int(transform.get("member_start_index", 0) or 0)
     wounded_or_unready_count = int(transform.get("wounded_or_unready_count", 0) or 0)
     active_outside_member_count = int(transform.get("active_outside_member_count", 0) or 0)
-    if living_member_count > len(members):
+    member_end_index = member_start_index + living_member_count
+    if member_end_index > len(members):
         raise SystemExit(
-            f"Fixture bandit roster-shape requested {living_member_count} members but only {len(members)} are available"
+            f"Fixture bandit roster-shape requested members {member_start_index}:{member_end_index} but only {len(members)} are available"
         )
 
-    shaped_members = [dict(member) for member in members[:living_member_count] if isinstance(member, dict)]
+    shaped_members = [dict(member) for member in members[member_start_index:member_end_index] if isinstance(member, dict)]
     for member in shaped_members:
         member["state"] = "at_home"
         member["wounded_or_unready"] = False
@@ -6033,6 +6083,7 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
         "world": world_dir.name,
         "site_id": str(selected_site.get("site_id", "")),
         "living_member_count": living_member_count,
+        "member_start_index": member_start_index,
         "headcount": int(selected_site.get("headcount", 0) or 0),
         "clear_spawn_tile_headcount": bool(transform.get("clear_spawn_tile_headcount", False)),
         "ready_at_home_count": max(0, living_member_count - active_outside_member_count - wounded_or_unready_count),

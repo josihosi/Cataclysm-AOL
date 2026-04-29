@@ -210,7 +210,7 @@ Notes:
 
 ## C-AOL live AI performance audit packet v0
 
-Status: ACTIVE / NEXT UNBLOCKED PERFORMANCE AUDIT
+Status: ACTIVE / MATRIX IN PROGRESS - ONE, TWO, AND PRE-STAGED THREE-SITE ROWS GREEN; FOUR-SITE ROW OPEN
 
 Success state:
 - [ ] A live/harness performance matrix exists for baseline/one, two, three, and four active hostile overmap AI sites, or an explicit blocker explains which cases could not be staged honestly.
@@ -223,6 +223,7 @@ Success state:
 Notes:
 - Imagination source lives at `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`.
+- Current matrix progress: one-site and two-site rows are green as natural/live dispatch footing; the three-site row is green only as a labeled pre-staged performance-load row (`.userdata/dev-harness/harness_runs/20260429_040926/`). The natural three-player-pressure recipe remains cap/watchlist evidence at `sites=3 active_sites=2`, not row closure.
 
 ---
 
