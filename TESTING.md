@@ -75,7 +75,7 @@ Evidence boundary: this closes real player-action source-zone ignition and same-
 
 ### Active validation target - Player-lit fire and bandit signal verification packet v0
 
-`Player-lit fire and bandit signal verification packet v0` is now unblocked by the green real-fire proof above. The next probe must start from `.userdata/dev-harness/harness_runs/20260429_153253/` or a fresher equivalent and add bounded wait/time passage plus claim-scoped bandit signal response/metadata. Do not claim signal proof from saved `fd_fire` alone, and do not use debug/synthetic fire or the retired `fuel_writeback_source_zone_v0_2026-04-29` fixture.
+`Player-lit fire and bandit signal verification packet v0` is now unblocked by the green real-fire proof above. The next probe must start from `.userdata/dev-harness/harness_runs/20260429_153253/` or a fresher equivalent and add survivable bounded wait/time passage plus claim-scoped bandit signal response/metadata. Before the long wait, provide mineral water near/for the player and set up a Smart Zone / auto-drink zone around the player. The wait proof must record before/after time or turns; if time does not pass, capture the exact warning/blocker prompt screenshot and key handling before classifying the blocker. Prefer `I` over `N` when both are offered, screenshot each distinct prompt class, and do not blind-spam through unknown prompts. Do not claim signal proof from saved `fd_fire` alone, and do not use debug/synthetic fire or the retired `fuel_writeback_source_zone_v0_2026-04-29` fixture.
 
 Completed performance context remains preserved but inactive: `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md` keeps the green one-site, two-site, pre-staged three-site, and pre-staged four-site performance-load rows, latest `.userdata/dev-harness/harness_runs/20260429_041936/`. Do not rerun those rows as ritual; only rerun performance if Schani/Josef promotes a new performance row.
 
@@ -125,7 +125,9 @@ Active pending probe: `Player-lit fire and bandit signal verification packet v0`
 2. Do not reopen the solved fuel prerequisite. Preserve `.userdata/dev-harness/harness_runs/20260429_143149/` as clean first-load footing, `.userdata/dev-harness/harness_runs/20260429_144805/` as visible deployed-brazier/source-zone gate, and `.userdata/dev-harness/harness_runs/20260429_142257/` plus older `_090634/`, `_093118/`, `_093509/`, `_095021/`, `_122807/`, and `_122955/` runs as postmortem/non-proof history only.
 3. Do not rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`; that proof surface remains retired/broken.
 4. The next green proof must add bounded wait/time passage plus claim-scoped bandit signal response/metadata from the real player-created fire. Saved `fd_fire` alone is not signal proof.
-5. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
+5. Before a long wait, stage mineral water and a Smart Zone / auto-drink zone around the player so thirst is not the whole result. Long-wait evidence needs before/after time/turns; if time does not pass, the proof must screenshot and classify the blocker/warning prompt instead of merely saying time failed to advance.
+6. Wait-interruption prompts may recur during one long wait. If `I` and `N` are offered, prefer `I` over `N`; screenshot each distinct prompt class before responding, and do not blind-spam through unknown warnings.
+7. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
 Still blocked/later in the actual playtest stack:
 

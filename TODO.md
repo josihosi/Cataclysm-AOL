@@ -38,9 +38,12 @@ Canonical anchors:
 Next narrow work queue:
 
 1. Start `Player-lit fire and bandit signal verification packet v0` from the green real-fire proof above or a fresher equivalent; add bounded wait/time passage and bandit signal response/metadata.
-2. Do not claim bandit signal from the source-zone ignition proof alone; it proves real player fire + saved `fd_fire`, not signal response.
-3. Do not rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`.
-4. Keep `Roof-fire horde detection proof packet v0` separate: it still needs roof/elevated-position plus real player-created roof fire/light/smoke and horde response metadata.
+2. Before long waiting, make the waiting setup survivable and non-noisy: spawn/provide mineral water and set up a Smart Zone / auto-drink zone around the player so thirst does not become the whole proof.
+3. For the long-wait path, verify before/after time/turns. If time does not pass, capture a screenshot of the blocking warning/prompt and classify that exact prompt; do not summarize it as “time did not pass” without the visible blocker.
+4. When wait-interruption prompts offer `I` or `N`, prefer `I` over `N`; be prepared to handle the same prompt class multiple times during one long wait, with screenshot evidence for each distinct prompt class before responding.
+5. Do not claim bandit signal from the source-zone ignition proof alone; it proves real player fire + saved `fd_fire`, not signal response.
+6. Do not rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`.
+7. Keep `Roof-fire horde detection proof packet v0` separate: it still needs roof/elevated-position plus real player-created roof fire/light/smoke and horde response metadata.
 
 Proof discipline:
 
