@@ -1298,16 +1298,61 @@ def execute_long_wait_action(
         state_patterns,
         filter_debug_noise=filter_debug_noise,
     )
+    classification_text = after_text
     report["wait_classification"] = classify_wait_screen_text(
-        after_text, complete_patterns, interrupt_patterns
+        classification_text, complete_patterns, interrupt_patterns
     )
+
+    interrupt_response_key = str(step.get("interrupt_response_key", "") or "").strip()
+    max_interrupt_responses = int(step.get("max_interrupt_responses", 0) or 0)
+    if interrupt_response_key and max_interrupt_responses > 0:
+        responses: List[Dict[str, Any]] = []
+        for response_index in range(max_interrupt_responses):
+            if report["wait_classification"].get("status") != "interrupted_or_prompt_visible":
+                break
+            response_label = f"{label}.interrupt_response_{response_index + 1}"
+            response_wait_seconds = float(step.get("interrupt_response_wait_seconds", completion_wait_seconds) or 0.0)
+            peekaboo_press_sequence(pid, [interrupt_response_key], delay_ms=delay_ms)
+            if response_wait_seconds > 0:
+                time.sleep(response_wait_seconds)
+            response_capture = capture_screenshot(pid, run_dir, response_label)
+            response_text = capture_screen_text_artifact(
+                run_dir, response_label, response_capture, tail_lines=tail_lines
+            )
+            response_artifact_after = capture_wait_artifact_delta(
+                artifact_log,
+                run_dir,
+                label,
+                f"after_interrupt_response_{response_index + 1}",
+                wait_start_size,
+                state_patterns,
+                filter_debug_noise=filter_debug_noise,
+            )
+            response_classification = classify_wait_screen_text(
+                response_text, complete_patterns, interrupt_patterns
+            )
+            responses.append({
+                "response_key": interrupt_response_key,
+                "response_index": response_index + 1,
+                "response_label": response_label,
+                "response_wait_seconds": response_wait_seconds,
+                "screen_after_response": response_capture.get("screen_summary", {}),
+                "screen_after_response_text": response_text,
+                "artifact_after_response": response_artifact_after,
+                "wait_classification_after_response": response_classification,
+            })
+            classification_text = response_text
+            report["artifact_after_wait"] = response_artifact_after
+            report["wait_classification"] = response_classification
+        report["interrupt_responses"] = responses
+
     report["wait_step_ledger"] = classify_wait_step_ledger(
         label=label,
         choice_key=choice_key,
         expected_duration=expected_duration,
         before_text=before_text,
         menu_text=menu_text,
-        after_text=after_text,
+        after_text=classification_text,
         wait_classification=report["wait_classification"],
         artifact_after_wait=report["artifact_after_wait"],
     )
@@ -6684,6 +6729,10 @@ def audit_saved_hordes_near_player(
             requirement["min_tracking_intensity"] = int(raw.get("min_tracking_intensity") or 0)
         if "moves" in raw:
             requirement["moves"] = int(raw.get("moves") or 0)
+        if "min_moves" in raw:
+            requirement["min_moves"] = int(raw.get("min_moves") or 0)
+        if "min_last_processed" in raw:
+            requirement["min_last_processed"] = int(raw.get("min_last_processed") or 0)
         if requirement:
             normalized_required.append(requirement)
 
@@ -6728,6 +6777,10 @@ def audit_saved_hordes_near_player(
         if "min_tracking_intensity" in requirement and int(entry.get("tracking_intensity") or 0) < int(requirement.get("min_tracking_intensity") or 0):
             return False
         if "moves" in requirement and entry.get("moves") != requirement.get("moves"):
+            return False
+        if "min_moves" in requirement and int(entry.get("moves") or 0) < int(requirement.get("min_moves") or 0):
+            return False
+        if "min_last_processed" in requirement and int(entry.get("last_processed") or 0) < int(requirement.get("min_last_processed") or 0):
             return False
         return True
 

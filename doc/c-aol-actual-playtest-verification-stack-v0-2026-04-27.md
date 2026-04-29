@@ -33,12 +33,11 @@ This is not permission to wander around a live save and call vibes evidence. It 
    - The run proves bounded 30-minute wait/time passage (`observed_delta_turns=1800`), live smoke/fire signal scan/maintenance with matched `bandit_camp`, dispatch plan `candidate_reason=live_signal`, and saved active scout response metadata with `known_recent_marks` including `live_smoke@140,41,0`.
    - Detailed proof: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`.
 
-5. **Roof-fire horde detection proof packet v0 — next unblocked target.**
-   - Josef/Schani greenlit this as a later verification item: debug may stage the horde/distance, but must not fake the fire.
-   - Harness support now includes setup/metadata-only horde staging/audit primitives (`horde_entity_near_player`, `audit_saved_hordes_near_player`) for overmap `horde_map` entries; these do not prove roof/fire product behavior by themselves. Named footing is artifacted at `doc/roof-fire-horde-staged-horde-footing-v0-2026-04-29.md` with fixture `roof_fire_horde_staged_horde_v0_2026-04-29`, scenario `bandit.roof_fire_horde_staged_horde_audit_mcw`, and run `.userdata/dev-harness/harness_runs/20260429_170116/`.
-   - Prove the player is actually on the shelter roof/elevated tile, the roof fire/light/smoke is real player-created, bounded time passes, and the horde before/after detection or response metadata is captured.
-   - A clean proven negative (`horde does not detect/respond`) is valid if the setup is proven.
-   - Do not treat source-zone fire/signal proof as roof-fire/horde proof.
+5. **Roof-fire horde detection proof packet v0 — complete / green split-run feature proof.**
+   - Source run `.userdata/dev-harness/harness_runs/20260429_172847/` proves the normal player-created roof/elevated fire writeback (`t_tile_flat_roof` + `f_brazier` + `fd_fire`).
+   - Split-run `.userdata/dev-harness/harness_runs/20260429_180239/`, scenario `bandit.roof_fire_horde_split_wait_from_player_fire_mcw`, fixture `roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29`, loads that saved world back into gameplay and closes the horde proof: `feature-path`, `feature_proof=true`, `14/14` green step rows, green wait ledger, `observed_delta_turns=300`, same-run `bandit_live_world horde light signal:` with `horde_signal_power=20`, and saved staged-`mon_zombie` response metadata retargeting to roof-fire source submap `[3360,984,1]` with `moves=8400`.
+   - Boundary: do not overclaim positive tracking-intensity; `tracking_intensity` remained `0`, so the credited horde response is retarget/movement-budget metadata after live roof-fire light signaling.
+   - Detailed proof: `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`; prior partial boundary/postmortem: `doc/roof-fire-horde-player-action-boundary-v0-2026-04-29.md`.
 
 ## Scope
 
@@ -61,7 +60,7 @@ This is not permission to wander around a live save and call vibes evidence. It 
 - [x] Fuel writeback repair via wood source zone is green at `.userdata/dev-harness/harness_runs/20260429_153253/`: old broken fixture retired, visible deploy path proved, charged lighter selected through normal Apply inventory, `Light where?` was proven by UI trace before targeting, OCR captured source-firewood prompt plus recognizable ignition, save mtime advanced, and saved target tile contains `f_brazier` + `fd_fire`.
 - [x] Smart Zone Manager live layout verification reached an honest agent-side boundary: deterministic geometry remains support only, the precise manual package is in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`, and current-runtime rerun `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` is startup/load red only (`Dunn has no characters to load`), with no feature/layout proof credited.
 - [x] Player-lit fire/bandit signal verification is green at `.userdata/dev-harness/harness_runs/20260429_162100/`: survivable long-wait footing, bounded 30-minute elapsed-time proof, live signal/dispatch artifacts, guarded save/writeback, and saved bandit live-world signal/active-state metadata are all present without debug/synthetic fire shortcut.
-- [ ] Roof-fire horde detection proof proves the horde/distance setup, player roof/elevated position, real player-created roof fire/light/smoke, bounded time passage, and horde before/after detection or response metadata; do not treat source-zone fire/signal proof as roof-fire/horde proof.
+- [x] Roof-fire horde detection proof is green at `.userdata/dev-harness/harness_runs/20260429_180239/`: split-run from the saved player-created roof-fire world proves roof/elevated `t_tile_flat_roof` + `f_brazier` + `fd_fire`, bounded time passage (`observed_delta_turns=300`), same-run roof-fire horde light signal (`horde_signal_power=20`), and saved horde retarget/movement-budget response metadata without treating source-zone fire/signal proof as roof proof.
 - [ ] Andi reports each item with evidence class boundaries intact: what is live product proof, what is deterministic support, what is startup/load, and what remains unproven.
 
 ## Testing expectations

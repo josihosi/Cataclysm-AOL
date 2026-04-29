@@ -102,6 +102,9 @@ static const event_statistic_id event_statistic_last_words( "last_words" );
 
 static const json_character_flag json_flag_NO_SCENT( "NO_SCENT" );
 
+static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
+static const ter_str_id ter_t_tile_flat_roof( "t_tile_flat_roof" );
+
 static const trait_id trait_HAS_NEMESIS( "HAS_NEMESIS" );
 static const trait_id trait_NPC_STATIC_NPC( "NPC_STATIC_NPC" );
 
@@ -1144,6 +1147,16 @@ std::string live_bandit_source_mark_id( const std::string &kind, const tripoint_
     return out.str();
 }
 
+bool live_bandit_fire_source_is_elevated_roof_exposed( const map &here,
+        const tripoint_bub_ms &p )
+{
+    if( p.z() <= 0 ) {
+        return false;
+    }
+    const ter_id terrain = here.ter( p );
+    return terrain == ter_t_flat_roof || terrain == ter_t_tile_flat_roof;
+}
+
 std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_near_player()
 {
     avatar &u = get_avatar();
@@ -1152,6 +1165,7 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         int fire_intensity = 0;
         int smoke_intensity = 0;
         bool outside = false;
+        bool elevated_roof_exposed = false;
     };
     std::map<tripoint_abs_omt, source_reading> readings;
 
@@ -1167,6 +1181,7 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         reading.fire_intensity = std::max( reading.fire_intensity, fire_intensity );
         reading.smoke_intensity = std::max( reading.smoke_intensity, smoke_intensity );
         reading.outside |= here.is_outside( p );
+        reading.elevated_roof_exposed |= live_bandit_fire_source_is_elevated_roof_exposed( here, p );
     }
 
     std::vector<live_bandit_signal_observation> observations;
@@ -1232,19 +1247,26 @@ std::vector<live_bandit_signal_observation> observe_live_bandit_field_signals_ne
         light_packet.observed_range_omt = rl_dist( player_omt, source_omt );
         light_packet.source_strength = std::clamp( reading.fire_intensity, 1, 3 );
         light_packet.persistence = reading.fire_intensity >= 2 ? 1 : 0;
-        light_packet.side_leakage = reading.outside ? 1 : 0;
+        const bool exposed_to_sky = reading.outside || reading.elevated_roof_exposed;
+        light_packet.side_leakage = exposed_to_sky ? 1 : 0;
         light_packet.time = light_time;
         light_packet.weather = light_weather;
-        light_packet.exposure = reading.outside ?
+        light_packet.exposure = exposed_to_sky ?
                                 bandit_mark_generation::light_exposure_band::exposed :
                                 bandit_mark_generation::light_exposure_band::contained;
         light_packet.source = bandit_mark_generation::light_source_band::ordinary;
-        light_packet.terrain = reading.outside ? bandit_mark_generation::light_terrain_band::open :
+        light_packet.terrain = exposed_to_sky ? bandit_mark_generation::light_terrain_band::open :
                                bandit_mark_generation::light_terrain_band::built_cover;
+        if( reading.elevated_roof_exposed ) {
+            light_packet.vertical_sightline = true;
+            light_packet.elevation_bonus = 2;
+        }
         light_packet.notes.push_back( "live source hook: fd_fire=" +
                                       std::to_string( reading.fire_intensity ) +
                                       ", exposure=" +
-                                      bandit_mark_generation::to_string( light_packet.exposure ) );
+                                      bandit_mark_generation::to_string( light_packet.exposure ) +
+                                      ", elevated_roof_exposed=" +
+                                      std::string( reading.elevated_roof_exposed ? "yes" : "no" ) );
         light_packet.notes.push_back( "live source hook: time=" +
                                       bandit_mark_generation::to_string( light_time ) +
                                       ", weather=" +

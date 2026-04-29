@@ -2,9 +2,9 @@
 
 ## Status
 
-**PARTIAL GREEN / HORDE RESPONSE UNPROVEN / AGENT-SIDE ATTEMPT BUDGET EXHAUSTED**
+**PARTIAL GREEN / SUPERSEDED BY SPLIT-RUN GREEN PROOF**
 
-This packet advances `Roof-fire horde detection proof packet v0` to a cleaner evidence boundary, but it does **not** close roof-fire horde detection.
+This packet advanced `Roof-fire horde detection proof packet v0` to a cleaner evidence boundary, but it did **not** close roof-fire horde detection by itself. The final split-run closure now lives at `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`, credited run `.userdata/dev-harness/harness_runs/20260429_180239/`.
 
 Green scoped result:
 
@@ -84,10 +84,10 @@ Interpretation: the direct save/writeback gate proves the roof-fire result state
 
 This packet proves **player-created roof/elevated fire writeback** on the shaped fixture. It does not prove horde detection, horde response, or elapsed-time roof-fire signaling.
 
-A future agent-side path would need a materially different shape, for example:
+The materially different split-run path was later executed successfully:
 
-1. split the proof into two stages, using the saved world from the player-created roof-fire run as the source for a second wait/horde scenario while keeping the provenance explicit; or
-2. add/use a non-quitting save/writeback primitive so the same live session can save/audit roof `fd_fire` and then continue to bounded wait; or
-3. have Josef manually play from the prepared fixture: create the roof fire, wait in-game, save, and provide the resulting save/log bundle.
+1. copied the saved world from `.userdata/dev-harness/harness_runs/20260429_172847/` into fixture `roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29` without an `fd_fire` transform;
+2. loaded that world in scenario `bandit.roof_fire_horde_split_wait_from_player_fire_mcw`;
+3. proved bounded wait, live roof-fire horde light signal, and saved horde retarget/movement-budget metadata at `.userdata/dev-harness/harness_runs/20260429_180239/`.
 
-No further same-item agent retry should run without one of those concrete changes.
+Use `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md` as the closure packet; keep this file as the postmortem explaining why split-run was necessary.
