@@ -53,13 +53,13 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - Fuel writeback repair via wood source zone packet v0
+### Packaged validation target - Fuel writeback repair via wood source zone packet v0
 
-`Fuel writeback repair via wood source zone packet v0` is the active validation slice under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`, and imagination source `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
+`Fuel writeback repair via wood source zone packet v0` is now **JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN** under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`, and imagination source `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
 
-Current state: Josef promoted the repair on 2026-04-29. The already-green brazier deploy primitive remains a scoped footing only; the old Multidrop filtered-`2x4` continuation remains red/non-credit at `blocked_untrusted_drop_filter_or_inventory_visibility`. The active proof now bypasses that brittle selector by creating an oversized saved-world firewood source, preferably logs first, placing/verifying a broad source-firewood zone, then proving normal player-action ignition plus guarded saved `fd_fire`/smoke/light writeback.
+Current state: Josef's source-zone repair direction was implemented as a harness proof packet rather than closed as product proof. The fixture/scenario can stage an oversized saved-world log source, saved `SOURCE_FIREWOOD` zone, preflight-wielded charged lighter with nested butane, and a narrow `audit_player_message_log_contains` bridge for decisive normal-lighting text. Final changed probe `.userdata/dev-harness/harness_runs/20260429_091438/` has green setup rows but remains red for feature proof: `audit_player_save_mtime_after_source_zone_ignition_save` reports `player_save_mtime_changed` missing, no new player message log line such as `You successfully light a fire.` was captured, and copied saved-map inspection still found no `fd_fire`/`fd_smoke`.
 
-Evidence boundary: setup helpers may create the wood pile and source-zone footing, but they do not close player-lit fire. Closure requires a normal player fire-start/lighter path and saved-state proof of actual fire/smoke/light-relevant writeback. Debug map-editor `fd_fire`, synthetic loaded-map fields, roof-horde proof, and performance reruns are not substitutes.
+Evidence boundary: setup helpers may create the wood pile, source-zone footing, and pre-wielded fuelled lighter, but they do not close player-lit fire. Closure still requires a normal player fire-start/lighter path, narrow decisive player-message bridge if emitted, and guarded saved-state proof of actual fire/smoke/light-relevant writeback. Debug map-editor `fd_fire`, synthetic loaded-map fields, roof-horde proof, and performance reruns are not substitutes. Do not rerun this packet unless a materially changed normal-action/save-writeback primitive or Josef manual evidence reopens it.
 
 Completed performance context remains preserved but inactive: `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md` keeps the green one-site, two-site, pre-staged three-site, and pre-staged four-site performance-load rows, latest `.userdata/dev-harness/harness_runs/20260429_041936/`. Do not rerun those rows as ritual; only rerun performance if Schani/Josef promotes a new performance row.
 
@@ -103,12 +103,14 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active validation target: **Fuel writeback repair via wood source zone packet v0** under `C-AOL actual playtest verification stack v0`.
+No unblocked fuel/source-zone/lighter probe remains after the final changed run `.userdata/dev-harness/harness_runs/20260429_091438/`. The packet is in Josef playtest package state: do not rerun it unless Josef, Schani, or Frau provides a materially changed normal-action/save-writeback primitive or manual evidence.
+
+If reopened, the pending evidence shape is:
 
 1. Use the already-green brazier deploy primitive as footing, or rerun it only if the scenario needs fresh current-runtime evidence. Save/writeback must show the expected `f_brazier`.
-2. Create an oversized in-world firewood source near the brazier, preferably logs first; use planks/`2x4` only if logs do not satisfy the intended firewood path. Prove the items in saved-world metadata before ignition.
-3. Place/verify a broad source-firewood zone over/around the pile, using visible UI or zone metadata. Do not launder this into Smart Zone Manager closure.
-4. Run the normal player fire-start/lighter path and require guarded post-action save/writeback with actual `fd_fire` plus smoke/light-relevant state on the expected tile/area.
+2. Keep the oversized real saved-world firewood source and broad `SOURCE_FIREWOOD` zone footing visible in metadata.
+3. Run the normal player fire-start/lighter path and capture only narrow decisive player-message lines, e.g. `You successfully light a fire.`, as bridge evidence.
+4. Require guarded post-action save/writeback with actual `fd_fire` plus smoke/light-relevant state on the expected tile/area; message/log evidence alone is not state proof.
 5. If ignition is green, continue to bounded wait/time-passage and bandit signal response or a clearly classified no-response outcome.
 6. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
