@@ -149,16 +149,16 @@ Compact reference:
 
 ## Cannibal camp confidence-push live playtest packet v0
 
-Status: ACTIVE / PARTIAL CONFIDENCE-PUSH PLAYTEST
+Status: COMPLETE / CONFIDENCE UPLIFT GREEN
 
 Success state:
-- [x] A compact live/harness matrix now records the five proposed shapes and their current status: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
+- [x] A compact live/harness matrix records the five proposed shapes and their current status: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
 - [x] At least one broader wandering/day pressure run reaches the real live dispatch/signal path and supports the closed cannibal behavior claim without instant daytime suicide: `.userdata/dev-harness/harness_runs/20260429_013310/`, scenario `cannibal.live_world_day_smoke_pressure_mcw`, current window/runtime `782d8edabd`, 2/2 green step ledger, `feature_proof=true`, matched live smoke/signal path, `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, `combat_forward=no`, and `signal_packet=live_smoke@`.
 - [x] At least one night/contact run reaches real local-contact behavior and supports pack-forward danger under darkness/concealment: `.userdata/dev-harness/harness_runs/20260429_014900/`, scenario `cannibal.live_world_night_local_contact_pack_mcw`, current window/runtime `acfe6fd0ce`, 2/2 green step ledger, `feature_proof=true`, matched real local-contact pack-forward path, `profile=cannibal_camp`, `posture=attack_now`, `pack_size=2`, `darkness_or_concealment=yes`, `local_contact=yes`, `shakedown=no`, and `combat_forward=yes`.
-- [ ] Save/reload continuation proves active cannibal group/profile/target/job state stays coherent after reload.
-- [ ] A different-seed/different-footing run reduces fixture-bias risk.
+- [x] Save/reload continuation proves active cannibal group/profile/target/job state stays coherent after reload: create/save feature proof `.userdata/dev-harness/harness_runs/20260429_021849/`, scenario `cannibal.live_world_day_smoke_persistence_mcw`, current runtime `e778902cac`, 7/7 green step ledger, guarded save mtime writeback, saved active `cannibal_camp` stalk group with active members `[4,5]`, target `player@140,41,0`, and `known_recent_marks` including `live_smoke@140,41,0`; paired no-fixture reload support `.userdata/dev-harness/harness_runs/20260429_021929/`, scenario `cannibal.live_world_day_smoke_persistence_reload_audit_mcw`, 2/2 green step ledger, saved-state metadata still present after fresh startup.
+- [x] A different-seed/different-footing run reduces fixture-bias risk: `.userdata/dev-harness/harness_runs/20260429_022021/`, scenario `cannibal.live_world_exposed_sight_avoid_mcw`, current runtime `e778902cac`, 5/5 green step ledger, feature proof on fixture `cannibal_live_world_exposed_sight_avoid_v0_2026-04-28` from source footing `bandit_local_sight_avoid_exposed_v0_2026-04-27`, showing `profile=cannibal_camp`, `active_job=stalk`, `posture=hold_off`, `pack_size=2`, `recent_exposure=yes`, `sight_exposure=recent`, `shakedown=no`, `combat_forward=no`.
 - [x] A bandit contrast control preserves the shakedown/pay/fight distinction while the credited cannibal day-pressure row remains no-shakedown/no-combat-forward: bandit run `.userdata/dev-harness/harness_runs/20260429_012915/` proves `pay_option=yes fight_option=yes` plus `shakedown_surface fight demanded=15797 reachable=45134`; cannibal day-pressure run `.userdata/dev-harness/harness_runs/20260429_013310/` proves `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, and `combat_forward=no`. Night/contact no-shakedown is also covered by the checked night/contact row above.
-- [ ] The final verdict updates confidence honestly: higher confidence, green with watchlist, blocked by harness/fixture gap, or red with a specific bug/tuning gap.
+- [x] The final verdict updates confidence honestly: confidence uplift green, with retained caveats that reload support is saved-file/startup support paired with create/save feature proof, and different-footing repeat reduces but does not eliminate fixture-bias risk.
 
 Notes:
 - Imagination source lives at `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`.
@@ -210,7 +210,7 @@ Notes:
 
 ## C-AOL live AI performance audit packet v0
 
-Status: GREENLIT / BOTTOM-OF-STACK PERFORMANCE AUDIT
+Status: ACTIVE / NEXT UNBLOCKED PERFORMANCE AUDIT
 
 Success state:
 - [ ] A live/harness performance matrix exists for baseline/one, two, three, and four active hostile overmap AI sites, or an explicit blocker explains which cases could not be staged honestly.
