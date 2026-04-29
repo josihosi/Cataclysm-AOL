@@ -10,7 +10,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active target: `C-AOL actual playtest verification stack v0` / `C-AOL live AI performance audit packet v0`.
 
-Current state: the live AI performance audit has a compact matrix shell, top-level live-path timing/counter instrumentation, and a green one-site performance row. Dedicated run `.userdata/dev-harness/harness_runs/20260429_025436/` (`performance.bandit_one_site_remembered_lead_wait_30m`) reached feature-path classification with 4/4 green step ledger, green bounded-wait ledger, and compact `bandit_live_world perf:` counters for one remembered-lead bandit camp. Player-lit fire and roof-horde proof remain blocked behind the fuel/writeback gate.
+Current state: the live AI performance audit has a compact matrix shell, top-level live-path timing/counter instrumentation, and a green one-site performance row. Dedicated run `.userdata/dev-harness/harness_runs/20260429_025639/` (`performance.bandit_one_site_remembered_lead_wait_30m`) reached feature-path classification with 4/4 green step ledger, green bounded-wait ledger, and compact `bandit_live_world perf:` counters for one remembered-lead bandit camp. Player-lit fire and roof-horde proof remain blocked behind the fuel/writeback gate.
 
 Canonical anchors for the active target:
 

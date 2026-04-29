@@ -34,14 +34,14 @@ This is intentionally top-level instrumentation, not a behavior redesign.
 | Case | Scenario / run | Evidence class | In-game window | Profile/job mix | Counters/timing | Verdict |
 | --- | --- | --- | --- | --- | --- | --- |
 | Baseline / zero hostile active sites | Not staged yet | missing | TBD | none | TBD | open |
-| One hostile overmap AI site | `performance.bandit_one_site_remembered_lead_wait_30m`, run `.userdata/dev-harness/harness_runs/20260429_025436/` | green feature-path performance row for one-site case; startup/fixture support remains separate | 30m bounded wait choice; 4/4 green step ledger; green wait ledger via artifact delta after bounded wait | `camp_style:stalk=1`; one remembered-lead bandit camp; `signals=0`; 4 travelling NPCs | 6 perf cadence rows in `measure_30_minutes_one_site_remembered_lead.after_wait.artifacts.log`; `total_us` min/median/max `490/539.5/981`, sum `3673`; one dispatch-due row `dispatch_us=249`; harness wall-clock `/tmp/caol_perf_dedicated_20260429_025436.log` `real 38.55s`; runtime `f8be9b9f4a-dirty`, `version_matches_repo_head=true`, `version_matches_runtime_paths=true` | green one-site row; rerun clean after checkpoint only if Schani requires non-dirty title proof |
+| One hostile overmap AI site | `performance.bandit_one_site_remembered_lead_wait_30m`, run `.userdata/dev-harness/harness_runs/20260429_025639/` | green feature-path performance row for one-site case; startup/fixture support remains separate | 30m bounded wait choice; 4/4 green step ledger; green wait ledger via artifact delta after bounded wait | `camp_style:stalk=1`; one remembered-lead bandit camp; `signals=0`; 4 travelling NPCs | 6 perf cadence rows in `measure_30_minutes_one_site_remembered_lead.after_wait.artifacts.log`; `total_us` min/median/max `506/528.0/1134`, sum `3751`; one dispatch-due row `dispatch_us=297`; harness wall-clock `/tmp/caol_perf_clean_20260429_025638.log` `real 38.58s`; runtime `ae0c974d47`, `captured_dirty=false`, `version_matches_repo_head=true`, `version_matches_runtime_paths=true` | green one-site row |
 | Two hostile overmap AI sites | Not staged yet | missing | TBD | TBD | TBD | open |
 | Three hostile overmap AI sites | Not staged yet | missing | TBD | TBD | TBD | open |
 | Four hostile overmap AI sites | Not staged yet | missing | TBD | TBD | TBD | open |
 
 Dedicated first-row scenario: `tools/openclaw_harness/scenarios/performance.bandit_one_site_remembered_lead_wait_30m.json`.
 
-Earlier support-only instrumentation smoke: `bandit.camp_map_vanished_signal_redispatch`, run `.userdata/dev-harness/harness_runs/20260429_024952/`, emitted the same perf line shape but kept a yellow wait ledger and stale title/version metadata. It is retained only as probe support, not row credit.
+Earlier support-only instrumentation smokes: `bandit.camp_map_vanished_signal_redispatch`, run `.userdata/dev-harness/harness_runs/20260429_024952/`, emitted the same perf line shape but kept a yellow wait ledger and stale title/version metadata; first dedicated run `.userdata/dev-harness/harness_runs/20260429_025436/` was green but used the dirty pre-commit runtime. Both are retained only as probe support, not row credit.
 
 ## Code audit notes
 
