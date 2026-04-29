@@ -1,0 +1,73 @@
+{
+  "name": "fuel_writeback_source_zone_v0_2026-04-29",
+  "source_fixture": "bandit_live_world_nearby_camp_real_fire_exact_items_v0_2026-04-27",
+  "source_profile": "live-debug",
+  "description": "Fuel-writeback repair footing: keep saved f_brazier/log/source-zone setup, pre-wield a charged lighter to avoid brittle inventory-selector proof, and require normal player firestarter activation/targeting/save writeback. No fd_fire or synthetic map fields are injected.",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        {
+          "typeid": "lighter",
+          "count": 1,
+          "charges": 100,
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 1,
+                "contents": [
+                  {
+                    "typeid": "butane",
+                    "charges": 100,
+                    "bday": 5266800,
+                    "last_temp_check": 0,
+                    "template_traits": []
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        }
+      ]
+    },
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {
+          "typeid": "log",
+          "count": 100,
+          "offset_ms": [
+            1,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "OpenClaw source firewood proof zone",
+      "zone_type": "SOURCE_FIREWOOD",
+      "faction": "your_followers",
+      "start_offset_ms": [
+        1,
+        -1,
+        0
+      ],
+      "end_offset_ms": [
+        3,
+        1,
+        0
+      ],
+      "write_temp": true
+    }
+  ]
+}

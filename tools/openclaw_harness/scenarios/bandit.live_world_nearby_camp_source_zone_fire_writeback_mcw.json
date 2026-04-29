@@ -1,0 +1,222 @@
+{
+  "name": "bandit.live_world_nearby_camp_source_zone_fire_writeback_mcw",
+  "description": "Fuel writeback repair probe: saved-world log source plus SOURCE_FIREWOOD zone footing, preflight-wielded charged lighter, normal player activation/targeting, narrow player-message bridge, and guarded saved fd_fire/smoke/light-relevant writeback. No debug fd_fire or synthetic map fields are injected.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "fuel_writeback_source_zone_v0_2026-04-29",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "source_zone_load_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "The source-zone fuel repair fixture is loaded on the map before any deploy/lighter macro runs."
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_saved_preflight_has_wielded_lighter",
+      "required_items": [
+        "lighter"
+      ],
+      "expected_visible_fact": "preflight saved player has an exact charged lighter item, is already wielding lighter, and has nested butane ammo available; this fixture setup replaces the brittle live wield-selector proof and does not claim inventory-selector coverage",
+      "preconditions": "fixture install completed for fuel_writeback_source_zone_v0_2026-04-29",
+      "next_step_gate": "do not credit apply-wielded lighter activation unless saved weapon is exactly lighter before live steps begin",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "fixture/preflight did not provide a saved wielded lighter for the normal firestarter activation path",
+      "required_weapon": "lighter",
+      "abort_verdict": "blocked_missing_preflight_wielded_lighter",
+      "required_weapon_ammo_type": "butane",
+      "required_weapon_ammo_min": 1
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_source_tile_for_logs",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "required_items": [
+        "log"
+      ],
+      "expected_visible_fact": "saved source tile east of player contains real log item metadata before ignition",
+      "preconditions": "fixture save_transform added an oversized log pile on the intended light target; no fd_fire was injected",
+      "next_step_gate": "do not credit source-zone repair unless real saved-world wood items are present",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "saved-world log source missing before lighter/fire proof"
+    },
+    {
+      "kind": "audit_saved_zones_near_player",
+      "label": "audit_saved_source_firewood_zone_for_logs",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          0
+        ]
+      ],
+      "required_zone_type": "SOURCE_FIREWOOD",
+      "required_faction": "your_followers",
+      "required_name_contains": "OpenClaw source firewood proof zone",
+      "expected_visible_fact": "saved zone metadata contains a broad SOURCE_FIREWOOD zone covering the log target and adjacent source area",
+      "preconditions": "fixture save_transform added a SOURCE_FIREWOOD zone over/around the log pile; this is fuel footing only, not Smart Zone Manager closure",
+      "next_step_gate": "do not credit source-zone repair unless saved zone metadata covers the log source area",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "saved SOURCE_FIREWOOD zone metadata missing before lighter/fire proof"
+    },
+    {
+      "kind": "audit_player_message_log_contains",
+      "label": "audit_player_message_log_before_source_zone_ignition",
+      "expected_visible_fact": "baseline the saved player message log before normal lighter activation so later bridge evidence captures only new decisive lighting lines",
+      "failure_rule": "baseline only; this does not prove the fire path by itself"
+    },
+    {
+      "kind": "press",
+      "label": "activate_wielded_lighter",
+      "keys": [
+        "A"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 24,
+      "expected_visible_fact": "activate the already-wielded lighter through normal Apply/Wielded input so the game opens/continues the firestarter targeting flow",
+      "preconditions": "audit_saved_preflight_has_wielded_lighter proved saved weapon is lighter before live input; this step starts normal player apply-wielded firestarter path, not debug fd_fire placement"
+    },
+    {
+      "kind": "press",
+      "label": "target_source_zone_logs_with_wielded_lighter",
+      "keys": [
+        "right",
+        "y",
+        "y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 48,
+      "expected_visible_fact": "target the adjacent source-zone/brazier/log area with the normally activated lighter; no debug fire placement is used",
+      "failure_rule": "if the source-firewood prompt appears and is not confirmed, or if the route does not lead to activity/fd_fire metadata, the ignition primitive remains untrusted",
+      "next_step_gate": "the saved fd_fire audit is the required gate before claiming player-lit fire",
+      "preconditions": "lighter is preflight-wielded and source-zone/log/f_brazier metadata audits are green"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_firestarter_activity_to_completion",
+      "count": 220,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 48,
+      "expected_visible_fact": "A bounded turn advance lets the normal lighter/firestarter activity complete against the east log/source-zone target."
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_source_zone_ignition_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after normal lighter/firestarter activity and before the post-ignition save is requested"
+    },
+    {
+      "kind": "press",
+      "label": "save_after_source_zone_ignition_request",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 3.0,
+      "capture_after": true,
+      "expected_visible_fact": "Request save after the normal lighter/firestarter activity; current UI may open a case-sensitive save prompt before writing.",
+      "failure_rule": "This request is trusted only together with the following confirmation and saved-player mtime gate."
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_source_zone_ignition",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 3.0,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_source_zone_ignition_save",
+      "expected_visible_fact": "Confirm the case-sensitive save prompt after post-ignition save request; trust is deferred to saved-player mtime and saved-map metadata.",
+      "failure_rule": "If saved-player mtime does not advance after this confirmation, post-ignition writeback remains untrusted."
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_source_zone_ignition_save",
+      "changed_since_label": "audit_player_save_mtime_before_source_zone_ignition_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_post_ignition_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after the post-ignition save confirmation",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed post-ignition save, proving the following saved-map audit reads same-run state"
+    },
+    {
+      "kind": "audit_player_message_log_contains",
+      "label": "audit_player_message_log_source_zone_ignition_success",
+      "since_label": "audit_player_message_log_before_source_zone_ignition",
+      "required_any_line_patterns": [
+        [
+          "You successfully light a fire."
+        ],
+        [
+          "successfully light",
+          "fire"
+        ],
+        [
+          "light a fire"
+        ]
+      ],
+      "expected_visible_fact": "narrow saved player-message bridge line proves the fire came from the normal lighting action path before saved fd_fire is credited",
+      "preconditions": "post-ignition save mtime advanced, so the player message log and map audit are paired with guarded writeback",
+      "next_step_gate": "do not treat the message as state proof; fd_fire/smoke saved metadata still closes hard writeback state",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_missing_normal_lighting_message_bridge",
+      "abort_reason": "no decisive player-message line for normal fire lighting appeared after the source-zone ignition attempt"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_target_tile_for_fd_fire",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "required_fields": [
+        "fd_fire"
+      ],
+      "expected_visible_fact": "saved target tile east of player contains actual fd_fire metadata after normal player lighter action against real log/source-zone footing",
+      "preconditions": "previous step saved after the normal player-action lighter route; no debug fd_fire transform is present in the fixture",
+      "next_step_gate": "player-lit fire/light writeback cannot close unless this metadata row is green",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "fd_fire target metadata missing after source-zone normal ignition route"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_nearby_tile_for_smoke_or_fire_state",
+      "radius": 2,
+      "required_fields": [
+        "fd_smoke"
+      ],
+      "expected_visible_fact": "saved nearby tiles contain fd_smoke after the live fire route, while fd_fire remains the light source evidence",
+      "preconditions": "fd_fire writeback row was green before this optional smoke-relevance audit",
+      "next_step_gate": "if smoke is missing, report fd_fire/light green but smoke not yet closed; do not launder it into full smoke proof",
+      "abort_on_metadata_failure": false,
+      "abort_reason": "fd_smoke metadata missing after source-zone normal ignition route"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_source_zone_fire_writeback_mcw (writes source-zone, log, fd_fire, and smoke metadata gates; no debug fd_fire shortcut)"
+}

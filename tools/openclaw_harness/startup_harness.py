@@ -1060,6 +1060,121 @@ def audit_log_contains(
     }
 
 
+
+def player_message_log_path(world_dir: Path, player_save: str = "") -> Path:
+    selected_player_save = str(player_save or "").strip()
+    if selected_player_save:
+        if selected_player_save.endswith(".sav.zzip"):
+            return world_dir / (selected_player_save[: -len(".sav.zzip")] + ".log")
+        return world_dir / (Path(selected_player_save).stem + ".log")
+    logs = sorted(world_dir.glob("*.log"))
+    if len(logs) == 1:
+        return logs[0]
+    saves = sorted(world_dir.glob("*.sav.zzip"))
+    if len(saves) == 1:
+        return world_dir / (saves[0].name[: -len(".sav.zzip")] + ".log")
+    raise RuntimeError(f"Expected one player message log in {world_dir}, found {[path.name for path in logs]}")
+
+
+def audit_player_message_log_contains(
+    world_dir: Path,
+    run_dir: Path,
+    label: str,
+    *,
+    player_save: str = "",
+    changed_since: Optional[Dict[str, Any]] = None,
+    patterns: List[str],
+    required_line_patterns: Optional[List[List[str]]] = None,
+    required_any_line_patterns: Optional[List[List[str]]] = None,
+) -> Dict[str, Any]:
+    line_pattern_groups = required_line_patterns or []
+    any_line_pattern_groups = required_any_line_patterns or []
+    any_group_label = " OR ".join(" && ".join(group) for group in any_line_pattern_groups)
+    required_items = patterns + [" && ".join(group) for group in line_pattern_groups]
+    if any_line_pattern_groups:
+        required_items.append(any_group_label)
+    log_path = player_message_log_path(world_dir, player_save=player_save)
+    baseline = 0
+    changed_label = ""
+    if changed_since:
+        changed_label = str(changed_since.get("label", "") or "")
+        try:
+            baseline = int(changed_since.get("log_size", 0) or 0)
+        except (TypeError, ValueError):
+            baseline = 0
+    if not log_path.exists():
+        return {
+            "status": "required_state_missing" if required_items else "baseline_recorded",
+            "reason": "player_message_log_not_found",
+            "world": world_dir.name,
+            "world_dir": str(world_dir),
+            "player_save": player_save,
+            "source_log": str(log_path),
+            "log_size": 0,
+            "required_items": required_items,
+            "missing_required_items": required_items,
+            "changed_since_label": changed_label,
+            "changed_since_log_size": baseline,
+        }
+    raw_bytes = log_path.read_bytes()
+    log_size = len(raw_bytes)
+    if baseline > log_size:
+        delta_bytes = b""
+    else:
+        delta_bytes = raw_bytes[max(0, baseline):]
+    delta = delta_bytes.decode("utf-8", errors="replace")
+    log_lines = delta.splitlines()
+    matches_by_pattern: List[Dict[str, Any]] = []
+    missing: List[str] = []
+    for pattern in patterns:
+        lines = [line for line in log_lines if pattern in line]
+        matches_by_pattern.append({"pattern": pattern, "lines": lines})
+        if not lines:
+            missing.append(pattern)
+    for group in line_pattern_groups:
+        group_label = " && ".join(group)
+        lines = [line for line in log_lines if all(pattern in line for pattern in group)]
+        matches_by_pattern.append({"pattern": group_label, "line_patterns": group, "lines": lines})
+        if not lines:
+            missing.append(group_label)
+    if any_line_pattern_groups:
+        any_lines: List[str] = []
+        any_matches: List[Dict[str, Any]] = []
+        for group in any_line_pattern_groups:
+            group_label = " && ".join(group)
+            lines = [line for line in log_lines if all(pattern in line for pattern in group)]
+            any_matches.append({"pattern": group_label, "line_patterns": group, "lines": lines})
+            any_lines.extend(lines)
+        matches_by_pattern.append({
+            "pattern": any_group_label,
+            "any_line_patterns": any_matches,
+            "lines": any_lines,
+        })
+        if not any_lines:
+            missing.append(any_group_label)
+    matched_lines = [line for entry in matches_by_pattern for line in entry.get("lines", [])]
+    matched_path = run_dir / f"{label}.matched_player_messages.txt"
+    if matched_lines:
+        matched_path.write_text("\n".join(matched_lines).rstrip() + "\n", encoding="utf-8")
+    return {
+        "status": "required_state_present" if required_items and not missing else ("required_state_missing" if required_items else "baseline_recorded"),
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": player_save,
+        "source_log": str(log_path),
+        "artifact_path": str(matched_path) if matched_lines else "",
+        "log_size": log_size,
+        "changed_since_label": changed_label,
+        "changed_since_log_size": baseline,
+        "required_items": required_items,
+        "observed_items": [entry["pattern"] for entry in matches_by_pattern if entry.get("lines")],
+        "missing_required_items": missing,
+        "matches_by_pattern": matches_by_pattern,
+        "matched_lines": matched_lines,
+        "line_count": len(log_lines),
+        "capture_policy": "matched decisive player-message lines only; no broad message-log dump",
+    }
+
 def execute_long_wait_action(
     pid: int,
     run_dir: Path,
@@ -1359,12 +1474,17 @@ def summarize_map_field(payload: Any) -> Dict[str, Any]:
 def map_item_typeid(item: Any) -> str:
     if isinstance(item, dict):
         return str(item.get("typeid", ""))
+    if isinstance(item, list) and len(item) == 2 and isinstance(item[0], dict):
+        return str(item[0].get("typeid", ""))
     return str(item)
 
 
 def summarize_map_items(payload: Any) -> List[str]:
     if not isinstance(payload, list):
         return [map_item_typeid(payload)] if payload else []
+    if len(payload) == 2 and isinstance(payload[0], dict):
+        typeid = map_item_typeid(payload)
+        return [typeid] if typeid else []
     return [typeid for typeid in (map_item_typeid(item) for item in payload) if typeid]
 
 
@@ -1795,13 +1915,44 @@ def summarize_saved_item_rows(
     return counts, item_rows
 
 
+def saved_item_nested_charge_sum(entry: Any, *, ammo_type: str = "") -> int:
+    """Sum charges carried by nested ammo/items inside a saved item payload."""
+    total = 0
+    if not isinstance(entry, dict):
+        return total
+    typeid = str(entry.get("typeid", "")).strip()
+    if (not ammo_type or typeid == ammo_type) and "charges" in entry:
+        try:
+            total += int(entry.get("charges") or 0)
+        except (TypeError, ValueError):
+            pass
+    contents_obj = entry.get("contents")
+    if not isinstance(contents_obj, dict):
+        return total
+    pockets = contents_obj.get("contents", [])
+    if not isinstance(pockets, list):
+        return total
+    for pocket in pockets:
+        if not isinstance(pocket, dict):
+            continue
+        pocket_contents = pocket.get("contents", [])
+        if not isinstance(pocket_contents, list):
+            continue
+        for child in pocket_contents:
+            total += saved_item_nested_charge_sum(child, ammo_type=ammo_type)
+    return total
+
+
 def audit_saved_player_items(
     world_dir: Path,
     *,
     player_save: str = "",
     required_items: Optional[List[str]] = None,
+    required_weapon: str = "",
+    required_weapon_ammo_type: str = "",
+    required_weapon_ammo_min: int = 0,
 ) -> Dict[str, Any]:
-    """Read-only saved-player inventory audit for exact item type ids plus deploy metadata."""
+    """Read-only saved-player inventory/wield audit for exact item type ids plus deploy metadata."""
     if not world_dir.exists():
         raise FileNotFoundError(f"World dir not found: {world_dir}")
     selected_player_save = player_save.strip()
@@ -1835,8 +1986,18 @@ def audit_saved_player_items(
     accessible_rows, legacy_rows = saved_player_item_rows(player)
     counts, item_rows = summarize_saved_item_rows(accessible_rows)
     legacy_counts, legacy_item_rows = summarize_saved_item_rows(legacy_rows)
+    weapon = player.get("weapon")
+    observed_weapon = str(weapon.get("typeid", "")) if isinstance(weapon, dict) else ""
+    required_weapon_ammo_type = str(required_weapon_ammo_type or "").strip()
+    required_weapon_ammo_min = max(0, int(required_weapon_ammo_min or 0))
+    observed_weapon_ammo_remaining = (
+        saved_item_nested_charge_sum(weapon, ammo_type=required_weapon_ammo_type)
+        if isinstance(weapon, dict)
+        else 0
+    )
 
     required = [item for item in (required_items or []) if item]
+    required_weapon = str(required_weapon or "").strip()
     interesting_typeids = sorted(set(required) if required else set(counts))
     definitions = load_item_definitions_for(interesting_typeids)
     item_details: Dict[str, Dict[str, Any]] = {}
@@ -1851,9 +2012,21 @@ def audit_saved_player_items(
         }
 
     missing_required_items = [item for item in required if counts.get(item, 0) < 1]
-    if required and not missing_required_items:
+    missing_required_weapon = (
+        [required_weapon]
+        if required_weapon and observed_weapon != required_weapon
+        else []
+    )
+    missing_required_weapon_ammo = (
+        [f"{required_weapon_ammo_type or 'nested_ammo'}>={required_weapon_ammo_min}"]
+        if required_weapon_ammo_min and observed_weapon_ammo_remaining < required_weapon_ammo_min
+        else []
+    )
+    required_count = len(required) + (1 if required_weapon else 0) + (1 if required_weapon_ammo_min else 0)
+    missing_count = len(missing_required_items) + len(missing_required_weapon) + len(missing_required_weapon_ammo)
+    if required_count and not missing_count:
         status = "required_state_present"
-    elif required:
+    elif required_count:
         status = "required_state_missing"
     else:
         status = "scanned"
@@ -1863,12 +2036,19 @@ def audit_saved_player_items(
         "world_dir": str(world_dir),
         "player_save": selected_player_save,
         "required_items": required,
+        "required_weapon": required_weapon,
+        "required_weapon_ammo_type": required_weapon_ammo_type,
+        "required_weapon_ammo_min": required_weapon_ammo_min,
+        "observed_weapon": observed_weapon,
+        "observed_weapon_ammo_remaining": observed_weapon_ammo_remaining,
         "observed_items": sorted(counts),
         "inventory_counts": dict(sorted(counts.items())),
         "live_accessible_counts": dict(sorted(counts.items())),
         "legacy_top_level_inv_counts": dict(sorted(legacy_counts.items())),
         "item_details": item_details,
         "missing_required_items": missing_required_items,
+        "missing_required_weapon": missing_required_weapon,
+        "missing_required_weapon_ammo": missing_required_weapon_ammo,
         "status": status,
     }
 
@@ -3982,6 +4162,10 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_fields")
         if metadata.get("missing_required_items"):
             issues.append("missing_required_items")
+        if metadata.get("missing_required_weapon"):
+            issues.append("missing_required_weapon")
+        if metadata.get("missing_required_weapon_ammo"):
+            issues.append("missing_required_weapon_ammo")
         if metadata.get("missing_required_furniture"):
             issues.append("missing_required_furniture")
         if metadata.get("missing_required_traps"):
@@ -3998,6 +4182,8 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_npc_count_delta")
         if metadata.get("missing_required_weather"):
             issues.append("missing_required_weather")
+        if metadata.get("missing_required_points_ms"):
+            issues.append("missing_required_points_ms")
         if metadata.get("missing_required_min_delta_turns"):
             issues.append("missing_required_min_delta_turns")
         missing_fields = metadata.get("missing_required_fields")
@@ -4094,6 +4280,8 @@ def auto_step_action_description(report: Dict[str, Any]) -> str:
         return f"sleep wall-clock {report.get('seconds', '')} second(s)"
     if kind == "audit_log_contains":
         return "scan harness debug log delta for required UI trace patterns"
+    if kind == "audit_player_message_log_contains":
+        return "scan saved player message log for narrow decisive in-game message lines"
     if kind.startswith("debug_"):
         return f"debug helper primitive {kind}"
     return kind or "scenario step"
@@ -4213,6 +4401,13 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 "missing_required_new_npcs": metadata_summary.get("missing_required_new_npcs", []),
                 "missing_required_npc_count_delta": metadata_summary.get("missing_required_npc_count_delta", False),
                 "missing_required_weather": metadata_summary.get("missing_required_weather", []),
+                "required_weapon": metadata_summary.get("required_weapon", ""),
+                "observed_weapon": metadata_summary.get("observed_weapon", ""),
+                "required_weapon_ammo_type": metadata_summary.get("required_weapon_ammo_type", ""),
+                "required_weapon_ammo_min": metadata_summary.get("required_weapon_ammo_min", 0),
+                "observed_weapon_ammo_remaining": metadata_summary.get("observed_weapon_ammo_remaining", 0),
+                "missing_required_weapon": metadata_summary.get("missing_required_weapon", []),
+                "missing_required_weapon_ammo": metadata_summary.get("missing_required_weapon_ammo", []),
                 "required_weather_id": metadata_summary.get("required_weather_id", ""),
                 "required_temperature_f": metadata_summary.get("required_temperature_f"),
                 "required_bandit_fields": metadata_summary.get("required_fields", {}),
@@ -4580,11 +4775,13 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                         )
                     item["contents"] = contents
                 items.append(item)
+            replace_existing_weapon = bool(raw.get("replace_existing_weapon", False))
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
                 "storage": storage,
                 "items": items,
+                "replace_existing_weapon": replace_existing_weapon,
             })
             continue
 
@@ -4688,6 +4885,83 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "kind": kind,
                 "player_save": player_save,
                 "fields": fields,
+            })
+            continue
+
+        if kind == "map_items_near_player":
+            items_raw = raw.get("items", [])
+            if not isinstance(items_raw, list) or not items_raw:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs non-empty items list in {manifest_path}"
+                )
+            items: List[Dict[str, Any]] = []
+            for item_index, item_raw in enumerate(items_raw, start=1):
+                if not isinstance(item_raw, dict):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] must be an object in {manifest_path}"
+                    )
+                typeid = str(item_raw.get("typeid", "")).strip()
+                if not typeid:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] needs typeid in {manifest_path}"
+                    )
+                offset_raw = item_raw.get("offset_ms", [0, 0, 0])
+                if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] needs offset_ms=[x,y,z] in {manifest_path}"
+                    )
+                try:
+                    offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+                    count = int(item_raw.get("count", 1) or 1)
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] has non-integer offset/count in {manifest_path}"
+                    )
+                if count <= 0:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].items[{item_index}] count must be > 0 in {manifest_path}"
+                    )
+                item = {"typeid": typeid, "offset_ms": offset_ms, "count": count}
+                if "charges" in item_raw:
+                    item["charges"] = int(item_raw.get("charges"))
+                if "contents" in item_raw:
+                    contents = item_raw.get("contents")
+                    if not isinstance(contents, dict):
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] contents must be object in {manifest_path}"
+                        )
+                    item["contents"] = contents
+                items.append(item)
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "items": items,
+            })
+            continue
+
+        if kind == "source_firewood_zone_near_player":
+            def normalize_zone_offset(key: str, default: List[int]) -> List[int]:
+                value = raw.get(key, default)
+                if not isinstance(value, list) or len(value) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] {key} needs [x,y,z] in {manifest_path}"
+                    )
+                try:
+                    return [int(value[0]), int(value[1]), int(value[2])]
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] {key} values must be integers in {manifest_path}"
+                    )
+
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "name": str(raw.get("name", "OpenClaw fuel source") or "OpenClaw fuel source").strip(),
+                "zone_type": str(raw.get("zone_type", "SOURCE_FIREWOOD") or "SOURCE_FIREWOOD").strip(),
+                "faction": str(raw.get("faction", "your_followers") or "your_followers").strip(),
+                "start_offset_ms": normalize_zone_offset("start_offset_ms", [1, -1, 0]),
+                "end_offset_ms": normalize_zone_offset("end_offset_ms", [3, 1, 0]),
+                "write_temp": bool(raw.get("write_temp", True)),
             })
             continue
 
@@ -4819,7 +5093,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
             "supported kinds: player_mutations, player_items, player_near_overmap_special, "
-            "seed_overmap_special_near_player, map_fields_near_player, game_turn, "
+            "seed_overmap_special_near_player, map_fields_near_player, map_items_near_player, "
+            "source_firewood_zone_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_site_roster_shape"
         )
     return transforms
@@ -4936,6 +5211,8 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
         raise SystemExit(f"Player inventory is not a list in {extracted_save}")
 
     storage = str(transform.get("storage", "legacy_top_level_inv")).strip().lower()
+    replace_existing_weapon = bool(transform.get("replace_existing_weapon", False))
+    replaced_weapon_typeid = ""
     target_container: Optional[List[Any]] = None
     target_path = "player.inv"
     if storage == "legacy_top_level_inv":
@@ -4943,10 +5220,12 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
     elif storage == "live_accessible_wielded":
         existing_weapon = player.get("weapon")
         if isinstance(existing_weapon, dict) and str(existing_weapon.get("typeid", "")).strip():
-            raise SystemExit(
-                "Fixture player-items transform requested live_accessible_wielded, "
-                f"but player already has weapon {existing_weapon.get('typeid')!r} in {extracted_save}"
-            )
+            if not replace_existing_weapon:
+                raise SystemExit(
+                    "Fixture player-items transform requested live_accessible_wielded, "
+                    f"but player already has weapon {existing_weapon.get('typeid')!r} in {extracted_save}"
+                )
+            replaced_weapon_typeid = str(existing_weapon.get("typeid", ""))
         requested_count = sum(int(item.get("count", 1) or 1) for item in transform.get("items", []))
         if requested_count != 1:
             raise SystemExit(
@@ -5035,6 +5314,8 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
         "target_path": target_path,
         "added_items": added_items,
         "inserted_paths": inserted_paths,
+        "replace_existing_weapon": replace_existing_weapon,
+        "replaced_weapon_typeid": replaced_weapon_typeid,
     }
 
 
@@ -5643,6 +5924,305 @@ def apply_map_fields_near_player_transform(world_dir: Path, transform: Dict[str,
     }
 
 
+def saved_item_payload(typeid: str, *, bday: int = 0, charges: Optional[int] = None, contents: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "typeid": typeid,
+        "bday": int(bday),
+        "last_temp_check": 0,
+        "template_traits": [],
+    }
+    if charges is not None:
+        payload["charges"] = int(charges)
+    if isinstance(contents, dict):
+        payload["contents"] = contents
+    return payload
+
+
+def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    maps_dir = world_dir / "maps"
+    if not maps_dir.exists():
+        raise SystemExit(f"Fixture map-item transform maps dir not found: {maps_dir}")
+
+    placed_items: List[Dict[str, Any]] = []
+    extracted_packs: List[str] = []
+    modified_map_paths: Dict[str, Path] = {}
+    for item in transform.get("items", []):
+        typeid = str(item.get("typeid", "")).strip()
+        offset_ms_raw = item.get("offset_ms", [0, 0, 0])
+        offset_ms = [int(offset_ms_raw[0]), int(offset_ms_raw[1]), int(offset_ms_raw[2])]
+        count = int(item.get("count", 1) or 1)
+        if count <= 0:
+            raise SystemExit(f"Fixture map-item transform count must be positive: {item}")
+        charges = item.get("charges")
+        contents = item.get("contents") if isinstance(item.get("contents"), dict) else None
+
+        target_location = [
+            int(player_location[0]) + offset_ms[0],
+            int(player_location[1]) + offset_ms[1],
+            int(player_location[2]) + offset_ms[2],
+        ]
+        target_abs_sm = (target_location[0] // 12, target_location[1] // 12, target_location[2])
+        target_abs_omt = (target_location[0] // 24, target_location[1] // 24, target_location[2])
+        local_ms = (
+            target_location[0] - target_abs_sm[0] * 12,
+            target_location[1] - target_abs_sm[1] * 12,
+            target_location[2],
+        )
+        pack_stem = f"{target_abs_omt[0] // 32}.{target_abs_omt[1] // 32}.{target_abs_omt[2]}"
+        pack_dir = maps_dir / pack_stem
+        pack_zzip = maps_dir / f"{pack_stem}.zzip"
+        if not pack_dir.exists():
+            if not pack_zzip.exists():
+                raise SystemExit(f"Fixture map-item transform target map pack not found: {pack_zzip}")
+            run_zzip(pack_zzip)
+            extracted_packs.append(pack_stem)
+        if not pack_dir.exists() or not pack_dir.is_dir():
+            raise SystemExit(f"Fixture map-item transform did not extract map pack: {pack_dir}")
+
+        map_path = pack_dir / f"{target_abs_omt[0]}.{target_abs_omt[1]}.{target_abs_omt[2]}.map"
+        if not map_path.exists():
+            raise SystemExit(f"Fixture map-item transform target map file not found: {map_path}")
+        map_payload = json.loads(map_path.read_text(encoding="utf-8"))
+        if not isinstance(map_payload, list):
+            raise SystemExit(f"Fixture map-item transform map payload is not a list: {map_path}")
+        target_submap: Optional[Dict[str, Any]] = None
+        target_coords = [target_abs_sm[0], target_abs_sm[1], target_abs_sm[2]]
+        for submap in map_payload:
+            if isinstance(submap, dict) and submap.get("coordinates") == target_coords:
+                target_submap = submap
+                break
+        if target_submap is None:
+            raise SystemExit(f"Fixture map-item transform submap {target_coords} not found in {map_path}")
+        items = target_submap.setdefault("items", [])
+        if not isinstance(items, list):
+            raise SystemExit(f"Fixture map-item transform items is not a list in {map_path}")
+        item_payloads = [
+            saved_item_payload(
+                typeid,
+                bday=0,
+                charges=int(charges) if charges is not None else None,
+                contents=contents,
+            )
+            for _ in range(count)
+        ]
+        items.extend([local_ms[0], local_ms[1], item_payloads])
+        map_path.write_text(json.dumps(map_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        modified_map_paths[str(map_path)] = map_path
+
+        placed_items.append({
+            "typeid": typeid,
+            "count": count,
+            "charges": int(charges) if charges is not None else None,
+            "offset_ms": offset_ms,
+            "target_location_ms": target_location,
+            "target_abs_omt": list(target_abs_omt),
+            "target_abs_sm": list(target_abs_sm),
+            "local_ms": [local_ms[0], local_ms[1], local_ms[2]],
+            "map_pack": pack_stem,
+            "map_file": map_path.name,
+        })
+
+    recompressed_maps: List[str] = []
+    for map_path in sorted(modified_map_paths.values(), key=lambda path: str(path)):
+        run_zzip(map_path)
+        recompressed_maps.append(str(map_path.relative_to(world_dir)))
+
+    removed_extracted_dirs: List[str] = []
+    for pack_stem in sorted(set(extracted_packs)):
+        pack_dir = maps_dir / pack_stem
+        if pack_dir.exists():
+            shutil.rmtree(pack_dir)
+            removed_extracted_dirs.append(str(pack_dir.relative_to(world_dir)))
+
+    return {
+        "kind": "map_items_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_location": player_location,
+        "placed_items": placed_items,
+        "extracted_map_packs": sorted(set(extracted_packs)),
+        "recompressed_maps": recompressed_maps,
+        "removed_extracted_map_dirs": removed_extracted_dirs,
+        "plain_map_dirs_left_for_game_load": False,
+    }
+
+
+def player_zone_file_stem(player_save_name: str) -> str:
+    if player_save_name.endswith(".sav.zzip"):
+        return player_save_name[:-len(".sav.zzip")]
+    if player_save_name.endswith(".sav"):
+        return player_save_name[:-len(".sav")]
+    return Path(player_save_name).stem
+
+
+def zone_contains_abs_point(zone: Dict[str, Any], point: Sequence[int]) -> bool:
+    start = zone.get("start", [])
+    end = zone.get("end", [])
+    if not isinstance(start, list) or not isinstance(end, list) or len(start) < 3 or len(end) < 3:
+        return False
+    try:
+        mins = [min(int(start[i]), int(end[i])) for i in range(3)]
+        maxs = [max(int(start[i]), int(end[i])) for i in range(3)]
+        target = [int(point[i]) for i in range(3)]
+    except (TypeError, ValueError, IndexError):
+        return False
+    return all(mins[i] <= target[i] <= maxs[i] for i in range(3))
+
+
+def apply_source_firewood_zone_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    start_offset = [int(value) for value in transform.get("start_offset_ms", [1, -1, 0])]
+    end_offset = [int(value) for value in transform.get("end_offset_ms", [3, 1, 0])]
+    start = [int(player_location[i]) + start_offset[i] for i in range(3)]
+    end = [int(player_location[i]) + end_offset[i] for i in range(3)]
+    zone = {
+        "name": str(transform.get("name", "OpenClaw fuel source") or "OpenClaw fuel source"),
+        "type": str(transform.get("zone_type", "SOURCE_FIREWOOD") or "SOURCE_FIREWOOD"),
+        "faction": str(transform.get("faction", "your_followers") or "your_followers"),
+        "invert": False,
+        "enabled": True,
+        "temporarily_disabled": False,
+        "is_vehicle": False,
+        "is_personal": False,
+        "cached_shift": [0, 0, 0],
+        "start": [min(start[i], end[i]) for i in range(3)],
+        "end": [max(start[i], end[i]) for i in range(3)],
+        "is_displayed": False,
+    }
+
+    stem = player_zone_file_stem(player_save_name)
+    zone_paths = [world_dir / f"{stem}.zones.json"]
+    if bool(transform.get("write_temp", True)):
+        zone_paths.append(world_dir / f"{stem}.zoneszmgr-temp.json")
+
+    updated_paths: List[str] = []
+    for zone_path in zone_paths:
+        existing: List[Any] = []
+        if zone_path.exists():
+            loaded = json.loads(zone_path.read_text(encoding="utf-8"))
+            if not isinstance(loaded, list):
+                raise SystemExit(f"Fixture source-firewood zone transform expected zone list: {zone_path}")
+            existing = loaded
+        existing = [
+            entry for entry in existing
+            if not (
+                isinstance(entry, dict)
+                and entry.get("name") == zone["name"]
+                and entry.get("type") == zone["type"]
+            )
+        ]
+        existing.append(dict(zone))
+        zone_path.write_text(json.dumps(existing, indent=2, ensure_ascii=False), encoding="utf-8")
+        updated_paths.append(str(zone_path.relative_to(world_dir)))
+
+    return {
+        "kind": "source_firewood_zone_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_location": player_location,
+        "zone": zone,
+        "updated_zone_files": updated_paths,
+    }
+
+
+def audit_saved_zones_near_player(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    required_zone_type: str = "",
+    required_name_contains: str = "",
+    required_faction: str = "",
+    required_offsets: Optional[List[Tuple[int, int, int]]] = None,
+) -> Dict[str, Any]:
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    selected_player_save = player_save.strip()
+    if not selected_player_save:
+        saves = sorted(path.name for path in world_dir.glob("*.sav.zzip"))
+        if len(saves) != 1:
+            raise RuntimeError(f"Expected one *.sav.zzip in {world_dir}, found {saves}")
+        selected_player_save = saves[0]
+
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, selected_player_save)
+    stem = player_zone_file_stem(selected_player_save)
+    candidate_paths = [
+        world_dir / f"{stem}.zones.json",
+        world_dir / f"{stem}.zoneszmgr-temp.json",
+        world_dir / "zones.json",
+        world_dir / "zoneszmgr-temp.json",
+    ]
+    zone_files: List[Dict[str, Any]] = []
+    matching_zones: List[Dict[str, Any]] = []
+    required_points = []
+    for offset in required_offsets or []:
+        required_points.append([
+            int(player_location[0]) + int(offset[0]),
+            int(player_location[1]) + int(offset[1]),
+            int(player_location[2]) + int(offset[2]),
+        ])
+
+    for zone_path in candidate_paths:
+        if not zone_path.exists():
+            continue
+        loaded = json.loads(zone_path.read_text(encoding="utf-8"))
+        if not isinstance(loaded, list):
+            continue
+        file_matches: List[Dict[str, Any]] = []
+        for index, zone in enumerate(loaded):
+            if not isinstance(zone, dict):
+                continue
+            if required_zone_type and str(zone.get("type", "")) != required_zone_type:
+                continue
+            if required_faction and str(zone.get("faction", "")) != required_faction:
+                continue
+            if required_name_contains and required_name_contains not in str(zone.get("name", "")):
+                continue
+            contained_points = [point for point in required_points if zone_contains_abs_point(zone, point)]
+            zone_summary = {
+                "file": str(zone_path.relative_to(world_dir)),
+                "index": index,
+                "name": zone.get("name", ""),
+                "type": zone.get("type", ""),
+                "faction": zone.get("faction", ""),
+                "start": zone.get("start"),
+                "end": zone.get("end"),
+                "contained_required_points": contained_points,
+            }
+            if not required_points or contained_points:
+                file_matches.append(zone_summary)
+                matching_zones.append(zone_summary)
+        zone_files.append({
+            "file": str(zone_path.relative_to(world_dir)),
+            "zone_count": len(loaded),
+            "matching_count": len(file_matches),
+        })
+
+    missing_points = [
+        point for point in required_points
+        if not any(point in zone.get("contained_required_points", []) for zone in matching_zones)
+    ]
+    required_present = bool(matching_zones) and not missing_points
+    status = "required_state_present" if required_present else "required_state_missing"
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "player_location_ms": player_location,
+        "required_zone_type": required_zone_type,
+        "required_name_contains": required_name_contains,
+        "required_faction": required_faction,
+        "required_offsets": [list(offset) for offset in required_offsets or []],
+        "required_points_ms": required_points,
+        "missing_required_points_ms": missing_points,
+        "zone_files": zone_files,
+        "matching_zones": matching_zones,
+        "status": status,
+    }
+
+
 def apply_game_turn_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     player_save = world_dir / player_save_name
@@ -6115,6 +6695,12 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
         if kind == "map_fields_near_player":
             reports.append(apply_map_fields_near_player_transform(world_dir, transform))
             continue
+        if kind == "map_items_near_player":
+            reports.append(apply_map_items_near_player_transform(world_dir, transform))
+            continue
+        if kind == "source_firewood_zone_near_player":
+            reports.append(apply_source_firewood_zone_near_player_transform(world_dir, transform))
+            continue
         if kind == "game_turn":
             reports.append(apply_game_turn_transform(world_dir, transform))
             continue
@@ -6250,11 +6836,13 @@ def execute_probe_steps(
         kind = str(step.get("kind", "")).strip().lower()
         label = str(step.get("label", f"step_{index:02d}")).strip() or f"step_{index:02d}"
         settle_seconds = float(step.get("settle_seconds", 0.0) or 0.0)
+        artifact_log_start_size = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_baseline
         report: Dict[str, Any] = {
             "index": index,
             "kind": kind,
             "label": label,
             "settle_seconds": settle_seconds,
+            "artifact_log_start_size": artifact_log_start_size,
         }
         expected_visible_fact = str(step.get("expected_visible_fact", "")).strip()
         if expected_visible_fact:
@@ -6320,6 +6908,7 @@ def execute_probe_steps(
                 artifact_patterns=artifact_patterns,
             ))
             if report.get("status") == "aborted_by_wait_interruption":
+                report["artifact_log_end_size"] = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_log_start_size
                 reports.append(report)
                 return reports
         elif kind == "wait":
@@ -6338,16 +6927,31 @@ def execute_probe_steps(
             any_line_groups = [normalize_screen_text_patterns(group) for group in raw_any_line_groups]
             if not patterns and not line_groups and not any_line_groups:
                 raise SystemExit(f"Scenario step '{label}' needs required_patterns/patterns/required_line_patterns/required_any_line_patterns")
+            audit_baseline = artifact_baseline
+            since_label = str(step.get("since_label", step.get("since_step", "")) or "").strip()
+            if since_label:
+                for previous_report in reversed(reports):
+                    if str(previous_report.get("label", "")) == since_label:
+                        try:
+                            audit_baseline = int(previous_report.get("artifact_log_start_size", artifact_baseline))
+                        except (TypeError, ValueError):
+                            audit_baseline = artifact_baseline
+                        break
+                else:
+                    raise SystemExit(f"Scenario step '{label}' since_label not found: {since_label}")
             metadata = audit_log_contains(
                 run_dir,
                 label,
                 artifact_log=artifact_log,
-                artifact_baseline=artifact_baseline,
+                artifact_baseline=audit_baseline,
                 patterns=patterns,
                 required_line_patterns=line_groups,
                 required_any_line_patterns=any_line_groups,
                 filter_debug_noise=filter_debug_noise,
             )
+            if since_label:
+                metadata["since_label"] = since_label
+                metadata["since_label_start_size"] = audit_baseline
             metadata["artifact_path"] = str(run_dir / f"{label}.metadata.json")
             write_json(run_dir / f"{label}.metadata.json", metadata)
             report["metadata"] = metadata
@@ -6357,6 +6961,65 @@ def execute_probe_steps(
                     "status": "aborted_by_metadata_guard",
                     "verdict": str(step.get("abort_verdict", "red_step_required_log_pattern_missing")),
                     "reason": str(step.get("abort_reason", "required log pattern was missing")),
+                    "missing_required_items": metadata.get("missing_required_items", []),
+                }
+                reports.append(report)
+                return reports
+        elif kind == "audit_player_message_log_contains":
+            patterns = normalize_screen_text_patterns(
+                step.get("required_patterns", step.get("patterns", step.get("required_items", [])))
+            )
+            raw_line_groups = step.get("required_line_patterns", []) or []
+            line_groups = [normalize_screen_text_patterns(group) for group in raw_line_groups]
+            raw_any_line_groups = step.get("required_any_line_patterns", []) or []
+            any_line_groups = [normalize_screen_text_patterns(group) for group in raw_any_line_groups]
+            player_save = str(step.get("player_save", "") or "").strip()
+            since_label = str(step.get("since_label", step.get("since_step", "")) or "").strip()
+            changed_since = None
+            if since_label:
+                for previous_report in reversed(reports):
+                    if str(previous_report.get("label", "")) == since_label:
+                        previous_metadata = previous_report.get("metadata")
+                        if isinstance(previous_metadata, dict):
+                            changed_since = dict(previous_metadata)
+                            changed_since.setdefault("label", since_label)
+                        break
+                if changed_since is None:
+                    raise SystemExit(f"Scenario step '{label}' since_label not found or had no metadata: {since_label}")
+            elif not patterns and not line_groups and not any_line_groups:
+                changed_since = {}
+            if not patterns and not line_groups and not any_line_groups and since_label:
+                raise SystemExit(f"Scenario step '{label}' with since_label needs required_patterns/patterns/required_line_patterns/required_any_line_patterns")
+            world_dir = save_dir_for_profile(profile) / world
+            metadata = audit_player_message_log_contains(
+                world_dir,
+                run_dir,
+                label,
+                player_save=player_save,
+                changed_since=changed_since,
+                patterns=patterns,
+                required_line_patterns=line_groups,
+                required_any_line_patterns=any_line_groups,
+            )
+            metadata_json = run_dir / f"{label}.metadata.json"
+            metadata["metadata_path"] = str(metadata_json)
+            if not metadata.get("artifact_path"):
+                metadata["artifact_path"] = str(metadata_json)
+            write_json(metadata_json, metadata)
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "metadata": metadata,
+                "action_description": "scan saved player message log for narrow decisive in-game message lines",
+                "expected_immediate_state": "player message log contains the required action-path line(s), captured narrowly without dumping broad logs",
+                "failure_rule": "missing decisive player-message line leaves the normal action bridge unproven",
+            })
+            if metadata.get("status") == "required_state_missing" and bool(step.get("abort_on_metadata_failure", False)):
+                report["abort"] = {
+                    "guard": "metadata",
+                    "status": "aborted_by_metadata_guard",
+                    "verdict": str(step.get("abort_verdict", "red_step_required_player_message_missing")),
+                    "reason": str(step.get("abort_reason", "required player message line was missing")),
                     "missing_required_items": metadata.get("missing_required_items", []),
                 }
                 reports.append(report)
@@ -7116,6 +7779,9 @@ def execute_probe_steps(
         elif kind == "audit_saved_player_items":
             player_save = str(step.get("player_save", "") or "").strip()
             required_items = [str(item).strip() for item in step.get("required_items", step.get("required_item_ids", [])) if str(item).strip()]
+            required_weapon = str(step.get("required_weapon", step.get("required_weapon_typeid", "")) or "").strip()
+            required_weapon_ammo_type = str(step.get("required_weapon_ammo_type", "") or "").strip()
+            required_weapon_ammo_min = int(step.get("required_weapon_ammo_min", 0) or 0)
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
             try:
@@ -7123,6 +7789,9 @@ def execute_probe_steps(
                     world_dir,
                     player_save=player_save,
                     required_items=required_items,
+                    required_weapon=required_weapon,
+                    required_weapon_ammo_type=required_weapon_ammo_type,
+                    required_weapon_ammo_min=required_weapon_ammo_min,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -7131,6 +7800,9 @@ def execute_probe_steps(
                     "world": world,
                     "world_dir": str(world_dir),
                     "required_items": required_items,
+                    "required_weapon": required_weapon,
+                    "required_weapon_ammo_type": required_weapon_ammo_type,
+                    "required_weapon_ammo_min": required_weapon_ammo_min,
                 }
             metadata["artifact_path"] = str(metadata_artifact)
             metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -7138,9 +7810,9 @@ def execute_probe_steps(
                 "world_dir": str(world_dir),
                 "player_save": player_save,
                 "metadata": metadata,
-                "action_description": "read saved player inventory and require exact item type metadata",
-                "expected_immediate_state": "saved player inventory contains the required item metadata before feature proof may continue",
-                "failure_rule": "missing required saved-player item metadata or unreadable save metadata makes this step red/blocked",
+                "action_description": "read saved player inventory/wield state and require exact item type metadata",
+                "expected_immediate_state": "saved player inventory/wield state contains the required metadata before feature proof may continue",
+                "failure_rule": "missing required saved-player item/wield metadata or unreadable save metadata makes this step red/blocked",
             })
             if bool(step.get("abort_on_metadata_failure", False)):
                 metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
@@ -7376,6 +8048,72 @@ def execute_probe_steps(
                     }
                     reports.append(report)
                     return reports
+        elif kind == "audit_saved_zones_near_player":
+            raw_offsets = step.get("offsets", step.get("offset", []))
+            offsets: Optional[List[Tuple[int, int, int]]]
+            if isinstance(raw_offsets, list) and raw_offsets and all(isinstance(entry, list) for entry in raw_offsets):
+                offsets = [
+                    (int(entry[0]), int(entry[1]), int(entry[2]))
+                    for entry in raw_offsets
+                    if isinstance(entry, list) and len(entry) >= 3
+                ]
+            elif isinstance(raw_offsets, list):
+                offsets = parse_map_tile_offsets(raw_offsets) if raw_offsets else None
+            else:
+                raise SystemExit(f"Scenario step '{label}' offsets must be a list")
+            player_save = str(step.get("player_save", "") or "").strip()
+            required_zone_type = str(step.get("required_zone_type", step.get("zone_type", "")) or "").strip()
+            required_name_contains = str(step.get("required_name_contains", step.get("zone_name_contains", "")) or "").strip()
+            required_faction = str(step.get("required_faction", "") or "").strip()
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_zones_near_player(
+                    world_dir,
+                    player_save=player_save,
+                    required_zone_type=required_zone_type,
+                    required_name_contains=required_name_contains,
+                    required_faction=required_faction,
+                    required_offsets=offsets,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_zone_type": required_zone_type,
+                    "required_name_contains": required_name_contains,
+                    "required_faction": required_faction,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "offsets": [list(offset) for offset in offsets] if offsets is not None else [],
+                "metadata": metadata,
+                "action_description": "read saved zone metadata near player and require exact zone type/faction/coverage",
+                "expected_immediate_state": "saved zone metadata contains the required zone covering the target offset(s) before feature proof may continue",
+                "failure_rule": "missing required saved-zone metadata or unreadable zone files makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": metadata_verdict,
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved-zone metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
         elif kind == "capture":
             capture_crop = normalize_capture_crop(
                 step.get("capture_crop", step.get("crop"))
@@ -7452,6 +8190,7 @@ def execute_probe_steps(
                 if apply_screen_text_abort_guard(report, step, screen_text_report):
                     reports.append(report)
                     return reports
+        report["artifact_log_end_size"] = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_log_start_size
         reports.append(report)
     return reports
 
@@ -8794,6 +9533,28 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         matches_by_pattern.append({"pattern": pattern, "lines": lines})
         all_matched_lines.extend(lines)
 
+    step_artifact_matches: List[Dict[str, Any]] = []
+    for step_report in step_reports:
+        if str(step_report.get("kind", "")).strip().lower() not in {"audit_log_contains", "audit_player_message_log_contains"}:
+            continue
+        metadata = step_report.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        for entry in metadata.get("matches_by_pattern", []):
+            if isinstance(entry, dict) and entry.get("lines"):
+                step_artifact_matches.append({
+                    "pattern": f"{step_report.get('label', '')}: {entry.get('pattern', '')}",
+                    "lines": entry.get("lines", []),
+                    "source": str(metadata.get("source_log", "")),
+                    "artifact_path": str(metadata.get("artifact_path", "")),
+                    "capture_policy": str(metadata.get("capture_policy", "")),
+                })
+    effective_artifact_patterns = list(artifact_patterns)
+    effective_matches_by_pattern = list(matches_by_pattern)
+    if not effective_artifact_patterns and step_artifact_matches:
+        effective_artifact_patterns = [str(entry.get("pattern", "")) for entry in step_artifact_matches]
+        effective_matches_by_pattern = step_artifact_matches
+
     companion_helpers: List[Dict[str, Any]] = []
     abort_report: Optional[Dict[str, Any]] = None
     for step_report in step_reports:
@@ -8804,6 +9565,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             helper = step_report.get(helper_key)
             if isinstance(helper, dict):
                 companion_helpers.append(helper)
+    if not all_matched_lines and effective_matches_by_pattern is step_artifact_matches:
+        all_matched_lines = [line for entry in effective_matches_by_pattern for line in entry.get("lines", [])]
     patrol_summary = summarize_patrol_artifacts(str(scenario.get("name", args.scenario)), all_matched_lines)
     if patrol_summary is not None:
         companion_helpers.append(write_patrol_summary(run_dir, patrol_summary))
@@ -8844,8 +9607,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         verdict=verdict,
         startup_classification=startup_classification,
         step_reports=step_reports,
-        artifact_patterns=artifact_patterns,
-        matches_by_pattern=matches_by_pattern,
+        artifact_patterns=effective_artifact_patterns,
+        matches_by_pattern=effective_matches_by_pattern,
         wait_step_summary=wait_step_summary,
         abort_report=abort_report,
         step_ledger_summary=step_ledger_summary,
@@ -8890,8 +9653,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "status": "captured" if artifact_text else "no_new_artifacts",
             "path": str(artifact_path) if artifact_text else "",
             "source_log": str(artifact_log),
-            "match_patterns": artifact_patterns,
-            "matches_by_pattern": matches_by_pattern,
+            "match_patterns": effective_artifact_patterns,
+            "matches_by_pattern": effective_matches_by_pattern,
+            "step_artifact_matches": step_artifact_matches,
             "matched_lines": all_matched_lines,
             "line_count": len(artifact_text.splitlines()) if artifact_text else 0,
         },
