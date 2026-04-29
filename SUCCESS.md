@@ -140,7 +140,7 @@ Success state:
 - [ ] Player-lit fire/bandit signal verification, if reached, proves real player-action ignition, actual `fd_fire`/smoke/light state, bounded wait/time passage, and bandit signal response with matching artifacts under `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`; otherwise it stays blocked behind the fuel gate.
 - [ ] Roof-fire horde detection proof, if reached after real player-lit fire is green, proves the debug-staged horde/distance setup, player roof/elevated position, real player-created roof fire/light/smoke, bounded wait/time passage, and horde before/after detection or response metadata; otherwise it stays blocked behind the real-fire gate.
 - [x] Bandit empty-camp retirement proof implements the conjunctive predicate: a camp/site retires from active AI calculations only when no home/inside live members or spawn-tile home headcount remain **and** no active dispatch/outbound/local-contact pressure remains. Deterministic coverage proves home-only, active-dispatch-only, unresolved returning-home/contact negative cases, plus the fully empty positive case and `retired_empty_site` report/dispatch/signal guards. Canonical contract: `doc/bandit-empty-camp-retirement-audit-mode-packet-v0-2026-04-28.md`.
-- [ ] Andi reports evidence class boundaries intact: live product proof vs deterministic support vs startup/load vs unproven.
+- [x] Andi reports evidence class boundaries intact: fuel remains red/non-green at the Multidrop visibility/writeback gate; Smart Zone remains implemented-but-unproven/Josef-package; performance rows are live-path performance-load evidence; the pre-staged three/four-site rows are not natural multi-site player-pressure proof; startup/load, deterministic support, live product proof, and unproven seams stay separately labeled.
 
 Compact reference:
 - Canonical contract lives at `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
@@ -210,15 +210,15 @@ Notes:
 
 ## C-AOL live AI performance audit packet v0
 
-Status: ACTIVE / MATRIX IN PROGRESS - ONE, TWO, AND PRE-STAGED THREE-SITE ROWS GREEN; FOUR-SITE ROW OPEN
+Status: COMPLETE / GREEN ENOUGH FOR CURRENT PLAYTEST SCALE
 
 Success state:
-- [ ] A live/harness performance matrix exists for baseline/one, two, three, and four active hostile overmap AI sites, or an explicit blocker explains which cases could not be staged honestly.
-- [ ] Each measured case names the profile/job mix, active site count, in-game elapsed window, wall-clock timing, and relevant counters/log fields.
-- [ ] The measured path reaches the real live game dispatch/local-gate/sight-avoid/signal work; evaluator-only, benchmark-only, or startup/load evidence is classified as support only.
-- [ ] A code performance audit names hot-loop/scaling risks in `src/do_turn.cpp`, `src/bandit_live_world.cpp`, save/serialization, signal matching, sight/exposure checks, and report/log emission.
-- [ ] Any optimization is tied to a measured bottleneck and has before/after evidence; if no optimization is needed, the packet says why the current envelope is green enough.
-- [ ] The final verdict is one of: green enough for current playtest scale, green with watchlist, blocked by missing fixture/instrumentation, or red with concrete hot spots.
+- [x] A live/harness performance matrix exists for one, two, pre-staged three, and pre-staged four active hostile overmap AI cases in `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md`; a true zero-site idle baseline is explicitly omitted by current scope, with the one-site row serving as the low-end live baseline unless Schani/Josef requests a separate idle comparison.
+- [x] Each measured case names the profile/job mix, active site count, in-game elapsed window, wall-clock timing, and relevant counters/log fields. Credited rows: `.userdata/dev-harness/harness_runs/20260429_025639/`, `.userdata/dev-harness/harness_runs/20260429_032427/`, `.userdata/dev-harness/harness_runs/20260429_040926/`, and `.userdata/dev-harness/harness_runs/20260429_041936/`.
+- [x] The measured path reaches the real live-game bounded-wait/`overmap_npc_move()` cadence and emits compact `bandit_live_world perf:` counters; evaluator-only, benchmark-only, fixture/setup, and startup/load evidence are classified as support only.
+- [x] The code performance audit names hot-loop/scaling risks in `src/do_turn.cpp`, `src/bandit_live_world.cpp`, save/serialization, signal matching, sight/exposure checks, and report/log emission in the matrix code-audit notes.
+- [x] No optimization is needed for the measured current envelope: the four-site row stayed compact (`total_us` min/median/max `540/560.0/5572`, sum `8360`, one dispatch-due row `dispatch_us=4654`, harness wall-clock `real 39.27s`), and natural three/four-site player-pressure remains a cap/watchlist behavior question rather than a measured performance bottleneck.
+- [x] The final verdict is **green enough for current playtest scale**, with the boundary that pre-staged three/four-site rows are performance-load evidence, not natural multi-site player-pressure dispatch proof.
 
 Notes:
 - Imagination source lives at `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`.
