@@ -119,22 +119,17 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active pending probe: `Fuel writeback repair via wood source zone packet v0` lighter/fire targeting retry after the visible deployed-brazier gate.
+Active pending probe: `Player-lit fire and bandit signal verification packet v0` bandit signal-response proof from the green real source-zone fire evidence.
 
-1. Preserve `.userdata/dev-harness/harness_runs/20260429_143149/` as the clean-fixture first-load evidence: fixture `fuel_source_zone_clean_normal_map_v0_2026-04-29`, normal-map entry green, setup footing green, no fire/lighter action keys.
-2. Preserve `.userdata/dev-harness/harness_runs/20260429_144805/` as the visible deployed-brazier/source-zone gate: normal map UI, Apply inventory, filtered `brazier`, `Deploy where?`, east/right placement, look/OCR `hrazıer` + `burn things`, saved `f_brazier` + `log`, saved `SOURCE_FIREWOOD`, no lighter/fire keys.
-3. Preserve `.userdata/dev-harness/harness_runs/20260429_142257/` as prior source-zone fuel action evidence only: setup footing green, normal-map entry green, apply-wielded `A` action boundary red at missing `Light where?`, but this run predated the visible deploy gate and must not be used as final firestarter/action proof.
-4. Do not rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`. Later fire proof may use only the visible deployed-brazier gate or a fresher equivalent that first proves normal map UI and visible/operational deployed-brazier state.
-5. If visible deployed brazier plus charged lighter still fails to open `Light where?`, stop and classify firestarter/action primitive bug; do not send direction/confirmation keys through an unproven prompt.
-6. If a clean fixture opens to raw JSON/item-info soup, stop and classify harness/game-code load bug for review; do not poke through it with keys.
-7. Preserve `.userdata/dev-harness/harness_runs/20260429_090634/` as blocked/not proof and `.userdata/dev-harness/harness_runs/20260429_093118/` / `.userdata/dev-harness/harness_runs/20260429_093509/` / `.userdata/dev-harness/harness_runs/20260429_095021/` / `.userdata/dev-harness/harness_runs/20260429_122807/` / `.userdata/dev-harness/harness_runs/20260429_122955/` as prior stale-screen/normal-map-gate blocker evidence and postmortem input only.
-8. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
-9. If Josef returns manual fuel/fire evidence, validate it against screenshot fact, player-message/OCR, same-run save mtime, and saved `fd_fire`/`fd_smoke` close conditions instead of rerunning the parked agent harness.
+1. Start from `.userdata/dev-harness/harness_runs/20260429_153253/` or a fresher equivalent as the green real-fire source: normal Apply inventory deployed `brazier`, normal Apply inventory selected charged `lighter`, exact `Light where?` UI trace opened before targeting, source-firewood prompt and recognizable ignition OCR were captured, save mtime advanced, and saved target tile contains `f_brazier` + `fd_fire`.
+2. Do not reopen the solved fuel prerequisite. Preserve `.userdata/dev-harness/harness_runs/20260429_143149/` as clean first-load footing, `.userdata/dev-harness/harness_runs/20260429_144805/` as visible deployed-brazier/source-zone gate, and `.userdata/dev-harness/harness_runs/20260429_142257/` plus older `_090634/`, `_093118/`, `_093509/`, `_095021/`, `_122807/`, and `_122955/` runs as postmortem/non-proof history only.
+3. Do not rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`; that proof surface remains retired/broken.
+4. The next green proof must add bounded wait/time passage plus claim-scoped bandit signal response/metadata from the real player-created fire. Saved `fd_fire` alone is not signal proof.
+5. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
 Still blocked/later in the actual playtest stack:
 
-- `Player-lit fire and bandit signal verification packet v0`: blocked behind normal player-lit fire proof/manual evidence.
-- `Roof-fire horde detection proof packet v0`: blocked behind real player-lit fire.
+- `Roof-fire horde detection proof packet v0`: still separate and downstream; it needs roof/elevated-position plus real player-created roof fire/light/smoke and horde response metadata.
 - Natural three/four-site player-pressure behavior and true zero-site idle baseline remain decision/watchlist items, not current requirements.
 
 Stale runs `.userdata/dev-harness/harness_runs/20260429_093118/`, `.userdata/dev-harness/harness_runs/20260429_093509/`, `.userdata/dev-harness/harness_runs/20260429_095021/`, `.userdata/dev-harness/harness_runs/20260429_122807/`, and `.userdata/dev-harness/harness_runs/20260429_122955/` are retained as postmortem evidence only, not fire proof surfaces.
