@@ -2,7 +2,7 @@
 
 ## Status
 
-JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN under `C-AOL actual playtest verification stack v0`.
+JOSEF-REOPENED STEP-SCREENSHOT ACTION AUDIT under `C-AOL actual playtest verification stack v0`.
 
 Imagination source: `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
 
@@ -39,6 +39,7 @@ Josef's repair direction is to bypass that brittle exact inventory/drop selector
 - [ ] Deployed brazier footing is proven or reused with saved east/nearby `f_brazier` evidence.
 - [x] Oversized firewood source is real in saved-world metadata: `.userdata/dev-harness/harness_runs/20260429_091438/` green `audit_saved_source_tile_for_logs` on east-tile `log` items.
 - [x] Broad source-firewood zone or equivalent real game fuel-source footing is proven by saved zone metadata: `.userdata/dev-harness/harness_runs/20260429_091438/` green `audit_saved_source_firewood_zone_for_logs` for `SOURCE_FIREWOOD` / `your_followers` over the log source.
+- [ ] Normal player fire-start/lighter action is audited with screenshots/OCR or exact metadata after every meaningful action boundary, and any wrong menu/prompt/target/activity mismatch is named instead of pressed through.
 - [ ] Normal player fire-start/lighter action reaches the brazier/fuel path without the old `blocked_untrusted_drop_filter_or_inventory_visibility` blocker, with any decisive in-game message/log line captured as narrow action-path bridge evidence.
 - [ ] Optional winter/warmth adjunct, if cheap and clean, records character-warmth log lines after bounded time passage as secondary evidence that the fire is still live; this must not become a blocker or replace saved-state proof.
 - [ ] Guarded post-ignition save/writeback proves actual `fd_fire` plus smoke/light-relevant state on the expected tile/area.
@@ -47,7 +48,7 @@ Josef's repair direction is to bypass that brittle exact inventory/drop selector
 ## Validation notes
 
 
-Current packaged evidence boundary (2026-04-29): the scenario/fixture now stages `fuel_writeback_source_zone_v0_2026-04-29`, preflight-wields a charged `lighter` with nested `butane`, and adds `audit_player_message_log_contains` immediately after targeting/turn advance so only decisive normal-lighting message lines are captured before save closure. The final changed agent probe `.userdata/dev-harness/harness_runs/20260429_091438/` is still non-green for feature proof: setup/preflight rows are green, but `audit_player_save_mtime_after_source_zone_ignition_save` is red because the saved-player mtime did not advance, the player message log stayed at baseline with no `You successfully light a fire.`-style line, and copied saved-map inspection found no `fd_fire`/`fd_smoke`. Treat this as implemented-but-unproven/Josef playtest package, not closure.
+Current reopened audit boundary (2026-04-29): the scenario/fixture stages `fuel_writeback_source_zone_v0_2026-04-29`, preflight-wields a charged `lighter` with nested `butane`, and adds `audit_player_message_log_contains` immediately after targeting/turn advance so only decisive normal-lighting message lines are captured before save closure. The final changed agent probe `.userdata/dev-harness/harness_runs/20260429_091438/` stayed non-green for feature proof: setup/preflight rows were green, but `audit_player_save_mtime_after_source_zone_ignition_save` was red because the saved-player mtime did not advance, the player message log stayed at baseline with no `You successfully light a fire.`-style line, and copied saved-map inspection found no `fd_fire`/`fd_smoke`. Josef suspects a wrong action somewhere in the macro, so the current retry is not another blind run: it must add screenshots/OCR or exact metadata after every meaningful action boundary and stop where the path diverges.
 
 Use the proof-freeze discipline from `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`: setup helpers are footing only. Feature proof needs clean startup, green step-local rows, claim-scoped artifacts, guarded save/writeback, and no yellow/blocked wait ledger for the claimed behavior. In-game message/debug log lines are useful bridge evidence for the player action path; extract only the decisive line(s) and pair them with saved-state proof instead of dumping broad logs.
 

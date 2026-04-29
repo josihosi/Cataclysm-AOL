@@ -8,9 +8,9 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Fuel writeback repair via wood source zone packet v0` under `C-AOL actual playtest verification stack v0` is now **JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN** after the bounded source-zone repair attempt budget.
+Active target: `Fuel writeback repair via wood source zone packet v0` under `C-AOL actual playtest verification stack v0` is **JOSEF-REOPENED STEP-SCREENSHOT ACTION AUDIT**.
 
-Current state: the harness now stages a real saved-world log source, `SOURCE_FIREWOOD` zone footing, preflight-wielded charged lighter with nested butane, and a narrow player-message-log bridge for decisive normal-lighting text immediately after targeting/turn advance and before save closure. Final changed probe `.userdata/dev-harness/harness_runs/20260429_091438/` proved the setup rows green but did not prove the feature: post-ignition save mtime did not advance after the save request/confirmation, no new player message log line such as `You successfully light a fire.` was captured, and saved copied map state still had no `fd_fire`/`fd_smoke`. Startup/load remains green; feature proof remains red/unproven.
+Current state: the harness stages a real saved-world log source, `SOURCE_FIREWOOD` zone footing, preflight-wielded charged lighter with nested butane, and a narrow player-message-log bridge. Final changed probe `.userdata/dev-harness/harness_runs/20260429_091438/` proved setup rows green but missed feature closure: no save mtime advance, no new `You successfully light a fire.`-style message, and no copied saved-map `fd_fire`/`fd_smoke`. Josef's 2026-04-29 suspicion is that the macro is probably taking a wrong action somewhere, so the next run must be a step-by-step screenshot/action audit, not another blind rerun.
 
 Canonical anchors for the packaged target:
 
@@ -21,9 +21,10 @@ Canonical anchors for the packaged target:
 
 Next narrow work queue:
 
-1. Do not rerun the fuel/source-zone/lighter harness packet unless Josef, Schani, or Frau reopens it with a materially changed normal-action/save-writeback primitive or manual evidence.
-2. Wait for Josef playtest evidence or a new Schani-greenlit active slice; roof-fire horde proof remains blocked behind real player-lit fire.
-3. If reopened, require the same evidence shape: narrow normal-lighting message bridge immediately after targeting/turn advance plus guarded saved `fd_fire`/smoke/light writeback; no debug `fd_fire` shortcut.
+1. Rerun the source-zone/lighter path once as a step-screenshot action audit: capture screenshots/OCR and exact metadata after every meaningful key/action boundary.
+2. Required checkpoints: loaded scene, wielded lighter preflight, brazier/log/source-zone footing, activate/apply flow, each target/confirmation prompt, turn advance/activity result, player-message bridge, save prompt/confirmation, mtime, and saved `fd_fire`/`fd_smoke`.
+3. Stop at the first wrong-screen/wrong-action/prompt mismatch and name the mistaken step; do not press onward through guessed prompts.
+4. If the step audit still cannot locate a materially different route, return to Josef-package state instead of looping. Roof-fire horde proof remains downstream behind real player-lit fire.
 
 Proof discipline:
 

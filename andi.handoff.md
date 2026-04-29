@@ -2,7 +2,7 @@
 
 ## Active target
 
-`Fuel writeback repair via wood source zone packet v0` is the active execution slice under `C-AOL actual playtest verification stack v0`.
+`Fuel writeback repair via wood source zone packet v0` is reopened as the active step-screenshot action audit under `C-AOL actual playtest verification stack v0`.
 
 Josef promoted the repair on 2026-04-29: brazier deployment is okay/green; stop trying to force the old Multidrop filtered-`2x4` selector. Instead, spawn an oversized in-world firewood source, preferably logs first, place/verify a broad source-firewood zone, and prove normal player-action ignition plus saved `fd_fire`/smoke/light writeback.
 
@@ -22,14 +22,16 @@ Canonical anchors:
 
 ## Current work
 
-Build one named probe for the fuel repair slice:
+Build one named probe for the fuel repair slice as an action audit, not a blind rerun. Josef suspects the macro is messing up an action somewhere, so every meaningful key/action boundary needs a screenshot/OCR or exact metadata check.
 
 1. Reuse the already-green brazier deployment footing, or rerun only if fresh current-runtime evidence is needed; saved-state inspection must show the expected `f_brazier`.
 2. Create an oversized real wood source near the brazier: prefer logs first; fallback to planks/`2x4` only if logs fail the intended firewood path. Prove the items in saved-world metadata.
 3. Place/verify a broad source-firewood zone over/around the pile by visible UI or zone metadata. This is a practical fuel footing, not Smart Zone Manager closure.
-4. Run the normal player fire-start/lighter action. Do not use debug map-editor `fd_fire` or synthetic loaded-map fields as closure. Capture any narrow in-game lighting message/log line as bridge evidence if it exists.
-5. Optional if cheap/clean: winter or cold exposure can add character-warmth log lines after bounded time passage as liveliness evidence, but this is adjunct only and must not replace saved-state proof.
-6. Require guarded post-ignition save/writeback with actual `fd_fire` plus smoke/light-relevant state. If green, continue into bounded wait/time passage and bandit signal response or a clearly classified no-response outcome.
+4. Run the normal player fire-start/lighter action with screenshots/OCR after activate/apply, targeting, direction, every confirmation prompt, turn advance/activity result, and any wrong-screen state. Do not use debug map-editor `fd_fire` or synthetic loaded-map fields as closure.
+5. Capture any narrow in-game lighting message/log line as bridge evidence immediately after targeting/turn advance if it exists.
+6. Optional if cheap/clean: winter or cold exposure can add character-warmth log lines after bounded time passage as liveliness evidence, but this is adjunct only and must not replace saved-state proof.
+7. Require guarded post-ignition save/writeback with actual `fd_fire` plus smoke/light-relevant state. If green, continue into bounded wait/time passage and bandit signal response or a clearly classified no-response outcome.
+8. If a screenshot/OCR checkpoint shows the wrong menu, wrong prompt, wrong target, or no activity start, stop there and report the mistaken step instead of pressing onward.
 
 Prior completed/downstream stack state remains in force:
 

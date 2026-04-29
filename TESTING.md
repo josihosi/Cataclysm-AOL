@@ -53,13 +53,13 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Packaged validation target - Fuel writeback repair via wood source zone packet v0
+### Active validation target - Fuel writeback repair via wood source zone packet v0 / step-screenshot action audit
 
-`Fuel writeback repair via wood source zone packet v0` is now **JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN** under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`, and imagination source `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
+`Fuel writeback repair via wood source zone packet v0` is **JOSEF-REOPENED STEP-SCREENSHOT ACTION AUDIT** under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`, and imagination source `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
 
 Current state: Josef's source-zone repair direction was implemented as a harness proof packet rather than closed as product proof. The fixture/scenario can stage an oversized saved-world log source, saved `SOURCE_FIREWOOD` zone, preflight-wielded charged lighter with nested butane, and a narrow `audit_player_message_log_contains` bridge for decisive normal-lighting text placed immediately after targeting/turn advance and before save/`fd_fire` closure. Final changed probe `.userdata/dev-harness/harness_runs/20260429_091438/` has green setup rows but remains red for feature proof: `audit_player_save_mtime_after_source_zone_ignition_save` reports `player_save_mtime_changed` missing, no new player message log line such as `You successfully light a fire.` was captured, and copied saved-map inspection still found no `fd_fire`/`fd_smoke`.
 
-Evidence boundary: setup helpers may create the wood pile, source-zone footing, and pre-wielded fuelled lighter, but they do not close player-lit fire. Closure still requires a normal player fire-start/lighter path, a narrow decisive player-message bridge immediately after targeting/turn advance if emitted, and guarded saved-state proof of actual fire/smoke/light-relevant writeback. Debug map-editor `fd_fire`, synthetic loaded-map fields, roof-horde proof, and performance reruns are not substitutes. Do not rerun this packet unless a materially changed normal-action/save-writeback primitive or Josef manual evidence reopens it.
+Evidence boundary: setup helpers may create the wood pile, source-zone footing, and pre-wielded fuelled lighter, but they do not close player-lit fire. Josef reopened one materially changed audit method: screenshots/OCR and exact metadata after each meaningful normal-action boundary, to find whether Andi is pressing/confirming/targeting the wrong thing. Closure still requires a normal player fire-start/lighter path, a narrow decisive player-message bridge immediately after targeting/turn advance if emitted, and guarded saved-state proof of actual fire/smoke/light-relevant writeback. Debug map-editor `fd_fire`, synthetic loaded-map fields, roof-horde proof, and performance reruns are not substitutes.
 
 Completed performance context remains preserved but inactive: `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md` keeps the green one-site, two-site, pre-staged three-site, and pre-staged four-site performance-load rows, latest `.userdata/dev-harness/harness_runs/20260429_041936/`. Do not rerun those rows as ritual; only rerun performance if Schani/Josef promotes a new performance row.
 
@@ -103,16 +103,17 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-No unblocked fuel/source-zone/lighter probe remains after the final changed run `.userdata/dev-harness/harness_runs/20260429_091438/`. The packet is in Josef playtest package state: do not rerun it unless Josef, Schani, or Frau provides a materially changed normal-action/save-writeback primitive or manual evidence.
+Active pending probe: rerun the fuel/source-zone/lighter path once as a **step-screenshot action audit** because Josef suspects a wrong action in the macro. This is the materially changed method; do not run a blind repeat.
 
-If reopened, the pending evidence shape is:
+The pending evidence shape is:
 
 1. Use the already-green brazier deploy primitive as footing, or rerun it only if the scenario needs fresh current-runtime evidence. Save/writeback must show the expected `f_brazier`.
 2. Keep the oversized real saved-world firewood source and broad `SOURCE_FIREWOOD` zone footing visible in metadata.
-3. Run the normal player fire-start/lighter path and, immediately after targeting/turn advance and before save closure, capture only narrow decisive player-message lines, e.g. `You successfully light a fire.`, as bridge evidence.
-4. Require guarded post-action save/writeback with actual `fd_fire` plus smoke/light-relevant state on the expected tile/area; message/log evidence alone is not state proof.
-5. If ignition is green, continue to bounded wait/time-passage and bandit signal response or a clearly classified no-response outcome.
-6. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
+3. Run the normal player fire-start/lighter path with screenshots/OCR after every meaningful step/key boundary: activate/apply, targeting prompt, direction selection, any source-firewood/container/safety confirmation, bounded turn advance/activity result, and wrong-screen escape points.
+4. Immediately after targeting/turn advance and before save closure, capture only narrow decisive player-message lines, e.g. `You successfully light a fire.`, as bridge evidence.
+5. Require guarded post-action save/writeback with actual `fd_fire` plus smoke/light-relevant state on the expected tile/area; message/log evidence alone is not state proof.
+6. If ignition is green, continue to bounded wait/time-passage and bandit signal response or a clearly classified no-response outcome.
+7. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
 Still blocked/later in the actual playtest stack:
 
