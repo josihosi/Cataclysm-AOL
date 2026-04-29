@@ -4174,6 +4174,8 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_radiation")
         if metadata.get("missing_required_monsters"):
             issues.append("missing_required_monsters")
+        if metadata.get("missing_required_hordes"):
+            issues.append("missing_required_hordes")
         if metadata.get("missing_required_npcs"):
             issues.append("missing_required_npcs")
         if metadata.get("missing_required_new_npcs"):
@@ -5001,6 +5003,41 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "horde_entity_near_player":
+            def normalize_horde_offset(key: str, default: List[int]) -> List[int]:
+                value = raw.get(key, default)
+                if not isinstance(value, list) or len(value) != 3:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] {key} needs [x,y,z] in {manifest_path}"
+                    )
+                try:
+                    return [int(value[0]), int(value[1]), int(value[2])]
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] {key} values must be integers in {manifest_path}"
+                    )
+
+            try:
+                tracking_intensity = int(raw.get("tracking_intensity", 0) or 0)
+                last_processed = int(raw.get("last_processed", 0) or 0)
+                moves = int(raw.get("moves", 0) or 0)
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] horde_entity_near_player needs integer "
+                    f"tracking_intensity/last_processed/moves in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "monster_id": str(raw.get("monster_id", "mon_zombie") or "mon_zombie").strip(),
+                "offset_ms": normalize_horde_offset("offset_ms", [0, -240, 0]),
+                "destination_offset_ms": normalize_horde_offset("destination_offset_ms", [0, -240, 0]),
+                "tracking_intensity": tracking_intensity,
+                "last_processed": last_processed,
+                "moves": moves,
+            })
+            continue
+
         if kind == "game_turn":
             try:
                 turn = int(raw.get("turn"))
@@ -5130,7 +5167,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
             "supported kinds: player_mutations, player_items, player_near_overmap_special, "
             "seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
-            "map_items_near_player, source_firewood_zone_near_player, game_turn, "
+            "map_items_near_player, source_firewood_zone_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_site_roster_shape"
         )
     return transforms
@@ -6365,6 +6402,252 @@ def audit_saved_zones_near_player(
     }
 
 
+def horde_overmap_path_for_abs_ms(world_dir: Path, abs_ms: List[int]) -> Path:
+    if len(abs_ms) < 3:
+        raise SystemExit(f"Horde abs_ms point needs [x,y,z]: {abs_ms!r}")
+    abs_omt = (int(abs_ms[0]) // 24, int(abs_ms[1]) // 24, int(abs_ms[2]))
+    overmap_x, overmap_y, _local = overmap_file_coords_from_abs_omt(abs_omt)
+    return world_dir / "overmaps" / f"o.{overmap_x}.{overmap_y}.zzip"
+
+
+def iter_horde_map_entries(raw_horde_map: Any) -> List[Dict[str, Any]]:
+    if raw_horde_map in (None, ""):
+        return []
+    if not isinstance(raw_horde_map, list):
+        raise SystemExit("Overmap horde_map is not a list")
+    if len(raw_horde_map) % 6 != 0:
+        raise SystemExit(f"Overmap horde_map length {len(raw_horde_map)} is not divisible by 6")
+
+    entries: List[Dict[str, Any]] = []
+    for base in range(0, len(raw_horde_map), 6):
+        location_raw = raw_horde_map[base]
+        monster_raw = raw_horde_map[base + 1]
+        destination_raw = raw_horde_map[base + 2]
+        if not isinstance(location_raw, list) or len(location_raw) < 3:
+            continue
+        if not isinstance(destination_raw, list) or len(destination_raw) < 3:
+            destination: List[int] = []
+        else:
+            destination = [int(destination_raw[0]), int(destination_raw[1]), int(destination_raw[2])]
+        if isinstance(monster_raw, str):
+            monster_id = monster_raw
+        elif isinstance(monster_raw, dict):
+            monster_id = str(
+                monster_raw.get(
+                    "typeid",
+                    monster_raw.get("type", monster_raw.get("id", "")),
+                )
+            ).strip()
+        else:
+            monster_id = ""
+        location = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
+        entries.append({
+            "index": base // 6,
+            "base_index": base,
+            "location_ms": location,
+            "monster_id": monster_id,
+            "monster_payload_kind": "type_id" if isinstance(monster_raw, str) else type(monster_raw).__name__,
+            "destination_ms": destination,
+            "tracking_intensity": int(raw_horde_map[base + 3] or 0),
+            "last_processed": raw_horde_map[base + 4],
+            "moves": int(raw_horde_map[base + 5] or 0),
+        })
+    return entries
+
+
+def apply_horde_entity_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    monster_id = str(transform.get("monster_id", "mon_zombie") or "mon_zombie").strip()
+    if not monster_id:
+        raise SystemExit(f"Fixture horde transform needs monster_id: {transform}")
+    _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    offset_ms = [int(value) for value in transform.get("offset_ms", [0, -240, 0])]
+    destination_offset_ms = [int(value) for value in transform.get("destination_offset_ms", offset_ms)]
+    location_ms = [int(player_location[i]) + offset_ms[i] for i in range(3)]
+    destination_ms = [int(player_location[i]) + destination_offset_ms[i] for i in range(3)]
+    overmap_path = horde_overmap_path_for_abs_ms(world_dir, location_ms)
+    if not overmap_path.exists():
+        raise SystemExit(f"Target overmap file not found for horde transform: {overmap_path}")
+
+    plain_path, version_line, payload = extract_overmap_payload(overmap_path)
+    try:
+        raw_horde_map = payload.get("horde_map")
+        if raw_horde_map is None:
+            raw_horde_map = []
+            payload["horde_map"] = raw_horde_map
+        if not isinstance(raw_horde_map, list):
+            raise SystemExit(f"Overmap horde_map is not a list in {plain_path}")
+        existing_entries = iter_horde_map_entries(raw_horde_map)
+        removed_entries = [entry for entry in existing_entries if entry.get("location_ms") == location_ms]
+        if removed_entries:
+            kept: List[Any] = []
+            for base in range(0, len(raw_horde_map), 6):
+                loc = raw_horde_map[base]
+                if isinstance(loc, list) and len(loc) >= 3 and [int(loc[0]), int(loc[1]), int(loc[2])] == location_ms:
+                    continue
+                kept.extend(raw_horde_map[base:base + 6])
+            raw_horde_map[:] = kept
+        raw_horde_map.extend([
+            location_ms,
+            monster_id,
+            destination_ms,
+            int(transform.get("tracking_intensity", 0) or 0),
+            int(transform.get("last_processed", 0) or 0),
+            int(transform.get("moves", 0) or 0),
+        ])
+        write_overmap_payload(plain_path, version_line, payload)
+    except Exception:
+        cleanup_extracted_overmap(plain_path, keep=not bool(payload.get("_created_plain", False)))
+        raise
+
+    return {
+        "kind": "horde_entity_near_player",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_location_ms": player_location,
+        "monster_id": monster_id,
+        "offset_ms": offset_ms,
+        "location_ms": location_ms,
+        "destination_offset_ms": destination_offset_ms,
+        "destination_ms": destination_ms,
+        "tracking_intensity": int(transform.get("tracking_intensity", 0) or 0),
+        "last_processed": int(transform.get("last_processed", 0) or 0),
+        "moves": int(transform.get("moves", 0) or 0),
+        "overmap": str(overmap_path.relative_to(world_dir)),
+        "removed_existing_at_location": len(removed_entries),
+    }
+
+
+def audit_saved_hordes_near_player(
+    world_dir: Path,
+    *,
+    player_save: str = "",
+    required_hordes: Optional[List[Dict[str, Any]]] = None,
+    radius_ms: Optional[int] = None,
+) -> Dict[str, Any]:
+    if not world_dir.exists():
+        raise FileNotFoundError(f"World dir not found: {world_dir}")
+    selected_player_save, _player_save_path, payload, _stat = load_saved_player_payload(world_dir, player_save)
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise RuntimeError("Extracted player save is missing player object")
+    location_raw = player.get("location", [])
+    if not isinstance(location_raw, list) or len(location_raw) < 3:
+        raise RuntimeError("Extracted player save is missing player location")
+    player_location = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
+
+    normalized_required: List[Dict[str, Any]] = []
+    overmap_paths: Dict[str, Path] = {}
+    player_overmap = horde_overmap_path_for_abs_ms(world_dir, player_location)
+    if player_overmap.exists():
+        overmap_paths[str(player_overmap)] = player_overmap
+    for raw in required_hordes or []:
+        if not isinstance(raw, dict):
+            continue
+        monster_id = str(raw.get("monster_id", raw.get("typeid", raw.get("monster", ""))) or "").strip()
+        requirement: Dict[str, Any] = {}
+        if monster_id:
+            requirement["monster_id"] = monster_id
+        offset_raw = raw.get("offset_ms")
+        if isinstance(offset_raw, list) and len(offset_raw) >= 3:
+            offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+            location_ms = [player_location[i] + offset_ms[i] for i in range(3)]
+            requirement["offset_ms"] = offset_ms
+            requirement["location_ms"] = location_ms
+            overmap_path = horde_overmap_path_for_abs_ms(world_dir, location_ms)
+            if overmap_path.exists():
+                overmap_paths[str(overmap_path)] = overmap_path
+        destination_offset_raw = raw.get("destination_offset_ms")
+        if isinstance(destination_offset_raw, list) and len(destination_offset_raw) >= 3:
+            requirement["destination_offset_ms"] = [
+                int(destination_offset_raw[0]),
+                int(destination_offset_raw[1]),
+                int(destination_offset_raw[2]),
+            ]
+            requirement["destination_ms"] = [
+                player_location[i] + requirement["destination_offset_ms"][i] for i in range(3)
+            ]
+        if "tracking_intensity" in raw:
+            requirement["tracking_intensity"] = int(raw.get("tracking_intensity") or 0)
+        if "moves" in raw:
+            requirement["moves"] = int(raw.get("moves") or 0)
+        if requirement:
+            normalized_required.append(requirement)
+
+    observed: List[Dict[str, Any]] = []
+    scanned_overmaps: List[Dict[str, Any]] = []
+    for overmap_path in sorted(overmap_paths.values(), key=lambda p: str(p)):
+        plain_path, _version_line, overmap_payload = extract_overmap_payload(overmap_path)
+        try:
+            entries = iter_horde_map_entries(overmap_payload.get("horde_map", []))
+        finally:
+            cleanup_extracted_overmap(plain_path, keep=not bool(overmap_payload.get("_created_plain", False)))
+        nearby_count = 0
+        for entry in entries:
+            location_ms = entry.get("location_ms", [])
+            if not isinstance(location_ms, list) or len(location_ms) < 3:
+                continue
+            offset_ms = [location_ms[i] - player_location[i] for i in range(3)]
+            distance_xy = max(abs(offset_ms[0]), abs(offset_ms[1]))
+            if radius_ms is not None and distance_xy > int(radius_ms):
+                continue
+            summary = dict(entry)
+            summary["offset_ms"] = offset_ms
+            summary["distance_chebyshev_ms"] = distance_xy
+            summary["overmap"] = str(overmap_path.relative_to(world_dir))
+            observed.append(summary)
+            nearby_count += 1
+        scanned_overmaps.append({
+            "overmap": str(overmap_path.relative_to(world_dir)),
+            "horde_count": len(entries),
+            "observed_nearby_count": nearby_count,
+        })
+
+    def matches_requirement(entry: Dict[str, Any], requirement: Dict[str, Any]) -> bool:
+        if "monster_id" in requirement and entry.get("monster_id") != requirement.get("monster_id"):
+            return False
+        if "location_ms" in requirement and entry.get("location_ms") != requirement.get("location_ms"):
+            return False
+        if "destination_ms" in requirement and entry.get("destination_ms") != requirement.get("destination_ms"):
+            return False
+        if "tracking_intensity" in requirement and entry.get("tracking_intensity") != requirement.get("tracking_intensity"):
+            return False
+        if "moves" in requirement and entry.get("moves") != requirement.get("moves"):
+            return False
+        return True
+
+    missing_required_hordes = [
+        requirement for requirement in normalized_required
+        if not any(matches_requirement(entry, requirement) for entry in observed)
+    ]
+    if normalized_required and not missing_required_hordes:
+        status = "required_state_present"
+    elif normalized_required:
+        status = "required_state_missing"
+    else:
+        status = "scanned"
+    counts: Dict[str, int] = {}
+    for entry in observed:
+        monster_id = str(entry.get("monster_id", ""))
+        if monster_id:
+            counts[monster_id] = counts.get(monster_id, 0) + 1
+
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "player_location_ms": player_location,
+        "radius_ms": radius_ms,
+        "required_hordes": normalized_required,
+        "scanned_overmaps": scanned_overmaps,
+        "observed_horde_counts": dict(sorted(counts.items())),
+        "observed_hordes": observed,
+        "missing_required_hordes": missing_required_hordes,
+        "missing_required_monsters": missing_required_hordes,
+        "status": status,
+    }
+
+
 def apply_game_turn_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     player_save = world_dir / player_save_name
@@ -6845,6 +7128,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "source_firewood_zone_near_player":
             reports.append(apply_source_firewood_zone_near_player_transform(world_dir, transform))
+            continue
+        if kind == "horde_entity_near_player":
+            reports.append(apply_horde_entity_near_player_transform(world_dir, transform))
             continue
         if kind == "game_turn":
             reports.append(apply_game_turn_transform(world_dir, transform))
@@ -8028,6 +8314,64 @@ def execute_probe_steps(
                             step.get(
                                 "abort_reason",
                                 "required saved active-monster metadata was missing or unreadable",
+                            )
+                        ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
+        elif kind == "audit_saved_hordes_near_player":
+            player_save = str(step.get("player_save", "") or "").strip()
+            required_hordes_raw = step.get("required_hordes", step.get("required_monsters", []))
+            if not isinstance(required_hordes_raw, list):
+                raise SystemExit(f"Scenario step '{label}' required_hordes must be a list")
+            required_hordes = [horde for horde in required_hordes_raw if isinstance(horde, dict)]
+            radius_raw = step.get("radius_ms")
+            radius_ms = int(radius_raw) if radius_raw is not None and str(radius_raw).strip() != "" else None
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_hordes_near_player(
+                    world_dir,
+                    player_save=player_save,
+                    required_hordes=required_hordes,
+                    radius_ms=radius_ms,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "world": world,
+                    "world_dir": str(world_dir),
+                    "required_hordes": required_hordes,
+                    "radius_ms": radius_ms,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "player_save": player_save,
+                "metadata": metadata,
+                "action_description": "read saved overmap horde_map entries near the player and require exact horde type/location metadata",
+                "expected_immediate_state": "saved overmap horde_map contains the required staged horde metadata before roof/fire horde proof may continue",
+                "failure_rule": "missing required saved horde metadata or unreadable overmap metadata makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(
+                            step.get(
+                                "abort_verdict",
+                                "blocked_untrusted_saved_horde_target_state",
+                            )
+                        ),
+                        "reason": str(
+                            step.get(
+                                "abort_reason",
+                                "required saved horde metadata was missing or unreadable",
                             )
                         ),
                         "issues": metadata_issues,
