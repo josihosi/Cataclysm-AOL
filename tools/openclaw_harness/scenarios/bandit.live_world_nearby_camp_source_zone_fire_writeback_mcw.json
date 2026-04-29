@@ -1,6 +1,6 @@
 {
   "name": "bandit.live_world_nearby_camp_source_zone_fire_writeback_mcw",
-  "description": "Fuel writeback repair probe: saved-world log source plus SOURCE_FIREWOOD zone footing, preflight-wielded charged lighter, normal player activation/targeting, narrow player-message bridge, and guarded saved fd_fire/smoke/light-relevant writeback. No debug fd_fire or synthetic map fields are injected.",
+  "description": "Fuel writeback repair probe: saved-world log source plus SOURCE_FIREWOOD zone footing, preflight-wielded charged lighter, normal player activation/targeting, a decisive player-message bridge immediately after turn advance and before save closure, and guarded saved fd_fire/smoke/light-relevant writeback. No debug fd_fire or synthetic map fields are injected.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "fuel_writeback_source_zone_v0_2026-04-29",
@@ -125,6 +125,29 @@
       "expected_visible_fact": "A bounded turn advance lets the normal lighter/firestarter activity complete against the east log/source-zone target."
     },
     {
+      "kind": "audit_player_message_log_contains",
+      "label": "audit_player_message_log_source_zone_ignition_success",
+      "since_label": "audit_player_message_log_before_source_zone_ignition",
+      "required_any_line_patterns": [
+        [
+          "You successfully light a fire."
+        ],
+        [
+          "successfully light",
+          "fire"
+        ],
+        [
+          "light a fire"
+        ]
+      ],
+      "expected_visible_fact": "narrow saved player-message bridge line proves the fire came from the normal lighting action path immediately after targeting/turn advance, before any save/writeback closure is attempted",
+      "preconditions": "normal lighter activation, source-zone targeting, and bounded firestarter turn advance have just run; baseline player-message log was recorded before activation",
+      "next_step_gate": "do not attempt save/fd_fire closure unless this normal-lighting action-path bridge is green; message evidence still does not substitute for saved fd_fire/smoke state",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_missing_normal_lighting_message_bridge",
+      "abort_reason": "no decisive player-message line for normal fire lighting appeared after the source-zone ignition attempt"
+    },
+    {
       "kind": "audit_player_save_mtime",
       "label": "audit_player_save_mtime_before_source_zone_ignition_save",
       "expected_visible_fact": "saved-player file mtime baseline is recorded after normal lighter/firestarter activity and before the post-ignition save is requested"
@@ -161,29 +184,6 @@
       "abort_verdict": "blocked_untrusted_post_ignition_save_writeback",
       "abort_reason": "saved-player file mtime did not advance after the post-ignition save confirmation",
       "expected_visible_fact": "saved-player file mtime advanced after the confirmed post-ignition save, proving the following saved-map audit reads same-run state"
-    },
-    {
-      "kind": "audit_player_message_log_contains",
-      "label": "audit_player_message_log_source_zone_ignition_success",
-      "since_label": "audit_player_message_log_before_source_zone_ignition",
-      "required_any_line_patterns": [
-        [
-          "You successfully light a fire."
-        ],
-        [
-          "successfully light",
-          "fire"
-        ],
-        [
-          "light a fire"
-        ]
-      ],
-      "expected_visible_fact": "narrow saved player-message bridge line proves the fire came from the normal lighting action path before saved fd_fire is credited",
-      "preconditions": "post-ignition save mtime advanced, so the player message log and map audit are paired with guarded writeback",
-      "next_step_gate": "do not treat the message as state proof; fd_fire/smoke saved metadata still closes hard writeback state",
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_missing_normal_lighting_message_bridge",
-      "abort_reason": "no decisive player-message line for normal fire lighting appeared after the source-zone ignition attempt"
     },
     {
       "kind": "audit_saved_map_tile_near_player",
