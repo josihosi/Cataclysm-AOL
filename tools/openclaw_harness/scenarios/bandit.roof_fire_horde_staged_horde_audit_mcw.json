@@ -1,0 +1,49 @@
+{
+  "name": "bandit.roof_fire_horde_staged_horde_audit_mcw",
+  "description": "Setup-only audit for Roof-fire horde detection proof packet v0: install the named staged-horde fixture and require saved overmap horde_map metadata for one mon_zombie horde at player-relative offset [0,-240,0]. This is reproducible horde footing only, not roof/fire product proof.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "roof_fire_horde_staged_horde_v0_2026-04-29",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "staged_horde_setup_load_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the transformed McWilliams staged-horde fixture loads to the normal live map before saved horde metadata is audited"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "audit_saved_horde_before_roof_fire_product_path",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "radius_ms": 300,
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie",
+          "offset_ms": [
+            0,
+            -240,
+            0
+          ],
+          "destination_offset_ms": [
+            0,
+            -240,
+            0
+          ],
+          "tracking_intensity": 0,
+          "moves": 0
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_staged_horde_setup",
+      "abort_reason": "saved overmap horde_map metadata did not contain the staged mon_zombie horde at player-relative offset [0,-240,0]",
+      "expected_visible_fact": "saved overmap horde_map metadata contains the staged mon_zombie horde before any roof/fire product proof may use this footing",
+      "failure_rule": "missing or unreadable saved horde metadata keeps roof-fire horde proof blocked at setup"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.roof_fire_horde_staged_horde_audit_mcw"
+}

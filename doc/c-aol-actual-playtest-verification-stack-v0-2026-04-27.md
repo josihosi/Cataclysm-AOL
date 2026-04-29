@@ -35,7 +35,7 @@ This is not permission to wander around a live save and call vibes evidence. It 
 
 5. **Roof-fire horde detection proof packet v0 — next unblocked target.**
    - Josef/Schani greenlit this as a later verification item: debug may stage the horde/distance, but must not fake the fire.
-   - Harness support now includes setup/metadata-only horde staging/audit primitives (`horde_entity_near_player`, `audit_saved_hordes_near_player`) for overmap `horde_map` entries; these do not prove roof/fire product behavior by themselves.
+   - Harness support now includes setup/metadata-only horde staging/audit primitives (`horde_entity_near_player`, `audit_saved_hordes_near_player`) for overmap `horde_map` entries; these do not prove roof/fire product behavior by themselves. Named footing is artifacted at `doc/roof-fire-horde-staged-horde-footing-v0-2026-04-29.md` with fixture `roof_fire_horde_staged_horde_v0_2026-04-29`, scenario `bandit.roof_fire_horde_staged_horde_audit_mcw`, and run `.userdata/dev-harness/harness_runs/20260429_170116/`.
    - Prove the player is actually on the shelter roof/elevated tile, the roof fire/light/smoke is real player-created, bounded time passes, and the horde before/after detection or response metadata is captured.
    - A clean proven negative (`horde does not detect/respond`) is valid if the setup is proven.
    - Do not treat source-zone fire/signal proof as roof-fire/horde proof.

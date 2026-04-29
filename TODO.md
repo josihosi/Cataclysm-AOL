@@ -41,7 +41,7 @@ Canonical anchors:
 Next narrow work queue:
 
 1. Continue shaping `Roof-fire horde detection proof packet v0` as the next separate downstream item.
-2. New support boundary: `tools/openclaw_harness/startup_harness.py` now has `horde_entity_near_player` fixture staging and `audit_saved_hordes_near_player` metadata audit support for overmap `horde_map` entries. This is horde setup/metadata proof only, not roof/fire product proof.
+2. Reproducible horde setup is now artifacted: fixture `roof_fire_horde_staged_horde_v0_2026-04-29`, scenario `bandit.roof_fire_horde_staged_horde_audit_mcw`, run `.userdata/dev-harness/harness_runs/20260429_170116/`, proof note `doc/roof-fire-horde-staged-horde-footing-v0-2026-04-29.md`. This is horde setup/metadata proof only, not roof/fire product proof.
 3. Do not reuse source-zone fire/signal proof as roof/horde proof. It proves real player-created source-zone fire plus bandit signal response, not roof/elevated-position fire, `fd_smoke`, or horde detection/response.
 4. Next product-shaping gap: prove player roof/elevated position, create real player roof fire/light/smoke without debug-injecting the fire, then run bounded time passage and inspect horde before/after detection or response metadata.
 5. If the roof/horde path needs survivable waiting, reuse the bounded-wait discipline from the signal proof: before/after turns or exact blocker screenshots/key handling; do not blind-spam through prompts.
