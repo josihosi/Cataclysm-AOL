@@ -13,7 +13,26 @@
         {
           "typeid": "lighter",
           "count": 1,
-          "charges": 100
+          "charges": 100,
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 1,
+                "contents": [
+                  {
+                    "typeid": "butane",
+                    "charges": 100,
+                    "bday": 0,
+                    "last_temp_check": 0,
+                    "template_traits": []
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
         }
       ]
     },
