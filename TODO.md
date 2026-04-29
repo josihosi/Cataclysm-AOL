@@ -50,4 +50,4 @@ Proof discipline:
 
 - OCR/metadata are fallback evidence unless the image was directly inspected.
 - Do not launder setup metadata, stale screenshots, debug `fd_fire`, synthetic loaded-map fields, or item-info text into product proof.
-- For roof/horde, the only new green product slice is roof/elevated player-created `fd_fire` writeback. Horde detection/response still needs a fresh, materially different wait/response proof path or Josef evidence.
+- For roof/horde, the final green product slice is the split-run proof from the saved player-created roof-fire world: roof/elevated `fd_fire` writeback survived load, bounded time advanced, live roof-fire horde light signal fired, and saved horde metadata retargeted with movement budget. Do not reopen this unless Josef explicitly asks for a stricter proof, such as positive `tracking_intensity`.
