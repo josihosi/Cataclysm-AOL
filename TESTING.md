@@ -73,9 +73,21 @@ Action/writeback evidence: OCR matched `burn your firewood source` at `target_di
 
 Evidence boundary: this closes real player-action source-zone ignition and same-run saved `fd_fire` on the visibly deployed brazier/log tile. It does **not** prove bandit signal response, roof/elevated fire, horde response, long-duration smoke/light behavior, or `fd_smoke`; those remain separate stack items. Direct image-model inspection was not used, so screenshot/OCR evidence remains named-artifact plus OCR fallback.
 
-### Active validation target - Player-lit fire and bandit signal verification packet v0
+### Recently completed validation target - Player-lit fire and bandit signal verification packet v0
 
-`Player-lit fire and bandit signal verification packet v0` is now unblocked by the green real-fire proof above. The next probe must start from `.userdata/dev-harness/harness_runs/20260429_153253/` or a fresher equivalent and add survivable bounded wait/time passage plus claim-scoped bandit signal response/metadata. Before the long wait, provide mineral water near/for the player and set up a Smart Zone / auto-drink zone around the player. The wait proof must record before/after time or turns; if time does not pass, capture the exact warning/blocker prompt screenshot and key handling before classifying the blocker. Prefer `I` over `N` when both are offered, screenshot each distinct prompt class, and do not blind-spam through unknown prompts. Do not claim signal proof from saved `fd_fire` alone, and do not use debug/synthetic fire or the retired `fuel_writeback_source_zone_v0_2026-04-29` fixture.
+`Player-lit fire and bandit signal verification packet v0` is **COMPLETE / GREEN REAL-FIRE BANDIT SIGNAL RESPONSE** under `C-AOL actual playtest verification stack v0`. Canonical proof: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`.
+
+Evidence: `.userdata/dev-harness/harness_runs/20260429_162100/`, scenario `bandit.player_lit_fire_signal_wait_mcw`, command `python3 tools/openclaw_harness/startup_harness.py probe bandit.player_lit_fire_signal_wait_mcw`. The run is feature-path green with `verdict=artifacts_matched`, `feature_proof=true`, 14/14 green step-local ledger rows, and one green bounded wait ledger row.
+
+Footing/writeback evidence: fixture `player_lit_fire_bandit_signal_wait_v0_2026-04-29` was captured from the green real-fire run `.userdata/dev-harness/harness_runs/20260429_153253/`, then installed with 12 adjacent `water_mineral` items plus an `AUTO_DRINK` / `your_followers` zone named `OpenClaw auto drink wait support zone`. Same-run metadata proves the saved east tile still has `f_brazier` + `fd_fire`, the water and auto-drink zone are present, save mtime advanced after the post-wait save, and saved turns advanced from `5266942` to `5268742` (`observed_delta_turns=1800`, required minimum `1500`).
+
+Signal evidence: `audit_player_lit_fire_signal_dispatch_artifact.log_delta.txt` includes live `bandit_live_world signal scan: signal_packet=yes` with `smoke_packets=1`, `signal maintenance` with `matched_sites=1`, and `dispatch plan` for `overmap_special:bandit_camp@140,52,0` targeting `player@140,41,0` with `candidate_reason=live_signal`, `job=scout`, `selected_members=1`, and `signal_packet=live_smoke@140,41,0`. `audit_saved_bandit_live_world_after_player_lit_signal_save.metadata.json` persists matching `camp_style` active scout state, active member `[4]`, and `known_recent_marks=["live_smoke@140,41,0", "player@140,41,0"]`.
+
+Evidence boundary: this closes source-zone player-lit fire -> bandit signal response only. It does **not** prove roof/elevated fire, `fd_smoke`, horde response, or natural three/four-site pressure. Direct image-model inspection was unavailable, so screen proof remains named screenshot/OCR/ledger fallback rather than independent image-model confirmation.
+
+### Active validation target - Roof-fire horde detection proof packet v0
+
+`Roof-fire horde detection proof packet v0` is the next separate downstream target. The proof must not reuse source-zone fire/signal evidence as roof/horde closure. Debug may stage the horde/distance, but not the fire. The target needs roof/elevated player footing, real player-created roof fire/light/smoke, bounded time passage or exact blocker prompt screenshots/key handling, and claim-scoped horde before/after detection or response metadata. A proven no-detect/no-response outcome is acceptable if the roof/fire/time footing is green and the horde metadata is decisive.
 
 Completed performance context remains preserved but inactive: `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md` keeps the green one-site, two-site, pre-staged three-site, and pre-staged four-site performance-load rows, latest `.userdata/dev-harness/harness_runs/20260429_041936/`. Do not rerun those rows as ritual; only rerun performance if Schani/Josef promotes a new performance row.
 
@@ -119,19 +131,18 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active pending probe: `Player-lit fire and bandit signal verification packet v0` bandit signal-response proof from the green real source-zone fire evidence.
+Active pending probe: `Roof-fire horde detection proof packet v0`.
 
-1. Start from `.userdata/dev-harness/harness_runs/20260429_153253/` or a fresher equivalent as the green real-fire source: normal Apply inventory deployed `brazier`, normal Apply inventory selected charged `lighter`, exact `Light where?` UI trace opened before targeting, source-firewood prompt and recognizable ignition OCR were captured, save mtime advanced, and saved target tile contains `f_brazier` + `fd_fire`.
-2. Do not reopen the solved fuel prerequisite. Preserve `.userdata/dev-harness/harness_runs/20260429_143149/` as clean first-load footing, `.userdata/dev-harness/harness_runs/20260429_144805/` as visible deployed-brazier/source-zone gate, and `.userdata/dev-harness/harness_runs/20260429_142257/` plus older `_090634/`, `_093118/`, `_093509/`, `_095021/`, `_122807/`, and `_122955/` runs as postmortem/non-proof history only.
-3. Do not rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`; that proof surface remains retired/broken.
-4. The next green proof must add bounded wait/time passage plus claim-scoped bandit signal response/metadata from the real player-created fire. Saved `fd_fire` alone is not signal proof.
-5. Before a long wait, stage mineral water and a Smart Zone / auto-drink zone around the player so thirst is not the whole result. Long-wait evidence needs before/after time/turns; if time does not pass, the proof must screenshot and classify the blocker/warning prompt instead of merely saying time failed to advance.
-6. Wait-interruption prompts may recur during one long wait. If `I` and `N` are offered, prefer `I` over `N`; screenshot each distinct prompt class before responding, and do not blind-spam through unknown warnings.
+1. Start from the current actual-playtest stack proof boundary: source-zone real fire and bandit signal response are green, but they are not roof/horde evidence.
+2. Shape a roof/elevated fixture or scenario that proves the player is on a roof/elevated position before fire creation.
+3. Create the roof fire through a real player action path; debug may stage horde/distance but must not inject the credited fire/light/smoke.
+4. Require bounded time passage with before/after turns or exact blocker prompt screenshots/key handling. Do not blind-spam through warnings.
+5. Require claim-scoped horde before/after detection or response metadata/artifacts. A proven no-detect/no-response outcome is acceptable if the roof/fire/time footing is green and the horde evidence is decisive.
+6. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof; do not rerun it as ritual.
 7. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
 Still blocked/later in the actual playtest stack:
 
-- `Roof-fire horde detection proof packet v0`: still separate and downstream; it needs roof/elevated-position plus real player-created roof fire/light/smoke and horde response metadata.
 - Natural three/four-site player-pressure behavior and true zero-site idle baseline remain decision/watchlist items, not current requirements.
 
 Stale runs `.userdata/dev-harness/harness_runs/20260429_093118/`, `.userdata/dev-harness/harness_runs/20260429_093509/`, `.userdata/dev-harness/harness_runs/20260429_095021/`, `.userdata/dev-harness/harness_runs/20260429_122807/`, and `.userdata/dev-harness/harness_runs/20260429_122955/` are retained as postmortem evidence only, not fire proof surfaces.

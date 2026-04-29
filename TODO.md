@@ -8,22 +8,24 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-`C-AOL actual playtest verification stack v0` advanced: the source-zone fuel repair now has green normal player-action ignition proof. The old `fuel_writeback_source_zone_v0_2026-04-29` proof surface remains broken/retired; do **not** use it as a fire/lighter proof surface.
+`C-AOL actual playtest verification stack v0` advanced again: the player-lit fire / bandit signal response packet is green. Preserve the old boundary: `fuel_writeback_source_zone_v0_2026-04-29` remains broken/retired and must not be used as a fire/lighter proof surface.
 
-Green fuel/fire proof to preserve:
+Green real-fire + signal proof to preserve:
 
-- scenario: `bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw`
-- fixture: `fuel_visible_brazier_deploy_source_zone_nested_lighter_v0_2026-04-29`
-- run: `.userdata/dev-harness/harness_runs/20260429_153253/`
-- result: `verdict=artifacts_matched`, `evidence_class=feature-path`, `feature_proof=true`, step ledger 31/31 green
-- path proven: normal map UI -> normal Apply inventory `brazier` -> `Deploy where?` -> east/right -> normal Apply inventory `lighter` -> exact UI trace `Light where?` -> east/right target -> `SOURCE_FIREWOOD` prompt -> uppercase `Y` -> recognizable ignition OCR -> save prompt -> mtime advance -> saved target tile `f_brazier` + `fd_fire`
-- decisive files: `probe.report.json`, `probe.step_ledger.json`, `target_direction_east_to_visible_brazier_logs.after.screen_text.json`, `confirm_burn_source_firewood_prompt_after_visible_brazier.after.screen_text.json`, `audit_player_save_mtime_after_visible_brazier_ignition_save.metadata.json`, `audit_saved_target_tile_for_visible_brazier_fd_fire.metadata.json`
-- proof doc: `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`
+- source real-fire run: `.userdata/dev-harness/harness_runs/20260429_153253/`, scenario `bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw`
+- signal fixture: `player_lit_fire_bandit_signal_wait_v0_2026-04-29`
+- signal scenario: `bandit.player_lit_fire_signal_wait_mcw`
+- signal run: `.userdata/dev-harness/harness_runs/20260429_162100/`
+- result: `verdict=artifacts_matched`, `evidence_class=feature-path`, `feature_proof=true`, step ledger 14/14 green, wait ledger green
+- path proven: saved real player-created `f_brazier` + `fd_fire` -> mineral water plus `AUTO_DRINK` support zone -> real wait UI 30-minute choice -> saved turn delta `1800` after guarded save/writeback -> same-run live smoke/fire signal scan/maintenance -> matched `bandit_camp` -> dispatch plan `candidate_reason=live_signal` -> saved active `bandit_camp` scout response targeting `player@140,41,0` with `known_recent_marks` including `live_smoke@140,41,0`
+- decisive files: `probe.report.json`, `probe.step_ledger.json`, `wait_30_minutes_for_player_lit_fire_bandit_signal.wait_menu.screen_text.json`, `audit_saved_turn_after_player_lit_fire_signal_wait.metadata.json`, `audit_player_lit_fire_signal_dispatch_artifact.log_delta.txt`, `audit_saved_bandit_live_world_after_player_lit_signal_save.metadata.json`
+- proof doc: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`
 
 Still preserve earlier gates as scoped support:
 
 - clean normal-map fixture: `fuel_source_zone_clean_normal_map_v0_2026-04-29`, run `.userdata/dev-harness/harness_runs/20260429_143149/`
 - visible deployed-brazier/source-zone gate without lighter keys: `.userdata/dev-harness/harness_runs/20260429_144805/`, `bandit.live_world_nearby_camp_visible_brazier_source_zone_gate_mcw`
+- normal player ignition/writeback: `.userdata/dev-harness/harness_runs/20260429_153253/`, `bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw`
 - prior failed action diagnostic: `.userdata/dev-harness/harness_runs/20260429_142257/` remains non-proof for ignition because `A` did not show `Light where?`
 
 Canonical anchors:
@@ -32,21 +34,20 @@ Canonical anchors:
 - Green normal-map entry: `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`
 - Visible deployed-brazier gate: `doc/fuel-visible-brazier-source-zone-gate-v0-2026-04-29.md`
 - Green firestarter action proof: `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`
+- Green player-lit fire bandit signal proof: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`
 - Fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`
 - Save-transform corruption audit: `doc/fuel-source-zone-save-transform-corruption-audit-v0-2026-04-29.md`
 
 Next narrow work queue:
 
-1. Start `Player-lit fire and bandit signal verification packet v0` from the green real-fire proof above or a fresher equivalent; add survivable bounded wait/time passage and bandit signal response/metadata.
-2. Before long waiting, make the waiting setup survivable and non-noisy: spawn/provide mineral water and set up a Smart Zone / auto-drink zone around the player so thirst does not become the whole proof.
-3. For the long-wait path, verify before/after time/turns. If time does not pass, capture a screenshot of the blocking warning/prompt and classify that exact prompt; do not summarize it as “time did not pass” without the visible blocker.
-4. When wait-interruption prompts offer `I` or `N`, prefer `I` over `N`; be prepared to handle the same prompt class multiple times during one long wait, with screenshot evidence for each distinct prompt class before responding.
-5. Do not claim bandit signal from the source-zone ignition proof alone; it proves real player fire + saved `fd_fire`, not signal response.
-6. Do not rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`.
-7. Keep `Roof-fire horde detection proof packet v0` separate: it still needs roof/elevated-position plus real player-created roof fire/light/smoke and horde response metadata.
+1. Start `Roof-fire horde detection proof packet v0` as the next separate downstream item.
+2. Do not reuse source-zone fire/signal proof as roof/horde proof. It proves real player-created source-zone fire plus bandit signal response, not roof/elevated-position fire, `fd_smoke`, or horde detection/response.
+3. Shape the roof packet before running it: prove/debug-stage horde distance, prove player roof/elevated position, create real player roof fire/light/smoke without debug-injecting the fire, then run bounded time passage and inspect horde before/after detection or response metadata.
+4. If the roof/horde path needs survivable waiting, reuse the bounded-wait discipline from the signal proof: before/after turns or exact blocker screenshots/key handling; do not blind-spam through prompts.
+5. Keep natural three/four-site player-pressure behavior and true zero-site idle baseline as decision/watchlist items unless Schani/Josef explicitly promotes them.
 
 Proof discipline:
 
 - OCR/metadata are fallback evidence unless the image was directly inspected.
 - Do not launder setup metadata, stale screenshots, debug `fd_fire`, synthetic loaded-map fields, or item-info text into product proof.
-- For the next signal probe, require the real fire source plus survivable wait footing, before/after elapsed time or exact prompt-blocker screenshots/key handling, and claim-scoped bandit artifact/metadata; startup/load success alone is not signal proof.
+- For roof/horde, require roof/elevated footing, real player-created roof fire/light/smoke, bounded time passage or exact blocker evidence, and claim-scoped horde artifact/metadata.

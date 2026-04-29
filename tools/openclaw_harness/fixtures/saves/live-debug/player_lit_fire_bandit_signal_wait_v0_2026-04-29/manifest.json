@@ -1,0 +1,44 @@
+{
+  "name": "player_lit_fire_bandit_signal_wait_v0_2026-04-29",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "captured_at": "2026-04-29T16:14:32+0200",
+  "source_run": ".userdata/dev-harness/harness_runs/20260429_153253/",
+  "source_scenario": "bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw",
+  "source_proof": "green real player-action visible-brazier/source-zone ignition proof with saved f_brazier + fd_fire",
+  "save_transforms": [
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {
+          "typeid": "water_mineral",
+          "count": 12,
+          "offset_ms": [
+            0,
+            1,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "OpenClaw auto drink wait support zone",
+      "zone_type": "AUTO_DRINK",
+      "faction": "your_followers",
+      "start_offset_ms": [
+        -1,
+        -1,
+        0
+      ],
+      "end_offset_ms": [
+        1,
+        1,
+        0
+      ],
+      "write_temp": true
+    }
+  ]
+}
