@@ -1,6 +1,6 @@
 # Smart Zone Manager harness-audit retry packet v0 - 2026-04-28
 
-Status: REOPENED 2026-04-29 AS ACTIVE LIVE COORDINATE-LABEL PROBE / PRIOR NON-GREEN BOUNDARY PRESERVED
+Status: CLOSED 2026-04-29 / GREEN LIVE COORDINATE-LABEL PROOF AFTER REOPEN / PRIOR NON-GREEN BOUNDARY PRESERVED
 
 Imagination source: `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`
 
@@ -12,19 +12,28 @@ The desired proof is clever and token-efficient: prove basically every step with
 
 New Josef-discovered proof primitive: the Zone Manager itself shows relative coordinate labels beside zones, e.g. `2E` for two tiles east of the player. Andi can run the real Zone Manager generation path and read/capture those coordinates. If generated zones are lumped onto the same tile, their labels will match; if the layout is separated correctly, the labels should show distinct expected offsets.
 
-Josef's 2026-04-29 reopen sharpened the practical route: set up or load a usable Basecamp zone, open Zone Manager, invoke Smart Zone generation, press **Yes**, then screenshot/OCR the Zone Manager coordinate labels for each generated zone. This is the active proof shape now; the old clean-profile/key-delivery failure is a prior boundary, not a reason to avoid a working UI route.
+Josef's 2026-04-29 reopen sharpened the practical route: set up or load a usable Basecamp zone, open Zone Manager, invoke Smart Zone generation, press **Yes**, then screenshot/OCR the Zone Manager coordinate labels for each generated zone. That route is now the green proof shape; the old clean-profile/key-delivery failure remains a prior boundary, not closure evidence.
 
-## Final 2026-04-29 boundary
+## Final 2026-04-29 green boundary
 
-The bounded retry did not produce live Smart Zone feature proof. Current-runtime rebuild and guarded probes reached clean startup/load on `5f17cc7901-dirty`, but every UI-entry attempt stopped before credited add-zone/filter/generation input because `Zones manager` was not observed.
+The reopened coordinate-label route is green agent-side. Final run: `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`, scenario `smart_zone.live_coordinate_label_proof_v0_tmp9` (stabilized as `tools/openclaw_harness/scenarios/smart_zone.live_coordinate_label_proof_v0.json`), command `python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_coordinate_label_proof_v0_tmp9`.
 
-Decisive final run: `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/`. Startup/runtime hygiene is green (`version_matches_repo_head=true`, `version_matches_runtime_paths=true`), but the action-dispatch trace records `raw_action="action_menu" action_id="action_menu"` after the default `Y` delivery, no `invoke_zone_manager` trace appears, and OCR still shows ordinary gameplay/actions UI rather than `Zones manager`. Earlier guarded attempts `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_002148/`, `.userdata/smart-zone-audit-live-20260429f/harness_runs/20260429_004203/`, and `.userdata/smart-zone-ui-entry-current-runtime-20260429b/harness_runs/20260429_005059/` remain the same UI-entry/key-delivery blocker class.
+Classification: `feature_proof=true`, `evidence_class=feature-path`, `verdict=artifacts_matched`, with 18/18 green step-local rows. The run loads gameplay, opens the real `Zones manager` UI through the profile-local binding, opens the add-zone/type picker, selects `Basecamp: Storage`, accepts the default name, places the zone corners, accepts the Smart Zone Manager prompt with **Yes**, closes/saves changes, reopens Zone Manager, and audits generated row traces.
 
-Prior verdict: implemented-but-unproven / Josef playtest package. Deterministic Smart Zone geometry remains support only; no live Zone Manager entry, generation, generated coordinate-label, or saved generated-zone layout proof is credited from those runs. This packet is now explicitly reopened with Josef's simpler UI-coordinate-label route; do not rerun the old blind macro, but do use a materially working UI path.
+Decisive live evidence:
+
+- UI-entry trace: `component=default_action_dispatch event=invoke_zone_manager raw_action="zones" action_id="zones"`.
+- Generation trace: `[harness][smart_zone] prompt accepted` followed by `[harness][smart_zone] result success=1 placed_zones=23`.
+- Reopened layout trace: `zone_manager_row` redraw entries include `name`, `type`, `visible_label`, `compact_label`, `start_abs`, `end_abs`, and `center_abs` for generated rows.
+- Example generated labels/positions include storage/support area `1 S`, wood/tools/spares around `1 SW` / `1 W` / `1 E`, books/manuals `2 SE`, containers `2 N`, chemicals/drugs `2 E` / `3 E`, food/drink `0 CE` / `1 N`, clothing `3 W`, rotten dump `10 NW`, and unsorted `10 SE`.
+
+Verdict: green for the live coordinate-label claim and not the one-tile lumping bug. Same-label paired rows remain allowed where the generated layout intentionally overlays related zones; the key proof is that the generated layout spans multiple expected relative labels and absolute coordinates rather than collapsing everything onto one tile.
+
+Evidence boundary: screenshots/OCR are archived for UI checkpoints (`open_zones_manager.after.png`, `accept_smart_zone_prompt.after.png`, `reopen_zones_manager_for_layout_inspection.after.png`) but OCR is fallback-quality. The strongest proof is the same-run live Zone Manager row trace. This closes create -> inspect -> close/save-changes -> reopen in the live UI; it does not claim a separate full process-reload disk-persistence audit.
 
 ## Preserved non-green boundary
 
-The latest known retry evidence remains non-green and must not be laundered into closure:
+Older pre-green retry evidence remains non-green and must not be laundered into closure:
 
 - Scenario/profile: `smart_zone.live_probe_safe_clean` on `smart-zone-audit-live-20260428a`.
 - Run: `.userdata/smart-zone-audit-live-20260428a/harness_runs/20260428_151053/`.
@@ -33,7 +42,7 @@ The latest known retry evidence remains non-green and must not be laundered into
 - Saved-zone evidence: `.userdata/smart-zone-audit-live-20260428a/save/Delta/#SGVucmlldHRlIEZseW5u.zoneszmgr-temp.json` contains exactly one `ZONE_START_POINT` row at `[995, 1086, 0]` -> `[997, 1096, 0]`; `.userdata/smart-zone-audit-live-20260428a/save/Delta/zoneszmgr-temp.json` contains `[]`.
 - Verdict: this proves neither Smart Zone generation nor separated generated layout metadata. It is at most a wrong-runtime/yellow UI attempt plus a temporary Zone Manager start-point artifact.
 
-Next evidence target: relink/rebuild to the current runtime, run live Zone Manager generation, and capture/read the visible relative coordinate labels beside generated zones. Pair this with exact generated-zone metadata after save/reopen where available, or leave the packet explicitly blocked/non-green. Do not close Smart Zone from load-only screenshots, deterministic `clzones` tests, or the temp `ZONE_START_POINT` row.
+Do not close Smart Zone from load-only screenshots, deterministic `clzones` tests, or the temp `ZONE_START_POINT` row. The green closure is the later live coordinate-label proof above.
 
 ## Product picture
 

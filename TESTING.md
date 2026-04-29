@@ -55,6 +55,16 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 No active validation target is currently promoted. The sections below are retained as recent completed evidence snapshots for Schani review and future non-ritual reference.
 
+### Recently completed validation target - Smart Zone Manager live coordinate-label proof v0
+
+`Smart Zone Manager live coordinate-label proof v0` is **COMPLETE / GREEN LIVE COORDINATE-LABEL PROOF**. Canonical contract: `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`; stabilized scenario: `tools/openclaw_harness/scenarios/smart_zone.live_coordinate_label_proof_v0.json`.
+
+Evidence: `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`, scenario `smart_zone.live_coordinate_label_proof_v0_tmp9`, command `python3 tools/openclaw_harness/startup_harness.py probe smart_zone.live_coordinate_label_proof_v0_tmp9`. The run is feature-path green with `verdict=artifacts_matched`, `feature_proof=true`, and 18/18 green step-local rows.
+
+Proof chain: real Zone Manager entry is traced as `invoke_zone_manager`; live Smart Zone prompt/result logs include `[harness][smart_zone] prompt accepted` and `[harness][smart_zone] result success=1 placed_zones=23`; after close/save-changes/reopen, `zone_manager_row` redraw traces include generated row names/types/options where available plus `visible_label`, `compact_label`, `start_abs`, `end_abs`, and `center_abs` fields. The layout spans distinct labels/coordinates such as `1 S`, `1 SE`, `1 W`, `2 E`, `3 W`, `10 NW`, and `10 SE`, so it is not the one-tile lumping bug. Intentional paired overlaps remain allowed and are not treated as lumping by themselves.
+
+Evidence boundary: screenshot/OCR artifacts exist for UI checkpoints, but OCR is fallback-quality; the decisive coordinate-label evidence is live UI row trace metadata from the Zone Manager redraw. The proof covers create -> inspect -> close/save-changes -> reopen in the live UI, not a separate full process-reload disk-persistence audit.
+
 ### Recently completed validation target - Fuel normal-map entry primitive packet v0
 
 `Fuel normal-map entry primitive packet v0` is **COMPLETE / GREEN NORMAL-MAP ENTRY GATE** under `C-AOL actual playtest verification stack v0`. Contracts: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`, `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`, and imagination source `doc/fuel-normal-map-entry-primitive-imagination-source-of-truth-2026-04-29.md`.
@@ -133,34 +143,25 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ### Recently completed validation target - C-AOL debug-proof finish stack
 
-`C-AOL debug-proof finish stack v0` is complete and ready for Schani review. Retain the old implemented-but-unproven boundary for Smart Zone Manager live layout; real source-zone player-lit fire and the follow-on player-lit fire -> bandit signal response have since been proven green in the actual-playtest stack.
+`C-AOL debug-proof finish stack v0` is complete and ready for Schani review. The old implemented-but-unproven Smart Zone live layout boundary has since been superseded by the green reopened coordinate-label proof; real source-zone player-lit fire and the follow-on player-lit fire -> bandit signal response have also been proven green in the actual-playtest stack.
 
 ---
 
 ## Pending probes
 
-Active probe: `Smart Zone Manager live coordinate-label proof v0`.
+No active probe is currently promoted.
 
-Proof target:
-
-1. Current-runtime loadable character/basecamp footing reaches gameplay.
-2. Real `Zones manager` UI is opened; a trace or screenshot/OCR must prove this before generation keys are sent.
-3. Smart Zone generation is invoked through the live UI and accepted with **Yes**.
-4. Generated Zone Manager list is inspected after generation or reopen.
-5. Screenshot/OCR captures zone names plus visible coordinate labels for generated zones.
-6. Saved/reopened zone metadata is extracted where available for zone names/types/options/coordinates.
-7. Verdict is direct: same coordinate labels imply collapsed/lumped layout; distinct expected labels plus matching metadata imply live layout proof green.
-
-Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof. Do not rerun solved bandit/fire/roof rows as ritual.
+Preserve `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` as the green Smart Zone Manager live coordinate-label proof. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof. Do not rerun solved rows as ritual.
 
 Future-only watchlist unless Schani/Josef explicitly promotes it:
 
 - Natural three/four-site player-pressure behavior and true zero-site idle baseline remain decision/watchlist items, not current requirements.
 - A stricter roof-horde positive `tracking_intensity` proof remains optional/future-only; current green roof proof is retarget/movement-budget metadata after live roof-fire horde signaling.
+- Full Smart Zone process-reload disk persistence can be promoted later if Josef wants that stricter audit; the current green proof covers live create/inspect/close-save/reopen coordinate labels.
 
 Stale runs `.userdata/dev-harness/harness_runs/20260429_093118/`, `.userdata/dev-harness/harness_runs/20260429_093509/`, `.userdata/dev-harness/harness_runs/20260429_095021/`, `.userdata/dev-harness/harness_runs/20260429_122807/`, and `.userdata/dev-harness/harness_runs/20260429_122955/` are retained as postmortem evidence only, not fire proof surfaces.
 
-If a later live probe is needed:
+If a later live probe is promoted:
 - build the current runtime first when binary freshness matters;
 - use one named scenario/command path;
 - extract only decisive report/log fields into context;

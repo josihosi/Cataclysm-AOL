@@ -125,7 +125,7 @@ Compact reference:
 - Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
 - Inventory checkpoint lives at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
 - Frozen proof matrix lives at `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`.
-- Closure review on 2026-04-28: no remaining process-audit seam blocks checkpoint closure. Concrete product seams remain outside this lane: fuel Multidrop exact-`2x4` visibility is red/blocked, Smart Zone live layout is implemented-but-unproven/Josef-package, and real fire/bandit signal proof remains blocked behind fuel.
+- Closure review on 2026-04-28: no remaining process-audit seam blocks checkpoint closure. At that time, concrete product seams remained outside this lane: fuel Multidrop exact-`2x4` visibility was red/blocked, Smart Zone live layout was implemented-but-unproven/Josef-package, and real fire/bandit signal proof was blocked behind fuel. Later proof packets supersede those product seams where explicitly recorded below.
 - Validation for closure review: `python3 tools/openclaw_harness/proof_classification_unit_test.py` (6 tests, OK).
 
 ---
@@ -140,11 +140,11 @@ Success state:
 - [x] Fuel normal-map entry primitive is green at `.userdata/dev-harness/harness_runs/20260429_140645/`: setup footing and normal gameplay map UI are proven, with raw JSON/item-info/stale/debug screens red-blocked before action keys. Canonical contract: `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`.
 - [x] Fuel writeback repair via wood source zone proves the visible/operational deployed-brazier gate at `.userdata/dev-harness/harness_runs/20260429_144805/`: normal Apply inventory -> filtered `brazier` -> `Deploy where?` -> east/right placement, look/OCR `hrazıer` + `burn things`, saved `f_brazier` + `log`, saved `SOURCE_FIREWOOD`, no lighter/fire keys.
 - [x] Real player source-zone fire is green at `.userdata/dev-harness/harness_runs/20260429_153253/`: normal Apply inventory deployed `brazier`, normal Apply inventory selected charged `lighter`, exact `Light where?` UI trace opened before targeting, source-firewood prompt and recognizable ignition OCR were captured, save mtime advanced, and saved target tile contains `f_brazier` + `fd_fire`. Canonical proof: `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`.
-- [x] Smart Zone Manager live layout verification reached an honest non-green boundary: deterministic geometry/separation remains support only, the precise manual recipe is packaged in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`, and current-runtime rerun `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` is startup/load red only (`Dunn has no characters to load`) with no feature/layout proof credited.
+- [x] Smart Zone Manager live layout verification first reached an honest non-green boundary: deterministic geometry/separation remained support only, the precise manual recipe was packaged in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`, and current-runtime rerun `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` was startup/load red only (`Dunn has no characters to load`) with no feature/layout proof credited. This historical boundary is superseded by the later green live coordinate-label proof recorded below.
 - [x] Player-lit fire/bandit signal verification is green at `.userdata/dev-harness/harness_runs/20260429_162100/`: starting from the real player source-zone fire evidence at `.userdata/dev-harness/harness_runs/20260429_153253/`, fixture `player_lit_fire_bandit_signal_wait_v0_2026-04-29` adds mineral water plus an `AUTO_DRINK` zone, scenario `bandit.player_lit_fire_signal_wait_mcw` proves 30-minute bounded wait/time passage (`observed_delta_turns=1800`), same-run live smoke/fire signal scan/maintenance, `bandit_camp` dispatch with `candidate_reason=live_signal`, and saved active scout response metadata with `known_recent_marks` including `live_smoke@140,41,0`. Canonical proof: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`.
 - [x] Roof-fire horde detection proof is green at `.userdata/dev-harness/harness_runs/20260429_180239/`: split-run fixture `roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29` and scenario `bandit.roof_fire_horde_split_wait_from_player_fire_mcw` load the saved player-created roof-fire world from `.userdata/dev-harness/harness_runs/20260429_172847/`, re-audit roof/elevated `t_tile_flat_roof` + `f_brazier` + `fd_fire`, prove bounded time passage (`observed_delta_turns=300`), capture live roof-fire horde light-signal artifacts (`horde_signal_power=20`, `elevated_roof_exposed=yes`, `vertical_sightline=yes`), and save staged-horde response metadata (`destination_ms` retargeted to `[3360,984,1]`, `moves=8400`, `last_processed=5267242`). Product seam: `live_bandit_fire_source_is_elevated_roof_exposed` treats elevated `t_flat_roof` / `t_tile_flat_roof` fire sources as exposed roof signals. Boundary: `tracking_intensity` remained `0`, so the credited response is retarget/movement-budget metadata, not positive tracking-intensity proof. Canonical proof: `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`.
 - [x] Bandit empty-camp retirement proof implements the conjunctive predicate: a camp/site retires from active AI calculations only when no home/inside live members or spawn-tile home headcount remain **and** no active dispatch/outbound/local-contact pressure remains. Deterministic coverage proves home-only, active-dispatch-only, unresolved returning-home/contact negative cases, plus the fully empty positive case and `retired_empty_site` report/dispatch/signal guards. Canonical contract: `doc/bandit-empty-camp-retirement-audit-mode-packet-v0-2026-04-28.md`.
-- [x] Andi reports evidence class boundaries intact: the old Multidrop fuel path remains red/non-green at the visibility/writeback gate; the new fuel repair proves normal source-zone ignition + saved `fd_fire`; player-lit source-zone fire -> bandit signal response is green; roof-fire horde detection is green only through the split-run roof/elevated proof above; Smart Zone remains implemented-but-unproven/Josef-package; performance rows are live-path performance-load evidence; the pre-staged three/four-site rows are not natural multi-site player-pressure proof; startup/load, deterministic support, live product proof, and unproven seams stay separately labeled.
+- [x] Andi reports evidence class boundaries intact: the old Multidrop fuel path remains red/non-green at the visibility/writeback gate; the new fuel repair proves normal source-zone ignition + saved `fd_fire`; player-lit source-zone fire -> bandit signal response is green; roof-fire horde detection is green only through the split-run roof/elevated proof above; Smart Zone live layout is green only through the later reopened coordinate-label proof, not the old deterministic/startup attempts; performance rows are live-path performance-load evidence; the pre-staged three/four-site rows are not natural multi-site player-pressure proof; startup/load, deterministic support, live product proof, and unproven seams stay separately labeled.
 
 Compact reference:
 - Canonical contract lives at `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
@@ -173,23 +173,23 @@ Notes:
 
 ## Smart Zone Manager harness-audit retry packet v0
 
-Status: REOPENED AS ACTIVE LIVE COORDINATE-LABEL PROBE / PRIOR BOUNDARY PRESERVED
+Status: CLOSED / GREEN LIVE COORDINATE-LABEL PROOF AFTER REOPEN
 
 Success state:
 - [x] The current-runtime retry used clean startup/load hygiene before UI-entry checks.
-- [x] Guarded screen-text rows prevented add-zone/filter/generation credit when `Zones manager` was not visible.
-- [x] Action-dispatch instrumentation identified the remaining agent-side primitive gap: delivered default `Y` reached `action_menu`, not `zones`, and no Zone Manager invocation trace fired.
-- [x] Final result is classified as implemented-but-unproven / Josef playtest package instead of green Smart Zone feature proof.
-- [ ] The live UI path proves Zone Manager opened and Smart Zone generation was invoked.
-- [ ] The generated Zone Manager list is inspected after live generation, and visible relative coordinate labels beside zones (`2E`-style offsets) are captured/read.
-- [ ] Generated/reopened zone metadata proves exact zone types, names/options where relevant, and coordinates after the live generation action where available.
+- [x] Guarded screen-text rows prevented add-zone/filter/generation credit when `Zones manager` was not visible in the older blocked route.
+- [x] Action-dispatch instrumentation identified the old agent-side primitive gap: delivered default `Y` reached `action_menu`, not `zones`, and no Zone Manager invocation trace fired.
+- [x] The prior non-green result was classified as implemented-but-unproven / Josef playtest package instead of being laundered into green proof.
+- [x] The reopened live UI path proves Zone Manager opened and Smart Zone generation was invoked: `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` traces `invoke_zone_manager`, prompt acceptance, and `[harness][smart_zone] result success=1 placed_zones=23`.
+- [x] The generated Zone Manager list is inspected after live generation and after close/save-changes/reopen; visible relative coordinate labels are captured in live `zone_manager_row` redraw traces with `visible_label` / `compact_label` fields.
+- [x] Generated/reopened row metadata proves zone names/types plus absolute coordinates where available via `start_abs`, `end_abs`, and `center_abs`, showing a multi-position layout rather than one-tile collapse.
 
 Notes:
 - Imagination source lives at `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`.
-- Final agent-side run: `.userdata/smart-zone-ui-entry-current-runtime-20260429c/harness_runs/20260429_005345/`, verdict `blocked_zone_manager_ui_entry_guard_failed`, startup green/current runtime `5f17cc7901-dirty`, trace `raw_action="action_menu" action_id="action_menu"`, no `invoke_zone_manager`, OCR missing `Zones manager`.
-- Prior boundary remains non-green for feature proof. Deterministic geometry/separation checks are support only, and no add-zone/filter/generation/coordinate-label evidence is credited from the old runs.
-- Josef explicitly reopened the lane on 2026-04-29 with a simpler proof route: set up/load a usable Basecamp zone, open the real Zone Manager, accept Smart Zone generation with **Yes**, then screenshot/OCR the generated zone list coordinate labels and pair them with saved/reopened zone metadata where available.
+- Final green run: `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`, scenario `smart_zone.live_coordinate_label_proof_v0_tmp9` (stabilized as `smart_zone.live_coordinate_label_proof_v0`), `feature_proof=true`, `evidence_class=feature-path`, `verdict=artifacts_matched`, 18/18 green step-local rows.
+- The proof verdict is green for the live coordinate-label/lumping claim. Screenshot/OCR artifacts support the UI checkpoints but OCR is fallback-quality; row trace metadata is the decisive coordinate-label evidence. Full process-reload disk persistence is not separately claimed.
+- Prior non-green UI-entry runs remain postmortem evidence only and should not be rerun as ritual.
 
 ---
 
@@ -352,7 +352,7 @@ Compact reference:
 
 ## Smart Zone Manager v1 Josef playtest corrections
 
-Status: JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN LIVE
+Status: CLOSED / LIVE COORDINATE-LABEL PROOF GREEN AFTER REOPEN
 
 Success state:
 - [x] Smart Zone Manager adds `LOOT_MANUALS` coverage on/near the Basecamp books cluster without removing ordinary `LOOT_BOOKS` coverage.
@@ -360,10 +360,10 @@ Success state:
 - [x] Auto-eat and auto-drink coverage spans the full Basecamp storage zone, with `ignore_contents` explicitly false so Basecamp sorting still sees the covered items.
 - [x] Deterministic tests assert the actual zone ids/types and the `ignore_contents == false` option, not just label text.
 - [x] Save inspection confirms generated zones remain saved/reopenable and do not crash or corrupt the camp layout through zone-manager serialize/deserialize proof.
-- [ ] Live/player-visible layout no longer lumps intended-separate generated zones onto a single tile. _(Implemented-but-unproven live: clean GUI macro could not honestly inspect the generated layout; Josef playtest package has the manual close recipe.)_
+- [x] Live/player-visible layout no longer lumps intended-separate generated zones onto a single tile. The reopened coordinate-label proof `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` opens the real Zone Manager, accepts Smart Zone generation, reopens the generated list, and captures row labels/absolute coordinates across the layout.
 - [x] Deterministic tests assert zone geometry/separation and the intended-overlap allowlist, not only zone ids/options.
 - [x] The implementation respects the smart-zone aux-plan separation rules that are deterministic-checkable in the fixture: fire-source / `splintered` / wood placement, readable crafting/food/equipment support separation, clothing/dirty support, outside rotten placement, and a larger unsorted intake area.
-- [x] Clean live/UI proof or a precise Josef playtest package demonstrates the corrected layout without rerunning the contaminated old McWilliams/bandit macro. _(Packaged as `smart-zone-live-layout-separation-correction` in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`.)_
+- [x] Clean live/UI proof or a precise Josef playtest package demonstrates the corrected layout without rerunning the contaminated old McWilliams/bandit macro. The old playtest package is superseded for the lumping/layout claim by the green coordinate-label proof; full process-reload disk persistence remains a separate optional future audit if promoted.
 
 
 Compact reference:
