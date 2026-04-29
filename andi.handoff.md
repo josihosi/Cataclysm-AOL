@@ -2,11 +2,11 @@
 
 ## Current canon state
 
-`Roof-fire horde detection proof packet v0` is **not** the next active retry. It has reached:
+`Roof-fire horde detection proof packet v0` is the active target again, but **not** as a same-shape attempt 5.
 
-**PARTIAL ROOF-FIRE GREEN / HORDE RESPONSE UNPROVEN / JOSEF-SCHANI DECISION REQUIRED**
+**PARTIAL ROOF-FIRE GREEN / HORDE RESPONSE UNPROVEN / MATERIAL NEW METHOD GREENLIT**
 
-The repo canon in `Plan.md`, `TODO.md`, and `TESTING.md` wins over any older handoff wording. Do not start attempt 5 from this file.
+Josef explicitly loosened the latch: do the method that works instead of stopping on a technicality. The repo canon in `Plan.md`, `TODO.md`, and `TESTING.md` wins over any older handoff wording.
 
 ## What is green and must be preserved
 
@@ -40,23 +40,17 @@ This is **player-created roof-fire writeback proof only**.
 
 The final same-shape attempt failed because the direct save/writeback gate used save-and-quit. The subsequent wait was therefore main-menu state, not a valid in-game horde wait. `audit_roof_fire_horde_light_signal_artifact` missed the required live horde-signal lines.
 
-## Stop rule
+## Current work
 
-Do **not** run another same-shape roof/horde harness retry.
+Do **not** run another same-shape roof/horde harness retry. Do run the materially different method that closes the real product question.
 
-The repeated-test budget for this item is exhausted after four materially changed attempts and Frau consultation. A future retry requires Schani/Josef greenlighting a materially different method, such as:
+Greenlit routes, in preferred order:
 
-1. split-run proof from the saved player-created roof-fire world;
-2. a non-quitting save/writeback primitive so the same live session can continue into bounded wait;
-3. Josef manual playtest/save evidence.
+1. Split-run proof from the saved player-created roof-fire world: load the saved world after the roof fire exists, prove the roof/elevated fire state is still present, then perform the bounded in-game wait and horde response audit from gameplay state.
+2. If split-run is impractical, add/use a non-quitting save/writeback primitive so the same live session can continue into bounded wait after fire creation.
+3. If both are blocked, package exact Josef manual playtest/save evidence needs.
 
-Without one of those, roof/horde stays parked as **roof fire proven / horde response unproven**.
-
-## Next lane
-
-No next lane is currently promoted in repo canon.
-
-Next Andi run should start from `Plan.md` / `TODO.md` / `TESTING.md`, not from old prompt lore. If no sensible unblocked target is promoted, hold for Schani/Josef decision rather than inventing attempt 5.
+This is not a latch/permission blocker anymore. Pick the smallest route that honestly proves: roof/elevated real player-created fire -> bounded elapsed time -> horde before/after detection or response metadata. If one route hits a technical wall, switch to the next materially different route instead of parking immediately. Keep screenshots, time/turn evidence, and horde metadata boundaries tight.
 
 ## Canonical anchors
 

@@ -137,11 +137,11 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active pending probe: `Roof-fire horde detection proof packet v0` is now a Josef/Schani decision or materially-new-method item, not another blind harness retry.
+Active pending probe: `Roof-fire horde detection proof packet v0` is greenlit for a materially different route that proves the real product claim, not another blind same-shape harness retry.
 
 1. Preserve `.userdata/dev-harness/harness_runs/20260429_172847/` as green scoped player-created roof-fire writeback proof, not horde proof.
 2. Preserve the red/yellow horde boundary from the same run: save-and-quit prevented a valid same-session bounded wait, and no roof-fire horde light-signal artifact matched.
-3. Do not run attempt 5 on the same scenario shape. A valid next proof must materially change method: split-run from the saved player-created roof-fire world, non-quitting save/writeback support, or Josef manual playtest/save evidence.
+3. Do not run attempt 5 on the same scenario shape. Do continue with the route that works: preferably split-run from the saved player-created roof-fire world; if that is impractical, use/add non-quitting save/writeback support so the same live session can continue into bounded wait. Only fall back to Josef manual playtest/save evidence if those technical routes fail.
 4. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof; do not rerun it as ritual.
 5. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
