@@ -2,77 +2,70 @@
 
 ## Status
 
-REOPENED NARROWLY FOR VISIBLE/OPERATIONAL DEPLOYED-BRAZIER CHECK under `C-AOL actual playtest verification stack v0`; downstream fire proof remains implemented-but-unproven.
+COMPLETE / GREEN NORMAL PLAYER IGNITION + SAVED `fd_fire` under `C-AOL actual playtest verification stack v0`.
 
 Imagination source: `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
 
+Detailed green action proof: `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`.
+
 ## Why this exists
 
-The scoped normal brazier deploy gate is already green: selected `brazier` -> `Deploy where?` -> east/right key consumed -> guarded save/writeback -> saved east-tile `f_brazier`.
+The old Multidrop filtered-`2x4` continuation and later old fixture path did not honestly prove normal player fire. Josef diagnosed the old `fuel_writeback_source_zone_v0_2026-04-29` proof surface as a broken save/fixture; it remains retired and must not be used for future fire/lighter proof.
 
-The old continuation is red at `blocked_untrusted_drop_filter_or_inventory_visibility`: the Multidrop `plank` filter redraw exposed no selectable `typeid="2x4"` fuel row, so there is no credited count selection, confirm-return, post-fuel save/writeback, lighter, or `fd_fire` proof.
+The repaired path uses a player-facing product sequence instead of relying on saved `f_brazier` metadata:
 
-Josef's repair direction is to bypass that brittle exact inventory/drop selector seam: spawn an oversized local firewood supply, preferably logs first and planks/`2x4` only if logs fail the intended firewood path; place a broad source-firewood zone over/around it; then prove the normal fire-starting path can see enough real in-world fuel.
+1. start from normal map UI;
+2. deploy a `brazier` through normal Apply inventory;
+3. prove `Deploy where?` and place east/right;
+4. select charged `lighter` through normal Apply inventory;
+5. prove exact `Light where?` before targeting;
+6. target east/right into the visibly deployed brazier/log/source-zone tile;
+7. accept the `SOURCE_FIREWOOD` prompt with uppercase `Y`;
+8. require recognizable ignition OCR before save/writeback;
+9. save and audit same-run save mtime plus saved target-tile `fd_fire`.
 
 ## Scope
 
 ### In scope
 
-1. Reuse or rerun the already-green normal brazier deployment primitive only as the brazier footing.
-2. Create an oversized in-world wood source near the brazier: target shape is thousands of logs or planks so fuel visibility is impossible to miss.
-3. Create/verify a broad source-firewood zone over the wood source using the most reliable current primitive. If the exact zone type/key name is uncertain, inspect live game metadata/zone JSON rather than guessing.
-4. Prove saved-world footing before ignition: `f_brazier`, real wood items in the expected nearby/source area, and source-firewood zone metadata or visible zone evidence.
-5. Run the normal player fire-start/lighter path, not a debug `fd_fire` placement shortcut. Capture the narrow in-game message/log line for the lighting action immediately after targeting/turn advance if one is emitted; it is bridge evidence that the fire came from normal play before save/`fd_fire` closure is attempted, not a substitute for saved-state proof.
-6. If cheap to stage, winter/cold exposure plus character-warmth log lines may be used as secondary liveliness evidence that the fire is still active after time passes. Treat warmth messages as adjunct evidence only, because clothing, weather, shelter, distance, and elapsed-time interruptions can all confound them.
-7. Prove guarded save/writeback after ignition with saved `fd_fire`/smoke/light state and then continue into the existing player-lit fire -> bandit signal matrix if green.
+- Real normal-map/player-facing brazier deployment.
+- Real in-world source firewood/log footing plus `SOURCE_FIREWOOD` zone metadata.
+- Charged lighter selected through a normal product path.
+- Player-message/OCR bridge evidence for source-firewood prompt and ignition.
+- Guarded save/writeback after ignition with saved `fd_fire` on the expected brazier tile.
 
 ### Out of scope
 
 - Crediting the old Multidrop filtered-`2x4` path without new proof.
-- Closing player-lit fire from debug map-editor `fd_fire` or synthetic loaded-map fields.
-- Reopening roof-fire horde proof before real player-lit fire is green.
-- Broad zone-manager proof. This packet may use a zone only as a practical firewood source footing; it does not claim Smart Zone Manager closure.
+- Crediting `fuel_writeback_source_zone_v0_2026-04-29` for more fire/lighter proof.
+- Closing player-lit fire from debug map-editor `fd_fire`, setup metadata, or synthetic loaded-map fields.
+- Claiming bandit signal response, roof-fire horde response, long-duration smoke/light behavior, or `fd_smoke`; those are separate stack items.
+- Broad Zone Manager proof. This packet uses source-firewood zoning only as fuel-source footing.
 
 ## Success state
 
-- [x] Current runtime/probe path is named in the report: final post-Frau diagnostic/final attempt `.userdata/dev-harness/harness_runs/20260429_142257/`; earlier setup-green attempt `.userdata/dev-harness/harness_runs/20260429_093118/` remains preserved as blocker evidence.
-- [x] Brazier footing is present in saved metadata for the pre-wielded fixture path: `.userdata/dev-harness/harness_runs/20260429_142257/` green `audit_saved_target_tile_for_brazier_logs` includes saved `f_brazier`. This is setup metadata only, not yet player-facing deployed/usable brazier proof.
-- [ ] Visible/operational deployed-brazier gate proves the player-facing product path: if saved/spawned `f_brazier` is not enough, use the real deploy path from normal map UI (`a` inventory activation/deploy, or `*` construction/build menu only if that is the actual gameplay path), screenshot the menu/placement step, and screenshot the final deployed brazier state on the map before any lighter/fire proof.
-- [x] Oversized firewood source is real in saved-world metadata: `.userdata/dev-harness/harness_runs/20260429_142257/` green `audit_saved_target_tile_for_brazier_logs` includes saved `log` items.
-- [x] Broad source-firewood zone or equivalent real game fuel-source footing is proven by saved zone metadata: `.userdata/dev-harness/harness_runs/20260429_142257/` green `audit_saved_source_firewood_zone_for_logs` for `SOURCE_FIREWOOD` / `your_followers`.
-- [x] Pre-wielded charged lighter setup is proven only as setup state: `.userdata/dev-harness/harness_runs/20260429_142257/` green `audit_saved_player_has_wielded_charged_lighter` shows `required_weapon=lighter`, nested `butane`, and `observed_weapon_ammo_remaining=100`; this does **not** prove inventory selector/wield UI.
-- [x] Depleted/no-ignition boundary is named instead of laundered into save/writeback: `.userdata/dev-harness/harness_runs/20260429_090634/` is blocked, not proof, because the wait/save path followed a failed or depleted-lighter action.
-- [x] Wrong-screen boundary is named instead of pressed through: attempt 3/B typed through a stale item-info/raw-JSON screen; attempt 4 `.userdata/dev-harness/harness_runs/20260429_093509/` added guarded `escape` and aborted when OCR still showed `pocket_type`/`contents`/`specific energy` instead of normal map UI.
-- [x] Corrected proof shape is encoded in the scenario: after targeting/advance, capture player-message/OCR, red-block depleted-lighter/no-ignition text such as `lighter has 0 charges, but needs 1`, and proceed to save/`fd_fire` audit only on a real ignition line such as `You successfully light a fire.`
-- [x] Josef's 10:18 screenshot rule is encoded in the packet: for any reopened fuel/fire path, each relevant boundary must name the screenshot artifact path plus the visible fact it is meant to prove; OCR/metadata are fallback only when the image cannot be directly inspected, and that limitation must be stated.
-- [ ] Normal player fire-start/lighter action reaches the brazier/fuel path from normal map UI, with screenshot artifact path + named visible normal-map fact and decisive in-game message/OCR line captured as narrow action-path bridge evidence. Current result: `.userdata/dev-harness/harness_runs/20260429_142257/open_start_fire_targeting_prompt.after.png` / OCR did **not** show `Light where?` after apply-wielded `A`, aborting as `blocked_apply_wielded_firestarter_did_not_open_targeting`.
-- [ ] Guarded post-ignition save/writeback proves actual `fd_fire` plus `fd_smoke`/smoke-light-relevant state on the expected tile/area, paired with a visible fire-or-no-fire screenshot fact, player message/OCR, and save mtime.
-- [ ] If ignition is green, bounded wait evidence shows the relevant bandit live-signal response or a clearly classified no-response outcome.
-
-
-## Visible deployed-brazier/source-zone gate — 2026-04-29
-
-`doc/fuel-visible-brazier-source-zone-gate-v0-2026-04-29.md` records the new required gate after Josef flagged that saved `observed_furniture=[f_brazier]` is metadata-only. Green run `.userdata/dev-harness/harness_runs/20260429_144805/` proves normal Apply inventory -> filtered `brazier` -> `Deploy where?` -> east/right, then player-facing look/inspect east with screenshot `look_east_at_deployed_brazier.after.png` and OCR fallback `hrazıer` + `burn things`; saved re-audit proves `f_brazier` + `log` and `SOURCE_FIREWOOD`. No lighter/fire key is sent. Future fire proof must cite this visible gate or a fresher equivalent before attempting apply-wielded lighter / `Light where?`.
-
-## Clean fixture replacement — 2026-04-29
-
-Root-cause audit: `doc/fuel-source-zone-save-transform-corruption-audit-v0-2026-04-29.md` identifies the exact backend corruption as the old `apply_map_furniture_near_player_transform` flattening map `furniture` triples in `maps/4.1.0.zzip` / `140.41.0.map`; this was a save-transform serialization bug, not fire/lighter gameplay proof.
-
-Josef explicitly diagnosed the old fuel/source-zone proof surface as a broken save/fixture. Do not use `fuel_writeback_source_zone_v0_2026-04-29` for further fire/lighter proof.
-
-Replacement fixture: `fuel_source_zone_clean_normal_map_v0_2026-04-29`
-
-Source: copied from `.userdata/dev-harness/harness_runs/20260429_140645/saved_world/McWilliams`, after the green normal-map entry proof and before any activation/targeting/fire/lighter action key. This fixture has no `save_transforms`; it is a captured save payload from the already-normal-map state.
-
-Clean first-load proof: `.userdata/dev-harness/harness_runs/20260429_143149/`, scenario `bandit.live_world_nearby_camp_source_zone_clean_normal_map_entry_mcw`, feature-path green, 5/5 green step-local ledger, matched `game::load: Finalizing end`. First screenshot: `.userdata/dev-harness/harness_runs/20260429_143149/normal_map_entry_gate_before_activation.png`. Named visible fact: normal gameplay map UI; OCR fallback matched `Wield:` and `YOU`, and the raw JSON/item-info guard (`pocket_type` / `contents` / `specific energy`) did not fire. Setup footing rechecked green: saved wielded `lighter` with charge 100, saved `f_brazier`, real saved `log`, saved `SOURCE_FIREWOOD`.
-
-Future rule: if a brand-new clean fixture opens to raw JSON/item-info soup, classify it as harness/game-code load bug and stop for review; do not poke through it with keys. If fuel proof is reopened, use the clean fixture or a fresher clean fixture that first proves normal map UI and visible/operational deployed-brazier state. Josef's 2026-04-29 deployment correction: spawning/saved metadata alone is not enough when the product path requires an actual deploy step.
+- [x] Broken-save fixture boundary is named: `fuel_writeback_source_zone_v0_2026-04-29` is retired, and `.userdata/dev-harness/harness_runs/20260429_142257/` remains prior non-proof because apply-wielded `A` did not show `Light where?`.
+- [x] Clean first-load footing exists: `fuel_source_zone_clean_normal_map_v0_2026-04-29`, run `.userdata/dev-harness/harness_runs/20260429_143149/`, feature-path green normal-map entry with charged lighter, saved `f_brazier`, real `log`, and `SOURCE_FIREWOOD`.
+- [x] Visible/operational deployed-brazier gate exists: `.userdata/dev-harness/harness_runs/20260429_144805/`, `bandit.live_world_nearby_camp_visible_brazier_source_zone_gate_mcw`, 20/20 green, normal Apply inventory -> `brazier` -> `Deploy where?` -> east/right, look/OCR `hrazıer` + `burn things`, saved `f_brazier` + `log`, saved `SOURCE_FIREWOOD`, no lighter/fire keys.
+- [x] Corrected firestarter scenario is claim-classified: `bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw` has top-level artifact patterns for the normal Apply/deploy/lighter/`Light where?` UI trace path.
+- [x] Normal player fire-start/lighter action reaches the visible brazier/fuel path from normal map UI: `.userdata/dev-harness/harness_runs/20260429_153253/` is feature-path green, `feature_proof=true`, 31/31 green step-local rows.
+- [x] UI trace proves the decisive product path: filtered Apply inventory returned `brazier`, `Deploy where?` consumed east/right, filtered Apply inventory returned `lighter`, exact `Light where?` opened before targeting, and `Light where?` consumed east/right.
+- [x] OCR bridge evidence proves source-firewood and ignition boundaries: `target_direction_east_to_visible_brazier_logs.after.screen_text.json` matched `burn your firewood source`; `confirm_burn_source_firewood_prompt_after_visible_brazier.after.screen_text.json` matched ignition guard `a fir` from OCR line `Dau successfillu linht a fire`; `request_direct_save_after_visible_brazier_ignition.after.screen_text.json` matched `Save and quit` before confirmation.
+- [x] Guarded post-ignition save/writeback proves actual saved `fd_fire`: `audit_player_save_mtime_after_visible_brazier_ignition_save.metadata.json` has `mtime_changed_since_required_label=true`, and `audit_saved_target_tile_for_visible_brazier_fd_fire.metadata.json` has `observed_furniture=[f_brazier]` and `observed_field_ids=[fd_fire]` with no missing required field/furniture.
+- [ ] Bounded wait evidence and bandit live-signal response remain separate under `Player-lit fire and bandit signal verification packet v0`.
 
 ## Validation notes
 
+Green proof run: `.userdata/dev-harness/harness_runs/20260429_153253/`.
 
-Packaged audit boundary (2026-04-29): the old scenario/fixture `fuel_writeback_source_zone_v0_2026-04-29` is now retired as a broken proof surface; the clean replacement fixture is `fuel_source_zone_clean_normal_map_v0_2026-04-29`. Josef later reopened a narrow check that the brazier is visibly/operationally deployed through the product path, not merely present as saved/spawned `f_brazier` metadata. The old transformed fixture preflight-wielded a charged `lighter` with nested `butane` ammo, added saved `f_brazier`/log/source-zone footing, and kept `fd_fire` out of setup. Frau's 09:13 correction classifies `.userdata/dev-harness/harness_runs/20260429_090634/` as blocked, not proof: it proved log/source-zone footing but spent wait/save after failed/depleted lighter ignition, so mtime/`fd_fire` writeback could not close. Prior changed attempts `.userdata/dev-harness/harness_runs/20260429_093118/`, `.userdata/dev-harness/harness_runs/20260429_093509/`, and `.userdata/dev-harness/harness_runs/20260429_095021/` stayed non-green for feature proof because they were stale raw-JSON/item-info or wrong-screen evidence only. The final post-Frau diagnostic/final attempt `.userdata/dev-harness/harness_runs/20260429_142257/` fixed the fixture lighter representation to include nested `butane`, reached normal map entry, and proved setup footing again: 6/7 step-local rows green, saved `lighter` with `observed_weapon_ammo_remaining=100`, saved `f_brazier`, saved `log`, saved `SOURCE_FIREWOOD`, screenshot `normal_map_entry_gate_before_activation.png`, and OCR fallback rather than direct image-model inspection. The first action boundary still failed: after apply-wielded `A`, `open_start_fire_targeting_prompt.after.png` / OCR did not show `Light where?`, so the run aborted as `blocked_apply_wielded_firestarter_did_not_open_targeting`. Josef's 10:18 clarification keeps screenshot evidence mandatory for any later reopened fuel/fire path: name the screenshot artifact path and the visible fact at each relevant boundary, state honestly when image inspection is unavailable and OCR/metadata are fallback, and stop before unsafe keys when the visible prompt is missing. The scenario now encodes the decisive guards: `dev-harness` suppresses automatic post-load Return, normal-map entry red-blocks stale raw JSON before action keys, apply-wielded activation must show `Light where?`, east targeting must show the source-firewood confirmation prompt, unhandled prompts abort, and post-target/advance player-message/OCR must show real ignition while red-blocking depleted-lighter/no-ignition text before any save/`fd_fire` audit. The agent-side attempt budget is exhausted unless Josef supplies manual evidence or Schani/Josef/Frau reopen a materially repaired firestarter/action primitive; the manual recipe and exact close condition live in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md#2026-04-29--fuel-writeback-source-zone-repair-v0`.
+Command: `python3 tools/openclaw_harness/startup_harness.py probe bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw`.
 
-Use the proof-freeze discipline from `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`: setup helpers are footing only. Feature proof needs clean startup, green step-local rows, claim-scoped artifacts, guarded save/writeback, and no yellow/blocked wait ledger for the claimed behavior. In-game message/debug log lines are useful bridge evidence for the player action path; extract only the decisive line(s) and pair them with screenshot paths, named visible facts, save mtime, and saved-state proof instead of dumping broad logs.
+Fixture: `fuel_visible_brazier_deploy_source_zone_nested_lighter_v0_2026-04-29`. This fixture provides a wielded `brazier`, a live-accessible worn-pocket `lighter` with nested `butane` charges, logs east of the player, and `SOURCE_FIREWOOD` zone metadata; it does not inject `fd_fire`.
 
-After two materially different attempts hit the same blocker, consult Frau Knackal before attempt 3. After four unresolved attempts, package the manual recipe and evidence boundary for Josef instead of looping.
+Scenario: `tools/openclaw_harness/scenarios/bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw.json`.
+
+Classifier: `verdict=artifacts_matched`, `evidence_class=feature-path`, `feature_proof=true`; step ledger: `green_step_local_proof`, `green_count=31`, `yellow_count=0`, `red_or_blocked_count=0`.
+
+Evidence boundary: this closes normal player source-zone ignition and same-run saved `fd_fire` only. It does not prove bandit signal response, `fd_smoke`, roof/elevated fire, horde response, or long-duration smoke/light behavior. Direct image-model inspection was not used; screenshot artifacts plus OCR/metadata are named fallback evidence.
+
+Use the proof-freeze discipline from `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`: setup helpers are footing only. Feature proof needs clean startup, green step-local rows, claim-scoped artifacts, guarded save/writeback, and no yellow/blocked wait ledger for the claimed behavior. In-game message/debug log lines are useful bridge evidence for the player action path; pair them with screenshot paths, named visible facts, save mtime, and saved-state proof instead of broad log dumps.

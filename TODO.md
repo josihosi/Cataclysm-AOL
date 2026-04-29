@@ -8,41 +8,42 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Josef reopened one narrow check in the `C-AOL actual playtest verification stack v0`: verify whether the brazier is actually deployed/usable through the player-facing product path. That visible deployed-brazier/source-zone gate is now green; the old fuel/source-zone proof surface remains broken, so do **not** use `fuel_writeback_source_zone_v0_2026-04-29` as a fire/lighter proof surface.
+`C-AOL actual playtest verification stack v0` advanced: the source-zone fuel repair now has green normal player-action ignition proof. The old `fuel_writeback_source_zone_v0_2026-04-29` proof surface remains broken/retired; do **not** use it as a fire/lighter proof surface.
 
-Clean fixture replacement is now available and first-load green:
+Green fuel/fire proof to preserve:
 
-- fixture: `fuel_source_zone_clean_normal_map_v0_2026-04-29`
-- source: captured from `.userdata/dev-harness/harness_runs/20260429_140645/saved_world/McWilliams` after the green normal-map entry run and before any activation/targeting/fire/lighter key
-- clean gate probe: `.userdata/dev-harness/harness_runs/20260429_143149/`, scenario `bandit.live_world_nearby_camp_source_zone_clean_normal_map_entry_mcw`
-- visible deployed-brazier/source-zone gate: `.userdata/dev-harness/harness_runs/20260429_144805/`, scenario `bandit.live_world_nearby_camp_visible_brazier_source_zone_gate_mcw`, 20/20 green, normal Apply->brazier->Deploy where?->east, look/OCR `hrazıer` + `burn things`, saved `f_brazier` + `log`, saved `SOURCE_FIREWOOD`, no lighter/fire keys
-- result: feature-path green, 5/5 green step-local ledger, load-finalized artifact match
-- first screenshot: `.userdata/dev-harness/harness_runs/20260429_143149/normal_map_entry_gate_before_activation.png`
-- named visible fact: normal gameplay map UI, OCR fallback matched `Wield:` and `YOU`; no raw `pocket_type` / `contents` / `specific energy` guard fired
-- setup footing rechecked: saved wielded `lighter` charge 100, saved `f_brazier`, real saved `log`, saved `SOURCE_FIREWOOD`
+- scenario: `bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw`
+- fixture: `fuel_visible_brazier_deploy_source_zone_nested_lighter_v0_2026-04-29`
+- run: `.userdata/dev-harness/harness_runs/20260429_153253/`
+- result: `verdict=artifacts_matched`, `evidence_class=feature-path`, `feature_proof=true`, step ledger 31/31 green
+- path proven: normal map UI -> normal Apply inventory `brazier` -> `Deploy where?` -> east/right -> normal Apply inventory `lighter` -> exact UI trace `Light where?` -> east/right target -> `SOURCE_FIREWOOD` prompt -> uppercase `Y` -> recognizable ignition OCR -> save prompt -> mtime advance -> saved target tile `f_brazier` + `fd_fire`
+- decisive files: `probe.report.json`, `probe.step_ledger.json`, `target_direction_east_to_visible_brazier_logs.after.screen_text.json`, `confirm_burn_source_firewood_prompt_after_visible_brazier.after.screen_text.json`, `audit_player_save_mtime_after_visible_brazier_ignition_save.metadata.json`, `audit_saved_target_tile_for_visible_brazier_fd_fire.metadata.json`
+- proof doc: `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`
+
+Still preserve earlier gates as scoped support:
+
+- clean normal-map fixture: `fuel_source_zone_clean_normal_map_v0_2026-04-29`, run `.userdata/dev-harness/harness_runs/20260429_143149/`
+- visible deployed-brazier/source-zone gate without lighter keys: `.userdata/dev-harness/harness_runs/20260429_144805/`, `bandit.live_world_nearby_camp_visible_brazier_source_zone_gate_mcw`
+- prior failed action diagnostic: `.userdata/dev-harness/harness_runs/20260429_142257/` remains non-proof for ignition because `A` did not show `Light where?`
 
 Canonical anchors:
 
-- Save-transform corruption audit: `doc/fuel-source-zone-save-transform-corruption-audit-v0-2026-04-29.md`.
-- Visible deployed-brazier gate: `doc/fuel-visible-brazier-source-zone-gate-v0-2026-04-29.md`.
-- Stack contract: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
-- Completed normal-map entry packet: `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`.
-- Packaged fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`.
-- Manual package entry: `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md#2026-04-29--fuel-writeback-source-zone-repair-v0`.
+- Stack contract: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`
+- Green normal-map entry: `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`
+- Visible deployed-brazier gate: `doc/fuel-visible-brazier-source-zone-gate-v0-2026-04-29.md`
+- Green firestarter action proof: `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`
+- Fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`
+- Save-transform corruption audit: `doc/fuel-source-zone-save-transform-corruption-audit-v0-2026-04-29.md`
 
 Next narrow work queue:
 
-1. Do **not** rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`.
-2. Treat `.userdata/dev-harness/harness_runs/20260429_144805/` as the green visible deployed-brazier/source-zone gate: normal Apply->brazier->Deploy where?->east, look/OCR `hrazıer` + `burn things`, saved `f_brazier` + `log`, saved `SOURCE_FIREWOOD`, no lighter/fire keys.
-3. If fuel fire proof continues, use only the visible deployed-brazier gate or a fresher equivalent: start from normal map UI, prove real brazier deployment/visibility, then select/activate the charged lighter through a product path and require `Light where?` before any direction/confirmation keys.
-4. If a visibly deployed/usable brazier plus charged lighter still fails to open `Light where?`, stop and classify it as a firestarter/action primitive bug rather than laundering the failure into fuel/fire proof.
-5. If a brand-new clean fixture ever opens to raw JSON/item-info soup, stop and classify it as harness/game-code load bug for review; do not poke through it with keys.
-6. Keep `Player-lit fire and bandit signal verification packet v0` blocked behind real player-lit fire proof/manual evidence.
-7. Keep `Roof-fire horde detection proof packet v0` blocked behind real player-created fire/light/smoke.
+1. Start `Player-lit fire and bandit signal verification packet v0` from the green real-fire proof above or a fresher equivalent; add bounded wait/time passage and bandit signal response/metadata.
+2. Do not claim bandit signal from the source-zone ignition proof alone; it proves real player fire + saved `fd_fire`, not signal response.
+3. Do not rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`.
+4. Keep `Roof-fire horde detection proof packet v0` separate: it still needs roof/elevated-position plus real player-created roof fire/light/smoke and horde response metadata.
 
 Proof discipline:
 
-- The broken-save postmortem is not fire proof; it is to stop repeating the backend manipulation that created the poisoned fixture/UI state.
-- OCR/metadata are fallback evidence, not visual inspection, unless the image was directly inspected.
+- OCR/metadata are fallback evidence unless the image was directly inspected.
 - Do not launder setup metadata, stale screenshots, debug `fd_fire`, synthetic loaded-map fields, or item-info text into product proof.
-- If the same broken-save symptom reappears on the green fixture path, stop and classify harness/load or game-code investigation before pressing onward.
+- For the next signal probe, require the real fire source plus bounded wait/time passage and claim-scoped bandit artifact/metadata; startup/load success alone is not signal proof.
