@@ -1,0 +1,640 @@
+{
+  "name": "bandit.roof_fire_horde_player_action_mcw",
+  "description": "Roof-fire horde detection product-path probe: prove saved roof/elevated footing, stage horde/distance only, create the credited roof fire through normal Apply->brazier and Apply->lighter player actions, wait a bounded 5 minutes through the real wait UI, require live horde-light signal artifacts, then save and inspect elapsed turn/map/horde response metadata. Attempt 2 intentionally skips the old look/OCR visible-brazier gate on roof footing after run 20260429_171831 produced blank OCR there; deploy prompt UI trace, lighter target/source prompt, message-log ignition proof, and final saved f_brazier/fd_fire carry the product-path proof instead. Frau approved attempt 3: replace the brittle post-confirm OCR ignition gate with a result-state message-log guard before wait/horde proof. Attempt 4 correction: the saved-player .log is an overmap event log and did not carry transient ignition messages, so the roof-fire result gate is now guarded save/writeback plus saved roof f_brazier/fd_fire before horde waiting.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "roof_fire_horde_player_action_v0_2026-04-29",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "openclaw_harness_ui_trace: component=direction_prompt event=return message=\"Light where?\" action=\"RIGHT\" chosen_direction=yes dx=1 dy=0 dz=0",
+    "bandit_live_world signal scan: signal_packet=yes",
+    "light_packets=1",
+    "bandit_live_world horde light signal:",
+    "horde_signal_power="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "roof_fire_horde_load_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "The roof-fire horde fixture is loaded before roof/elevated footing, horde footing, and normal player firestarter action are audited."
+    },
+    {
+      "kind": "capture",
+      "label": "normal_map_entry_before_roof_fire_deploy",
+      "extract_text": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_contains": [
+        "YOU"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_if_text_contains": [
+        "pocket_type",
+        "contents",
+        "specific energy"
+      ],
+      "abort_verdict": "blocked_starting_ui_not_normal_map",
+      "abort_reason": "startup did not land on normal map UI; do not type Apply/deploy/lighter keys through raw item-info/JSON text",
+      "expected_visible_fact": "Startup lands directly on normal map UI after relocating the saved player to the roof/elevated z-level; no blind key is sent through a stale view."
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_player_on_roof_tile_before_fire_action",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offsets": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_tile_flat_roof"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_roof_elevated_footing",
+      "abort_reason": "saved map metadata did not show the relocated player/target footing on t_tile_flat_roof before roof-fire action proof",
+      "expected_visible_fact": "saved map metadata proves the player-relative roof/elevated z-level footing before any fire action is credited; this is setup footing, not fire proof"
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_saved_inventory_has_brazier_and_lighter_before_apply",
+      "required_items": [
+        "brazier",
+        "lighter"
+      ],
+      "expected_visible_fact": "saved player live-accessible inventory contains the exact brazier and charged lighter setup before the Apply inventory path is opened",
+      "preconditions": "fixture install completed for fuel_visible_brazier_deploy_source_zone_nested_lighter_v0_2026-04-29",
+      "next_step_gate": "do not credit Apply/deploy/lighter UI steps if the exact brazier or lighter item is missing from live-accessible saved-player inventory",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "exact brazier or lighter fixture item missing from live-accessible saved-player inventory before player-action deploy/firestarter audit"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "audit_saved_horde_before_roof_fire_action",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "radius_ms": 180,
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie",
+          "offset_ms": [
+            0,
+            -120,
+            0
+          ],
+          "destination_offset_ms": [
+            0,
+            -120,
+            0
+          ],
+          "tracking_intensity": 0,
+          "moves": 0
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_roof_fire_horde_footing",
+      "abort_reason": "saved overmap horde_map metadata did not contain the staged mon_zombie horde at player-relative offset [0,-120,0] before roof-fire action proof",
+      "expected_visible_fact": "saved overmap horde_map metadata contains the staged horde before the normal player-created roof fire and wait path; horde staging is setup-only"
+    },
+    {
+      "kind": "press",
+      "label": "open_apply_inventory_for_brazier_text_guard",
+      "keys": [
+        "a"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "The source-backed Apply key is sent for brazier deployment; the following harness UI trace gate must prove the Use item inventory opened before another unsafe key fires."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_apply_inventory_open_for_brazier",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=open title=\"Use item\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the Use item inventory opened for brazier deployment",
+      "preconditions": "open_apply_inventory_for_brazier_text_guard sent the source-backed Apply key.",
+      "next_step_gate": "do not type brazier inventory filter keys unless the Use item inventory-open trace is present",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "harness UI trace did not prove the Use item inventory opened before filtering for brazier"
+    },
+    {
+      "kind": "press",
+      "label": "filter_apply_inventory_for_brazier_text_guard",
+      "keys": [
+        "/"
+      ],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "expected_visible_fact": "The filter key is sent only after the Use item inventory-open trace is green for brazier."
+    },
+    {
+      "kind": "type",
+      "label": "type_brazier_filter_for_apply_text_guard",
+      "text": "brazier",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "The brazier filter text is submitted only after the Apply inventory-open trace is green; the following UI trace gate proves the highlighted filtered row."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_filtered_brazier_selected",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=state title=\"Use item\" filter=\"brazier\" action=\"redraw\" selection_method=\"highlight_after_redraw\"",
+        "selection_method=\"highlight_after_redraw\" selected_item=yes typeid=\"brazier\" name=\"brazier\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace after redraw proves the Apply inventory filter is brazier and the highlighted row is the brazier item",
+      "preconditions": "the Use item inventory is open and the brazier filter text was typed.",
+      "next_step_gate": "do not press confirm unless the highlighted filtered row is proven as brazier",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "harness UI trace did not prove filtered highlighted item was brazier before confirm"
+    },
+    {
+      "kind": "press",
+      "label": "select_filtered_brazier_expect_deploy_prompt",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "The filtered brazier inventory row is confirmed; following harness UI trace gates must prove the returned item is brazier and Deploy where? opened."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_brazier_selected_and_deploy_prompt_open",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=return title=\"Use item\"",
+        "selection_method=\"highlight_confirm\" selected_item=yes typeid=\"brazier\" name=\"brazier\"",
+        "openclaw_harness_ui_trace: component=direction_prompt event=open message=\"Deploy where?\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the selector returned brazier and opened Deploy where?",
+      "preconditions": "select_filtered_brazier_expect_deploy_prompt confirmed the filtered Apply inventory row.",
+      "next_step_gate": "do not send right/east unless the returned item is brazier and the Deploy where? prompt is open",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "harness UI trace did not prove selected brazier plus Deploy where? before right/east"
+    },
+    {
+      "kind": "press",
+      "label": "place_prompted_brazier_east",
+      "keys": [
+        "right"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "The source-backed Deploy where? prompt accepts right/east and returns to the map; the following UI trace gate proves right/east was consumed by that prompt."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_deploy_prompt_consumed_right",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=direction_prompt event=return message=\"Deploy where?\"",
+        "chosen_direction=yes dx=1 dy=0 dz=0"
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves right/east was consumed by the Deploy where? direction prompt",
+      "preconditions": "audit_ui_trace_brazier_selected_and_deploy_prompt_open proved Deploy where? was open.",
+      "next_step_gate": "do not inspect or run lighter/fire proof unless right/east was consumed by the Deploy where? prompt",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_brazier_deploy_selector",
+      "abort_reason": "harness UI trace did not prove right/east was consumed by Deploy where?"
+    },
+    {
+      "kind": "audit_saved_zones_near_player",
+      "label": "audit_saved_source_firewood_zone_before_lighter",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          0
+        ]
+      ],
+      "required_zone_type": "SOURCE_FIREWOOD",
+      "required_faction": "your_followers",
+      "required_name_contains": "OpenClaw roof-fire horde source firewood proof zone",
+      "expected_visible_fact": "saved zone metadata contains SOURCE_FIREWOOD over/around the roof brazier/log target before lighter activation",
+      "preconditions": "audit_ui_trace_deploy_prompt_consumed_right proved normal Apply->brazier->Deploy where?->east completed on roof footing.",
+      "next_step_gate": "do not run or credit lighter/fire proof unless source-firewood zone metadata is green after roof brazier deployment; visible look/OCR was intentionally not used on this roof path because attempt 20260429_171831 produced blank OCR at the look gate.",
+      "abort_on_metadata_failure": true,
+      "abort_reason": "saved roof SOURCE_FIREWOOD zone metadata missing before lighter/fire step"
+    },
+    {
+      "kind": "press",
+      "label": "open_apply_inventory_for_lighter_text_guard",
+      "keys": [
+        "a"
+      ],
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "The source-backed Apply key is sent for the charged lighter after the roof Deploy where? UI-trace gate and source-zone metadata gate; the following harness UI trace gate must prove the Use item inventory opened before filter/selection keys fire."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_apply_inventory_open_for_lighter",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=open title=\"Use item\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the Use item inventory opened for lighter activation",
+      "preconditions": "open_apply_inventory_for_lighter_text_guard sent the source-backed Apply key after a green visible brazier gate.",
+      "next_step_gate": "do not type lighter filter keys unless the Use item inventory-open trace is present",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_lighter_apply_selector",
+      "abort_reason": "harness UI trace did not prove the Use item inventory opened before filtering for lighter"
+    },
+    {
+      "kind": "press",
+      "label": "filter_apply_inventory_for_lighter_text_guard",
+      "keys": [
+        "/"
+      ],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "expected_visible_fact": "The filter key is sent only after the Use item inventory-open trace is green for lighter activation."
+    },
+    {
+      "kind": "type",
+      "label": "type_lighter_filter_for_apply_text_guard",
+      "text": "lighter",
+      "submit": true,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "expected_visible_fact": "The lighter filter text is submitted only after the Apply inventory-open trace is green; the following UI trace gate proves the highlighted filtered row is the lighter."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_filtered_lighter_selected",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=state title=\"Use item\" filter=\"lighter\" action=\"redraw\" selection_method=\"highlight_after_redraw\"",
+        "selection_method=\"highlight_after_redraw\" selected_item=yes typeid=\"lighter\" name=\"lighter\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace after redraw proves the Apply inventory filter is lighter and the highlighted row is the lighter item",
+      "preconditions": "the Use item inventory is open and the lighter filter text was typed.",
+      "next_step_gate": "do not press confirm unless the highlighted filtered row is proven as lighter",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_lighter_apply_selector",
+      "abort_reason": "harness UI trace did not prove filtered highlighted item was lighter before confirm"
+    },
+    {
+      "kind": "press",
+      "label": "select_filtered_lighter_expect_light_prompt",
+      "keys": [
+        "enter"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_visible_fact": "Confirming the filtered lighter item through the normal Apply inventory should invoke the firestarter and open the targeting prompt after the visible deployed-brazier gate; OCR may read this as `ight where?`, so exact gating is deferred to audit_ui_trace_lighter_selected_and_light_prompt_open.",
+      "proof_deferred_to_label": "audit_ui_trace_lighter_selected_and_light_prompt_open",
+      "failure_rule": "screenshot/OCR is captured here, but OCR may drop the leading L in Light where?; trust the following harness UI trace gate for exact selected lighter + Light where? before any direction key."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ui_trace_lighter_selected_and_light_prompt_open",
+      "required_patterns": [
+        "openclaw_harness_ui_trace: component=inventory_selector event=return title=\"Use item\"",
+        "selection_method=\"highlight_confirm\" selected_item=yes typeid=\"lighter\" name=\"lighter\"",
+        "openclaw_harness_ui_trace: component=direction_prompt event=open message=\"Light where?\""
+      ],
+      "expected_visible_fact": "harness-gated UI trace proves the selector returned lighter and opened Light where?",
+      "preconditions": "select_filtered_lighter_expect_light_prompt confirmed the filtered Apply inventory row and screenshot/OCR showed Light where?.",
+      "next_step_gate": "do not send right/east unless the returned item is lighter and the Light where? prompt is open",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_apply_inventory_lighter_did_not_open_targeting_after_visible_brazier",
+      "abort_reason": "harness UI trace did not prove selected lighter plus Light where? before right/east"
+    },
+    {
+      "kind": "press",
+      "label": "target_direction_east_to_visible_brazier_logs",
+      "keys": [
+        "right"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "burn your firewood source"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_target_direction_did_not_hit_source_firewood_prompt_after_visible_brazier",
+      "abort_reason": "after choosing east from Light where?, OCR did not show the expected source-firewood confirmation prompt; stop before pressing confirmation",
+      "expected_visible_fact": "The east direction from the firestarter targeting prompt reaches the visibly deployed brazier/log tile covered by SOURCE_FIREWOOD and opens the firewood-source confirmation prompt; OCR may drop the leading `Do`, so the guard keys on `burn your firewood source`.",
+      "preconditions": "select_filtered_lighter_expect_light_prompt and audit_ui_trace_lighter_selected_and_light_prompt_open showed Light where? before this direction key"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_burn_source_firewood_prompt_after_visible_brazier",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "abort_if_text_contains": [
+        "burn your firewood source",
+        "Do you really want to burn your firewood source?",
+        "Are you sure you want to start fire here?  There's a much more appropriate spot adjacent.",
+        "There's a brazier there but you haven't set it up to contain the fire.  Continue?",
+        "Light where?"
+      ],
+      "abort_verdict": "blocked_roof_source_firewood_prompt_not_consumed",
+      "abort_reason": "after accepting the SOURCE_FIREWOOD prompt, OCR still showed the prompt/targeting text; stop before message-log/save/fd_fire audit",
+      "expected_visible_fact": "The case-sensitive source-firewood confirmation is accepted with uppercase Y. Attempt 4 does not rely on brittle roof OCR or the saved-player overmap event log for transient action messages; the following guarded save plus saved roof f_brazier/fd_fire metadata is the result-state gate before any horde wait.",
+      "preconditions": "target_direction_east_to_visible_brazier_logs showed the source-firewood confirmation prompt; UI trace already proved Apply-inventory lighter opened Light where? and RIGHT was consumed.",
+      "failure_rule": "If OCR still shows the source prompt or targeting prompt after uppercase Y, stop before treating save metadata as action result proof.",
+      "next_step_gate": "only proceed toward horde wait if the following guarded save/writeback and saved roof target metadata contain f_brazier plus fd_fire."
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_visible_brazier_firestarter_activity_to_completion",
+      "count": 80,
+      "capture_after": true,
+      "expected_visible_fact": "A bounded turn advance lets the normal roof firestarter aftermath settle after accepting the source-firewood prompt; result proof is deferred to the following guarded save/writeback and saved fd_fire/f_brazier metadata.",
+      "next_step_gate": "wait/horde proof is allowed only if the following saved-map guard sees roof f_brazier plus fd_fire after a guarded save."
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_roof_fire_result_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after roof firestarter action resolution and before the guarded roof-fire result save"
+    },
+    {
+      "kind": "press",
+      "label": "request_direct_save_after_roof_fire_result",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "Save and quit"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_roof_fire_result_save_prompt_missing",
+      "abort_reason": "after requesting a save following the roof firestarter action, OCR did not show the Save and quit prompt before uppercase-Y confirmation",
+      "expected_visible_fact": "Save command is requested after the roof firestarter action; mtime and saved map metadata prove acceptance after confirmation"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_direct_save_after_roof_fire_result",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_roof_fire_result_save",
+      "expected_visible_fact": "uppercase Y confirms the recorded save prompt after the roof firestarter action; following mtime/map-state gates prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_roof_fire_result_save",
+      "changed_since_label": "audit_player_save_mtime_before_roof_fire_result_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_roof_fire_result_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the roof-fire result save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed roof-fire result save, proving the following map metadata reads same-run state"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_roof_fire_target_before_horde_wait",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_tile_flat_roof"
+      ],
+      "required_fields": [
+        "fd_fire"
+      ],
+      "required_furniture": [
+        "f_brazier"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_post_confirm_no_roof_fire_result",
+      "abort_reason": "guarded same-run saved roof target metadata did not contain player-created f_brazier plus fd_fire after normal Apply-inventory lighter/source-firewood action",
+      "expected_visible_fact": "same-run saved map metadata contains roof/elevated terrain plus f_brazier/fd_fire from the normal player action path before any horde wait; no fixture fd_fire transform is present",
+      "next_step_gate": "only proceed to bounded horde wait if this roof-fire result-state gate is green"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_before_roof_fire_horde_wait",
+      "record_baseline": true,
+      "expected_visible_fact": "saved player turn baseline is recorded before the bounded roof-fire horde wait so the final guarded save can prove elapsed in-game time"
+    },
+    {
+      "kind": "wait_action",
+      "label": "wait_5_minutes_for_roof_fire_horde_signal",
+      "choice_key": "3",
+      "expected_duration": "5m",
+      "pre_menu_choice_key": "w",
+      "menu_settle_seconds": 0.8,
+      "pre_menu_settle_seconds": 0.8,
+      "after_choice_settle_seconds": 0.5,
+      "completion_wait_seconds": 12.0,
+      "abort_on_interrupt": true,
+      "abort_verdict": "blocked_roof_fire_horde_wait_interrupted_or_prompt_visible",
+      "abort_reason": "bounded 5-minute wait was interrupted or left a prompt visible; screenshot/OCR artifacts classify the blocker before any response key is sent",
+      "artifact_state_patterns": [
+        "bandit_live_world signal scan: signal_packet=yes",
+        "light_packets=1",
+        "bandit_live_world horde light signal:",
+        "horde_signal_power="
+      ],
+      "expected_visible_fact": "the real wait UI is opened, Wait a while is chosen, 5 minutes is selected, and same-run artifacts must show live roof-fire light reaching the horde signal bridge",
+      "failure_rule": "If the wait is interrupted, signal artifacts are absent, or elapsed time cannot be proven by the later saved turn delta, this packet is inconclusive/non-green."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_roof_fire_horde_light_signal_artifact",
+      "required_line_patterns": [
+        [
+          "bandit_live_world signal scan: signal_packet=yes",
+          "light_packets=1"
+        ],
+        [
+          "bandit_live_world horde light signal:",
+          "horde_signal_power="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_roof_fire_horde_light_signal_artifact_missing",
+      "abort_reason": "same-run debug artifact did not contain roof-fire live-light horde signal lines after the bounded wait",
+      "expected_visible_fact": "same-run debug artifact contains live light scan and horde light signal lines from the player-created roof fire source"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_roof_fire_horde_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the roof-fire horde wait and before guarded save/writeback"
+    },
+    {
+      "kind": "press",
+      "label": "request_direct_save_after_roof_fire_horde_wait",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "Save and quit"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_roof_fire_horde_save_prompt_missing",
+      "abort_reason": "after requesting a save following the bounded roof-fire horde wait, OCR did not show the Save and quit prompt before uppercase-Y confirmation",
+      "expected_visible_fact": "Save command is requested after the bounded roof-fire wait; mtime proves acceptance after confirmation"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_direct_save_after_roof_fire_horde_wait",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_roof_fire_horde_save",
+      "expected_visible_fact": "uppercase Y confirms the recorded save prompt; following mtime/state gates prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_roof_fire_horde_save",
+      "changed_since_label": "audit_player_save_mtime_before_roof_fire_horde_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_roof_fire_horde_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the post-wait roof-fire horde save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed post-wait save, proving the following turn/map/horde metadata reads same-run state"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_after_roof_fire_horde_wait",
+      "baseline_label": "audit_saved_turn_before_roof_fire_horde_wait",
+      "required_min_delta_turns": 250,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_roof_fire_horde_wait_turn_delta_missing",
+      "abort_reason": "saved player turn counter did not advance by at least 250 turns after the bounded wait and guarded save",
+      "expected_visible_fact": "same-run saved player turn counter advanced by a bounded 5-minute-scale delta after the real wait UI path"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_roof_fire_target_after_wait",
+      "offsets": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          0,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_tile_flat_roof"
+      ],
+      "required_fields": [
+        "fd_fire"
+      ],
+      "required_furniture": [
+        "f_brazier"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_saved_roof_fire_after_wait",
+      "abort_reason": "saved roof target metadata did not contain player-created f_brazier plus fd_fire after the normal deploy/lighter path and bounded wait",
+      "expected_visible_fact": "saved map metadata after guarded save contains the roof/elevated terrain plus f_brazier/fd_fire from the normal player action path; no fixture fd_fire transform is present"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "audit_saved_horde_after_roof_fire_signal_wait",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "radius_ms": 240,
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie",
+          "destination_offset_ms": [
+            -7,
+            -10,
+            0
+          ],
+          "min_tracking_intensity": 1
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_saved_roof_fire_horde_response",
+      "abort_reason": "saved overmap horde_map metadata did not show the staged horde retargeted/tracking the roof-fire source after the bounded wait and save",
+      "expected_visible_fact": "same-run saved overmap horde_map metadata shows a mon_zombie horde with positive tracking intensity and destination at the roof-fire source submap after live horde light signaling"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.roof_fire_horde_player_action_mcw",
+  "evidence_contract": {
+    "claim": "a normal player-created roof/elevated fire can produce live horde-light signaling and saved horde response metadata after bounded time passage",
+    "load_only_verdict": "load/setup proof only / inconclusive for roof-fire horde detection",
+    "failure_rule": "No roof-horde credit if roof/elevated footing, normal player deploy/lighter path, source prompt consumption, guarded roof-fire result save, saved roof f_brazier/fd_fire, bounded wait, horde-light artifact, final save/writeback, turn delta, or saved horde response metadata is missing or non-green."
+  }
+}

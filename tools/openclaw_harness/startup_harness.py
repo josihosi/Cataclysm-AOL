@@ -4787,6 +4787,25 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "player_location_offset_ms":
+            offset_raw = raw.get("offset_ms", [])
+            if not isinstance(offset_raw, list) or len(offset_raw) != 3:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs offset_ms=[x,y,z] in {manifest_path}"
+                )
+            try:
+                offset_ms = [int(offset_raw[0]), int(offset_raw[1]), int(offset_raw[2])]
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] offset_ms values must be integers in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "offset_ms": offset_ms,
+            })
+            continue
+
         if kind == "player_near_overmap_special":
             special_id = str(raw.get("special_id", "")).strip()
             if not special_id:
@@ -5165,7 +5184,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
-            "supported kinds: player_mutations, player_items, player_near_overmap_special, "
+            "supported kinds: player_mutations, player_items, player_location_offset_ms, player_near_overmap_special, "
             "seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_site_roster_shape"
@@ -5887,6 +5906,98 @@ def apply_player_near_overmap_special_transform(world_dir: Path, transform: Dict
 
 
 
+def apply_player_location_offset_ms_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Move the saved player by a small map-square offset and update load anchors.
+
+    This is setup footing only. It is intended for narrow live probes that need
+    the player on an already-auditable adjacent z-level/tile without pretending
+    the move itself proves any downstream product behavior.
+    """
+    player_save = world_dir / str(transform.get("player_save", "")).strip()
+    if not player_save.exists():
+        raise SystemExit(f"Fixture player-location-offset target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture player-location-offset expects .zzip save path: {player_save}")
+    raw_offset = transform.get("offset_ms", [])
+    if not isinstance(raw_offset, list) or len(raw_offset) != 3:
+        raise SystemExit(f"Fixture player-location-offset needs offset_ms=[x,y,z]: {transform}")
+    try:
+        offset_ms = [int(raw_offset[0]), int(raw_offset[1]), int(raw_offset[2])]
+    except (TypeError, ValueError):
+        raise SystemExit(f"Fixture player-location-offset offset_ms values must be integers: {transform}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture player-location-offset did not extract save: {extracted_save}")
+
+    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+
+    old_location_raw = player.get("location", [])
+    if not isinstance(old_location_raw, list) or len(old_location_raw) < 3:
+        raise SystemExit(f"Extracted player save is missing usable player.location: {extracted_save}")
+    old_location = [int(old_location_raw[0]), int(old_location_raw[1]), int(old_location_raw[2])]
+    target_location = [old_location[i] + offset_ms[i] for i in range(3)]
+
+    old_overmap_x = int(payload.get("om_x", 0))
+    old_overmap_y = int(payload.get("om_y", 0))
+    old_levx = int(payload.get("levx", 0))
+    old_levy = int(payload.get("levy", 0))
+    old_levz = int(payload.get("levz", 0))
+    updated_load_anchor = player_load_anchor_from_location(
+        old_location,
+        target_location,
+        old_overmap_x=old_overmap_x,
+        old_overmap_y=old_overmap_y,
+        old_levx=old_levx,
+        old_levy=old_levy,
+        old_levz=old_levz,
+    )
+    player["location"] = target_location
+    payload["om_x"] = updated_load_anchor["om_x"]
+    payload["om_y"] = updated_load_anchor["om_y"]
+    payload["levx"] = updated_load_anchor["levx"]
+    payload["levy"] = updated_load_anchor["levy"]
+    payload["levz"] = updated_load_anchor["levz"]
+    extracted_save.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    run_zzip(extracted_save)
+    if extracted_save.exists():
+        extracted_save.unlink()
+
+    return {
+        "kind": "player_location_offset_ms",
+        "world": world_dir.name,
+        "player_save": str(transform.get("player_save", "")),
+        "offset_ms": offset_ms,
+        "previous_location": old_location,
+        "target_location": target_location,
+        "previous_load_anchor": {
+            "om_x": old_overmap_x,
+            "om_y": old_overmap_y,
+            "levx": old_levx,
+            "levy": old_levy,
+            "levz": old_levz,
+        },
+        "target_load_anchor": {
+            "om_x": updated_load_anchor["om_x"],
+            "om_y": updated_load_anchor["om_y"],
+            "levx": updated_load_anchor["levx"],
+            "levy": updated_load_anchor["levy"],
+            "levz": updated_load_anchor["levz"],
+        },
+        "preserved_player_offset_sm": [
+            updated_load_anchor["offset_sm_x"],
+            updated_load_anchor["offset_sm_y"],
+            updated_load_anchor["offset_sm_z"],
+        ],
+    }
+
+
 def apply_map_fields_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
@@ -6569,6 +6680,8 @@ def audit_saved_hordes_near_player(
             ]
         if "tracking_intensity" in raw:
             requirement["tracking_intensity"] = int(raw.get("tracking_intensity") or 0)
+        if "min_tracking_intensity" in raw:
+            requirement["min_tracking_intensity"] = int(raw.get("min_tracking_intensity") or 0)
         if "moves" in raw:
             requirement["moves"] = int(raw.get("moves") or 0)
         if requirement:
@@ -6611,6 +6724,8 @@ def audit_saved_hordes_near_player(
         if "destination_ms" in requirement and entry.get("destination_ms") != requirement.get("destination_ms"):
             return False
         if "tracking_intensity" in requirement and entry.get("tracking_intensity") != requirement.get("tracking_intensity"):
+            return False
+        if "min_tracking_intensity" in requirement and int(entry.get("tracking_intensity") or 0) < int(requirement.get("min_tracking_intensity") or 0):
             return False
         if "moves" in requirement and entry.get("moves") != requirement.get("moves"):
             return False
@@ -7110,6 +7225,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "player_items":
             reports.append(apply_player_items_transform(world_dir, transform))
+            continue
+        if kind == "player_location_offset_ms":
+            reports.append(apply_player_location_offset_ms_transform(world_dir, transform))
             continue
         if kind == "player_near_overmap_special":
             reports.append(apply_player_near_overmap_special_transform(world_dir, transform))

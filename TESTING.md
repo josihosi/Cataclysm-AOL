@@ -87,9 +87,13 @@ Evidence boundary: this closes source-zone player-lit fire -> bandit signal resp
 
 ### Active validation target - Roof-fire horde detection proof packet v0
 
-`Roof-fire horde detection proof packet v0` is the next separate downstream target. The proof must not reuse source-zone fire/signal evidence as roof/horde closure. Debug may stage the horde/distance, but not the fire. The target needs roof/elevated player footing, real player-created roof fire/light/smoke, bounded time passage or exact blocker prompt screenshots/key handling, and claim-scoped horde before/after detection or response metadata. A proven no-detect/no-response outcome is acceptable if the roof/fire/time footing is green and the horde metadata is decisive.
+`Roof-fire horde detection proof packet v0` has reached **PARTIAL GREEN / HORDE RESPONSE UNPROVEN / AGENT-SIDE ATTEMPT BUDGET EXHAUSTED**. The proof must not reuse source-zone fire/signal evidence as roof/horde closure. Debug may stage the horde/distance, but not the fire. The full target still needs bounded time passage and claim-scoped horde before/after detection or response metadata; a proven no-detect/no-response outcome remains acceptable only if roof/fire/time footing and horde evidence are decisive.
 
-Current harness support boundary: `horde_entity_near_player` can stage an overmap `horde_map` entry at a player-relative absolute-ms offset, and `audit_saved_hordes_near_player` can require exact horde type/location/destination/tracking metadata from saved overmaps. Named artifacted validation: fixture `roof_fire_horde_staged_horde_v0_2026-04-29`, scenario `bandit.roof_fire_horde_staged_horde_audit_mcw`, command `python3 tools/openclaw_harness/startup_harness.py probe bandit.roof_fire_horde_staged_horde_audit_mcw`, run `.userdata/dev-harness/harness_runs/20260429_170116/`, and proof note `doc/roof-fire-horde-staged-horde-footing-v0-2026-04-29.md`. Metadata file `audit_saved_horde_before_roof_fire_product_path.metadata.json` has `status=required_state_present`, `missing_required_hordes=[]`, and a matching `mon_zombie` at offset `[0,-240,0]` / destination `[3367,754,0]`. This remains setup/metadata evidence only; roof/elevated footing and real roof fire still need a product-path scenario before any roof/horde claim is green.
+Current green scoped roof-fire boundary: fixture `roof_fire_horde_player_action_v0_2026-04-29`, scenario `bandit.roof_fire_horde_player_action_mcw`, run `.userdata/dev-harness/harness_runs/20260429_172847/`, proof note `doc/roof-fire-horde-player-action-boundary-v0-2026-04-29.md`. The run proves setup-only roof relocation to z+1, saved roof/elevated footing, staged horde footing, normal Apply→brazier deploy, normal Apply→lighter→`Light where?`→east/source-firewood confirmation, guarded save/writeback, and saved roof target `t_tile_flat_roof` + `f_brazier` + `fd_fire` (`audit_saved_roof_fire_target_before_horde_wait.metadata.json`, `status=required_state_present`). No fixture `fd_fire` transform is present.
+
+Current non-green horde boundary: the same run is not horde proof. The direct save/writeback gate uses the save-and-quit path, so the following wait step was yellow/main-menu state and `audit_roof_fire_horde_light_signal_artifact.metadata.json` missed both required live-light/horde-signal line groups. `probe.report.json` has `verdict=blocked_roof_fire_horde_light_signal_artifact_missing`, `feature_proof=false`. Do not claim bounded wait, horde detection, or horde response from this packet.
+
+Harness support boundary: `player_location_offset_ms` can move the saved player by a small setup-only map-square/z offset and update load anchors; `horde_entity_near_player` can stage an overmap `horde_map` entry at a player-relative absolute-ms offset; `audit_saved_hordes_near_player` can require exact horde type/location/destination/tracking metadata and `min_tracking_intensity`. Earlier named horde-footing validation remains fixture `roof_fire_horde_staged_horde_v0_2026-04-29`, scenario `bandit.roof_fire_horde_staged_horde_audit_mcw`, run `.userdata/dev-harness/harness_runs/20260429_170116/`, proof note `doc/roof-fire-horde-staged-horde-footing-v0-2026-04-29.md`. That remains setup/metadata evidence only.
 
 Completed performance context remains preserved but inactive: `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md` keeps the green one-site, two-site, pre-staged three-site, and pre-staged four-site performance-load rows, latest `.userdata/dev-harness/harness_runs/20260429_041936/`. Do not rerun those rows as ritual; only rerun performance if Schani/Josef promotes a new performance row.
 
@@ -133,15 +137,13 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active pending probe: `Roof-fire horde detection proof packet v0`.
+Active pending probe: `Roof-fire horde detection proof packet v0` is now a Josef/Schani decision or materially-new-method item, not another blind harness retry.
 
-1. Start from the current actual-playtest stack proof boundary: source-zone real fire and bandit signal response are green, but they are not roof/horde evidence.
-2. Shape a roof/elevated fixture or scenario that proves the player is on a roof/elevated position before fire creation.
-3. Create the roof fire through a real player action path; debug may stage horde/distance but must not inject the credited fire/light/smoke.
-4. Require bounded time passage with before/after turns or exact blocker prompt screenshots/key handling. Do not blind-spam through warnings.
-5. Require claim-scoped horde before/after detection or response metadata/artifacts. A proven no-detect/no-response outcome is acceptable if the roof/fire/time footing is green and the horde evidence is decisive.
-6. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof; do not rerun it as ritual.
-7. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
+1. Preserve `.userdata/dev-harness/harness_runs/20260429_172847/` as green scoped player-created roof-fire writeback proof, not horde proof.
+2. Preserve the red/yellow horde boundary from the same run: save-and-quit prevented a valid same-session bounded wait, and no roof-fire horde light-signal artifact matched.
+3. Do not run attempt 5 on the same scenario shape. A valid next proof must materially change method: split-run from the saved player-created roof-fire world, non-quitting save/writeback support, or Josef manual playtest/save evidence.
+4. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof; do not rerun it as ritual.
+5. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
 Still blocked/later in the actual playtest stack:
 

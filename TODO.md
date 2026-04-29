@@ -40,15 +40,15 @@ Canonical anchors:
 
 Next narrow work queue:
 
-1. Continue shaping `Roof-fire horde detection proof packet v0` as the next separate downstream item.
-2. Reproducible horde setup is now artifacted: fixture `roof_fire_horde_staged_horde_v0_2026-04-29`, scenario `bandit.roof_fire_horde_staged_horde_audit_mcw`, run `.userdata/dev-harness/harness_runs/20260429_170116/`, proof note `doc/roof-fire-horde-staged-horde-footing-v0-2026-04-29.md`. This is horde setup/metadata proof only, not roof/fire product proof.
-3. Do not reuse source-zone fire/signal proof as roof/horde proof. It proves real player-created source-zone fire plus bandit signal response, not roof/elevated-position fire, `fd_smoke`, or horde detection/response.
-4. Next product-shaping gap: prove player roof/elevated position, create real player roof fire/light/smoke without debug-injecting the fire, then run bounded time passage and inspect horde before/after detection or response metadata.
-5. If the roof/horde path needs survivable waiting, reuse the bounded-wait discipline from the signal proof: before/after turns or exact blocker screenshots/key handling; do not blind-spam through prompts.
+1. `Roof-fire horde detection proof packet v0` has reached a partial agent-side boundary, not closure. New proof note: `doc/roof-fire-horde-player-action-boundary-v0-2026-04-29.md`.
+2. Preserve the green scoped roof-fire result from `.userdata/dev-harness/harness_runs/20260429_172847/`: setup-only roof relocation and horde footing, normal Apply→brazier deploy, normal Apply→lighter→`Light where?`→east/source-firewood confirmation, guarded save/writeback, and saved roof/elevated target tile `t_tile_flat_roof` + `f_brazier` + `fd_fire` (`audit_saved_roof_fire_target_before_horde_wait.metadata.json`). This is player-created roof-fire writeback proof only.
+3. Preserve the non-green horde boundary from the same run: the pre-wait save used the direct save-and-quit path, so the subsequent wait ledger saw main-menu state and the horde light-signal artifact audit was missing `bandit_live_world signal scan` / `bandit_live_world horde light signal`. Do not claim bounded wait, horde detection, or horde response from it.
+4. Agent-side repeated-test budget for this item is exhausted after four materially changed attempts and Frau consultation. Do not run another roof/horde harness retry unless Schani/Josef greenlights a materially different proof shape: split-run from the saved player-created roof-fire world, a non-quitting save/writeback primitive, or Josef manual playtest/save evidence.
+5. Reproducible horde setup remains artifacted separately: fixture `roof_fire_horde_staged_horde_v0_2026-04-29`, scenario `bandit.roof_fire_horde_staged_horde_audit_mcw`, run `.userdata/dev-harness/harness_runs/20260429_170116/`, proof note `doc/roof-fire-horde-staged-horde-footing-v0-2026-04-29.md`. This is horde setup/metadata proof only.
 6. Keep natural three/four-site player-pressure behavior and true zero-site idle baseline as decision/watchlist items unless Schani/Josef explicitly promotes them.
 
 Proof discipline:
 
 - OCR/metadata are fallback evidence unless the image was directly inspected.
 - Do not launder setup metadata, stale screenshots, debug `fd_fire`, synthetic loaded-map fields, or item-info text into product proof.
-- For roof/horde, require roof/elevated footing, real player-created roof fire/light/smoke, bounded time passage or exact blocker evidence, and claim-scoped horde artifact/metadata.
+- For roof/horde, the only new green product slice is roof/elevated player-created `fd_fire` writeback. Horde detection/response still needs a fresh, materially different wait/response proof path or Josef evidence.
