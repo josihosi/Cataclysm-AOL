@@ -1,12 +1,20 @@
-# Andi handoff: player-lit fire -> bandit signal proof
+# Andi handoff: roof-fire horde detection proof
 
 ## Active target
 
-`Player-lit fire and bandit signal verification packet v0` is the active slice under `C-AOL actual playtest verification stack v0`.
+`Roof-fire horde detection proof packet v0` is the active slice under `C-AOL actual playtest verification stack v0`.
 
-The source-zone fire prerequisite is now green. Preserve run `.userdata/dev-harness/harness_runs/20260429_153253/` as the current green real-fire source: normal map UI -> normal Apply inventory `brazier` -> `Deploy where?` -> east/right -> normal Apply inventory `lighter` -> exact UI trace `Light where?` -> east/right target -> `SOURCE_FIREWOOD` prompt -> uppercase `Y` -> recognizable ignition OCR -> save prompt -> mtime advance -> saved target tile `f_brazier` + `fd_fire`.
+The previous `Player-lit fire and bandit signal verification packet v0` is complete/green. Do **not** rerun it as ritual and do **not** treat its source-zone fire/signal evidence as roof/horde proof.
 
-Do not reopen the old broken proof surface `fuel_writeback_source_zone_v0_2026-04-29`.
+Green player-lit source-zone fire -> bandit signal proof to preserve:
+
+- source real-fire run: `.userdata/dev-harness/harness_runs/20260429_153253/`
+- signal fixture: `player_lit_fire_bandit_signal_wait_v0_2026-04-29`
+- signal scenario: `bandit.player_lit_fire_signal_wait_mcw`
+- signal run: `.userdata/dev-harness/harness_runs/20260429_162100/`
+- result: `verdict=artifacts_matched`, `evidence_class=feature-path`, `feature_proof=true`, step ledger 14/14 green, wait ledger green
+- proof: saved real player-created `f_brazier` + `fd_fire`, mineral water plus `AUTO_DRINK` support, real wait UI 30-minute choice, saved turn delta `1800`, same-run live smoke/fire signal scan/maintenance, matched `bandit_camp`, dispatch plan `candidate_reason=live_signal`, and saved active `bandit_camp` scout response with `known_recent_marks` including `live_smoke@140,41,0`
+- canonical proof doc: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`
 
 Canonical anchors:
 
@@ -15,39 +23,37 @@ Canonical anchors:
 - `TESTING.md`
 - `SUCCESS.md`
 - stack contract: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`
+- green signal proof: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`
 - green fire proof: `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`
-- visible deployed-brazier gate: `doc/fuel-visible-brazier-source-zone-gate-v0-2026-04-29.md`
-- fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`
 
 ## Current work
 
-Prove bandit signal response from real player-created fire. The next missing proof is not fire creation; it is bounded wait/time passage plus claim-scoped bandit response/metadata.
+Shape and run the roof/horde packet. The missing proof is not source-zone fire and not bandit signal response; it is roof/elevated footing plus real player-created roof fire/light/smoke plus horde before/after detection or response metadata.
 
-1. Start from `.userdata/dev-harness/harness_runs/20260429_153253/` or a fresher equivalent green real-fire source.
-2. Stage survivable long-wait footing: spawn/provide mineral water and set up a Smart Zone / auto-drink zone around the player so thirst does not become the whole proof.
-3. Record before time/turn and relevant bandit/signal baseline metadata.
-4. Start the long-wait path.
-5. If time does not pass, screenshot the blocker/warning prompt and classify that exact prompt. Do not report merely “time did not pass” without the warning screenshot.
-6. If a wait-interruption prompt offers `I` or `N`, prefer `I` over `N`. The same prompt class may recur multiple times during one long wait; screenshot each distinct prompt class before responding, and do not blind-spam through unknown warnings.
-7. After waiting, record after time/turn and claim-scoped bandit signal response/metadata.
-8. If no bandit response occurs despite elapsed time, classify that as a no-response outcome with bounded-time evidence, not as fire proof failure.
+1. Prove or stage the horde/distance setup. Debug may be used for the horde/distance side.
+2. Prove the player is actually on a roof/elevated position before fire creation.
+3. Create the credited roof fire/light/smoke through a real player action path. Do not debug-inject the credited fire.
+4. Run bounded time passage. Require before/after turns or exact blocker prompt screenshots/key handling.
+5. Inspect horde before/after detection or response metadata/artifacts.
+6. A proven no-detect/no-response outcome is acceptable if roof footing, real fire/light/smoke, elapsed time, and horde metadata are all decisive.
 
 ## Evidence expectations
 
 Minimum packet:
 
 - command/scenario and run directory;
-- green real-fire source reference or fresh equivalent;
-- mineral-water / auto-drink Smart Zone setup evidence;
-- before/after game time or turn;
-- screenshot artifact paths for every distinct warning/prompt that blocks or interrupts waiting;
-- exact key chosen for wait prompts (`I` over `N` where both are offered);
-- bandit signal response/metadata, or a bounded no-response classification with elapsed-time proof.
+- horde/distance setup evidence;
+- roof/elevated player-position evidence;
+- real player-created roof fire/light/smoke evidence;
+- bounded wait/time-passage evidence or exact blocker prompt screenshot/key handling;
+- horde before/after detection or response metadata/artifacts;
+- clear verdict: horde response, no-response, or blocked/inconclusive, with evidence class boundaries intact.
 
 ## Non-goals/cautions
 
-- Do not rerun solved fire/lighter proof as ritual.
+- Do not rerun solved player-lit source-zone fire -> bandit signal proof.
 - Do not use `fuel_writeback_source_zone_v0_2026-04-29`.
-- Do not claim bandit signal from saved `fd_fire` alone.
+- Do not claim roof/horde proof from saved source-zone `fd_fire` or bandit signal metadata.
+- Do not debug-inject the credited roof fire/light/smoke.
 - Do not call a blocked wait a no-response result until the warning/prompt screenshot is captured and classified.
-- Keep roof-fire horde detection separate; it still needs roof/elevated-position plus real player-created roof fire/light/smoke and horde response metadata.
+- Keep natural three/four-site player-pressure behavior and true zero-site idle baseline as decision/watchlist items unless Schani/Josef explicitly promotes them.
