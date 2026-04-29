@@ -1,6 +1,6 @@
 {
   "name": "bandit.live_world_nearby_camp_source_zone_fire_writeback_mcw",
-  "description": "Fuel writeback repair action-audit probe: saved f_brazier/log/SOURCE_FIREWOOD/lighter footing, explicit stale-view dismissal, then screenshots/OCR or metadata after each meaningful action boundary: activate -> Light where?, direction -> source-firewood prompt, confirmation -> activity/map result, post-advance ignition guard, save/mtime, and saved fd_fire/fd_smoke. No debug fd_fire, no synthetic map fields, no inventory/wield selector claim.",
+  "description": "Fuel writeback repair action-audit probe: saved f_brazier/log/SOURCE_FIREWOOD/lighter footing, direct normal-map entry gate with no blind stale-view dismissal, then screenshots/OCR or metadata after each meaningful action boundary: activate -> Light where?, direction -> source-firewood prompt, confirmation -> activity/map result, post-advance ignition guard, save/mtime, and saved fd_fire/fd_smoke. No debug fd_fire, no synthetic map fields, no inventory/wield selector claim.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "fuel_writeback_source_zone_v0_2026-04-29",
@@ -20,22 +20,22 @@
       "expected_visible_fact": "The source-zone fuel repair fixture is loaded on the map before activation/targeting runs."
     },
     {
-      "kind": "press",
-      "label": "dismiss_stale_item_json_view_to_map",
-      "keys": [
-        "escape"
-      ],
-      "settle_seconds": 1.0,
-      "capture_after": true,
-      "extract_text_after_capture": true,
+      "kind": "capture",
+      "label": "normal_map_entry_gate_before_activation",
+      "extract_text": true,
       "extract_text_tail_lines": 64,
-      "expected_screen_text_after_contains": [
+      "expected_screen_text_contains": [
         "YOU"
       ],
       "abort_on_screen_text_expectation_failure": true,
-      "abort_verdict": "blocked_starting_ui_not_normal_map_after_escape",
-      "abort_reason": "after dismissing the stale item-info/JSON view, OCR did not show the normal map UI marker; do not type activation/targeting through an unknown screen",
-      "expected_visible_fact": "Escape dismisses the stale item-info/JSON view from the loaded save and returns to normal map UI before activation; this is a screen-state guard, not feature closure."
+      "abort_if_text_contains": [
+        "pocket_type",
+        "contents",
+        "specific energy"
+      ],
+      "abort_verdict": "blocked_starting_ui_not_normal_map",
+      "abort_reason": "startup did not land on normal map UI; do not type activation/targeting through raw item-info/JSON text",
+      "expected_visible_fact": "Startup lands directly on normal map UI before activation; no blind Escape/Return key is sent through a stale item-info/JSON view."
     },
     {
       "kind": "audit_saved_player_items",
@@ -44,9 +44,9 @@
         "lighter"
       ],
       "required_weapon": "lighter",
-      "required_weapon_ammo_type": "butane",
+      "required_weapon_ammo_type": "",
       "required_weapon_ammo_min": 1,
-      "expected_visible_fact": "saved player state has a lighter already wielded with nested butane charge before the proof begins",
+      "expected_visible_fact": "saved player state has a lighter already wielded with saved charge before the proof begins",
       "preconditions": "fixture transform pre-wielded a charged lighter; this proves setup state only, not inventory/wield UI",
       "next_step_gate": "do not credit normal activation unless saved weapon state is lighter with charge",
       "abort_on_metadata_failure": true,
