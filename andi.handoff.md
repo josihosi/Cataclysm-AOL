@@ -51,9 +51,11 @@ A reopened path must start from normal map UI and close all of these, in order:
 1. saved/preflight footing: `f_brazier`, real fuel, source-firewood zone, wielded charged lighter;
 2. normal player activation/targeting from normal map UI;
 3. decisive post-target/advance action-path guard: player-message/OCR red-blocks depleted-lighter/no-ignition text and requires a real ignition line;
-4. guarded same-run save mtime advance;
-5. saved `fd_fire` plus smoke/light-relevant state;
-6. only then bounded wait/time-passage and bandit signal response or classified no-response.
+4. actual gameplay/menu screenshot artifact path plus named visible fact at each relevant boundary; verify the next input against the visible menu/prompt before sending it; if the image cannot be directly inspected, say that and classify OCR/metadata as fallback rather than visual proof;
+5. visible normal-map/fire-or-no-fire screenshot fact paired with player message/OCR;
+6. guarded same-run save mtime advance;
+7. saved `fd_fire` plus `fd_smoke`/smoke-light-relevant state;
+8. only then bounded wait/time-passage and bandit signal response or classified no-response.
 
 ## Non-goals/cautions
 
@@ -61,3 +63,4 @@ A reopened path must start from normal map UI and close all of these, in order:
 - Do not reopen Smart Zone Manager live proof unless Josef/Schani explicitly provides or approves a materially repaired UI-entry/key-delivery primitive or Josef manual evidence.
 - Do not jump to roof-horde proof while real player-lit fire remains unproven.
 - Do not credit debug map-editor `fd_fire`, synthetic loaded-map fields, stale-window screenshots, or pre-wielded setup as player-lit fire proof.
+- If a reopened screenshot still shows stale raw JSON/item-info, report that exact visible failure and stop before action keys; do not treat JSON/info screens as the target proof surface when Josef asked for gameplay/menu evidence.
