@@ -8,26 +8,26 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Fuel writeback repair via wood source zone packet v0` under `C-AOL actual playtest verification stack v0` is **JOSEF-REOPENED STEP-SCREENSHOT ACTION AUDIT**.
+No current unblocked agent-side execution target is active in the `C-AOL actual playtest verification stack v0`.
 
-Current state: the harness stages a real saved-world log source, `SOURCE_FIREWOOD` zone footing, preflight-wielded charged lighter with nested butane, and a narrow player-message-log bridge. Final changed probe `.userdata/dev-harness/harness_runs/20260429_091438/` proved setup rows green but missed feature closure: no save mtime advance, no new `You successfully light a fire.`-style message, and no copied saved-map `fd_fire`/`fd_smoke`. Josef's 2026-04-29 suspicion is that the macro is probably taking a wrong action somewhere, so the next run must be a step-by-step screenshot/action audit, not another blind rerun.
+`Fuel writeback repair via wood source zone packet v0` is now **implemented-but-unproven / Josef playtest package** after the post-Frau attempt budget closed:
 
-Canonical anchors for the packaged target:
+- `.userdata/dev-harness/harness_runs/20260429_090634/` is blocked, not proof: it proved log/source-zone footing, then spent wait/save after a failed or depleted-lighter action, so no save mtime/`fd_fire` closure can be credited.
+- Attempt 3/B `.userdata/dev-harness/harness_runs/20260429_093118/` proved the setup footing green: saved `required_weapon=lighter`, nested butane charge, saved `f_brazier`, saved `log`, and saved `SOURCE_FIREWOOD` zone.
+- The same run did not prove ignition/writeback because the loaded UI was already a stale item-info/raw-JSON screen (`pocket_type`, `contents`, `specific energy` OCR), so activation/target/save keys were not a trusted normal player path and save mtime did not advance.
+- Attempt 4 `.userdata/dev-harness/harness_runs/20260429_093509/` added a guarded `escape` back to map UI and stopped honestly when OCR still showed the stale JSON/info screen instead of normal map UI.
+- Frau's 09:13 correction is now encoded in the scenario: after targeting/advance, capture player-message/OCR, red-block depleted-lighter/no-ignition text such as `lighter has 0 charges, but needs 1`, and proceed to save/`fd_fire` audit only on a real ignition line such as `You successfully light a fire.`
+
+Canonical anchors:
 
 - Stack contract: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
-- Active fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`.
+- Fuel repair packet: `doc/fuel-writeback-repair-via-wood-source-zone-packet-v0-2026-04-29.md`.
 - Fuel repair imagination source: `doc/fuel-writeback-repair-via-wood-source-zone-imagination-source-of-truth-2026-04-29.md`.
-- Josef package: `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`.
+- Josef package: `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md#2026-04-29--fuel-writeback-source-zone-repair-v0`.
 
 Next narrow work queue:
 
-1. Rerun the source-zone/lighter path once as a step-screenshot action audit: capture screenshots/OCR and exact metadata after every meaningful key/action boundary.
-2. Required checkpoints: loaded scene, wielded lighter preflight, brazier/log/source-zone footing, activate/apply flow, each target/confirmation prompt, turn advance/activity result, player-message bridge, save prompt/confirmation, mtime, and saved `fd_fire`/`fd_smoke`.
-3. Stop at the first wrong-screen/wrong-action/prompt mismatch and name the mistaken step; do not press onward through guessed prompts.
-4. If the step audit still cannot locate a materially different route, return to Josef-package state instead of looping. Roof-fire horde proof remains downstream behind real player-lit fire.
-
-Proof discipline:
-
-- This fuel repair is a bridge to real player-lit fire proof, not a debug `fd_fire` shortcut.
-- Setup helpers may create the wood pile/zone footing, but closure requires normal player ignition and saved fire/smoke/light writeback.
-- Do not promote roof-horde work while real player-lit fire remains unproven.
+1. Do not rerun the fuel/source-zone/lighter harness path unless Josef supplies manual evidence or Schani/Josef/Frau reopen a materially repaired primitive that starts from normal map UI.
+2. If reopened, use the corrected guard shape already staged in `bandit.live_world_nearby_camp_source_zone_fire_writeback_mcw`: no save/mtime/`fd_fire` audit until the post-target/advance player-message/OCR guard sees a real ignition line and no depleted-lighter/no-ignition text.
+3. Closure still requires normal player ignition, a guarded same-run save mtime advance, saved `fd_fire` plus smoke/light-relevant state, and only then bounded bandit signal response or classified no-response.
+4. Roof-fire horde proof remains blocked behind real player-lit fire. Debug `fd_fire`, synthetic loaded-map fields, stale item-info screens, and inventory-selector/wield UI traces remain non-credit for this closure.
