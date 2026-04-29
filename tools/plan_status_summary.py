@@ -263,10 +263,8 @@ def run_self_test() -> None:
     current_waiting_titles = [section.title for section in parsed_current.sections if section.classification == "waiting"]
     current_parked_titles = [section.title for section in parsed_current.sections if section.classification == "parked"]
 
-    assert current_active_titles == ["Active lane - Bandit camp-map risk/reward dispatch planning packet v0"]
-    assert current_greenlit_titles == [
-        "Greenlit lane - C-AOL actual playtest verification stack v0",
-    ]
+    assert current_active_titles == ["Active lane - C-AOL actual playtest verification stack v0"]
+    assert current_greenlit_titles == []
     assert current_waiting_titles == []
     assert any( "Bandit overmap AI" in title for title in current_parked_titles )
     assert any( "Future feature lanes" in title for title in current_parked_titles )
@@ -275,8 +273,7 @@ def run_self_test() -> None:
     active_render = render_view( parsed_current, "active" )
     greenlit_render = render_view( parsed_current, "greenlit" )
     waiting_render = render_view( parsed_current, "waiting" )
-    assert "Bandit camp-map risk/reward dispatch planning packet v0" in active_render
-    assert "Bandit camp-map risk/reward dispatch planning packet v0" in greenlit_render
+    assert "C-AOL actual playtest verification stack v0" in active_render
     assert "C-AOL actual playtest verification stack v0" in greenlit_render
     assert waiting_render == "waiting\n(none)"
 

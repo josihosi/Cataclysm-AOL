@@ -103,17 +103,19 @@ The required cannibal live matrix scenarios are checkpointed green: day smoke/st
 
 ## Pending probes
 
-Active validation target: **C-AOL actual playtest verification stack v0 / post-performance decision boundary**.
+Active validation target: **Fuel writeback repair via wood source zone packet v0** under `C-AOL actual playtest verification stack v0`.
 
-1. Keep `.userdata/dev-harness/harness_runs/20260429_035001/` as blocked direct-range evidence only; do not credit it and do not rerun the same two-direct-cannibal recipe.
-2. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
-3. Do not add deeper instrumentation or optimization unless a later requested row exposes an actual bottleneck.
-4. If natural three/four-site player-pressure behavior or a true zero-site idle baseline is desired, stop and ask Schani/Josef; current canon does not require it for this performance packet.
+1. Use the already-green brazier deploy primitive as footing, or rerun it only if the scenario needs fresh current-runtime evidence. Save/writeback must show the expected `f_brazier`.
+2. Create an oversized in-world firewood source near the brazier, preferably logs first; use planks/`2x4` only if logs do not satisfy the intended firewood path. Prove the items in saved-world metadata before ignition.
+3. Place/verify a broad source-firewood zone over/around the pile, using visible UI or zone metadata. Do not launder this into Smart Zone Manager closure.
+4. Run the normal player fire-start/lighter path and require guarded post-action save/writeback with actual `fd_fire` plus smoke/light-relevant state on the expected tile/area.
+5. If ignition is green, continue to bounded wait/time-passage and bandit signal response or a clearly classified no-response outcome.
+6. Preserve `.userdata/dev-harness/harness_runs/20260429_040926/` and `.userdata/dev-harness/harness_runs/20260429_041936/` as green pre-staged performance-load rows, not natural three/four-site player-pressure dispatch proof.
 
 Still blocked/later in the actual playtest stack:
 
-- `Player-lit fire and bandit signal verification packet v0`: blocked behind the fuel/writeback gate.
 - `Roof-fire horde detection proof packet v0`: blocked behind real player-lit fire.
+- Natural three/four-site player-pressure behavior and true zero-site idle baseline remain decision/watchlist items, not current requirements.
 
 If a later live probe is needed:
 - build the current runtime first when binary freshness matters;
