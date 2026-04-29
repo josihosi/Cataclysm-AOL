@@ -8,7 +8,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No current unblocked fire/lighter proof remains in the `C-AOL actual playtest verification stack v0` until review/reopen. Josef explicitly diagnosed the old fuel/source-zone proof surface as a broken save/fixture, so do **not** use `fuel_writeback_source_zone_v0_2026-04-29` as a fire/lighter proof surface.
+Josef reopened one narrow check in the `C-AOL actual playtest verification stack v0`: verify whether the brazier is actually deployed/usable through the player-facing product path. The old fuel/source-zone proof surface remains broken, so do **not** use `fuel_writeback_source_zone_v0_2026-04-29` as a fire/lighter proof surface.
 
 Clean fixture replacement is now available and first-load green:
 
@@ -31,10 +31,12 @@ Canonical anchors:
 Next narrow work queue:
 
 1. Do **not** rerun fire/lighter proof on `fuel_writeback_source_zone_v0_2026-04-29`.
-2. If Schani/Josef/Frau reopen fuel fire proof, use only the clean fixture `fuel_source_zone_clean_normal_map_v0_2026-04-29` or a fresher clean fixture that first proves normal map UI.
-3. If a brand-new clean fixture ever opens to raw JSON/item-info soup, stop and classify it as harness/game-code load bug for review; do not poke through it with keys.
-4. Keep `Player-lit fire and bandit signal verification packet v0` blocked behind real player-lit fire proof/manual evidence.
-5. Keep `Roof-fire horde detection proof packet v0` blocked behind real player-created fire/light/smoke.
+2. Check the brazier suspicion on the clean fixture path: saved/spawned `f_brazier` metadata is not enough if the product behavior requires a real deploy step. From normal map UI, prove whether the brazier is visibly/operationally deployed.
+3. If it is not deployed/usable, add a real deploy primitive before fire proof: use the `a` inventory activation/deploy path and screenshot the deploy/placement menu, or use `*` construction/build menu only if that is the actual gameplay path, then screenshot the final deployed brazier state on the map.
+4. Only after the visible/operational deployed-brazier gate is green may fuel fire proof resume on `fuel_source_zone_clean_normal_map_v0_2026-04-29` or a fresher clean fixture that first proves normal map UI.
+5. If a brand-new clean fixture ever opens to raw JSON/item-info soup, stop and classify it as harness/game-code load bug for review; do not poke through it with keys.
+6. Keep `Player-lit fire and bandit signal verification packet v0` blocked behind real player-lit fire proof/manual evidence.
+7. Keep `Roof-fire horde detection proof packet v0` blocked behind real player-created fire/light/smoke.
 
 Proof discipline:
 
