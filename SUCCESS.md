@@ -42,7 +42,7 @@ Canonical docs:
 
 ## CAOL-ZOMBIE-RIDER-0.3-v0 — Zombie rider initial dev
 
-Status: ACTIVE / GREENLIT / RIDER CONVERGENCE-BANDS CHECKPOINT GREEN / LIVE FUNNESS NEXT
+Status: ACTIVE / GREENLIT / TWO LIVE FUNNESS ROWS GREEN / LIVE FUNNESS NEXT
 
 Success state:
 - [x] Exact flavor text is preserved in raw intake, imagination source, and actual monster description.
@@ -51,18 +51,105 @@ Success state:
 - [x] Local combat tests cover scary-fast movement, ranged shooting, shoot/flee/reposition cadence, injury/pressure withdrawal, and counterplay through cover/line-of-sight/terrain.
 - [x] Overmap light-attraction tests cover mature-world attraction, early-world suppression, no-light/weak/daylight negative controls, temporary light-memory decay, and a max two-rider draw cap.
 - [x] Map-AI tests cover rider convergence, rider-band formation, repeated-interest accumulation caps, and no-convergence after decayed interest.
-- [ ] Live or harness playtests cover open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider retreat or disengagement.
-- [ ] Metrics include scenario/run ids, turn/time budgets, decision/reason traces, rider counts, band state, shot/reposition/retreat counts, warnings/log spam/crash state, and available per-turn/cadence costs.
+- [ ] Live or harness playtests cover open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider retreat or disengagement. Rows green so far: open-field local-combat pressure via `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_013055/`; wounded disengagement via `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260501_014613/`.
+- [ ] Metrics include scenario/run ids, turn/time budgets, decision/reason traces, rider counts, band state, shot/reposition/retreat counts, warnings/log spam/crash state, and available per-turn/cadence costs. Current row metrics are recorded in `doc/zombie-rider-live-funness-open-field-proof-v0-2026-05-01.md` and `doc/zombie-rider-live-funness-wounded-disengagement-proof-v0-2026-05-01.md`.
 - [ ] If implementation exposes a tuning problem, the smallest change preserves endpoint danger, readable counterplay, no early routine spawn, no omniscient light doom, and no infinite banding.
 - [ ] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state when this packet becomes active or closes.
 
-Evidence: commit `d50715f00e` adds `mon_zombie_rider`, pseudo bow footing, mature `GROUP_ZOMBIE` direct gate at `730 days`, and `tests/zombie_rider_test.cpp`. Gates: `make -j4 tests/zombie_rider_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (34 assertions in 2 test cases)` with clean JSON load/no debug errors. Follow-up deterministic passage-seam proof adds `zombie_rider_large_body_small_passage_pathing`: spawned rider actual size rejects `TFLAG_SMALL_PASSAGE` / `t_window_empty`, normal floor remains move-valid, normal-sized pathfinding can use the passable window seam, and rider-sized pathfinding routes around it. Local combat checkpoint `4343dbdad1` proves live `monster::plan()` consumption for bow shot cadence/cooldown, post-shot reposition destination, close-pressure retreat, injured withdrawal, and blocked-LOS no-shot counterplay; gate `./tests/cata_test "[zombie_rider]"` -> `All tests passed (100 assertions in 7 test cases)`. Overmap light-attraction checkpoint `d2ffbd54c3` adds `zombie_rider_overmap_ai` over existing light projection/horde signal footing with mature-world gate, negative controls, memory decay, and `max_riders_drawn_by_light = 2`; gate `make -j4 tests/zombie_rider_test.o obj/zombie_rider_overmap_ai.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> `All tests passed (135 assertions in 10 test cases)`. Rider convergence/band checkpoint `ce05ef44ec` adds capped deterministic convergence by distance then `rider_id`, decayed-memory/no-eligible/lone-rider controls, and camp pressure posture selection for `none`, `investigate`, `circle_harass`, `direct_attack`, and `withdraw`; gate `git diff --check && make -j4 tests/zombie_rider_test.o obj/zombie_rider_overmap_ai.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> `All tests passed (170 assertions in 14 test cases)`. Scope caveat: no live scenario/funness claim yet.
+Evidence: commit `d50715f00e` adds `mon_zombie_rider`, pseudo bow footing, mature `GROUP_ZOMBIE` direct gate at `730 days`, and `tests/zombie_rider_test.cpp`. Gates: `make -j4 tests/zombie_rider_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (34 assertions in 2 test cases)` with clean JSON load/no debug errors. Follow-up deterministic passage-seam proof adds `zombie_rider_large_body_small_passage_pathing`: spawned rider actual size rejects `TFLAG_SMALL_PASSAGE` / `t_window_empty`, normal floor remains move-valid, normal-sized pathfinding can use the passable window seam, and rider-sized pathfinding routes around it. Local combat checkpoint `4343dbdad1` proves live `monster::plan()` consumption for bow shot cadence/cooldown, post-shot reposition destination, close-pressure retreat, injured withdrawal, and blocked-LOS no-shot counterplay; gate `./tests/cata_test "[zombie_rider]"` -> `All tests passed (100 assertions in 7 test cases)`. Overmap light-attraction checkpoint `d2ffbd54c3` adds `zombie_rider_overmap_ai` over existing light projection/horde signal footing with mature-world gate, negative controls, memory decay, and `max_riders_drawn_by_light = 2`; gate `make -j4 tests/zombie_rider_test.o obj/zombie_rider_overmap_ai.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> `All tests passed (135 assertions in 10 test cases)`. Rider convergence/band checkpoint `ce05ef44ec` adds capped deterministic convergence by distance then `rider_id`, decayed-memory/no-eligible/lone-rider controls, and camp pressure posture selection for `none`, `investigate`, `circle_harass`, `direct_attack`, and `withdraw`; gate `git diff --check && make -j4 tests/zombie_rider_test.o obj/zombie_rider_overmap_ai.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> `All tests passed (170 assertions in 14 test cases)`. First staged-but-live open-field row `zombie_rider.live_open_field_pressure_mcw` is green at `.userdata/dev-harness/harness_runs/20260501_013055/`: one hostile rider at `[0,-5,0]`, noon start, safe mode off, `6/6` step rows green, no abort/runtime warnings, `bow_pressure` then `withdraw` live-plan artifact rows, max observed `eval_us=2`; proof note `doc/zombie-rider-live-funness-open-field-proof-v0-2026-05-01.md`. Wounded disengagement row `zombie_rider.live_wounded_disengagement_mcw` is green at `.userdata/dev-harness/harness_runs/20260501_014613/` after forced fresh executable relink: one wounded hostile rider at `[0,-8,0]`, `hp=36`, `6/6` step rows green, no abort/runtime warnings, `withdraw=14`, `bow_pressure=0`, distance widens `7` -> `24`, max observed `eval_us=3`; proof note `doc/zombie-rider-live-funness-wounded-disengagement-proof-v0-2026-05-01.md`. Scope caveat: camp-light attraction into convergence/bands and cover/indoor escape live rows are still open.
 
 Canonical docs:
 - Raw intake / exact flavor text: `doc/zombie-rider-raw-intake-2026-04-30.md`.
 - Imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`.
 - Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`.
 - Map-AI / funness benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`.
+
+---
+
+## CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0 — Flesh raptor circling skirmisher retrofit
+
+Status: GREENLIT / BACKLOG / PREDATOR VARIETY PACKAGE
+
+Success state:
+- [ ] Flesh raptor behavior no longer depends solely on generic `HIT_AND_RUN` for its main readable pattern when open circling terrain exists.
+- [ ] Deterministic map tests prove a raptor prefers a valid 4–6 tile orbit/flank position over straight retreat when open lateral space exists.
+- [ ] Deterministic crowding tests prove a raptor prefers the under-occupied arc rather than stacking into the same zombie/enemy side.
+- [ ] Corridor/blocked-terrain tests prove graceful fallback without jitter loops or stuck non-actions.
+- [ ] Live/playtest rows compare old-feeling stab/flee frustration against new circling pressure with metrics for orbit turns, swoop cadence, hit count, equipment-damage events, player counterplay, warnings/errors, and perceived fun/annoyance.
+- [ ] Existing JSON/load and focused monster tests remain green for raptor variants touched by the package.
+
+Canonical docs:
+- Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
+- Contract: `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`.
+
+---
+
+## CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0 — Writhing stalker zombie-shadow predator shift
+
+Status: GREENLIT / BACKLOG / PREDATOR VARIETY PACKAGE
+
+Success state:
+- [ ] The stalker confidence model explicitly distinguishes evidence/interest, zombie pressure, quiet-side/cutoff opportunity, and counterpressure from light/focus/open exposure.
+- [ ] Deterministic tests prove that with zombies on one side of the player, the stalker prefers the under-occupied/quiet side when shadow or cover permits.
+- [ ] Deterministic tests prove zombie pressure increases stalker confidence only when local evidence or overmap-interest footing exists; no-evidence/no-magic cases stay targetless.
+- [ ] Deterministic tests prove light/focus/open exposure suppresses quiet-side cutoff/strike behavior.
+- [ ] Live/playtest rows prove at least one “fighting zombies, stalker appears on quiet side/back route” scenario and one “running from zombies, stalker blocks/cuts off escape side” scenario.
+- [ ] Metrics include zombie-pressure side, chosen quiet-side/cutoff tile, confidence reasons, strike timing, counterplay outcome, turn-time cost, warnings/errors, and player fun/fairness notes.
+
+Canonical docs:
+- Imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
+- Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`.
+
+---
+
+## CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0 — Writhing stalker behavior seam reduction
+
+Status: GREENLIT / BACKLOG / ANTI-REDUNDANCY PACKAGE
+
+Success state:
+- [ ] Existing monster behavior/strategy/special-attack seams that can replace bespoke writhing-stalker planning glue are identified in the implementation note or commit message.
+- [ ] The live-facing `monster::plan()` path still consumes the approved stalker behavior current at execution time through a named, test-covered seam.
+- [ ] Focused `[writhing_stalker]` tests remain green for no-evidence/no-beeline, cover preference, bright/focused counterplay, vulnerability strike, cooldown anti-spam, repeated strike rhythm, and injured retreat.
+- [ ] At least one new or updated seam-consumption test fails if the behavior is only exercised by detached helper code and not by the live planner path.
+- [ ] No product tuning or new gameplay claim is mixed into the refactor unless separately promoted and proven.
+
+Canonical docs:
+- Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+- Contract: `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`.
+
+---
+
+## CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0 — Camp locker equipment API reduction
+
+Status: GREENLIT / BACKLOG / ANTI-REDUNDANCY PACKAGE
+
+Success state:
+- [ ] The implementation note or commit message names which camp locker checks now defer to existing item, wearability, body coverage, reload, or zone APIs.
+- [ ] Camp locker candidate classification and upgrade selection remain green for clothing, armor, bags, melee/ranged weapons, ammo, magazines, and kept readiness items.
+- [ ] Carried cleanup still dumps only safe non-kept baggage and preserves worn/wielded items plus kept ammo/magazine/medical/insert supplies.
+- [ ] Ranged readiness still selects compatible magazines/ammo, uses existing reload behavior, and returns leftovers safely.
+- [ ] Focused faction/basecamp tests pass without widening or interrupting the active zombie rider lane.
+
+Canonical docs:
+- Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+- Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`.
+
+---
+
+## CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0 — Bandit signal adapter reduction
+
+Status: GREENLIT / BACKLOG / ANTI-REDUNDANCY PACKAGE
+
+Success state:
+- [ ] The source path from local fire/smoke/light observation to bandit mark input is named and tested as an adapter over local fields/time/weather.
+- [ ] Bandit mark-generation tests remain green for smoke/weather, light/time/weather, human route, repeated-site, and moving-memory cases touched by the package.
+- [ ] A focused test or harness/log assertion proves horde reactions still go through `overmap_buffer.signal_hordes` / `overmap::signal_hordes` rather than a private horde path.
+- [ ] Existing roof-fire/live-signal expectations remain true, or any changed expectation is explicitly classified as tuning instead of cleanup.
+- [ ] No bandit dispatch, roster, structural-bounty, or camp-map behavior claim is made from adapter refactoring alone.
+
+Canonical docs:
+- Imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+- Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
 
 ---
 

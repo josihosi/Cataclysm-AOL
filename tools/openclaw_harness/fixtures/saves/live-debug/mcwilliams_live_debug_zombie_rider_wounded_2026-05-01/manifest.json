@@ -1,0 +1,33 @@
+{
+  "name": "mcwilliams_live_debug_zombie_rider_wounded_2026-05-01",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only zombie-rider wounded disengagement restage: one damaged hostile rider at visible bow range for live withdrawal proof.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5227200
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [
+            0,
+            -8,
+            0
+          ],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}

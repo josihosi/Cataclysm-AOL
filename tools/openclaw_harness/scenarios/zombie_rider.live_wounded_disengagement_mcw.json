@@ -1,0 +1,105 @@
+{
+  "name": "zombie_rider.live_wounded_disengagement_mcw",
+  "description": "Live wounded-rider row: one damaged hostile rider at bow range records disengagement/withdrawal instead of unfair final-shot spam.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_rider_wounded_2026-05-01",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "zombie_rider live_plan:",
+    "decision=withdraw",
+    "reason=wounded_or_close",
+    "line_of_fire=yes",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_wounded_rider_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "staged wounded zombie-rider fixture loads to live map"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_noon_before_wounded_rider",
+      "required_time_of_day_seconds": 43200,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_wounded_time_setup_missing",
+      "abort_reason": "installed save did not prove expected noon turn before live wounded-rider window",
+      "expected_visible_fact": "saved turn proves local noon before wounded rider pressure window"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_wounded_zombie_rider_before_window",
+      "required_monsters": [
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [
+            0,
+            -8,
+            0
+          ]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_wounded_active_monster_setup_missing",
+      "abort_reason": "saved active_monsters metadata did not contain required wounded rider footing",
+      "expected_visible_fact": "one hostile wounded zombie rider starts eight tiles north at bow-pressure range"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_wounded_rider",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live wounded-rider window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_wounded_rider_disengagement_window",
+      "count": 30,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "zombie_rider live_plan:",
+        "decision=withdraw",
+        "reason=wounded_or_close",
+        "line_of_fire=yes",
+        "eval_us="
+      ],
+      "expected_visible_fact": "bounded live turn window records wounded rider withdrawal/disengagement instead of bow-pressure greed"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_zombie_rider_wounded_live_plan",
+      "required_line_patterns": [
+        [
+          "zombie_rider live_plan:",
+          "decision=withdraw",
+          "reason=wounded_or_close",
+          "line_of_fire=yes",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_wounded_live_plan_missing",
+      "abort_reason": "same-run artifact lacked wounded rider withdrawal live-plan lines",
+      "expected_visible_fact": "same-run debug artifact proves live wounded rider planning withdraws/disengages"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_wounded_disengagement_mcw",
+  "evidence_contract": {
+    "claim": "a staged live wounded zombie rider at visible bow range uses the monster::plan seam to withdraw/disengage instead of taking greedy final shots",
+    "load_only_verdict": "load proof only / inconclusive for zombie-rider wounded disengagement behavior",
+    "writeback_note": "No save/writeback gate: this scenario proves bounded live-plan behavior from current-run logs plus saved start-state footing; persistent map mutation is not part of the product claim."
+  }
+}

@@ -93,7 +93,7 @@ Prior closed active lane: `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` — see `doc/
 
 ## Active lane — CAOL-ZOMBIE-RIDER-0.3-v0
 
-**Status:** ACTIVE / GREENLIT / RIDER CONVERGENCE-BANDS CHECKPOINT GREEN / LIVE FUNNESS NEXT
+**Status:** ACTIVE / GREENLIT / TWO LIVE FUNNESS ROWS GREEN / LIVE FUNNESS NEXT
 
 Josef greenlit preparing the release `0.3` zombie rider for Andi, including playtests and a small map-AI funness benchmarking suite. The prior writhing-stalker live fun packet is now closed green, so this queued lane is deliberately promoted as the current active delivery target.
 
@@ -107,9 +107,40 @@ Map-AI / funness benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-sui
 
 Goal: initial zombie rider dev for release `0.3`: endpoint late-game mounted ranged predator, exact flavor preservation, scary-fast movement, shoot/flee/reposition local combat, overmap light attraction, rider convergence/band formation, and playtest/funness proof that open-ground terror remains fair through counterplay.
 
-Current checkpoint: monster/evolution footing is green in `d50715f00e` (`mon_zombie_rider` definition, exact three-line description, huge/scary-fast endpoint stats, mature `GROUP_ZOMBIE` gate at `730 days`, no predator/upgrade leak, focused `[zombie_rider]` tests); the large-body `SMALL_PASSAGE` / window-terrain seam is covered by `zombie_rider_large_body_small_passage_pathing`; local combat AI footing is green in `4343dbdad1` with live `monster::plan()` consumption for line-of-fire bow targeting, hit-and-run post-shot withdrawal, close/injured retreat, and blocked-LOS counterplay; overmap light-attraction footing is green in `d2ffbd54c3` through `zombie_rider_overmap_ai` over the existing light projection/horde signal seam; and deterministic rider convergence/band pressure is green with capped distance/id selection, no-convergence after decayed light memory, lone-rider non-band behavior, and camp pressure postures that circle/harass instead of suiciding into defended walls. Next slice widens only to live-shaped rider funness rows.
+Current checkpoint: monster/evolution footing is green in `d50715f00e` (`mon_zombie_rider` definition, exact three-line description, huge/scary-fast endpoint stats, mature `GROUP_ZOMBIE` gate at `730 days`, no predator/upgrade leak, focused `[zombie_rider]` tests); the large-body `SMALL_PASSAGE` / window-terrain seam is covered by `zombie_rider_large_body_small_passage_pathing`; local combat AI footing is green in `4343dbdad1` with live `monster::plan()` consumption for line-of-fire bow targeting, hit-and-run post-shot withdrawal, close/injured retreat, and blocked-LOS counterplay; overmap light-attraction footing is green in `d2ffbd54c3` through `zombie_rider_overmap_ai` over the existing light projection/horde signal seam; deterministic rider convergence/band pressure is green with capped distance/id selection, no-convergence after decayed light memory, lone-rider non-band behavior, and camp pressure postures that circle/harass instead of suiciding into defended walls; the first staged-but-live open-field local-combat row is green via `zombie_rider.live_open_field_pressure_mcw` / `.userdata/dev-harness/harness_runs/20260501_013055/`, and the staged-but-live wounded disengagement row is green via `zombie_rider.live_wounded_disengagement_mcw` / `.userdata/dev-harness/harness_runs/20260501_014613/`. Next slice stays in live-shaped rider funness rows, preferably camp-light attraction into bounded convergence/band behavior if the harness can stage it honestly, otherwise cover/indoor escape.
 
 Boundary: do not reopen writhing-stalker lanes, bandit/horde proof lanes, Smart Zone, old fire proof lanes, release packaging, or held parked concepts by drift. Do not make the rider a year-one routine spawn, a decorative fast archer, an unavoidable camp-deletion tax, or infinite clown cavalry. Exact flavor text punctuation is product canon.
+
+---
+
+## Greenlit backlog — predator behavior variety packages
+
+**Status:** GREENLIT / BACKLOG / DO NOT INTERRUPT ACTIVE ZOMBIE RIDER LANE
+
+Josef greenlit changing both flesh raptors and the writhing stalker away from overused stab-and-flee behavior, with deterministic little-map tests, playtests, and fun metrics. These are product-behavior packages, not anti-redundancy cleanup, and they stay behind the current active zombie-rider lane unless explicitly promoted.
+
+Shared imagination source: `doc/predator-behavior-variety-imagination-source-of-truth-2026-05-01.md`.
+
+1. `CAOL-FLESH-RAPTOR-CIRCLING-SKIRMISHER-v0` — retrofit flesh raptors into visible circling skirmishers that prefer 4–6 tile orbit/flank spacing, under-occupied arcs, and bounded swoop cadence instead of pure `HIT_AND_RUN` repetition. Contract: `doc/flesh-raptor-circling-skirmisher-packet-v0-2026-05-01.md`.
+2. `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` — shift the stalker into a zombie-shadow attention predator: overmap light interest plus local sound/smell/sight evidence, confidence from ordinary zombie pressure, and quiet-side/cutoff strikes where the zombies are not. Contract: `doc/writhing-stalker-zombie-shadow-predator-packet-v0-2026-05-01.md`.
+
+Boundary: do not remove all attack-and-retreat enemies, do not fold eigenspectres into this package, do not make raptors more anti-fun through equipment destruction, and do not give the stalker omniscient backstab magic. If the stalker product package executes before the anti-redundancy refactor, the refactor preserves this new approved behavior shape.
+
+---
+
+## Greenlit backlog — targeted anti-redundancy packages
+
+**Status:** GREENLIT / BACKLOG / DO NOT INTERRUPT ACTIVE ZOMBIE RIDER LANE
+
+Josef greenlit targeted anti-redundancy packages after Schani's `master...dev` redundancy audit. These are queued cleanup/refactor contracts with targeted tests, not current `TODO.md` work.
+
+Shared imagination source: `doc/anti-redundancy-packaging-imagination-source-of-truth-2026-05-01.md`.
+
+1. `CAOL-WRITHING-STALKER-BEHAVIOR-SEAM-REDUCTION-v0` — reduce the bespoke `mon_writhing_stalker` planning hook where existing monster behavior/strategy/special-attack seams can carry the shape, while preserving the approved stalker behavior current at execution time. If `CAOL-WRITHING-STALKER-ZOMBIE-SHADOW-PREDATOR-v0` runs first, this means preserving the zombie-shadow predator shape, not the older hit-and-dash-adjacent behavior. Contract: `doc/writhing-stalker-behavior-seam-reduction-packet-v0-2026-05-01.md`.
+2. `CAOL-CAMP-LOCKER-EQUIPMENT-API-REDUCTION-v0` — keep camp locker policy, but trim duplicate item/clothing/ammo/reload/zone ontology in favor of existing item, wearability, reload, and zone APIs. Contract: `doc/camp-locker-equipment-api-reduction-packet-v0-2026-05-01.md`.
+3. `CAOL-BANDIT-SIGNAL-ADAPTER-REDUCTION-v0` — keep bandit interpretation custom, but make smoke/light/fire observation visibly adapter-shaped over local fields/time/weather plus the existing horde signal seam. Contract: `doc/bandit-signal-adapter-reduction-packet-v0-2026-05-01.md`.
+
+Boundary: these packages do not reopen closed writhing-stalker, bandit, horde, Smart Zone, or camp claims by drift. The larger bandit live-world roster/mission-state reduction remains future audit territory, not part of this targeted package set.
 
 ---
 
