@@ -1,61 +1,80 @@
-# Andi handoff: Smart Zone live coordinate-label proof
+# Andi handoff: Bandit structural bounty Phase 4
 
 ## Current canon state
 
-`Smart Zone Manager live coordinate-label proof v0` is **CLOSED / GREEN LIVE COORDINATE-LABEL PROOF**.
+`Bandit structural bounty overmap completion packet v0` is the **ACTIVE / GREENLIT IMPLEMENTATION PACKET**.
 
-Green run: `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`, scenario `smart_zone.live_coordinate_label_proof_v0_tmp9` (stabilized as `tools/openclaw_harness/scenarios/smart_zone.live_coordinate_label_proof_v0.json`). Report: `feature_proof=true`, `evidence_class=feature-path`, `verdict=artifacts_matched`, 18/18 green step-local rows.
+Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, and `TESTING.md` aligned downstream. This handoff is only a terse executor packet; if it ever disagrees with those files, repair this file from canon instead of treating it as truth.
 
-Proof chain: load gameplay -> open real `Zones manager` -> add `Basecamp: Storage` -> accept Smart Zone Manager prompt with **Yes** -> result `placed_zones=23` -> close/save-changes -> reopen Zone Manager -> audit generated row coordinate labels and absolute coordinates. Decisive evidence is the live `zone_manager_row` redraw trace (`visible_label`, `compact_label`, `start_abs`, `end_abs`, `center_abs`), with screenshot/OCR as fallback UI checkpoint evidence.
+Phase 3 deterministic structural outing planner/resolver is locally green. Checkpoint commit: `b8fc4b1d8c Add structural bounty outing resolver` on `dev`.
 
-Verdict: green for the live coordinate-label/lumping claim. The generated layout spans distinct relative labels/coordinates and is not the one-tile lumping bug. Some related rows intentionally share labels/tiles; that is not by itself treated as collapse.
+Credited Phase 3 claims:
 
-Boundary: this proves live create/inspect/close-save/reopen, not a separate full process-reload disk-persistence audit after SIGTERM cleanup.
+- small non-player structural outings can choose forest/town `structural_bounty` camp-map leads without using the player-pursuit handoff as terrain dispatch proof;
+- forest/town choice is deterministic from bounty + confidence - known threat;
+- active outside pressure blocks parallel same-site structural dispatch/dogpiling;
+- stale plans are revalidated against active pressure, reserve, at-home readiness, lead status, recent-check debounce, and known low interest before apply;
+- stalking-distance threat reveal happens before arrival and does not consume bounty by itself;
+- revealed threat subtracts from interest and can turn the outing back before arrival;
+- arrival consumes structural bounty only after interest survives, then writes harvested/debounce state;
+- member/outbound state and active structural group fields clear on return;
+- recently checked/low-interest structural targets are not immediately reselected.
 
-## Completed actual-playtest stack boundary
-
-Preserve these completed proofs as canon, not as rerun invitations:
-
-- source-zone player fire: `.userdata/dev-harness/harness_runs/20260429_153253/`, `bandit.live_world_nearby_camp_visible_brazier_source_zone_firestarter_action_mcw`; real normal Apply inventory/deploy/lighter path, saved `f_brazier` + `fd_fire`;
-- player-lit fire -> bandit signal: `.userdata/dev-harness/harness_runs/20260429_162100/`, `bandit.player_lit_fire_signal_wait_mcw`; bounded wait, live signal/dispatch, saved active scout response;
-- roof/elevated fire source: `.userdata/dev-harness/harness_runs/20260429_172847/`; normal player-created roof `t_tile_flat_roof` + `f_brazier` + `fd_fire`;
-- roof-fire horde split proof: `.userdata/dev-harness/harness_runs/20260429_180239/`, `bandit.roof_fire_horde_split_wait_from_player_fire_mcw`; live roof-fire horde signal plus saved horde retarget/movement-budget response;
-- Smart Zone Manager live layout: green coordinate-label proof at `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`.
-
-Evidence boundaries to preserve:
-
-- source-zone fire proof is not roof proof;
-- roof proof is the split-run packet from the saved player-created roof-fire world;
-- roof-horde `tracking_intensity` remained `0`, so the credited response is retarget/movement-budget metadata after live roof-fire horde signaling, not positive tracking-intensity proof;
-- Smart Zone deterministic geometry remains support; the live coordinate-label claim is now closed by the real Zone Manager proof, not by deterministic tests alone.
+Evidence credited for Phase 3: `git diff --check`; `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` -> 216 assertions in 18 test cases. No live game claim is credited yet.
 
 ## Active work
 
-No active execution target is currently promoted in repo canon. Next work should be promoted by Schani/Josef plan aux rather than inferred from old watchlist items.
+Current state boundary: **Phase 4 save/load and anti-loop**.
 
-## Future-only watchlist unless Schani/Josef promotes it
+Implementation scope for the next run:
 
-- natural three/four-site player-pressure behavior;
-- true zero-site idle baseline;
-- stricter roof-horde positive `tracking_intensity` proof;
-- full Smart Zone process-reload disk-persistence audit, if Josef wants stricter persistence proof;
-- GitHub normal-download release packet, which needs explicit promotion from current canon before Andi treats it as the active lane.
+1. Add or extend serialization coverage for structural bounty leads, active structural outings, harvested/dangerous outcomes, and member active/returned state.
+2. Prove arrival after reload consumes structural bounty once, not twice, and preserves the stalking-before-arrival distinction.
+3. Add deterministic 500-turn playback for forest/town progression: no repeated harvested tile, no ping-pong against dangerous/low-interest tiles, and no stuck active outing.
+4. Add or verify counters for dispatches planned, stalking checks, lost-interest returns, arrivals/harvests, skipped harvested/dangerous/recently-checked leads, and bounded multi-camp work.
+5. Run a short Ralph Wiggum pass: save/load must not erase risk memory, harvested/dangerous debounce must survive long enough to stop repeat loops, and counters must prove bounded work rather than only final status.
 
-## Canonical anchors
+## Success bar for Phase 4
 
-- `Plan.md`
-- `TODO.md`
-- `TESTING.md`
-- `SUCCESS.md`
-- Smart Zone contract: `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`
-- stack contract: `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`
-- roof-fire closure proof: `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`
-- green signal proof: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`
-- green fire proof: `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`
+Phase 4 is green only when deterministic evidence proves:
+
+- save/load preserves structural leads, active structural outings, harvested/dangerous outcomes, and member active/returned state;
+- arrival after reload consumes structural bounty once, not twice;
+- harvested tiles do not regenerate from later structural scan;
+- 500-turn playback covers forest/town progression, danger/low-interest debounce, harvest debounce, and no stuck active outing;
+- multi-camp scan/outing work stays bounded by counters;
+- the Ralph Wiggum smell pass says the ecology avoids repeat magnets and hidden unbounded work.
+
+## Testing/evidence expectations
+
+Use the smallest honest evidence for the slice.
+
+Suggested narrow gates after Phase 4 code changes:
+
+- `git diff --check`
+- `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`
+- `./tests/cata_test "[bandit][live_world][structural_bounty]" --success`
+
+Broaden only if serialization/playback touched files justify it. Do not run live/harness proof yet; the promoted live target waits until deterministic scan/outing/save-load substrate is green and wired into the real maintenance path.
 
 ## Non-goals/cautions
 
-- Do not rerun solved Smart Zone, source-zone fire, bandit signal, or roof-fire horde proofs as ritual.
-- Do not use `fuel_writeback_source_zone_v0_2026-04-29`.
-- Do not debug-inject the credited fire/light/smoke for product proof.
-- Do not promote watchlist items or release work from this file alone.
+- Do **not** start live/harness proof in Phase 4.
+- Do **not** implement writhing stalker, local bubble materialization, exact loot harvest, player/Josef-facing tuning, release packaging, or random casualty economy beyond deterministic counters.
+- Do **not** promote old Smart Zone, source-zone fire, bandit signal, roof-fire horde, watchlist, or release work from this handoff.
+- Do **not** rerun solved proof packets as ritual.
+- Do **not** let this handoff overrule `Plan.md` / `TODO.md` / `SUCCESS.md` / `TESTING.md`.
+
+## Canonical anchors
+
+- Active roadmap: `Plan.md`
+- Active queue: `TODO.md`
+- Success ledger: `SUCCESS.md`
+- Testing ledger: `TESTING.md`
+- Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`
+- Imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`
+- Testing ladder: `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`
+
+## Superseded handoff note
+
+This file supersedes the old Smart Zone live coordinate-label handoff. Smart Zone Manager live coordinate-label proof remains closed/green in `TESTING.md` snapshots and its aux docs, but it is not the active execution target.
