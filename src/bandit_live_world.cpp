@@ -2307,6 +2307,79 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
     return result;
 }
 
+structural_bounty_maintenance_result advance_structural_bounty_maintenance( world_state &state,
+        const int now_minutes, const int scan_budget, const int dispatch_cap,
+        const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,
+        const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup )
+{
+    structural_bounty_maintenance_result result;
+    result.dispatch_cap = std::max( 0, dispatch_cap );
+    result.outing = advance_structural_bounty_outings( state, now_minutes, threat_lookup );
+    result.scan = advance_structural_bounty_scan( state, now_minutes, scan_budget, terrain_lookup );
+
+    if( result.dispatch_cap == 0 ) {
+        result.notes.push_back( "structural maintenance dispatch skipped: zero cap" );
+        return result;
+    }
+
+    for( site_record &site : state.sites ) {
+        result.sites_considered_for_dispatch++;
+        if( result.dispatches_applied >= result.dispatch_cap ) {
+            result.dispatch_cap_reached = true;
+            break;
+        }
+        const structural_outing_plan plan = plan_structural_bounty_outing( site, now_minutes );
+        if( !plan.valid ) {
+            continue;
+        }
+        result.dispatches_planned++;
+        if( apply_structural_bounty_outing_plan( site, plan, now_minutes ) ) {
+            result.dispatches_applied++;
+            result.notes.push_back( "structural maintenance dispatched site=" + site.site_id +
+                                    " lead=" + plan.lead_id );
+        } else {
+            result.dispatches_blocked++;
+            result.notes.push_back( "structural maintenance dispatch apply blocked site=" + site.site_id +
+                                    " lead=" + plan.lead_id );
+        }
+    }
+
+    return result;
+}
+
+std::string render_structural_bounty_maintenance_report(
+    const structural_bounty_maintenance_result &result )
+{
+    std::ostringstream out;
+    out << "bandit_live_world structural maintenance:"
+        << " scan_budget=" << result.scan.scan_budget
+        << " budget_used=" << result.scan.budget_used
+        << " budget_exhausted=" << ( result.scan.budget_exhausted ? "yes" : "no" )
+        << " sites_scanned=" << result.scan.sites_considered
+        << " candidates_sampled=" << result.scan.candidates_sampled
+        << " leads_seeded=" << result.scan.leads_seeded
+        << " leads_suppressed=" << result.scan.leads_suppressed_by_memory
+        << " dispatch_cap=" << result.dispatch_cap
+        << " dispatches_planned=" << result.dispatches_planned
+        << " dispatches_applied=" << result.dispatches_applied
+        << " dispatch_cap_reached=" << ( result.dispatch_cap_reached ? "yes" : "no" )
+        << " active_outings=" << result.outing.active_outings_considered
+        << " stalking_checks=" << result.outing.stalking_checks_processed
+        << " turnbacks=" << result.outing.lost_interest_returns
+        << " arrivals=" << result.outing.arrivals_processed
+        << " members_returned=" << result.outing.members_returned << '\n';
+    for( const std::string &note : result.outing.notes ) {
+        out << "- " << note << '\n';
+    }
+    for( const std::string &note : result.scan.notes ) {
+        out << "- " << note << '\n';
+    }
+    for( const std::string &note : result.notes ) {
+        out << "- " << note << '\n';
+    }
+    return out.str();
+}
+
 dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
         const camp_map_lead &lead,
         const camp_map_dispatch_pressure &pressure )

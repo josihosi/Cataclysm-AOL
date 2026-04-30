@@ -601,9 +601,9 @@ A phase should not be called done if Ralph Wiggum says the code passes tests but
 
 ### Phase 5 — live wiring
 
-- Wire scan and outing resolver into `do_turn` maintenance with strict cadence/budget.
-- Add concise debug/report artifacts.
-- Build current runtime.
+- [x] Wire scan and outing resolver into `do_turn` maintenance with strict cadence/budget.
+- [x] Add concise debug/report artifacts.
+- [x] Build current runtime.
 
 ### Phase 6 — live proof
 
@@ -654,6 +654,7 @@ This packet is complete only when all of these are true:
 - [x] Save/load preserves structural leads, active outings, harvested/dangerous outcomes, and member state.
 - [x] Deterministic 500-turn tests prove bandits do not get stuck repeating the same harvested/dangerous tile.
 - [x] Performance tests/counters prove scan/outing work is bounded for multi-camp scenarios.
+- [x] Real `do_turn` maintenance invokes bounded structural scan/outing maintenance with concise report/debug output and a current-runtime tiles build.
 - [ ] Live/harness feature-path proof shows an idle camp dispatching to structural forest/town bounty without player smoke/light/direct-range bait.
 - [ ] Live/harness proof shows stalking-distance threat/interest writeback, optional later arrival harvest, and no immediate repeat of the consumed/dangerous target.
 - [ ] Existing player smoke/light signal dispatch behavior still passes its relevant tests and is not regressed.
