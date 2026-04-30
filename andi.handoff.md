@@ -2,7 +2,7 @@
 
 ## Current canon state
 
-`CAOL-ZOMBIE-RIDER-0.3-v0` is **ACTIVE / GREENLIT / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN / LOCAL COMBAT AI NEXT**.
+`CAOL-ZOMBIE-RIDER-0.3-v0` is **ACTIVE / GREENLIT / OVERMAP LIGHT ATTRACTION CHECKPOINT GREEN / RIDER CONVERGENCE-BANDS NEXT**.
 
 Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` aligned downstream. This handoff is only a terse executor packet; if it disagrees with canon, repair it from canon.
 
@@ -36,10 +36,26 @@ Monster/evolution footing is green in `d50715f00e`:
 - actual `mon_zombie_rider` exists with the exact description text;
 - endpoint smell is hunter/predator branch after mature-world pressure, but normal upgrades are not wired into rider;
 - direct routine spawn is gated to `GROUP_ZOMBIE` at `730 days`, singleton/costly;
-- focused `[zombie_rider]` tests prove scary-fast-but-reviewable footing and no early spawn/evolution leak;
-- `zombie_rider_large_body_small_passage_pathing` now proves the spawned rider's actual large body rejects `SMALL_PASSAGE` / `t_window_empty` while normal-sized pathing can use that passable window-like seam and rider-sized pathing routes around it.
+- focused `[zombie_rider]` tests prove scary-fast-but-reviewable footing and no early spawn/evolution leak.
 
-Next slice may widen only to local shoot/flee/reposition AI and remaining deterministic counterplay tests. Do not jump ahead to overmap light attraction, rider bands, or live funness rows until that boundary is green.
+Passage seam footing is green in `zombie_rider_large_body_small_passage_pathing`:
+
+- the spawned rider's actual large body rejects `SMALL_PASSAGE` / `t_window_empty`;
+- normal-sized pathing can use that passable window-like seam;
+- rider-sized pathing routes around it.
+
+Local combat AI footing is green in `4343dbdad1`:
+
+- live `monster::plan()` consumption covers line-of-fire bow targeting;
+- tests cover bow shot cadence/cooldown, post-shot reposition destination, close-pressure retreat, injured withdrawal, and blocked-LOS no-shot counterplay.
+
+Overmap light-attraction footing is green in `d2ffbd54c3`:
+
+- `zombie_rider_overmap_ai` consumes existing `bandit_mark_generation::light_projection` / `horde_signal_power_from_light_projection`;
+- tests cover mature-world exposed light interest, early-world suppression, no-rider/no-light/weak/daylight controls, temporary memory decay, and `max_riders_drawn_by_light = 2`;
+- latest focused gate: `make -j4 tests/zombie_rider_test.o obj/zombie_rider_overmap_ai.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> 135 assertions / 10 test cases green.
+
+Next slice may widen only to rider convergence/band formation before live funness rows. Do not reprove monster/evolution, passage, local combat, or overmap light attraction by ritual unless changed.
 
 ## Evidence/reporting requirements
 
