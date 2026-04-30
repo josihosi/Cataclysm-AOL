@@ -2,7 +2,9 @@
 
 ## Classification
 
-Status: **ACTIVE / GREENLIT CHALLENGE PLAYTEST PACKET**.
+Status: **CLOSED / CHECKPOINTED GREEN V0**.
+
+Proof: `doc/multi-camp-signal-gauntlet-proof-v0-2026-04-30.md`.
 
 Ledger ID: `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0`.
 
@@ -12,7 +14,7 @@ Imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-
 
 Give Andi a real C-AOL challenge: prove that the live bandit overmap systems stay sane when multiple camps, structural bounty, and live player/world signals coexist.
 
-This promotes three previously optional structural-bounty follow-ups into one active gauntlet:
+This promoted three previously optional structural-bounty follow-ups into one bounded gauntlet:
 1. two/four-camp wait stress;
 2. mixed signal coexistence;
 3. reload/resume continuity if the first two are green enough to preserve.
@@ -56,18 +58,20 @@ Minimum closure requires two honest challenge rows:
 
 ## Success state
 
-- [ ] A named Challenge A scenario/fixture exists and runs: proposed `bandit.multi_camp_structural_stress_mcw`.
-- [ ] Challenge A proves at least two camp/site states before/after bounded time and reports active outings/target choices/no-repeat state.
-- [ ] Challenge A reports dogpile/spread/hold behavior and timing/log stability.
-- [ ] A named Challenge B scenario/fixture exists and runs: proposed `bandit.mixed_signal_coexistence_mcw`.
-- [ ] Challenge B combines structural bounty with at least one live smoke/fire/light/roof-fire signal and reports candidate priority/reasons.
-- [ ] Challenge B proves neither signal class silently wipes the other’s state.
-- [ ] Reload/resume continuity is either green for a meaningful active outing, or explicitly deferred with the exact missing seam.
-- [ ] Metrics include waited time/sampled turns, wall-clock, available per-turn/cadence timing, active group/site counts, warnings/errors/log spam, and crash status.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state.
+- [x] A named Challenge A scenario/fixture exists and runs: `bandit.multi_camp_structural_stress_mcw`, green run `.userdata/dev-harness/harness_runs/20260430_204416/`.
+- [x] Challenge A proves at least two camp/site states before/after bounded time and reports active outings/target choices/no-repeat state.
+- [x] Challenge A reports dogpile/spread/hold behavior and timing/log stability.
+- [x] A named Challenge B scenario/fixture exists and runs: `bandit.mixed_signal_coexistence_mcw`, green run `.userdata/dev-harness/harness_runs/20260430_203757/`.
+- [x] Challenge B combines structural bounty with live smoke/fire signal footing and reports candidate priority/reasons.
+- [x] Challenge B proves neither signal class silently wipes the other’s state.
+- [x] Reload/resume continuity is green for meaningful active live-signal scout + structural scavenge outings: `bandit.mixed_signal_reload_resume_mcw`, green run `.userdata/dev-harness/harness_runs/20260430_203944/`.
+- [x] Metrics include waited time/sampled turns, per-cadence timing, active group/site counts, warnings/errors/log spam, and crash status.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state.
 
 ## Evidence boundary
 
 Green closure must reach live maintenance/outing state and bounded time passage. Deterministic tests can support diagnosis, but the challenge itself needs live/harness proof rows with before/after state and metrics.
 
-If the gauntlet breaks, preserve the result honestly. A red/yellow challenge report with exact dogpile, stale-state, reload-loss, or perf evidence is more useful than a fake green report.
+Final v0 caveats are preserved in the proof doc: two camps rather than four; staged-but-live signal footing rather than natural discovery; Challenge A proves harvested fixture leads plus east-camp followthrough/no-repeat, not all-camps-idle. No dogpile, stale-state, reload-loss, CPU churn, log spam, or crash failure was observed in the final green runs.
+
+If this gauntlet is ever reopened with stricter criteria, preserve red/yellow results honestly. A red/yellow challenge report with exact dogpile, stale-state, reload-loss, or perf evidence is more useful than a fake green report.

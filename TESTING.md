@@ -53,21 +53,21 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0
+### Closed validation target - CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0
 
-`CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` is the active challenge playtest packet. Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`; imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`.
+`CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` is closed/checkpointed green v0. Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`; imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`; proof: `doc/multi-camp-signal-gauntlet-proof-v0-2026-04-30.md`.
 
-Validation burden:
-- Challenge A: multi-camp structural stress with at least two camps, bounded time passage, before/after site/group state, target reasons, no-repeat state, dogpile/spread/hold behavior, and metrics.
-- Challenge B: mixed signal coexistence combining structural bounty with at least one live smoke/fire/light/roof-fire signal, with candidate priority/reason evidence and state-preservation checks.
-- Challenge C: reload/resume continuity for a meaningful active outing if practical; otherwise exact deferred seam.
-- Do not use setup-only camp/signal presence as proof. The live maintenance/outing path must run and produce before/after evidence.
-- Report red/yellow failure honestly if dogpile, stale state, reload loss, CPU churn, or log spam appears.
+Green harness runs:
+- Challenge A: `bandit.multi_camp_structural_stress_mcw`, `.userdata/dev-harness/harness_runs/20260430_204416/` — two-camp structural stress, bounded wait, spread/no-repeat/followthrough, and perf/log stability.
+- Challenge B: `bandit.mixed_signal_coexistence_mcw`, `.userdata/dev-harness/harness_runs/20260430_203757/` — live smoke/fire signal plus separate structural bounty, `candidate_reason=live_signal`, both state classes preserved.
+- Challenge C: `bandit.mixed_signal_reload_resume_mcw`, `.userdata/dev-harness/harness_runs/20260430_203944/` — no-fixture reload/resume of active live-signal scout and structural scavenge groups.
+
+Do not reopen this target without explicit Schani/Josef promotion. Caveats: two camps rather than four; staged-but-live signal source; Challenge A is not an all-camps-idle-after-harvest proof.
 
 
 ### Greenlit queued validation target - CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
 
-`CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` is greenlit and queued after the active multi-camp gauntlet. It must not interrupt `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` unless Schani/Josef explicitly promote it. Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
+`CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` is greenlit and queued after the closed multi-camp gauntlet. Start it only when Schani/Josef explicitly promote it to active. Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
 
 Validation burden when active:
 - Build a primitive minimap/ASCII/equivalent repeated-turn behavior-pattern helper, not only isolated one-shot decision assertions.

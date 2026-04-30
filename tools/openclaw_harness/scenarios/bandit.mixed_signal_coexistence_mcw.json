@@ -1,0 +1,181 @@
+{
+  "name": "bandit.mixed_signal_coexistence_mcw",
+  "description": "Challenge B for CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0: a live smoke/fire source near the player pulls one clean camp by candidate_reason=live_signal while a second clean camp outside signal range carries and runs a structural_bounty lead. The proof is same-run live maintenance under bounded wait, not fixture/setup presence.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_mixed_signal_coexistence_v0_2026-04-30",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "capture_world_after": true,
+  "artifact_patterns": [
+    "bandit_live_world signal scan: signal_packet=yes",
+    "smoke_packets=1",
+    "bandit_live_world signal maintenance: signal_packet=yes",
+    "bandit_live_world dispatch plan:",
+    "site=overmap_special:bandit_camp@151,39,0",
+    "candidate_reason=live_signal",
+    "signal_packet=live_smoke@",
+    "bandit_live_world structural maintenance:",
+    "structural outing candidate=overmap_special:bandit_camp@160,39,0#lead:structural_bounty:forest@162,40,0",
+    "structural maintenance dispatched site=overmap_special:bandit_camp@160,39,0 lead=overmap_special:bandit_camp@160,39,0#lead:structural_bounty:forest@162,40,0",
+    "bandit_live_world perf:",
+    "sites=3",
+    "signals=",
+    "total_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_mixed_signal_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for the mixed structural/live-signal fixture; this is only startup/load footing before bounded wait"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "preflight_saved_live_fire_smoke_source",
+      "offsets": [[10, 0, 0], [11, 0, 0]],
+      "required_fields": ["fd_fire", "fd_smoke"],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_mixed_signal_fire_smoke_source_missing",
+      "abort_reason": "saved mixed-signal fixture lacks the live fd_fire/fd_smoke source near the player before bounded wait",
+      "expected_visible_fact": "saved map metadata contains live smoke/fire fields near the player before signal maintenance runs"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_mixed_signal_live_camp",
+      "required_site_id_contains": "overmap_special:bandit_camp@151,39,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 5,
+      "required_active_outside_count": 0,
+      "required_active_group_id_exact": "",
+      "required_active_target_id_exact": "",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_mixed_signal_live_camp_preflight_missing",
+      "abort_reason": "live-signal camp is missing or not clean before mixed-signal wait"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_mixed_signal_structural_camp",
+      "required_site_id_contains": "overmap_special:bandit_camp@160,39,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 5,
+      "required_active_outside_count": 0,
+      "required_active_group_id_exact": "",
+      "required_active_target_id_exact": "",
+      "required_min_leads": 1,
+      "required_lead_kind": "structural_bounty",
+      "required_lead_target_id": "forest",
+      "required_lead_source_contains": "fixture_mixed_signal_structural_east_forest",
+      "required_lead_status": "scout_confirmed",
+      "required_lead_bounty": 8,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_mixed_signal_structural_preflight_missing",
+      "abort_reason": "separate structural camp does not carry the intended structural-bounty lead before mixed-signal wait"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_before_mixed_signal_wait",
+      "record_baseline": true,
+      "expected_visible_fact": "saved player turn baseline is recorded before bounded mixed-signal wait"
+    },
+    {
+      "kind": "wait_action",
+      "label": "wait_30_minutes_for_structural_and_live_signal_coexistence",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "menu_settle_seconds": 0.8,
+      "pre_menu_settle_seconds": 0.8,
+      "after_choice_settle_seconds": 0.5,
+      "completion_wait_seconds": 18.0,
+      "interrupt_response_key": "I",
+      "max_interrupt_responses": 8,
+      "interrupt_response_wait_seconds": 1.5,
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "artifact_state_patterns": [
+        "bandit_live_world signal scan: signal_packet=yes",
+        "bandit_live_world signal maintenance: signal_packet=yes",
+        "bandit_live_world dispatch plan:",
+        "site=overmap_special:bandit_camp@151,39,0",
+        "candidate_reason=live_signal",
+        "signal_packet=live_smoke@",
+        "bandit_live_world structural maintenance:",
+        "structural maintenance dispatched site=overmap_special:bandit_camp@160,39,0",
+        "bandit_live_world perf:",
+        "sites=3",
+        "total_us="
+      ],
+      "expected_visible_fact": "real wait UI is opened, Wait a while is chosen, 30 minutes is selected, and same-run artifacts must show one live-signal dispatch plus one separate structural dispatch; survivor-spotted interruptions may be ignored only through captured I-response rows",
+      "failure_rule": "If candidate_reason is direct_player_range instead of live_signal, if the structural camp does not dispatch its structural bounty, or if artifacts only prove setup/load, Challenge B is not green."
+    },
+    {
+      "kind": "press",
+      "label": "open_save_quit_prompt_after_mixed_signal",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "save/quit prompt is visible after the mixed-signal coexistence wait or after captured wait-interruption handling"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_quit_after_mixed_signal",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true,
+      "expected_visible_fact": "save/quit confirmation completed after the mixed-signal coexistence wait"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_after_mixed_signal_wait",
+      "baseline_label": "audit_saved_turn_before_mixed_signal_wait",
+      "required_min_delta_turns": 1500,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_mixed_signal_saved_turn_did_not_advance",
+      "abort_reason": "saved turn did not advance after bounded mixed-signal wait/save; time passage is not proven"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_structural_site_survives_mixed_signal",
+      "required_site_id_contains": "overmap_special:bandit_camp@160,39,0",
+      "required_member_count": 5,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_structural_site_erased_by_mixed_signal",
+      "abort_reason": "after mixed-signal wait/save the separate structural site is missing"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_live_site_survives_mixed_signal",
+      "required_site_id_contains": "overmap_special:bandit_camp@151,39,0",
+      "required_member_count": 5,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_live_site_erased_by_structural_signal",
+      "abort_reason": "after mixed-signal wait/save the live-signal site is missing"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_mixed_signal_artifact",
+      "required_line_patterns": [
+        ["bandit_live_world signal scan: signal_packet=yes", "smoke_packets=1"],
+        ["bandit_live_world signal maintenance: signal_packet=yes", "matched_sites="],
+        ["bandit_live_world dispatch plan:", "site=overmap_special:bandit_camp@151,39,0", "candidate_reason=live_signal", "signal_packet=live_smoke@"],
+        ["bandit_live_world structural maintenance:"],
+        ["structural outing candidate=overmap_special:bandit_camp@160,39,0#lead:structural_bounty:forest@162,40,0"],
+        ["structural maintenance dispatched site=overmap_special:bandit_camp@160,39,0", "lead=overmap_special:bandit_camp@160,39,0#lead:structural_bounty:forest@162,40,0"],
+        ["bandit_live_world perf:", "sites=3", "total_us="]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_mixed_signal_artifact_missing",
+      "abort_reason": "same-run debug artifact did not show both live-signal candidate handling and separate structural-bounty maintenance"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe bandit.mixed_signal_coexistence_mcw",
+  "evidence_contract": {
+    "claim": "structural bounty and live smoke/fire signal handling coexist in one bounded live run: the signal camp chooses candidate_reason=live_signal, the separate structural camp dispatches its structural bounty, both site classes survive save/writeback, and compact perf/log counters remain visible",
+    "load_only_verdict": "load proof only / inconclusive for mixed-signal coexistence",
+    "failure_rule": "No Challenge B credit if startup/load, saved fire/smoke source, clean live and structural camp preflights, bounded wait, live_signal candidate artifacts, structural artifacts, save/writeback, and persisted site-state checks are not all present."
+  }
+}

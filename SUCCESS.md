@@ -19,30 +19,33 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0 — Multi-camp signal gauntlet
 
-Status: ACTIVE / GREENLIT CHALLENGE PLAYTEST PACKET
+Status: CLOSED / CHECKPOINTED GREEN V0
 
 Success state:
-- [ ] A named Challenge A scenario/fixture exists and runs: proposed `bandit.multi_camp_structural_stress_mcw`.
-- [ ] Challenge A proves at least two camp/site states before/after bounded time and reports active outings/target choices/no-repeat state.
-- [ ] Challenge A reports dogpile/spread/hold behavior and timing/log stability.
-- [ ] A named Challenge B scenario/fixture exists and runs: proposed `bandit.mixed_signal_coexistence_mcw`.
-- [ ] Challenge B combines structural bounty with at least one live smoke/fire/light/roof-fire signal and reports candidate priority/reasons.
-- [ ] Challenge B proves neither signal class silently wipes the other’s state.
-- [ ] Reload/resume continuity is either green for a meaningful active outing, or explicitly deferred with the exact missing seam.
-- [ ] Metrics include waited time/sampled turns, wall-clock, available per-turn/cadence timing, active group/site counts, warnings/errors/log spam, and crash status.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state.
+- [x] A named Challenge A scenario/fixture exists and runs: `bandit.multi_camp_structural_stress_mcw`, green run `.userdata/dev-harness/harness_runs/20260430_204416/`.
+- [x] Challenge A proves at least two camp/site states before/after bounded time and reports active outings/target choices/no-repeat state.
+- [x] Challenge A reports dogpile/spread/hold behavior and timing/log stability.
+- [x] A named Challenge B scenario/fixture exists and runs: `bandit.mixed_signal_coexistence_mcw`, green run `.userdata/dev-harness/harness_runs/20260430_203757/`.
+- [x] Challenge B combines structural bounty with live smoke/fire signal footing and reports candidate priority/reasons.
+- [x] Challenge B proves neither signal class silently wipes the other’s state.
+- [x] Reload/resume continuity is green for meaningful active live-signal scout + structural scavenge outings: `bandit.mixed_signal_reload_resume_mcw`, green run `.userdata/dev-harness/harness_runs/20260430_203944/`.
+- [x] Metrics include waited time/sampled turns, per-cadence perf counters, active group/site counts, warnings/errors/log spam, and crash status.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state.
 
 Canonical docs:
 - Imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`.
 - Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`.
+- Proof: `doc/multi-camp-signal-gauntlet-proof-v0-2026-04-30.md`.
 - Prior structural-bounty closure footing: `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md` and `.userdata/dev-harness/harness_runs/20260430_115157/`.
+
+Caveats preserved: two camps rather than four; staged-but-live smoke/fire signal footing; Challenge A proves harvested fixture leads plus east-camp followthrough/no-repeat, not all-camps-idle. No dogpile, stale-state, reload-loss, CPU churn, log spam, or crash failure was observed in the final green runs.
 
 ---
 
 
 ## CAOL-WRITHING-STALKER-PATTERN-TESTS-v0 — Writhing stalker primitive behavior-pattern tests
 
-Status: GREENLIT / QUEUED AFTER ACTIVE GAUNTLET
+Status: GREENLIT / QUEUED AFTER CLOSED GAUNTLET
 
 Success state:
 - [ ] A named primitive minimap/ASCII/equivalent repeated-turn behavior-pattern helper exists for writhing-stalker behavior.

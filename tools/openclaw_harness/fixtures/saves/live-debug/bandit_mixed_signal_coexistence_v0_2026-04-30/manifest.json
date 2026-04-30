@@ -1,0 +1,116 @@
+{
+  "name": "bandit_mixed_signal_coexistence_v0_2026-04-30",
+  "description": "Mixed structural-bounty plus live smoke/fire signal footing for CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0 Challenge B. The player is parked at @140,39. One cloned camp at @151,39 is just outside direct-player range but inside the saved smoke/fire signal range, so it can prove candidate_reason=live_signal. A separate cloned camp at @160,39 carries a structural-bounty lead outside that signal range, so structural maintenance can run in the same bounded live packet instead of being swallowed by the live signal.",
+  "source_fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [0, -12, 0]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [11, 0, 0]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [20, 0, 0]
+    },
+    {
+      "kind": "map_fields_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "fields": [
+        { "field_id": "fd_fire", "offset_ms": [10, 0, 0], "intensity": 3, "age_turns": 0 },
+        { "field_id": "fd_smoke", "offset_ms": [11, 0, 0], "intensity": 3, "age_turns": 0 }
+      ]
+    },
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:bandit_camp@151,39,0",
+      "new_source_id": "bandit_camp",
+      "new_site_kind": "bandit_camp",
+      "new_anchor": [151, 39, 0],
+      "new_footprint": [[151, 39, 0], [152, 39, 0], [151, 40, 0], [152, 40, 0]]
+    },
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:bandit_camp@160,39,0",
+      "new_source_id": "bandit_camp",
+      "new_site_kind": "bandit_camp",
+      "new_anchor": [160, 39, 0],
+      "new_footprint": [[160, 39, 0], [161, 39, 0], [160, 40, 0], [161, 40, 0]]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 0,
+      "member_start_index": 0,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 0,
+      "clear_spawn_tile_headcount": true
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@151,39,0",
+      "living_member_count": 5,
+      "member_start_index": 0,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 5
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@160,39,0",
+      "living_member_count": 5,
+      "member_start_index": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 5
+    },
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@160,39,0",
+      "kind_value": "structural_bounty",
+      "lead_id": "overmap_special:bandit_camp@160,39,0#lead:structural_bounty:forest@162,40,0",
+      "status": "scout_confirmed",
+      "target_id": "forest",
+      "target_omt": [162, 40, 0],
+      "radius_omt": 0,
+      "source_key": "fixture_mixed_signal_structural_east_forest",
+      "source_summary": "Challenge B structural bounty lead on a separate camp outside live smoke/fire signal range",
+      "first_seen_minutes": -720,
+      "last_seen_minutes": -720,
+      "last_checked_minutes": -720,
+      "last_scouted_minutes": -720,
+      "bounty": 8,
+      "threat": 0,
+      "confidence": 3,
+      "threat_confirmed": true,
+      "generated_by_this_camp_routine": true,
+      "times_harvested": 0,
+      "last_outcome": "mixed_signal_structural_fixture",
+      "clear_active_pressure": true,
+      "mark_cleared_active_members_unready": false
+    }
+  ]
+}

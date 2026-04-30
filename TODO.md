@@ -8,19 +8,22 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-### CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0 — multi-camp signal gauntlet
+No active execution item after `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` closure.
 
-Status: **ACTIVE / GREENLIT CHALLENGE PLAYTEST PACKET**.
+Closed receipt: `doc/multi-camp-signal-gauntlet-proof-v0-2026-04-30.md`.
 
-Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`.
-Imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`.
+## Next queued
 
-Do next:
-- Challenge A: create/run `bandit.multi_camp_structural_stress_mcw` or equivalent. Use at least two bandit camps; four if clean. Let bounded time pass and report camp/site before/after state, active outings, target reasons, no-repeat state, dogpile/spread/hold behavior, and metrics.
-- Challenge B: create/run `bandit.mixed_signal_coexistence_mcw` or equivalent. Combine structural bounty with at least one live smoke/fire/light/roof-fire signal and report candidate priority/reasons plus whether either signal class wipes the other.
-- Challenge C if practical: save/reload/resume a meaningful active outing and prove it continues without disappearance, duplication, or stale state. If not practical, defer with the exact missing seam.
+### CAOL-WRITHING-STALKER-PATTERN-TESTS-v0 — writhing-stalker primitive behavior-pattern tests
+
+Status: **GREENLIT / QUEUED AFTER CLOSED GAUNTLET**.
+
+Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`.
+Imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
+
+Do not start unless Josef/Schani promotes it from queued to active.
 
 Do not:
-- reopen roof-horde, writhing-stalker, Smart Zone, or old fire proof lanes;
-- call setup-only camp/signal presence a challenge result;
+- reopen roof-horde, old writhing-stalker v0 closure, Smart Zone, old fire proof lanes, or the multi-camp signal gauntlet without explicit promotion;
+- call setup-only fixture presence a challenge result;
 - hide dogpile, stale state, reload loss, CPU churn, or log spam behind a green label.
