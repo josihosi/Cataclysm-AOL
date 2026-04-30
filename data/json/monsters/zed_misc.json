@@ -799,6 +799,61 @@
     "armor": { "bash": 5, "cut": 5, "bullet": 4, "electric": 1 }
   },
   {
+    "id": "mon_zombie_rider",
+    "type": "MONSTER",
+    "name": { "str": "zombie rider" },
+    "description": {
+      "str": "Up on, what can only be described as, a six legged horse - or is it a spider? - a towering figure, with eyes the color of blood, holds a gory bow of wet bones and sinews.\nIt's movement ferocious, as the tumbling feet hasten across the terrain.\nRunning is out of the question.",
+      "//NOLINT(cata-text-style)": true
+    },
+    "copy-from": "mon_zombie_predator",
+    "//": "Release 0.3 endpoint cavalry footing.  Intended lineage smell is hunter -> predator -> rider after mature-world pressure; do not wire through normal upgrade groups until the mature gate is explicit.",
+    "species": [ "ZOMBIE" ],
+    "diff": 8,
+    "volume": "900 L",
+    "weight": "850 kg",
+    "hp": 220,
+    "speed": 165,
+    "color": "red",
+    "aggression": 100,
+    "morale": 35,
+    "melee_skill": 5,
+    "melee_dice": 3,
+    "melee_dice_sides": 6,
+    "melee_damage": [ { "damage_type": "bash", "amount": 5 }, { "damage_type": "cut", "amount": 5 } ],
+    "dodge": 4,
+    "vision_day": 55,
+    "vision_night": 20,
+    "grab_strength": 20,
+    "path_settings": { "max_dist": 45, "avoid_traps": true, "avoid_sharp": true },
+    "starting_ammo": { "arrow_wood": 18 },
+    "special_attacks": [
+      {
+        "id": "zombie_rider_bone_bow_shot",
+        "type": "gun",
+        "cooldown": 4,
+        "move_cost": 90,
+        "gun_type": "zombie_rider_bone_bow",
+        "ammo_type": "arrow_wood",
+        "no_ammo_sound": "",
+        "fake_skills": [ [ "archery", 5 ] ],
+        "fake_str": 16,
+        "require_targeting_player": false,
+        "ranges": [ [ 4, 18, "DEFAULT" ] ],
+        "description": "The zombie rider looses a wet-bone arrow!"
+      },
+      {
+        "type": "bite",
+        "cooldown": 10,
+        "damage_max_instance": [ { "damage_type": "stab", "amount": 10, "armor_multiplier": 0.2 } ]
+      }
+    ],
+    "upgrades": false,
+    "armor": { "bash": 6, "cut": 6, "bullet": 5, "electric": 1 },
+    "extend": { "flags": [ "SMELLS", "KEENNOSE", "GOODHEARING", "PATH_AVOID_DANGER", "HARDTOSHOOT", "RANGED_ATTACKER", "PUSH_VEH" ] },
+    "delete": { "flags": [ "STUMBLES", "GRABS", "BASHES", "GROUP_BASH", "UNBREAKABLE_MORALE" ] }
+  },
+  {
     "id": "mon_zombie_screecher",
     "type": "MONSTER",
     "name": { "str": "screecher zombie" },
