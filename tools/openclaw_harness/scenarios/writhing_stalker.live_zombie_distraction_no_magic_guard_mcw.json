@@ -1,0 +1,136 @@
+{
+  "name": "writhing_stalker.live_zombie_distraction_no_magic_guard_mcw",
+  "description": "Live zombie-distraction negative guard: zombies near the player do not grant magic target acquisition through the opaque wall.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_no_magic_2026-04-30",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker target_probe:",
+    "target=no",
+    "sees_player=no"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_zombie_no_magic_guard_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "no-evidence opaque-wall fixture plus zombies loads to live map"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_noon_before_zombie_no_magic_guard",
+      "required_time_of_day_seconds": 5227200,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_time_setup_missing",
+      "abort_reason": "installed save did not prove expected time before live writhing-stalker window",
+      "expected_visible_fact": "saved turn proves local noon before zombie no-magic guard"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_monsters_before_zombie_no_magic_guard",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            10,
+            0,
+            0
+          ]
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            0,
+            8,
+            0
+          ]
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            0,
+            -8,
+            0
+          ]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_active_monster_setup_missing",
+      "abort_reason": "saved active_monsters metadata did not contain required live-scenario footing",
+      "expected_visible_fact": "saved active_monsters proves stalker behind wall plus zombies near player before guard window"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_zombie_no_magic_guard",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live turn window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_zombie_no_magic_guard_window",
+      "count": 50,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "writhing_stalker target_probe:",
+        "target=no",
+        "sees_player=no"
+      ],
+      "expected_visible_fact": "bounded live turn window runs with zombies but no believable local stalker evidence"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_writhing_stalker_zombie_no_magic_target_probe",
+      "required_line_patterns": [
+        [
+          "writhing_stalker target_probe:",
+          "target=no",
+          "sees_player=no"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_audit_writhing_stalker_zombie_no_magic_target_probe_missing",
+      "abort_reason": "same-run artifact lacked no-target/no-sight target_probe lines",
+      "expected_visible_fact": "same-run debug artifact proves stalker does not acquire target through wall despite zombies"
+    },
+    {
+      "kind": "audit_log_not_contains",
+      "label": "audit_writhing_stalker_zombie_no_magic_no_live_plan",
+      "forbidden_line_patterns": [
+        [
+          "writhing_stalker live_plan:"
+        ],
+        [
+          "writhing_stalker target_probe:",
+          "target=yes"
+        ],
+        [
+          "writhing_stalker target_probe:",
+          "sees_player=yes"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "red_audit_writhing_stalker_zombie_no_magic_no_live_plan_present",
+      "abort_reason": "zombie guard produced target/live-plan/strike without believable evidence",
+      "expected_visible_fact": "same-run debug artifact does not contain forbidden magic-target or strike lines"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_zombie_distraction_no_magic_guard_mcw",
+  "evidence_contract": {
+    "claim": "zombies alone do not grant magic target acquisition or live-plan permission without believable local evidence",
+    "load_only_verdict": "load proof only / inconclusive for writhing-stalker live fun behavior",
+    "writeback_note": "No save/writeback gate: these scenarios prove bounded live-plan behavior from current-run logs plus saved start-state footing; persistent map mutation is not part of the product claim."
+  }
+}

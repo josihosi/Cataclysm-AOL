@@ -2,19 +2,19 @@
 
 ## Current canon state
 
-`CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` is the **ACTIVE / GREENLIT LIVE FUN-SCENARIO PLAYTEST PACKET**.
+`CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` is **CLOSED / CHECKPOINTED GREEN V0**.
 
 Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` aligned downstream. This handoff is only a terse executor packet; if it disagrees with canon, repair it from canon.
 
 Prior closed lanes that must not be reopened by drift: monster flavor/stat/spawn footing, old `CAOL-WRITHING-STALKER-v0`, `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0`, roof-horde, Smart Zone, old fire proof lanes, and `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0`.
 
-Queued-next visibility: `CAOL-ZOMBIE-RIDER-0.3-v0` is greenlit behind this active writhing-stalker live fun packet, with contract `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md` and benchmark suite `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`. Do **not** switch to it during the current active packet unless Schani/Josef explicitly promote it to active; it is listed here so release `0.3` prep does not disappear.
+Queued-next visibility: `CAOL-ZOMBIE-RIDER-0.3-v0` is greenlit behind the now-closed writhing-stalker live fun packet, with contract `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md` and benchmark suite `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`. Promote deliberately before starting so the active lane boundary stays visible.
 
-## Goal
+## Closure proof
 
-Prove or falsify live player-facing fun for the writhing stalker: fair dread, readable counterplay, nasty repeated-attack rhythm, injured retreat, and no cheating.
+Proof doc: `doc/writhing-stalker-live-fun-scenario-proof-v0-2026-04-30.md`.
 
-Target feeling: the player was hunted, understood why, had tools, and the monster felt cunning rather than random.
+Green v0 target feeling: the player was hunted, understood why, had tools, and the monster felt cunning rather than random.
 
 ## Canonical packet
 
@@ -23,41 +23,31 @@ Target feeling: the player was hunted, understood why, had tools, and the monste
 - Prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`
 - Prior live seam footing: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`
 
-## Required scenario rows
+## Credited scenario rows
 
 ### Scenario A — campfire / light counterplay
 
-Proposed: `writhing_stalker.live_campfire_counterplay_mcw`.
-
-Pass: light/focus causes hold/withdraw/cooling behavior and prevents unfair strike while the counterplay condition holds.
+`writhing_stalker.live_campfire_counterplay_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233129/`: light/focus causes withdraw/cooling and prevents unfair strike.
 
 ### Scenario B — alley predator / shadow route
 
-Proposed: `writhing_stalker.live_alley_predator_mcw`.
-
-Pass: cover/edge route beats open direct route, close strike is plausible, cooldown/reposition appears before any second strike, and there is no strike spam.
+`writhing_stalker.live_alley_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233156/`: cover-shadow route, plausible close strike, cooldown/reposition, no spam.
 
 ### Scenario C — zombie distraction without magic
 
-Proposed: `writhing_stalker.live_zombie_distraction_mcw`.
-
-Pass: zombie pressure helps only with plausible evidence/vulnerability; zombies alone do not grant magic target acquisition or strike permission.
+`writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233521/`: zombie pressure helps only with plausible evidence/vulnerability. `writhing_stalker.live_zombie_distraction_no_magic_guard_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233335/`: zombies alone do not grant magic target acquisition through the wall.
 
 ### Scenario D — door/light escape
 
-Proposed: `writhing_stalker.live_door_light_escape_mcw`.
-
-Pass: readable escape/counterplay breaks pressure into hold/withdraw/cooldown instead of glued pursuit or stale destination chase.
+`writhing_stalker.live_door_light_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233405/`: readable light/focus escape breaks pressure into withdraw/cooling instead of strike/glued pursuit.
 
 ### Scenario E — wounded predator retreat
 
-Proposed: `writhing_stalker.live_wounded_predator_mcw`.
-
-Pass: after legitimate pressure/attacks, badly-injured stalker withdraws, records HP/trigger, and does not snap back into strike.
+`writhing_stalker.live_wounded_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233434/`: badly-injured stalker withdraws and does not snap back into strike.
 
 ## Evidence/reporting requirements
 
-For each credited row, report:
+Already satisfied in the proof doc. For any future reopened stricter row, report:
 
 - scenario/run id and artifact path;
 - starting state: distance, evidence, light/focus, cover/direct-route availability, player vulnerability, stalker HP;
@@ -70,4 +60,4 @@ For each credited row, report:
 - Do not claim fun from unit tests alone. This packet needs live-shaped scenario evidence.
 - Staged-but-live is acceptable; fully natural random discovery is not required for v0.
 - Do not make the monster scarier by making it omniscient.
-- If a row breaks, preserve the red/yellow evidence and exact blocker. A truthful ugly report is useful; a fake green is just garnish on a lie.
+- If a future reopened row breaks, preserve the red/yellow evidence and exact blocker. A truthful ugly report is useful; a fake green is just garnish on a lie.

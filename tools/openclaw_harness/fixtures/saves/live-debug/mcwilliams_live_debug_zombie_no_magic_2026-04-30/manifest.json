@@ -1,0 +1,41 @@
+{
+  "name": "mcwilliams_live_debug_zombie_no_magic_2026-04-30",
+  "source_fixture": "mcwilliams_live_debug_no_evidence_clean_2026-04-30",
+  "source_profile": "live-debug",
+  "description": "Harness-only no-evidence writhing-stalker guardrail with nearby zombies appended: zombies near the player must not grant magic target acquisition through the opaque wall.",
+  "save_transforms": [
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": false,
+      "monsters": [
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            0,
+            8,
+            0
+          ],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        },
+        {
+          "typeid": "mon_zombie",
+          "offset_ms": [
+            0,
+            -8,
+            0
+          ],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}

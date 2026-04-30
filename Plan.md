@@ -69,9 +69,9 @@ Boundary: deterministic pattern proof is closed for v0. The live seam was not re
 
 ---
 
-## Active lane — CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
+## Recently closed lane — CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
 
-**Status:** ACTIVE / GREENLIT LIVE FUN-SCENARIO PLAYTEST PACKET
+**Status:** CLOSED / CHECKPOINTED GREEN V0 LIVE FUN-SCENARIO PACKET
 
 Josef explicitly greenlit live writhing-stalker fun scenarios on 2026-04-30: “YESSSS DO IT”. This lane follows the closed deterministic `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` and asks whether the stalker creates fair dread in live-shaped scenes instead of only passing tidy evaluator traces.
 
@@ -81,9 +81,11 @@ Imagination source: `doc/writhing-stalker-live-fun-scenarios-imagination-source-
 
 Prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
 
-Goal: run clear live scenario/benchmark rows for campfire/light counterplay, alley predator shadow routes, zombie distraction without magic, door/light escape, and wounded-predator retreat. Each row needs pass/fail facts, compact decision traces, scenario/run ids, stability/perf notes, and honest caveats.
+Closure proof: `doc/writhing-stalker-live-fun-scenario-proof-v0-2026-04-30.md`.
 
-Boundary: do **not** reopen monster flavor/stat/spawn footing, deterministic pattern closure, roof-horde, Smart Zone, old fire proof lanes, or the multi-camp gauntlet. Staged-but-live scenes are acceptable; unit tests alone do not prove this packet. Do not make the monster scarier by making it omniscient.
+Green v0 result: staged-but-live McWilliams scenarios prove campfire/light counterplay, alley predator shadow routing, zombie distraction without magic, door/light escape, wounded-predator retreat, repeated strike/cooldown rhythm, and no omniscient target acquisition. Credited runs: `writhing_stalker.live_campfire_counterplay_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233129/`; `writhing_stalker.live_alley_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233156/`; `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233521/`; `writhing_stalker.live_zombie_distraction_no_magic_guard_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233335/`; `writhing_stalker.live_door_light_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233405/`; `writhing_stalker.live_wounded_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233434/`.
+
+Boundary: do **not** reopen monster flavor/stat/spawn footing, deterministic pattern closure, roof-horde, Smart Zone, old fire proof lanes, the multi-camp gauntlet, or these live fun rows without explicit Schani/Josef promotion. Remaining stricter fully-natural/manual discovery is future-only, not a blocker for v0.
 
 Prior closed active lane: `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` — see `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`, `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md`.
 

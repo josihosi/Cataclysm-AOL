@@ -710,12 +710,20 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
             }
             return true;
         }
-        case writhing_stalker::decision::withdraw:
-        case writhing_stalker::decision::cooling_off: {
+        case writhing_stalker::decision::withdraw: {
             tripoint_abs_ms away = stalker.pos_abs() - target.pos_abs() + stalker.pos_abs();
             away.z() = stalker.posz();
             stalker.set_dest( away );
             stalker.add_effect( effect_run, 5_turns );
+            return true;
+        }
+        case writhing_stalker::decision::cooling_off: {
+            tripoint_abs_ms away = stalker.pos_abs() - target.pos_abs() + stalker.pos_abs();
+            away.z() = stalker.posz();
+            stalker.set_dest( away );
+            // Do not refresh effect_run here: a cooldown turn should breathe out and expire.
+            // Refreshing it every cooling-off plan made the live monster permanently cool down,
+            // which contradicted the repeated-strike rhythm proved by the evaluator helper.
             return true;
         }
         case writhing_stalker::decision::hold:

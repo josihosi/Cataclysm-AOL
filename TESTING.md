@@ -53,18 +53,21 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
+### Closed validation receipt - CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
 
-`CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` is the active live fun-scenario playtest packet. Contract: `doc/writhing-stalker-live-fun-scenarios-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-live-fun-scenarios-imagination-source-of-truth-2026-04-30.md`; prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
+`CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` is closed/checkpointed green v0. Contract: `doc/writhing-stalker-live-fun-scenarios-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-live-fun-scenarios-imagination-source-of-truth-2026-04-30.md`; prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`; closure proof: `doc/writhing-stalker-live-fun-scenario-proof-v0-2026-04-30.md`.
 
-Validation burden:
-- Scenario A: campfire/light counterplay — prove light/focus makes the stalker hold/withdraw and blocks unfair strike.
-- Scenario B: alley predator/shadow route — prove cover/edge route preference, plausible close strike, cooldown/reposition, and possible second strike without spam.
-- Scenario C: zombie distraction without magic — prove zombie pressure helps only with plausible evidence/vulnerability and does not grant omniscience.
-- Scenario D: door/light escape — prove readable escape/counterplay breaks pressure instead of glued pursuit.
-- Scenario E: wounded predator retreat — prove badly-injured retreat after legitimate pressure/attacks, with no withdraw->strike jitter.
-- Each credited row needs scenario/run id, artifact path, start-state facts, compact per-turn/per-decision trace, pass/fail verdict, caveats, and stability/perf notes.
-- Unit/evaluator tests alone do not close this packet. If a row is deterministic-only, mark it as support rather than live fun proof.
+Credited evidence:
+- `writhing_stalker.live_campfire_counterplay_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233129/` proves bright/focused light counterplay withdraw/cooling and forbids strike.
+- `writhing_stalker.live_alley_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233156/` proves cover-shadow approach, close vulnerability strike, cooldown, and re-engagement without spam.
+- `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233521/` proves zombie-pressure-assisted shadow/strike/cooldown rhythm only with evidence/vulnerability.
+- `writhing_stalker.live_zombie_distraction_no_magic_guard_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233335/` proves nearby zombies do not grant target acquisition through the opaque wall.
+- `writhing_stalker.live_door_light_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233405/` proves light/focus escape breaks pressure into withdraw/cooling and forbids strike.
+- `writhing_stalker.live_wounded_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233434/` proves injured retreat overrides greed with no strike snapback.
+
+Gates: `make -j4 TILES=1 LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]"` -> `All tests passed (129 assertions in 10 test cases)`. Live cooldown in `src/monmove.cpp` was minimally adjusted so `cooling_off` no longer refreshes `effect_run` forever.
+
+Caveat: staged-but-live McWilliams scenarios, not fully natural random discovery; future manual discovery is optional/future-only unless promoted.
 
 ### Greenlit queued validation target - CAOL-ZOMBIE-RIDER-0.3-v0
 
@@ -163,16 +166,20 @@ Current important receipts:
 
 ## Pending probes
 
-No active same-lane agent-side probe remains open after `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` closure. The pattern packet is deterministic-helper green; old `CAOL-WRITHING-STALKER-v0`, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
+No active same-lane agent-side probe remains open after `CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` closure. The live fun packet is staged-but-live green; old `CAOL-WRITHING-STALKER-v0`, deterministic pattern tests, nice roof-fire horde, Smart Zone, old fire proof lanes, and the multi-camp signal gauntlet remain closed and must not be reopened by drift.
 
 Current green support/behavior probes:
 - `writhing_stalker.live_spawn_footing_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161342/` (spawn/save/active-monster footing only).
 - `writhing_stalker.live_plan_seam_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161535/` (target acquisition + `live_plan` seam only).
-- `writhing_stalker.live_exposed_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260430_163626/` (harness-only noon setup + saved time audit + bright/focused withdrawal live-plan line + save/writeback/active-monster audit).
-- `writhing_stalker.live_shadow_strike_mcw` -> `.userdata/dev-harness/harness_runs/20260430_170528/` (harness-only vulnerable-midnight setup + saved time audit + shadow-before-strike/strike/cooldown live-plan lines + save/writeback/active-monster audit).
-- `writhing_stalker.live_no_omniscient_beeline_mcw` -> `.userdata/dev-harness/harness_runs/20260430_173555/` (harness-only clean noon/no-human-target setup + saved NPC/time/wall/active-monster audits + same-run `target=no`/`sees_player=no` target-probe proof + negative log guards for no target/live-plan/strike/shadow/cooldown + save/writeback/active-monster audit).
-
-Initial greenlit behavior/perf probes are now accounted for:
+- `writhing_stalker.live_exposed_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260430_163626/` (earlier bright/focused withdrawal support row).
+- `writhing_stalker.live_shadow_strike_mcw` -> `.userdata/dev-harness/harness_runs/20260430_170528/` (earlier vulnerable shadow/strike/cooldown support row).
+- `writhing_stalker.live_no_omniscient_beeline_mcw` -> `.userdata/dev-harness/harness_runs/20260430_173555/` (earlier no-evidence/no-target support row).
+- `writhing_stalker.live_campfire_counterplay_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233129/` (live fun Scenario A).
+- `writhing_stalker.live_alley_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233156/` (live fun Scenario B).
+- `writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233521/` (live fun Scenario C positive row).
+- `writhing_stalker.live_zombie_distraction_no_magic_guard_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233335/` (live fun Scenario C no-magic guard).
+- `writhing_stalker.live_door_light_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233405/` (live fun Scenario D).
+- `writhing_stalker.live_wounded_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233434/` (live fun Scenario E).
 - `performance.mixed_hostile_stalker_horde_mcw` -> `.userdata/dev-harness/harness_runs/20260430_181748/` (mixed hostile metrics/tuning report; horde direct timing explicitly `not instrumented`).
 
 Preserve `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` as the green Smart Zone Manager live coordinate-label proof. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof. Preserve `.userdata/dev-harness/harness_runs/20260430_115157/` as green structural-bounty v0 proof and `.userdata/dev-harness/harness_runs/20260430_114106/` as red/non-credit structural-bounty postmortem. Do not rerun solved rows as ritual.
