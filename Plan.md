@@ -49,13 +49,21 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Open promotion slot
+## Active lane — CAOL-ROOF-HORDE-NICE-FIRE-v0
 
-**Status:** PARKED / NO ACTIVE LANE / AWAITING SCHANI-JOSEF PROMOTION
+**Status:** ACTIVE / GREENLIT PLAYTEST PACKET
 
-No current execution lane is promoted. `CAOL-WRITHING-STALKER-v0` is closed/checkpointed green for v0 after Frau accepted the mixed-hostile horde attribution caveat. Do not rerun the same mixed-hostile soup or add a horde timing counter unless Schani/Josef explicitly promote stricter horde attribution.
+Josef promoted the stricter roof-fire horde playtest on 2026-04-30: “get horde playtested with a nice roof fire”. This is now the active lane and supersedes the prior no-active-lane parked state.
 
-Last closed active lane: `CAOL-WRITHING-STALKER-v0` — see `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md` for the compact receipt. The preserved caveat is: horde presence/setup is proven in `.userdata/dev-harness/harness_runs/20260430_181748/`, but direct horde movement/retarget cost is not instrumented and remains future-only.
+Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`.
+
+Imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`.
+
+Goal: run a focused feature-path playtest with an honest elevated/roof fire, a plausible horde, bounded time passage, direct horde before/after response evidence, and cost/stability metrics. This promotes the preserved future-only caveat from `CAOL-WRITHING-STALKER-v0` / `CAOL-MIXED-HOSTILE-PERF-v0` into a real active proof target.
+
+Boundary: do **not** rerun `performance.mixed_hostile_stalker_horde_mcw` as a substitute, do **not** reopen writhing stalker v0, and do **not** overclaim horde behavior from setup-only presence. Use the previous green roof-fire proof chain (`20260429_172847` source fire and `20260429_180239` split-run horde response) as footing where useful, or rebuild an equivalent honest player-action roof-fire path.
+
+Last closed active lane: `CAOL-WRITHING-STALKER-v0` — see `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md` for the compact receipt.
 
 ---
 

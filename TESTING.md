@@ -53,6 +53,17 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
+### Active validation target - CAOL-ROOF-HORDE-NICE-FIRE-v0
+
+`CAOL-ROOF-HORDE-NICE-FIRE-v0` is the active playtest packet. Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`; imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`.
+
+Validation burden:
+- Use a named focused scenario, proposed `bandit.roof_fire_horde_nice_roof_fire_mcw`.
+- Prove a real/equivalent player-action roof or elevated fire before waiting. Preferred footing is the existing green roof-fire chain: `.userdata/dev-harness/harness_runs/20260429_172847/` -> `.userdata/dev-harness/harness_runs/20260429_180239/`.
+- Prove horde presence before waiting, then direct horde response after bounded time passage: retarget/destination plus processed-turn/move-budget evidence at minimum.
+- Capture same-run roof-fire signal artifacts and cost/stability metrics.
+- Do not use mixed-hostile horde setup proof or setup-only presence as a substitute for direct roof-fire horde response.
+
 ### Closed validation receipt - CAOL-WRITHING-STALKER-v0
 
 `CAOL-WRITHING-STALKER-v0` is closed/checkpointed green for v0. Receipts: `doc/work-ledger.md`, `SUCCESS.md`, raw intake `doc/writhing-stalker-raw-intake-2026-04-30.md`, imagination source `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`, contract `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`, testing ladder `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`, and mixed-hostile metrics packet `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`.

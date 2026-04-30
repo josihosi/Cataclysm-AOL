@@ -17,6 +17,27 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## CAOL-ROOF-HORDE-NICE-FIRE-v0 — Roof-fire horde nice-fire playtest
+
+Status: ACTIVE / GREENLIT PLAYTEST PACKET
+
+Success state:
+- [ ] A named scenario/fixture exists for this packet, proposed name `bandit.roof_fire_horde_nice_roof_fire_mcw`.
+- [ ] The credited fire is roof/elevated, inspectable before the wait, and tied to the previous player-created roof-fire chain or an equivalent newly proven player-action path.
+- [ ] A horde is present before the wait at a plausible distance with saved/metadata footing.
+- [ ] Bounded in-game time passes through the normal wait path or an equally honest harness time-passage path.
+- [ ] Same-run artifacts show the roof-fire signal path firing for the elevated fire.
+- [ ] Saved/log artifacts show horde response after the wait: retarget/destination and processed/move-budget evidence at minimum.
+- [ ] Metrics report cost/stability and labels unavailable horde-specific timing as `not instrumented` instead of hiding it.
+- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match the final state.
+
+Canonical docs:
+- Imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`.
+- Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`.
+- Prior footing: `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`, source run `.userdata/dev-harness/harness_runs/20260429_172847/`, split proof `.userdata/dev-harness/harness_runs/20260429_180239/`.
+
+---
+
 ## CAOL-WRITHING-STALKER-v0 — Writhing stalker behavior packet v0
 
 Status: CLOSED / CHECKPOINTED GREEN V0
