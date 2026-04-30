@@ -40,6 +40,7 @@ Success state:
 - [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final active/closed state.
 
 Notes:
+- Support live footing is green, but not final behavior closure: `.userdata/dev-harness/harness_runs/20260430_161342/` proves debug-spawn/save `active_monsters` footing; `.userdata/dev-harness/harness_runs/20260430_161535/` proves target acquisition plus the live `live_plan` seam.
 - Imagination source lives at `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`.
 - Contract lives at `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`.
 - Playtest ladder lives at `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
