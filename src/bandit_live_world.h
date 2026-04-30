@@ -302,6 +302,36 @@ struct structural_bounty_scan_result {
     std::vector<std::string> notes;
 };
 
+struct structural_outing_plan {
+    bool valid = false;
+    std::string site_id;
+    std::string lead_id;
+    tripoint_abs_omt target_omt;
+    bandit_dry_run::job_template job = bandit_dry_run::job_template::hold_chill;
+    std::vector<character_id> member_ids;
+    int effective_interest = 0;
+    int known_threat = 0;
+    int expected_stalking_minutes = -1;
+    int expected_arrival_minutes = -1;
+    std::vector<std::string> notes;
+};
+
+struct structural_threat_read {
+    int threat = 0;
+    bool observed = false;
+    std::string summary;
+};
+
+struct structural_outing_result {
+    int sites_considered = 0;
+    int active_outings_considered = 0;
+    int stalking_checks_processed = 0;
+    int lost_interest_returns = 0;
+    int arrivals_processed = 0;
+    int members_returned = 0;
+    std::vector<std::string> notes;
+};
+
 struct local_gate_input {
     int local_threat = 0;
     int local_opportunity = 0;
@@ -433,6 +463,13 @@ bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &o
 structural_bounty_scan_result advance_structural_bounty_scan( world_state &state,
         int now_minutes, int scan_budget,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup );
+structural_outing_plan plan_structural_bounty_outing( const site_record &site,
+        const camp_map_lead &lead, int now_minutes );
+structural_outing_plan plan_structural_bounty_outing( const site_record &site, int now_minutes );
+bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
+        int now_minutes );
+structural_outing_result advance_structural_bounty_outings( world_state &state, int now_minutes,
+        const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );

@@ -1133,6 +1133,231 @@ TEST_CASE( "bandit_structural_bounty_keeps_mobile_actor_separate_from_ground_bou
     CHECK( site.intelligence_map.leads.size() == 2 );
 }
 
+TEST_CASE( "bandit_structural_outing_planner_selects_forest_and_town_jobs",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 14300 );
+    add_bandit_camp_member( world, 1, 14300 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const tripoint_abs_omt forest_omt( 6, 20, 0 );
+    const bandit_live_world::structural_bounty_read forest_read =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest_read, 0 ) );
+    const std::string forest_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                  forest_omt, "forest" );
+    const bandit_live_world::camp_map_lead *forest = site.intelligence_map.find_lead( forest_id );
+    REQUIRE( forest != nullptr );
+
+    const bandit_live_world::structural_outing_plan forest_plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *forest, 100 );
+    REQUIRE( forest_plan.valid );
+    CHECK( forest_plan.job == bandit_dry_run::job_template::scavenge );
+    CHECK( forest_plan.member_ids.size() == 1 );
+    CHECK( forest_plan.effective_interest == 2 );
+
+    const tripoint_abs_omt town_omt( 14, 20, 0 );
+    const bandit_live_world::structural_bounty_read town_read =
+        bandit_live_world::classify_structural_bounty_terrain( "house_base" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, town_omt, town_read, 0 ) );
+
+    const bandit_live_world::structural_outing_plan best_plan =
+        bandit_live_world::plan_structural_bounty_outing( site, 100 );
+    REQUIRE( best_plan.valid );
+    CHECK( best_plan.target_omt == town_omt );
+    CHECK( best_plan.job == bandit_dry_run::job_template::scout );
+    CHECK( best_plan.effective_interest == 3 );
+}
+
+TEST_CASE( "bandit_structural_outing_planner_blocks_active_outside_pressure",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 14400 );
+    add_bandit_camp_member( world, 1, 14400 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const tripoint_abs_omt forest_omt( 6, 20, 0 );
+    const bandit_live_world::structural_bounty_read forest_read =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest_read, 0 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                forest_omt, "forest" );
+    const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+
+    const bandit_live_world::structural_outing_plan open_plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+    REQUIRE( open_plan.valid );
+
+    site.active_group_id = site.site_id + "#dispatch";
+    site.active_member_ids.push_back( character_id( 14400 ) );
+
+    const bandit_live_world::structural_outing_plan plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+    CHECK_FALSE( plan.valid );
+    CHECK_FALSE( bandit_live_world::apply_structural_bounty_outing_plan( site, open_plan, 100 ) );
+}
+
+TEST_CASE( "bandit_structural_dispatch_holds_high_known_threat_low_reward",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 14800 );
+    add_bandit_camp_member( world, 1, 14800 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const tripoint_abs_omt forest_omt( 6, 20, 0 );
+    const bandit_live_world::structural_bounty_read forest_read =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest_read, 0 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                forest_omt, "forest" );
+    bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    lead->threat = 3;
+    lead->threat_confirmed = true;
+
+    const bandit_live_world::structural_outing_plan plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+    CHECK_FALSE( plan.valid );
+    CHECK( plan.known_threat == 3 );
+    CHECK( plan.effective_interest <= 0 );
+}
+
+TEST_CASE( "bandit_structural_outing_reveals_threat_and_turns_back_before_arrival",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 14500 );
+    add_bandit_camp_member( world, 1, 14500 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const tripoint_abs_omt town_omt( 14, 20, 0 );
+    const bandit_live_world::structural_bounty_read town_read =
+        bandit_live_world::classify_structural_bounty_terrain( "house_base" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, town_omt, town_read, 0 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                town_omt, "town" );
+    const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->threat == 0 );
+    CHECK_FALSE( lead->threat_confirmed );
+
+    const bandit_live_world::structural_outing_plan plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan( site, plan, 100 ) );
+    CHECK( site.active_target_id == lead_id );
+    REQUIRE( site.find_member( character_id( 14500 ) ) != nullptr );
+    CHECK( site.find_member( character_id( 14500 ) )->state == bandit_live_world::member_state::outbound );
+
+    const bandit_live_world::structural_outing_result result =
+        bandit_live_world::advance_structural_bounty_outings( world, 160,
+    []( const bandit_live_world::site_record &, const bandit_live_world::camp_map_lead & ) {
+        return bandit_live_world::structural_threat_read{ 4, true, "test threat at stalking distance" };
+    } );
+
+    CHECK( result.stalking_checks_processed == 1 );
+    CHECK( result.lost_interest_returns == 1 );
+    CHECK( result.arrivals_processed == 0 );
+    CHECK( result.members_returned == 1 );
+    const bandit_live_world::camp_map_lead *updated = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( updated != nullptr );
+    CHECK( updated->status == bandit_live_world::camp_lead_status::dangerous );
+    CHECK( updated->threat == 4 );
+    CHECK( updated->threat_confirmed );
+    CHECK( updated->bounty == 2 );
+    CHECK( updated->last_checked_minutes == 160 );
+    CHECK( updated->last_outcome == "threat_revealed_lost_interest" );
+    CHECK( site.active_group_id.empty() );
+    CHECK( site.active_target_id.empty() );
+    CHECK( site.active_member_ids.empty() );
+    CHECK( site.active_sortie_started_minutes == -1 );
+    CHECK( site.active_sortie_local_contact_minutes == -1 );
+    CHECK( site.find_member( character_id( 14500 ) )->state == bandit_live_world::member_state::at_home );
+}
+
+TEST_CASE( "bandit_structural_outing_consumes_bounty_on_arrival_after_interest_survives",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 14600 );
+    add_bandit_camp_member( world, 1, 14600 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const tripoint_abs_omt forest_omt( 6, 20, 0 );
+    const bandit_live_world::structural_bounty_read forest_read =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest_read, 0 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                forest_omt, "forest" );
+    const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+
+    const bandit_live_world::structural_outing_plan plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 100 );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan( site, plan, 100 ) );
+
+    const bandit_live_world::structural_outing_result stalk =
+        bandit_live_world::advance_structural_bounty_outings( world, 160,
+    []( const bandit_live_world::site_record &, const bandit_live_world::camp_map_lead & ) {
+        return bandit_live_world::structural_threat_read{ 0, true, "quiet forest edge" };
+    } );
+    CHECK( stalk.stalking_checks_processed == 1 );
+    CHECK( stalk.arrivals_processed == 0 );
+    CHECK( site.intelligence_map.find_lead( lead_id )->status ==
+           bandit_live_world::camp_lead_status::scout_confirmed );
+    CHECK( site.intelligence_map.find_lead( lead_id )->bounty == 1 );
+
+    const bandit_live_world::structural_outing_result arrived =
+        bandit_live_world::advance_structural_bounty_outings( world, 200,
+    []( const bandit_live_world::site_record &, const bandit_live_world::camp_map_lead & ) {
+        return bandit_live_world::structural_threat_read{};
+    } );
+    CHECK( arrived.arrivals_processed == 1 );
+    CHECK( arrived.members_returned == 1 );
+    const bandit_live_world::camp_map_lead *updated = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( updated != nullptr );
+    CHECK( updated->status == bandit_live_world::camp_lead_status::harvested );
+    CHECK( updated->bounty == 0 );
+    CHECK( updated->times_harvested == 1 );
+    CHECK( updated->last_checked_minutes == 200 );
+    CHECK( updated->last_outcome == "harvested_structural_bounty" );
+    CHECK( site.active_group_id.empty() );
+    CHECK( site.active_target_id.empty() );
+    CHECK( site.active_member_ids.empty() );
+    CHECK( site.active_sortie_started_minutes == -1 );
+    CHECK( site.active_sortie_local_contact_minutes == -1 );
+    CHECK( site.find_member( character_id( 14600 ) )->state == bandit_live_world::member_state::at_home );
+}
+
+TEST_CASE( "bandit_structural_outing_recent_check_debounce_blocks_reselection",
+           "[bandit][live_world][structural_bounty]" )
+{
+    bandit_live_world::world_state world;
+    add_bandit_camp_member( world, 0, 14700 );
+    add_bandit_camp_member( world, 1, 14700 );
+    bandit_live_world::site_record &site = world.sites.front();
+
+    const tripoint_abs_omt forest_omt( 6, 20, 0 );
+    const bandit_live_world::structural_bounty_read forest_read =
+        bandit_live_world::classify_structural_bounty_terrain( "forest" );
+    REQUIRE( bandit_live_world::upsert_structural_bounty_lead( site, forest_omt, forest_read, 0 ) );
+    const std::string lead_id = bandit_live_world::make_structural_bounty_lead_id( site.site_id,
+                                forest_omt, "forest" );
+    bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    lead->last_checked_minutes = 140;
+    lead->last_outcome = "recently_checked_low_interest";
+
+    const bandit_live_world::structural_outing_plan plan =
+        bandit_live_world::plan_structural_bounty_outing( site, *lead, 160 );
+    CHECK_FALSE( plan.valid );
+}
+
 TEST_CASE( "bandit_live_world_keeps_a_home_reserve_for_site_backed_camps", "[bandit][live_world]" )
 {
     bandit_live_world::world_state world;
