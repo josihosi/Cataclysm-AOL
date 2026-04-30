@@ -6,6 +6,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "json.h"
@@ -1859,6 +1860,30 @@ bool structural_bounty_memory_suppresses_refresh( const camp_intelligence_map &i
     return false;
 }
 
+bool structural_bounty_scan_memory_suppresses_refresh( const camp_intelligence_map &intelligence_map,
+        const tripoint_abs_omt &omt, const std::string &terrain_class, const int now_minutes )
+{
+    if( structural_bounty_memory_suppresses_refresh( intelligence_map, omt, terrain_class ) ) {
+        return true;
+    }
+
+    constexpr int recent_structural_check_cooldown_minutes = 6 * 60;
+    const std::string terrain = terrain_class.empty() ? "unknown" : terrain_class;
+    for( const camp_map_lead &lead : intelligence_map.leads ) {
+        if( lead.omt != omt || lead.kind != camp_lead_kind::structural_bounty ) {
+            continue;
+        }
+        if( !lead.target_id.empty() && lead.target_id != terrain ) {
+            continue;
+        }
+        if( lead.last_checked_minutes >= 0 && now_minutes >= 0 &&
+            now_minutes - lead.last_checked_minutes < recent_structural_check_cooldown_minutes ) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &omt,
                                    const structural_bounty_read &read, const int now_minutes )
 {
@@ -1896,6 +1921,112 @@ bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &o
     }
     site.intelligence_map.leads.push_back( lead );
     return true;
+}
+
+structural_bounty_scan_result advance_structural_bounty_scan( world_state &state,
+        const int now_minutes, const int scan_budget,
+        const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup )
+{
+    structural_bounty_scan_result result;
+    result.scan_budget = std::max( 0, scan_budget );
+    if( result.scan_budget == 0 ) {
+        result.notes.push_back( "structural scan skipped: zero budget" );
+        return result;
+    }
+    if( !terrain_lookup ) {
+        result.notes.push_back( "structural scan skipped: no terrain lookup" );
+        return result;
+    }
+
+    static const std::array<std::pair<int, int>, 12> near_offsets = { {
+            { -4, 0 }, { 4, 0 }, { 0, -4 }, { 0, 4 },
+            { -5, -1 }, { 5, 1 }, { -1, 5 }, { 1, -5 },
+            { -6, 0 }, { 6, 0 }, { 0, -6 }, { 0, 6 },
+        } };
+    constexpr int per_site_near_sample_cap = 4;
+    constexpr int near_scan_cadence_minutes = 60;
+    constexpr int near_scan_radius_omt = 8;
+    const int time_bucket = now_minutes >= 0 ? now_minutes / near_scan_cadence_minutes : 0;
+
+    for( site_record &site : state.sites ) {
+        if( result.budget_used >= result.scan_budget ) {
+            result.budget_exhausted = true;
+            break;
+        }
+
+        result.sites_considered++;
+        if( effective_profile( site ) != hostile_site_profile::camp_style ) {
+            result.sites_skipped_not_camp++;
+            continue;
+        }
+        if( site.retired_empty_site ) {
+            result.sites_skipped_retired++;
+            continue;
+        }
+        if( site.has_active_outside_pressure() ) {
+            result.sites_skipped_active_outside++;
+            continue;
+        }
+        const bool has_ready_home_presence = ready_at_home_member_count( site ) > 0 ||
+                                             site.count_home_side_signals() > 0;
+        if( !has_ready_home_presence ) {
+            result.sites_skipped_no_ready_home++;
+            continue;
+        }
+        if( site.intelligence_map.next_near_tick_minutes >= 0 &&
+            now_minutes >= 0 && now_minutes < site.intelligence_map.next_near_tick_minutes ) {
+            result.sites_deferred_by_cadence++;
+            continue;
+        }
+
+        int samples_for_site = 0;
+        const int rotation = static_cast<int>( ( static_cast<long long>( std::max( 0, time_bucket ) ) *
+                                                per_site_near_sample_cap ) % near_offsets.size() );
+        for( int offset_index = 0;
+             offset_index < static_cast<int>( near_offsets.size() ) &&
+             samples_for_site < per_site_near_sample_cap && result.budget_used < result.scan_budget;
+             offset_index++ ) {
+            const std::pair<int, int> &offset = near_offsets[( rotation + offset_index ) %
+                                               near_offsets.size()];
+            const tripoint_abs_omt candidate( site.anchor.x() + offset.first,
+                                              site.anchor.y() + offset.second, site.anchor.z() );
+            result.candidates_sampled++;
+            result.budget_used++;
+            samples_for_site++;
+
+            const std::optional<std::string> terrain_id = terrain_lookup( candidate );
+            if( !terrain_id ) {
+                continue;
+            }
+            const structural_bounty_read read = classify_structural_bounty_terrain( *terrain_id );
+            if( !read.eligible || read.bounty <= 0 ) {
+                continue;
+            }
+            if( structural_bounty_scan_memory_suppresses_refresh( site.intelligence_map, candidate,
+                    read.terrain_class, now_minutes ) ) {
+                result.leads_suppressed_by_memory++;
+                continue;
+            }
+            if( upsert_structural_bounty_lead( site, candidate, read, now_minutes ) ) {
+                result.leads_seeded++;
+            }
+        }
+
+        if( samples_for_site > 0 ) {
+            site.intelligence_map.known_radius_omt = std::max( site.intelligence_map.known_radius_omt,
+                    near_scan_radius_omt );
+            if( now_minutes >= 0 ) {
+                site.intelligence_map.next_near_tick_minutes = now_minutes + near_scan_cadence_minutes;
+            }
+        }
+
+        if( result.budget_used >= result.scan_budget ) {
+            result.budget_exhausted = true;
+        }
+    }
+
+    result.notes.push_back( "structural scan bounded to near-ring per-camp samples" );
+    return result;
 }
 
 dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
