@@ -55,22 +55,20 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ### Active validation target - Bandit structural bounty overmap completion packet v0
 
-Current boundary: **Phase 3 structural outing planner/resolver**. Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`; imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`; testing ladder: `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`.
+Current boundary: **Phase 4 save/load and anti-loop**. Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`; imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`; testing ladder: `doc/bandit-structural-bounty-overmap-testing-ladder-v0-2026-04-30.md`.
 
-Phase 2 deterministic scan/seed cadence is locally green. Evidence: `git diff --check`; `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` (132 assertions in 12 test cases). Credited claims: forest/town/open classifier; structural lead id/upsert/debounce; bounded near-ring per-camp scan; sparse structural lead seeding without global scanning; deterministic global budget/cap and per-camp cadence; eligible camp-only skips for non-camp profiles, retired-empty sites, active-outside pressure, and no-ready-home sites; harvested/dangerous/recently-checked suppression through the scan path; mobile actor leads stay separate from ground bounty. Ralph Wiggum result: keep — bounty remains broad and non-omniscient, scan writes no confirmed threat, repeated dumb revisits are debounced, and player/mobile evidence does not smear into terrain. No live game claim is credited yet.
+Phase 3 deterministic structural outing planner/resolver is locally green. Evidence: `git diff --check`; `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit][live_world][structural_bounty]" --success` (216 assertions in 18 test cases). Credited claims: small non-player structural outings select forest/town camp-map leads without player-pursuit handoff proof; forest/town choice is deterministic from bounty + confidence - known threat; active outside pressure blocks parallel same-site structural dispatch; stale plans are revalidated against active pressure, reserve, at-home readiness, lead status, recent-check debounce, and known low interest before apply; stalking-distance threat reveal happens before arrival and does not consume bounty by itself; revealed threat subtracts from interest and can turn the outing back before arrival; arrival consumes structural bounty only after interest survives, then writes harvested/debounce state; member/outbound state and active structural group fields clear on return; recently checked/low-interest structural targets are not immediately reselected. Ralph Wiggum result: keep — bounty is broad before threat, threat is checked near target, threat-minus-bounty can make the party turn back, and harvest only happens after interest survives to arrival. No live game claim is credited yet.
 
-Evidence required before claiming Phase 3 green:
+Evidence required before claiming Phase 4 green:
 
-- structural outing planner selects small non-player outings from `structural_bounty` camp-map leads without relying on player smoke/light/direct-sight handoff;
-- forest/town choice is deterministic and explains effective interest from bounty, confidence, known threat, and caution/reserve;
-- active outside pressure blocks parallel same-site structural dispatch;
-- stalking-distance threat reveal happens before arrival and does not consume bounty by itself;
-- revealed threat subtracts from interest and can turn the party back before arrival;
-- arrival consumes structural bounty only after interest survives, then writes harvested/debounce state;
-- recently checked or low-interest structural targets are not immediately reselected;
-- Ralph Wiggum pass says the planner/resolver still serves the lived bandit-ecology picture: broad bounty first, threat checked near target, threat-minus-bounty interest, turn-back-before-arrival, arrival-consumes-only-after-interest-survives.
+- save/load preserves structural leads, active structural outings, harvested/dangerous outcomes, and member active/returned state;
+- arrival after reload consumes structural bounty once, not twice;
+- harvested tile does not regenerate from later structural scan;
+- 500-turn deterministic playback covers forest/town progression, danger/low-interest debounce, harvest debounce, and no stuck active outing;
+- multi-camp counters stay bounded for scan/outing work;
+- Ralph Wiggum pass says save/load and anti-loop behavior still serves the lived bandit-ecology picture instead of creating repeat magnets or hidden unbounded work.
 
-Suggested narrow gates after Phase 3 code changes: `git diff --check`, `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`, and `./tests/cata_test "[bandit][live_world][structural_bounty]" --success`. Broaden only if touched files justify it.
+Suggested narrow gates after Phase 4 code changes: `git diff --check`, `make -j4 obj/bandit_live_world.o tests/bandit_live_world_test.o tests LINTJSON=0 ASTYLE=0`, and `./tests/cata_test "[bandit][live_world][structural_bounty]" --success`. Broaden only if serialization/playback touched files justify it.
 
 The sections below are retained as recent completed evidence snapshots for Schani review and future non-ritual reference.
 
