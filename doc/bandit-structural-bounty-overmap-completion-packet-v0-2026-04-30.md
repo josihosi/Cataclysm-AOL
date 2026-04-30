@@ -645,15 +645,15 @@ Optional broader gates if the code touches more central do_turn/save paths:
 
 This packet is complete only when all of these are true:
 
-- [ ] Structural OMT classifier exists and deterministic tests cover forest/town/open classes.
-- [ ] Per-camp bounded structural scan seeds sparse camp-map leads without global scanning.
-- [ ] Harvested/dangerous/recently-checked debounce prevents immediate repeat interest.
-- [ ] Non-player structural outing planner can send a small bandit dispatch to forest/town structural bounty.
-- [ ] Abstract outing resolver reveals threat at stalking distance, subtracts it from effective bounty/interest, and only consumes structural bounty on arrival if interest survives.
-- [ ] Player/NPC mobile bounty remains attached to actors/routes and does not permanently upgrade terrain.
-- [ ] Save/load preserves structural leads, active outings, harvested/dangerous outcomes, and member state.
-- [ ] Deterministic 500-turn tests prove bandits do not get stuck repeating the same harvested/dangerous tile.
-- [ ] Performance tests/counters prove scan/outing work is bounded for multi-camp scenarios.
+- [x] Structural OMT classifier exists and deterministic tests cover forest/town/open classes.
+- [x] Per-camp bounded structural scan seeds sparse camp-map leads without global scanning.
+- [x] Harvested/dangerous/recently-checked debounce prevents immediate repeat interest.
+- [x] Non-player structural outing planner can send a small bandit dispatch to forest/town structural bounty.
+- [x] Abstract outing resolver reveals threat at stalking distance, subtracts it from effective bounty/interest, and only consumes structural bounty on arrival if interest survives.
+- [x] Player/NPC mobile bounty remains attached to actors/routes and does not permanently upgrade terrain.
+- [x] Save/load preserves structural leads, active outings, harvested/dangerous outcomes, and member state.
+- [x] Deterministic 500-turn tests prove bandits do not get stuck repeating the same harvested/dangerous tile.
+- [x] Performance tests/counters prove scan/outing work is bounded for multi-camp scenarios.
 - [ ] Live/harness feature-path proof shows an idle camp dispatching to structural forest/town bounty without player smoke/light/direct-range bait.
 - [ ] Live/harness proof shows stalking-distance threat/interest writeback, optional later arrival harvest, and no immediate repeat of the consumed/dangerous target.
 - [ ] Existing player smoke/light signal dispatch behavior still passes its relevant tests and is not regressed.

@@ -27,9 +27,9 @@ Success state:
 - [x] Non-player structural outing planner can send a small bandit dispatch to forest/town structural bounty.
 - [x] Abstract outing resolver reveals threat at stalking distance, subtracts it from effective bounty/interest, and only consumes structural bounty on arrival if interest survives.
 - [x] Player/NPC mobile bounty remains attached to actors/routes and does not permanently upgrade terrain.
-- [ ] Save/load preserves structural leads, active outings, harvested/dangerous outcomes, and member state.
-- [ ] Deterministic 500-turn tests prove bandits do not get stuck repeating the same harvested/dangerous tile.
-- [ ] Performance tests/counters prove scan/outing work is bounded for multi-camp scenarios.
+- [x] Save/load preserves structural leads, active outings, harvested/dangerous outcomes, and member state.
+- [x] Deterministic 500-turn tests prove bandits do not get stuck repeating the same harvested/dangerous tile.
+- [x] Performance tests/counters prove scan/outing work is bounded for multi-camp scenarios.
 - [ ] Live/harness feature-path proof shows an idle camp dispatching to structural forest/town bounty without player smoke/light/direct-range bait.
 - [ ] Live/harness proof shows stalking-distance threat/interest writeback, optional later arrival harvest, and no immediate repeat of the consumed/dangerous target.
 - [ ] Existing player smoke/light signal dispatch behavior still passes its relevant tests and is not regressed.
@@ -39,7 +39,8 @@ Current boundary:
 - Phase 1 deterministic substrate is locally green for classifier, structural lead id/upsert, harvested/dangerous helper suppression, and mobile-actor/ground separation.
 - Phase 2 scan/seed cadence is locally green for bounded near-ring per-camp scanning, cadence/global-budget caps, eligible camp-only skips, harvested/dangerous/recently-checked suppression, and mobile actor separation.
 - Phase 3 structural outing planner/resolver is locally green for non-player forest/town planning, reserve/active-outside gating, stalking-distance threat reveal, threat-minus-bounty turnback, arrival harvest, return/member clearing, and recent-check debounce.
-- Phase 4 save/load and anti-loop is the next execution slice; no live game claim is credited yet.
+- Phase 4 save/load and anti-loop is locally green for structural lead/active outing/outcome/member serialization, once-only post-reload arrival harvest, harvested/dangerous scan suppression, 500-turn forest/town no-repeat playback, and bounded multi-camp counters.
+- Phase 5 live wiring is the next execution slice; no live game claim is credited yet.
 
 Notes:
 - Imagination source lives at `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
