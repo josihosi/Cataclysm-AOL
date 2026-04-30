@@ -2,7 +2,7 @@
 
 ## Current canon state
 
-`CAOL-ZOMBIE-RIDER-0.3-v0` is **ACTIVE / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN; LOCAL COMBAT AI NEXT**.
+`CAOL-ZOMBIE-RIDER-0.3-v0` is **ACTIVE / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN / LOCAL COMBAT AI NEXT**.
 
 Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` aligned downstream. This handoff is only a terse executor packet; if it disagrees with canon, repair it from canon.
 
