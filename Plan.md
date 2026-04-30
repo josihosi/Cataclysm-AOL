@@ -93,7 +93,7 @@ Prior closed active lane: `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` — see `doc/
 
 ## Active lane — CAOL-ZOMBIE-RIDER-0.3-v0
 
-**Status:** ACTIVE / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN / LOCAL COMBAT AI NEXT
+**Status:** ACTIVE / GREENLIT / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN / LOCAL COMBAT AI NEXT
 
 Josef greenlit preparing the release `0.3` zombie rider for Andi, including playtests and a small map-AI funness benchmarking suite. The prior writhing-stalker live fun packet is now closed green, so this queued lane is deliberately promoted as the current active delivery target.
 

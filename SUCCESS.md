@@ -42,7 +42,7 @@ Canonical docs:
 
 ## CAOL-ZOMBIE-RIDER-0.3-v0 — Zombie rider initial dev
 
-Status: ACTIVE / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN / LOCAL COMBAT AI NEXT
+Status: ACTIVE / GREENLIT / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN / LOCAL COMBAT AI NEXT
 
 Success state:
 - [x] Exact flavor text is preserved in raw intake, imagination source, and actual monster description.
