@@ -93,7 +93,7 @@ Prior closed active lane: `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` — see `doc/
 
 ## Active lane — CAOL-ZOMBIE-RIDER-0.3-v0
 
-**Status:** ACTIVE / GREENLIT / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN / LOCAL COMBAT AI NEXT
+**Status:** ACTIVE / GREENLIT / LOCAL COMBAT AI CHECKPOINT GREEN / OVERMAP LIGHT ATTRACTION NEXT
 
 Josef greenlit preparing the release `0.3` zombie rider for Andi, including playtests and a small map-AI funness benchmarking suite. The prior writhing-stalker live fun packet is now closed green, so this queued lane is deliberately promoted as the current active delivery target.
 
@@ -107,7 +107,7 @@ Map-AI / funness benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-sui
 
 Goal: initial zombie rider dev for release `0.3`: endpoint late-game mounted ranged predator, exact flavor preservation, scary-fast movement, shoot/flee/reposition local combat, overmap light attraction, rider convergence/band formation, and playtest/funness proof that open-ground terror remains fair through counterplay.
 
-Current checkpoint: monster/evolution footing is green in `d50715f00e` (`mon_zombie_rider` definition, exact three-line description, huge/scary-fast endpoint stats, mature `GROUP_ZOMBIE` gate at `730 days`, no predator/upgrade leak, focused `[zombie_rider]` tests), and the large-body `SMALL_PASSAGE` / window-terrain seam is now covered by `zombie_rider_large_body_small_passage_pathing`. Next slice widens only to local shoot/flee/reposition combat AI and remaining counterplay tests before overmap light attraction, rider bands, or live funness rows.
+Current checkpoint: monster/evolution footing is green in `d50715f00e` (`mon_zombie_rider` definition, exact three-line description, huge/scary-fast endpoint stats, mature `GROUP_ZOMBIE` gate at `730 days`, no predator/upgrade leak, focused `[zombie_rider]` tests); the large-body `SMALL_PASSAGE` / window-terrain seam is covered by `zombie_rider_large_body_small_passage_pathing`; and local combat AI footing is green in `4343dbdad1` with live `monster::plan()` consumption for line-of-fire bow targeting, hit-and-run post-shot withdrawal, close/injured retreat, and blocked-LOS counterplay. Next slice widens only to overmap light attraction before rider bands or live funness rows.
 
 Boundary: do not reopen writhing-stalker lanes, bandit/horde proof lanes, Smart Zone, old fire proof lanes, release packaging, or held parked concepts by drift. Do not make the rider a year-one routine spawn, a decorative fast archer, an unavoidable camp-deletion tax, or infinite clown cavalry. Exact flavor text punctuation is product canon.
 

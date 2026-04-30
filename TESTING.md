@@ -76,12 +76,12 @@ Caveat: staged-but-live McWilliams scenarios, not fully natural random discovery
 Credited footing evidence:
 - Commit `d50715f00e` adds `mon_zombie_rider` with exact three-line Josef description, huge/scary-fast monster footing, pseudo `zombie_rider_bone_bow`, direct mature `GROUP_ZOMBIE` gate at `730 days`, and no normal predator/upgrade path into rider.
 - Gates: `make -j4 tests/zombie_rider_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (34 assertions in 2 test cases)` with clean JSON load/no debug errors.
-- Follow-up passage-seam gate: `zombie_rider_large_body_small_passage_pathing` proves spawned rider actual size rejects `TFLAG_SMALL_PASSAGE` / `t_window_empty`, normal floor remains valid, normal-sized pathfinding can use the passable window seam, and rider-sized pathfinding routes around it. Current focused run: `./tests/cata_test "[zombie_rider]"` -> `All tests passed (59 assertions in 3 test cases)`.
+- Follow-up passage-seam gate: `zombie_rider_large_body_small_passage_pathing` proves spawned rider actual size rejects `TFLAG_SMALL_PASSAGE` / `t_window_empty`, normal floor remains valid, normal-sized pathfinding can use the passable window seam, and rider-sized pathfinding routes around it. Focused run: `./tests/cata_test "[zombie_rider]"` -> `All tests passed (59 assertions in 3 test cases)`.
+- Local combat AI checkpoint `4343dbdad1` adds live `monster::plan()` consumption plus focused tests for bow shot cadence/cooldown, post-shot reposition destination, close-pressure retreat, injured withdrawal, blocked-LOS no-shot counterplay, and preservation of endpoint footing. Gates: `make -j4 tests/zombie_rider_test.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> `All tests passed (100 assertions in 7 test cases)`.
 
 Validation burden:
-- Next deterministic tests: ranged shoot/flee/reposition cadence, injury/pressure withdrawal, and cover/LOS/terrain counterplay beyond the now-green `SMALL_PASSAGE` body-size seam.
-- Keep the existing endpoint evolution/spawn gate and scary-fast movement constraints green while local AI changes.
-- Map-AI tests: overmap light attraction, no-light negative control, light-memory decay, rider convergence, rider-band formation, accumulation caps, and circle/harass instead of wall-suicide.
+- Keep the existing endpoint evolution/spawn gate, large-body passage seam, scary-fast movement constraints, and local shoot/flee/reposition constraints green while widening map AI.
+- Map-AI tests: overmap light attraction, no-light negative control, light-memory decay or bounded interest, rider convergence, rider-band formation, accumulation caps, and circle/harass instead of wall-suicide.
 - Live/harness playtests: open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider disengagement.
 - Report scenario/test/run ids, start conditions, decision traces, rider counts, band state, shot/reposition/retreat counts, pass/fail/yellow verdicts, caveats, stability/perf, and crash/log-spam state.
 - Do not close on JSON/stat presence alone; gameplay claims must reach tests and/or live-shaped scenarios.
