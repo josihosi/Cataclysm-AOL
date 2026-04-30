@@ -36,9 +36,10 @@ Monster/evolution footing is green in `d50715f00e`:
 - actual `mon_zombie_rider` exists with the exact description text;
 - endpoint smell is hunter/predator branch after mature-world pressure, but normal upgrades are not wired into rider;
 - direct routine spawn is gated to `GROUP_ZOMBIE` at `730 days`, singleton/costly;
-- focused `[zombie_rider]` tests prove scary-fast-but-reviewable footing and no early spawn/evolution leak.
+- focused `[zombie_rider]` tests prove scary-fast-but-reviewable footing and no early spawn/evolution leak;
+- `zombie_rider_large_body_small_passage_pathing` now proves the spawned rider's actual large body rejects `SMALL_PASSAGE` / `t_window_empty` while normal-sized pathing can use that passable window-like seam and rider-sized pathing routes around it.
 
-Next slice may widen only to local shoot/flee/reposition AI and deterministic counterplay tests. Do not jump ahead to overmap light attraction, rider bands, or live funness rows until that boundary is green.
+Next slice may widen only to local shoot/flee/reposition AI and remaining deterministic counterplay tests. Do not jump ahead to overmap light attraction, rider bands, or live funness rows until that boundary is green.
 
 ## Evidence/reporting requirements
 

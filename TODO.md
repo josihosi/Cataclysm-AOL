@@ -10,7 +10,7 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active: `CAOL-ZOMBIE-RIDER-0.3-v0`.
 
-Monster/evolution footing checkpoint is green in `d50715f00e`; do not reprove it by ritual unless changed.
+Monster/evolution footing checkpoint is green in `d50715f00e`; the large-body `SMALL_PASSAGE` / window terrain seam is green in `zombie_rider_large_body_small_passage_pathing`; do not reprove either by ritual unless changed.
 
 Next narrow slice: local combat AI/test footing only, not overmap light attraction, rider bands, or live funness yet.
 

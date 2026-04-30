@@ -47,6 +47,7 @@ Status: ACTIVE / GREENLIT / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN / LOCAL C
 Success state:
 - [x] Exact flavor text is preserved in raw intake, imagination source, and actual monster description.
 - [x] Monster JSON / definitions validate and focused tests cover endpoint spawn/evolution gating.
+- [x] Pre-local-combat counterplay footing proves the actual large rider body rejects `SMALL_PASSAGE` / window-like terrain while normal-sized pathing can use the same passable seam.
 - [ ] Local combat tests cover scary-fast movement, ranged shooting, shoot/flee/reposition cadence, injury/pressure withdrawal, and counterplay through cover/line-of-sight/terrain.
 - [ ] Overmap/map-AI tests cover light attraction, no-light negative control, light-memory decay, rider convergence, rider-band formation, and accumulation caps.
 - [ ] Live or harness playtests cover open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider retreat or disengagement.
@@ -54,7 +55,7 @@ Success state:
 - [ ] If implementation exposes a tuning problem, the smallest change preserves endpoint danger, readable counterplay, no early routine spawn, no omniscient light doom, and no infinite banding.
 - [ ] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state when this packet becomes active or closes.
 
-Evidence: commit `d50715f00e` adds `mon_zombie_rider`, pseudo bow footing, mature `GROUP_ZOMBIE` direct gate at `730 days`, and `tests/zombie_rider_test.cpp`. Gates: `make -j4 tests/zombie_rider_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (34 assertions in 2 test cases)` with clean JSON load/no debug errors. Scope caveat: deterministic monster/evolution footing only; no local combat funness, overmap light attraction, rider bands, or live scenario claim yet.
+Evidence: commit `d50715f00e` adds `mon_zombie_rider`, pseudo bow footing, mature `GROUP_ZOMBIE` direct gate at `730 days`, and `tests/zombie_rider_test.cpp`. Gates: `make -j4 tests/zombie_rider_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (34 assertions in 2 test cases)` with clean JSON load/no debug errors. Follow-up deterministic passage-seam proof adds `zombie_rider_large_body_small_passage_pathing`: spawned rider actual size rejects `TFLAG_SMALL_PASSAGE` / `t_window_empty`, normal floor remains move-valid, normal-sized pathfinding can use the passable window seam, and rider-sized pathfinding routes around it. Current gate: `./tests/cata_test "[zombie_rider]"` -> `All tests passed (59 assertions in 3 test cases)`. Scope caveat: deterministic monster/pathing footing only; no local combat funness, overmap light attraction, rider bands, or live scenario claim yet.
 
 Canonical docs:
 - Raw intake / exact flavor text: `doc/zombie-rider-raw-intake-2026-04-30.md`.
