@@ -482,3 +482,132 @@ TEST_CASE( "zombie_rider_overmap_light_memory_decays_and_caps_accumulation",
     CHECK_FALSE( memory.active() );
     CHECK( memory.reason == "decayed_after_light_off" );
 }
+
+static zombie_rider_overmap_ai::rider_light_memory strong_rider_light_memory()
+{
+    zombie_rider_overmap_ai::rider_light_memory memory;
+    memory.interest_score = 6;
+    memory.turns_remaining = 240;
+    memory.max_riders_drawn = zombie_rider_overmap_ai::max_riders_drawn_by_light;
+    memory.reason = "elevated_bright_light";
+    return memory;
+}
+
+TEST_CASE( "zombie_rider_overmap_convergence_forms_capped_band_from_active_light_memory",
+           "[zombie_rider][overmap][ai]" )
+{
+    const tripoint_abs_omt light_omt( 100, 100, 0 );
+    const zombie_rider_overmap_ai::rider_light_memory memory = strong_rider_light_memory();
+    const std::vector<zombie_rider_overmap_ai::rider_overmap_agent> riders = {
+        { "near_beta", tripoint_abs_omt( 100, 94, 0 ) },
+        { "near_alpha", tripoint_abs_omt( 106, 100, 0 ) },
+        { "third_capped", tripoint_abs_omt( 109, 101, 0 ) },
+        { "far_ignored", tripoint_abs_omt( 170, 100, 0 ) },
+        { "cooldown_ignored", tripoint_abs_omt( 99, 100, 0 ), true, false, 30 },
+        { "banded_ignored", tripoint_abs_omt( 98, 100, 0 ), true, true, 0 },
+    };
+
+    const zombie_rider_overmap_ai::rider_convergence_result result =
+        zombie_rider_overmap_ai::evaluate_rider_convergence( memory, light_omt, riders );
+
+    REQUIRE( result.should_converge );
+    CHECK( result.cap == zombie_rider_overmap_ai::max_riders_drawn_by_light );
+    CHECK( result.selected_riders == zombie_rider_overmap_ai::max_riders_drawn_by_light );
+    CHECK( result.band_formed );
+    CHECK( result.band_size == 2 );
+    CHECK( result.posture == "rider_band_harass" );
+    CHECK( result.reason == "riders_converged_to_light_band" );
+    CHECK( result.rider_ids == std::vector<std::string>{ "near_alpha", "near_beta" } );
+}
+
+TEST_CASE( "zombie_rider_overmap_convergence_keeps_lone_rider_below_band_minimum",
+           "[zombie_rider][overmap][ai]" )
+{
+    const tripoint_abs_omt light_omt( 100, 100, 0 );
+    zombie_rider_overmap_ai::rider_light_memory memory = strong_rider_light_memory();
+    memory.max_riders_drawn = 1;
+    const std::vector<zombie_rider_overmap_ai::rider_overmap_agent> riders = {
+        { "lone_rider", tripoint_abs_omt( 101, 100, 0 ) },
+        { "outside_response", tripoint_abs_omt( 150, 100, 0 ) },
+    };
+
+    const zombie_rider_overmap_ai::rider_convergence_result result =
+        zombie_rider_overmap_ai::evaluate_rider_convergence( memory, light_omt, riders );
+
+    REQUIRE( result.should_converge );
+    CHECK_FALSE( result.band_formed );
+    CHECK( result.band_size == 0 );
+    CHECK( result.selected_riders == 1 );
+    CHECK( result.posture == "lone_rider_harass" );
+    CHECK( result.reason == "rider_converges_to_light_interest" );
+    CHECK( result.rider_ids == std::vector<std::string>{ "lone_rider" } );
+}
+
+TEST_CASE( "zombie_rider_overmap_convergence_stops_after_light_memory_decay",
+           "[zombie_rider][overmap][ai]" )
+{
+    const tripoint_abs_omt light_omt( 100, 100, 0 );
+    zombie_rider_overmap_ai::rider_light_memory memory = strong_rider_light_memory();
+    zombie_rider_overmap_ai::advance_light_memory( memory, 1000 );
+    REQUIRE_FALSE( memory.active() );
+
+    const std::vector<zombie_rider_overmap_ai::rider_overmap_agent> riders = {
+        { "near_north", tripoint_abs_omt( 100, 94, 0 ) },
+        { "near_east", tripoint_abs_omt( 107, 100, 0 ) },
+    };
+    const zombie_rider_overmap_ai::rider_convergence_result result =
+        zombie_rider_overmap_ai::evaluate_rider_convergence( memory, light_omt, riders );
+
+    CHECK_FALSE( result.should_converge );
+    CHECK_FALSE( result.band_formed );
+    CHECK( result.selected_riders == 0 );
+    CHECK( result.reason == "light_memory_inactive" );
+}
+
+TEST_CASE( "zombie_rider_overmap_band_pressure_circles_instead_of_wall_suicide",
+           "[zombie_rider][overmap][ai]" )
+{
+    zombie_rider_overmap_ai::rider_camp_pressure_input defended_camp;
+    defended_camp.light_memory_active = true;
+    defended_camp.rider_count = 2;
+    defended_camp.band_formed = true;
+    defended_camp.defender_strength = 4;
+    defended_camp.breach_or_opening = false;
+
+    const zombie_rider_overmap_ai::rider_camp_pressure_result pressure =
+        zombie_rider_overmap_ai::choose_camp_pressure_posture( defended_camp );
+    CHECK( pressure.posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::circle_harass );
+    CHECK( zombie_rider_overmap_ai::to_string( pressure.posture ) == "circle_harass" );
+    CHECK( pressure.reason == "band_without_breach_circles_and_harasses" );
+
+    defended_camp.breach_or_opening = true;
+    defended_camp.defender_strength = 2;
+    const zombie_rider_overmap_ai::rider_camp_pressure_result breach =
+        zombie_rider_overmap_ai::choose_camp_pressure_posture( defended_camp );
+    CHECK( breach.posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::direct_attack );
+    CHECK( zombie_rider_overmap_ai::to_string( breach.posture ) == "direct_attack" );
+    CHECK( breach.reason == "breach_or_opening_with_advantage" );
+
+    defended_camp.rider_wounded = true;
+    const zombie_rider_overmap_ai::rider_camp_pressure_result wounded =
+        zombie_rider_overmap_ai::choose_camp_pressure_posture( defended_camp );
+    CHECK( wounded.posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::withdraw );
+    CHECK( zombie_rider_overmap_ai::to_string( wounded.posture ) == "withdraw" );
+    CHECK( wounded.reason == "wounded_rider_disengages" );
+
+    zombie_rider_overmap_ai::rider_camp_pressure_input quiet_camp;
+    const zombie_rider_overmap_ai::rider_camp_pressure_result quiet =
+        zombie_rider_overmap_ai::choose_camp_pressure_posture( quiet_camp );
+    CHECK( quiet.posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::none );
+    CHECK( zombie_rider_overmap_ai::to_string( quiet.posture ) == "none" );
+    CHECK( quiet.reason == "no_active_light_pressure" );
+
+    zombie_rider_overmap_ai::rider_camp_pressure_input lone_probe;
+    lone_probe.light_memory_active = true;
+    lone_probe.rider_count = 1;
+    const zombie_rider_overmap_ai::rider_camp_pressure_result investigate =
+        zombie_rider_overmap_ai::choose_camp_pressure_posture( lone_probe );
+    CHECK( investigate.posture == zombie_rider_overmap_ai::rider_camp_pressure_posture::investigate );
+    CHECK( zombie_rider_overmap_ai::to_string( investigate.posture ) == "investigate" );
+    CHECK( investigate.reason == "lone_rider_investigates_light" );
+}
