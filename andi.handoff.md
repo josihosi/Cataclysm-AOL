@@ -8,6 +8,8 @@ Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, an
 
 Prior closed lanes that must not be reopened by drift: monster flavor/stat/spawn footing, old `CAOL-WRITHING-STALKER-v0`, `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0`, roof-horde, Smart Zone, old fire proof lanes, and `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0`.
 
+Queued-next visibility: `CAOL-ZOMBIE-RIDER-0.3-v0` is greenlit behind this active writhing-stalker live fun packet, with contract `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md` and benchmark suite `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`. Do **not** switch to it during the current active packet unless Schani/Josef explicitly promote it to active; it is listed here so release `0.3` prep does not disappear.
+
 ## Goal
 
 Prove or falsify live player-facing fun for the writhing stalker: fair dread, readable counterplay, nasty repeated-attack rhythm, injured retreat, and no cheating.

@@ -89,6 +89,26 @@ Prior closed active lane: `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` — see `doc/
 
 ---
 
+## Greenlit queued lane — CAOL-ZOMBIE-RIDER-0.3-v0
+
+**Status:** GREENLIT / QUEUED AFTER ACTIVE WRITHING-STALKER LIVE FUN PACKET
+
+Josef greenlit preparing the release `0.3` zombie rider for Andi, including playtests and a small map-AI funness benchmarking suite. This is queued behind the active `CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` unless Schani/Josef explicitly promote it sooner.
+
+Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`.
+
+Imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`.
+
+Raw intake / exact flavor text: `doc/zombie-rider-raw-intake-2026-04-30.md`.
+
+Map-AI / funness benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`.
+
+Goal: initial zombie rider dev for release `0.3`: endpoint late-game mounted ranged predator, exact flavor preservation, scary-fast movement, shoot/flee/reposition local combat, overmap light attraction, rider convergence/band formation, and playtest/funness proof that open-ground terror remains fair through counterplay.
+
+Boundary: do not interrupt the active writhing-stalker live fun packet unless explicitly promoted. Do not make the rider a year-one routine spawn, a decorative fast archer, an unavoidable camp-deletion tax, or infinite clown cavalry. Exact flavor text punctuation is product canon.
+
+---
+
 ## Held / parked lanes that must not disappear
 
 **Status:** PARKED / HELD VISIBILITY ONLY

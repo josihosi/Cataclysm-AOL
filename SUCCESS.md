@@ -39,6 +39,28 @@ Canonical docs:
 
 ---
 
+## CAOL-ZOMBIE-RIDER-0.3-v0 — Zombie rider initial dev
+
+Status: GREENLIT / QUEUED AFTER ACTIVE WRITHING-STALKER LIVE FUN PACKET
+
+Success state:
+- [ ] Exact flavor text is preserved in raw intake, imagination source, and actual monster description.
+- [ ] Monster JSON / definitions validate and focused tests cover endpoint spawn/evolution gating.
+- [ ] Local combat tests cover scary-fast movement, ranged shooting, shoot/flee/reposition cadence, injury/pressure withdrawal, and counterplay through cover/line-of-sight/terrain.
+- [ ] Overmap/map-AI tests cover light attraction, no-light negative control, light-memory decay, rider convergence, rider-band formation, and accumulation caps.
+- [ ] Live or harness playtests cover open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider retreat or disengagement.
+- [ ] Metrics include scenario/run ids, turn/time budgets, decision/reason traces, rider counts, band state, shot/reposition/retreat counts, warnings/log spam/crash state, and available per-turn/cadence costs.
+- [ ] If implementation exposes a tuning problem, the smallest change preserves endpoint danger, readable counterplay, no early routine spawn, no omniscient light doom, and no infinite banding.
+- [ ] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state when this packet becomes active or closes.
+
+Canonical docs:
+- Raw intake / exact flavor text: `doc/zombie-rider-raw-intake-2026-04-30.md`.
+- Imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`.
+- Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`.
+- Map-AI / funness benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`.
+
+---
+
 ## CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0 — Multi-camp signal gauntlet
 
 Status: CLOSED / CHECKPOINTED GREEN V0

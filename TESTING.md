@@ -66,6 +66,18 @@ Validation burden:
 - Each credited row needs scenario/run id, artifact path, start-state facts, compact per-turn/per-decision trace, pass/fail verdict, caveats, and stability/perf notes.
 - Unit/evaluator tests alone do not close this packet. If a row is deterministic-only, mark it as support rather than live fun proof.
 
+### Greenlit queued validation target - CAOL-ZOMBIE-RIDER-0.3-v0
+
+`CAOL-ZOMBIE-RIDER-0.3-v0` is greenlit and queued after the active writhing-stalker live fun packet. Start it only when Schani/Josef explicitly promote it to active. Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`; imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`; benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`; raw intake: `doc/zombie-rider-raw-intake-2026-04-30.md`.
+
+Validation burden when active:
+- Preserve exact flavor text in the actual monster description; punctuation is not cleanup fodder.
+- Deterministic tests: endpoint evolution/spawn gate, scary-fast movement constraints, ranged shoot/flee/reposition cadence, injury/pressure withdrawal, cover/LOS/terrain counterplay.
+- Map-AI tests: overmap light attraction, no-light negative control, light-memory decay, rider convergence, rider-band formation, accumulation caps, and circle/harass instead of wall-suicide.
+- Live/harness playtests: open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider disengagement.
+- Report scenario/test/run ids, start conditions, decision traces, rider counts, band state, shot/reposition/retreat counts, pass/fail/yellow verdicts, caveats, stability/perf, and crash/log-spam state.
+- Do not close on JSON/stat presence alone; gameplay claims must reach tests and/or live-shaped scenarios.
+
 ### Closed validation target - CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
 
 `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` is closed/checkpointed green v0. Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`; proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`.
