@@ -1493,6 +1493,37 @@ int signal_live_hordes_from_light_observations(
     return signaled_sources;
 }
 
+std::optional<std::string> live_bandit_structural_terrain_id( const tripoint_abs_omt &omt )
+{
+    return overmap_buffer.ter( omt ).id().str();
+}
+
+bandit_live_world::structural_threat_read live_bandit_structural_threat_read(
+    const bandit_live_world::site_record &, const bandit_live_world::camp_map_lead &lead )
+{
+    bandit_live_world::structural_threat_read threat;
+    const std::string terrain_id = live_bandit_structural_terrain_id( lead.omt ).value_or( std::string() );
+    const bandit_live_world::structural_bounty_read read =
+        bandit_live_world::classify_structural_bounty_terrain( terrain_id );
+    threat.threat = read.latent_threat;
+    threat.observed = true;
+    threat.summary = "live structural terrain threat read: " + terrain_id;
+    return threat;
+}
+
+bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_structural_bounty()
+{
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    static constexpr int structural_scan_budget = 12;
+    static constexpr int structural_dispatch_cap = 2;
+    bandit_live_world::structural_bounty_maintenance_result result =
+        bandit_live_world::advance_structural_bounty_maintenance( state, live_bandit_current_minutes(),
+                structural_scan_budget, structural_dispatch_cap, live_bandit_structural_terrain_id,
+                live_bandit_structural_threat_read );
+    DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_structural_bounty_maintenance_report( result );
+    return result;
+}
+
 bandit_live_world::camp_map_dispatch_pressure live_bandit_camp_map_dispatch_pressure(
     const bandit_live_world::camp_map_lead &lead )
 {
@@ -2090,9 +2121,12 @@ void overmap_npc_move()
     }
     const bool dispatch_cadence_due = calendar::once_every( 30_minutes );
     const bool signal_cadence_due = dispatch_cadence_due || calendar::once_every( 5_minutes );
+    const bool structural_cadence_due = calendar::once_every( 60_minutes );
     std::vector<live_bandit_signal_observation> live_signals;
-    if( signal_cadence_due ) {
+    if( signal_cadence_due || structural_cadence_due ) {
         bootstrap_live_bandit_abstract_sites_near_player();
+    }
+    if( signal_cadence_due ) {
         live_signals = observe_live_bandit_field_signals_near_player();
         refresh_live_bandit_signal_marks( live_signals );
         signal_live_hordes_from_light_observations( live_signals );
@@ -2106,6 +2140,9 @@ void overmap_npc_move()
                                    << " sites=" << bandit_state.sites.size()
                                    << " dispatch_interval=30_minutes"
                                    << " signal_interval=5_minutes\n";
+    }
+    if( structural_cadence_due ) {
+        maintain_live_bandit_structural_bounty();
     }
     const auto dispatch_done = std::chrono::steady_clock::now();
     std::vector<npc *> travelling_npcs;

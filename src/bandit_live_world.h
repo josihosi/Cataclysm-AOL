@@ -332,6 +332,18 @@ struct structural_outing_result {
     std::vector<std::string> notes;
 };
 
+struct structural_bounty_maintenance_result {
+    structural_outing_result outing;
+    structural_bounty_scan_result scan;
+    int sites_considered_for_dispatch = 0;
+    int dispatches_planned = 0;
+    int dispatches_applied = 0;
+    int dispatches_blocked = 0;
+    int dispatch_cap = 0;
+    bool dispatch_cap_reached = false;
+    std::vector<std::string> notes;
+};
+
 struct local_gate_input {
     int local_threat = 0;
     int local_opportunity = 0;
@@ -470,6 +482,12 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         int now_minutes );
 structural_outing_result advance_structural_bounty_outings( world_state &state, int now_minutes,
         const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup );
+structural_bounty_maintenance_result advance_structural_bounty_maintenance( world_state &state,
+        int now_minutes, int scan_budget, int dispatch_cap,
+        const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,
+        const std::function<structural_threat_read( const site_record &, const camp_map_lead & )> &threat_lookup );
+std::string render_structural_bounty_maintenance_report(
+    const structural_bounty_maintenance_result &result );
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );

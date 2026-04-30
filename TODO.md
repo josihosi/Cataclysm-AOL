@@ -13,12 +13,12 @@ Active target: `Bandit structural bounty overmap completion packet v0`.
 Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`.
 Imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
 
-Current state boundary: **Phase 5 live wiring**. Phase 4 save/load and anti-loop is locally green; live/harness proof waits until the real `do_turn` maintenance path is wired and built.
+Current state boundary: **Phase 6 live proof**. Phase 5 live wiring is locally green: structural scan/outing maintenance is wired through `do_turn`, bounded by cadence/budget, covered by deterministic maintenance tests, and the current tiles runtime builds.
 
-1. Inspect the current `do_turn` / live-world maintenance cadence and identify the cheapest overmap terrain lookup seam for structural bounty scans.
-2. Wire `advance_structural_bounty_scan`, `plan_structural_bounty_outing`, `apply_structural_bounty_outing_plan`, and `advance_structural_bounty_outings` into live maintenance with strict per-turn cadence/budget and no player bait requirement.
-3. Add concise debug/report artifacts for scan/outing work: sampled/seeded/suppressed leads, dispatches planned, stalking checks, turnbacks, arrivals/harvests, and active/returned member state.
-4. Add/extend source-hook or deterministic tests proving the live maintenance path invokes structural scan/outing work, respects active pressure/debounce, and remains bounded.
-5. Build the current runtime after wiring, then promote the Phase 6 harness scenario only when this substrate is honestly green.
+1. Shape the narrow harness scenario for idle camp -> structural forest/town dispatch without player smoke/light/direct-range bait.
+2. Include saved-state metadata audits for structural leads, active/returned members, active outing fields, stalking-distance threat/interest writeback, harvested/dangerous outcome, and debounce/no immediate repeat.
+3. Validate any new scenario JSON with `python3 -m json.tool` and run `python3 tools/openclaw_harness/proof_classification_unit_test.py` if classifier/report logic changes.
+4. Run one feature-path harness probe only after the scenario has explicit visible/artifact expectations; classify screenshots as visual proof only if directly inspected.
+5. Update canon with the exact run path, saved-state evidence, and any live-path caveat before moving to Phase 7 tuning/readout.
 
-Do **not** start live/harness proof yet. Do **not** implement writhing stalker, local bubble materialization, exact loot harvest, random casualty economy beyond deterministic counters, release packaging, or player/Josef-facing tuning in this phase.
+Do **not** implement writhing stalker, local bubble materialization, exact loot harvest, random casualty economy beyond deterministic counters, release packaging, or player/Josef-facing tuning in this phase.
