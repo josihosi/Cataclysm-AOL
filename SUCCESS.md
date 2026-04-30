@@ -37,7 +37,7 @@ Compact reference:
 
 ## GitHub normal-download release packet v0
 
-Status: GREENLIT / HELD BEHIND DEBUG-CORRECTION STACK
+Status: HELD / NOT CURRENTLY PROMOTED
 
 Success state:
 - [ ] A new public GitHub release exists on `josihosi/Cataclysm-AOL` with a deliberate tag/version and clear release notes.
@@ -49,7 +49,7 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/github-normal-download-release-packet-v0-2026-04-25.md`.
 - Current latest stable release observed before packaging: `v0.2.0` / `Cataclysm - Arsenic and Old Lace v0.2.0`.
-- This was queued behind CI recovery and became active after `c5ff712e01` went green across General, Windows, CodeQL, IWYU, and Clang-tidy. It is now held behind Josef's 2026-04-26 debug-correction stack so Andi can remove hollow code/test-to-game gaps before release publishing.
+- This packet was once queued after CI recovery went green, but current `Plan.md` / `TODO.md` promote no active or greenlit execution target. Release/download work needs an explicit Schani/Josef promotion before Andi treats it as active.
 
 ---
 
