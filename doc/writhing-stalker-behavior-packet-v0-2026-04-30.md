@@ -2,7 +2,7 @@
 
 ## Classification
 
-Status: **GREENLIT implementation packet**.
+Status: **CLOSED / CHECKPOINTED GREEN V0**.
 
 Ledger ID: `CAOL-WRITHING-STALKER-v0`.
 
@@ -159,9 +159,9 @@ Close `CAOL-WRITHING-STALKER-v0` only when:
 - [x] Save/load preserves any new stalker state, or the packet explicitly avoids new persisted state.
 - [x] Live/harness proof shows a real stalk/hold/strike/withdraw scene from the game path.
 - [x] Live/harness negative/control proof shows no instant beeline with no valid evidence.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final closed/next state.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final closed/next state.
 
-Post-crunch review note: the v0 evidence packet is green for review after `.userdata/dev-harness/harness_runs/20260430_181748/` added Josef's mixed-hostile metrics/tuning readout. The remaining unchecked line is canon alignment/closure review, not missing gameplay proof. The mixed-hostile horde caveat is explicit: horde presence is proven by saved setup audit, but horde cost is `not instrumented` separately.
+Closure note: the v0 evidence packet is closed/checkpointed green after `.userdata/dev-harness/harness_runs/20260430_181748/` added Josef's mixed-hostile metrics/tuning readout and Frau accepted the yellow attribution caveat. The mixed-hostile horde caveat remains explicit: horde presence is proven by saved setup audit, but horde movement/retarget cost is `not instrumented` separately and is future-only unless explicitly promoted.
 
 ## Open tuning questions
 

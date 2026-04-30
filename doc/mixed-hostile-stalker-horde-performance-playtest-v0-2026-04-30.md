@@ -2,7 +2,7 @@
 
 Date: 2026-04-30
 Ledger ID: `CAOL-MIXED-HOSTILE-PERF-v0`
-Status: GREENLIT / PERFORMANCE PLAYTEST PACKET
+Status: GREEN/YELLOW METRICS REPORT ACCEPTED FOR V0
 
 ## Josef ask
 
@@ -170,7 +170,7 @@ Command shape: `python3 tools/openclaw_harness/startup_harness.py probe performa
 
 ### Verdict
 
-`CAOL-MIXED-HOSTILE-PERF-v0` is green for Josef's requested mixed-hostile performance metrics packet with one explicit caveat: horde presence is proven by saved setup audit, but horde cost is `not instrumented` in this run. No new behavior-design lane is implied.
+`CAOL-MIXED-HOSTILE-PERF-v0` is green/yellow and accepted for Josef's requested mixed-hostile performance metrics packet with one explicit caveat: horde presence is proven by saved setup audit, but horde cost is `not instrumented` in this run. Frau accepted this attribution caveat for v0 closure; stricter horde movement/retarget timing is future-only unless Schani/Josef explicitly promote it. No new behavior-design lane is implied.
 
 ## Relation to current writhing-stalker lane
 

@@ -19,7 +19,7 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-WRITHING-STALKER-v0 — Writhing stalker behavior packet v0
 
-Status: READY FOR POST-CRUNCH REVIEW / GREEN V0 EVIDENCE PACKET
+Status: CLOSED / CHECKPOINTED GREEN V0
 
 Success state:
 - [x] Monster/stat/spawn footing exists and validates.
@@ -37,7 +37,7 @@ Success state:
 - [x] Live/harness proof `writhing_stalker.live_exposed_retreat_mcw` shows exposure/focus/hurt causes hold or withdrawal, or is explicitly classified future-only.
 - [x] Mixed hostile performance playtest `performance.mixed_hostile_stalker_horde_mcw` reports metrics with bandit camp, cannibal camp, one writhing stalker, and horde present, or is explicitly classified follow-up/future-only.
 - [x] Tuning readout records whether the stalker is too common, too fast, too tanky, too invisible, too honest, too stupid, or too expensive under mixed hostile load.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final active/closed state.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final active/closed state.
 
 Notes:
 - Support live footing is green, but not final behavior closure by itself: `.userdata/dev-harness/harness_runs/20260430_161342/` proves debug-spawn/save `active_monsters` footing; `.userdata/dev-harness/harness_runs/20260430_161535/` proves target acquisition plus the live `live_plan` seam.
@@ -45,7 +45,7 @@ Notes:
 - Shadow/strike behavior proof is green at `.userdata/dev-harness/harness_runs/20260430_170528/`: harness-only vulnerable-midnight fixture `mcwilliams_live_debug_vulnerable_2026-04-30` applies `game_turn=5270400`, 60% HP, low stamina, and torso `bleed`; saved pre-spawn audit shows `time_of_day_text=00:00:00`; live-plan artifact proves `decision=shadow route=cover_shadow reason=live_shadowing_before_strike_window ... target_focus=no cooldown=no`, then `decision=strike route=cover_shadow reason=live_vulnerability_window_strike ... distance=3`, then `decision=cooling_off ... cooldown=yes`; save/writeback and saved `active_monsters` audits are green.
 - No-omniscience negative-control proof is green at `.userdata/dev-harness/harness_runs/20260430_173555/`: harness-only clean fixture `mcwilliams_live_debug_no_evidence_clean_2026-04-30` removes overmap NPC/human targets, applies local noon, places one saved active `mon_writhing_stalker` behind an audited thick `f_locker` wall, and requires same-run `target_probe ... target=no ... sees_player=no` while forbidding `target=yes`, `sees_player=yes`, `writhing_stalker live_plan:`, strike, shadow, or cooldown lines; save/writeback and saved `active_monsters` distance audits are green.
 - Strike pressure is green for v0 from combined footing/behavior evidence: monster stats/tests require cut damage plus `scratch`/`bite`, the live shadow/strike proof reaches `decision=strike`, and cooldown/withdraw evidence prevents tank-duel relatch spam.
-- Mixed hostile performance proof is green/yellow at `.userdata/dev-harness/harness_runs/20260430_181748/`: `performance.mixed_hostile_stalker_horde_mcw` proves active bandit and cannibal stalk jobs, one `mon_writhing_stalker`, and one nearby `mon_zombie` horde before measurement; completes `500` sampled turns plus a bounded `30m` wait; records turn cost avg `236.239ms/turn`, hostile cadence `total_us` max `3777`, stalker `eval_us` max `54`, no crash/stderr/debug-error flood, and a tuning readout. Caveat: horde cost is `not instrumented` separately; horde presence is setup proof, not direct horde timing.
+- Mixed hostile performance proof is green/yellow at `.userdata/dev-harness/harness_runs/20260430_181748/`: `performance.mixed_hostile_stalker_horde_mcw` proves active bandit and cannibal stalk jobs, one `mon_writhing_stalker`, and one nearby `mon_zombie` horde before measurement; completes `500` sampled turns plus a bounded `30m` wait; records turn cost avg `236.239ms/turn`, hostile cadence `total_us` max `3777`, stalker `eval_us` max `54`, no crash/stderr/debug-error flood, and a tuning readout. Frau accepted the yellow horde-attribution caveat for v0 closure: horde cost is `not instrumented` separately; horde presence is setup proof, not direct horde timing, and stricter horde attribution is future-only unless explicitly promoted.
 - Imagination source lives at `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`.
 - Contract lives at `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`.
 - Playtest ladder lives at `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.

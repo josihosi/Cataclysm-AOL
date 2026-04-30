@@ -49,28 +49,19 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Active lane - CAOL-WRITHING-STALKER-v0
+## Open promotion slot
 
-**Status:** READY FOR POST-CRUNCH REVIEW / GREEN V0 EVIDENCE PACKET
+**Status:** PARKED / NO ACTIVE LANE / AWAITING SCHANI-JOSEF PROMOTION
 
-Current target: create the first playable writhing stalker v0: a rare singleton first-generation zombie-adjacent predator that uses coarse world interest, human/player evidence, light, cover, zombie distraction, and opportunity windows to stalk and strike without omniscient beelines or bandit-camp economy logic.
+No current execution lane is promoted. `CAOL-WRITHING-STALKER-v0` is closed/checkpointed green for v0 after Frau accepted the mixed-hostile horde attribution caveat. Do not rerun the same mixed-hostile soup or add a horde timing counter unless Schani/Josef explicitly promote stricter horde attribution.
 
-Current boundary: monster/stat/spawn footing, deterministic AI-decision substrate, the smallest live monster-plan seam, split live spawn/target footing, exposed/focused withdrawal, a midnight vulnerable-player shadow/strike scene, no-omniscience negative control, and Josef's mixed-hostile performance metrics/tuning readout are implemented, validated, and ready for post-crunch review. `monster::plan()` routes `mon_writhing_stalker` through the pure live-response helper for local-evidence gating, shadow destinations, strike targeting, and withdraw/cooldown behavior without bandit-camp economy logic; same-run harness proof shows a debug-spawned `mon_writhing_stalker` persists in `active_monsters`, then acquires the player and reaches the live `live_plan` seam. The exposed-retreat probe uses a harness-only saved-turn transform to local noon, audits `time_of_day_text=12:00:00` before spawn, and proves `decision=withdraw ... stalker_bright=yes target_focus=yes` from the live monster-plan path. The shadow/strike probe uses a harness-only vulnerable-midnight fixture, audits `time_of_day_text=00:00:00`, and proves `decision=shadow ... reason=live_shadowing_before_strike_window`, then `decision=strike ... reason=live_vulnerability_window_strike`, then cooldown from the live monster-plan path. The no-omniscience probe uses a harness-only clean noon/no-human-target fixture, one saved active stalker behind an audited opaque locker wall, and same-run debug negative guards to prove `target=no`, `sees_player=no`, no `writhing_stalker live_plan:`, and no same-run attack/refresh behavior. The mixed-hostile performance run `performance.mixed_hostile_stalker_horde_mcw` -> `.userdata/dev-harness/harness_runs/20260430_181748/` proves active bandit/cannibal stalk jobs, one `mon_writhing_stalker`, and one nearby `mon_zombie` horde through `500` sampled turns plus a bounded `30m` wait, with turn/cadence/stalker metrics and tuning notes. Caveat: horde presence is proven by saved setup audit, but horde cost is `not instrumented` separately. No new persisted latch state was added; v0 cooldown uses existing monster effect state.
-
-Canonical references:
-- receipt: `doc/work-ledger.md` (`CAOL-WRITHING-STALKER-v0`)
-- raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`
-- imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`
-- contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`
-- testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`
-- mixed-hostile performance packet: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
-- active validation target: `TESTING.md`
-
-Concurrency note: Andi cron was refreshed after the 2026-04-30 context-overflow issue and is active again; Augerl-Frau review is active. Keep work checkpointed and reviewable because the active lane now mixes code, harness, and performance proof.
+Last closed active lane: `CAOL-WRITHING-STALKER-v0` — see `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md` for the compact receipt. The preserved caveat is: horde presence/setup is proven in `.userdata/dev-harness/harness_runs/20260430_181748/`, but direct horde movement/retarget cost is not instrumented and remains future-only.
 
 ---
 
 ## Held / parked lanes that must not disappear
+
+**Status:** PARKED / HELD VISIBILITY ONLY
 
 These are visible here only because they affect future selection. Do not treat them as active without explicit Schani/Josef promotion.
 
@@ -84,6 +75,7 @@ These are visible here only because they affect future selection. Do not treat t
 
 Use `doc/work-ledger.md` and the linked aux docs for exact evidence, caveats, and supersessions. Do not reopen these by drift.
 
+- `CAOL-WRITHING-STALKER-v0` — closed/checkpointed green v0; first playable rare singleton zombie-adjacent predator with deterministic interest/latch/approach/opportunity/withdraw substrate, live monster-plan seam, exposed-retreat proof, shadow/strike/cooldown proof, no-omniscience negative control, and mixed-hostile metrics/tuning readout. Caveat preserved: horde presence/setup is proven in `.userdata/dev-harness/harness_runs/20260430_181748/`, but direct horde movement/retarget cost is not instrumented and is future-only unless explicitly promoted.
 - `CAOL-BANDIT-STRUCT-BOUNTY-v0` — closed/checkpointed green v0; closure readout `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`; green run `.userdata/dev-harness/harness_runs/20260430_115157/`; non-credit run `.userdata/dev-harness/harness_runs/20260430_114106/`.
 - `CAOL-SZM-LIVE-LABEL-v0` — closed green live coordinate-label proof; run `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`.
 - `CAOL-CANNIBAL-NIGHT-RAID-v0` — closed cannibal camp night-raid behavior checkpoint; contract `doc/cannibal-camp-night-raid-behavior-packet-v0-2026-04-28.md`.

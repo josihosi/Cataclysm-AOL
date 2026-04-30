@@ -270,7 +270,7 @@ Green means stalker holds/withdraws instead of brainless melee until death.
 
 Scenario: `performance.mixed_hostile_stalker_horde_mcw`
 
-Status: **GREEN/YELLOW** at `.userdata/dev-harness/harness_runs/20260430_181748/`. The run is green for Josef's requested metrics packet and yellow only for attribution: horde presence is proven, but horde cost is `not instrumented` separately.
+Status: **GREEN/YELLOW ACCEPTED FOR V0** at `.userdata/dev-harness/harness_runs/20260430_181748/`. The run is green for Josef's requested metrics packet and yellow only for attribution: horde presence is proven, but horde cost is `not instrumented` separately. Frau accepted this caveat for v0 closure; stricter horde timing is future-only unless explicitly promoted.
 
 Contract/report: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
 
