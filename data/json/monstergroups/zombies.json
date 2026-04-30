@@ -180,6 +180,7 @@
       { "monster": "mon_beekeeper", "weight": 10, "cost_multiplier": 5 },
       { "monster": "mon_zombie_technician", "weight": 10, "cost_multiplier": 12 },
       { "monster": "mon_zombie_runner", "weight": 200, "cost_multiplier": 5, "pack_size": [ 1, 4 ] },
+      { "monster": "mon_writhing_stalker", "weight": 1, "cost_multiplier": 50 },
       { "group": "GROUP_FERAL", "weight": 121 },
       { "monster": "mon_feral_soldier", "weight": 10, "cost_multiplier": 5 },
       { "monster": "mon_zombie_brainless", "weight": 650 },

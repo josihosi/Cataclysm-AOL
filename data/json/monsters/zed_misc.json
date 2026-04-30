@@ -496,6 +496,43 @@
     "extend": { "move_skills": { "climb": 8 }, "flags": [ "SMELLS" ] }
   },
   {
+    "id": "mon_writhing_stalker",
+    "type": "MONSTER",
+    "name": { "str": "writhing stalker" },
+    "description": "A slim, shaking figure, its grey arms locked around its twitching chest.  Its head jerks with half-panicked purpose, and its restless eyes make the dark around it feel watched.",
+    "copy-from": "mon_zombie_hunter",
+    "species": [ "ZOMBIE", "HUMAN" ],
+    "hp": 90,
+    "speed": 120,
+    "color": "dark_gray",
+    "aggression": 65,
+    "morale": 18,
+    "melee_skill": 5,
+    "melee_dice": 3,
+    "melee_dice_sides": 4,
+    "melee_damage": [ { "damage_type": "cut", "amount": 4 } ],
+    "dodge": 4,
+    "bleed_rate": 40,
+    "vision_day": 35,
+    "vision_night": 12,
+    "grab_strength": 5,
+    "path_settings": { "max_dist": 10, "avoid_traps": true, "avoid_sharp": true },
+    "special_attacks": [
+      { "id": "scratch", "cooldown": 6, "damage_max_instance": [ { "damage_type": "cut", "amount": 12 } ] },
+      {
+        "type": "bite",
+        "cooldown": 12,
+        "damage_max_instance": [ { "damage_type": "stab", "amount": 6, "armor_multiplier": 0.4 } ]
+      }
+    ],
+    "anger_triggers": [ "STALK", "PLAYER_WEAK" ],
+    "fear_triggers": [ "HURT", "BRIGHT_LIGHT", "FIRE" ],
+    "upgrades": false,
+    "armor": { "bash": 1, "cut": 2, "bullet": 1, "electric": 1 },
+    "extend": { "move_skills": { "climb": 8 }, "flags": [ "SMELLS", "KEENNOSE", "PATH_AVOID_DANGER", "HARDTOSHOOT", "HIT_AND_RUN" ] },
+    "delete": { "flags": [ "STUMBLES", "GRABS", "BASHES", "GROUP_BASH", "UNBREAKABLE_MORALE" ] }
+  },
+  {
     "id": "mon_zombie_mancroc",
     "type": "MONSTER",
     "name": { "str": "zombie snapper" },
