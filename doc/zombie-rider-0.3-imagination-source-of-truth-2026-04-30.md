@@ -17,8 +17,10 @@ The zombie rider is release 0.3’s endpoint cavalry horror: the mature-world mu
 The player should understand three facts very quickly:
 
 1. running across open ground is no longer a plan;
-2. cover, doors, terrain, darkness, smoke, and line-of-sight discipline matter;
+2. cover, narrow passages, doors, terrain, darkness, smoke, and line-of-sight discipline matter;
 3. late-game light can call trouble from the wider map.
+
+Its body should do useful design work. If the rider is mechanically large/huge, existing small-passage rules can make windows, embrasures, and tight openings matter without inventing a fresh movement limiter. But this must be tested honestly: normal doors and open corridors may still be passable, so “tall” only counts when the engine actually blocks the tile.
 
 A lone rider is a roaming mounted skirmisher. It shoots, repositions, withdraws from bad odds, returns if advantage persists, and harasses instead of politely closing to die. Two riders meeting is worse: they should be able to form a rider band, turning a local scare into a circling late-game map problem.
 

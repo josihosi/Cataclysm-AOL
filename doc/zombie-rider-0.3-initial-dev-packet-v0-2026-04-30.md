@@ -33,6 +33,7 @@ Do not “fix” `It's`, commas, dashes, or rhythm. The weirdness is intentional
 - Add a zombie rider monster entry with endpoint-tier placement.
 - Preserve exact description text.
 - Tune movement in the scary-fast range; Josef suggested `150-200`, but implementation should prove the final value does not erase counterplay.
+- Make the rider physically large/huge enough to lean on existing monster-size passage rules before inventing any bespoke movement limiter.
 - Add ranged shooting behavior using a gory bow / wet bone-and-sinew fiction.
 - Ensure the rider is not simply a melee brute with inflated speed.
 
@@ -45,6 +46,7 @@ Do not “fix” `It's`, commas, dashes, or rhythm. The weirdness is intentional
 
 ### Local combat AI
 
+- First-line movement constraint should use existing large/huge monster size behavior: large/huge monsters cannot path/move through `SMALL_PASSAGE` terrain such as many windows/embrasures. Normal doors/corridors may still be passable, so prove the real blocked/passable set before adding any new mounted-movement system.
 - Core loop: approach / shoot / reposition / flee from bad odds / return if advantage persists.
 - Threat posture is higher than the writhing stalker: it may attack more readily and stalk less delicately, but it must not become omniscient or suicidal.
 - Flee/shoot/flee must have readable break conditions: cover, indoors, line of sight break, bad terrain, injury, cooldown/ammo/range, or loss of advantage.
@@ -69,7 +71,7 @@ Do not “fix” `It's`, commas, dashes, or rhythm. The weirdness is intentional
 
 - Exact flavor text is preserved in raw intake, imagination source, and actual monster description.
 - Monster JSON / definitions validate and focused tests cover endpoint spawn/evolution gating.
-- Local combat tests cover speed/range, shoot/flee/reposition cadence, injury/pressure withdrawal, and counterplay through cover/line-of-sight/terrain.
+- Local combat tests cover speed/range, large/huge passage constraints, shoot/flee/reposition cadence, injury/pressure withdrawal, and counterplay through cover/line-of-sight/terrain.
 - Overmap/map-AI tests cover light attraction, no-light negative control, light-memory decay, rider convergence, rider-band formation, and accumulation caps.
 - Live or harness playtests cover open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider retreat or disengagement.
 - Metrics include scenario/run ids, turn/time budgets, decision/reason traces, rider counts, band state, shot/reposition/retreat counts, warnings/log spam/crash state, and available per-turn/cadence costs.

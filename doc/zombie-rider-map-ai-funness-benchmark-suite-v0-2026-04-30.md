@@ -69,7 +69,22 @@ Fail:
 - mounted endpoint horror dies on walls like a moth in a pub lamp;
 - it becomes a stationary turret outside the camp forever.
 
-### Test F — local shoot/flee cadence
+### Test F — large-body passage constraints
+
+Purpose: prove the rider's physical scale creates natural movement/counterplay before adding bespoke movement restrictions.
+
+Pass:
+- rider is large/huge by monster size/volume, not merely described as tall;
+- rider cannot path/move through `SMALL_PASSAGE` tiles such as many windows/embrasures;
+- normal passable routes that still allow a huge monster are documented honestly;
+- cover/escape scenarios use the real terrain rules instead of assuming height blocks everything.
+
+Fail:
+- rider is fictionally huge but mechanically medium;
+- tests assume doors/windows block it without checking flags;
+- a new movement system is added before the existing size seam is proven insufficient.
+
+### Test G — local shoot/flee cadence
 
 Purpose: prove ranged mounted combat has rhythm.
 
