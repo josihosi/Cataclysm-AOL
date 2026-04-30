@@ -113,17 +113,17 @@ Red means:
 
 ## Relation to current writhing-stalker lane
 
-This packet should not replace the three basic writhing-stalker live proofs:
+This packet no longer substitutes for the basic writhing-stalker live proofs; those have separate green evidence:
 
-- `writhing_stalker.live_shadow_strike_mcw`
-- `writhing_stalker.live_no_omniscient_beeline_mcw`
-- `writhing_stalker.live_exposed_retreat_mcw`
+- `writhing_stalker.live_shadow_strike_mcw` -> `.userdata/dev-harness/harness_runs/20260430_170528/`
+- `writhing_stalker.live_no_omniscient_beeline_mcw` -> `.userdata/dev-harness/harness_runs/20260430_173555/`
+- `writhing_stalker.live_exposed_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260430_163626/`
 
-Preferred order:
+Next order:
 
-1. prove at least one basic stalker live scene so the monster path is real;
-2. then run this mixed-hostile performance packet;
-3. if Andi can safely prep fixture/scenario/instrumentation first, that is fine, but the report must label any missing stalker live proof honestly.
+1. run this mixed-hostile performance packet;
+2. report metrics and a tuning/readability verdict;
+3. label any missing ingredient or missing metric honestly instead of using setup/startup proof as performance proof.
 
 ## Anti-soup note
 

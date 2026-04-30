@@ -1,0 +1,270 @@
+{
+  "name": "writhing_stalker.live_no_omniscient_beeline_mcw",
+  "description": "Live writhing-stalker no-omniscience negative control: install a harness-only noon/no-human-target fixture with one saved active writhing stalker behind a thick opaque wall, guard saved noon/NPC/stalker/wall footing, advance a live turn window, require target_probe no-target/no-sight lines, require no target=yes/no live_plan latch lines, then save/audit same-run active-monster distance.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_no_evidence_clean_2026-04-30",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "writhing_stalker target_probe:",
+    "target=no",
+    "sees_player=no",
+    "turns_since_target="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_clean_no_evidence_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the harness-only clean no-evidence McWilliams fixture loads to the normal live map with the stalker already present in saved active_monsters"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_noon_before_no_evidence_window",
+      "required_time_of_day_seconds": 43200,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_no_evidence_noon_setup_missing",
+      "abort_reason": "installed save did not prove local noon before the no-evidence writhing-stalker negative-control window",
+      "expected_visible_fact": "saved-player turn metadata proves the fixture is at local noon, so the negative control has no night-light lure"
+    },
+    {
+      "kind": "audit_saved_overmap_npcs",
+      "label": "audit_saved_no_human_npcs_before_no_evidence_window",
+      "scan_all_overmaps": true,
+      "required_observed_npc_count": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_no_evidence_human_target_present",
+      "abort_reason": "installed save still contained overmap NPC human targets before the no-evidence writhing-stalker negative-control window",
+      "expected_visible_fact": "saved-overmap metadata proves no NPC human target remains in the fixture before the negative-control window"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_writhing_stalker_before_no_evidence_window",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            10,
+            0,
+            0
+          ],
+          "min_distance_to_player": 6
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_no_evidence_active_monster_missing",
+      "abort_reason": "installed save did not contain exactly the intended mon_writhing_stalker footing before the no-evidence live window",
+      "expected_visible_fact": "saved active_monsters metadata proves one hostile mon_writhing_stalker is staged at a known plausible distance behind the opaque wall before live turns advance"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_saved_opaque_wall_before_no_evidence_window",
+      "offsets": [
+        [
+          4,
+          -6,
+          0
+        ],
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          4,
+          6,
+          0
+        ],
+        [
+          6,
+          -6,
+          0
+        ],
+        [
+          6,
+          0,
+          0
+        ],
+        [
+          6,
+          6,
+          0
+        ],
+        [
+          8,
+          -6,
+          0
+        ],
+        [
+          8,
+          0,
+          0
+        ],
+        [
+          8,
+          6,
+          0
+        ]
+      ],
+      "required_furniture": [
+        "f_locker"
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_no_evidence_wall_missing",
+      "abort_reason": "installed save did not prove the thick opaque locker wall between player and stalker",
+      "expected_visible_fact": "saved-map metadata proves a thick opaque locker wall stands between the player and the staged writhing stalker before live turns advance"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_no_evidence_window",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off before the no-evidence turn window so any turn advancement is not consumed by a safe-mode warning prompt"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_clean_no_evidence_negative_window",
+      "count": 80,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "writhing_stalker target_probe:",
+        "target=no",
+        "sees_player=no",
+        "turns_since_target="
+      ],
+      "expected_visible_fact": "a live turn window runs with a staged stalker, no human/NPC target, noon lighting, and a thick opaque wall; proof depends on same-run target_probe no-target/no-sight lines plus forbidden-line guards",
+      "failure_rule": "if the artifact delta lacks no-target/no-sight target_probe lines or contains target=yes/sees_player=yes/live_plan lines, this negative control is red rather than green"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_writhing_stalker_no_evidence_target_probe",
+      "since_label": "advance_clean_no_evidence_negative_window",
+      "required_line_patterns": [
+        [
+          "writhing_stalker target_probe:",
+          "target=no",
+          "sees_player=no",
+          "friendly=0",
+          "turns_since_target="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_writhing_stalker_no_evidence_target_probe_missing",
+      "abort_reason": "same-run debug artifact did not contain writhing-stalker target_probe lines proving no target and no player sight during the negative window",
+      "expected_visible_fact": "same-run debug artifact proves the live monster-plan target acquisition phase saw no target and no direct player sight for the staged stalker"
+    },
+    {
+      "kind": "audit_log_not_contains",
+      "label": "audit_writhing_stalker_no_evidence_no_target_or_live_plan",
+      "since_label": "advance_clean_no_evidence_negative_window",
+      "forbidden_patterns": [
+        "writhing_stalker live_plan:"
+      ],
+      "forbidden_line_patterns": [
+        [
+          "writhing_stalker target_probe:",
+          "target=yes"
+        ],
+        [
+          "writhing_stalker target_probe:",
+          "sees_player=yes"
+        ],
+        [
+          "writhing_stalker live_plan:",
+          "decision=strike"
+        ],
+        [
+          "writhing_stalker live_plan:",
+          "decision=shadow"
+        ],
+        [
+          "writhing_stalker live_plan:",
+          "decision=cooling_off"
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "red_writhing_stalker_no_evidence_target_or_live_plan_present",
+      "abort_reason": "same-run debug artifact contained a target/sight/live_plan line despite the clean no-evidence/no-human/no-sight setup",
+      "expected_visible_fact": "same-run debug artifact contains no target=yes, no sees_player=yes, and no writhing_stalker live_plan line, proving the no-evidence setup did not create a magic latch, shadow, beeline, strike, or cooldown refresh"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_writhing_stalker_no_evidence_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the no-evidence negative window and before the save/writeback request"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_writhing_stalker_no_evidence_window",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_no_evidence_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the writhing-stalker no-evidence save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the no-evidence live window; confirmation must not be sent before this prompt is proven"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_writhing_stalker_no_evidence_window",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_writhing_stalker_no_evidence_save",
+      "failure_rule": "uppercase-Y confirmation is only trusted if the following saved-player mtime gate proves same-run writeback",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime gate can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_writhing_stalker_no_evidence_save",
+      "changed_since_label": "audit_player_save_mtime_before_writhing_stalker_no_evidence_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_no_evidence_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the writhing-stalker no-evidence save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed writhing-stalker no-evidence save, proving the following active_monsters audit reads same-run state"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_writhing_stalker_after_no_evidence_scene",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "min_distance_to_player": 4
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_writhing_stalker_no_evidence_target_state",
+      "abort_reason": "saved active_monsters metadata did not contain a mon_writhing_stalker still at least four map squares from the player after the no-evidence window",
+      "expected_visible_fact": "same-run saved active_monsters metadata contains the live writhing stalker still away from the player after the no-evidence/no-latch window"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_no_omniscient_beeline_mcw",
+  "evidence_contract": {
+    "claim": "a writhing stalker can exist nearby in a plausible cluttered/noon setup with no direct sight, no night-light lure, no NPC/human target, and no player-produced clue without creating an instant omniscient target, latch, beeline, strike, or cooldown refresh",
+    "setup_guard": "the run uses harness-only game_turn, remove-overmap-NPC, active_monsters, and opaque furniture save transforms plus saved-turn/NPC/stalker/map-tile audits before live turns; it does not synthesize stalker AI state, player vulnerability, night light, fields, lamps, or human evidence",
+    "load_only_verdict": "load proof only / inconclusive for writhing-stalker no-omniscience behavior",
+    "failure_rule": "No no-omniscience credit if startup/load, saved noon guard, no-human-target guard, saved active-monster footing, saved opaque-wall guard, safe-mode-off live turn window, same-run no-target target_probe lines, forbidden target/live-plan absence, save/writeback, and active-monster distance metadata are not all present and classified separately."
+  }
+}

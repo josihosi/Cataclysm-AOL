@@ -1,0 +1,724 @@
+{
+  "name": "mcwilliams_live_debug_no_evidence_clean_2026-04-30",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only clean no-evidence McWilliams restage for writhing-stalker negative-control proof. It removes overmap NPC human targets, sets local noon, places a thick opaque locker wall east of the player, and seeds exactly one hostile mon_writhing_stalker at a known offset behind that wall via active_monsters save transform.",
+  "save_transforms": [
+    {
+      "kind": "remove_overmap_npcs",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true
+    },
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5227200
+    },
+    {
+      "kind": "map_furniture_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "furniture": [
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            -8,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            -7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            -6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            -5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            -4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            -3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            -2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            4,
+            8,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            -8,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            -7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            -6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            -5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            -4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            -3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            -2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            5,
+            8,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            -8,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            -7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            -6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            -5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            -4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            -3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            -2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            6,
+            8,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            -8,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            -7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            -6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            -5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            -4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            -3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            -2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            7,
+            8,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            -8,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            -7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            -6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            -5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            -4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            -3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            -2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            -1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            0,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            1,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            2,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            3,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            4,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            5,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            6,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            7,
+            0
+          ]
+        },
+        {
+          "id": "f_locker",
+          "offset_ms": [
+            8,
+            8,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            10,
+            0,
+            0
+          ],
+          "hp": 90,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}
