@@ -266,11 +266,13 @@ Credited setup/evidence:
 
 Green means stalker holds/withdraws instead of brainless melee until death.
 
-### Green live packet D — mixed hostile performance metrics
+### Green/yellow live packet D — mixed hostile performance metrics
 
-Proposed scenario: `performance.mixed_hostile_stalker_horde_mcw`
+Scenario: `performance.mixed_hostile_stalker_horde_mcw`
 
-Contract: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
+Status: **GREEN/YELLOW** at `.userdata/dev-harness/harness_runs/20260430_181748/`. The run is green for Josef's requested metrics packet and yellow only for attribution: horde presence is proven, but horde cost is `not instrumented` separately.
+
+Contract/report: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
 
 Setup:
 
@@ -294,6 +296,8 @@ Required report:
 
 Green means the mixed scene completes with real metrics from live paths. Startup/load-only, setup-only, or missing-ingredient runs are not green.
 
+Credited evidence: preflight audits prove one active bandit stalk job, one active cannibal stalk job, one `mon_writhing_stalker`, and one nearby `mon_zombie` horde; the run completes `500` sampled turns plus a bounded `30m` wait; saved turn delta is `2300`; timing rows include average `236.239ms/turn`, `bandit_live_world perf:` `total_us` max `3777`, stalker `eval_us` max `54`, and no crash/stderr/debug-error flood. Full tuning notes are in the mixed-hostile report.
+
 ### Optional Josef playtest prompts
 
 Josef should not be a blocker, but if he plays it, ask only product questions:
@@ -316,8 +320,8 @@ Josef should not be a blocker, but if he plays it, ask only product questions:
 - [x] Live packet A stalk/strike green.
 - [x] Live packet B no-omniscient-beeline green.
 - [x] Live packet C exposed/focus retreat green or explicitly future-only.
-- [ ] Mixed hostile performance packet `performance.mixed_hostile_stalker_horde_mcw` records bandit camp + cannibal camp + stalker + horde metrics, or is explicitly classified as follow-up/future-only.
-- [ ] Tuning readout records too-fast/too-tanky/too-common/too-stupid/too-expensive verdict.
+- [x] Mixed hostile performance packet `performance.mixed_hostile_stalker_horde_mcw` records bandit camp + cannibal camp + stalker + horde metrics, or is explicitly classified as follow-up/future-only.
+- [x] Tuning readout records too-fast/too-tanky/too-common/too-stupid/too-expensive verdict.
 
 ## Future-only after v0
 

@@ -16,12 +16,13 @@ Links:
 - imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`
 - contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`
 - testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`
-- mixed-hostile performance playtest: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
+- mixed-hostile performance playtest/report: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
 
-Current state boundary: monster/stat/spawn footing, deterministic stalker-interest/latch/approach/opportunity/withdraw substrate, first live monster-plan seam wiring, split live spawn/target footing, exposed/focused withdrawal scene proof, midnight vulnerable-player shadow/strike proof, and the no-omniscience negative control are implemented and validated. `monster::plan()` consumes `writhing_stalker::evaluate_live_response()` for `mon_writhing_stalker` local-evidence gating, shadow positioning, strike targeting, and withdrawal/cooldown routing; same-run harness proof now shows a saved active stalker can exist nearby at noon with no NPC/human target, no direct player sight, and no valid clue without creating a magic target, `live_plan` latch, beeline, strike, or cooldown refresh. V0 adds no new persisted latch state; it reuses existing monster effect state for short cooldown. Deterministic tests and spawn/target footing remain support evidence only.
+Current state boundary: `CAOL-WRITHING-STALKER-v0` has reached a green v0 evidence packet for post-crunch review. Monster/stat/spawn footing, deterministic stalker-interest/latch/approach/opportunity/withdraw substrate, first live monster-plan seam wiring, split live spawn/target footing, exposed/focused withdrawal scene proof, midnight vulnerable-player shadow/strike proof, no-omniscience negative control, and Josef's mixed-hostile performance metrics/tuning readout are recorded. V0 adds no new persisted latch state; it reuses existing monster effect state for short cooldown.
 
-1. Run `performance.mixed_hostile_stalker_horde_mcw` from `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md` (bandit camp + cannibal camp + one writhing stalker + horde, with metrics).
-2. Record tuning/performance readout: too common, too fast, too tanky, too invisible, too honest, too stupid, or too expensive under mixed hostile load.
-3. Run the smallest honest gates after the performance slice, then update `TESTING.md`, `SUCCESS.md`, and `doc/work-ledger.md` with exact evidence.
+Review queue:
+1. Frau/Schani post-crunch review of the mixed-hostile metrics caveat: horde presence is proven by saved setup audit, but horde cost is `not instrumented` separately in `.userdata/dev-harness/harness_runs/20260430_181748/`.
+2. If review accepts that caveat for v0, close `CAOL-WRITHING-STALKER-v0` and have Schani/Josef promote the next lane; do not invent one from held/parked work.
+3. If review wants a stricter horde metric, add a targeted horde timing counter/probe rather than rerunning the same mixed-hostile scenario.
 
 Do **not** implement bandit shakedown/camp logic, Basecamp economy hooks, common spawn spam, teleport ambushes, global exact scans, or long-term nemesis arcs in v0.

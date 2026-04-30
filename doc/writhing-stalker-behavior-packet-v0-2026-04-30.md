@@ -148,18 +148,20 @@ Required proof types:
 
 Close `CAOL-WRITHING-STALKER-v0` only when:
 
-- [ ] The monster/stat/spawn footing exists and validates.
-- [ ] Spawn rarity/singleton rules are tested or otherwise proven.
-- [ ] Stalker latch/opportunity/withdraw decisions have deterministic tests.
-- [ ] Direct player/human evidence can create a bounded latch without omniscience.
-- [ ] Weak/no evidence decays or fails to latch.
-- [ ] Zombie pressure can increase opportunity without becoming a magic player locator.
-- [ ] Strike behavior is short cut/bleed pressure rather than a tank duel.
-- [ ] Withdrawal/cooldown prevents immediate repeat spam.
-- [ ] Save/load preserves any new stalker state, or the packet explicitly avoids new persisted state.
-- [ ] Live/harness proof shows a real stalk/hold/strike/withdraw scene from the game path.
-- [ ] Live/harness negative/control proof shows no instant beeline with no valid evidence.
+- [x] The monster/stat/spawn footing exists and validates.
+- [x] Spawn rarity/singleton rules are tested or otherwise proven.
+- [x] Stalker latch/opportunity/withdraw decisions have deterministic tests.
+- [x] Direct player/human evidence can create a bounded latch without omniscience.
+- [x] Weak/no evidence decays or fails to latch.
+- [x] Zombie pressure can increase opportunity without becoming a magic player locator.
+- [x] Strike behavior is short cut/bleed pressure rather than a tank duel.
+- [x] Withdrawal/cooldown prevents immediate repeat spam.
+- [x] Save/load preserves any new stalker state, or the packet explicitly avoids new persisted state.
+- [x] Live/harness proof shows a real stalk/hold/strike/withdraw scene from the game path.
+- [x] Live/harness negative/control proof shows no instant beeline with no valid evidence.
 - [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final closed/next state.
+
+Post-crunch review note: the v0 evidence packet is green for review after `.userdata/dev-harness/harness_runs/20260430_181748/` added Josef's mixed-hostile metrics/tuning readout. The remaining unchecked line is canon alignment/closure review, not missing gameplay proof. The mixed-hostile horde caveat is explicit: horde presence is proven by saved setup audit, but horde cost is `not instrumented` separately.
 
 ## Open tuning questions
 

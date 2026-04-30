@@ -1,0 +1,262 @@
+{
+  "name": "performance.mixed_hostile_stalker_horde_mcw",
+  "description": "Mixed hostile performance packet for CAOL-MIXED-HOSTILE-PERF-v0. The fixture pre-stages one active bandit site, one active cannibal site, one writhing stalker, and one overmap horde near the player, then measures a 500-turn sampled local window and a bounded 30-minute wait window. This is a metrics/readability probe for already-promoted hostile systems, not a natural dispatch or horde-attraction proof.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "performance_mixed_hostile_stalker_horde_v0_2026-04-30",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world perf:",
+    "sites=2",
+    "active_sites=2",
+    "active_job_mix=",
+    "camp_style:stalk=1",
+    "cannibal_camp:stalk=1",
+    "writhing_stalker target_probe:",
+    "writhing_stalker live_plan:",
+    "eval_us=",
+    "total_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_mixed_hostile_perf_fixture_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "post-load gameplay screen for the mixed hostile performance fixture; startup/load plus fixture footing only"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_mixed_perf_bandit_active_job",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_active_group_id_contains": "fixture_active_pressure",
+      "required_active_target_id_prefix": "performance_mixed:bandit@140,51,0",
+      "required_active_job_type": "stalk",
+      "required_member_count": 4,
+      "required_active_outside_count": 4,
+      "required_min_active_member_ids": 4,
+      "required_active_members_found": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_mixed_perf_bandit_active_job",
+      "abort_reason": "preflight saved bandit_live_world site did not contain the active bandit stalk job needed before the mixed hostile performance window",
+      "expected_immediate_state": "saved bandit_live_world contains one active bandit stalk job with live/findable active members before measurement starts"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_mixed_perf_cannibal_active_job",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_site_id_contains": "overmap_special:cannibal_camp@150,39,0",
+      "required_active_group_id_contains": "fixture_active_pressure",
+      "required_active_target_id_prefix": "performance_mixed:cannibal@150,39,0",
+      "required_active_job_type": "stalk",
+      "required_member_count": 2,
+      "required_active_outside_count": 2,
+      "required_min_active_member_ids": 2,
+      "required_active_members_found": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_mixed_perf_cannibal_active_job",
+      "abort_reason": "preflight saved bandit_live_world site did not contain the active cannibal stalk job needed before the mixed hostile performance window",
+      "expected_immediate_state": "saved bandit_live_world contains one active cannibal stalk job with live/findable active members before measurement starts"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "preflight_mixed_perf_writhing_stalker",
+      "required_monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "offset_ms": [
+            8,
+            0,
+            0
+          ],
+          "min_distance_to_player": 6
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_mixed_perf_stalker_footing",
+      "abort_reason": "preflight saved active_monsters did not contain the single staged mon_writhing_stalker needed for mixed hostile performance",
+      "expected_immediate_state": "saved active_monsters contains one staged mon_writhing_stalker at a known nearby but non-adjacent offset"
+    },
+    {
+      "kind": "audit_saved_hordes_near_player",
+      "label": "preflight_mixed_perf_horde",
+      "required_hordes": [
+        {
+          "monster_id": "mon_zombie",
+          "offset_ms": [
+            0,
+            -240,
+            0
+          ],
+          "destination_offset_ms": [
+            0,
+            -120,
+            0
+          ],
+          "tracking_intensity": 10,
+          "moves": 0
+        }
+      ],
+      "radius_ms": 360,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_mixed_perf_horde_footing",
+      "abort_reason": "preflight saved overmap horde metadata did not contain the staged zombie horde needed for mixed hostile performance",
+      "expected_immediate_state": "saved overmap horde_map contains one nearby zombie horde with destination/tracking metadata before measurement starts"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "preflight_mixed_perf_game_turn_baseline",
+      "record_baseline": true,
+      "expected_visible_fact": "saved-player turn baseline is recorded before the sampled and wait measurement windows"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_mixed_perf_window",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off before the sampled local-turn performance window"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "measure_500_turns_mixed_hostile_sample",
+      "count": 500,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "500 individual turn advances run on the preflight-proven mixed hostile fixture; the step timing records sampled local per-turn wall-clock cost"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_mixed_perf_sample_stalker_artifact",
+      "since_label": "measure_500_turns_mixed_hostile_sample",
+      "required_any_line_patterns": [
+        [
+          "writhing_stalker live_plan:",
+          "eval_us="
+        ],
+        [
+          "writhing_stalker target_probe:",
+          "turns_since_target="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_mixed_perf_sample_stalker_artifact_missing",
+      "abort_reason": "same-run 500-turn sample did not contain writhing-stalker live target/probe instrumentation",
+      "expected_visible_fact": "same-run debug artifact proves the staged writhing stalker reached its live target/probe or live-plan instrumentation during the sampled window"
+    },
+    {
+      "kind": "wait_action",
+      "label": "measure_30_minutes_mixed_hostile_cadence",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "alarm/wait mode menu is visible, then Wait a while is chosen before the duration menu for the mixed hostile cadence window",
+      "completion_wait_seconds": 12.0,
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "artifact_state_patterns": [
+        "bandit_live_world perf:",
+        "sites=2",
+        "active_sites=2",
+        "active_job_mix=",
+        "camp_style:stalk=1",
+        "cannibal_camp:stalk=1",
+        "signals=0",
+        "total_us="
+      ],
+      "expected_visible_fact": "the player waited through a bounded 30-minute hostile overmap cadence window after preflight established one active bandit site, one active cannibal site, one writhing stalker, and one horde",
+      "failure_rule": "If the wait is interrupted or the artifact delta lacks two-active-site perf/cadence lines, the performance row is yellow/red rather than green."
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_mixed_perf_cadence_artifact",
+      "since_label": "measure_30_minutes_mixed_hostile_cadence",
+      "required_line_patterns": [
+        [
+          "bandit_live_world perf:",
+          "sites=2",
+          "active_sites=2",
+          "active_job_mix=",
+          "camp_style:stalk=1",
+          "cannibal_camp:stalk=1",
+          "signals=0",
+          "total_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_mixed_perf_cadence_artifact_missing",
+      "abort_reason": "same-run debug artifact did not contain compact mixed hostile two-site perf counters after the 30-minute wait",
+      "expected_visible_fact": "same-run debug artifact proves the hostile overmap cadence emitted compact perf counters for one bandit active job and one cannibal active job"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_mixed_perf_save",
+      "expected_visible_fact": "saved-player file mtime baseline is recorded after the mixed hostile measurement windows and before save/writeback"
+    },
+    {
+      "kind": "press",
+      "label": "open_save_prompt_after_mixed_perf_windows",
+      "keys": [
+        "S"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 64,
+      "expected_screen_text_after_contains": [
+        "quit",
+        "Case Sensitive"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_untrusted_mixed_perf_save_writeback",
+      "abort_reason": "screen text did not prove the case-sensitive Save and quit prompt before confirming the mixed hostile performance save",
+      "expected_visible_fact": "the case-sensitive Save and quit prompt is open after the mixed hostile measurement windows"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_save_after_mixed_perf_windows",
+      "keys": [
+        "Y"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "proof_deferred_to_label": "audit_player_save_mtime_after_mixed_perf_save",
+      "expected_visible_fact": "the proven case-sensitive save prompt is confirmed with uppercase Y so the following mtime and saved-turn gates can prove same-run writeback"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_mixed_perf_save",
+      "changed_since_label": "audit_player_save_mtime_before_mixed_perf_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_mixed_perf_save_writeback",
+      "abort_reason": "saved-player file mtime did not advance after confirming the mixed hostile performance save",
+      "expected_visible_fact": "saved-player file mtime advanced after the confirmed mixed hostile performance save"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_game_turn_after_mixed_perf_windows",
+      "baseline_label": "preflight_mixed_perf_game_turn_baseline",
+      "required_min_delta_turns": 500,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_mixed_perf_turn_delta",
+      "abort_reason": "saved-player turn counter did not advance by at least the sampled 500-turn window after mixed hostile measurement and save/writeback",
+      "expected_visible_fact": "saved-player turn metadata proves live game time advanced through at least the 500 sampled turns before save/writeback"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe performance.mixed_hostile_stalker_horde_mcw",
+  "evidence_contract": {
+    "claim": "one active bandit site, one active cannibal site, one writhing stalker, and one nearby overmap horde can coexist through a 500-turn sample plus a 30-minute live hostile-overmap cadence window while emitting compact performance/readability metrics",
+    "setup_label": "pre-staged active hostile load",
+    "load_only_verdict": "load proof only / inconclusive for performance",
+    "failure_rule": "No mixed hostile performance credit if startup/load, all four saved setup ingredients, sampled 500-turn timing, stalker live instrumentation, bounded 30-minute wait/cadence artifact lines, save/writeback, and saved turn delta are not classified separately. Horde direct timing may be reported as not instrumented if present but not separately timed."
+  }
+}
