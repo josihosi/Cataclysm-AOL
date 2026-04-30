@@ -16,6 +16,36 @@ Use this file so completion is explicit instead of vibes-based.
 
 ---
 
+## Bandit structural bounty overmap completion packet v0
+
+Status: ACTIVE / GREENLIT IMPLEMENTATION PACKET
+
+Success state:
+- [x] Structural OMT classifier exists and deterministic tests cover forest/town/open classes.
+- [ ] Per-camp bounded structural scan seeds sparse camp-map leads without global scanning.
+- [ ] Harvested/dangerous/recently-checked debounce prevents immediate repeat interest.
+- [ ] Non-player structural outing planner can send a small bandit dispatch to forest/town structural bounty.
+- [ ] Abstract outing resolver reveals threat at stalking distance, subtracts it from effective bounty/interest, and only consumes structural bounty on arrival if interest survives.
+- [x] Player/NPC mobile bounty remains attached to actors/routes and does not permanently upgrade terrain.
+- [ ] Save/load preserves structural leads, active outings, harvested/dangerous outcomes, and member state.
+- [ ] Deterministic 500-turn tests prove bandits do not get stuck repeating the same harvested/dangerous tile.
+- [ ] Performance tests/counters prove scan/outing work is bounded for multi-camp scenarios.
+- [ ] Live/harness feature-path proof shows an idle camp dispatching to structural forest/town bounty without player smoke/light/direct-range bait.
+- [ ] Live/harness proof shows stalking-distance threat/interest writeback, optional later arrival harvest, and no immediate repeat of the consumed/dangerous target.
+- [ ] Existing player smoke/light signal dispatch behavior still passes its relevant tests and is not regressed.
+- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, and `TESTING.md` match the final active/closed state.
+
+Current boundary:
+- Phase 1 deterministic substrate is locally green for classifier, structural lead id/upsert, harvested/dangerous helper suppression, and mobile-actor/ground separation.
+- Phase 2 scan/seed cadence is the next execution slice; no live game claim is credited yet.
+
+Notes:
+- Imagination source lives at `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
+- Canonical contract lives at `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`.
+
+
+---
+
 ## GitHub Actions CI recovery + checkpoint packet v0
 
 Status: CLOSED / CHECKPOINTED
@@ -37,7 +67,7 @@ Compact reference:
 
 ## GitHub normal-download release packet v0
 
-Status: GREENLIT / HELD BEHIND DEBUG-CORRECTION STACK
+Status: HELD / NOT CURRENTLY PROMOTED
 
 Success state:
 - [ ] A new public GitHub release exists on `josihosi/Cataclysm-AOL` with a deliberate tag/version and clear release notes.
@@ -49,7 +79,7 @@ Success state:
 Notes:
 - Canonical contract lives at `doc/github-normal-download-release-packet-v0-2026-04-25.md`.
 - Current latest stable release observed before packaging: `v0.2.0` / `Cataclysm - Arsenic and Old Lace v0.2.0`.
-- This was queued behind CI recovery and became active after `c5ff712e01` went green across General, Windows, CodeQL, IWYU, and Clang-tidy. It is now held behind Josef's 2026-04-26 debug-correction stack so Andi can remove hollow code/test-to-game gaps before release publishing.
+- This packet was once queued after CI recovery went green, but current `Plan.md` / `TODO.md` promote no active or greenlit execution target. Release/download work needs an explicit Schani/Josef promotion before Andi treats it as active.
 
 ---
 
@@ -125,22 +155,26 @@ Compact reference:
 - Canonical contract lives at `doc/c-aol-harness-trust-audit-and-proof-freeze-packet-v0-2026-04-27.md`.
 - Inventory checkpoint lives at `doc/c-aol-harness-trust-audit-inventory-v0-2026-04-27.md`.
 - Frozen proof matrix lives at `doc/c-aol-harness-proof-freeze-matrix-v0-2026-04-28.md`.
-- Closure review on 2026-04-28: no remaining process-audit seam blocks checkpoint closure. Concrete product seams remain outside this lane: fuel Multidrop exact-`2x4` visibility is red/blocked, Smart Zone live layout is implemented-but-unproven/Josef-package, and real fire/bandit signal proof remains blocked behind fuel.
+- Closure review on 2026-04-28: no remaining process-audit seam blocks checkpoint closure. At that time, concrete product seams remained outside this lane: fuel Multidrop exact-`2x4` visibility was red/blocked, Smart Zone live layout was implemented-but-unproven/Josef-package, and real fire/bandit signal proof was blocked behind fuel. Later proof packets supersede those product seams where explicitly recorded below.
 - Validation for closure review: `python3 tools/openclaw_harness/proof_classification_unit_test.py` (6 tests, OK).
 
 ---
 
 ## C-AOL actual playtest verification stack v0
 
-Status: GREENLIT / ACTUAL PLAYTEST STACK
+Status: CLOSED / CHECKPOINTED READY FOR SCHANI REVIEW
 
 Success state:
-- [x] Fuel continuation behind the green brazier deploy gate has an honest outcome: instrumented run `.userdata/dev-harness/harness_runs/20260427_231210/` keeps the chain non-green after the Multidrop `plank` filter redraw shows zero visible rows and `CONFIRM` blocks with `selected_stacks=0 total_selected_qty=0`; follow-up row-specific diagnostic `.userdata/dev-harness/harness_runs/20260427_232220/` names the current blocker as `blocked_untrusted_drop_filter_or_inventory_visibility` because filtered Multidrop has no selectable `typeid="2x4"` fuel row. No count selection, confirm-return, save request, post-fuel mtime/current-tile `2x4`/lighter/`fd_fire` proof is credited.
-- [x] Smart Zone Manager live layout verification reached an honest non-green boundary: deterministic geometry/separation remains support only, the precise manual recipe is packaged in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`, and current-runtime rerun `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` is startup/load red only (`Dunn has no characters to load`) with no feature/layout proof credited.
-- [ ] Player-lit fire/bandit signal verification, if reached, proves real player-action ignition, actual `fd_fire`/smoke/light state, bounded wait/time passage, and bandit signal response with matching artifacts under `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`; otherwise it stays blocked behind the fuel gate.
-- [ ] Roof-fire horde detection proof, if reached after real player-lit fire is green, proves the debug-staged horde/distance setup, player roof/elevated position, real player-created roof fire/light/smoke, bounded wait/time passage, and horde before/after detection or response metadata; otherwise it stays blocked behind the real-fire gate.
+- [x] Fuel continuation behind the green brazier deploy gate has an honest old-path outcome: instrumented run `.userdata/dev-harness/harness_runs/20260427_231210/` keeps the chain non-green after the Multidrop `plank` filter redraw shows zero visible rows and `CONFIRM` blocks with `selected_stacks=0 total_selected_qty=0`; follow-up row-specific diagnostic `.userdata/dev-harness/harness_runs/20260427_232220/` names the current blocker as `blocked_untrusted_drop_filter_or_inventory_visibility` because filtered Multidrop has no selectable `typeid="2x4"` fuel row. No count selection, confirm-return, save request, post-fuel mtime/current-tile `2x4`/lighter/`fd_fire` proof is credited from that path.
+- [x] Fuel writeback repair via wood source zone preserves the old-path non-proof history without reopening it: `.userdata/dev-harness/harness_runs/20260429_090634/`, `_093118/`, `_093509/`, `_095021/`, `_122807/`, `_122955/`, and final diagnostic `.userdata/dev-harness/harness_runs/20260429_142257/` remain blocker/postmortem evidence only; `fuel_writeback_source_zone_v0_2026-04-29` remains retired and must not be used for fire/lighter proof.
+- [x] Fuel normal-map entry primitive is green at `.userdata/dev-harness/harness_runs/20260429_140645/`: setup footing and normal gameplay map UI are proven, with raw JSON/item-info/stale/debug screens red-blocked before action keys. Canonical contract: `doc/fuel-normal-map-entry-primitive-packet-v0-2026-04-29.md`.
+- [x] Fuel writeback repair via wood source zone proves the visible/operational deployed-brazier gate at `.userdata/dev-harness/harness_runs/20260429_144805/`: normal Apply inventory -> filtered `brazier` -> `Deploy where?` -> east/right placement, look/OCR `hrazıer` + `burn things`, saved `f_brazier` + `log`, saved `SOURCE_FIREWOOD`, no lighter/fire keys.
+- [x] Real player source-zone fire is green at `.userdata/dev-harness/harness_runs/20260429_153253/`: normal Apply inventory deployed `brazier`, normal Apply inventory selected charged `lighter`, exact `Light where?` UI trace opened before targeting, source-firewood prompt and recognizable ignition OCR were captured, save mtime advanced, and saved target tile contains `f_brazier` + `fd_fire`. Canonical proof: `doc/fuel-visible-brazier-source-zone-firestarter-action-v0-2026-04-29.md`.
+- [x] Smart Zone Manager live layout verification first reached an honest non-green boundary: deterministic geometry/separation remained support only, the precise manual recipe was packaged in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`, and current-runtime rerun `.userdata/smart-zone-safe-clean-20260427/harness_runs/20260428_001347/` was startup/load red only (`Dunn has no characters to load`) with no feature/layout proof credited. This historical boundary is superseded by the later green live coordinate-label proof recorded below.
+- [x] Player-lit fire/bandit signal verification is green at `.userdata/dev-harness/harness_runs/20260429_162100/`: starting from the real player source-zone fire evidence at `.userdata/dev-harness/harness_runs/20260429_153253/`, fixture `player_lit_fire_bandit_signal_wait_v0_2026-04-29` adds mineral water plus an `AUTO_DRINK` zone, scenario `bandit.player_lit_fire_signal_wait_mcw` proves 30-minute bounded wait/time passage (`observed_delta_turns=1800`), same-run live smoke/fire signal scan/maintenance, `bandit_camp` dispatch with `candidate_reason=live_signal`, and saved active scout response metadata with `known_recent_marks` including `live_smoke@140,41,0`. Canonical proof: `doc/player-lit-fire-bandit-signal-verification-v0-2026-04-29.md`.
+- [x] Roof-fire horde detection proof is green at `.userdata/dev-harness/harness_runs/20260429_180239/`: split-run fixture `roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29` and scenario `bandit.roof_fire_horde_split_wait_from_player_fire_mcw` load the saved player-created roof-fire world from `.userdata/dev-harness/harness_runs/20260429_172847/`, re-audit roof/elevated `t_tile_flat_roof` + `f_brazier` + `fd_fire`, prove bounded time passage (`observed_delta_turns=300`), capture live roof-fire horde light-signal artifacts (`horde_signal_power=20`, `elevated_roof_exposed=yes`, `vertical_sightline=yes`), and save staged-horde response metadata (`destination_ms` retargeted to `[3360,984,1]`, `moves=8400`, `last_processed=5267242`). Product seam: `live_bandit_fire_source_is_elevated_roof_exposed` treats elevated `t_flat_roof` / `t_tile_flat_roof` fire sources as exposed roof signals. Boundary: `tracking_intensity` remained `0`, so the credited response is retarget/movement-budget metadata, not positive tracking-intensity proof. Canonical proof: `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`.
 - [x] Bandit empty-camp retirement proof implements the conjunctive predicate: a camp/site retires from active AI calculations only when no home/inside live members or spawn-tile home headcount remain **and** no active dispatch/outbound/local-contact pressure remains. Deterministic coverage proves home-only, active-dispatch-only, unresolved returning-home/contact negative cases, plus the fully empty positive case and `retired_empty_site` report/dispatch/signal guards. Canonical contract: `doc/bandit-empty-camp-retirement-audit-mode-packet-v0-2026-04-28.md`.
-- [ ] Andi reports evidence class boundaries intact: live product proof vs deterministic support vs startup/load vs unproven.
+- [x] Andi reports evidence class boundaries intact: the old Multidrop fuel path remains red/non-green at the visibility/writeback gate; the new fuel repair proves normal source-zone ignition + saved `fd_fire`; player-lit source-zone fire -> bandit signal response is green; roof-fire horde detection is green only through the split-run roof/elevated proof above; Smart Zone live layout is green only through the later reopened coordinate-label proof, not the old deterministic/startup attempts; performance rows are live-path performance-load evidence; the pre-staged three/four-site rows are not natural multi-site player-pressure proof; startup/load, deterministic support, live product proof, and unproven seams stay separately labeled.
 
 Compact reference:
 - Canonical contract lives at `doc/c-aol-actual-playtest-verification-stack-v0-2026-04-27.md`.
@@ -149,16 +183,16 @@ Compact reference:
 
 ## Cannibal camp confidence-push live playtest packet v0
 
-Status: GREENLIT / QUEUED CONFIDENCE-PUSH PLAYTEST
+Status: COMPLETE / CONFIDENCE UPLIFT GREEN
 
 Success state:
-- [ ] A compact live/harness matrix records the five proposed shapes or names which could not be honestly staged: wandering day pressure, night mistake/contact, reload brain, different-seed repeat, and bandit contrast control.
-- [ ] At least one broader wandering/day pressure run reaches the real live dispatch/signal path and supports the closed cannibal behavior claim without instant daytime suicide.
-- [ ] At least one night/contact run reaches real local-contact behavior and supports pack-forward danger under darkness/concealment.
-- [ ] Save/reload continuation proves active cannibal group/profile/target/job state stays coherent after reload.
-- [ ] A different-seed/different-footing run reduces fixture-bias risk.
-- [ ] A bandit contrast control preserves the shakedown/pay/fight distinction while cannibal contact remains no-shakedown.
-- [ ] The final verdict updates confidence honestly: higher confidence, green with watchlist, blocked by harness/fixture gap, or red with a specific bug/tuning gap.
+- [x] A compact live/harness matrix records the five proposed shapes and their current status: `doc/cannibal-camp-confidence-push-live-playtest-matrix-v0-2026-04-29.md`.
+- [x] At least one broader wandering/day pressure run reaches the real live dispatch/signal path and supports the closed cannibal behavior claim without instant daytime suicide: `.userdata/dev-harness/harness_runs/20260429_013310/`, scenario `cannibal.live_world_day_smoke_pressure_mcw`, current window/runtime `782d8edabd`, 2/2 green step ledger, `feature_proof=true`, matched live smoke/signal path, `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, `combat_forward=no`, and `signal_packet=live_smoke@`.
+- [x] At least one night/contact run reaches real local-contact behavior and supports pack-forward danger under darkness/concealment: `.userdata/dev-harness/harness_runs/20260429_014900/`, scenario `cannibal.live_world_night_local_contact_pack_mcw`, current window/runtime `acfe6fd0ce`, 2/2 green step ledger, `feature_proof=true`, matched real local-contact pack-forward path, `profile=cannibal_camp`, `posture=attack_now`, `pack_size=2`, `darkness_or_concealment=yes`, `local_contact=yes`, `shakedown=no`, and `combat_forward=yes`.
+- [x] Save/reload continuation proves active cannibal group/profile/target/job state stays coherent after reload: create/save feature proof `.userdata/dev-harness/harness_runs/20260429_021849/`, scenario `cannibal.live_world_day_smoke_persistence_mcw`, current runtime `e778902cac`, 7/7 green step ledger, guarded save mtime writeback, saved active `cannibal_camp` stalk group with active members `[4,5]`, target `player@140,41,0`, and `known_recent_marks` including `live_smoke@140,41,0`; paired no-fixture reload support `.userdata/dev-harness/harness_runs/20260429_021929/`, scenario `cannibal.live_world_day_smoke_persistence_reload_audit_mcw`, 2/2 green step ledger, saved-state metadata still present after fresh startup.
+- [x] A different-seed/different-footing run reduces fixture-bias risk: `.userdata/dev-harness/harness_runs/20260429_022021/`, scenario `cannibal.live_world_exposed_sight_avoid_mcw`, current runtime `e778902cac`, 5/5 green step ledger, feature proof on fixture `cannibal_live_world_exposed_sight_avoid_v0_2026-04-28` from source footing `bandit_local_sight_avoid_exposed_v0_2026-04-27`, showing `profile=cannibal_camp`, `active_job=stalk`, `posture=hold_off`, `pack_size=2`, `recent_exposure=yes`, `sight_exposure=recent`, `shakedown=no`, `combat_forward=no`.
+- [x] A bandit contrast control preserves the shakedown/pay/fight distinction while the credited cannibal day-pressure row remains no-shakedown/no-combat-forward: bandit run `.userdata/dev-harness/harness_runs/20260429_012915/` proves `pay_option=yes fight_option=yes` plus `shakedown_surface fight demanded=15797 reachable=45134`; cannibal day-pressure run `.userdata/dev-harness/harness_runs/20260429_013310/` proves `profile=cannibal_camp`, `darkness_or_concealment=no`, `shakedown=no`, and `combat_forward=no`. Night/contact no-shakedown is also covered by the checked night/contact row above.
+- [x] The final verdict updates confidence honestly: confidence uplift green, with retained caveats that reload support is saved-file/startup support paired with create/save feature proof, and different-footing repeat reduces but does not eliminate fixture-bias risk.
 
 Notes:
 - Imagination source lives at `doc/cannibal-camp-confidence-push-live-playtest-imagination-source-of-truth-2026-04-28.md`.
@@ -169,96 +203,94 @@ Notes:
 
 ## Smart Zone Manager harness-audit retry packet v0
 
-Status: GREENLIT / QUEUED BOUNDED HARNESS-AUDIT RETRY
+Status: CLOSED / GREEN LIVE COORDINATE-LABEL PROOF AFTER REOPEN
 
 Success state:
-- [ ] A current-runtime loadable Smart Zone fixture/profile reaches gameplay; if `smart-zone-safe-clean-20260427` remains non-loadable, the replacement fixture/provenance is explicit.
-- [ ] The live UI path proves Zone Manager opened and Smart Zone generation was invoked; screenshots/OCR are used only where no stronger structured artifact exists.
-- [ ] Generated/reopened zone metadata proves exact zone types, names/options where relevant, and coordinates after the live generation action.
-- [ ] Zones that must remain separated/reserved are proven not to collapse onto one fake mega-tile; deterministic geometry/separation tests are support, not closure alone.
-- [ ] The packet uses step-local proof-freeze rows for every meaningful step: precondition, action, expected state, failure rule, artifact path, and green/yellow/red/blocked verdict.
-- [ ] A Knackal-style imagination review checks whether the proof demonstrates the human product picture rather than laundering startup/load, deterministic geometry, or metadata-only fixture state into live closure.
-- [ ] Final result is classified as green feature-path, blocked with a named primitive/fixture gap, or returned to Josef playtest package with a precise manual recipe.
+- [x] The current-runtime retry used clean startup/load hygiene before UI-entry checks.
+- [x] Guarded screen-text rows prevented add-zone/filter/generation credit when `Zones manager` was not visible in the older blocked route.
+- [x] Action-dispatch instrumentation identified the old agent-side primitive gap: delivered default `Y` reached `action_menu`, not `zones`, and no Zone Manager invocation trace fired.
+- [x] The prior non-green result was classified as implemented-but-unproven / Josef playtest package instead of being laundered into green proof.
+- [x] The reopened live UI path proves Zone Manager opened and Smart Zone generation was invoked: `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` traces `invoke_zone_manager`, prompt acceptance, and `[harness][smart_zone] result success=1 placed_zones=23`.
+- [x] The generated Zone Manager list is inspected after live generation and after close/save-changes/reopen; visible relative coordinate labels are captured in live `zone_manager_row` redraw traces with `visible_label` / `compact_label` fields.
+- [x] Generated/reopened row metadata proves zone names/types plus absolute coordinates where available via `start_abs`, `end_abs`, and `center_abs`, showing a multi-position layout rather than one-tile collapse.
 
 Notes:
 - Imagination source lives at `doc/smart-zone-manager-harness-audit-retry-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/smart-zone-manager-harness-audit-retry-packet-v0-2026-04-28.md`.
-- Preserved non-green boundary: `smart_zone.live_probe_safe_clean` on profile `smart-zone-audit-live-20260428a`, run `20260428_151053`, is `feature_proof=false` because the captured runtime was `48abd82de9` and all 25 step-ledger rows were yellow; saved-zone evidence only showed one `ZONE_START_POINT` in `#SGVucmlldHRlIEZseW5u.zoneszmgr-temp.json`, not generated separated Smart Zone layout metadata.
-- Next evidence target is a current-runtime relink/rebuild plus exact generated-zone metadata after live generation and save/reopen, or an explicit blocked/non-green packet.
-- This reopens only the proof path; it does not redesign Smart Zone Manager behavior or authorize the old contaminated McWilliams macro.
+- Final green run: `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`, scenario `smart_zone.live_coordinate_label_proof_v0_tmp9` (stabilized as `smart_zone.live_coordinate_label_proof_v0`), `feature_proof=true`, `evidence_class=feature-path`, `verdict=artifacts_matched`, 18/18 green step-local rows.
+- The proof verdict is green for the live coordinate-label/lumping claim. Screenshot/OCR artifacts support the UI checkpoints but OCR is fallback-quality; row trace metadata is the decisive coordinate-label evidence. Full process-reload disk persistence is not separately claimed.
+- Prior non-green UI-entry runs remain postmortem evidence only and should not be rerun as ritual.
 
 ---
 
 ## Generic clean-code boundary review packet v0
 
-Status: GREENLIT / QUEUED BOUNDARY REVIEW
+Status: CLOSED / CHECKPOINTED REPORT-ONLY BOUNDARY REVIEW
 
 Success state:
-- [ ] One compact boundary-review report exists and names the repo state it inspected.
-- [ ] The report checks canon consistency across `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `andi.handoff.md`.
-- [ ] The report checks build/test/lint risk at the appropriate level for the current boundary, or explains why a gate was not run.
-- [ ] Findings are concrete, anchored, and classified as `fix now`, `queue`, or `ignore/watch`.
-- [ ] No feature lane is reopened, promoted, or deprioritized without explicit Schani/Josef review.
-- [ ] Any proposed edits are bounded follow-up items, not silent cleanup drift.
+- [x] One compact boundary-review report exists and names the repo state it inspected (`doc/generic-clean-code-boundary-review-report-v0-2026-04-29.md`).
+- [x] The report checks canon consistency across `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `andi.handoff.md`.
+- [x] The report checks build/test/lint risk at the appropriate level for the current boundary, or explains why a gate was not run.
+- [x] Findings are concrete, anchored, and classified as `fix now`, `queue`, or `ignore/watch`.
+- [x] No feature lane is reopened, promoted, or deprioritized without explicit Schani/Josef review.
+- [x] Any proposed edits are bounded follow-up items, not silent cleanup drift.
 
 Notes:
 - Imagination source lives at `doc/generic-clean-code-boundary-review-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/generic-clean-code-boundary-review-packet-v0-2026-04-28.md`.
-- This is report-only first pass after a checkpoint boundary, not a license for mid-lane cleanup or feature work.
+- Report-only boundary is complete. The only unpromoted queue/watch item is whether to later remove the gated `src/handle_action.cpp` dispatch trace hook; do not reopen Smart Zone live proof without a repaired UI-entry/key-delivery primitive or Josef manual evidence.
 
 ---
 
 ## C-AOL live AI performance audit packet v0
 
-Status: GREENLIT / BOTTOM-OF-STACK PERFORMANCE AUDIT
+Status: COMPLETE / GREEN ENOUGH FOR CURRENT PLAYTEST SCALE
 
 Success state:
-- [ ] A live/harness performance matrix exists for baseline/one, two, three, and four active hostile overmap AI sites, or an explicit blocker explains which cases could not be staged honestly.
-- [ ] Each measured case names the profile/job mix, active site count, in-game elapsed window, wall-clock timing, and relevant counters/log fields.
-- [ ] The measured path reaches the real live game dispatch/local-gate/sight-avoid/signal work; evaluator-only, benchmark-only, or startup/load evidence is classified as support only.
-- [ ] A code performance audit names hot-loop/scaling risks in `src/do_turn.cpp`, `src/bandit_live_world.cpp`, save/serialization, signal matching, sight/exposure checks, and report/log emission.
-- [ ] Any optimization is tied to a measured bottleneck and has before/after evidence; if no optimization is needed, the packet says why the current envelope is green enough.
-- [ ] The final verdict is one of: green enough for current playtest scale, green with watchlist, blocked by missing fixture/instrumentation, or red with concrete hot spots.
+- [x] A live/harness performance matrix exists for one, two, pre-staged three, and pre-staged four active hostile overmap AI cases in `doc/c-aol-live-ai-performance-matrix-v0-2026-04-29.md`; a true zero-site idle baseline is explicitly omitted by current scope, with the one-site row serving as the low-end live baseline unless Schani/Josef requests a separate idle comparison.
+- [x] Each measured case names the profile/job mix, active site count, in-game elapsed window, wall-clock timing, and relevant counters/log fields. Credited rows: `.userdata/dev-harness/harness_runs/20260429_025639/`, `.userdata/dev-harness/harness_runs/20260429_032427/`, `.userdata/dev-harness/harness_runs/20260429_040926/`, and `.userdata/dev-harness/harness_runs/20260429_041936/`.
+- [x] The measured path reaches the real live-game bounded-wait/`overmap_npc_move()` cadence and emits compact `bandit_live_world perf:` counters; evaluator-only, benchmark-only, fixture/setup, and startup/load evidence are classified as support only.
+- [x] The code performance audit names hot-loop/scaling risks in `src/do_turn.cpp`, `src/bandit_live_world.cpp`, save/serialization, signal matching, sight/exposure checks, and report/log emission in the matrix code-audit notes.
+- [x] No optimization is needed for the measured current envelope: the four-site row stayed compact (`total_us` min/median/max `540/560.0/5572`, sum `8360`, one dispatch-due row `dispatch_us=4654`, harness wall-clock `real 39.27s`), and natural three/four-site player-pressure remains a cap/watchlist behavior question rather than a measured performance bottleneck.
+- [x] The final verdict is **green enough for current playtest scale**, with the boundary that pre-staged three/four-site rows are performance-load evidence, not natural multi-site player-pressure dispatch proof.
 
 Notes:
 - Imagination source lives at `doc/c-aol-live-ai-performance-imagination-source-of-truth-2026-04-28.md`.
 - Canonical contract lives at `doc/c-aol-live-ai-performance-audit-packet-v0-2026-04-28.md`.
+- Current matrix progress: one-site and two-site rows are green as natural/live dispatch footing; the three-site row is green only as a labeled pre-staged performance-load row (`.userdata/dev-harness/harness_runs/20260429_040926/`). The natural three-player-pressure recipe remains cap/watchlist evidence at `sites=3 active_sites=2`, not row closure.
 
 ---
+
 
 ## Bandit camp-map risk/reward dispatch planning packet v0
 
-Status: ACTIVE / GREENLIT IMPLEMENTATION + LIVE PRODUCT MATRIX
+Status: CLOSED / SCOPED LIVE PRODUCT CHECKPOINT GREEN
 
-Success state:
-- [ ] Every bandit camp owns an independent bandit-side intelligence map, not merely loose shared/global remembered fields or a single current mark.
-- [ ] The camp map is serialized/deserialized with the normal game save path, and deterministic save/load coverage proves multiple camps keep distinct map leads across round trip.
-- [ ] Scout-return writeback stores a remembered target lead on the source camp map with bounty, threat, confidence, age/last-seen, source/outcome, and target-alert/scout-seen state.
-- [x] A vanished live signal does not erase a scout-confirmed camp/basecamp target; later dispatch cadence can plan from remembered scout knowledge. _(Feature-path proof: `bandit.camp_map_vanished_signal_redispatch` run `.userdata/dev-harness/harness_runs/20260428_185947/` proved saved preflight camp-map lead state, bounded 30-minute cadence action, same-run no-signal remembered-lead dispatch plan, local-gate stalk pressure, and saved active stalk members.)_
-- [ ] The remembered-lead and risk/reward decision are wired into the real game path: persisted site state, scout-return writeback, live dispatch-cadence evaluation, selected member state changes, sight-avoidance state, and reviewer-readable reports/logs. _(Partial feature-path proof now covers vanished-signal redispatch, sight-avoid, 2/5/10 variable-roster sizing, and no-opening stalk-pressure; high-threat/active-outside guardrails and broader product closure remain.)_
-- [ ] Ordinary camp/basecamp scout stand-off uses a two-OMT observation envelope, not the old five-OMT default, with fallback distances reported when terrain/pathing forces them. _(Partial deterministic/live-seam coverage: the ordinary scout standoff helper now returns 2 OMT and the hold-off goal seam uses it; product/pathing fallback proof remains downstream.)_
-- [ ] Scout-watch duration is bounded to about half an in-game day, then the scout returns home and writes memory unless explicitly interrupted. _(Partial deterministic/live-seam coverage: the ordinary scout limit is 720 minutes and `do_turn` live aftermath consumes that helper; live product watch/return/writeback proof remains downstream.)_
-- [ ] Dispatch sizing uses current living/ready/home roster, home reserve, wounds/unready state, and active outside groups; the same logic handles tiny, medium, and large camps instead of fixed-size folklore. _(Partial deterministic coverage: living-roster reserve/dispatch capacity is covered for 2/4/5/7/10 member camps, plus wounded/unready and killed-member shrinkage; live product proof remains.)_
-- [ ] Reserve defaults are deterministic and reported: tiny camps keep one home member, five-to-seven member camps normally reserve two, large camps reserve roughly 35%+, recent bandit losses/target-alert increase caution, and stockpile desperation cannot violate hard reserve. _(Partial deterministic coverage: prior bandit losses/alert increase reserve/caution, and high stockpile pressure can loosen reserve by one without crossing the hard minimum.)_
-- [ ] Job intent is chosen before count, and size is derived from that intent plus risk/reward: scout, re-scout, stalk/pressure, toll/shakedown, raid, hold/stale.
-- [x] If the camp does not attack after scout return, remembered high-value/manageable-risk leads can produce a larger-than-scout stalk/pressure dispatch that waits for an opening instead of dogpiling or forgetting. _(Feature-path no-opening proof: `bandit.stalk_pressure_waits_for_opening` run `.userdata/dev-harness/harness_runs/20260428_195617/` proved active lead footing, named no-opening rejection, held pressure, no spawned outside group, and saved stale/decayed lead state.)_
-- [x] Scout/stalker sight-avoidance reacts when seen: deterministic and in-game proof show non-teleport reposition or abort immediately or within at most two local turns, with blocked/no-cover cases reported. _(Feature-path proof: `bandit.scout_stalker_sight_avoid_live` run `.userdata/dev-harness/harness_runs/20260428_173626/` matched saved active scout/member footing, saved turn delta >= 2, same-run local-gate proof, and `sight_avoid: exposed -> repositioned ... distance=1`.)_
-- [ ] Camp pressure / stockpile need affects willingness without overriding hard reserve or risk gates. If detailed stockpile state is not available yet, the implementation names the placeholder and keeps it bounded. _(Partial deterministic coverage: `camp_map_dispatch_pressure::stockpile_pressure` is the named bounded placeholder and cannot violate hard reserve.)_
-- [ ] Bounty, threat, confidence, distance, lead age, target-alert/scout-seen, prior defender losses, and prior bandit losses all have reviewer-readable effects on the chosen intent/member count. _(Partial deterministic coverage: bounty/threat/confidence/target-alert/scout-seen/prior defender losses/prior bandit losses affect the camp-map decision seam; distance/lead age and live report proof remain.)_
-- [ ] High threat alone does not force escalation; deterministic coverage proves high-threat/low-reward cases hold or scout instead of sending a larger attack. _(Deterministic camp-map decision coverage exists; live proof remains.)_
-- [ ] Active outbound/local-contact/stalk/returning groups block parallel same-camp same-target dogpile dispatch until resolved. _(Partial deterministic coverage: `plan_site_dispatch` now blocks through `site.has_active_outside_pressure()` and active-group state; full live same-target dogpile proof remains downstream.)_
-- [ ] Reports/logs show remembered-lead source, reward/risk inputs, selected intent/job, selected member count, home reserve left behind, scout/stalk posture, sight-exposure turn count, opening state, and whether a live signal or remembered camp-map lead drove the decision.
-- [ ] Harness/product proof covers a real or fixture-backed variable-roster camp through the live game path: scout observes a camp from two OMT, watches for the half-day window, avoids sight by moving/aborting within at most two visible turns if exposed, returns home, writes memory, the live signal disappears or is absent, and a later cadence re-dispatches/plans from remembered camp-map knowledge with expected intent/member count.
-- [ ] Bandit live product matrix `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md` is implemented/run with honest verdicts for player fire/smoke/light lead proof, scout memory, vanished-signal redispatch, variable roster sizing, stalk-pressure opening/no-opening behavior, sight avoidance, shakedown/toll control, optional empty-camp live sanity, and repeatability/fixture-bias.
+Scoped checkpoint success state:
+- [x] Camp-map implementation substrate landed: camp-owned `camp_intelligence_map`, save/load serialization, active target OMT persistence, scout-return writeback into the source camp map, live signal marks writing camp-map leads, and remembered camp-map lead selection through the live dispatch cadence/report path.
+- [x] Deterministic/code support landed for two-OMT ordinary scout stand-off, 720-minute ordinary scout return clock, 2/4/5/7/10 roster/reserve sizing, active-outside dogpile blocking, wounded/unready and killed-member shrinkage, bounded stockpile pressure, high-threat non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing, and no-opening hold/return.
+- [x] Feature-path evidence covers vanished-signal remembered-lead redispatch: `bandit.camp_map_vanished_signal_redispatch` in `.userdata/dev-harness/harness_runs/20260428_185947/`.
+- [x] Feature-path evidence covers 2/5/10 variable-roster sizing: `bandit.variable_roster_tiny_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_202044/`, `bandit.variable_roster_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_192059/`, and `bandit.variable_roster_large_cooled_dispatch_sizing_live` in `.userdata/dev-harness/harness_runs/20260428_193621/`.
+- [x] Feature-path evidence covers no-opening stalk-pressure decay: `bandit.stalk_pressure_waits_for_opening` in `.userdata/dev-harness/harness_runs/20260428_195617/`. This is only active remembered pressure -> no-opening rejection -> stale/decayed lead, not opening-present escalation.
+- [x] Feature-path evidence covers bounded sight avoidance: `bandit.scout_stalker_sight_avoid_live` in `.userdata/dev-harness/harness_runs/20260428_173626/`.
+- [x] Feature-path evidence covers high-threat/low-reward hold and same-fixture repeatability: `bandit.high_threat_low_reward_holds` in `.userdata/dev-harness/harness_runs/20260428_200600/`, repeated in `.userdata/dev-harness/harness_runs/20260428_211105/` and `.userdata/dev-harness/harness_runs/20260428_211153/` with `overall_verdict=stable_repeatability_pass`.
+- [x] Feature-path evidence covers active-outside dogpile blocking: `bandit.active_outside_dogpile_block_live` in `.userdata/dev-harness/harness_runs/20260428_200434/`.
+- [x] Feature-path evidence preserves shakedown/toll-control guardrails: `.userdata/dev-harness/harness_runs/20260428_204454/`, `.userdata/dev-harness/harness_runs/20260428_204630/`, and `.userdata/dev-harness/harness_runs/20260428_204813/`.
+- [x] Optional empty-camp live sanity is green: `bandit.empty_camp_retirement_live` in `.userdata/dev-harness/harness_runs/20260428_214542/` proves the fully empty positive retires and home-side/active-outside negatives do not.
+- [x] Product review accepted the scoped live/product matrix as enough for this checkpoint; no second-fixture bias variant is required before closure.
 
-Notes:
-- 2026-04-28 deterministic slices add two-OMT ordinary scout standoff, 720-minute ordinary scout return clock wired into `do_turn` aftermath, living-roster reserve sizing for 2/4/5/7/10 member camps, active-outside group/contact dispatch blocking, wounded/unready and killed-member shrinkage, bounded stockpile pressure, high-threat non-escalation, prior defender-loss pressure, prior bandit-loss cooling, larger-than-scout stalk sizing, and no-opening hold/return in the camp-map decision seam. Named feature-path evidence now covers sight-avoid, vanished-signal redispatch, 2/5/10 variable-roster sizing, and no-opening stalk-pressure guardrails; it is still not full product closure.
-- Canonical contract lives at `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
-- Andi lane draft lives at `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
-- This is a proper canon plan item, not an informal Andi nudge. It should not become active until explicitly promoted or until the current active/greenlit stack naturally reaches it.
+Caveats:
+- The old player-created fire/smoke/light fuel/writeback route receives no credit from this checkpoint; the active wood-source-zone repair is the only reopened bridge for that proof.
+- Repeatability is same-fixture confidence only, not second-fixture anti-bias proof.
+- A later second-fixture bias variant can be queued if Josef wants stronger confidence; it is not a closure blocker for this lane.
+
+Validation recorded: `python3 -m py_compile tools/openclaw_harness/startup_harness.py`; relevant scenario/fixture `python3 -m json.tool` checks; `python3 tools/openclaw_harness/proof_classification_unit_test.py`; `git diff --check`; `make -j4 TILES=1 cataclysm-tiles LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[bandit_live_world]"`; `./tests/cata_test "[bandit][live_world][camp_map]" --success`; and the named feature-path harness probes above. `make astyle-diff` remains locally blocked by missing `astyle`.
+
+Canonical contract lives at `doc/bandit-camp-map-risk-reward-dispatch-planning-packet-v0-2026-04-28.md`.
+Andi lane draft lives at `doc/bandit-camp-map-risk-reward-dispatch-andi-lane-v0-2026-04-28.md`.
+Bandit live product matrix lives at `doc/bandit-live-product-playtest-matrix-v0-2026-04-28.md`.
 
 ---
-
 ## Test-vs-game implementation audit report packet v0
 
 Status: CLOSED / CHECKPOINTED
@@ -350,7 +382,7 @@ Compact reference:
 
 ## Smart Zone Manager v1 Josef playtest corrections
 
-Status: JOSEF PLAYTEST PACKAGE / IMPLEMENTED-BUT-UNPROVEN LIVE
+Status: CLOSED / LIVE COORDINATE-LABEL PROOF GREEN AFTER REOPEN
 
 Success state:
 - [x] Smart Zone Manager adds `LOOT_MANUALS` coverage on/near the Basecamp books cluster without removing ordinary `LOOT_BOOKS` coverage.
@@ -358,10 +390,10 @@ Success state:
 - [x] Auto-eat and auto-drink coverage spans the full Basecamp storage zone, with `ignore_contents` explicitly false so Basecamp sorting still sees the covered items.
 - [x] Deterministic tests assert the actual zone ids/types and the `ignore_contents == false` option, not just label text.
 - [x] Save inspection confirms generated zones remain saved/reopenable and do not crash or corrupt the camp layout through zone-manager serialize/deserialize proof.
-- [ ] Live/player-visible layout no longer lumps intended-separate generated zones onto a single tile. _(Implemented-but-unproven live: clean GUI macro could not honestly inspect the generated layout; Josef playtest package has the manual close recipe.)_
+- [x] Live/player-visible layout no longer lumps intended-separate generated zones onto a single tile. The reopened coordinate-label proof `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` opens the real Zone Manager, accepts Smart Zone generation, reopens the generated list, and captures row labels/absolute coordinates across the layout.
 - [x] Deterministic tests assert zone geometry/separation and the intended-overlap allowlist, not only zone ids/options.
 - [x] The implementation respects the smart-zone aux-plan separation rules that are deterministic-checkable in the fixture: fire-source / `splintered` / wood placement, readable crafting/food/equipment support separation, clothing/dirty support, outside rotten placement, and a larger unsorted intake area.
-- [x] Clean live/UI proof or a precise Josef playtest package demonstrates the corrected layout without rerunning the contaminated old McWilliams/bandit macro. _(Packaged as `smart-zone-live-layout-separation-correction` in `/Users/josefhorvath/.openclaw/workspace/runtime/josef-playtest-package.md`.)_
+- [x] Clean live/UI proof or a precise Josef playtest package demonstrates the corrected layout without rerunning the contaminated old McWilliams/bandit macro. The old playtest package is superseded for the lumping/layout claim by the green coordinate-label proof; full process-reload disk persistence remains a separate optional future audit if promoted.
 
 
 Compact reference:

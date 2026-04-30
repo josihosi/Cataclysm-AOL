@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -232,6 +233,25 @@ std::string camp_lead_id_for( const std::string &site_id, const camp_lead_kind k
     out << site_id << "#lead:" << bandit_live_world::to_string( kind ) << ':'
         << target_id << '@' << omt.x() << ',' << omt.y() << ',' << omt.z();
     return out.str();
+}
+
+std::string lowercase_copy( const std::string &value )
+{
+    std::string lowered = value;
+    std::transform( lowered.begin(), lowered.end(), lowered.begin(), []( const unsigned char ch ) {
+        return static_cast<char>( std::tolower( ch ) );
+    } );
+    return lowered;
+}
+
+bool contains_any_token( const std::string &haystack, const std::vector<std::string> &needles )
+{
+    for( const std::string &needle : needles ) {
+        if( haystack.find( needle ) != std::string::npos ) {
+            return true;
+        }
+    }
+    return false;
 }
 
 camp_lead_kind signal_kind_to_camp_lead_kind( const std::string &kind )
@@ -1757,6 +1777,125 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
         }
     }
     return best_lead;
+}
+
+structural_bounty_read classify_structural_bounty_terrain( const std::string &overmap_terrain_id )
+{
+    const std::string id = lowercase_copy( overmap_terrain_id );
+    structural_bounty_read read;
+    read.terrain_class = "open";
+    read.summary = "no structural bounty";
+
+    if( id.empty() || contains_any_token( id, { "open", "field", "meadow", "road", "empty" } ) ) {
+        return read;
+    }
+
+    if( contains_any_token( id, { "forest", "woods", "wood", "swamp", "wetland" } ) ) {
+        read.terrain_class = "forest";
+        read.bounty = 1;
+        read.confidence = 1;
+        read.latent_threat = 0;
+        read.radius_omt = 0;
+        read.eligible = true;
+        read.summary = "low structural forest/woods bounty";
+        return read;
+    }
+
+    if( contains_any_token( id, { "downtown", "city", "mall", "office_tower", "apartment" } ) ) {
+        read.terrain_class = "town";
+        read.bounty = 3;
+        read.confidence = 1;
+        read.latent_threat = 2;
+        read.radius_omt = 0;
+        read.eligible = true;
+        read.summary = "medium-high structural urban bounty with latent threat";
+        return read;
+    }
+
+    if( contains_any_token( id, { "town", "house", "home", "farm", "cabin", "building",
+                                  "shop", "store", "garage", "shelter" } ) ) {
+        read.terrain_class = "town";
+        read.bounty = 2;
+        read.confidence = 1;
+        read.latent_threat = 1;
+        read.radius_omt = 0;
+        read.eligible = true;
+        read.summary = "medium structural town/building bounty";
+        return read;
+    }
+
+    return read;
+}
+
+std::string make_structural_bounty_lead_id( const std::string &site_id,
+        const tripoint_abs_omt &omt, const std::string &terrain_class )
+{
+    std::ostringstream out;
+    out << site_id << ":structural_bounty:" << omt.x() << ',' << omt.y() << ',' << omt.z()
+        << ':' << ( terrain_class.empty() ? "unknown" : terrain_class );
+    return out.str();
+}
+
+bool structural_bounty_memory_suppresses_refresh( const camp_intelligence_map &intelligence_map,
+        const tripoint_abs_omt &omt, const std::string &terrain_class )
+{
+    const std::string terrain = terrain_class.empty() ? "unknown" : terrain_class;
+    for( const camp_map_lead &lead : intelligence_map.leads ) {
+        if( lead.omt != omt ) {
+            continue;
+        }
+        if( lead.kind != camp_lead_kind::structural_bounty &&
+            lead.kind != camp_lead_kind::harvested_site ) {
+            continue;
+        }
+        if( !lead.target_id.empty() && lead.target_id != terrain ) {
+            continue;
+        }
+        if( lead.status == camp_lead_status::harvested ||
+            lead.status == camp_lead_status::dangerous ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &omt,
+                                   const structural_bounty_read &read, const int now_minutes )
+{
+    if( !read.eligible || read.bounty <= 0 ) {
+        return false;
+    }
+    if( structural_bounty_memory_suppresses_refresh( site.intelligence_map, omt,
+            read.terrain_class ) ) {
+        return false;
+    }
+
+    camp_map_lead lead;
+    lead.lead_id = make_structural_bounty_lead_id( site.site_id, omt, read.terrain_class );
+    lead.kind = camp_lead_kind::structural_bounty;
+    lead.status = camp_lead_status::suspected;
+    lead.target_id = read.terrain_class;
+    lead.omt = omt;
+    lead.radius_omt = read.radius_omt;
+    lead.source_key = "structural_bounty:" + read.terrain_class;
+    lead.source_summary = read.summary;
+    lead.first_seen_minutes = now_minutes;
+    lead.last_seen_minutes = now_minutes;
+    lead.bounty = std::max( 0, read.bounty );
+    lead.threat = 0;
+    lead.confidence = std::max( 0, read.confidence );
+    lead.threat_confirmed = false;
+    lead.last_outcome = "structural_bounty_suspected";
+
+    if( camp_map_lead *existing = site.intelligence_map.find_lead( lead.lead_id ) ) {
+        lead.first_seen_minutes = existing->first_seen_minutes;
+        lead.times_checked_empty = existing->times_checked_empty;
+        lead.times_harvested = existing->times_harvested;
+        *existing = lead;
+        return true;
+    }
+    site.intelligence_map.leads.push_back( lead );
+    return true;
 }
 
 dispatch_plan plan_site_dispatch_from_camp_map_lead( const site_record &site,
