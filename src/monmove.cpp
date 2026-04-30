@@ -749,26 +749,56 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
         return false;
     }
 
+    const auto perf_started = std::chrono::steady_clock::now();
     if( target.posz() != rider.posz() || !rider.sees( here, target ) ) {
+        const auto perf_done = std::chrono::steady_clock::now();
+        const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
+                                perf_started ).count();
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=ignore reason=no_visible_target distance=-1 line_of_fire=no hp="
+                                   << rider.hp_percentage()
+                                   << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                                   << " eval_us=" << elapsed_us << '\n';
         return false;
     }
 
     const int distance_to_target = rl_dist( rider.pos_bub(), target.pos_bub() );
+    const bool line_of_fire = distance_to_target <= 18 && zombie_rider_line_of_fire( here,
+                              rider.pos_bub(), target );
     const bool retreating = distance_to_target < 4 || rider.hp_percentage() <= 50 ||
                             rider.has_effect( effect_run );
+    const auto perf_done = std::chrono::steady_clock::now();
+    const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
+                            perf_started ).count();
 
     if( retreating ) {
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=withdraw reason="
+                                   << ( rider.hp_percentage() <= 50 ? "wounded_or_close" : "post_shot_or_close" )
+                                   << " distance=" << distance_to_target
+                                   << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
+                                   << " hp=" << rider.hp_percentage()
+                                   << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                                   << " eval_us=" << elapsed_us << '\n';
         tripoint_abs_ms away = rider.pos_abs() - target.pos_abs() + rider.pos_abs();
         away.z() = rider.posz();
         rider.set_dest( away );
         return true;
     }
 
-    if( distance_to_target <= 18 && zombie_rider_line_of_fire( here, rider.pos_bub(), target ) ) {
+    if( line_of_fire ) {
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=bow_pressure reason=line_of_fire distance="
+                                   << distance_to_target
+                                   << " line_of_fire=yes hp=" << rider.hp_percentage()
+                                   << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                                   << " eval_us=" << elapsed_us << '\n';
         rider.set_dest( target.pos_abs() );
         return true;
     }
 
+    DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=ignore reason=no_line_of_fire distance="
+                               << distance_to_target
+                               << " line_of_fire=no hp=" << rider.hp_percentage()
+                               << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
+                               << " eval_us=" << elapsed_us << '\n';
     return false;
 }
 

@@ -1,0 +1,112 @@
+{
+  "name": "zombie_rider.live_open_field_pressure_mcw",
+  "description": "Live open-field rider row: one staged hostile rider at bow range records live local-combat pressure, close-pressure withdrawal/repositioning, and bounded log/perf stability.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_rider_open_field_2026-05-01",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "zombie_rider live_plan:",
+    "decision=bow_pressure",
+    "decision=withdraw",
+    "line_of_fire=yes",
+    "eval_us="
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_rider_open_field_settle",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "staged zombie-rider open-field fixture loads to live map"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_noon_before_rider_open_field",
+      "required_time_of_day_seconds": 43200,
+      "required_time_tolerance_seconds": 60,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_time_setup_missing",
+      "abort_reason": "installed save did not prove expected noon turn before live zombie-rider window",
+      "expected_visible_fact": "saved turn proves local noon before open-field rider pressure window"
+    },
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_zombie_rider_before_open_field",
+      "required_monsters": [
+        {
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [
+            0,
+            -5,
+            0
+          ]
+        }
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_active_monster_setup_missing",
+      "abort_reason": "saved active_monsters metadata did not contain required live-scenario rider footing",
+      "expected_visible_fact": "one hostile zombie rider starts five tiles north at bow-pressure range"
+    },
+    {
+      "kind": "press",
+      "label": "toggle_safe_mode_off_before_rider_open_field",
+      "keys": [
+        "!"
+      ],
+      "delay_ms": 250,
+      "settle_seconds": 0.4,
+      "capture_after": true,
+      "expected_visible_fact": "safe mode is toggled off so the bounded live rider window is not consumed by warnings"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_rider_open_field_pressure_window",
+      "count": 80,
+      "settle_seconds": 0.8,
+      "capture_after": true,
+      "artifact_state_patterns": [
+        "zombie_rider live_plan:",
+        "decision=bow_pressure",
+        "decision=withdraw",
+        "line_of_fire=yes",
+        "eval_us="
+      ],
+      "expected_visible_fact": "bounded live turn window records bow-pressure planning followed by close-pressure withdrawal-repositioning"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_zombie_rider_open_field_live_plan",
+      "required_line_patterns": [
+        [
+          "zombie_rider live_plan:",
+          "decision=bow_pressure",
+          "reason=line_of_fire",
+          "distance=5",
+          "line_of_fire=yes",
+          "eval_us="
+        ],
+        [
+          "zombie_rider live_plan:",
+          "decision=withdraw",
+          "line_of_fire=yes",
+          "eval_us="
+        ]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_zombie_rider_open_field_live_plan_missing",
+      "abort_reason": "same-run artifact lacked bow-pressure and withdrawal/reposition live-plan lines",
+      "expected_visible_fact": "same-run debug artifact proves live rider local-combat planning reaches bow pressure and close-pressure withdrawal"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_open_field_pressure_mcw",
+  "evidence_contract": {
+    "claim": "a staged live zombie rider at visible bow range uses the monster::plan seam to pressure the player at range and then withdraw/reposition at close pressure instead of static melee dogpile behavior",
+    "load_only_verdict": "load proof only / inconclusive for zombie-rider live fun behavior",
+    "writeback_note": "No save/writeback gate: this scenario proves bounded live-plan behavior from current-run logs plus saved start-state footing; persistent map mutation is not part of the product claim."
+  }
+}
