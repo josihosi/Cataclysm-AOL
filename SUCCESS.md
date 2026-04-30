@@ -24,13 +24,13 @@ Status: ACTIVE / GREENLIT IMPLEMENTATION PACKET
 Success state:
 - [x] Monster/stat/spawn footing exists and validates.
 - [x] Spawn rarity/singleton rules prevent ordinary stalker clutter spam.
-- [ ] Stalker interest/latch/opportunity/withdraw decisions have deterministic tests.
-- [ ] Direct player/human evidence can create a bounded latch without permanent omniscience.
-- [ ] Weak/no/stale evidence decays or fails to latch.
-- [ ] Exposed night light, cover/edge terrain, and zombie distraction affect interest/opportunity with named reasons.
-- [ ] Approach behavior avoids direct open beelines where cover/darkness/clutter alternatives exist.
+- [x] Stalker interest/latch/opportunity/withdraw decisions have deterministic tests.
+- [x] Direct player/human evidence can create a bounded latch without permanent omniscience.
+- [x] Weak/no/stale evidence decays or fails to latch.
+- [x] Exposed night light, cover/edge terrain, and zombie distraction affect interest/opportunity with named reasons.
+- [x] Approach behavior avoids direct open beelines where cover/darkness/clutter alternatives exist.
 - [ ] Strike behavior creates short cut/bleed pressure rather than a tank duel.
-- [ ] Withdrawal/cooldown prevents immediate repeat spam after hurt/exposed/focused states.
+- [x] Withdrawal/cooldown prevents immediate repeat spam after hurt/exposed/focused states.
 - [ ] Save/load preserves any new latch/cooldown state, or the packet explicitly avoids new persisted state.
 - [ ] Live/harness proof `writhing_stalker.live_shadow_strike_mcw` shows a real stalk/hold/strike/withdraw scene from the game path.
 - [ ] Live/harness proof `writhing_stalker.live_no_omniscient_beeline_mcw` shows no instant beeline/attack without valid evidence.

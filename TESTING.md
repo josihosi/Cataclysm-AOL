@@ -55,21 +55,22 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ### Active validation target - CAOL-WRITHING-STALKER-v0
 
-Current boundary: **monster/stat/spawn footing is green; deterministic behavior substrate next**. Receipt: `doc/work-ledger.md`. Raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`; imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`; contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`; testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
+Current boundary: **monster/stat/spawn footing and deterministic behavior substrate are green; smallest live seam next**. Receipt: `doc/work-ledger.md`. Raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`; imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`; contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`; testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
 
 Current evidence:
 - `mon_writhing_stalker` JSON/stat footing and rare singleton `GROUP_ZOMBIE` spawn entry landed with `tests/writhing_stalker_test.cpp`. Evidence: `git diff --check`; `python3 -m json.tool data/json/monsters/zed_misc.json`; `python3 -m json.tool data/json/monstergroups/zombies.json`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]"`; focused Python JSON audit for singleton `GROUP_ZOMBIE` entry.
+- Deterministic AI-decision substrate landed in `src/writhing_stalker_ai.*` and `tests/writhing_stalker_test.cpp`: interest ranking keeps recent human evidence strongest, exposed night light strong, smoke weak/indirect, terrain/edge cover meaningful, and zombie pressure as opportunity; latch is bounded by evidence age/leash/exposure and requires refreshed evidence; approach prefers cover/edge routes and holds at bright exposure; opportunity scoring strikes only from valid latch plus vulnerability/distraction; withdrawal/cooldown block immediate repeat spam. Evidence: `make -j4 obj/writhing_stalker_ai.o tests/writhing_stalker_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]"` (88 assertions / 7 test cases).
 
 Greenlit proof ladder:
 
 1. Creature truth: monster JSON/stat/spawn data validates and matches the intended rare singleton first-generation zombie-adjacent predator. **Green for initial footing.**
 2. Rarity truth: spawn footing does not create ordinary stalker soup; debug/harness can intentionally create one. **Green for initial footing; intentional debug/harness creation remains future live support.**
-3. Interest truth: deterministic helper/evaluator proves human/player evidence and exposed night light outrank empty terrain, smoke stays weak/indirect, cover/edge terrain matters, and zombie pressure increases opportunity rather than threat.
-4. Latch truth: recent believable evidence can create a timed/leashed latch, stale evidence decays, and one clue does not become permanent omniscience.
-5. Approach truth: stalker prefers cover/darkness/clutter where available and does not direct-beeline across open exposure unless forced by the actual map.
-6. Opportunity truth: strike pressure rises when the player is hurt, bleeding, low stamina, noisy, sleeping/resting/crafting, boxed by zombies, or moving through clutter; alert/bright/open player states hold or repel pressure.
+3. Interest truth: deterministic helper/evaluator proves human/player evidence and exposed night light outrank empty terrain, smoke stays weak/indirect, cover/edge terrain matters, and zombie pressure increases opportunity rather than threat. **Green at deterministic seam.**
+4. Latch truth: recent believable evidence can create a timed/leashed latch, stale evidence decays, and one clue does not become permanent omniscience. **Green at deterministic seam.**
+5. Approach truth: stalker prefers cover/darkness/clutter where available and does not direct-beeline across open exposure unless forced by the actual map. **Green at deterministic seam; live path still open.**
+6. Opportunity truth: strike pressure rises when the player is hurt, bleeding, low stamina, noisy, sleeping/resting/crafting, boxed by zombies, or moving through clutter; alert/bright/open player states hold or repel pressure. **Green at deterministic seam; live strike path still open.**
 7. Strike truth: combat creates short cut/bleed pressure and then either withdraws or changes state; it does not become a tank duel.
-8. Withdrawal/cooldown truth: hurt/exposed/focused stalker backs off, cooldown blocks immediate repeat spam, and re-engagement needs refreshed evidence.
+8. Withdrawal/cooldown truth: hurt/exposed/focused stalker backs off, cooldown blocks immediate repeat spam, and re-engagement needs refreshed evidence. **Green at deterministic seam; live path still open.**
 9. Persistence truth: any new latch/cooldown state survives save/load, or the packet explicitly avoids new persisted state.
 10. Live truth: live/harness packets prove a real shadow/strike scene plus no-omniscient-beeline negative control and exposed/focus retreat or an explicit future-only classification.
 
@@ -101,7 +102,7 @@ Current important receipts:
 
 ## Pending probes
 
-Current writhing-stalker next step is not a live harness scene yet. Monster/stat/spawn footing is green; next build the deterministic decision substrate, then promote live probes once the code can honestly explain latch, opportunity, strike, and withdrawal.
+Current writhing-stalker next step is the smallest live game seam, not a harness scene yet. Monster/stat/spawn footing and deterministic decision substrate are green; next wire live shadow/strike/withdraw behavior, then promote live probes once the game path can honestly consume latch, opportunity, strike, and withdrawal decisions.
 
 Initial greenlit live probes, once implementation footing exists:
 - `writhing_stalker.live_shadow_strike_mcw`
