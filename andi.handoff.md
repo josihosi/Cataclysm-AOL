@@ -2,11 +2,13 @@
 
 ## Current canon state
 
-`CAOL-ZOMBIE-RIDER-0.3-v0` is **ACTIVE / GREENLIT / OVERMAP LIGHT ATTRACTION CHECKPOINT GREEN / RIDER CONVERGENCE-BANDS NEXT**.
+`CAOL-ZOMBIE-RIDER-0.3-v0` is **ACTIVE / GREENLIT / TWO LIVE FUNNESS ROWS GREEN / LIVE FUNNESS NEXT**.
 
-Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` aligned downstream. This handoff is only a terse executor packet; if it disagrees with canon, repair it from canon.
+Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` aligned downstream. This handoff is only a terse executor packet; if it disagrees with canon, repair it from canon before continuing.
 
-Prior closed lanes that must not be reopened by drift: writhing-stalker lanes, roof-horde, Smart Zone, old fire proof lanes, `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0`, and release packaging.
+Open live funness rows: camp-light attraction into bounded convergence/band circling, cover/indoor escape, and rider-band circling/harassment. Rows already green: open-field local-combat pressure and wounded-rider disengagement. Do not rerun green rows by ritual unless changed.
+
+Prior closed lanes that must not be reopened by drift: writhing-stalker lanes, roof-horde, Smart Zone, old fire proof lanes, `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0`, bandit/horde proof lanes, and release packaging.
 
 ## Product target
 
@@ -52,10 +54,20 @@ Local combat AI footing is green in `4343dbdad1`:
 Overmap light-attraction footing is green in `d2ffbd54c3`:
 
 - `zombie_rider_overmap_ai` consumes existing `bandit_mark_generation::light_projection` / `horde_signal_power_from_light_projection`;
-- tests cover mature-world exposed light interest, early-world suppression, no-rider/no-light/weak/daylight controls, temporary memory decay, and `max_riders_drawn_by_light = 2`;
-- latest focused gate: `make -j4 tests/zombie_rider_test.o obj/zombie_rider_overmap_ai.o tests LINTJSON=0 ASTYLE=0 && ./tests/cata_test "[zombie_rider]"` -> 135 assertions / 10 test cases green.
+- tests cover mature-world exposed light interest, early-world suppression, no-rider/no-light/weak/daylight controls, temporary memory decay, and `max_riders_drawn_by_light = 2`.
 
-Next slice may widen only to rider convergence/band formation before live funness rows. Do not reprove monster/evolution, passage, local combat, or overmap light attraction by ritual unless changed.
+Rider convergence/band/camp-pressure footing is green in `ce05ef44ec`:
+
+- deterministic loose-rider selection is capped and ordered by overmap distance then `rider_id`;
+- decayed-memory/no-eligible/lone-rider controls are green;
+- camp pressure postures cover `none`, `investigate`, `circle_harass`, `direct_attack`, and `withdraw` without wall-suicide.
+
+Live funness rows green so far:
+
+- Open-field local-combat pressure: `zombie_rider.live_open_field_pressure_mcw` -> `.userdata/dev-harness/harness_runs/20260501_013055/`; one hostile rider at `[0,-5,0]`, noon start, safe mode off, `6/6` step rows green, no abort/runtime warnings, `bow_pressure` then `withdraw` live-plan artifact rows, max observed `eval_us=2`; proof note `doc/zombie-rider-live-funness-open-field-proof-v0-2026-05-01.md`.
+- Wounded disengagement: `zombie_rider.live_wounded_disengagement_mcw` -> `.userdata/dev-harness/harness_runs/20260501_014613/`; one wounded hostile rider at `[0,-8,0]`, noon start, safe mode off, fresh runtime `7ecdd41f03-dirty`, `6/6` step rows green, no abort/runtime warnings, `withdraw=14`, `bow_pressure=0`, distance widens `7 -> 24`, max observed `eval_us=3`; proof note `doc/zombie-rider-live-funness-wounded-disengagement-proof-v0-2026-05-01.md`.
+
+Next slice: try camp-light attraction into bounded rider convergence/band circling if the harness can stage it honestly; otherwise use cover/indoor escape as the next smallest reliable live-shaped row. Do not claim live camp-light convergence unless the proof reaches a real live path, not just deterministic footing.
 
 ## Evidence/reporting requirements
 
