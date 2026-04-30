@@ -16,6 +16,7 @@
 #include "mtype.h"
 #include "pathfinding.h"
 #include "type_id.h"
+#include "zombie_rider_overmap_ai.h"
 
 static const efftype_id effect_run( "run" );
 static const itype_id arrow_wood( "arrow_wood" );
@@ -331,4 +332,153 @@ TEST_CASE( "zombie_rider_endpoint_spawn_and_evolution_gate", "[zombie_rider][mon
         }
     }
     CHECK( all_direct_entries == 1 );
+}
+
+TEST_CASE( "zombie_rider_overmap_light_attraction_is_late_game_and_bounded",
+           "[zombie_rider][overmap][ai]" )
+{
+    bandit_mark_generation::light_packet camp_light;
+    camp_light.id = "late_game_exposed_camp_light";
+    camp_light.envelope_id = "camp_light_cluster";
+    camp_light.region_id = "camp_region";
+    camp_light.observed_range_omt = 8;
+    camp_light.source_strength = 4;
+    camp_light.persistence = 3;
+    camp_light.time = bandit_mark_generation::light_time_band::night;
+    camp_light.weather = bandit_mark_generation::light_weather_band::clear;
+    camp_light.exposure = bandit_mark_generation::light_exposure_band::exposed;
+    camp_light.source = bandit_mark_generation::light_source_band::ordinary;
+    camp_light.terrain = bandit_mark_generation::light_terrain_band::open;
+
+    const bandit_mark_generation::light_projection projection =
+        bandit_mark_generation::adapt_light_packet( camp_light );
+    REQUIRE( projection.viable );
+    REQUIRE( bandit_mark_generation::horde_signal_power_from_light_projection( projection ) > 0 );
+
+    const zombie_rider_overmap_ai::rider_light_interest early =
+        zombie_rider_overmap_ai::evaluate_light_attraction( projection,
+                zombie_rider_overmap_ai::mature_world_gate_days - 1, 3 );
+    CHECK_FALSE( early.should_investigate );
+    CHECK( early.reason == "early_world_gate" );
+    CHECK( early.max_riders_drawn == 0 );
+
+    const zombie_rider_overmap_ai::rider_light_interest mature =
+        zombie_rider_overmap_ai::evaluate_light_attraction( projection,
+                zombie_rider_overmap_ai::mature_world_gate_days + 30, 3 );
+    CHECK( mature.should_investigate );
+    CHECK( mature.reason == "exposed_bright_light" );
+    CHECK( mature.interest_score > 0 );
+    CHECK( mature.memory_turns >= 90 );
+    CHECK( mature.memory_turns <= 300 );
+    CHECK( mature.max_riders_drawn == 1 );
+}
+
+TEST_CASE( "zombie_rider_overmap_light_negative_controls_do_not_call_riders",
+           "[zombie_rider][overmap][ai]" )
+{
+    bandit_mark_generation::light_packet no_light;
+    no_light.id = "dark_camp";
+    no_light.envelope_id = "dark_camp";
+    no_light.region_id = "dark_region";
+    no_light.observed_range_omt = 4;
+    no_light.source_strength = 0;
+    no_light.persistence = 0;
+    no_light.time = bandit_mark_generation::light_time_band::night;
+    no_light.weather = bandit_mark_generation::light_weather_band::clear;
+    no_light.exposure = bandit_mark_generation::light_exposure_band::contained;
+    no_light.source = bandit_mark_generation::light_source_band::ordinary;
+
+    const bandit_mark_generation::light_projection dark_projection =
+        bandit_mark_generation::adapt_light_packet( no_light );
+    const zombie_rider_overmap_ai::rider_light_interest dark_interest =
+        zombie_rider_overmap_ai::evaluate_light_attraction( dark_projection,
+                zombie_rider_overmap_ai::mature_world_gate_days + 30, 2 );
+    CHECK_FALSE( dark_interest.should_investigate );
+    CHECK( dark_interest.reason == "no_viable_light_signal" );
+
+    bandit_mark_generation::light_packet weak_screened_light = no_light;
+    weak_screened_light.id = "weak_screened_light";
+    weak_screened_light.source_strength = 1;
+    weak_screened_light.exposure = bandit_mark_generation::light_exposure_band::screened;
+    weak_screened_light.observed_range_omt = 2;
+
+    const bandit_mark_generation::light_projection weak_projection =
+        bandit_mark_generation::adapt_light_packet( weak_screened_light );
+    REQUIRE( weak_projection.viable );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( weak_projection ) == 0 );
+
+    const zombie_rider_overmap_ai::rider_light_interest weak_interest =
+        zombie_rider_overmap_ai::evaluate_light_attraction( weak_projection,
+                zombie_rider_overmap_ai::mature_world_gate_days + 30, 2 );
+    CHECK_FALSE( weak_interest.should_investigate );
+    CHECK( weak_interest.reason == "below_rider_light_threshold" );
+
+    bandit_mark_generation::light_packet daylight_searchlight = weak_screened_light;
+    daylight_searchlight.id = "daylight_searchlight";
+    daylight_searchlight.source_strength = 8;
+    daylight_searchlight.persistence = 8;
+    daylight_searchlight.observed_range_omt = 12;
+    daylight_searchlight.time = bandit_mark_generation::light_time_band::daylight;
+    daylight_searchlight.exposure = bandit_mark_generation::light_exposure_band::exposed;
+    daylight_searchlight.source = bandit_mark_generation::light_source_band::searchlight;
+
+    const bandit_mark_generation::light_projection daylight_projection =
+        bandit_mark_generation::adapt_light_packet( daylight_searchlight );
+    REQUIRE( daylight_projection.viable );
+    CHECK( bandit_mark_generation::horde_signal_power_from_light_projection( daylight_projection ) == 0 );
+
+    const zombie_rider_overmap_ai::rider_light_interest daylight_interest =
+        zombie_rider_overmap_ai::evaluate_light_attraction( daylight_projection,
+                zombie_rider_overmap_ai::mature_world_gate_days + 30, 2 );
+    CHECK_FALSE( daylight_interest.should_investigate );
+    CHECK( daylight_interest.reason == "below_rider_light_threshold" );
+}
+
+TEST_CASE( "zombie_rider_overmap_light_memory_decays_and_caps_accumulation",
+           "[zombie_rider][overmap][ai]" )
+{
+    bandit_mark_generation::light_packet elevated_light;
+    elevated_light.id = "elevated_searchlight";
+    elevated_light.envelope_id = "elevated_camp_light";
+    elevated_light.region_id = "camp_region";
+    elevated_light.observed_range_omt = 12;
+    elevated_light.source_strength = 8;
+    elevated_light.persistence = 8;
+    elevated_light.side_leakage = 2;
+    elevated_light.time = bandit_mark_generation::light_time_band::night;
+    elevated_light.weather = bandit_mark_generation::light_weather_band::clear;
+    elevated_light.exposure = bandit_mark_generation::light_exposure_band::exposed;
+    elevated_light.source = bandit_mark_generation::light_source_band::searchlight;
+    elevated_light.terrain = bandit_mark_generation::light_terrain_band::open;
+    elevated_light.vertical_offset = 2;
+    elevated_light.vertical_sightline = true;
+    elevated_light.elevation_bonus = 3;
+
+    const bandit_mark_generation::light_projection projection =
+        bandit_mark_generation::adapt_light_packet( elevated_light );
+    REQUIRE( projection.viable );
+
+    const zombie_rider_overmap_ai::rider_light_interest interest =
+        zombie_rider_overmap_ai::evaluate_light_attraction( projection,
+                zombie_rider_overmap_ai::mature_world_gate_days + 30, 9 );
+    REQUIRE( interest.should_investigate );
+    CHECK( interest.reason == "elevated_bright_light" );
+    CHECK( interest.interest_score == 6 );
+    CHECK( interest.memory_turns == 300 );
+    CHECK( interest.max_riders_drawn == zombie_rider_overmap_ai::max_riders_drawn_by_light );
+
+    zombie_rider_overmap_ai::rider_light_memory memory;
+    zombie_rider_overmap_ai::refresh_light_memory( memory, interest );
+    REQUIRE( memory.active() );
+    CHECK( memory.max_riders_drawn == zombie_rider_overmap_ai::max_riders_drawn_by_light );
+
+    zombie_rider_overmap_ai::advance_light_memory( memory, 60 );
+    CHECK( memory.active() );
+    CHECK( memory.interest_score == 5 );
+    CHECK( memory.turns_remaining == 240 );
+    CHECK( memory.max_riders_drawn == zombie_rider_overmap_ai::max_riders_drawn_by_light );
+
+    zombie_rider_overmap_ai::advance_light_memory( memory, 1000 );
+    CHECK_FALSE( memory.active() );
+    CHECK( memory.reason == "decayed_after_light_off" );
 }
