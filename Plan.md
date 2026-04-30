@@ -67,6 +67,22 @@ Last closed active lane: `CAOL-ROOF-HORDE-NICE-FIRE-v0` — see `doc/roof-fire-h
 
 ---
 
+## Greenlit queued lane — CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
+
+**Status:** GREENLIT / QUEUED AFTER ACTIVE GAUNTLET
+
+Josef greenlit a writhing-stalker behavior-pattern follow-up on 2026-04-30 after clarifying the desired attack rhythm: the stalker should be able to attack a few times when healthy and the opportunity stays good, then withdraw once badly injured. This is queued behind `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0`; do not interrupt the active gauntlet unless Schani/Josef explicitly promote this packet to active.
+
+Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`.
+
+Imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
+
+Goal: add a tiny primitive minimap/ASCII/equivalent repeated-turn behavior-pattern test layer for writhing-stalker stalking cadence: no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike windows, cooldown anti-spam, repeated attack cadence, badly-injured retreat, and jitter/stuckness smells. If current code already passes, record the proof; if not, make the smallest tuning/implementation change that preserves no-omniscience and anti-spam constraints.
+
+Boundary: this is not a monster-flavor/stat respin, not a mixed-hostile rerun, and not a full long-term nemesis-memory design. Do not make the stalker nastier by making it omniscient.
+
+---
+
 ## Held / parked lanes that must not disappear
 
 **Status:** PARKED / HELD VISIBILITY ONLY

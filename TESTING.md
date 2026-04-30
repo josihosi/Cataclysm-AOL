@@ -64,6 +64,18 @@ Validation burden:
 - Do not use setup-only camp/signal presence as proof. The live maintenance/outing path must run and produce before/after evidence.
 - Report red/yellow failure honestly if dogpile, stale state, reload loss, CPU churn, or log spam appears.
 
+
+### Greenlit queued validation target - CAOL-WRITHING-STALKER-PATTERN-TESTS-v0
+
+`CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` is greenlit and queued after the active multi-camp gauntlet. It must not interrupt `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` unless Schani/Josef explicitly promote it. Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`; imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
+
+Validation burden when active:
+- Build a primitive minimap/ASCII/equivalent repeated-turn behavior-pattern helper, not only isolated one-shot decision assertions.
+- Cover no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike windows, cooldown anti-spam, repeated attack cadence, badly-injured retreat, and jitter/stuckness smells.
+- Include compact trace evidence for the repeated-attack and injured-retreat rows: strike count, cooldown/reposition turns, HP threshold/retreat trigger, and final decision reasons.
+- Preserve the closed v0 guardrails: no omniscient tracking, no direct-route preference when cover exists, no exposed/focused suicide charge, no repeat-strike spam.
+- If deterministic helper proof outpaces `monster::plan()` coverage, run the smallest live-seam probe needed to show the live path still maps to the tested behavior.
+
 ### Closed validation receipt - CAOL-ROOF-HORDE-NICE-FIRE-v0
 
 `CAOL-ROOF-HORDE-NICE-FIRE-v0` is closed/checkpointed green for v0. Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`; imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`; closure proof: `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`.

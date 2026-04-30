@@ -8,6 +8,8 @@ Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, an
 
 `CAOL-ROOF-HORDE-NICE-FIRE-v0` and `CAOL-WRITHING-STALKER-v0` are closed. Do not reopen them.
 
+Queued-next visibility: `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` is greenlit behind this active gauntlet, with contract `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`. Do **not** switch to it during the current gauntlet unless Schani/Josef explicitly promote it to active; it is listed here so the next lane does not disappear.
+
 ## Goal
 
 Run a real challenge gauntlet for live bandit overmap systems: multiple camps, structural bounty, mixed live signals, bounded time passage, and metrics.

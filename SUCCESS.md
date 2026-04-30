@@ -39,6 +39,27 @@ Canonical docs:
 
 ---
 
+
+## CAOL-WRITHING-STALKER-PATTERN-TESTS-v0 — Writhing stalker primitive behavior-pattern tests
+
+Status: GREENLIT / QUEUED AFTER ACTIVE GAUNTLET
+
+Success state:
+- [ ] A named primitive minimap/ASCII/equivalent repeated-turn behavior-pattern helper exists for writhing-stalker behavior.
+- [ ] Tests cover no-evidence/no-beeline, weak evidence decay, cover/edge route preference, exposure hold/withdraw, vulnerability strike window, cooldown anti-spam, repeated attack cadence, badly-injured retreat, and jitter/stuckness smells.
+- [ ] Repeated-attack evidence shows a healthy stalker can strike, cool down/reposition, and strike again if the player remains vulnerable and the opportunity remains plausible.
+- [ ] Injured-retreat evidence shows badly-injured stalker self-preservation overrides greed even when the player is vulnerable.
+- [ ] If current code fails the desired rhythm, the smallest behavior/tuning change is made without weakening no-omniscience, cover preference, exposed-withdraw, or cooldown anti-spam constraints.
+- [ ] Focused writhing-stalker tests and any minimal live-seam probe needed for `monster::plan()` mapping are run and recorded.
+- [ ] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state when the packet becomes active or closes.
+
+Canonical docs:
+- Imagination source: `doc/writhing-stalker-behavior-pattern-imagination-source-of-truth-2026-04-30.md`.
+- Contract: `doc/writhing-stalker-behavior-pattern-minimap-packet-v0-2026-04-30.md`.
+- Prior v0 closure footing: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md` and `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
+
+---
+
 ## CAOL-ROOF-HORDE-NICE-FIRE-v0 — Roof-fire horde nice-fire playtest
 
 Status: CLOSED / CHECKPOINTED GREEN V0
