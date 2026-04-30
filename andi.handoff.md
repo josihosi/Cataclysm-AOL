@@ -2,7 +2,7 @@
 
 ## Current canon state
 
-`CAOL-ZOMBIE-RIDER-0.3-v0` is **ACTIVE / GREENLIT INITIAL DEV STARTED AFTER WRITHING-STALKER LIVE FUN CLOSURE**.
+`CAOL-ZOMBIE-RIDER-0.3-v0` is **ACTIVE / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN; LOCAL COMBAT AI NEXT**.
 
 Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` aligned downstream. This handoff is only a terse executor packet; if it disagrees with canon, repair it from canon.
 
@@ -29,15 +29,16 @@ Running is out of the question.
 
 Do not “fix” `It's`, commas, dashes, or rhythm. Josef explicitly said the weird punctuation is intentional.
 
-## Immediate slice
+## Current checkpoint
 
-Start with monster/evolution footing only:
+Monster/evolution footing is green in `d50715f00e`:
 
-1. Add/preserve actual `mon_zombie_rider` definition with the exact description text.
-2. Choose and document the endpoint lineage (default smell: hunter/predator branch into rider after mature-world pressure, not year-one routine spawn).
-3. Add the smallest deterministic/source validation proving the rider definition exists, movement footing is scary-fast-but-reviewable, and early/routine spawn/evolution gates do not leak riders.
+- actual `mon_zombie_rider` exists with the exact description text;
+- endpoint smell is hunter/predator branch after mature-world pressure, but normal upgrades are not wired into rider;
+- direct routine spawn is gated to `GROUP_ZOMBIE` at `730 days`, singleton/costly;
+- focused `[zombie_rider]` tests prove scary-fast-but-reviewable footing and no early spawn/evolution leak.
 
-Only after this checkpoint should the lane widen to local shoot/flee/reposition AI, overmap light attraction, rider bands, and live funness rows.
+Next slice may widen only to local shoot/flee/reposition AI and deterministic counterplay tests. Do not jump ahead to overmap light attraction, rider bands, or live funness rows until that boundary is green.
 
 ## Evidence/reporting requirements
 

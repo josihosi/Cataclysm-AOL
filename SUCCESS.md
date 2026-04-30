@@ -42,17 +42,19 @@ Canonical docs:
 
 ## CAOL-ZOMBIE-RIDER-0.3-v0 — Zombie rider initial dev
 
-Status: ACTIVE / GREENLIT INITIAL DEV STARTED AFTER WRITHING-STALKER LIVE FUN CLOSURE
+Status: ACTIVE / MONSTER-EVOLUTION FOOTING CHECKPOINT GREEN; LOCAL COMBAT AI NEXT
 
 Success state:
-- [ ] Exact flavor text is preserved in raw intake, imagination source, and actual monster description.
-- [ ] Monster JSON / definitions validate and focused tests cover endpoint spawn/evolution gating.
+- [x] Exact flavor text is preserved in raw intake, imagination source, and actual monster description.
+- [x] Monster JSON / definitions validate and focused tests cover endpoint spawn/evolution gating.
 - [ ] Local combat tests cover scary-fast movement, ranged shooting, shoot/flee/reposition cadence, injury/pressure withdrawal, and counterplay through cover/line-of-sight/terrain.
 - [ ] Overmap/map-AI tests cover light attraction, no-light negative control, light-memory decay, rider convergence, rider-band formation, and accumulation caps.
 - [ ] Live or harness playtests cover open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider retreat or disengagement.
 - [ ] Metrics include scenario/run ids, turn/time budgets, decision/reason traces, rider counts, band state, shot/reposition/retreat counts, warnings/log spam/crash state, and available per-turn/cadence costs.
 - [ ] If implementation exposes a tuning problem, the smallest change preserves endpoint danger, readable counterplay, no early routine spawn, no omniscient light doom, and no infinite banding.
 - [ ] `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match final state when this packet becomes active or closes.
+
+Evidence: commit `d50715f00e` adds `mon_zombie_rider`, pseudo bow footing, mature `GROUP_ZOMBIE` direct gate at `730 days`, and `tests/zombie_rider_test.cpp`. Gates: `make -j4 tests/zombie_rider_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (34 assertions in 2 test cases)` with clean JSON load/no debug errors. Scope caveat: deterministic monster/evolution footing only; no local combat funness, overmap light attraction, rider bands, or live scenario claim yet.
 
 Canonical docs:
 - Raw intake / exact flavor text: `doc/zombie-rider-raw-intake-2026-04-30.md`.

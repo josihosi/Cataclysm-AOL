@@ -71,12 +71,15 @@ Caveat: staged-but-live McWilliams scenarios, not fully natural random discovery
 
 ### Active validation target - CAOL-ZOMBIE-RIDER-0.3-v0
 
-`CAOL-ZOMBIE-RIDER-0.3-v0` is active after the writhing-stalker live fun packet closed green. First validation slice is monster/evolution footing before broader AI or live funness claims. Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`; imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`; benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`; raw intake: `doc/zombie-rider-raw-intake-2026-04-30.md`.
+`CAOL-ZOMBIE-RIDER-0.3-v0` is active after the writhing-stalker live fun packet closed green. Monster/evolution footing checkpoint is green; next validation slice is local combat AI before overmap or live funness claims. Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`; imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`; benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`; raw intake: `doc/zombie-rider-raw-intake-2026-04-30.md`.
+
+Credited footing evidence:
+- Commit `d50715f00e` adds `mon_zombie_rider` with exact three-line Josef description, huge/scary-fast monster footing, pseudo `zombie_rider_bone_bow`, direct mature `GROUP_ZOMBIE` gate at `730 days`, and no normal predator/upgrade path into rider.
+- Gates: `make -j4 tests/zombie_rider_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[zombie_rider]"` -> `All tests passed (34 assertions in 2 test cases)` with clean JSON load/no debug errors.
 
 Validation burden:
-- First checkpoint: preserve exact flavor text in the actual monster description; punctuation is not cleanup fodder.
-- First checkpoint: deterministic/source validation proves endpoint evolution/spawn gating does not leak into early routine spawn paths.
-- Deterministic tests: endpoint evolution/spawn gate, scary-fast movement constraints, ranged shoot/flee/reposition cadence, injury/pressure withdrawal, cover/LOS/terrain counterplay.
+- Next deterministic tests: ranged shoot/flee/reposition cadence, injury/pressure withdrawal, cover/LOS/terrain counterplay.
+- Keep the existing endpoint evolution/spawn gate and scary-fast movement constraints green while local AI changes.
 - Map-AI tests: overmap light attraction, no-light negative control, light-memory decay, rider convergence, rider-band formation, accumulation caps, and circle/harass instead of wall-suicide.
 - Live/harness playtests: open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider disengagement.
 - Report scenario/test/run ids, start conditions, decision traces, rider counts, band state, shot/reposition/retreat counts, pass/fail/yellow verdicts, caveats, stability/perf, and crash/log-spam state.

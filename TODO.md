@@ -10,9 +10,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 Active: `CAOL-ZOMBIE-RIDER-0.3-v0`.
 
-Immediate narrow slice: monster/evolution footing, not the full overmap/funness stack.
+Monster/evolution footing checkpoint is green in `d50715f00e`; do not reprove it by ritual unless changed.
 
-1. Preserve Josef's exact three-line flavor text in the actual `mon_zombie_rider` monster description.
-2. Choose and document the clean endpoint lineage (default smell: zombie hunter/predator branch -> rider after mature-world pressure, not year-one routine spawn).
-3. Add the smallest deterministic validation that proves the rider definition exists, keeps scary-fast-but-reviewable movement footing, and does not leak through early/routine spawn/evolution gates.
-4. Only after that checkpoint, widen to local shoot/flee/reposition AI, overmap light attraction, rider convergence/bands, and live/harness funness rows from the benchmark suite.
+Next narrow slice: local combat AI/test footing only, not overmap light attraction, rider bands, or live funness yet.
+
+1. Identify the smallest live-consumed seam for zombie rider local shoot/flee/reposition behavior.
+2. Add deterministic tests for ranged shot cadence, reposition/retreat pressure, and cover/LOS/terrain counterplay.
+3. Wire the smallest behavior needed for those tests without making the rider omniscient, a wall-suicide archer, or an unavoidable camp-deletion tax.
+4. Validate with focused `[zombie_rider]` tests and only then decide whether the next boundary is overmap light attraction or live-shaped local funness rows.
