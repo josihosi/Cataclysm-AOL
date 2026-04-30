@@ -35,13 +35,15 @@ Success state:
 - [ ] Live/harness proof `writhing_stalker.live_shadow_strike_mcw` shows a real stalk/hold/strike/withdraw scene from the game path.
 - [ ] Live/harness proof `writhing_stalker.live_no_omniscient_beeline_mcw` shows no instant beeline/attack without valid evidence.
 - [ ] Live/harness proof `writhing_stalker.live_exposed_retreat_mcw` shows exposure/focus/hurt causes hold or withdrawal, or is explicitly classified future-only.
-- [ ] Tuning readout records whether the stalker is too common, too fast, too tanky, too invisible, too honest, or too stupid.
+- [ ] Mixed hostile performance playtest `performance.mixed_hostile_stalker_horde_mcw` reports metrics with bandit camp, cannibal camp, one writhing stalker, and horde present, or is explicitly classified follow-up/future-only.
+- [ ] Tuning readout records whether the stalker is too common, too fast, too tanky, too invisible, too honest, too stupid, or too expensive under mixed hostile load.
 - [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final active/closed state.
 
 Notes:
 - Imagination source lives at `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`.
 - Contract lives at `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`.
 - Playtest ladder lives at `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
+- Mixed hostile performance packet lives at `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`.
 - Raw intake remains preserved at `doc/writhing-stalker-raw-intake-2026-04-30.md`.
 
 

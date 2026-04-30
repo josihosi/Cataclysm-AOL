@@ -259,6 +259,34 @@ Setup:
 
 Green means stalker holds/withdraws instead of brainless melee until death.
 
+### Green live packet D — mixed hostile performance metrics
+
+Proposed scenario: `performance.mixed_hostile_stalker_horde_mcw`
+
+Contract: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
+
+Setup:
+
+- one bandit camp / hostile live-world site;
+- one cannibal camp / hostile live-world site;
+- exactly one `mon_writhing_stalker` at a plausible distance;
+- one overmap horde or horde-pressure fixture;
+- a bounded player position/state that lets the run measure mixed pressure before it collapses into nonsense.
+
+Required report:
+
+- runtime commit and dirty/clean state;
+- scenario/run path;
+- setup mix and proof all four requested actors exist;
+- in-game window, sampled turns and/or waited minutes;
+- harness wall-clock;
+- per-turn min/median/p95/max where available;
+- `bandit_live_world perf` min/median/max plus max `signal_us`, `dispatch_us`, `travel_us`, and active job mix;
+- stalker planning cost and horde movement/retarget cost, or explicit `not instrumented` for either;
+- debug/log spam, stability, and playability note.
+
+Green means the mixed scene completes with real metrics from live paths. Startup/load-only, setup-only, or missing-ingredient runs are not green.
+
 ### Optional Josef playtest prompts
 
 Josef should not be a blocker, but if he plays it, ask only product questions:
@@ -281,7 +309,8 @@ Josef should not be a blocker, but if he plays it, ask only product questions:
 - [ ] Live packet A stalk/strike green.
 - [ ] Live packet B no-omniscient-beeline green.
 - [ ] Live packet C exposed/focus retreat green or explicitly future-only.
-- [ ] Tuning readout records too-fast/too-tanky/too-common/too-stupid verdict.
+- [ ] Mixed hostile performance packet `performance.mixed_hostile_stalker_horde_mcw` records bandit camp + cannibal camp + stalker + horde metrics, or is explicitly classified as follow-up/future-only.
+- [ ] Tuning readout records too-fast/too-tanky/too-common/too-stupid/too-expensive verdict.
 
 ## Future-only after v0
 

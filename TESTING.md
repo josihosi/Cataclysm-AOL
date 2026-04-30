@@ -55,7 +55,7 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ### Active validation target - CAOL-WRITHING-STALKER-v0
 
-Current boundary: **monster/stat/spawn footing, deterministic behavior substrate, and first live monster-plan seam are green; live/harness behavior probes next**. Receipt: `doc/work-ledger.md`. Raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`; imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`; contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`; testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.
+Current boundary: **monster/stat/spawn footing, deterministic behavior substrate, and first live monster-plan seam are green; live/harness behavior probes plus Josef's mixed-hostile metrics playtest are next**. Receipt: `doc/work-ledger.md`. Raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`; imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`; contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`; testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`; mixed-hostile performance packet: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`.
 
 Current evidence:
 - `mon_writhing_stalker` JSON/stat footing and rare singleton `GROUP_ZOMBIE` spawn entry landed with `tests/writhing_stalker_test.cpp`. Evidence: `git diff --check`; `python3 -m json.tool data/json/monsters/zed_misc.json`; `python3 -m json.tool data/json/monstergroups/zombies.json`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]"`; focused Python JSON audit for singleton `GROUP_ZOMBIE` entry.
@@ -80,6 +80,7 @@ Initial proposed live scenarios:
 - `writhing_stalker.live_shadow_strike_mcw` — one believable stalk/hold/strike/withdraw scene.
 - `writhing_stalker.live_no_omniscient_beeline_mcw` — no valid evidence, no instant beeline/attack.
 - `writhing_stalker.live_exposed_retreat_mcw` — latch exists, exposure/focus/hurt state causes hold or withdrawal.
+- `performance.mixed_hostile_stalker_horde_mcw` — Josef-requested metrics playtest with bandit camp, cannibal camp, one writhing stalker, and horde on the map. Report must include setup mix, runtime commit/dirty state, in-game window, harness wall-clock, per-turn min/median/p95/max where available, `bandit_live_world perf` min/median/max and slice maxima, stalker/horde timing or explicit `not instrumented`, log spam/stability, and a playability note.
 
 Do not close from JSON alone. Do not close from deterministic tests pretending to be gameplay. Do not close from a debug spawn directly on top of the player and call it stalking. This is horror, not a spreadsheet mugging.
 
@@ -109,6 +110,7 @@ Initial greenlit live probes, once implementation footing exists:
 - `writhing_stalker.live_shadow_strike_mcw`
 - `writhing_stalker.live_no_omniscient_beeline_mcw`
 - `writhing_stalker.live_exposed_retreat_mcw`
+- `performance.mixed_hostile_stalker_horde_mcw` — mixed hostile metrics report per `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
 
 Preserve `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/` as the green Smart Zone Manager live coordinate-label proof. Preserve `.userdata/dev-harness/harness_runs/20260429_180239/` as the green split-run roof-fire horde detection proof and `.userdata/dev-harness/harness_runs/20260429_172847/` as its source player-created roof-fire writeback proof. Preserve `.userdata/dev-harness/harness_runs/20260429_162100/` as green player-lit source-zone fire -> bandit signal proof. Preserve `.userdata/dev-harness/harness_runs/20260430_115157/` as green structural-bounty v0 proof and `.userdata/dev-harness/harness_runs/20260430_114106/` as red/non-credit structural-bounty postmortem. Do not rerun solved rows as ritual.
 

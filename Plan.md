@@ -55,7 +55,7 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 Current target: create the first playable writhing stalker v0: a rare singleton first-generation zombie-adjacent predator that uses coarse world interest, human/player evidence, light, cover, zombie distraction, and opportunity windows to stalk and strike without omniscient beelines or bandit-camp economy logic.
 
-Current boundary: monster/stat/spawn footing, deterministic AI-decision substrate, and the smallest live monster-plan seam are implemented and validated. `monster::plan()` now routes `mon_writhing_stalker` through the pure live-response helper for local-evidence gating, shadow destinations, strike targeting, and withdraw/cooldown behavior without bandit-camp economy logic. No new persisted latch state was added; v0 cooldown uses existing monster effect state. The remaining proof burden is live/harness stalk/strike/withdraw scenes, no-omniscience negative control, exposed/focus retreat control, and tuning readout.
+Current boundary: monster/stat/spawn footing, deterministic AI-decision substrate, and the smallest live monster-plan seam are implemented and validated. `monster::plan()` now routes `mon_writhing_stalker` through the pure live-response helper for local-evidence gating, shadow destinations, strike targeting, and withdraw/cooldown behavior without bandit-camp economy logic. No new persisted latch state was added; v0 cooldown uses existing monster effect state. The remaining proof burden is live/harness stalk/strike/withdraw scenes, no-omniscience negative control, exposed/focus retreat control, Josef's mixed-hostile performance metrics playtest, and tuning readout.
 
 Canonical references:
 - receipt: `doc/work-ledger.md` (`CAOL-WRITHING-STALKER-v0`)
@@ -63,9 +63,10 @@ Canonical references:
 - imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`
 - contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`
 - testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`
+- mixed-hostile performance packet: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`
 - active validation target: `TESTING.md`
 
-Concurrency note: Andi cron and Augerl-Frau review cron are still disabled from the 2026-04-30 canon/ledger repair window. This lane is greenlit in canon, but automation should be re-enabled only by an explicit Josef/Schani operational decision after dirty-tree review.
+Concurrency note: Andi cron was refreshed after the 2026-04-30 context-overflow issue and is active again; Augerl-Frau review is active. Keep work checkpointed and reviewable because the active lane now mixes code, harness, and performance proof.
 
 ---
 
