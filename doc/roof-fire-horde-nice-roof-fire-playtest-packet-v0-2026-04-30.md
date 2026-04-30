@@ -2,7 +2,7 @@
 
 ## Classification
 
-Status: **ACTIVE / GREENLIT PLAYTEST PACKET**.
+Status: **COMPLETE / GREEN FEATURE-PATH PROOF**.
 
 Ledger ID: `CAOL-ROOF-HORDE-NICE-FIRE-v0`.
 
@@ -11,6 +11,8 @@ Imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-tr
 Prior proof this extends: `CAOL-ROOF-HORDE-SPLIT-v0`, documented in `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`.
 
 ## Goal
+
+Completed in green run `.userdata/dev-harness/harness_runs/20260430_191556/` with scenario `bandit.roof_fire_horde_nice_roof_fire_mcw`; closure proof: `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`.
 
 Run a focused roof-fire horde playtest with a **nice roof fire** and direct horde-response evidence. This promotes the earlier future-only stricter roof-horde attribution caveat into the current active lane.
 
@@ -48,14 +50,14 @@ The playtest should prove more than “a horde existed near a mixed-hostile fixt
 
 ## Success state
 
-- [ ] A named scenario/fixture exists for this packet, proposed name: `bandit.roof_fire_horde_nice_roof_fire_mcw`.
-- [ ] The credited fire is roof/elevated, inspectable before the wait, and tied to the previous player-created roof-fire chain or an equivalent newly proven player-action path.
-- [ ] A horde is present before the wait at a plausible distance with saved/metadata footing.
-- [ ] Bounded in-game time passes through the normal wait path or an equally honest harness time-passage path.
-- [ ] Same-run artifacts show the roof-fire signal path firing for the elevated fire.
-- [ ] Saved/log artifacts show horde response after the wait: retarget/destination and processed/move-budget evidence at minimum.
-- [ ] Metrics report cost/stability and labels any unavailable horde-specific timing as `not instrumented` instead of hiding it.
-- [ ] Canon files (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, `andi.handoff.md`) match the final state.
+- [x] A named scenario/fixture exists for this packet, proposed name: `bandit.roof_fire_horde_nice_roof_fire_mcw`.
+- [x] The credited fire is roof/elevated, inspectable before the wait, and tied to the previous player-created roof-fire chain or an equivalent newly proven player-action path.
+- [x] A horde is present before the wait at a plausible distance with saved/metadata footing.
+- [x] Bounded in-game time passes through the normal wait path or an equally honest harness time-passage path.
+- [x] Same-run artifacts show the roof-fire signal path firing for the elevated fire.
+- [x] Saved/log artifacts show horde response after the wait: retarget/destination and processed/move-budget evidence at minimum.
+- [x] Metrics report cost/stability and labels any unavailable horde-specific timing as `not instrumented` instead of hiding it.
+- [x] Canon files (`Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, `andi.handoff.md`) match the final state.
 
 ## Evidence boundary
 

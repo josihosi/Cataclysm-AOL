@@ -19,21 +19,23 @@ Use this file so completion is explicit instead of vibes-based.
 
 ## CAOL-ROOF-HORDE-NICE-FIRE-v0 — Roof-fire horde nice-fire playtest
 
-Status: ACTIVE / GREENLIT PLAYTEST PACKET
+Status: CLOSED / CHECKPOINTED GREEN V0
 
 Success state:
-- [ ] A named scenario/fixture exists for this packet, proposed name `bandit.roof_fire_horde_nice_roof_fire_mcw`.
-- [ ] The credited fire is roof/elevated, inspectable before the wait, and tied to the previous player-created roof-fire chain or an equivalent newly proven player-action path.
-- [ ] A horde is present before the wait at a plausible distance with saved/metadata footing.
-- [ ] Bounded in-game time passes through the normal wait path or an equally honest harness time-passage path.
-- [ ] Same-run artifacts show the roof-fire signal path firing for the elevated fire.
-- [ ] Saved/log artifacts show horde response after the wait: retarget/destination and processed/move-budget evidence at minimum.
-- [ ] Metrics report cost/stability and labels unavailable horde-specific timing as `not instrumented` instead of hiding it.
-- [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match the final state.
+- [x] A named scenario/fixture exists for this packet: `bandit.roof_fire_horde_nice_roof_fire_mcw` reuses the honest split fixture `roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29`.
+- [x] The credited fire is roof/elevated, inspectable before the wait, and tied to the previous player-created roof-fire chain: source run `.userdata/dev-harness/harness_runs/20260429_172847/`, audited again in green run `.userdata/dev-harness/harness_runs/20260430_191556/`.
+- [x] A horde is present before the wait at a plausible distance with saved/metadata footing: `mon_zombie` at offset `[0,-120,0]`, destination self, `tracking_intensity=0`, `last_processed=0`, `moves=0`.
+- [x] Bounded in-game time passes through the wait path: `5m`, observed turn delta `300` (`5266942` -> `5267242`).
+- [x] Same-run artifacts show the roof-fire signal path firing for the elevated fire: `bandit_live_world horde light signal ... source_omt=(140,41,1) horde_signal_power=20 ... elevated_exposure_extended=yes`.
+- [x] Saved/log artifacts show horde response after the wait: destination retargeted to `[3360,984,1]`, `last_processed=5267242`, `moves=8400`.
+- [x] Metrics report cost/stability and labels unavailable horde-specific timing as `not instrumented`: end-to-end harness wall-clock `2:34.72`, `14/14` step rows green, `1/1` wait rows green, no runtime warnings/abort, horde-specific timing `not instrumented`.
+- [x] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and `andi.handoff.md` match the final state.
 
 Canonical docs:
 - Imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`.
 - Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`.
+- Closure proof: `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`.
+- Green run: `.userdata/dev-harness/harness_runs/20260430_191556/`.
 - Prior footing: `doc/roof-fire-horde-detection-proof-v0-2026-04-29.md`, source run `.userdata/dev-harness/harness_runs/20260429_172847/`, split proof `.userdata/dev-harness/harness_runs/20260429_180239/`.
 
 ---

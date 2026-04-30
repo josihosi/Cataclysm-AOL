@@ -53,16 +53,21 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
-### Active validation target - CAOL-ROOF-HORDE-NICE-FIRE-v0
+### Closed validation receipt - CAOL-ROOF-HORDE-NICE-FIRE-v0
 
-`CAOL-ROOF-HORDE-NICE-FIRE-v0` is the active playtest packet. Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`; imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`.
+`CAOL-ROOF-HORDE-NICE-FIRE-v0` is closed/checkpointed green for v0. Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`; imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`; closure proof: `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`.
 
-Validation burden:
-- Use a named focused scenario, proposed `bandit.roof_fire_horde_nice_roof_fire_mcw`.
-- Prove a real/equivalent player-action roof or elevated fire before waiting. Preferred footing is the existing green roof-fire chain: `.userdata/dev-harness/harness_runs/20260429_172847/` -> `.userdata/dev-harness/harness_runs/20260429_180239/`.
-- Prove horde presence before waiting, then direct horde response after bounded time passage: retarget/destination plus processed-turn/move-budget evidence at minimum.
-- Capture same-run roof-fire signal artifacts and cost/stability metrics.
-- Do not use mixed-hostile horde setup proof or setup-only presence as a substitute for direct roof-fire horde response.
+Credited run: `.userdata/dev-harness/harness_runs/20260430_191556/` using scenario `bandit.roof_fire_horde_nice_roof_fire_mcw` and fixture `roof_fire_horde_split_wait_from_player_fire_v0_2026-04-29`. Source roof-fire footing remains `.userdata/dev-harness/harness_runs/20260429_172847/`, with prior split proof `.userdata/dev-harness/harness_runs/20260429_180239/`.
+
+Credited evidence:
+- Saved roof/elevated fire before/after wait: `t_tile_flat_roof` + `f_brazier` + `fd_fire`, no new fixture `fd_fire` transform, tied to the source normal player-action roof-fire chain.
+- Horde before wait: `mon_zombie` at offset `[0,-120,0]`, destination self, `tracking_intensity=0`, `last_processed=0`, `moves=0`; this is footing only.
+- Bounded wait: `5m`, turn delta `300` (`5266942` -> `5267242`), wait ledger green.
+- Same-run live roof-fire horde signal: `bandit_live_world horde light signal ... source_omt=(140,41,1) horde_signal_power=20 ... elevated_exposure_extended=yes`.
+- Horde response after wait: destination retargeted to `[3360,984,1]`, `last_processed=5267242`, `moves=8400`, status `required_state_present`.
+- Cost/stability: harness wall-clock `2:34.72`, `14/14` step rows green, `1/1` wait rows green, no runtime warnings/abort; horde-specific timing `not instrumented`.
+
+Preserved caveats: no positive `tracking_intensity` claim, no horde-specific micro-timing, no broader combat/pathfinding or natural multi-day horde discovery claim. Do not rerun this proof as ritual unless Schani/Josef explicitly promote a stricter follow-up.
 
 ### Closed validation receipt - CAOL-WRITHING-STALKER-v0
 
@@ -89,6 +94,7 @@ Future structural-bounty playtests are greenlit as optional follow-ups, not bloc
 Recent completed validation targets have been moved to compact receipts in `doc/work-ledger.md` plus their canonical aux/proof docs. Do not re-expand them here unless one becomes the active validation target again.
 
 Current important receipts:
+- `CAOL-ROOF-HORDE-NICE-FIRE-v0` — focused nice roof-fire horde feature-path proof.
 - `CAOL-SZM-LIVE-LABEL-v0` — Smart Zone live coordinate-label proof.
 - `CAOL-REAL-FIRE-SIGNAL-v0` — real player fire -> bandit signal response.
 - `CAOL-ROOF-HORDE-SPLIT-v0` — split-run roof-fire horde response.
@@ -98,7 +104,7 @@ Current important receipts:
 
 ## Pending probes
 
-No active same-lane agent-side probe remains open for `CAOL-WRITHING-STALKER-v0`. Monster/stat/spawn footing, deterministic decision substrate, first live monster-plan seam wiring, debug-spawn footing, basic target/plan-turn proof, exposed/focused withdrawal proof, shadow/strike proof, no-omniscience negative control, and mixed-hostile metrics/tuning readout are green/closed for v0. Stricter horde attribution is future-only unless Schani/Josef explicitly promotes it.
+No active same-lane agent-side probe remains open for `CAOL-ROOF-HORDE-NICE-FIRE-v0`. Nice roof-fire horde proof is green/closed for v0 at `.userdata/dev-harness/harness_runs/20260430_191556/`; stricter positive `tracking_intensity`, horde-specific timing, or natural multi-day horde discovery remain future-only unless Schani/Josef explicitly promote them. `CAOL-WRITHING-STALKER-v0` also remains closed and must not be reopened by drift.
 
 Current green support/behavior probes:
 - `writhing_stalker.live_spawn_footing_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161342/` (spawn/save/active-monster footing only).

@@ -49,21 +49,13 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Active lane — CAOL-ROOF-HORDE-NICE-FIRE-v0
+## Open promotion slot
 
-**Status:** ACTIVE / GREENLIT PLAYTEST PACKET
+**Status:** PARKED / NO ACTIVE LANE / AWAITING SCHANI-JOSEF PROMOTION
 
-Josef promoted the stricter roof-fire horde playtest on 2026-04-30: “get horde playtested with a nice roof fire”. This is now the active lane and supersedes the prior no-active-lane parked state.
+No current execution lane is promoted. `CAOL-ROOF-HORDE-NICE-FIRE-v0` is closed/checkpointed green for v0 after the focused nice roof-fire horde proof. Do not rerun `bandit.roof_fire_horde_nice_roof_fire_mcw`, the old split proof, or mixed-hostile soup unless Schani/Josef explicitly promote a stricter follow-up.
 
-Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`.
-
-Imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`.
-
-Goal: run a focused feature-path playtest with an honest elevated/roof fire, a plausible horde, bounded time passage, direct horde before/after response evidence, and cost/stability metrics. This promotes the preserved future-only caveat from `CAOL-WRITHING-STALKER-v0` / `CAOL-MIXED-HOSTILE-PERF-v0` into a real active proof target.
-
-Boundary: do **not** rerun `performance.mixed_hostile_stalker_horde_mcw` as a substitute, do **not** reopen writhing stalker v0, and do **not** overclaim horde behavior from setup-only presence. Use the previous green roof-fire proof chain (`20260429_172847` source fire and `20260429_180239` split-run horde response) as footing where useful, or rebuild an equivalent honest player-action roof-fire path.
-
-Last closed active lane: `CAOL-WRITHING-STALKER-v0` — see `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md` for the compact receipt.
+Last closed active lane: `CAOL-ROOF-HORDE-NICE-FIRE-v0` — see `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`, `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md`. Preserved caveats: positive `tracking_intensity` and horde-specific micro-timing are not instrumented/credited; the green v0 response evidence is live roof-fire signal plus saved horde retarget/destination, `last_processed`, and positive movement budget.
 
 ---
 
@@ -83,6 +75,7 @@ These are visible here only because they affect future selection. Do not treat t
 
 Use `doc/work-ledger.md` and the linked aux docs for exact evidence, caveats, and supersessions. Do not reopen these by drift.
 
+- `CAOL-ROOF-HORDE-NICE-FIRE-v0` — closed/checkpointed green v0; focused nice roof-fire horde playtest using source player-created roof-fire chain `.userdata/dev-harness/harness_runs/20260429_172847/`, named scenario `bandit.roof_fire_horde_nice_roof_fire_mcw`, and green run `.userdata/dev-harness/harness_runs/20260430_191556/`. Proof reaches live roof-fire horde signal plus saved horde retarget/destination, `last_processed=5267242`, and `moves=8400`; caveats: `tracking_intensity=0` and horde-specific timing `not instrumented`. Proof doc `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`.
 - `CAOL-WRITHING-STALKER-v0` — closed/checkpointed green v0; first playable rare singleton zombie-adjacent predator with deterministic interest/latch/approach/opportunity/withdraw substrate, live monster-plan seam, exposed-retreat proof, shadow/strike/cooldown proof, no-omniscience negative control, and mixed-hostile metrics/tuning readout. Caveat preserved: horde presence/setup is proven in `.userdata/dev-harness/harness_runs/20260430_181748/`, but direct horde movement/retarget cost is not instrumented and is future-only unless explicitly promoted.
 - `CAOL-BANDIT-STRUCT-BOUNTY-v0` — closed/checkpointed green v0; closure readout `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`; green run `.userdata/dev-harness/harness_runs/20260430_115157/`; non-credit run `.userdata/dev-harness/harness_runs/20260430_114106/`.
 - `CAOL-SZM-LIVE-LABEL-v0` — closed green live coordinate-label proof; run `.userdata/smart-zone-audit-live-20260429e/harness_runs/20260429_225644/`.
