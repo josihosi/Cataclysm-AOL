@@ -1,36 +1,78 @@
-# Andi handoff: CAOL-ROOF-HORDE-NICE-FIRE-v0
+# Andi handoff: CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0
 
 ## Current canon state
 
-`CAOL-ROOF-HORDE-NICE-FIRE-v0` is **CLOSED / CHECKPOINTED GREEN V0**.
+`CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` is the **ACTIVE / GREENLIT CHALLENGE PLAYTEST PACKET**.
 
-Authoritative receipts: `Plan.md`, `SUCCESS.md`, `TESTING.md`, `doc/work-ledger.md`, and closure proof `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`. If this file ever disagrees with those, repair this file from canon.
+Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` aligned downstream. This handoff is only a terse executor packet; if it ever disagrees with those files, repair this file from canon instead of treating it as truth.
 
-`CAOL-WRITHING-STALKER-v0` remains closed and must not be reopened. The old mixed-hostile horde caveat was promoted into this focused roof-fire proof and is now closed for v0 under the caveats below.
+`CAOL-ROOF-HORDE-NICE-FIRE-v0` and `CAOL-WRITHING-STALKER-v0` are closed. Do not reopen them.
 
-## Green proof
+## Goal
 
-- Scenario: `bandit.roof_fire_horde_nice_roof_fire_mcw`
-- Run: `.userdata/dev-harness/harness_runs/20260430_191556/`
-- Source roof-fire footing: `.userdata/dev-harness/harness_runs/20260429_172847/`
-- Prior split footing/proof: `.userdata/dev-harness/harness_runs/20260429_180239/`
-- Proof doc: `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`
+Run a real challenge gauntlet for live bandit overmap systems: multiple camps, structural bounty, mixed live signals, bounded time passage, and metrics.
 
-Credited behavior:
-1. Saved roof/elevated fire before/after wait is `t_tile_flat_roof` + `f_brazier` + `fd_fire`, tied to the normal player-created roof-fire source chain.
-2. Horde footing before wait is setup-only: `mon_zombie` at offset `[0,-120,0]`, destination self, `tracking_intensity=0`, `last_processed=0`, `moves=0`.
-3. Bounded wait advances `300` turns (`5266942` -> `5267242`).
-4. Same-run live roof-fire horde signal fires: `source_omt=(140,41,1) horde_signal_power=20 ... elevated_exposure_extended=yes`.
-5. Saved horde response after wait: destination retargets to `[3360,984,1]`, `last_processed=5267242`, `moves=8400`.
-6. Cost/stability: wall-clock `2:34.72`, `14/14` step rows green, `1/1` wait rows green, no runtime warnings/abort; horde-specific timing `not instrumented`.
+## Canonical packet
 
-## Caveats / do not overclaim
+- Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`
+- Imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`
+- Prior structural-bounty closure footing: `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`
+- Prior green structural-bounty run: `.userdata/dev-harness/harness_runs/20260430_115157/`
 
-- `tracking_intensity` remained `0`; do not claim positive tracking-intensity behavior.
-- Horde-specific micro-timing is not instrumented separately.
-- This closes focused roof-fire signal/retarget/move-budget response, not broad horde combat/pathfinding or natural multi-day discovery.
-- Do not rerun this proof, mixed-hostile soup, or writhing-stalker work unless Schani/Josef explicitly promote a stricter follow-up.
+## Required challenge rows
 
-## Next executor state
+### Challenge A — multi-camp structural stress
 
-No active target is currently promoted. Wait for Schani/Josef to promote the next lane.
+Create/run a named scenario, proposed:
+
+- `bandit.multi_camp_structural_stress_mcw`
+
+Required evidence:
+- at least two bandit camps/sites, four if clean;
+- bounded time passage;
+- before/after site and active-group state;
+- selected targets and reasons;
+- harvested/dangerous/recently-checked/no-repeat state;
+- dogpile vs spread vs hold readout;
+- wall-clock/per-turn/cadence metrics and log/crash status.
+
+### Challenge B — mixed signal coexistence
+
+Create/run a named scenario, proposed:
+
+- `bandit.mixed_signal_coexistence_mcw`
+
+Required evidence:
+- structural bounty plus at least one live smoke/fire/light/roof-fire signal;
+- candidate priority/reason readout showing how signals compete;
+- proof that live signals do not erase structural-bounty state and structural-bounty scans do not drown urgent live signals;
+- active outing state and cost metrics.
+
+### Challenge C — reload/resume continuity, if practical
+
+If A or B creates meaningful active outing state:
+- save;
+- relaunch/reload;
+- continue bounded time;
+- verify active group/site state resumes without disappearing, duplicating, or becoming stale.
+
+If not practical in the same packet, state exactly why and what seam remains.
+
+## Non-goals/cautions
+
+- Do not reopen roof-horde, writhing-stalker, Smart Zone, or old fire proof lanes.
+- Do not call setup-only camp/signal presence a challenge result.
+- Do not require fully natural unseeded discovery for v0; staged-but-live setup is acceptable if live maintenance/outing paths run honestly.
+- Do not hide dogpile, reload loss, stale state, CPU churn, or log spam behind green wording.
+- If a challenge breaks, preserve the red/yellow evidence and exact blocker. A truthful ugly report beats pretty nonsense.
+
+## Completion report must include
+
+- scenario/run ids;
+- commit/dirty state;
+- camp/site counts and active group counts;
+- before/after target/reason/no-repeat state;
+- mixed-signal priority readout;
+- reload/resume result or deferred seam;
+- timing/stability metrics;
+- final green/yellow/red classification and caveats.

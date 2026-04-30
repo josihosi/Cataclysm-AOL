@@ -49,13 +49,21 @@ Detailed contracts, closure evidence, and older checkpoint history belong in `do
 
 ---
 
-## Open promotion slot
+## Active lane — CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0
 
-**Status:** PARKED / NO ACTIVE LANE / AWAITING SCHANI-JOSEF PROMOTION
+**Status:** ACTIVE / GREENLIT CHALLENGE PLAYTEST PACKET
 
-No current execution lane is promoted. `CAOL-ROOF-HORDE-NICE-FIRE-v0` is closed/checkpointed green for v0 after the focused nice roof-fire horde proof. Do not rerun `bandit.roof_fire_horde_nice_roof_fire_mcw`, the old split proof, or mixed-hostile soup unless Schani/Josef explicitly promote a stricter follow-up.
+Josef greenlit a real Andi challenge on 2026-04-30: “make it good” and give Andi “a real challenge or a couple challenges”. This active packet combines the strongest current follow-ups into one bounded gauntlet: multi-camp structural stress, mixed signal coexistence, and reload/resume continuity if practical.
 
-Last closed active lane: `CAOL-ROOF-HORDE-NICE-FIRE-v0` — see `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`, `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md`. Preserved caveats: positive `tracking_intensity` and horde-specific micro-timing are not instrumented/credited; the green v0 response evidence is live roof-fire signal plus saved horde retarget/destination, `last_processed`, and positive movement budget.
+Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`.
+
+Imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`.
+
+Goal: prove that live bandit overmap systems stay sane when multiple camps, structural bounty, and live smoke/fire/light-style signals coexist under bounded time passage. The gauntlet should report target choice, dogpile/spread/hold behavior, active outing state, save/reload continuity if available, and cost/stability metrics.
+
+Boundary: do **not** reopen roof-horde, writhing-stalker, Smart Zone, or old fire proof lanes. Do **not** call setup-only proof a challenge result. Staged-but-live scenarios are acceptable, but live maintenance/outing paths must run and produce before/after evidence.
+
+Last closed active lane: `CAOL-ROOF-HORDE-NICE-FIRE-v0` — see `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`, `doc/work-ledger.md`, `SUCCESS.md`, and `TESTING.md`.
 
 ---
 

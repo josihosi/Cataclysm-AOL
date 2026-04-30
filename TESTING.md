@@ -53,6 +53,17 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ## Current validation targets
 
+### Active validation target - CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0
+
+`CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0` is the active challenge playtest packet. Contract: `doc/multi-camp-signal-gauntlet-playtest-packet-v0-2026-04-30.md`; imagination source: `doc/multi-camp-signal-gauntlet-imagination-source-of-truth-2026-04-30.md`.
+
+Validation burden:
+- Challenge A: multi-camp structural stress with at least two camps, bounded time passage, before/after site/group state, target reasons, no-repeat state, dogpile/spread/hold behavior, and metrics.
+- Challenge B: mixed signal coexistence combining structural bounty with at least one live smoke/fire/light/roof-fire signal, with candidate priority/reason evidence and state-preservation checks.
+- Challenge C: reload/resume continuity for a meaningful active outing if practical; otherwise exact deferred seam.
+- Do not use setup-only camp/signal presence as proof. The live maintenance/outing path must run and produce before/after evidence.
+- Report red/yellow failure honestly if dogpile, stale state, reload loss, CPU churn, or log spam appears.
+
 ### Closed validation receipt - CAOL-ROOF-HORDE-NICE-FIRE-v0
 
 `CAOL-ROOF-HORDE-NICE-FIRE-v0` is closed/checkpointed green for v0. Contract: `doc/roof-fire-horde-nice-roof-fire-playtest-packet-v0-2026-04-30.md`; imagination source: `doc/roof-fire-horde-nice-roof-fire-imagination-source-of-truth-2026-04-30.md`; closure proof: `doc/roof-fire-horde-nice-roof-fire-proof-v0-2026-04-30.md`.
