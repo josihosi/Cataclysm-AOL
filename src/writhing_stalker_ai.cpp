@@ -313,6 +313,11 @@ live_response evaluate_live_response( const live_context &ctx )
     }
 
     if( opportunity.next == decision::strike ) {
+        if( ctx.distance_to_target > 3 && approach.next == decision::shadow ) {
+            response.next = decision::shadow;
+            response.reason = "live_shadowing_before_strike_window";
+            return response;
+        }
         response.next = decision::strike;
         response.reason = "live_" + opportunity.reason;
         return response;

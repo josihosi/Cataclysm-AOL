@@ -299,12 +299,18 @@ TEST_CASE( "writhing_stalker_live_response_requires_evidence_and_uses_cooldown",
     CHECK( shadow.route == approach_class::cover_shadow );
     CHECK( shadow.reason == "live_shadowing_believable_evidence" );
 
-    live_context strike_ctx = shadow_ctx;
-    strike_ctx.player_bleeding = true;
-    strike_ctx.player_hurt = true;
-    strike_ctx.player_low_stamina = true;
-    strike_ctx.player_distracted = true;
-    strike_ctx.zombie_pressure = 2;
+    live_context far_strike_window_ctx = shadow_ctx;
+    far_strike_window_ctx.player_bleeding = true;
+    far_strike_window_ctx.player_hurt = true;
+    far_strike_window_ctx.player_low_stamina = true;
+    far_strike_window_ctx.player_distracted = true;
+    far_strike_window_ctx.zombie_pressure = 2;
+    const live_response far_strike_window = evaluate_live_response( far_strike_window_ctx );
+    CHECK( far_strike_window.next == decision::shadow );
+    CHECK( far_strike_window.reason == "live_shadowing_before_strike_window" );
+
+    live_context strike_ctx = far_strike_window_ctx;
+    strike_ctx.distance_to_target = 2;
     const live_response strike = evaluate_live_response( strike_ctx );
     CHECK( strike.next == decision::strike );
     CHECK( strike.reason == "live_vulnerability_window_strike" );

@@ -697,6 +697,7 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
         case writhing_stalker::decision::strike:
             stalker.set_dest( target.pos_abs() );
             stalker.anger = std::max( stalker.anger, 80 );
+            stalker.add_effect( effect_run, 5_turns );
             return true;
         case writhing_stalker::decision::shadow: {
             bool found_shadow = false;

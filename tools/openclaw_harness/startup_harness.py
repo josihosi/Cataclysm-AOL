@@ -4931,6 +4931,37 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "player_condition":
+            normalized: Dict[str, Any] = {"kind": kind, "player_save": player_save}
+            if "hp_percent" in raw:
+                try:
+                    hp_percent = int(raw.get("hp_percent"))
+                except (TypeError, ValueError):
+                    raise SystemExit(f"Fixture save_transforms[{index}] hp_percent must be integer in {manifest_path}")
+                if hp_percent <= 0 or hp_percent > 100:
+                    raise SystemExit(f"Fixture save_transforms[{index}] hp_percent must be 1..100 in {manifest_path}")
+                normalized["hp_percent"] = hp_percent
+            if "stamina" in raw:
+                try:
+                    stamina = int(raw.get("stamina"))
+                except (TypeError, ValueError):
+                    raise SystemExit(f"Fixture save_transforms[{index}] stamina must be integer in {manifest_path}")
+                if stamina < 0:
+                    raise SystemExit(f"Fixture save_transforms[{index}] stamina must be >= 0 in {manifest_path}")
+                normalized["stamina"] = stamina
+            effects = normalize_string_list(raw.get("effects", []))
+            if effects:
+                normalized["effects"] = effects
+                normalized["effect_body_part"] = str(raw.get("effect_body_part", "torso") or "torso").strip()
+                normalized["effect_duration"] = int(raw.get("effect_duration", 600) or 600)
+                normalized["effect_intensity"] = int(raw.get("effect_intensity", 1) or 1)
+            if not any(key in normalized for key in ("hp_percent", "stamina", "effects")):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] player_condition needs hp_percent, stamina, or effects in {manifest_path}"
+                )
+            transforms.append(normalized)
+            continue
+
         if kind == "player_location_offset_ms":
             offset_raw = raw.get("offset_ms", [])
             if not isinstance(offset_raw, list) or len(offset_raw) != 3:
@@ -5328,10 +5359,10 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
-            "supported kinds: player_mutations, player_items, player_location_offset_ms, player_near_overmap_special, "
+            "supported kinds: player_mutations, player_items, player_condition, player_location_offset_ms, player_near_overmap_special, "
             "seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, horde_entity_near_player, game_turn, "
-            "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_site_roster_shape"
+            "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_clone_site, bandit_site_roster_shape"
         )
     return transforms
 
@@ -5552,6 +5583,87 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
         "inserted_paths": inserted_paths,
         "replace_existing_weapon": replace_existing_weapon,
         "replaced_weapon_typeid": replaced_weapon_typeid,
+    }
+
+
+def apply_player_condition_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply a small harness-only player condition restage to a copied fixture save."""
+    player_save_name = str(transform.get("player_save", "")).strip()
+    player_save = world_dir / player_save_name
+    if not player_save.exists():
+        raise SystemExit(f"Fixture player-condition transform target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture player-condition transform expects .zzip save path: {player_save}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture player-condition transform did not extract save: {extracted_save}")
+
+    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+
+    hp_percent_raw = transform.get("hp_percent")
+    updated_body_parts: List[str] = []
+    if hp_percent_raw is not None:
+        hp_percent = max(1, min(100, int(hp_percent_raw)))
+        body = player.get("body")
+        if not isinstance(body, dict):
+            raise SystemExit(f"Player body is not a dict in {extracted_save}")
+        for part_id, part in body.items():
+            if not isinstance(part, dict):
+                continue
+            hp_max = int(part.get("hp_max", 0) or 0)
+            if hp_max <= 0:
+                continue
+            part["hp_cur"] = max(1, ( hp_max * hp_percent ) // 100)
+            updated_body_parts.append(str(part_id))
+
+    updated_stamina: Optional[int] = None
+    if "stamina" in transform:
+        updated_stamina = max(0, int(transform.get("stamina", 0) or 0))
+        player["stamina"] = updated_stamina
+
+    added_effects: List[str] = []
+    effects = player.setdefault("effects", {})
+    if not isinstance(effects, dict):
+        raise SystemExit(f"Player effects is not a dict in {extracted_save}")
+    turn = int(payload.get("turn", 0) or 0)
+    for effect_id in normalize_string_list(transform.get("effects", [])):
+        bp = str(transform.get("effect_body_part", "torso") or "torso").strip()
+        duration = int(transform.get("effect_duration", 600) or 600)
+        intensity = int(transform.get("effect_intensity", 1) or 1)
+        effect_bucket = effects.setdefault(effect_id, {})
+        if not isinstance(effect_bucket, dict):
+            raise SystemExit(f"Player effect bucket is not a dict for {effect_id} in {extracted_save}")
+        effect_bucket[bp] = {
+            "eff_type": effect_id,
+            "duration": duration,
+            "bp": bp,
+            "permanent": False,
+            "intensity": intensity,
+            "start_turn": turn,
+            "source": {"character_id": None, "faction_id": None},
+        }
+        added_effects.append(f"{effect_id}:{bp}")
+
+    extracted_save.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    run_zzip(extracted_save)
+    if extracted_save.exists():
+        extracted_save.unlink()
+
+    return {
+        "kind": "player_condition",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "hp_percent": hp_percent_raw,
+        "updated_body_parts": updated_body_parts,
+        "stamina": updated_stamina,
+        "added_effects": added_effects,
     }
 
 
@@ -7377,6 +7489,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "player_items":
             reports.append(apply_player_items_transform(world_dir, transform))
+            continue
+        if kind == "player_condition":
+            reports.append(apply_player_condition_transform(world_dir, transform))
             continue
         if kind == "player_location_offset_ms":
             reports.append(apply_player_location_offset_ms_transform(world_dir, transform))

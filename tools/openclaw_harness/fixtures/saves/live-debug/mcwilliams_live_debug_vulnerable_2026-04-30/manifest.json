@@ -1,0 +1,23 @@
+{
+  "name": "mcwilliams_live_debug_vulnerable_2026-04-30",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only vulnerable/night restage of the McWilliams live-debug fixture for writhing-stalker shadow/strike proof. It rewrites the copied player save to local midnight and lowers the player to 60% HP, low stamina, and a torso bleed effect so live opportunity scoring can prove a strike window without synthesizing stalker state.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5270400
+    },
+    {
+      "kind": "player_condition",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "hp_percent": 60,
+      "stamina": 1000,
+      "effects": ["bleed"],
+      "effect_body_part": "torso",
+      "effect_duration": 600,
+      "effect_intensity": 1
+    }
+  ]
+}
