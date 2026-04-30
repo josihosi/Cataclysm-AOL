@@ -8,8 +8,11 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-No active same-lane task remains after `CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` closed green v0.
+Active: `CAOL-ZOMBIE-RIDER-0.3-v0`.
 
-Closure proof: `doc/writhing-stalker-live-fun-scenario-proof-v0-2026-04-30.md`.
+Immediate narrow slice: monster/evolution footing, not the full overmap/funness stack.
 
-Next visible queued work in `Plan.md`: `CAOL-ZOMBIE-RIDER-0.3-v0`. Do not start it from this file alone; promote it deliberately so the active lane boundary stays visible.
+1. Preserve Josef's exact three-line flavor text in the actual `mon_zombie_rider` monster description.
+2. Choose and document the clean endpoint lineage (default smell: zombie hunter/predator branch -> rider after mature-world pressure, not year-one routine spawn).
+3. Add the smallest deterministic validation that proves the rider definition exists, keeps scary-fast-but-reviewable movement footing, and does not leak through early/routine spawn/evolution gates.
+4. Only after that checkpoint, widen to local shoot/flee/reposition AI, overmap light attraction, rider convergence/bands, and live/harness funness rows from the benchmark suite.

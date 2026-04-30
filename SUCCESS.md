@@ -42,7 +42,7 @@ Canonical docs:
 
 ## CAOL-ZOMBIE-RIDER-0.3-v0 — Zombie rider initial dev
 
-Status: GREENLIT / QUEUED AFTER ACTIVE WRITHING-STALKER LIVE FUN PACKET
+Status: ACTIVE / GREENLIT INITIAL DEV STARTED AFTER WRITHING-STALKER LIVE FUN CLOSURE
 
 Success state:
 - [ ] Exact flavor text is preserved in raw intake, imagination source, and actual monster description.

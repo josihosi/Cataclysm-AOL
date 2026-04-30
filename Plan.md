@@ -91,11 +91,11 @@ Prior closed active lane: `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0` — see `doc/
 
 ---
 
-## Greenlit queued lane — CAOL-ZOMBIE-RIDER-0.3-v0
+## Active lane — CAOL-ZOMBIE-RIDER-0.3-v0
 
-**Status:** GREENLIT / QUEUED AFTER ACTIVE WRITHING-STALKER LIVE FUN PACKET
+**Status:** ACTIVE / GREENLIT INITIAL DEV STARTED AFTER WRITHING-STALKER LIVE FUN CLOSURE
 
-Josef greenlit preparing the release `0.3` zombie rider for Andi, including playtests and a small map-AI funness benchmarking suite. This is queued behind the active `CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` unless Schani/Josef explicitly promote it sooner.
+Josef greenlit preparing the release `0.3` zombie rider for Andi, including playtests and a small map-AI funness benchmarking suite. The prior writhing-stalker live fun packet is now closed green, so this queued lane is deliberately promoted as the current active delivery target.
 
 Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`.
 
@@ -107,7 +107,9 @@ Map-AI / funness benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-sui
 
 Goal: initial zombie rider dev for release `0.3`: endpoint late-game mounted ranged predator, exact flavor preservation, scary-fast movement, shoot/flee/reposition local combat, overmap light attraction, rider convergence/band formation, and playtest/funness proof that open-ground terror remains fair through counterplay.
 
-Boundary: do not interrupt the active writhing-stalker live fun packet unless explicitly promoted. Do not make the rider a year-one routine spawn, a decorative fast archer, an unavoidable camp-deletion tax, or infinite clown cavalry. Exact flavor text punctuation is product canon.
+Immediate slice: establish reviewable monster/evolution footing first, preserving exact flavor text in the actual monster description and proving the endpoint spawn/evolution gate before widening into local combat AI, overmap light attraction, rider bands, or live funness rows.
+
+Boundary: do not reopen writhing-stalker lanes, bandit/horde proof lanes, Smart Zone, old fire proof lanes, release packaging, or held parked concepts by drift. Do not make the rider a year-one routine spawn, a decorative fast archer, an unavoidable camp-deletion tax, or infinite clown cavalry. Exact flavor text punctuation is product canon.
 
 ---
 

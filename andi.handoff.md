@@ -1,63 +1,50 @@
-# Andi handoff: CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0
+# Andi handoff: CAOL-ZOMBIE-RIDER-0.3-v0
 
 ## Current canon state
 
-`CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` is **CLOSED / CHECKPOINTED GREEN V0**.
+`CAOL-ZOMBIE-RIDER-0.3-v0` is **ACTIVE / GREENLIT INITIAL DEV STARTED AFTER WRITHING-STALKER LIVE FUN CLOSURE**.
 
 Authoritative canon is `Plan.md`, with `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` aligned downstream. This handoff is only a terse executor packet; if it disagrees with canon, repair it from canon.
 
-Prior closed lanes that must not be reopened by drift: monster flavor/stat/spawn footing, old `CAOL-WRITHING-STALKER-v0`, `CAOL-WRITHING-STALKER-PATTERN-TESTS-v0`, roof-horde, Smart Zone, old fire proof lanes, and `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0`.
+Prior closed lanes that must not be reopened by drift: writhing-stalker lanes, roof-horde, Smart Zone, old fire proof lanes, `CAOL-MULTI-CAMP-SIGNAL-GAUNTLET-v0`, and release packaging.
 
-Queued-next visibility: `CAOL-ZOMBIE-RIDER-0.3-v0` is greenlit behind the now-closed writhing-stalker live fun packet, with contract `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md` and benchmark suite `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`. Promote deliberately before starting so the active lane boundary stays visible.
+## Product target
 
-## Closure proof
-
-Proof doc: `doc/writhing-stalker-live-fun-scenario-proof-v0-2026-04-30.md`.
-
-Green v0 target feeling: the player was hunted, understood why, had tools, and the monster felt cunning rather than random.
+Release `0.3` zombie rider initial dev: endpoint late-game mounted ranged predator, exact flavor preservation, scary-fast movement, shoot/flee/reposition local combat, overmap light attraction, rider convergence/band formation, and deterministic/live funness proof that open-ground terror remains fair through counterplay.
 
 ## Canonical packet
 
-- Contract: `doc/writhing-stalker-live-fun-scenarios-packet-v0-2026-04-30.md`
-- Imagination source: `doc/writhing-stalker-live-fun-scenarios-imagination-source-of-truth-2026-04-30.md`
-- Prior deterministic proof: `doc/writhing-stalker-behavior-pattern-proof-v0-2026-04-30.md`
-- Prior live seam footing: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`
+- Raw intake / exact flavor text: `doc/zombie-rider-raw-intake-2026-04-30.md`
+- Imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`
+- Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`
+- Map-AI / funness benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`
 
-## Credited scenario rows
+## Exact flavor text — preserve punctuation
 
-### Scenario A — campfire / light counterplay
+```text
+Up on, what can only be described as, a six legged horse - or is it a spider? - a towering figure, with eyes the color of blood, holds a gory bow of wet bones and sinews.
+It's movement ferocious, as the tumbling feet hasten across the terrain.
+Running is out of the question.
+```
 
-`writhing_stalker.live_campfire_counterplay_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233129/`: light/focus causes withdraw/cooling and prevents unfair strike.
+Do not “fix” `It's`, commas, dashes, or rhythm. Josef explicitly said the weird punctuation is intentional.
 
-### Scenario B — alley predator / shadow route
+## Immediate slice
 
-`writhing_stalker.live_alley_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233156/`: cover-shadow route, plausible close strike, cooldown/reposition, no spam.
+Start with monster/evolution footing only:
 
-### Scenario C — zombie distraction without magic
+1. Add/preserve actual `mon_zombie_rider` definition with the exact description text.
+2. Choose and document the endpoint lineage (default smell: hunter/predator branch into rider after mature-world pressure, not year-one routine spawn).
+3. Add the smallest deterministic/source validation proving the rider definition exists, movement footing is scary-fast-but-reviewable, and early/routine spawn/evolution gates do not leak riders.
 
-`writhing_stalker.live_zombie_distraction_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233521/`: zombie pressure helps only with plausible evidence/vulnerability. `writhing_stalker.live_zombie_distraction_no_magic_guard_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233335/`: zombies alone do not grant magic target acquisition through the wall.
-
-### Scenario D — door/light escape
-
-`writhing_stalker.live_door_light_escape_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233405/`: readable light/focus escape breaks pressure into withdraw/cooling instead of strike/glued pursuit.
-
-### Scenario E — wounded predator retreat
-
-`writhing_stalker.live_wounded_predator_mcw` -> `.userdata/dev-harness/harness_runs/20260430_233434/`: badly-injured stalker withdraws and does not snap back into strike.
+Only after this checkpoint should the lane widen to local shoot/flee/reposition AI, overmap light attraction, rider bands, and live funness rows.
 
 ## Evidence/reporting requirements
 
-Already satisfied in the proof doc. For any future reopened stricter row, report:
-
-- scenario/run id and artifact path;
-- starting state: distance, evidence, light/focus, cover/direct-route availability, player vulnerability, stalker HP;
-- compact per-turn/per-decision trace: decision, reason, route, distance, cooldown, strike count, HP band;
-- pass/fail verdict and caveats;
-- stability/perf: crash status, warnings/errors/log spam, and available `eval_us` or turn/cadence timing.
+For each later test/playtest row, report scenario/test name, run/artifact path, start conditions, decision trace, rider count, band state, shot/reposition/retreat counts, pass/fail/yellow verdict, caveats, warnings/log spam/crash status, and available timing/perf.
 
 ## Non-goals/cautions
 
-- Do not claim fun from unit tests alone. This packet needs live-shaped scenario evidence.
-- Staged-but-live is acceptable; fully natural random discovery is not required for v0.
-- Do not make the monster scarier by making it omniscient.
-- If a future reopened row breaks, preserve the red/yellow evidence and exact blocker. A truthful ugly report is useful; a fake green is just garnish on a lie.
+- Do not make this a full release `0.3` omnibus.
+- Do not make the rider a year-one routine spawn, decorative fast archer, instant camp-deletion tax, or infinite clown cavalry.
+- Do not claim fun from JSON/stat presence alone; gameplay claims need tests and/or live-shaped scenarios.

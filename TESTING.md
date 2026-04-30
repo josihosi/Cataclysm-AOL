@@ -69,12 +69,13 @@ Gates: `make -j4 TILES=1 LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_sta
 
 Caveat: staged-but-live McWilliams scenarios, not fully natural random discovery; future manual discovery is optional/future-only unless promoted.
 
-### Greenlit queued validation target - CAOL-ZOMBIE-RIDER-0.3-v0
+### Active validation target - CAOL-ZOMBIE-RIDER-0.3-v0
 
-`CAOL-ZOMBIE-RIDER-0.3-v0` is greenlit and queued after the active writhing-stalker live fun packet. Start it only when Schani/Josef explicitly promote it to active. Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`; imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`; benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`; raw intake: `doc/zombie-rider-raw-intake-2026-04-30.md`.
+`CAOL-ZOMBIE-RIDER-0.3-v0` is active after the writhing-stalker live fun packet closed green. First validation slice is monster/evolution footing before broader AI or live funness claims. Contract: `doc/zombie-rider-0.3-initial-dev-packet-v0-2026-04-30.md`; imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`; benchmark suite: `doc/zombie-rider-map-ai-funness-benchmark-suite-v0-2026-04-30.md`; raw intake: `doc/zombie-rider-raw-intake-2026-04-30.md`.
 
-Validation burden when active:
-- Preserve exact flavor text in the actual monster description; punctuation is not cleanup fodder.
+Validation burden:
+- First checkpoint: preserve exact flavor text in the actual monster description; punctuation is not cleanup fodder.
+- First checkpoint: deterministic/source validation proves endpoint evolution/spawn gating does not leak into early routine spawn paths.
 - Deterministic tests: endpoint evolution/spawn gate, scary-fast movement constraints, ranged shoot/flee/reposition cadence, injury/pressure withdrawal, cover/LOS/terrain counterplay.
 - Map-AI tests: overmap light attraction, no-light negative control, light-memory decay, rider convergence, rider-band formation, accumulation caps, and circle/harass instead of wall-suicide.
 - Live/harness playtests: open-field terror, cover/indoor escape, camp-light attraction, rider-band circling/harassment, and wounded-rider disengagement.

@@ -2,9 +2,9 @@
 
 ## Classification
 
-**GREENLIT / QUEUED AFTER ACTIVE WRITHING-STALKER LIVE FUN PACKET**
+**ACTIVE / GREENLIT INITIAL DEV STARTED AFTER WRITHING-STALKER LIVE FUN CLOSURE**
 
-Josef greenlit preparing the zombie rider for Andi, including playtests and a small map-AI funness benchmarking suite. This is queued behind the currently active `CAOL-WRITHING-STALKER-LIVE-FUN-SCENARIOS-v0` unless Schani/Josef explicitly promote it sooner.
+Josef greenlit preparing the zombie rider for Andi, including playtests and a small map-AI funness benchmarking suite. The writhing-stalker live fun packet is now closed green, so this packet is the current active initial-dev target.
 
 Imagination source: `doc/zombie-rider-0.3-imagination-source-of-truth-2026-04-30.md`.
 Raw intake / exact flavor text: `doc/zombie-rider-raw-intake-2026-04-30.md`.
