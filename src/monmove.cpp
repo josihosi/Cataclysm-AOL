@@ -98,6 +98,7 @@ static const itype_id itype_pressurized_tank( "pressurized_tank" );
 static const material_id material_iflesh( "iflesh" );
 
 static const mtype_id mon_writhing_stalker( "mon_writhing_stalker" );
+static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
 
 static const mfaction_str_id monfaction_player( "player" );
 
@@ -736,6 +737,41 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
     return false;
 }
 
+static bool zombie_rider_line_of_fire( map &here, const tripoint_bub_ms &from,
+                                       const Creature &target )
+{
+    return here.clear_path( from, target.pos_bub(), 18, 1, 100 );
+}
+
+static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target )
+{
+    if( rider.type->id != mon_zombie_rider ) {
+        return false;
+    }
+
+    if( target.posz() != rider.posz() || !rider.sees( here, target ) ) {
+        return false;
+    }
+
+    const int distance_to_target = rl_dist( rider.pos_bub(), target.pos_bub() );
+    const bool retreating = distance_to_target < 4 || rider.hp_percentage() <= 50 ||
+                            rider.has_effect( effect_run );
+
+    if( retreating ) {
+        tripoint_abs_ms away = rider.pos_abs() - target.pos_abs() + rider.pos_abs();
+        away.z() = rider.posz();
+        rider.set_dest( away );
+        return true;
+    }
+
+    if( distance_to_target <= 18 && zombie_rider_line_of_fire( here, rider.pos_bub(), target ) ) {
+        rider.set_dest( target.pos_abs() );
+        return true;
+    }
+
+    return false;
+}
+
 void monster::plan()
 {
     monster_plan mon_plan( *this );
@@ -998,6 +1034,9 @@ void monster::plan()
     } else if( mon_plan.target != nullptr ) {
 
         if( apply_writhing_stalker_plan( *this, here, *mon_plan.target ) ) {
+            return;
+        }
+        if( apply_zombie_rider_plan( *this, here, *mon_plan.target ) ) {
             return;
         }
 

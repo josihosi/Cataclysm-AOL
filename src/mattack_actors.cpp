@@ -1447,6 +1447,13 @@ bool gun_actor::shoot( monster &z, const tripoint_bub_ms &target, const gun_mode
     } else {
         z.ammo[ammo_type] -= tmp.fire_gun( target, gun.gun_current_mode().qty );
     }
+    if( z.has_flag( mon_flag_HIT_AND_RUN ) ) {
+        map &here = get_map();
+        tripoint_abs_ms away = z.pos_abs() - here.get_abs( target ) + z.pos_abs();
+        away.z() = z.posz();
+        z.set_dest( away );
+        z.add_effect( effect_run, 4_turns );
+    }
     return true;
 }
 
