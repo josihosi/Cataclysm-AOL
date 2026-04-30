@@ -34,13 +34,14 @@ Success state:
 - [x] Save/load preserves any new latch/cooldown state, or the packet explicitly avoids new persisted state.
 - [ ] Live/harness proof `writhing_stalker.live_shadow_strike_mcw` shows a real stalk/hold/strike/withdraw scene from the game path.
 - [ ] Live/harness proof `writhing_stalker.live_no_omniscient_beeline_mcw` shows no instant beeline/attack without valid evidence.
-- [ ] Live/harness proof `writhing_stalker.live_exposed_retreat_mcw` shows exposure/focus/hurt causes hold or withdrawal, or is explicitly classified future-only.
+- [x] Live/harness proof `writhing_stalker.live_exposed_retreat_mcw` shows exposure/focus/hurt causes hold or withdrawal, or is explicitly classified future-only.
 - [ ] Mixed hostile performance playtest `performance.mixed_hostile_stalker_horde_mcw` reports metrics with bandit camp, cannibal camp, one writhing stalker, and horde present, or is explicitly classified follow-up/future-only.
 - [ ] Tuning readout records whether the stalker is too common, too fast, too tanky, too invisible, too honest, too stupid, or too expensive under mixed hostile load.
 - [ ] `Plan.md`, `TODO.md`, `SUCCESS.md`, `TESTING.md`, and `doc/work-ledger.md` match the final active/closed state.
 
 Notes:
-- Support live footing is green, but not final behavior closure: `.userdata/dev-harness/harness_runs/20260430_161342/` proves debug-spawn/save `active_monsters` footing; `.userdata/dev-harness/harness_runs/20260430_161535/` proves target acquisition plus the live `live_plan` seam.
+- Support live footing is green, but not final behavior closure by itself: `.userdata/dev-harness/harness_runs/20260430_161342/` proves debug-spawn/save `active_monsters` footing; `.userdata/dev-harness/harness_runs/20260430_161535/` proves target acquisition plus the live `live_plan` seam.
+- Exposed/focused withdrawal behavior proof is green at `.userdata/dev-harness/harness_runs/20260430_163626/`: harness-only noon fixture `mcwilliams_live_debug_noon_2026-04-30` applies `game_turn=5227200`; saved pre-spawn audit shows `time_of_day_text=12:00:00` and zero noon delta; live-plan artifact proves `decision=withdraw route=hold_exposed reason=live_exposed_and_focused_withdraw ... stalker_bright=yes target_focus=yes cooldown=no`; save/writeback and saved `active_monsters` audits are green.
 - Imagination source lives at `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`.
 - Contract lives at `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`.
 - Playtest ladder lives at `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`.

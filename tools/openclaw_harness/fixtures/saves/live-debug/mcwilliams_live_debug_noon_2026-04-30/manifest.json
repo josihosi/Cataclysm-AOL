@@ -1,0 +1,13 @@
+{
+  "name": "mcwilliams_live_debug_noon_2026-04-30",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only daylight/noon restage of the McWilliams live-debug fixture for writhing-stalker exposed-scene proof. It only rewrites the saved game turn to local noon on the existing fixture day; no map/light/field setup is synthesized.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5227200
+    }
+  ]
+}

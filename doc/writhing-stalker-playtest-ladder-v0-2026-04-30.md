@@ -249,13 +249,17 @@ Green means no instant beeline/attack and no magic refreshed latch.
 
 ### Green live packet C — exposed-focus retreat
 
-Proposed scenario: `writhing_stalker.live_exposed_retreat_mcw`
+Scenario: `writhing_stalker.live_exposed_retreat_mcw`
 
-Setup:
+Status: **GREEN** at `.userdata/dev-harness/harness_runs/20260430_163626/`.
 
-- latch exists;
-- player gets bright exposure/line-of-sight/focus;
-- stalker takes light damage or becomes exposed.
+Credited setup/evidence:
+
+- harness-only noon fixture `mcwilliams_live_debug_noon_2026-04-30` applies a saved `game_turn` transform only; no artificial map/light/field setup is synthesized;
+- pre-spawn saved-turn audit proves `time_of_day_text=12:00:00` with zero noon delta;
+- one hostile `mon_writhing_stalker` is spawned at plausible visible distance;
+- same-run live-plan artifact proves `decision=withdraw route=hold_exposed reason=live_exposed_and_focused_withdraw ... stalker_bright=yes target_focus=yes cooldown=no`;
+- save/writeback mtime and saved active-monster audit remain green after the live line.
 
 Green means stalker holds/withdraws instead of brainless melee until death.
 

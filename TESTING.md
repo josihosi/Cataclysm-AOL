@@ -55,7 +55,7 @@ The honest bar now includes real overmap-side multi-turn scenario proof, up to `
 
 ### Active validation target - CAOL-WRITHING-STALKER-v0
 
-Current boundary: **monster/stat/spawn footing, deterministic behavior substrate, first live monster-plan seam wiring, and split live spawn/target footing are green; actual live behavior-scene proofs plus Josef's mixed-hostile metrics playtest are next**. Receipt: `doc/work-ledger.md`. Raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`; imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`; contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`; testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`; mixed-hostile performance packet: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`.
+Current boundary: **monster/stat/spawn footing, deterministic behavior substrate, first live monster-plan seam wiring, split live spawn/target footing, and exposed/focused withdrawal scene proof are green; shadow/strike, no-omniscience, and Josef's mixed-hostile metrics playtest are next**. Receipt: `doc/work-ledger.md`. Raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`; imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`; contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`; testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`; mixed-hostile performance packet: `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`.
 
 Current evidence:
 - `mon_writhing_stalker` JSON/stat footing and rare singleton `GROUP_ZOMBIE` spawn entry landed with `tests/writhing_stalker_test.cpp`. Evidence: `git diff --check`; `python3 -m json.tool data/json/monsters/zed_misc.json`; `python3 -m json.tool data/json/monstergroups/zombies.json`; `make -j4 tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]"`; focused Python JSON audit for singleton `GROUP_ZOMBIE` entry.
@@ -63,6 +63,7 @@ Current evidence:
 - First live monster-plan seam landed in `src/monmove.cpp` plus `writhing_stalker::evaluate_live_response()`: `mon_writhing_stalker` now gates live target planning on believable local evidence, chooses shadow destinations near cover/darkness/clutter, strikes vulnerability windows by targeting the player, and withdraws/cools off with existing `effect_run`. No new persisted latch field was added. Evidence: `git diff --check`; `make -j4 obj/writhing_stalker_ai.o obj/monmove.o tests/writhing_stalker_test.o tests LINTJSON=0 ASTYLE=0`; `./tests/cata_test "[writhing_stalker]"` (97 assertions / 8 test cases).
 - Split spawn-footing proof is green, but only as creature footing: `python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_spawn_footing_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161342/`; `step_ledger_summary.status=green_step_local_proof`; save/writeback mtime gate green; saved `active_monsters` contains one hostile `mon_writhing_stalker` at player-relative offset `[1,0,0]` (`active_monster_counts={'mon_writhing_stalker': 1}`). This does **not** prove live behavior.
 - Split target/plan-turn proof is green as the basic live seam: after `make -j4 TILES=1 cataclysm-tiles`, `python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_plan_seam_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161535/`; `feature_proof=true`, `verdict=artifacts_matched`, `step_ledger_summary.status=green_step_local_proof`. Decisive artifact lines show `target_probe ... target=yes ... sees_player=yes` and `live_plan ... evidence=yes ... target_focus=yes ... eval_us=...`; saved `active_monsters` still contains one `mon_writhing_stalker`. This proves target acquisition and live seam execution, not exposed-retreat/strike closure.
+- Exposed/focused withdrawal live scene proof is green after replacing the failed wait-to-noon ritual with harness-only saved-turn setup: `python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_exposed_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260430_163626/`; fixture `mcwilliams_live_debug_noon_2026-04-30` applies only `game_turn=5227200`; saved pre-spawn audit shows `time_of_day_text=12:00:00`, `observed_time_of_day_delta_seconds=0`; live artifact proves `decision=withdraw route=hold_exposed reason=live_exposed_and_focused_withdraw ... target_bright=no stalker_bright=yes target_focus=yes cooldown=no eval_us=12`; save/writeback mtime and saved `active_monsters` audit are green. Step ledger: 11/11 green. Validation after the probe: `git diff --check`, `python3 -m py_compile tools/openclaw_harness/startup_harness.py`, JSON syntax checks, and `./tests/cata_test "[writhing_stalker]"` (97 assertions / 8 test cases) all pass.
 
 Greenlit proof ladder:
 
@@ -73,15 +74,15 @@ Greenlit proof ladder:
 5. Approach truth: stalker prefers cover/darkness/clutter where available and does not direct-beeline across open exposure unless forced by the actual map. **Green at deterministic seam; live path still open.**
 6. Opportunity truth: strike pressure rises when the player is hurt, bleeding, low stamina, noisy, sleeping/resting/crafting, boxed by zombies, or moving through clutter; alert/bright/open player states hold or repel pressure. **Green at deterministic seam; live strike path still open.**
 7. Strike truth: combat creates short cut/bleed pressure and then either withdraws or changes state; it does not become a tank duel.
-8. Withdrawal/cooldown truth: hurt/exposed/focused stalker backs off, cooldown blocks immediate repeat spam, and re-engagement needs refreshed evidence. **Green at deterministic seam and first live routing seam; live scene proof still open.**
+8. Withdrawal/cooldown truth: hurt/exposed/focused stalker backs off, cooldown blocks immediate repeat spam, and re-engagement needs refreshed evidence. **Green at deterministic seam and live exposed/focused withdrawal scene (`20260430_163626`).**
 9. Persistence truth: any new latch/cooldown state survives save/load, or the packet explicitly avoids new persisted state. **Green for v0: no new persisted latch/cooldown field; live cooldown uses existing monster effect state.**
-10. Live truth: live/harness packets prove a real shadow/strike scene plus no-omniscient-beeline negative control and exposed/focus retreat or an explicit future-only classification. **Basic target acquisition / `live_plan` seam is green; actual behavior-scene closure remains open.**
+10. Live truth: live/harness packets prove a real shadow/strike scene plus no-omniscient-beeline negative control and exposed/focus retreat or an explicit future-only classification. **Basic target acquisition / `live_plan` seam and exposed/focus withdrawal are green; shadow/strike and no-omniscience remain open.**
 
 Initial proposed live scenarios:
 
 - `writhing_stalker.live_shadow_strike_mcw` — one believable stalk/hold/strike/withdraw scene.
 - `writhing_stalker.live_no_omniscient_beeline_mcw` — no valid evidence, no instant beeline/attack.
-- `writhing_stalker.live_exposed_retreat_mcw` — latch exists, exposure/focus/hurt state causes hold or withdrawal.
+- `writhing_stalker.live_exposed_retreat_mcw` — latch exists, exposure/focus/hurt state causes hold or withdrawal. **Green:** `.userdata/dev-harness/harness_runs/20260430_163626/`.
 - `performance.mixed_hostile_stalker_horde_mcw` — Josef-requested metrics playtest with bandit camp, cannibal camp, one writhing stalker, and horde on the map. Report must include setup mix, runtime commit/dirty state, in-game window, harness wall-clock, per-turn min/median/p95/max where available, `bandit_live_world perf` min/median/max and slice maxima, stalker/horde timing or explicit `not instrumented`, log spam/stability, and a playability note.
 
 Do not close from JSON alone. Do not close from deterministic tests pretending to be gameplay. Do not close from a debug spawn directly on top of the player and call it stalking. This is horror, not a spreadsheet mugging.
@@ -106,14 +107,14 @@ Current important receipts:
 
 ## Pending probes
 
-Current writhing-stalker next step is live/harness behavior proof. Monster/stat/spawn footing, deterministic decision substrate, first live monster-plan seam wiring, debug-spawn footing, and basic target/plan-turn proof are green; next prove the game path consumes local evidence, opportunity, strike, and withdrawal decisions in actual behavior scenes.
+Current writhing-stalker next step is live/harness behavior proof. Monster/stat/spawn footing, deterministic decision substrate, first live monster-plan seam wiring, debug-spawn footing, basic target/plan-turn proof, and exposed/focused withdrawal proof are green; next prove the shadow/strike and no-omniscience behavior scenes, then run the mixed-hostile metrics playtest when the proof gate allows it.
 
-Current green support probes:
+Current green support/behavior probes:
 - `writhing_stalker.live_spawn_footing_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161342/` (spawn/save/active-monster footing only).
 - `writhing_stalker.live_plan_seam_mcw` -> `.userdata/dev-harness/harness_runs/20260430_161535/` (target acquisition + `live_plan` seam only).
+- `writhing_stalker.live_exposed_retreat_mcw` -> `.userdata/dev-harness/harness_runs/20260430_163626/` (harness-only noon setup + saved time audit + bright/focused withdrawal live-plan line + save/writeback/active-monster audit).
 
 Initial greenlit behavior/perf probes still open:
-- `writhing_stalker.live_exposed_retreat_mcw` — current priority; the prior wait-to-noon setup is not proof, so repair the exposure/focus setup before crediting it.
 - `writhing_stalker.live_shadow_strike_mcw`
 - `writhing_stalker.live_no_omniscient_beeline_mcw`
 - `performance.mixed_hostile_stalker_horde_mcw` — mixed hostile metrics report per `doc/mixed-hostile-stalker-horde-performance-playtest-v0-2026-04-30.md`; keep queued behind the behavior-scene proof instead of using perf as a substitute.

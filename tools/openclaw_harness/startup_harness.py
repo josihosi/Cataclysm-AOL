@@ -2278,6 +2278,8 @@ def audit_saved_game_turn(
     record_baseline: bool = False,
     baseline_metadata: Optional[Dict[str, Any]] = None,
     required_min_delta_turns: Optional[int] = None,
+    required_time_of_day_seconds: Optional[int] = None,
+    required_time_tolerance_seconds: int = 0,
 ) -> Dict[str, Any]:
     """Read-only saved-player turn audit for proving real local turn advancement."""
     if not world_dir.exists():
@@ -2285,6 +2287,8 @@ def audit_saved_game_turn(
 
     selected_player_save, player_save_path, payload, stat = load_saved_player_payload(world_dir, player_save)
     turn = int(payload.get("turn", 0) or 0)
+    time_of_day_seconds = turn % ( 24 * 60 * 60 )
+    time_of_day_text = f"{time_of_day_seconds // 3600:02d}:{( time_of_day_seconds % 3600 ) // 60:02d}:{time_of_day_seconds % 60:02d}"
     player = payload.get("player")
     if not isinstance(player, dict):
         raise RuntimeError(f"Extracted player save is missing player object: {player_save_path}")
@@ -2298,17 +2302,31 @@ def audit_saved_game_turn(
     baseline_turn: Optional[int] = None
     observed_delta_turns: Optional[int] = None
     missing_required_min_delta_turns = False
+    normalized_required_time_of_day: Optional[int] = None
+    observed_time_of_day_delta_seconds: Optional[int] = None
+    missing_required_time_of_day = False
     if baseline_metadata is not None:
         baseline_turn = int(baseline_metadata.get("turn", 0) or 0)
         observed_delta_turns = turn - baseline_turn
         if required_min_delta_turns is not None:
             missing_required_min_delta_turns = observed_delta_turns < int(required_min_delta_turns)
 
+    if required_time_of_day_seconds is not None:
+        normalized_required_time_of_day = int(required_time_of_day_seconds) % ( 24 * 60 * 60 )
+        forward_delta = ( time_of_day_seconds - normalized_required_time_of_day ) % ( 24 * 60 * 60 )
+        backward_delta = ( normalized_required_time_of_day - time_of_day_seconds ) % ( 24 * 60 * 60 )
+        observed_time_of_day_delta_seconds = min(forward_delta, backward_delta)
+        missing_required_time_of_day = observed_time_of_day_delta_seconds > max(0, int(required_time_tolerance_seconds))
+
     if record_baseline:
         status = "baseline_recorded"
     elif baseline_metadata is not None and required_min_delta_turns is not None and not missing_required_min_delta_turns:
         status = "required_state_present"
     elif baseline_metadata is not None and required_min_delta_turns is not None:
+        status = "required_state_missing"
+    elif required_time_of_day_seconds is not None and not missing_required_time_of_day:
+        status = "required_state_present"
+    elif required_time_of_day_seconds is not None:
         status = "required_state_missing"
     else:
         status = "scanned"
@@ -2321,6 +2339,12 @@ def audit_saved_game_turn(
         "player_save_mtime_ns": int(stat.st_mtime_ns),
         "player_save_mtime_iso": datetime.fromtimestamp(float(stat.st_mtime)).isoformat(timespec="microseconds"),
         "turn": turn,
+        "time_of_day_seconds": time_of_day_seconds,
+        "time_of_day_text": time_of_day_text,
+        "required_time_of_day_seconds": normalized_required_time_of_day,
+        "required_time_tolerance_seconds": int(required_time_tolerance_seconds),
+        "observed_time_of_day_delta_seconds": observed_time_of_day_delta_seconds,
+        "missing_required_time_of_day": missing_required_time_of_day,
         "baseline_turn": baseline_turn,
         "observed_delta_turns": observed_delta_turns,
         "required_min_delta_turns": required_min_delta_turns,
@@ -4306,6 +4330,8 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
             issues.append("missing_required_points_ms")
         if metadata.get("missing_required_min_delta_turns"):
             issues.append("missing_required_min_delta_turns")
+        if metadata.get("missing_required_time_of_day"):
+            issues.append("missing_required_time_of_day")
         missing_fields = metadata.get("missing_required_fields")
         if isinstance(missing_fields, list):
             for missing_field in missing_fields:
@@ -8224,6 +8250,9 @@ def execute_probe_steps(
                     raise SystemExit(f"Scenario step '{label}' baseline_label not found or has no metadata: {baseline_label}")
             raw_min_delta = step.get("required_min_delta_turns")
             required_min_delta = int(raw_min_delta) if raw_min_delta is not None and str(raw_min_delta).strip() != "" else None
+            raw_required_time_of_day = step.get("required_time_of_day_seconds")
+            required_time_of_day = int(raw_required_time_of_day) if raw_required_time_of_day is not None and str(raw_required_time_of_day).strip() != "" else None
+            required_time_tolerance = int(step.get("required_time_tolerance_seconds", 0) or 0)
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
             try:
@@ -8233,6 +8262,8 @@ def execute_probe_steps(
                     record_baseline=record_baseline,
                     baseline_metadata=baseline_metadata,
                     required_min_delta_turns=required_min_delta,
+                    required_time_of_day_seconds=required_time_of_day,
+                    required_time_tolerance_seconds=required_time_tolerance,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -8243,6 +8274,8 @@ def execute_probe_steps(
                     "player_save": player_save,
                     "baseline_label": baseline_label,
                     "required_min_delta_turns": required_min_delta,
+                    "required_time_of_day_seconds": required_time_of_day,
+                    "required_time_tolerance_seconds": required_time_tolerance,
                 }
             metadata["artifact_path"] = str(metadata_artifact)
             metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
