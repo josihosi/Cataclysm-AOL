@@ -2333,6 +2333,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             continue;
         }
         result.dispatches_planned++;
+        for( const std::string &note : plan.notes ) {
+            result.notes.push_back( note );
+        }
         if( apply_structural_bounty_outing_plan( site, plan, now_minutes ) ) {
             result.dispatches_applied++;
             result.notes.push_back( "structural maintenance dispatched site=" + site.site_id +

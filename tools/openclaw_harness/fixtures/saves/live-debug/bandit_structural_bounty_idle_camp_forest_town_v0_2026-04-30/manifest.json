@@ -1,0 +1,53 @@
+{
+  "name": "bandit_structural_bounty_idle_camp_forest_town_v0_2026-04-30",
+  "description": "Fixture-backed idle-camp structural bounty proof footing: start from the local-contact camp save, park the player away from the camp, clear player-pressure state, shape a five-member ready roster, and persist one high-interest forest structural bounty lead near the camp. The lead is not sourced from player smoke/light/direct-range bait.",
+  "source_fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 2,
+      "offset_omt": [0, -12, 0]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0
+    },
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "lead_kind": "structural_bounty",
+      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@138,52,0",
+      "status": "scout_confirmed",
+      "target_id": "forest",
+      "target_omt": [138, 52, 0],
+      "radius_omt": 0,
+      "source_key": "fixture_idle_structural_bounty_forest",
+      "source_summary": "fixture-backed idle-camp structural bounty memory for nearby forest terrain; no player smoke, light, direct-range lure, or camp-map signal is present",
+      "first_seen_minutes": -720,
+      "last_seen_minutes": -720,
+      "last_checked_minutes": -720,
+      "last_scouted_minutes": -720,
+      "bounty": 8,
+      "threat": 0,
+      "confidence": 3,
+      "threat_confirmed": true,
+      "target_alert": false,
+      "scout_seen": false,
+      "generated_by_this_camp_routine": true,
+      "prior_bandit_losses": 0,
+      "prior_defender_losses": 0,
+      "times_checked_empty": 0,
+      "times_harvested": 0,
+      "last_outcome": "structural_fixture_idle_bounty",
+      "clear_active_pressure": true,
+      "mark_cleared_active_members_unready": false
+    }
+  ]
+}

@@ -835,6 +835,7 @@ def classify_wait_step_ledger(
     after_text: Dict[str, Any],
     wait_classification: Dict[str, Any],
     artifact_after_wait: Optional[Dict[str, Any]] = None,
+    allow_artifact_elapsed_without_menu_ocr: bool = False,
 ) -> Dict[str, Any]:
     expected_seconds = wait_duration_seconds( expected_duration )
     duration_patterns = wait_menu_expected_duration_patterns( expected_duration )
@@ -868,10 +869,13 @@ def classify_wait_step_ledger(
     effective_wait_status = wait_status
     if wait_status == "unknown_after_wait" and artifact_elapsed["matched"]:
         effective_wait_status = "completed_by_artifact_delta"
+    menu_ocr_deferred_to_artifact_delta = bool(
+        allow_artifact_elapsed_without_menu_ocr and artifact_elapsed["matched"] and expected_seconds is not None
+    )
     issues: List[str] = []
-    if not menu_has_wait_prompt:
+    if not menu_has_wait_prompt and not menu_ocr_deferred_to_artifact_delta:
         issues.append( "wait_menu_ocr_missing_prompt" )
-    if expected_seconds is not None and not menu_expected_matches:
+    if expected_seconds is not None and not menu_expected_matches and not menu_ocr_deferred_to_artifact_delta:
         issues.append( "wait_menu_ocr_missing_expected_duration" )
     if elapsed["status"] == "not_parsed":
         issues.append( "before_after_clock_or_turn_not_parsed" )
@@ -894,6 +898,7 @@ def classify_wait_step_ledger(
         "menu_has_wait_prompt": menu_has_wait_prompt,
         "menu_expected_duration_patterns": duration_patterns,
         "menu_expected_matches": menu_expected_matches,
+        "menu_ocr_deferred_to_artifact_delta": menu_ocr_deferred_to_artifact_delta,
         "before_clock_or_turn": before_clock,
         "after_clock_or_turn": after_clock,
         "artifact_elapsed_evidence": artifact_elapsed,
@@ -902,9 +907,10 @@ def classify_wait_step_ledger(
         "issues": issues,
         "verdict": verdict,
         "review_rule": (
-            "Artifact matches alone do not make this wait step green. Green requires the wait menu, "
+            "Artifact matches alone do not make this wait step green. Green normally requires readable wait-menu OCR, "
             "either a parsed before/after clock or turn delta or all configured post-wait cadence artifacts, "
-            "and either a finish signal, classified interruption, or completed-by-artifact delta."
+            "and either a finish signal, classified interruption, or completed-by-artifact delta. A scenario may explicitly "
+            "defer noisy wait-menu OCR to bounded choice-key plus matched post-wait cadence artifacts."
         ),
     }
 
@@ -1355,6 +1361,9 @@ def execute_long_wait_action(
         after_text=classification_text,
         wait_classification=report["wait_classification"],
         artifact_after_wait=report["artifact_after_wait"],
+        allow_artifact_elapsed_without_menu_ocr=bool(
+            step.get("allow_artifact_elapsed_without_menu_ocr", False)
+        ),
     )
     if bool(step.get("abort_on_interrupt", False)) and \
             report["wait_classification"].get("status") == "interrupted_or_prompt_visible":
@@ -2809,9 +2818,14 @@ def audit_saved_bandit_live_world_state(
     *,
     required_profile: str = "",
     required_site_id_contains: str = "",
+    required_active_group_id_exact: Optional[str] = None,
     required_active_group_id_contains: str = "",
+    required_active_target_id_exact: Optional[str] = None,
     required_active_target_id_prefix: str = "",
+    required_active_target_id_contains: str = "",
     required_active_job_type: str = "",
+    required_active_sortie_started_minutes: Optional[int] = None,
+    required_active_sortie_local_contact_minutes: Optional[int] = None,
     required_member_count: Optional[int] = None,
     required_ready_at_home_count: Optional[int] = None,
     required_wounded_or_unready_count: Optional[int] = None,
@@ -2823,6 +2837,13 @@ def audit_saved_bandit_live_world_state(
     required_remembered_target_or_mark_prefix: str = "",
     required_min_leads: Optional[int] = None,
     required_lead_source_contains: str = "",
+    required_lead_kind: str = "",
+    required_lead_target_id: str = "",
+    required_lead_target_id_prefix: str = "",
+    required_lead_bounty: Optional[int] = None,
+    required_lead_threat: Optional[int] = None,
+    required_lead_times_harvested: Optional[int] = None,
+    required_lead_last_checked_minutes_min: Optional[int] = None,
     required_lead_status: str = "",
     required_lead_last_outcome: str = "",
     required_lead_confidence: Optional[int] = None,
@@ -2970,11 +2991,17 @@ def audit_saved_bandit_live_world_state(
 
     required_profile = str(required_profile or "").strip()
     required_site_id_contains = str(required_site_id_contains or "").strip()
+    normalized_active_group_id_exact = None if required_active_group_id_exact is None else str(required_active_group_id_exact)
     required_active_group_id_contains = str(required_active_group_id_contains or "").strip()
+    normalized_active_target_id_exact = None if required_active_target_id_exact is None else str(required_active_target_id_exact)
     required_active_target_id_prefix = str(required_active_target_id_prefix or "").strip()
+    required_active_target_id_contains = str(required_active_target_id_contains or "").strip()
     required_active_job_type = str(required_active_job_type or "").strip()
     required_remembered_target_or_mark_prefix = str(required_remembered_target_or_mark_prefix or "").strip()
     required_lead_source_contains = str(required_lead_source_contains or "").strip()
+    required_lead_kind = str(required_lead_kind or "").strip()
+    required_lead_target_id = str(required_lead_target_id or "").strip()
+    required_lead_target_id_prefix = str(required_lead_target_id_prefix or "").strip()
     required_lead_status = str(required_lead_status or "").strip()
     required_lead_last_outcome = str(required_lead_last_outcome or "").strip()
     required_known_recent_mark_contains = str(required_known_recent_mark_contains or "").strip()
@@ -2986,11 +3013,21 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_site_id_contains and required_site_id_contains not in str(site.get("site_id", "")):
             return False
+        if normalized_active_group_id_exact is not None and str(site.get("active_group_id", "")) != normalized_active_group_id_exact:
+            return False
         if required_active_group_id_contains and required_active_group_id_contains not in str(site.get("active_group_id", "")):
+            return False
+        if normalized_active_target_id_exact is not None and str(site.get("active_target_id", "")) != normalized_active_target_id_exact:
             return False
         if required_active_target_id_prefix and not str(site.get("active_target_id", "")).startswith(required_active_target_id_prefix):
             return False
+        if required_active_target_id_contains and required_active_target_id_contains not in str(site.get("active_target_id", "")):
+            return False
         if required_active_job_type and site.get("active_job_type") != required_active_job_type:
+            return False
+        if required_active_sortie_started_minutes is not None and int(site.get("active_sortie_started_minutes", -1) or -1) != required_active_sortie_started_minutes:
+            return False
+        if required_active_sortie_local_contact_minutes is not None and int(site.get("active_sortie_local_contact_minutes", -1) or -1) != required_active_sortie_local_contact_minutes:
             return False
         if required_member_count is not None and int(site.get("member_count", 0) or 0) != required_member_count:
             return False
@@ -3022,6 +3059,13 @@ def audit_saved_bandit_live_world_state(
             return False
         lead_requirements_present = any([
             required_lead_source_contains,
+            required_lead_kind,
+            required_lead_target_id,
+            required_lead_target_id_prefix,
+            required_lead_bounty is not None,
+            required_lead_threat is not None,
+            required_lead_times_harvested is not None,
+            required_lead_last_checked_minutes_min is not None,
             required_lead_status,
             required_lead_last_outcome,
             required_lead_confidence is not None,
@@ -3035,6 +3079,20 @@ def audit_saved_bandit_live_world_state(
                     or required_lead_source_contains in str(lead.get("source_summary", ""))
                     or required_lead_source_contains in str(lead.get("lead_id", ""))
                 ):
+                    return False
+                if required_lead_kind and str(lead.get("kind", "")) != required_lead_kind:
+                    return False
+                if required_lead_target_id and str(lead.get("target_id", "")) != required_lead_target_id:
+                    return False
+                if required_lead_target_id_prefix and not str(lead.get("target_id", "")).startswith(required_lead_target_id_prefix):
+                    return False
+                if required_lead_bounty is not None and int(lead.get("bounty", 0) or 0) != required_lead_bounty:
+                    return False
+                if required_lead_threat is not None and int(lead.get("threat", 0) or 0) != required_lead_threat:
+                    return False
+                if required_lead_times_harvested is not None and int(lead.get("times_harvested", 0) or 0) != required_lead_times_harvested:
+                    return False
+                if required_lead_last_checked_minutes_min is not None and int(lead.get("last_checked_minutes", -1) or -1) < required_lead_last_checked_minutes_min:
                     return False
                 if required_lead_status and str(lead.get("status", "")) != required_lead_status:
                     return False
@@ -3059,9 +3117,14 @@ def audit_saved_bandit_live_world_state(
     required_fields = {
         "required_profile": required_profile,
         "required_site_id_contains": required_site_id_contains,
+        "required_active_group_id_exact": normalized_active_group_id_exact,
         "required_active_group_id_contains": required_active_group_id_contains,
+        "required_active_target_id_exact": normalized_active_target_id_exact,
         "required_active_target_id_prefix": required_active_target_id_prefix,
+        "required_active_target_id_contains": required_active_target_id_contains,
         "required_active_job_type": required_active_job_type,
+        "required_active_sortie_started_minutes": required_active_sortie_started_minutes,
+        "required_active_sortie_local_contact_minutes": required_active_sortie_local_contact_minutes,
         "required_member_count": required_member_count,
         "required_ready_at_home_count": required_ready_at_home_count,
         "required_wounded_or_unready_count": required_wounded_or_unready_count,
@@ -3072,6 +3135,13 @@ def audit_saved_bandit_live_world_state(
         "required_remembered_target_or_mark_prefix": required_remembered_target_or_mark_prefix,
         "required_min_leads": required_min_leads,
         "required_lead_source_contains": required_lead_source_contains,
+        "required_lead_kind": required_lead_kind,
+        "required_lead_target_id": required_lead_target_id,
+        "required_lead_target_id_prefix": required_lead_target_id_prefix,
+        "required_lead_bounty": required_lead_bounty,
+        "required_lead_threat": required_lead_threat,
+        "required_lead_times_harvested": required_lead_times_harvested,
+        "required_lead_last_checked_minutes_min": required_lead_last_checked_minutes_min,
         "required_lead_status": required_lead_status,
         "required_lead_last_outcome": required_lead_last_outcome,
         "required_lead_confidence": required_lead_confidence,
@@ -5134,7 +5204,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "last_checked_minutes": int(raw.get("last_checked_minutes", 0) or 0),
                 "last_scouted_minutes": int(raw.get("last_scouted_minutes", 0) or 0),
                 "bounty": int(raw.get("bounty", 8) or 8),
-                "threat": int(raw.get("threat", 1) or 1),
+                "threat": int(1 if raw.get("threat") is None or str(raw.get("threat")).strip() == "" else raw.get("threat")),
                 "confidence": int(raw.get("confidence", 3) or 3),
                 "threat_confirmed": bool(raw.get("threat_confirmed", True)),
                 "target_alert": bool(raw.get("target_alert", False)),
@@ -7024,7 +7094,7 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
         "last_checked_minutes": int(transform.get("last_checked_minutes", 0) or 0),
         "last_scouted_minutes": int(transform.get("last_scouted_minutes", 0) or 0),
         "bounty": int(transform.get("bounty", 8) or 8),
-        "threat": int(transform.get("threat", 1) or 1),
+        "threat": int(1 if transform.get("threat") is None or str(transform.get("threat")).strip() == "" else transform.get("threat")),
         "confidence": int(transform.get("confidence", 3) or 3),
         "threat_confirmed": bool(transform.get("threat_confirmed", True)),
         "target_alert": bool(transform.get("target_alert", False)),
@@ -7041,7 +7111,7 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
     )]
     leads.append(lead)
     selected_site["remembered_target_or_mark"] = target_id
-    selected_site["remembered_threat_estimate"] = int(transform.get("threat", 1) or 1)
+    selected_site["remembered_threat_estimate"] = int(1 if transform.get("threat") is None or str(transform.get("threat")).strip() == "" else transform.get("threat"))
     selected_site["remembered_bounty_estimate"] = int(transform.get("bounty", 8) or 8)
     selected_site.setdefault("known_recent_marks", [])
 
@@ -7964,7 +8034,13 @@ def execute_probe_steps(
             required_ready_at_home_count = optional_step_int("required_ready_at_home_count")
             required_wounded_or_unready_count = optional_step_int("required_wounded_or_unready_count")
             required_active_outside_count = optional_step_int("required_active_outside_count")
+            required_active_sortie_started_minutes = optional_step_int("required_active_sortie_started_minutes")
+            required_active_sortie_local_contact_minutes = optional_step_int("required_active_sortie_local_contact_minutes")
             required_home_side_signal_count = optional_step_int("required_home_side_signal_count")
+            required_lead_bounty = optional_step_int("required_lead_bounty")
+            required_lead_threat = optional_step_int("required_lead_threat")
+            required_lead_times_harvested = optional_step_int("required_lead_times_harvested")
+            required_lead_last_checked_minutes_min = optional_step_int("required_lead_last_checked_minutes_min")
             raw_required_retired_empty_site = step.get("required_retired_empty_site")
             required_retired_empty_site: Optional[bool]
             if raw_required_retired_empty_site is None or str(raw_required_retired_empty_site).strip() == "":
@@ -8006,9 +8082,14 @@ def execute_probe_steps(
                     world_dir,
                     required_profile=str(step.get("required_profile", "") or "").strip(),
                     required_site_id_contains=str(step.get("required_site_id_contains", "") or "").strip(),
+                    required_active_group_id_exact=step.get("required_active_group_id_exact"),
                     required_active_group_id_contains=str(step.get("required_active_group_id_contains", "") or "").strip(),
+                    required_active_target_id_exact=step.get("required_active_target_id_exact"),
                     required_active_target_id_prefix=str(step.get("required_active_target_id_prefix", "") or "").strip(),
+                    required_active_target_id_contains=str(step.get("required_active_target_id_contains", "") or "").strip(),
                     required_active_job_type=str(step.get("required_active_job_type", "") or "").strip(),
+                    required_active_sortie_started_minutes=required_active_sortie_started_minutes,
+                    required_active_sortie_local_contact_minutes=required_active_sortie_local_contact_minutes,
                     required_member_count=required_member_count,
                     required_ready_at_home_count=required_ready_at_home_count,
                     required_wounded_or_unready_count=required_wounded_or_unready_count,
@@ -8030,6 +8111,13 @@ def execute_probe_steps(
                     ).strip(),
                     required_min_leads=required_min_leads,
                     required_lead_source_contains=str(step.get("required_lead_source_contains", "") or "").strip(),
+                    required_lead_kind=str(step.get("required_lead_kind", "") or "").strip(),
+                    required_lead_target_id=str(step.get("required_lead_target_id", "") or "").strip(),
+                    required_lead_target_id_prefix=str(step.get("required_lead_target_id_prefix", "") or "").strip(),
+                    required_lead_bounty=required_lead_bounty,
+                    required_lead_threat=required_lead_threat,
+                    required_lead_times_harvested=required_lead_times_harvested,
+                    required_lead_last_checked_minutes_min=required_lead_last_checked_minutes_min,
                     required_lead_status=str(step.get("required_lead_status", "") or "").strip(),
                     required_lead_last_outcome=str(step.get("required_lead_last_outcome", "") or "").strip(),
                     required_lead_confidence=required_lead_confidence,
@@ -8045,9 +8133,14 @@ def execute_probe_steps(
                     "world_dir": str(world_dir),
                     "required_profile": str(step.get("required_profile", "") or "").strip(),
                     "required_site_id_contains": str(step.get("required_site_id_contains", "") or "").strip(),
+                    "required_active_group_id_exact": step.get("required_active_group_id_exact"),
                     "required_active_group_id_contains": str(step.get("required_active_group_id_contains", "") or "").strip(),
+                    "required_active_target_id_exact": step.get("required_active_target_id_exact"),
                     "required_active_target_id_prefix": str(step.get("required_active_target_id_prefix", "") or "").strip(),
+                    "required_active_target_id_contains": str(step.get("required_active_target_id_contains", "") or "").strip(),
                     "required_active_job_type": str(step.get("required_active_job_type", "") or "").strip(),
+                    "required_active_sortie_started_minutes": required_active_sortie_started_minutes,
+                    "required_active_sortie_local_contact_minutes": required_active_sortie_local_contact_minutes,
                     "required_member_count": required_member_count,
                     "required_ready_at_home_count": required_ready_at_home_count,
                     "required_wounded_or_unready_count": required_wounded_or_unready_count,
@@ -8065,6 +8158,13 @@ def execute_probe_steps(
                     "required_active_member_max_abs_offset_ms": required_max_offset,
                     "player_save": str(step.get("player_save", "") or "").strip(),
                     "required_min_leads": required_min_leads,
+                    "required_lead_kind": str(step.get("required_lead_kind", "") or "").strip(),
+                    "required_lead_target_id": str(step.get("required_lead_target_id", "") or "").strip(),
+                    "required_lead_target_id_prefix": str(step.get("required_lead_target_id_prefix", "") or "").strip(),
+                    "required_lead_bounty": required_lead_bounty,
+                    "required_lead_threat": required_lead_threat,
+                    "required_lead_times_harvested": required_lead_times_harvested,
+                    "required_lead_last_checked_minutes_min": required_lead_last_checked_minutes_min,
                     "required_lead_status": str(step.get("required_lead_status", "") or "").strip(),
                     "required_lead_last_outcome": str(step.get("required_lead_last_outcome", "") or "").strip(),
                     "required_lead_confidence": required_lead_confidence,

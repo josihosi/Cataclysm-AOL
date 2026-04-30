@@ -8,17 +8,24 @@ If the queue below stops matching `Plan.md`, fix this file.
 
 ## Now
 
-Active target: `Bandit structural bounty overmap completion packet v0`.
+Active target: `CAOL-WRITHING-STALKER-v0` / playable singleton predator v0.
 
-Canonical contract: `doc/bandit-structural-bounty-overmap-completion-packet-v0-2026-04-30.md`.
-Imagination source: `doc/bandit-structural-bounty-overmap-completion-imagination-source-of-truth-2026-04-30.md`.
+Links:
+- receipt: `doc/work-ledger.md`
+- raw intake: `doc/writhing-stalker-raw-intake-2026-04-30.md`
+- imagination source: `doc/writhing-stalker-imagination-source-of-truth-2026-04-30.md`
+- contract: `doc/writhing-stalker-behavior-packet-v0-2026-04-30.md`
+- testing/playtest ladder: `doc/writhing-stalker-playtest-ladder-v0-2026-04-30.md`
 
-Current state boundary: **Phase 6 live proof**. Phase 5 live wiring is locally green: structural scan/outing maintenance is wired through `do_turn`, bounded by cadence/budget, covered by deterministic maintenance tests, and the current tiles runtime builds.
+Current state boundary: `CAOL-BANDIT-STRUCT-BOUNTY-v0` is closed/checkpointed green for v0 in `doc/bandit-structural-bounty-phase-7-closure-readout-2026-04-30.md`. Writhing stalker is now greenlit in canon, but Andi cron and Augerl-Frau review cron remain disabled until explicitly re-enabled.
 
-1. Shape the narrow harness scenario for idle camp -> structural forest/town dispatch without player smoke/light/direct-range bait.
-2. Include saved-state metadata audits for structural leads, active/returned members, active outing fields, stalking-distance threat/interest writeback, harvested/dangerous outcome, and debounce/no immediate repeat.
-3. Validate any new scenario JSON with `python3 -m json.tool` and run `python3 tools/openclaw_harness/proof_classification_unit_test.py` if classifier/report logic changes.
-4. Run one feature-path harness probe only after the scenario has explicit visible/artifact expectations; classify screenshots as visual proof only if directly inspected.
-5. Update canon with the exact run path, saved-state evidence, and any live-path caveat before moving to Phase 7 tuning/readout.
+1. Add the writhing stalker monster/stat/spawn footing with rarity/singleton guardrails.
+2. Add deterministic stalker-interest/latch/opportunity/withdraw helper tests before live behavior gets fancy.
+3. Wire only the smallest needed live seam for shadow/strike/withdraw behavior; do not inherit bandit camp economy.
+4. Build harness scenarios for:
+   - `writhing_stalker.live_shadow_strike_mcw`
+   - `writhing_stalker.live_no_omniscient_beeline_mcw`
+   - `writhing_stalker.live_exposed_retreat_mcw`
+5. Run the smallest honest gates after each code slice, then update `TESTING.md`, `SUCCESS.md`, and `doc/work-ledger.md` with exact evidence.
 
-Do **not** implement writhing stalker, local bubble materialization, exact loot harvest, random casualty economy beyond deterministic counters, release packaging, or player/Josef-facing tuning in this phase.
+Do **not** implement bandit shakedown/camp logic, Basecamp economy hooks, common spawn spam, teleport ambushes, global exact scans, or long-term nemesis arcs in v0.
